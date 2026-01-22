@@ -69,6 +69,13 @@ try {
 
 /**
  * Create a new evaluation template
+ * 
+ * NOTE: This implementation assumes an 'is_template' column exists in athlete_evaluations table.
+ * If the column doesn't exist, it should be added via migration:
+ * ALTER TABLE athlete_evaluations ADD COLUMN is_template TINYINT(1) DEFAULT 0;
+ * 
+ * The athlete_id = 0 for templates assumes this is allowed by the schema.
+ * If foreign key constraints prevent this, templates should be stored in a separate table.
  */
 function handleCreate($pdo, $user_id) {
     $title = trim($_POST['title'] ?? '');

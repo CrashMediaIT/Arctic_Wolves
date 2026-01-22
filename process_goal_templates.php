@@ -69,6 +69,10 @@ try {
 
 /**
  * Create a new goal template
+ * 
+ * NOTE: This implementation assumes an 'is_template' column exists in the goals table.
+ * If the column doesn't exist, it should be added via migration:
+ * ALTER TABLE goals ADD COLUMN is_template TINYINT(1) DEFAULT 0;
  */
 function handleCreate($pdo, $user_id) {
     $title = trim($_POST['title'] ?? '');
