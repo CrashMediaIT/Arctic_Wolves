@@ -54,17 +54,18 @@
 
 ### 2. Performance Stats Issues
 
-#### P2 - [ ] Add Goal Button Missing Icon and Navigation Broken
-- **Status:** Not Started
+#### P2 - [x] Add Goal Button Missing Icon and Navigation Broken
+- **Status:** COMPLETED (January 22, 2026)
 - **Issue:** Add Goal button missing icon and flips back to home page when pressed
 - **Details:**
-  - Button needs Font Awesome icon
-  - Button redirects to home instead of staying on goals page
-  - "Create First Goal" button has icon but doesn't follow style guide
+  - Button actually HAS icon (fas fa-plus)
+  - Navigation broken because 'goals' page not in routing table
+  - "Create First Goal" button has icon but same navigation issue
 - **Files Affected:**
-  - `views/stats.php`
-  - Button needs `data-action` and `data-page` attributes
-- **Notes:**
+  - `views/stats.php` - Button HTML is correct
+  - `dashboard.php` - Added 'goals' => 'views/goals.php' to routing
+- **Fix Applied:** Added goals page to allowed_pages routing table
+- **Notes:** Completed - goals page now accessible
 
 ---
 
