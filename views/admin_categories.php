@@ -28,7 +28,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-star"></i> Skill Categories</h3>
-                <button class="btn-primary"><i class="fas fa-plus"></i> Add Skill</button>
+                <button class="btn-primary" data-action="add" data-modal="add-skill-modal"><i class="fas fa-plus"></i> Add Skill</button>
             </div>
             <div class="card-body">
                 <div class="categories-list">
@@ -39,8 +39,8 @@
                             <p>Speed, agility, edge work, transitions</p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="skill-1" data-type="skill"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="skill-1" data-type="skill" data-name="Skating"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <div class="category-item">
@@ -50,8 +50,8 @@
                             <p>Wrist shot, slap shot, snapshot, accuracy</p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="skill-2" data-type="skill"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="skill-2" data-type="skill" data-name="Shooting"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <div class="category-item">
@@ -61,8 +61,8 @@
                             <p>Tape to tape, saucer pass, breakout passes</p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="skill-3" data-type="skill"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="skill-3" data-type="skill" data-name="Passing"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-hockey-puck"></i> Drill Type Categories</h3>
-                <button class="btn-primary"><i class="fas fa-plus"></i> Add Type</button>
+                <button class="btn-primary" data-action="add" data-modal="add-drill-type-modal"><i class="fas fa-plus"></i> Add Type</button>
             </div>
             <div class="card-body">
                 <p class="placeholder-text">Drill type categories will be managed here.</p>
@@ -88,7 +88,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-user-tag"></i> Player Positions</h3>
-                <button class="btn-primary"><i class="fas fa-plus"></i> Add Position</button>
+                <button class="btn-primary" data-action="add" data-modal="add-position-modal"><i class="fas fa-plus"></i> Add Position</button>
             </div>
             <div class="card-body">
                 <p class="placeholder-text">Player position categories will be managed here.</p>
@@ -101,7 +101,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-tools"></i> Equipment Types</h3>
-                <button class="btn-primary"><i class="fas fa-plus"></i> Add Equipment</button>
+                <button class="btn-primary" data-action="add" data-modal="add-equipment-modal"><i class="fas fa-plus"></i> Add Equipment</button>
             </div>
             <div class="card-body">
                 <p class="placeholder-text">Equipment type categories will be managed here.</p>
