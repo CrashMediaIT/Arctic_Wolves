@@ -349,6 +349,41 @@
                 const modal = this.getAttribute('data-modal');
                 const url = this.getAttribute('data-url');
                 const type = this.getAttribute('data-type');
+                const sessionId = this.getAttribute('data-session-id');
+                
+                // Handle view-session action specifically
+                if (action === 'view-session' && sessionId) {
+                    window.location.href = `?page=session_detail&id=${sessionId}`;
+                    return;
+                }
+                
+                // Handle cancel-session action
+                if (action === 'cancel-session' && sessionId) {
+                    if (confirm('Are you sure you want to cancel this session?')) {
+                        // Send cancel request
+                        fetch('process_booking.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: `action=cancel&session_id=${sessionId}&csrf_token=${document.querySelector('[name="csrf_token"]')?.value || ''}`
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast('Session cancelled successfully', 'success');
+                                setTimeout(() => window.location.reload(), 1000);
+                            } else {
+                                showToast(data.message || 'Failed to cancel session', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showToast('An error occurred', 'error');
+                            console.error('Cancel session error:', error);
+                        });
+                    }
+                    return;
+                }
                 
                 // If there's a modal, open it
                 if (modal) {
