@@ -102,6 +102,23 @@ border: none;
 border-radius: 8px;
 font-size: 14px;
 font-weight: 700;
+font-family: 'Inter', sans-serif;
+cursor: pointer;
+transition: all 0.3s ease;
+```
+
+**Button Data Attributes (Required for Functionality):**
+- Navigation: `data-action="view"` + `data-page="page-name"`
+- Add/Create: `data-action="add"` + `data-modal="modal-id"` OR `data-page="page-name"`
+- Edit: `data-action="edit"` + `data-id="123"` + `data-modal="edit-modal"`
+- Delete: `data-action="delete"` + `data-id="123"`
+- Tabs: `data-action="switch-tab"` + `data-tab="tab-name"`
+
+**Icons:** All buttons should include a Font Awesome icon before the text:
+```html
+<button class="btn-primary" data-action="add" data-page="items">
+    <i class="fas fa-plus"></i> Add Item
+</button>
 ```
 
 ### Dropdowns
@@ -113,7 +130,18 @@ border: 1px solid var(--border);
 border-radius: 8px;
 color: var(--text-primary);
 font-size: 14px;
+font-family: 'Inter', sans-serif;
 ```
+
+**Dropdown Options:**
+- Background: `#16161F` (card background)
+- Hover: `#6B46C1` (primary color, NO checkered pattern)
+- Selected: Linear gradient `#6B46C1` to `#7C3AED`
+- Font: 'Inter', sans-serif, 14px
+- Border radius: 4px
+- Padding: 12px 16px
+
+**Important:** Options must use consistent Inter font and clean hover states without browser default patterns.
 
 ### Scrollbars
 ```css
@@ -128,8 +156,39 @@ font-size: 14px;
 ## Implementation Notes
 
 1. Use CSS variables for all colors
-2. Maintain consistent spacing
-3. Ensure proper contrast ratios
-4. Test keyboard navigation
-5. Validate responsive behavior
+2. Maintain consistent spacing (12px, 16px, 20px, 24px)
+3. Ensure proper contrast ratios for accessibility
+4. Test keyboard navigation on all interactive elements
+5. Validate responsive behavior on mobile, tablet, and desktop
+6. All buttons MUST have appropriate `data-action` attributes
+7. Icons should use Font Awesome and be placed before button text
+8. Forms should either use traditional `action="process_*.php"` OR `data-ajax="true"` for AJAX
+9. Tabs can use query parameter navigation OR JavaScript switching with `data-action="switch-tab"`
+10. Dropdown options must maintain theme styling and Inter font consistency
+
+---
+
+## Common Issues and Solutions
+
+### Issue: Button reloads to home page
+**Cause:** Missing `data-page`, `data-modal`, or proper action handler  
+**Solution:** Add `data-page="destination-page"` to navigation buttons
+
+### Issue: Tabs don't switch
+**Cause:** Missing `data-action="switch-tab"` and `data-tab` attributes  
+**Solution:** Add both attributes: `<button data-action="switch-tab" data-tab="tab-name">`
+
+### Issue: Dropdown shows checkered background
+**Cause:** Browser default styling  
+**Solution:** Use custom CSS in `shared_styles.css` with proper option styling
+
+### Issue: Form submission redirects unexpectedly
+**Cause:** Process file using `header()` redirect instead of JSON response  
+**Solution:** For AJAX forms, return JSON. For traditional forms, redirect is expected.
+
+---
+
+## Version History
+
+- **v1.1** - January 22, 2026 - Added button data attributes guide, dropdown improvements, common issues section
 
