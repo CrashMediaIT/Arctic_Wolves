@@ -55,7 +55,12 @@
                 const dateStr = sessionEl.dataset.date;
                 if (!dateStr) return;
                 
+                // Validate date format
                 const date = new Date(dateStr);
+                if (isNaN(date.getTime())) {
+                    console.warn('Invalid date format:', dateStr);
+                    return;
+                }
                 
                 sessionsData.push({
                     id: sessionEl.dataset.sessionId,

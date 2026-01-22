@@ -205,6 +205,7 @@ $videos = $video_stmt->fetchAll();
     </div>
 
     <!-- Tab Content: Upload Section -->
+    <div class="tab-content" id="tab-upload">
         <div class="upload-card">
             <h3><i class="fas fa-cloud-upload-alt"></i> Upload Review Video</h3>
             
@@ -280,12 +281,12 @@ $videos = $video_stmt->fetchAll();
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-action="hide-upload-form">Cancel</button>
+                    <button type="button" class="btn-secondary" data-action="cancel">Cancel</button>
                     <button type="submit" class="btn-primary" data-action="submit-form"><i class="fas fa-check"></i> Upload Video</button>
                 </div>
-    <!-- Tab Content: Upload Section -->
-    <div class="tab-content" id="tab-upload">
-        <div class="upload-card">
+            </form>
+        </div>
+    </div>
 </div>
 
 <style>
