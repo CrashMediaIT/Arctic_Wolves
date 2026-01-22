@@ -181,34 +181,12 @@ try {
             <?php endif; ?>
         </div>
     </div>
-</div>
-                        <i class="fas fa-arrow-up"></i>
-                    </div>
-                    <div class="transaction-details">
-                        <h4>Ice Time Rental</h4>
-                        <span class="transaction-date">Jan 15, 2024 at 10:00 AM</span>
-                    </div>
-                    <div class="transaction-amount negative">-$250.00</div>
-                </div>
-                <div class="transaction-item income">
-                    <div class="transaction-icon">
-                        <i class="fas fa-arrow-down"></i>
-                    </div>
-                    <div class="transaction-details">
-                        <h4>Package Purchase - Sarah Johnson</h4>
-                        <span class="transaction-date">Jan 14, 2024 at 5:15 PM</span>
-                    </div>
-                    <div class="transaction-amount positive">+$549.00</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    
     <!-- Revenue Chart -->
-    <div class="content-card">
+    <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-chart-area"></i> Revenue Overview</h3>
-            <select class="form-input-small">
+            <select class="form-input">
                 <option>Last 7 Days</option>
                 <option>Last 30 Days</option>
                 <option>Last 90 Days</option>
@@ -217,8 +195,9 @@ try {
         </div>
         <div class="card-body">
             <div class="chart-placeholder">
-                <i class="fas fa-chart-area"></i>
+                <i class="fas fa-chart-area" style="font-size: 48px; color: var(--primary); opacity: 0.3; margin-bottom: 12px;"></i>
                 <p>Revenue chart will be displayed here</p>
+                <p style="font-size: 12px; color: var(--text-dim); margin-top: 8px;">Chart displays regardless of revenue amount</p>
             </div>
         </div>
     </div>
@@ -410,6 +389,24 @@ try {
 
 .transaction-amount.negative {
     color: var(--error);
+}
+
+.chart-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    background: var(--bg-main);
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+.chart-placeholder p {
+    margin: 0;
+    font-size: 14px;
 }
 
 @media (max-width: 768px) {
