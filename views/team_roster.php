@@ -35,6 +35,12 @@ $team = $team_stmt->fetch();
 $filter_position = $_GET['position'] ?? 'all';
 $search = $_GET['search'] ?? '';
 
+// Get current season ID once
+$current_season_query = "SELECT id FROM seasons WHERE is_current = 1 LIMIT 1";
+$season_stmt = $pdo->prepare($current_season_query);
+$season_stmt->execute();
+$current_season_id = $season_stmt->fetchColumn();
+
 // Get team roster
 $roster_query = "
     SELECT u.id, u.first_name, u.last_name, u.email,
@@ -47,11 +53,11 @@ $roster_query = "
            COALESCE(s.wins, 0) as wins
     FROM team_members tm
     INNER JOIN users u ON tm.user_id = u.id
-    LEFT JOIN player_stats s ON s.player_id = u.id AND s.season_id = (SELECT id FROM seasons WHERE is_current = 1 LIMIT 1)
+    LEFT JOIN player_stats s ON s.player_id = u.id AND s.season_id = ?
     WHERE tm.team_id = ? AND tm.is_active = 1
 ";
 
-$params = [$team['id'] ?? 0];
+$params = [$current_season_id, $team['id'] ?? 0];
 
 if ($filter_position !== 'all') {
     $roster_query .= " AND tm.position = ?";

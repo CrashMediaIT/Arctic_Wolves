@@ -312,8 +312,6 @@ function applyFilters() {
     }
 }
 </style>
-    color: #10b981;
-}
 
 .status-badge.inactive {
     background: rgba(148, 163, 184, 0.1);

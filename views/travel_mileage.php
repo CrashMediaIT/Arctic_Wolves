@@ -1,7 +1,8 @@
 <?php
 // Get current mileage rate
-$rate_query = "SELECT value FROM settings WHERE setting_key = 'mileage_rate' LIMIT 1";
-$mileage_rate = $pdo->query($rate_query)->fetchColumn() ?: 0.65;
+$rate_stmt = $pdo->prepare("SELECT value FROM settings WHERE setting_key = 'mileage_rate' LIMIT 1");
+$rate_stmt->execute();
+$mileage_rate = $rate_stmt->fetchColumn() ?: 0.65;
 
 // Get filter period
 $filter_period = $_GET['period'] ?? 'month';

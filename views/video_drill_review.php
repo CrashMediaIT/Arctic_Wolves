@@ -42,7 +42,9 @@ $video_stmt->execute($params);
 $videos = $video_stmt->fetchAll();
 
 // Get drill types for filter
-$drill_types = $pdo->query("SELECT DISTINCT drill_type FROM videos WHERE drill_type IS NOT NULL ORDER BY drill_type")->fetchAll(PDO::FETCH_COLUMN);
+$drill_types_stmt = $pdo->prepare("SELECT DISTINCT drill_type FROM videos WHERE drill_type IS NOT NULL ORDER BY drill_type");
+$drill_types_stmt->execute();
+$drill_types = $drill_types_stmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
 <!-- Player Drill Video Review View -->

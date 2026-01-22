@@ -89,6 +89,10 @@ $videos = $video_stmt->fetchAll();
             
             <form class="upload-form" method="POST" action="process_video.php" enctype="multipart/form-data" data-form="video-upload">
                 <input type="hidden" name="action" value="upload_video">
+                <?php if ($user['role'] !== 'coach'): ?>
+                    <div class="error">Unauthorized: Only coaches can upload videos</div>
+                    <?php return; ?>
+                <?php endif; ?>
                 <!-- Note: coach_id will be validated server-side from session -->
                 
                 <div class="form-row">

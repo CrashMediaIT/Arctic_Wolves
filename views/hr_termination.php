@@ -5,7 +5,9 @@ $terminationsQuery = "SELECT t.*, u.first_name, u.last_name, u.role
     LEFT JOIN users u ON t.user_id = u.user_id
     ORDER BY t.termination_date DESC
     LIMIT 10";
-$terminations = mysqli_query($conn, $terminationsQuery);
+$terminations_stmt = $pdo->prepare($terminationsQuery);
+$terminations_stmt->execute();
+$terminations = $terminations_stmt->fetchAll();
 ?>
 <!-- HR Termination View -->
 <div class="page-header">
@@ -165,8 +167,8 @@ $terminations = mysqli_query($conn, $terminationsQuery);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if(mysqli_num_rows($terminations) > 0): ?>
-                            <?php while($term = mysqli_fetch_assoc($terminations)): 
+                        <?php if(!empty($terminations)): ?>
+                            <?php foreach($terminations as $term): 
                                 $statusClass = strtolower($term['status']);
                             ?>
                             <tr>
@@ -186,7 +188,7 @@ $terminations = mysqli_query($conn, $terminationsQuery);
                                     </div>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="6" style="text-align: center; padding: 30px;">

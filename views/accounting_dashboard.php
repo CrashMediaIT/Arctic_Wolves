@@ -422,10 +422,6 @@ try {
     }
 }
 </style>
-    font-weight: 900;
-    color: var(--text-white);
-    margin-bottom: 5px;
-}
 
 .finance-change {
     font-size: 12px;
