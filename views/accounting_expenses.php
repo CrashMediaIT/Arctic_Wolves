@@ -21,15 +21,17 @@ $expenses = $pdo->query($expensesQuery);
             <h3><i class="fas fa-plus-circle"></i> Add Expense</h3>
         </div>
         <div class="card-body">
-            <form class="expense-form">
+            <form method="POST" action="process_expenses.php" enctype="multipart/form-data" class="expense-form">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <input type="hidden" name="action" value="create">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Date *</label>
-                        <input type="date" class="form-input" required>
+                        <input type="date" name="expense_date" class="form-input" required>
                     </div>
                     <div class="form-group">
                         <label>Category *</label>
-                        <select class="form-input" required>
+                        <select name="category" class="form-input" required>
                             <option value="">-- Select Category --</option>
                             <option>Ice Time Rental</option>
                             <option>Equipment</option>
@@ -42,13 +44,13 @@ $expenses = $pdo->query($expensesQuery);
                     </div>
                     <div class="form-group">
                         <label>Amount *</label>
-                        <input type="number" class="form-input" placeholder="0.00" step="0.01" min="0" required>
+                        <input type="number" name="amount" class="form-input" placeholder="0.00" step="0.01" min="0" required>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Description</label>
-                    <input type="text" class="form-input" placeholder="Brief description of the expense">
+                    <input type="text" name="description" class="form-input" placeholder="Brief description of the expense">
                 </div>
 
                 <div class="form-group">
@@ -56,7 +58,7 @@ $expenses = $pdo->query($expensesQuery);
                     <div class="file-upload-zone" data-upload="receipt">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Drag & drop file or click to browse</p>
-                        <input type="file" id="receiptFile" accept="image/*,application/pdf" capture="environment" style="display: none;">
+                        <input type="file" name="receipt_file" id="receiptFile" accept="image/*,application/pdf" capture="environment" style="display: none;">
                         <div class="upload-buttons">
                             <button type="button" class="btn-secondary" onclick="document.getElementById('receiptFile').click()">
                                 <i class="fas fa-folder-open"></i> Choose File
@@ -69,7 +71,7 @@ $expenses = $pdo->query($expensesQuery);
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary" data-action="add-expense">
+                    <button type="submit" class="btn-primary">
                         <i class="fas fa-plus"></i> Add Expense
                     </button>
                 </div>
@@ -109,20 +111,28 @@ $expenses = $pdo->query($expensesQuery);
                             <?php while($expense = $expenses->fetch()): ?>
                             <tr>
                                 <td><?= date('M j, Y', strtotime($expense['expense_date'])) ?></td>
-                                <td><span class="category-badge"><?= htmlspecialchars($expense['category_name']) ?></span></td>
-                                <td><?= htmlspecialchars($expense['description']) ?></td>
+                                <td><span class="category-badge"><?= htmlspecialchars($expense['category_name'] ?? 'N/A') ?></span></td>
+                                <td><?= htmlspecialchars($expense['description'] ?? '') ?></td>
                                 <td><strong>$<?= number_format($expense['amount'], 2) ?></strong></td>
                                 <td>
-                                    <?php if($expense['receipt_path']): ?>
-                                        <button class="btn-link" data-receipt="<?= $expense['expense_id'] ?>"><i class="fas fa-paperclip"></i> View</button>
+                                    <?php if($expense['receipt_url']): ?>
+                                        <a href="<?= htmlspecialchars($expense['receipt_url']) ?>" target="_blank" class="btn-link">
+                                            <i class="fas fa-paperclip"></i> View
+                                        </a>
                                     <?php else: ?>
                                         <span class="text-dim">No receipt</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
-                                        <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
+                                        <form method="POST" action="process_expenses.php" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="expense_id" value="<?= $expense['id'] ?>">
+                                            <button type="submit" class="btn-icon" title="Delete" onclick="return confirm('Are you sure you want to delete this expense?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
