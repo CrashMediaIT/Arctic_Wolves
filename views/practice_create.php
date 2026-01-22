@@ -13,15 +13,17 @@
             <h3><i class="fas fa-info-circle"></i> Practice Information</h3>
         </div>
         <div class="card-body">
-            <form class="practice-form">
+            <form class="practice-form" method="POST" action="process_practice_plans.php">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <input type="hidden" name="action" value="create">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Practice Title *</label>
-                        <input type="text" class="form-input" placeholder="e.g., Power Play Development" required>
+                        <input type="text" name="practice_title" class="form-input" placeholder="e.g., Power Play Development" required>
                     </div>
                     <div class="form-group">
                         <label>Team *</label>
-                        <select class="form-input" required>
+                        <select name="team_id" class="form-input" required>
                             <option value="">-- Select Team --</option>
                             <option>Bantam AA - Blue Devils</option>
                             <option>Peewee A - Thunder</option>
@@ -32,31 +34,35 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Date *</label>
-                        <input type="date" class="form-input" required>
+                        <input type="date" name="practice_date" class="form-input" required>
                     </div>
                     <div class="form-group">
                         <label>Time *</label>
-                        <input type="time" class="form-input" required>
+                        <input type="time" name="practice_time" class="form-input" required>
                     </div>
                     <div class="form-group">
                         <label>Duration (minutes) *</label>
-                        <input type="number" class="form-input" placeholder="90" min="1" required>
+                        <input type="number" name="duration" class="form-input" placeholder="90" min="1" required>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Location</label>
-                    <input type="text" class="form-input" placeholder="e.g., Main Rink">
+                    <input type="text" name="location" class="form-input" placeholder="e.g., Main Rink">
                 </div>
 
                 <div class="form-group">
                     <label>Practice Goals</label>
-                    <textarea class="form-textarea" rows="3" placeholder="What are the key objectives for this practice?"></textarea>
+                    <textarea name="practice_goals" class="form-textarea" rows="3" placeholder="What are the key objectives for this practice?"></textarea>
                 </div>
 
                 <div class="form-group">
                     <label>Notes</label>
-                    <textarea class="form-textarea" rows="3" placeholder="Any additional notes or reminders..."></textarea>
+                    <textarea name="notes" class="form-textarea" rows="3" placeholder="Any additional notes or reminders..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Create Practice Plan</button>
                 </div>
             </form>
         </div>
