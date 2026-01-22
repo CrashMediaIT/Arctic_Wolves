@@ -8,17 +8,17 @@ $filter_age = $_GET['age_group'] ?? 'all';
 $athletes_query = "
     SELECT u.id, u.first_name, u.last_name, u.email, u.date_of_birth,
            (SELECT COUNT(*) FROM sessions WHERE athlete_id = u.id AND status = 'completed') as total_sessions,
-           (SELECT COUNT(*) FROM sessions WHERE athlete_id = u.id AND package_id IS NOT NULL) as package_sessions,
+           (SELECT COUNT(DISTINCT ps.package_id) FROM package_sessions ps JOIN bookings b ON ps.package_id = b.package_id WHERE b.user_id = u.id) as package_sessions,
            (SELECT MAX(session_date) FROM sessions WHERE athlete_id = u.id) as last_session,
            p.name as program_name
     FROM users u
     LEFT JOIN athlete_programs ap ON ap.athlete_id = u.id AND ap.status = 'active'
     LEFT JOIN programs p ON ap.program_id = p.id
     WHERE u.role = 'athlete' AND u.is_active = 1
-    AND EXISTS (SELECT 1 FROM sessions WHERE (coach_id = ? OR assistant_coach_id = ?) AND athlete_id = u.id)
+    AND EXISTS (SELECT 1 FROM sessions WHERE coach_id = ? AND athlete_id = u.id)
 ";
 
-$params = [$user_id, $user_id];
+$params = [$user_id];
 
 // Apply search filter
 if (!empty($search)) {
