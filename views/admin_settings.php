@@ -521,8 +521,58 @@ function getSetting($settings, $key, $default = '') {
         
         <div class="settings-card">
             <div class="card-header">
-                <h3 class="card-title">Payment & Tax Settings</h3>
-                <p class="card-description">Configure Stripe and tax settings</p>
+                <h3 class="card-title">Stripe Configuration</h3>
+                <p class="card-description">Configure Stripe payment gateway for processing payments</p>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Stripe Publishable Key</label>
+                    <input type="text" name="stripe_publishable_key" class="form-input" 
+                           value="<?= htmlspecialchars(getSetting($settings, 'stripe_publishable_key')) ?>" 
+                           placeholder="pk_test_..." required>
+                    <div class="help-text"><i class="fas fa-info-circle"></i> Public key for frontend (starts with pk_)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Stripe Secret Key</label>
+                    <input type="password" name="stripe_secret_key" class="form-input" 
+                           value="<?= htmlspecialchars(getSetting($settings, 'stripe_secret_key')) ?>" 
+                           placeholder="sk_test_..." required>
+                    <div class="help-text"><i class="fas fa-info-circle"></i> Secret key for backend (starts with sk_)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Currency</label>
+                    <select name="currency" class="form-select" required>
+                        <?php
+                        $currencies = ['CAD' => 'Canadian Dollar (CAD)', 'USD' => 'US Dollar (USD)', 'EUR' => 'Euro (EUR)', 'GBP' => 'British Pound (GBP)'];
+                        $current_currency = getSetting($settings, 'currency', 'CAD');
+                        foreach ($currencies as $code => $name) {
+                            $selected = ($code === $current_currency) ? 'selected' : '';
+                            echo "<option value=\"$code\" $selected>$name</option>";
+                        }
+                        ?>
+                    </select>
+                    <div class="help-text">Default currency for all transactions</div>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <h4><i class="fas fa-key"></i> How to Get Your Stripe API Keys</h4>
+                <ul>
+                    <li>Go to <a href="https://dashboard.stripe.com/apikeys" target="_blank" style="color: var(--primary);">Stripe Dashboard → Developers → API Keys</a></li>
+                    <li>Copy both Publishable key (pk_...) and Secret key (sk_...)</li>
+                    <li>Use test keys (pk_test_... / sk_test_...) for testing</li>
+                    <li>Use live keys (pk_live_... / sk_live_...) for production</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="settings-card">
+            <div class="card-header">
+                <h3 class="card-title">Tax Settings</h3>
+                <p class="card-description">Configure sales tax (HST/GST/VAT) for invoices and payments</p>
             </div>
             
             <div class="form-grid">
@@ -540,11 +590,11 @@ function getSetting($settings, $key, $default = '') {
                     <div class="help-text">Enter as percentage (e.g., 13.00 for 13%)</div>
                 </div>
             </div>
-            
-            <button type="submit" class="btn-primary">
-                <i class="fas fa-save"></i> Save Payment Settings
-            </button>
         </div>
+        
+        <button type="submit" class="btn-primary">
+            <i class="fas fa-save"></i> Save Payment & Tax Settings
+        </button>
     </form>
 </div>
 

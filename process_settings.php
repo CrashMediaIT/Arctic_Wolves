@@ -111,9 +111,39 @@ try {
             exit;
             
         case 'update_payments':
+            // Stripe settings
+            $stripe_publishable_key = trim($_POST['stripe_publishable_key']);
+            $stripe_secret_key = trim($_POST['stripe_secret_key']);
+            $currency = trim($_POST['currency']);
+            
+            // Tax settings
             $tax_name = trim($_POST['tax_name']);
             $tax_rate = floatval($_POST['tax_rate']);
             
+            // Validate Stripe keys format
+            if (!empty($stripe_publishable_key) && !preg_match('/^pk_(test|live)_[a-zA-Z0-9]+$/', $stripe_publishable_key)) {
+                throw new Exception('Invalid Stripe publishable key format. Must start with pk_test_ or pk_live_');
+            }
+            if (!empty($stripe_secret_key) && !preg_match('/^sk_(test|live)_[a-zA-Z0-9]+$/', $stripe_secret_key)) {
+                throw new Exception('Invalid Stripe secret key format. Must start with sk_test_ or sk_live_');
+            }
+            
+            // Validate currency
+            if (!in_array($currency, ['CAD', 'USD', 'EUR', 'GBP'])) {
+                throw new Exception('Invalid currency code');
+            }
+            
+            // Validate tax rate
+            if ($tax_rate < 0 || $tax_rate > 100) {
+                throw new Exception('Tax rate must be between 0 and 100');
+            }
+            
+            // Update Stripe settings
+            updateSetting($pdo, 'stripe_publishable_key', $stripe_publishable_key);
+            updateSetting($pdo, 'stripe_secret_key', $stripe_secret_key);
+            updateSetting($pdo, 'currency', $currency);
+            
+            // Update tax settings
             updateSetting($pdo, 'tax_name', $tax_name);
             updateSetting($pdo, 'tax_rate', $tax_rate);
             

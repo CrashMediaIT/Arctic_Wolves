@@ -1,0 +1,37 @@
+# Dependencies (if using composer in the future)
+vendor/
+
+# Logs
+logs/*.log
+error_log.txt
+
+# Temporary files
+tmp/*
+!tmp/.gitkeep
+cache/*
+!cache/.gitkeep
+
+# Uploads and user data
+uploads/*
+!uploads/.gitkeep
+receipts/*
+!receipts/.gitkeep
+videos/*
+!videos/.gitkeep
+backups/*
+!backups/.gitkeep
+
+# Environment configuration (if added in the future)
+.env
+.env.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
