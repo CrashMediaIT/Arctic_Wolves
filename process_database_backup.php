@@ -32,7 +32,7 @@ try {
             $schedule = trim($_POST['schedule'] ?? '');
             $backup_type = $_POST['backup_type'] ?? 'scheduled';
             $destination_type = $_POST['destination_type'] ?? 'nextcloud';
-            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/CrashHockey/Backups/');
+            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/ArticWolves/Backups/');
             $smb_path = trim($_POST['smb_path'] ?? '');
             $smb_username = trim($_POST['smb_username'] ?? '');
             $smb_password = trim($_POST['smb_password'] ?? '');
@@ -87,7 +87,7 @@ try {
             $name = trim($_POST['name'] ?? '');
             $schedule = trim($_POST['schedule'] ?? '');
             $destination_type = $_POST['destination_type'] ?? 'nextcloud';
-            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/CrashHockey/Backups/');
+            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/ArticWolves/Backups/');
             $smb_path = trim($_POST['smb_path'] ?? '');
             $smb_username = trim($_POST['smb_username'] ?? '');
             $smb_password = trim($_POST['smb_password'] ?? '');

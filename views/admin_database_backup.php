@@ -625,7 +625,7 @@ $csrf_token = $_SESSION['csrf_token'];
         <div class="info-box-content">
             <strong>Backup Format:</strong> All backups are compressed and named <code>artic_wolves_backup_YYYYMMDD_HHMMSS.sql.gz</code>
             <ul>
-                <li><strong>Nextcloud:</strong> Backups stored in /CrashHockey/Backups/ (configurable)</li>
+                <li><strong>Nextcloud:</strong> Backups stored in /ArticWolves/Backups/ (configurable)</li>
                 <li><strong>SMB:</strong> Direct network share storage (Windows/Samba)</li>
                 <li><strong>Retention:</strong> Backups older than specified days are automatically deleted</li>
             </ul>
@@ -861,7 +861,7 @@ $csrf_token = $_SESSION['csrf_token'];
                 
                 <div class="form-group">
                     <label class="form-label" for="nextcloud-folder">Nextcloud Folder</label>
-                    <input type="text" id="nextcloud-folder" name="nextcloud_folder" class="form-input" value="/CrashHockey/Backups/" placeholder="/CrashHockey/Backups/">
+                    <input type="text" id="nextcloud-folder" name="nextcloud_folder" class="form-input" value="/ArticWolves/Backups/" placeholder="/ArticWolves/Backups/">
                     <span class="form-help">Path in Nextcloud where backups will be stored</span>
                 </div>
                 

@@ -729,7 +729,7 @@
      * Initialize all functionality when DOM is ready
      */
     function init() {
-        console.log('Crash Hockey App initializing...');
+        console.log('Artic Wolves App initializing...');
         
         // Initialize all components
         initializeSearch();
@@ -744,7 +744,7 @@
         initializeCustomInputs();
         initializeTableSorting();
         
-        console.log('Crash Hockey App initialized successfully!');
+        console.log('Artic Wolves App initialized successfully!');
         
         // Add CSS for animations
         if (!document.getElementById('app-animations')) {
@@ -799,7 +799,7 @@
     }
 
     // Export functions for external use
-    window.CrashHockeyApp = {
+    window.ArticWolvesApp = {
         showToast,
         showLoading,
         hideLoading,
