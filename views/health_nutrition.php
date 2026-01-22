@@ -172,7 +172,7 @@ if ($nutrition_plan) {
 
 <style>
 .content-section {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .section-header-main {
@@ -229,14 +229,14 @@ if ($nutrition_plan) {
     background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
     border: 1px solid var(--neon);
     border-radius: 8px;
-    padding: 30px;
-    margin-bottom: 30px;
+    padding: 24px;
+    margin-bottom: 24px;
 }
 
 .daily-overview-card h3 {
     font-size: 20px;
     font-weight: 700;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .daily-overview-card h3 i {
@@ -407,7 +407,7 @@ if ($nutrition_plan) {
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 25px;
+    padding: 24px;
     text-align: center;
     transition: all 0.3s;
 }
@@ -421,7 +421,7 @@ if ($nutrition_plan) {
     font-size: 36px;
     color: var(--neon);
     display: block;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .tip-card h4 {

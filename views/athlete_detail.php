@@ -72,8 +72,8 @@ $teams = $teams_stmt->fetchAll();
     .athlete-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
         color: #fff;
     }
     .athlete-header h1 {
@@ -96,7 +96,7 @@ $teams = $teams_stmt->fetchAll();
     }
     .stat-item {
         background: #161b22;
-        padding: 15px;
+        padding: 16px;
         border-radius: 6px;
         text-align: center;
     }
@@ -125,7 +125,7 @@ $teams = $teams_stmt->fetchAll();
 
 <div class="detail-card">
     <h2>Profile Information</h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 12px;">
         <div>
             <strong>Email:</strong> <?= htmlspecialchars($athlete['email']) ?>
         </div>
@@ -153,14 +153,14 @@ $teams = $teams_stmt->fetchAll();
             <?php endforeach; ?>
         </div>
     <?php else: ?>
-        <p style="color: #8b949e; margin-top: 15px;">No statistics recorded yet.</p>
+        <p style="color: #8b949e; margin-top: 12px;">No statistics recorded yet.</p>
     <?php endif; ?>
 </div>
 
 <div class="detail-card">
     <h2>Recent Evaluations</h2>
     <?php if (count($evaluations) > 0): ?>
-        <table style="width: 100%; margin-top: 15px;">
+        <table style="width: 100%; margin-top: 12px;">
             <thead>
                 <tr>
                     <th>Date</th>
@@ -183,14 +183,14 @@ $teams = $teams_stmt->fetchAll();
             </tbody>
         </table>
     <?php else: ?>
-        <p style="color: #8b949e; margin-top: 15px;">No evaluations recorded yet.</p>
+        <p style="color: #8b949e; margin-top: 12px;">No evaluations recorded yet.</p>
     <?php endif; ?>
 </div>
 
 <div class="detail-card">
     <h2>Team Assignments</h2>
     <?php if (count($teams) > 0): ?>
-        <table style="width: 100%; margin-top: 15px;">
+        <table style="width: 100%; margin-top: 12px;">
             <thead>
                 <tr>
                     <th>Team Name</th>
@@ -211,14 +211,14 @@ $teams = $teams_stmt->fetchAll();
             </tbody>
         </table>
     <?php else: ?>
-        <p style="color: #8b949e; margin-top: 15px;">No team assignments yet.</p>
+        <p style="color: #8b949e; margin-top: 12px;">No team assignments yet.</p>
     <?php endif; ?>
 </div>
 
 <?php if ($isAdmin || $isCoach): ?>
     <div class="detail-card">
         <h2>Management Actions</h2>
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <div style="display: flex; gap: 10px; margin-top: 12px;">
             <a href="?page=manage_athletes&id=<?= $athlete_id ?>" class="btn-primary">Edit Profile</a>
             <a href="?page=evaluations_skills&athlete_id=<?= $athlete_id ?>" class="btn-primary">New Evaluation</a>
             <a href="?page=stats&athlete_id=<?= $athlete_id ?>" class="btn-primary">Update Stats</a>

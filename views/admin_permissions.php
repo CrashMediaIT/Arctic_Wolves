@@ -48,7 +48,7 @@ $users = $pdo->query("
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -58,7 +58,7 @@ $users = $pdo->query("
     .tabs {
         display: flex;
         gap: 10px;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
         border-bottom: 2px solid #1e293b;
     }
     .tab {
@@ -97,7 +97,7 @@ $users = $pdo->query("
         font-weight: 700;
         color: var(--primary);
         text-transform: uppercase;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -159,7 +159,7 @@ $users = $pdo->query("
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 15px;
+        padding: 16px;
         cursor: pointer;
         transition: 0.2s;
     }
@@ -233,7 +233,7 @@ $users = $pdo->query("
 
 <!-- Role Permissions Tab -->
 <div id="role-perms" class="tab-content active">
-    <div class="alert alert-info" style="margin-bottom: 25px;">
+    <div class="alert alert-info" style="margin-bottom: 24px;">
         <i class="fas fa-info-circle"></i>
         <strong>Role Permissions:</strong> Define what each role can do by default. 
         Changes apply to all users with that role unless overridden.
@@ -294,7 +294,7 @@ $users = $pdo->query("
             <?php endforeach; ?>
         </div>
         
-        <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
+        <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
             <button type="submit" class="btn">
                 <i class="fas fa-save"></i> Save Role Permissions
             </button>
@@ -304,7 +304,7 @@ $users = $pdo->query("
 
 <!-- User Overrides Tab -->
 <div id="user-perms" class="tab-content">
-    <div class="alert alert-info" style="margin-bottom: 25px;">
+    <div class="alert alert-info" style="margin-bottom: 24px;">
         <i class="fas fa-info-circle"></i>
         <strong>User Overrides:</strong> Grant or revoke specific permissions for individual users, 
         overriding their role's default permissions.

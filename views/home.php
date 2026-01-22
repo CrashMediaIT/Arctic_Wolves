@@ -784,7 +784,7 @@ try {
 
 /* Performance Stats Overview */
 .stats-overview {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .section-header {
@@ -805,7 +805,7 @@ try {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .stat-card {

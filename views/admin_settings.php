@@ -31,7 +31,7 @@ function getSetting($settings, $key, $default = '') {
     }
     
     .settings-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .settings-header h1 {
@@ -49,7 +49,7 @@ function getSetting($settings, $key, $default = '') {
         display: flex;
         gap: 8px;
         border-bottom: 2px solid #1e293b;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         overflow-x: auto;
     }
     
@@ -88,8 +88,8 @@ function getSetting($settings, $key, $default = '') {
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 25px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     
     .card-header {
@@ -220,7 +220,7 @@ function getSetting($settings, $key, $default = '') {
     }
     
     .alert {
-        padding: 15px 20px;
+        padding: 16px 20px;
         border-radius: 6px;
         margin-bottom: 20px;
         display: flex;
@@ -244,8 +244,8 @@ function getSetting($settings, $key, $default = '') {
         background: rgba(112, 0, 164, 0.1);
         border: 1px solid var(--primary);
         border-radius: 6px;
-        padding: 15px;
-        margin-top: 15px;
+        padding: 16px;
+        margin-top: 12px;
     }
     
     .info-box h4 {

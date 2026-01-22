@@ -32,7 +32,7 @@ $credits = $pdo->query($creditsQuery);
                 <option>Completed</option>
             </select>
         </div>
-        <button class="btn-primary" data-action="create"><i class="fas fa-plus"></i> Issue Credit/Refund</button>
+        <button class="btn-primary" data-action="add" data-modal="issue-credit-refund-modal"><i class="fas fa-plus"></i> Issue Credit/Refund</button>
     </div>
 
     <!-- Credits & Refunds Table -->
@@ -83,7 +83,7 @@ $credits = $pdo->query($creditsQuery);
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 30px;">
+                                <td colspan="8" style="text-align: center; padding: 24px;">
                                     <p class="placeholder-text">No credits or refunds found.</p>
                                 </td>
                             </tr>
@@ -120,3 +120,123 @@ $credits = $pdo->query($creditsQuery);
     color: #10b981;
 }
 </style>
+
+<!-- Issue Credit/Refund Modal -->
+<div id="issue-credit-refund-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Issue Credit/Refund</h2>
+            <button class="modal-close" onclick="closeModal('issue-credit-refund-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_refunds.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Client *</label>
+                    <select name="user_id" class="form-input" required id="credit-user-select">
+                        <option value="">Select Client</option>
+                        <?php
+                        // Fetch users for dropdown
+                        try {
+                            $userStmt = $pdo->query("SELECT id, first_name, last_name, email FROM users WHERE role IN ('athlete', 'parent') ORDER BY first_name, last_name");
+                            while ($user = $userStmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo '<option value="' . $user['id'] . '">' . 
+                                     htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) . 
+                                     ' (' . htmlspecialchars($user['email']) . ')</option>';
+                            }
+                        } catch (PDOException $e) {
+                            error_log("User fetch error: " . $e->getMessage());
+                        }
+                        ?>
+                    </select>
+                </div>
+                
+                <div id="purchase-history" style="display: none; margin-bottom: 20px;">
+                    <label class="form-label">Recent Purchases</label>
+                    <div id="purchase-list" style="background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <p style="color: var(--text-dim); font-size: 13px;">Select a client to view their purchase history</p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Type *</label>
+                    <select name="type" class="form-input" required>
+                        <option value="">Select Type</option>
+                        <option value="credit">Credit</option>
+                        <option value="refund">Refund</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount *</label>
+                    <input type="number" name="amount" class="form-input" step="0.01" min="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Reason *</label>
+                    <textarea name="reason" class="form-textarea" rows="3" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Reference/Booking ID</label>
+                    <input type="text" name="booking_id" class="form-input" placeholder="Optional - related booking ID">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" name="auto_approve" value="1"> Auto-approve immediately
+                    </label>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('issue-credit-refund-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Issue Credit/Refund</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userSelect = document.getElementById('credit-user-select');
+    const purchaseHistory = document.getElementById('purchase-history');
+    const purchaseList = document.getElementById('purchase-list');
+    
+    if (userSelect) {
+        userSelect.addEventListener('change', function() {
+            if (this.value) {
+                purchaseHistory.style.display = 'block';
+                purchaseList.innerHTML = '<p style="color: var(--text-dim); font-size: 13px;"><i class="fas fa-spinner fa-spin"></i> Loading purchase history...</p>';
+                
+                // Fetch purchase history via AJAX
+                fetch('process_refunds.php?action=get_purchases&user_id=' + this.value)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.purchases && data.purchases.length > 0) {
+                            let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                            data.purchases.forEach(purchase => {
+                                html += `<div style="padding: 8px; background: var(--bg-card); border-radius: 4px; border: 1px solid var(--border); font-size: 13px;">
+                                    <strong>${purchase.description}</strong> - $${purchase.amount}
+                                    <span style="color: var(--text-dim); margin-left: 8px;">${purchase.date}</span>
+                                </div>`;
+                            });
+                            html += '</div>';
+                            purchaseList.innerHTML = html;
+                        } else {
+                            purchaseList.innerHTML = '<p style="color: var(--text-dim); font-size: 13px;">No recent purchases found</p>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching purchases:', error);
+                        purchaseList.innerHTML = '<p style="color: var(--error); font-size: 13px;">Error loading purchase history</p>';
+                    });
+            } else {
+                purchaseHistory.style.display = 'none';
+            }
+        });
+    }
+});
+</script>

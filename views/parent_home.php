@@ -47,7 +47,7 @@ $unread_count = $notif_stmt->fetchColumn();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -76,7 +76,7 @@ $unread_count = $notif_stmt->fetchColumn();
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .stat-card {
         background: #0d1117;
@@ -102,13 +102,13 @@ $unread_count = $notif_stmt->fetchColumn();
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .athlete-card {
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
+        padding: 24px;
         transition: all 0.2s;
     }
     .athlete-card:hover {
@@ -150,8 +150,8 @@ $unread_count = $notif_stmt->fetchColumn();
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
-        margin-bottom: 15px;
-        padding: 15px;
+        margin-bottom: 12px;
+        padding: 16px;
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;

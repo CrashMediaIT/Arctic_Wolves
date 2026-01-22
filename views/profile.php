@@ -421,7 +421,7 @@ function switchTab(tabName) {
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 12px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .profile-photo {

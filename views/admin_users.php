@@ -85,7 +85,7 @@ try {
             </select>
             <button type="submit" class="btn btn-secondary"><i class="fas fa-filter"></i> Filter</button>
         </form>
-        <button class="btn btn-primary" onclick="openAddUserModal()">
+        <button class="btn btn-primary" data-action="add" data-modal="add-user-modal">
             <i class="fas fa-user-plus"></i> Add User
         </button>
     </div>
@@ -324,3 +324,73 @@ function applyFilters() {
     color: var(--text-dim);
 }
 </style>
+
+<!-- Add User Modal -->
+<div id="add-user-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add New User</h2>
+            <button class="modal-close" onclick="closeModal('add-user-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_user">
+            
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" name="first_name" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" name="last_name" class="form-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" name="phone" class="form-input">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Role *</label>
+                        <select name="role" class="form-input" required>
+                            <option value="">Select Role</option>
+                            <option value="admin">Admin</option>
+                            <option value="coach">Coach</option>
+                            <option value="athlete">Athlete</option>
+                            <option value="parent">Parent</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="is_verified" class="form-input">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Temporary Password *</label>
+                    <input type="password" name="password" class="form-input" required>
+                    <small style="color: var(--text-dim);">User will be prompted to change on first login</small>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-user-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create User</button>
+            </div>
+        </form>
+    </div>
+</div>

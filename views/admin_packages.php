@@ -272,7 +272,7 @@ $sessions = $pdo->query("
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .page-header h2 {
@@ -281,7 +281,7 @@ $sessions = $pdo->query("
 }
 
 .alert {
-    padding: 15px;
+    padding: 16px;
     border-radius: 8px;
     margin-bottom: 20px;
 }
@@ -312,7 +312,7 @@ thead {
 }
 
 th, td {
-    padding: 15px;
+    padding: 16px;
     text-align: left;
     border-bottom: 1px solid #1e293b;
 }
@@ -430,7 +430,7 @@ td {
 .modal-content {
     background: #0a0f16;
     margin: 50px auto;
-    padding: 30px;
+    padding: 24px;
     border-radius: 12px;
     max-width: 700px;
     position: relative;
@@ -495,7 +495,7 @@ td {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 30px;
+    margin-top: 24px;
 }
 
 .sessions-list {
@@ -507,7 +507,7 @@ td {
 .session-item {
     display: flex;
     gap: 15px;
-    padding: 15px;
+    padding: 16px;
     background: #020305;
     border: 1px solid #334155;
     border-radius: 8px;

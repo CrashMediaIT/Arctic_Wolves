@@ -35,7 +35,7 @@ if ($user_role !== 'admin') {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .page-title {
@@ -91,8 +91,8 @@ if ($user_role !== 'admin') {
         background: var(--bg-dark);
         border: 2px solid var(--border);
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
         display: none;
     }
     
@@ -125,7 +125,7 @@ if ($user_role !== 'admin') {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 15px;
-        margin-top: 15px;
+        margin-top: 12px;
     }
     
     .stat-item {
@@ -158,7 +158,7 @@ if ($user_role !== 'admin') {
         background: var(--bg-dark);
         border: 1px solid var(--border);
         border-radius: 8px;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
         overflow: hidden;
     }
     
@@ -198,7 +198,7 @@ if ($user_role !== 'admin') {
     .badge-success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
     
     .category-body {
-        padding: 25px;
+        padding: 24px;
         display: none;
     }
     
@@ -231,7 +231,7 @@ if ($user_role !== 'admin') {
         background: var(--bg-darker);
         border: 1px solid var(--border);
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 10px;
         display: flex;
         align-items: start;
@@ -302,7 +302,7 @@ if ($user_role !== 'admin') {
     
     .empty-state i {
         font-size: 48px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         opacity: 0.5;
     }
 </style>

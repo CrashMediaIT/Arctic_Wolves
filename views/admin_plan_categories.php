@@ -39,8 +39,8 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
         .category-section {
             background: white;
             border-radius: 8px;
-            padding: 25px;
-            margin-bottom: 30px;
+            padding: 24px;
+            margin-bottom: 24px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
@@ -55,7 +55,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
         .categories-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 12px;
         }
 
         .categories-table th {
@@ -123,7 +123,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
         .modal-content {
             background: white;
             margin: 5% auto;
-            padding: 30px;
+            padding: 24px;
             border-radius: 8px;
             max-width: 500px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -207,7 +207,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
             }
 
             .category-section {
-                padding: 15px;
+                padding: 16px;
             }
 
             .categories-table {

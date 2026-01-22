@@ -239,7 +239,7 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
 .booking-tabs {
     display: flex;
     gap: 10px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .tab-btn {
@@ -285,7 +285,7 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 30px;
+    padding: 24px;
     position: relative;
     transition: all 0.3s;
 }
@@ -316,11 +316,11 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
     font-size: 24px;
     font-weight: 900;
     color: var(--text-white);
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .package-price {
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .price {
@@ -338,7 +338,7 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
 
 .package-features {
     list-style: none;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .package-features li {
@@ -365,13 +365,13 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 30px;
+    padding: 24px;
 }
 
 .booking-form-card h3 {
     font-size: 20px;
     font-weight: 700;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .booking-form-card h3 i {
@@ -419,7 +419,7 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 30px;
+    margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid var(--border);
 }
@@ -453,14 +453,14 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
 .section-description {
     font-size: 14px;
     color: var(--text-dim);
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .sessions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .available-session-card {
@@ -481,7 +481,7 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .session-date-badge {
@@ -549,7 +549,7 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
 }
 
 .session-brief {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .session-brief p {

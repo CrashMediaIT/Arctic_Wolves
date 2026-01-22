@@ -303,7 +303,7 @@ $view_mode = $_GET['view'] ?? 'list';
 .date-box {
     background: linear-gradient(135deg, var(--neon), var(--accent));
     border-radius: 8px;
-    padding: 15px;
+    padding: 16px;
     text-align: center;
     min-width: 80px;
 }

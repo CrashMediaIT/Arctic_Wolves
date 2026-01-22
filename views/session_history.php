@@ -44,7 +44,7 @@ $total_spent = array_sum(array_column($history, 'amount_paid'));
         --primary: #7000a4;
     }
     .page-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -56,7 +56,7 @@ $total_spent = array_sum(array_column($history, 'amount_paid'));
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .summary-card {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
@@ -86,14 +86,14 @@ $total_spent = array_sum(array_column($history, 'amount_paid'));
     }
     .history-table th {
         text-align: left;
-        padding: 15px;
+        padding: 16px;
         color: #94a3b8;
         font-size: 12px;
         text-transform: uppercase;
         font-weight: 700;
     }
     .history-table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid #1e293b;
         color: #fff;
     }

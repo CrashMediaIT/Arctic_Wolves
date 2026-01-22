@@ -375,20 +375,20 @@ $videos = $video_stmt->fetchAll();
 }
 
 .upload-section {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .upload-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 30px;
+    padding: 24px;
 }
 
 .upload-card h3 {
     font-size: 20px;
     font-weight: 700;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .upload-card h3 i {
@@ -415,12 +415,12 @@ $videos = $video_stmt->fetchAll();
     color: var(--neon);
     opacity: 0.5;
     display: block;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .file-upload-area p {
     color: var(--text-dim);
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .rating-selector {
@@ -444,7 +444,7 @@ $videos = $video_stmt->fetchAll();
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 30px;
+    padding: 24px;
 }
 
 .section-title {
@@ -463,7 +463,7 @@ $videos = $video_stmt->fetchAll();
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     transition: all 0.3s;
 }
 

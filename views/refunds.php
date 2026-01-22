@@ -27,8 +27,8 @@ $sessions = $sessions_stmt->fetchAll();
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     
     .search-card h3 {
@@ -118,14 +118,14 @@ $sessions = $sessions_stmt->fetchAll();
     .results-table th {
         background: rgba(255, 77, 0, 0.1);
         color: var(--primary);
-        padding: 15px;
+        padding: 16px;
         text-align: left;
         font-weight: 600;
         border-bottom: 2px solid var(--primary);
     }
     
     .results-table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.9);
     }
@@ -177,7 +177,7 @@ $sessions = $sessions_stmt->fetchAll();
         background: #0a0e14;
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 12px;
-        padding: 30px;
+        padding: 24px;
         max-width: 500px;
         width: 90%;
         max-height: 90vh;
@@ -188,7 +188,7 @@ $sessions = $sessions_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     
     .modal-header h3 {
@@ -211,7 +211,7 @@ $sessions = $sessions_stmt->fetchAll();
     .tabs {
         display: flex;
         gap: 10px;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
         border-bottom: 2px solid rgba(255, 255, 255, 0.1);
     }
     
@@ -411,7 +411,7 @@ $sessions = $sessions_stmt->fetchAll();
                 <textarea name="reason" rows="3" required placeholder="Enter reason for refund/credit/exchange" style="width: 100%; padding: 12px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; color: white; font-family: inherit;"></textarea>
             </div>
             
-            <div style="display: flex; gap: 10px; margin-top: 25px;">
+            <div style="display: flex; gap: 10px; margin-top: 24px;">
                 <button type="submit" class="btn btn-primary" style="flex: 1;" id="submitBtn">
                     <i class="fas fa-check"></i> Process Refund
                 </button>

@@ -52,14 +52,14 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30px;
-            margin-top: 30px;
+            margin-top: 24px;
         }
 
         .section-card {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-            padding: 25px;
+            padding: 24px;
         }
 
         .section-card h3 {
@@ -80,18 +80,18 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             padding: 20px;
-            margin-bottom: 25px;
+            margin-bottom: 24px;
         }
 
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .form-group label {
@@ -142,7 +142,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
             background: rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
-            padding: 15px;
+            padding: 16px;
             margin-bottom: 12px;
             display: flex;
             justify-content: space-between;
@@ -187,7 +187,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
         }
 
         .alert {
-            padding: 15px;
+            padding: 16px;
             border-radius: 8px;
             margin-bottom: 20px;
             display: flex;
@@ -226,7 +226,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
             <h3><i class="fas fa-birthday-cake"></i> Age Groups</h3>
             
             <div class="add-form">
-                <h4 style="color: white; margin-bottom: 15px;">Add New Age Group</h4>
+                <h4 style="color: white; margin-bottom: 12px;">Add New Age Group</h4>
                 <form action="process_admin_age_skill.php" method="POST">
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="create_age_group">
@@ -263,7 +263,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                 </form>
             </div>
 
-            <h4 style="color: white; margin-bottom: 15px;">Existing Age Groups</h4>
+            <h4 style="color: white; margin-bottom: 12px;">Existing Age Groups</h4>
             <ul class="items-list">
                 <?php
                 $age_groups = $pdo->query("SELECT * FROM age_groups ORDER BY display_order ASC")->fetchAll();
@@ -301,7 +301,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
             <h3><i class="fas fa-chart-line"></i> Skill Levels</h3>
             
             <div class="add-form">
-                <h4 style="color: white; margin-bottom: 15px;">Add New Skill Level</h4>
+                <h4 style="color: white; margin-bottom: 12px;">Add New Skill Level</h4>
                 <form action="process_admin_age_skill.php" method="POST">
                     <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="create_skill_level">
@@ -327,7 +327,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                 </form>
             </div>
 
-            <h4 style="color: white; margin-bottom: 15px;">Existing Skill Levels</h4>
+            <h4 style="color: white; margin-bottom: 12px;">Existing Skill Levels</h4>
             <ul class="items-list">
                 <?php
                 $skill_levels = $pdo->query("SELECT * FROM skill_levels ORDER BY display_order ASC")->fetchAll();

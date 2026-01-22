@@ -110,7 +110,7 @@ sort($all_tags);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         flex-wrap: wrap;
         gap: 15px;
     }
@@ -162,7 +162,7 @@ sort($all_tags);
         border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         display: flex;
         gap: 15px;
         flex-wrap: wrap;
@@ -192,7 +192,7 @@ sort($all_tags);
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .goal-card {
         background: #0d1117;
@@ -240,13 +240,13 @@ sort($all_tags);
         color: #94a3b8;
         font-size: 14px;
         line-height: 1.6;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .goal-tags {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .goal-tag {
         padding: 3px 8px;
@@ -257,7 +257,7 @@ sort($all_tags);
         color: #94a3b8;
     }
     .goal-progress {
-        margin: 15px 0;
+        margin: 12px 0;
     }
     .progress-label {
         display: flex;
@@ -282,7 +282,7 @@ sort($all_tags);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 15px;
+        margin-top: 12px;
         padding-top: 15px;
         border-top: 1px solid #1e293b;
         font-size: 12px;
@@ -291,7 +291,7 @@ sort($all_tags);
     .goal-actions {
         display: flex;
         gap: 8px;
-        margin-top: 15px;
+        margin-top: 12px;
     }
     .btn-goal-action {
         flex: 1;
@@ -432,7 +432,7 @@ sort($all_tags);
         min-height: 100px;
     }
     .steps-section {
-        margin-top: 30px;
+        margin-top: 24px;
         padding-top: 20px;
         border-top: 1px solid #1e293b;
     }
@@ -440,7 +440,7 @@ sort($all_tags);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .steps-title {
         font-size: 16px;
@@ -557,7 +557,7 @@ sort($all_tags);
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 4px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 10px;
         display: flex;
         align-items: start;
@@ -592,7 +592,7 @@ sort($all_tags);
         margin-top: 6px;
     }
     .progress-history {
-        margin-top: 30px;
+        margin-top: 24px;
         padding-top: 20px;
         border-top: 1px solid #1e293b;
     }
@@ -600,7 +600,7 @@ sort($all_tags);
         font-size: 16px;
         font-weight: 700;
         color: #fff;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .progress-entry {
         background: #06080b;

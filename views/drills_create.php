@@ -149,7 +149,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 25px;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 @media (max-width: 1200px) {
@@ -197,7 +197,7 @@
     border: 2px solid var(--border);
     border-radius: 8px;
     position: relative;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .rink-overlay {

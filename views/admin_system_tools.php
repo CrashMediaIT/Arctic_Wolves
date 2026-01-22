@@ -54,7 +54,7 @@ try {
             </div>
             <div class="card-body">
                 <form id="settings-form" method="POST" action="process_settings.php" data-form-type="settings">
-                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="update_settings">
                     <div class="settings-list">
                         <div class="setting-item">
@@ -124,7 +124,7 @@ try {
             </div>
             <div class="card-body">
                 <form id="theme-form" method="POST" action="process_settings.php" data-form-type="theme">
-                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="update_theme">
                     <div class="theme-colors">
                         <div class="color-picker-item">
@@ -539,7 +539,7 @@ function switchToolTab(tabName) {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .color-picker-item label {
@@ -574,7 +574,7 @@ function switchToolTab(tabName) {
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 30px;
+    padding: 24px;
     text-align: center;
     transition: all 0.3s;
 }
@@ -588,7 +588,7 @@ function switchToolTab(tabName) {
     font-size: 48px;
     color: var(--neon);
     display: block;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .db-tool-card.warning i {

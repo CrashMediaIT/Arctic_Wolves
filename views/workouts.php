@@ -48,7 +48,7 @@ $simple_workouts = $simple_workouts_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -72,7 +72,7 @@ $simple_workouts = $simple_workouts_stmt->fetchAll();
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
+        padding: 24px;
         margin-bottom: 20px;
         transition: all 0.2s;
     }
@@ -83,7 +83,7 @@ $simple_workouts = $simple_workouts_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: start;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .workout-title {
         font-size: 20px;
@@ -99,7 +99,7 @@ $simple_workouts = $simple_workouts_stmt->fetchAll();
     .workout-description {
         color: #94a3b8;
         font-size: 14px;
-        margin: 15px 0;
+        margin: 12px 0;
         line-height: 1.6;
     }
     .progress-bar {
@@ -108,7 +108,7 @@ $simple_workouts = $simple_workouts_stmt->fetchAll();
         background: #1e293b;
         border-radius: 4px;
         overflow: hidden;
-        margin: 15px 0;
+        margin: 12px 0;
     }
     .progress-fill {
         height: 100%;
@@ -127,7 +127,7 @@ $simple_workouts = $simple_workouts_stmt->fetchAll();
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 10px;
         display: flex;
         justify-content: space-between;

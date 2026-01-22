@@ -33,7 +33,7 @@ $terminations = $terminations_stmt->fetchAll();
             <h3><i class="fas fa-file-alt"></i> Termination Details</h3>
         </div>
         <div class="card-body">
-            <form class="termination-form" method="POST" action="process_termination.php">
+            <form class="termination-form" method="POST" action="process_coach_termination.php">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create">
                 <div class="form-row">
@@ -193,7 +193,7 @@ $terminations = $terminations_stmt->fetchAll();
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" style="text-align: center; padding: 30px;">
+                                <td colspan="6" style="text-align: center; padding: 24px;">
                                     <p class="placeholder-text">No termination records found.</p>
                                 </td>
                             </tr>
@@ -211,7 +211,7 @@ $terminations = $terminations_stmt->fetchAll();
     gap: 15px;
     padding: 20px;
     border-radius: 8px;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .alert-card i {

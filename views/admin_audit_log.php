@@ -35,7 +35,7 @@ $auditLogs = $pdo->query($auditQuery);
             <input type="date" class="form-input-small" placeholder="Start Date" data-filter="date-start">
             <input type="date" class="form-input-small" placeholder="End Date" data-filter="date-end">
         </div>
-        <button class="btn-secondary" data-action="export"><i class="fas fa-file-export"></i> Export</button>
+        <button class="btn-secondary" data-action="export" data-type="audit_log" onclick="exportAuditLog()"><i class="fas fa-file-export"></i> Export</button>
     </div>
 
     <!-- Audit Log Table -->
@@ -74,7 +74,7 @@ $auditLogs = $pdo->query($auditQuery);
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" style="text-align: center; padding: 30px;">
+                                <td colspan="6" style="text-align: center; padding: 24px;">
                                     <p class="placeholder-text">No audit logs found.</p>
                                 </td>
                             </tr>
@@ -121,3 +121,24 @@ $auditLogs = $pdo->query($auditQuery);
     color: #ef4444;
 }
 </style>
+
+<script>
+function exportAuditLog() {
+    // Get filter values
+    const userFilter = document.querySelector('[data-filter="user"]')?.value || '';
+    const actionFilter = document.querySelector('[data-filter="action"]')?.value || '';
+    const startDate = document.querySelector('[data-filter="date-start"]')?.value || '';
+    const endDate = document.querySelector('[data-filter="date-end"]')?.value || '';
+    
+    // Build export URL with filters
+    const params = new URLSearchParams();
+    if (userFilter) params.append('user', userFilter);
+    if (actionFilter) params.append('action', actionFilter);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    params.append('export', '1');
+    
+    // Trigger download
+    window.location.href = 'process_admin_action.php?' + params.toString();
+}
+</script>

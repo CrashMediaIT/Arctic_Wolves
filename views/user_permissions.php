@@ -64,8 +64,8 @@ $role_perm_ids = array_column($role_permissions, 'id');
     .permissions-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
         color: #fff;
     }
     .permissions-header h1 {
@@ -77,14 +77,14 @@ $role_perm_ids = array_column($role_permissions, 'id');
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     .permission-item {
         background: #161b22;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 10px;
         display: flex;
         justify-content: space-between;
@@ -166,7 +166,7 @@ $role_perm_ids = array_column($role_permissions, 'id');
 <?php else: ?>
     <div class="section-card">
         <h2>User Information</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 12px;">
             <div>
                 <strong>Name:</strong> <?= htmlspecialchars($target_user['first_name'] . ' ' . $target_user['last_name']) ?>
             </div>
@@ -217,7 +217,7 @@ $role_perm_ids = array_column($role_permissions, 'id');
                 </div>
             <?php endforeach; ?>
 
-            <div style="margin-top: 30px; display: flex; gap: 10px;">
+            <div style="margin-top: 24px; display: flex; gap: 10px;">
                 <button type="submit" class="btn-primary">
                     <i class="fa-solid fa-save"></i> Save Permissions
                 </button>

@@ -180,7 +180,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
 }
 
 .athletes-table th {
-    padding: 15px;
+    padding: 16px;
     text-align: left;
     font-size: 12px;
     font-weight: 700;
@@ -191,7 +191,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
 }
 
 .athletes-table td {
-    padding: 15px;
+    padding: 16px;
     border-bottom: 1px solid var(--border);
     font-size: 14px;
     color: var(--text-white);

@@ -34,8 +34,8 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
     .testing-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
         color: #fff;
     }
     .testing-header h1 {
@@ -47,14 +47,14 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     .test-item {
         background: #161b22;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 10px;
         display: flex;
         justify-content: space-between;
@@ -89,7 +89,7 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
     }
     .sys-info-item {
         background: #161b22;
-        padding: 15px;
+        padding: 16px;
         border-radius: 6px;
     }
 </style>
@@ -188,7 +188,7 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
             </div>
         <?php endforeach; ?>
     <?php else: ?>
-        <p style="color: #8b949e; margin-top: 15px;">No test results recorded yet. Run some tests to get started!</p>
+        <p style="color: #8b949e; margin-top: 12px;">No test results recorded yet. Run some tests to get started!</p>
     <?php endif; ?>
 </div>
 
@@ -198,12 +198,12 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
         <?php csrfTokenGenerate(); ?>
         <input type="hidden" name="action" value="record_test">
         
-        <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 12px;">
             <label style="display: block; margin-bottom: 5px; font-weight: 600;">Test Name</label>
             <input type="text" name="test_name" required class="form-control" placeholder="e.g., User Authentication Test">
         </div>
 
-        <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 12px;">
             <label style="display: block; margin-bottom: 5px; font-weight: 600;">Status</label>
             <select name="status" required class="form-control">
                 <option value="passed">Passed</option>
@@ -211,7 +211,7 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
             </select>
         </div>
 
-        <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 12px;">
             <label style="display: block; margin-bottom: 5px; font-weight: 600;">Message</label>
             <textarea name="message" class="form-control" rows="3" placeholder="Optional test details or notes"></textarea>
         </div>

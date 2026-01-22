@@ -35,7 +35,7 @@ $plans = $plans_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -59,7 +59,7 @@ $plans = $plans_stmt->fetchAll();
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
+        padding: 24px;
         margin-bottom: 20px;
         transition: all 0.2s;
     }
@@ -70,7 +70,7 @@ $plans = $plans_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: start;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .nutrition-title {
         font-size: 20px;
@@ -88,7 +88,7 @@ $plans = $plans_stmt->fetchAll();
         border: 1px solid #1e293b;
         border-radius: 6px;
         padding: 20px;
-        margin-top: 15px;
+        margin-top: 12px;
         color: #94a3b8;
         line-height: 1.8;
         white-space: pre-wrap;

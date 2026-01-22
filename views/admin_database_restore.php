@@ -52,7 +52,7 @@ try {
     }
     
     .restore-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .restore-header h1 {
@@ -73,7 +73,7 @@ try {
         border: 2px solid var(--danger);
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         display: flex;
         align-items: start;
         gap: 15px;
@@ -206,7 +206,7 @@ try {
     .upload-tabs {
         display: flex;
         gap: 10px;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
         border-bottom: 2px solid #1e293b;
     }
     
@@ -258,7 +258,7 @@ try {
     .dropzone-icon {
         font-size: 48px;
         color: #64748b;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .dropzone.drag-over .dropzone-icon {
@@ -300,7 +300,7 @@ try {
     
     .file-selected {
         margin-top: 20px;
-        padding: 15px;
+        padding: 16px;
         background: rgba(16, 185, 129, 0.1);
         border: 1px solid var(--success);
         border-radius: 6px;
@@ -357,7 +357,7 @@ try {
         background: #0a0d12;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 10px;
         cursor: pointer;
         transition: all 0.2s;
@@ -414,7 +414,7 @@ try {
     
     .empty-state i {
         font-size: 48px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         opacity: 0.5;
     }
     
@@ -423,7 +423,7 @@ try {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .stat-card {
@@ -460,7 +460,7 @@ try {
         border: 2px solid var(--warning);
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
         display: flex;
         align-items: start;
         gap: 15px;
@@ -491,8 +491,8 @@ try {
         background: linear-gradient(135deg, rgba(220, 38, 38, 0.3), rgba(220, 38, 38, 0.2));
         border: 3px solid var(--danger);
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 25px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     
     .confirmation-box-icon {
@@ -516,7 +516,7 @@ try {
         background: rgba(0, 0, 0, 0.3);
         border-radius: 6px;
         padding: 20px;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     
     .confirmation-box-warnings ul {
@@ -563,7 +563,7 @@ try {
     /* Progress */
     .progress-container {
         display: none;
-        margin-top: 30px;
+        margin-top: 24px;
     }
     
     .progress-container.show {
@@ -575,7 +575,7 @@ try {
         border-radius: 8px;
         height: 40px;
         overflow: hidden;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         position: relative;
     }
     
@@ -625,15 +625,15 @@ try {
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
         border: 2px solid var(--success);
         border-radius: 8px;
-        padding: 30px;
+        padding: 24px;
         text-align: center;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     
     .result-success-icon {
         font-size: 64px;
         color: var(--success);
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .result-success h3 {
@@ -653,15 +653,15 @@ try {
         background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(220, 38, 38, 0.1));
         border: 2px solid var(--danger);
         border-radius: 8px;
-        padding: 30px;
+        padding: 24px;
         text-align: center;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     
     .result-error-icon {
         font-size: 64px;
         color: var(--danger);
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .result-error h3 {
@@ -723,7 +723,7 @@ try {
         background: rgba(220, 38, 38, 0.1);
         border: 1px solid var(--danger);
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
     }
     
     .result-error-item {
@@ -822,7 +822,7 @@ try {
         }
         
         .wizard-content {
-            padding: 25px;
+            padding: 24px;
         }
     }
 </style>

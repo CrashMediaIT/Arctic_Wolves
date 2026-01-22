@@ -63,7 +63,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         flex-wrap: wrap;
         gap: 15px;
     }
@@ -103,7 +103,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
         display: flex;
         gap: 15px;
         flex-wrap: wrap;
@@ -184,7 +184,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         color: #94a3b8;
         font-size: 13px;
         line-height: 1.5;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .plan-meta {
         display: flex;
@@ -239,7 +239,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 30px;
+        padding: 24px;
         max-width: 900px;
         width: 100%;
         max-height: 90vh;
@@ -249,7 +249,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     .modal-title {
         font-size: 20px;
@@ -297,7 +297,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 20px;
     }
     .drill-search {
@@ -306,7 +306,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
     .available-drills {
         max-height: 300px;
         overflow-y: auto;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .drill-item {
         padding: 10px;
@@ -340,7 +340,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 20px;
     }
     .selected-drills-header {
@@ -401,7 +401,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         padding: 12px;
         display: flex;
         gap: 8px;
-        margin-top: 15px;
+        margin-top: 12px;
     }
     .share-link-input {
         flex: 1;
@@ -653,7 +653,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         </div>
         
         <div id="shareContent">
-            <p style="color: #94a3b8; margin-bottom: 15px;">Generate a shareable link to this practice plan:</p>
+            <p style="color: #94a3b8; margin-bottom: 12px;">Generate a shareable link to this practice plan:</p>
             
             <form method="POST" action="process_practice_plans.php" id="shareForm">
                 <?= csrfTokenInput() ?>
@@ -673,7 +673,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
                     <i class="fas fa-copy"></i> Copy
                 </button>
             </div>
-            <form method="POST" action="process_practice_plans.php" style="margin-top: 15px;">
+            <form method="POST" action="process_practice_plans.php" style="margin-top: 12px;">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="plan_id" id="removeSharePlanId">
                 <input type="hidden" name="action" value="remove_share_token">

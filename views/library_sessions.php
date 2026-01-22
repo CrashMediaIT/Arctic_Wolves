@@ -49,7 +49,7 @@ $session_types = $pdo->query("SELECT DISTINCT session_type FROM session_template
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -73,8 +73,8 @@ $session_types = $pdo->query("SELECT DISTINCT session_type FROM session_template
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 15px 20px;
-        margin-bottom: 30px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
         display: flex;
         gap: 15px;
         flex-wrap: wrap;
@@ -109,7 +109,7 @@ $session_types = $pdo->query("SELECT DISTINCT session_type FROM session_template
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
+        padding: 24px;
         transition: all 0.2s;
     }
     .template-card:hover {
@@ -117,7 +117,7 @@ $session_types = $pdo->query("SELECT DISTINCT session_type FROM session_template
         transform: translateY(-2px);
     }
     .template-header {
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .template-title {
         font-size: 18px;
@@ -129,7 +129,7 @@ $session_types = $pdo->query("SELECT DISTINCT session_type FROM session_template
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .template-badge {
         background: var(--primary);
@@ -142,15 +142,15 @@ $session_types = $pdo->query("SELECT DISTINCT session_type FROM session_template
     .template-description {
         color: #94a3b8;
         font-size: 14px;
-        margin: 15px 0;
+        margin: 12px 0;
         line-height: 1.6;
     }
     .template-plan {
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
-        margin: 15px 0;
+        padding: 16px;
+        margin: 12px 0;
         color: #94a3b8;
         font-size: 13px;
         line-height: 1.6;
@@ -162,7 +162,7 @@ $session_types = $pdo->query("SELECT DISTINCT session_type FROM session_template
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 10px;
-        margin-top: 15px;
+        margin-top: 12px;
     }
     .btn-action {
         padding: 10px;

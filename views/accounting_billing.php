@@ -98,7 +98,7 @@ $payments = $pdo->query($paymentsQuery);
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 30px;">
+                                <td colspan="7" style="text-align: center; padding: 24px;">
                                     <p class="placeholder-text">No invoices found.</p>
                                 </td>
                             </tr>
@@ -158,7 +158,7 @@ $payments = $pdo->query($paymentsQuery);
 }
 
 .data-table th {
-    padding: 15px;
+    padding: 16px;
     text-align: left;
     font-size: 12px;
     font-weight: 700;
@@ -169,7 +169,7 @@ $payments = $pdo->query($paymentsQuery);
 }
 
 .data-table td {
-    padding: 15px;
+    padding: 16px;
     border-bottom: 1px solid var(--border);
     font-size: 14px;
     color: var(--text-white);
@@ -279,3 +279,133 @@ $payments = $pdo->query($paymentsQuery);
     color: #10b981;
 }
 </style>
+
+<!-- Create Invoice Modal -->
+<div id="create-invoice-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Create Invoice</h2>
+            <button class="modal-close" onclick="closeModal('create-invoice-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_invoice">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Client *</label>
+                    <select name="user_id" class="form-input" required>
+                        <option value="">Select Client</option>
+                        <?php
+                        // Fetch users for dropdown
+                        try {
+                            $userStmt = $pdo->query("SELECT id, first_name, last_name, email FROM users WHERE role IN ('athlete', 'parent') ORDER BY first_name, last_name");
+                            while ($user = $userStmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo '<option value="' . $user['id'] . '">' . 
+                                     htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) . 
+                                     ' (' . htmlspecialchars($user['email']) . ')</option>';
+                            }
+                        } catch (PDOException $e) {
+                            error_log("User fetch error: " . $e->getMessage());
+                        }
+                        ?>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Invoice Date *</label>
+                        <input type="date" name="invoice_date" class="form-input" value="<?php echo date('Y-m-d'); ?>" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Due Date *</label>
+                        <input type="date" name="due_date" class="form-input" value="<?php echo date('Y-m-d', strtotime('+30 days')); ?>" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea name="description" class="form-textarea" rows="3" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Line Items</label>
+                    <div id="line-items">
+                        <div class="line-item" style="display: flex; gap: 12px; margin-bottom: 12px;">
+                            <input type="text" name="item_description[]" class="form-input" placeholder="Description" style="flex: 2;">
+                            <input type="number" name="item_quantity[]" class="form-input" placeholder="Qty" step="1" min="1" value="1" style="flex: 1;">
+                            <input type="number" name="item_price[]" class="form-input" placeholder="Price" step="0.01" min="0" style="flex: 1;">
+                        </div>
+                    </div>
+                    <button type="button" class="btn-secondary btn-small" onclick="addLineItem()">
+                        <i class="fas fa-plus"></i> Add Line Item
+                    </button>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Total Amount *</label>
+                    <input type="number" name="total_amount" class="form-input" step="0.01" min="0" required id="invoice-total">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-textarea" rows="2"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('create-invoice-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Invoice</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function addLineItem() {
+    const container = document.getElementById('line-items');
+    const newItem = document.createElement('div');
+    newItem.className = 'line-item';
+    newItem.style.cssText = 'display: flex; gap: 12px; margin-bottom: 12px;';
+    newItem.innerHTML = `
+        <input type="text" name="item_description[]" class="form-input" placeholder="Description" style="flex: 2;">
+        <input type="number" name="item_quantity[]" class="form-input" placeholder="Qty" step="1" min="1" value="1" style="flex: 1;">
+        <input type="number" name="item_price[]" class="form-input" placeholder="Price" step="0.01" min="0" style="flex: 1;">
+        <button type="button" class="btn-icon" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="flex-shrink: 0;">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    container.appendChild(newItem);
+    
+    // Add event listeners to calculate total
+    const priceInputs = newItem.querySelectorAll('input[name="item_price[]"], input[name="item_quantity[]"]');
+    priceInputs.forEach(input => {
+        input.addEventListener('input', calculateInvoiceTotal);
+    });
+}
+
+function calculateInvoiceTotal() {
+    const items = document.querySelectorAll('.line-item');
+    let total = 0;
+    
+    items.forEach(item => {
+        const qty = parseFloat(item.querySelector('input[name="item_quantity[]"]')?.value || 0);
+        const price = parseFloat(item.querySelector('input[name="item_price[]"]')?.value || 0);
+        total += qty * price;
+    });
+    
+    const totalInput = document.getElementById('invoice-total');
+    if (totalInput) {
+        totalInput.value = total.toFixed(2);
+    }
+}
+
+// Add event listeners when modal opens
+document.addEventListener('DOMContentLoaded', function() {
+    const lineItems = document.querySelectorAll('.line-item input[name="item_price[]"], .line-item input[name="item_quantity[]"]');
+    lineItems.forEach(input => {
+        input.addEventListener('input', calculateInvoiceTotal);
+    });
+});
+</script>

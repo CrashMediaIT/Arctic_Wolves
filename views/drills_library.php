@@ -121,7 +121,7 @@ try {
     justify-content: space-between;
     align-items: center;
     gap: 20px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
     flex-wrap: wrap;
 }
 

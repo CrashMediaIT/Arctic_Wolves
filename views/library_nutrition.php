@@ -46,7 +46,7 @@ $templates = $stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -70,8 +70,8 @@ $templates = $stmt->fetchAll();
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 15px 20px;
-        margin-bottom: 30px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
         display: flex;
         gap: 15px;
         flex-wrap: wrap;
@@ -101,7 +101,7 @@ $templates = $stmt->fetchAll();
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
+        padding: 24px;
         transition: all 0.2s;
     }
     .template-card:hover {
@@ -122,7 +122,7 @@ $templates = $stmt->fetchAll();
         border-radius: 15px;
         font-size: 11px;
         font-weight: 700;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .template-meta {
         font-size: 13px;
@@ -132,7 +132,7 @@ $templates = $stmt->fetchAll();
     .template-description {
         color: #94a3b8;
         font-size: 14px;
-        margin: 15px 0;
+        margin: 12px 0;
         line-height: 1.6;
     }
     .btn-assign {

@@ -114,7 +114,7 @@
 .category-tabs {
     display: flex;
     gap: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
     flex-wrap: wrap;
 }
 
@@ -173,3 +173,147 @@
     gap: 8px;
 }
 </style>
+
+<!-- Add Skill Modal -->
+<div id="add-skill-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Skill Category</h2>
+            <button class="modal-close" onclick="closeModal('add-skill-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_skill">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Skill Name *</label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Icon (Font Awesome class)</label>
+                    <input type="text" name="icon" class="form-input" placeholder="e.g., fa-skating">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-skill-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Skill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Drill Type Modal -->
+<div id="add-drill-type-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Drill Type</h2>
+            <button class="modal-close" onclick="closeModal('add-drill-type-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_drill_type">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Drill Type Name *</label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Icon (Font Awesome class)</label>
+                    <input type="text" name="icon" class="form-input" placeholder="e.g., fa-hockey-puck">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-drill-type-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Drill Type</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Position Modal -->
+<div id="add-position-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Player Position</h2>
+            <button class="modal-close" onclick="closeModal('add-position-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_position">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Position Name *</label>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Center, Left Wing">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Abbreviation</label>
+                    <input type="text" name="abbreviation" class="form-input" placeholder="e.g., C, LW, RW">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-position-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Position</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Equipment Modal -->
+<div id="add-equipment-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Equipment</h2>
+            <button class="modal-close" onclick="closeModal('add-equipment-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_equipment">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Equipment Name *</label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Icon (Font Awesome class)</label>
+                    <input type="text" name="icon" class="form-input" placeholder="e.g., fa-tools">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-equipment-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Equipment</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -199,15 +199,15 @@ $recent_expenses = $pdo->query("
                 <small style="color: #64748b;">Supported: Images (JPG, PNG) and PDF. OCR will extract data automatically.</small>
             </div>
             
-            <div id="receiptPreview" style="display: none; margin-top: 15px;">
+            <div id="receiptPreview" style="display: none; margin-top: 12px;">
                 <img id="previewImage" style="max-width: 100%; max-height: 300px; border-radius: 8px;">
             </div>
             
-            <div id="ocrResults" style="display: none; margin-top: 15px;">
+            <div id="ocrResults" style="display: none; margin-top: 12px;">
                 <div class="ocr-notice">
                     <i class="fas fa-robot"></i> OCR extracted data (review and edit as needed):
                 </div>
-                <pre id="ocrData" style="background: #020305; padding: 15px; border-radius: 8px; color: #94a3b8; font-size: 12px;"></pre>
+                <pre id="ocrData" style="background: #020305; padding: 16px; border-radius: 8px; color: #94a3b8; font-size: 12px;"></pre>
             </div>
             
             <div class="form-actions">
@@ -227,11 +227,11 @@ $recent_expenses = $pdo->query("
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .alert {
-    padding: 15px;
+    padding: 16px;
     border-radius: 8px;
     margin-bottom: 20px;
 }
@@ -344,7 +344,7 @@ td {
 .modal-content {
     background: #0a0f16;
     margin: 50px auto;
-    padding: 30px;
+    padding: 24px;
     border-radius: 12px;
     max-width: 700px;
     position: relative;
@@ -407,7 +407,7 @@ td {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 30px;
+    margin-top: 24px;
 }
 
 .ocr-notice {

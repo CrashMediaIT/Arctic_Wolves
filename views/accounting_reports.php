@@ -285,7 +285,7 @@
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 25px;
+    padding: 24px;
     text-align: center;
     transition: all 0.3s;
 }

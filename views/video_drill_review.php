@@ -337,7 +337,7 @@ $drill_categories = $drill_categories_stmt->fetchAll();
 }
 
 .video-info {
-    padding: 15px;
+    padding: 16px;
 }
 
 .video-title {
@@ -386,7 +386,7 @@ $drill_categories = $drill_categories_stmt->fetchAll();
 }
 
 .video-actions {
-    padding: 15px;
+    padding: 16px;
     border-top: 1px solid var(--border);
 }
 
@@ -483,7 +483,7 @@ $drill_categories = $drill_categories_stmt->fetchAll();
 .video-review-section h4 {
     font-size: 16px;
     font-weight: 700;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .coach-comments {
