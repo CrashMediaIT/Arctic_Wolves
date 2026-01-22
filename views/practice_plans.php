@@ -425,7 +425,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
 <div class="page-header">
     <h1 class="page-title"><i class="fas fa-clipboard-list"></i> Practice Plans</h1>
     <?php if ($can_create): ?>
-        <button class="btn" onclick="openPlanModal()">
+        <button class="btn" data-action="add" onclick="openPlanModal()">
             <i class="fas fa-plus"></i> Create Plan
         </button>
     <?php endif; ?>
@@ -462,8 +462,12 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
 
 <div class="filter-bar">
     <div class="filter-group">
+        <label class="filter-label">Search Plans</label>
+        <input type="text" class="form-input" placeholder="Search practice plans..." data-search-table="plans" id="planSearchInput">
+    </div>
+    <div class="filter-group">
         <label class="filter-label">Age Group</label>
-        <select class="filter-select" id="ageGroupFilter">
+        <select class="form-select filter-select" id="ageGroupFilter" data-filter-table="plans" data-filter-column="age_group">
             <option value="">All Age Groups</option>
             <?php foreach ($age_groups as $age): ?>
                 <option value="<?= htmlspecialchars($age) ?>" <?= $age_group_filter == $age ? 'selected' : '' ?>>
@@ -474,7 +478,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
     </div>
     <div class="filter-group">
         <label class="filter-label">Focus Area</label>
-        <select class="filter-select" id="focusFilter">
+        <select class="form-select filter-select" id="focusFilter" data-filter-table="plans" data-filter-column="focus_area">
             <option value="">All Focus Areas</option>
             <?php foreach ($focus_areas as $focus): ?>
                 <option value="<?= htmlspecialchars($focus) ?>" <?= $focus_filter == $focus ? 'selected' : '' ?>>
@@ -483,7 +487,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
             <?php endforeach; ?>
         </select>
     </div>
-    <button class="btn" onclick="applyFilters()">
+    <button class="btn" data-action="filter" onclick="applyFilters()">
         <i class="fas fa-filter"></i> Apply
     </button>
 </div>
@@ -526,25 +530,25 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
                 </div>
                 
                 <div class="plan-actions">
-                    <button class="btn-icon" onclick="viewPlan(<?= $plan['id'] ?>)">
+                    <button class="btn-icon" data-action="view" data-id="<?= $plan['id'] ?>" onclick="viewPlan(<?= $plan['id'] ?>)">
                         <i class="fas fa-eye"></i> View
                     </button>
                     <?php if ($can_share && $plan['created_by'] == $user_id): ?>
-                        <button class="btn-icon" onclick="openShareModal(<?= $plan['id'] ?>, '<?= htmlspecialchars($plan['share_token'] ?? '') ?>')">
+                        <button class="btn-icon" data-action="share" data-id="<?= $plan['id'] ?>" onclick="openShareModal(<?= $plan['id'] ?>, '<?= htmlspecialchars($plan['share_token'] ?? '') ?>')">
                             <i class="fas fa-share"></i> Share
                         </button>
                     <?php endif; ?>
                     <?php if ($can_create && $plan['created_by'] == $user_id): ?>
-                        <button class="btn-icon" onclick="editPlan(<?= $plan['id'] ?>)">
+                        <button class="btn-icon" data-action="edit" data-id="<?= $plan['id'] ?>" onclick="editPlan(<?= $plan['id'] ?>)">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     <?php endif; ?>
                     <?php if ($can_delete && $plan['created_by'] == $user_id): ?>
-                        <form method="POST" action="process_practice_plans.php" style="display: inline;" onsubmit="return confirm('Delete this practice plan?');">
+                        <form method="POST" action="process_practice_plans.php" style="display: inline;" onsubmit="return confirm('Delete this practice plan?');" data-form-type="delete">
                             <?= csrfTokenInput() ?>
                             <input type="hidden" name="action" value="delete_plan">
                             <input type="hidden" name="plan_id" value="<?= $plan['id'] ?>">
-                            <button type="submit" class="btn-icon danger">
+                            <button type="submit" class="btn-icon danger" data-action="delete" data-id="<?= $plan['id'] ?>">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </form>
