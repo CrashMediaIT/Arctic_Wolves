@@ -822,9 +822,10 @@ $csrf_token = $_SESSION['csrf_token'];
             <h2 id="modal-title">Create Backup Job</h2>
             <button class="modal-close" onclick="closeJobModal()">&times;</button>
         </div>
-        <form id="job-form" onsubmit="saveJob(event)">
+        <form id="job-form" method="POST" action="process_database_backup.php" onsubmit="saveJob(event)">
             <div class="modal-body">
                 <input type="hidden" id="job-id" name="job_id">
+                <input type="hidden" name="action" value="create_job">
                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                 
                 <div class="form-group">
