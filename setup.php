@@ -155,6 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             // Load environment variables from file
+            // Note: We don't use loadEnv() from db_config.php here because setup.php
+            // needs to be self-contained and work independently during initial setup
             $env_lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             $env_vars = [];
             foreach ($env_lines as $line) {
@@ -173,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $test_pdo = new PDO(
                 "mysql:host={$env_vars['DB_HOST']};dbname={$env_vars['DB_NAME']};charset=utf8mb4",
                 $env_vars['DB_USER'],
-                $env_vars['DB_PASS'] ?? ''
+                isset($env_vars['DB_PASS']) ? $env_vars['DB_PASS'] : ''
             );
             $test_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $test_pdo->query("SELECT 1");
