@@ -22,11 +22,11 @@ try {
     
     // Get training streak (consecutive days with sessions)
     $stmt = $pdo->prepare("
-        SELECT COUNT(DISTINCT DATE(session_date)) as streak_days
+        SELECT COUNT(DISTINCT DATE(s.date)) as streak_days
         FROM sessions s
-        INNER JOIN session_bookings sb ON s.id = sb.session_id
-        WHERE sb.athlete_id = ? 
-        AND s.session_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        INNER JOIN bookings b ON s.id = b.session_id
+        WHERE b.user_id = ? 
+        AND s.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         AND s.status = 'completed'
     ");
     $stmt->execute([$user_id]);
@@ -44,11 +44,15 @@ try {
     
     // Get active goals
     $stmt = $pdo->prepare("
-        SELECT g.*, gt.name as template_name
+        SELECT g.id, g.goal_title, g.goal_description, g.target_value, 
+               g.current_value, g.target_date, g.status,
+               CASE 
+                   WHEN g.target_value > 0 THEN ROUND((g.current_value / g.target_value) * 100, 0)
+                   ELSE 0
+               END as progress_percentage
         FROM goals g
-        LEFT JOIN goal_templates gt ON g.template_id = gt.id
         WHERE g.athlete_id = ?
-        AND g.status IN ('active', 'in_progress')
+        AND g.status = 'active'
         ORDER BY g.target_date ASC
         LIMIT 10
     ");
@@ -140,7 +144,7 @@ try {
                         <tbody>
                             <?php foreach ($activeGoals as $goal): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($goal['title'] ?? $goal['template_name'] ?? 'Goal'); ?></td>
+                                    <td><?php echo htmlspecialchars($goal['goal_title'] ?? 'Goal'); ?></td>
                                     <td><?php echo $goal['target_date'] ? date('M d, Y', strtotime($goal['target_date'])) : 'No date'; ?></td>
                                     <td>
                                         <div class="progress-bar">
@@ -148,9 +152,9 @@ try {
                                         </div>
                                         <span class="progress-text"><?php echo $goal['progress_percentage'] ?? 0; ?>%</span>
                                     </td>
-                                    <td><span class="badge badge-<?php echo $goal['status'] === 'active' ? 'success' : 'warning'; ?>"><?php echo ucfirst($goal['status']); ?></span></td>
+                                    <td><span class="badge badge-success"><?php echo ucfirst($goal['status']); ?></span></td>
                                     <td>
-                                        <button class="btn-sm btn-secondary" data-action="view" data-id="<?php echo $goal['id']; ?>">View</button>
+                                        <a href="?page=goals&goal_id=<?php echo $goal['id']; ?>" class="btn-sm btn-secondary">View</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -159,8 +163,9 @@ try {
                 </div>
             <?php else: ?>
                 <div class="empty-state">
+                    <i class="fas fa-bullseye empty-icon"></i>
                     <p class="placeholder-text">No active goals. Start tracking your progress!</p>
-                    <a href="?page=goals" class="btn btn-primary" style="margin-top: 16px;">
+                    <a href="?page=goals" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Create Your First Goal
                     </a>
                 </div>
@@ -347,7 +352,21 @@ try {
     padding: 40px 20px;
 }
 
+.empty-state .empty-icon {
+    font-size: 48px;
+    color: var(--text-dim);
+    opacity: 0.5;
+    margin-bottom: 16px;
+    display: block;
+}
+
 .empty-state .placeholder-text {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    font-size: 16px;
+    color: var(--text-dim);
+}
+
+.empty-state .btn {
+    margin-top: 8px;
 }
 </style>
