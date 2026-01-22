@@ -29,15 +29,11 @@ try {
         case 'create':
             $name = trim($_POST['name'] ?? '');
             $description = trim($_POST['description'] ?? '');
-            $command = trim($_POST['command'] ?? '');
             $schedule = trim($_POST['schedule'] ?? '');
-            $type = $_POST['type'] ?? 'admin';
             $status = $_POST['status'] ?? 'active';
-            $parameters = trim($_POST['parameters'] ?? '');
             
             // Validate inputs
             if (empty($name)) throw new Exception('Job name is required');
-            if (empty($command)) throw new Exception('Command is required');
             if (empty($schedule)) throw new Exception('Schedule is required');
             
             // Validate cron expression
@@ -45,13 +41,7 @@ try {
                 throw new Exception('Invalid cron expression format');
             }
             
-            // Validate parameters if provided
-            if (!empty($parameters)) {
-                $json_test = json_decode($parameters);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new Exception('Parameters must be valid JSON');
-                }
-            }
+            // Note: Removed parameter validation as 'parameters' column doesn't exist in schema
             
             // Calculate next run time
             $next_run = calculateNextRun($schedule);
@@ -75,28 +65,16 @@ try {
             $id = (int)($_POST['id'] ?? 0);
             $name = trim($_POST['name'] ?? '');
             $description = trim($_POST['description'] ?? '');
-            $command = trim($_POST['command'] ?? '');
             $schedule = trim($_POST['schedule'] ?? '');
-            $type = $_POST['type'] ?? 'admin';
             $status = $_POST['status'] ?? 'active';
-            $parameters = trim($_POST['parameters'] ?? '');
             
             if ($id <= 0) throw new Exception('Invalid job ID');
             if (empty($name)) throw new Exception('Job name is required');
-            if (empty($command)) throw new Exception('Command is required');
             if (empty($schedule)) throw new Exception('Schedule is required');
             
             // Validate cron expression
             if (!validateCronExpression($schedule)) {
                 throw new Exception('Invalid cron expression format');
-            }
-            
-            // Validate parameters if provided
-            if (!empty($parameters)) {
-                $json_test = json_decode($parameters);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new Exception('Parameters must be valid JSON');
-                }
             }
             
             // Calculate next run time

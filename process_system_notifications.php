@@ -24,8 +24,9 @@ try {
     
     switch ($action) {
         case 'create':
-            // Note: Schema uses start_date/end_date, not start_time/end_time
-            // Schema doesn't have send_email column
+            // Note: Schema uses start_date/end_date (TIMESTAMP columns)
+            // Form sends start_time/end_time which MySQL will accept as TIMESTAMP values
+            // MySQL automatically handles datetime string conversion to TIMESTAMP
             $stmt = $pdo->prepare("
                 INSERT INTO system_notifications 
                 (title, message, notification_type, start_date, end_date, is_active, created_by)
@@ -39,7 +40,7 @@ try {
                 $_POST['title'],
                 $_POST['message'],
                 $_POST['notification_type'],
-                $_POST['start_time'], // Will be converted to start_date
+                $_POST['start_time'], // MySQL TIMESTAMP handles datetime strings
                 $end_date,
                 $is_active,
                 $user_id
@@ -49,8 +50,8 @@ try {
             break;
             
         case 'update':
-            // Note: Schema uses start_date/end_date, not start_time/end_time
-            // Schema doesn't have send_email or updated_at columns
+            // Note: Schema uses start_date/end_date (TIMESTAMP columns)
+            // Form sends start_time/end_time which MySQL will accept as TIMESTAMP values
             $stmt = $pdo->prepare("
                 UPDATE system_notifications 
                 SET title = ?, message = ?, notification_type = ?, start_date = ?, 
@@ -65,7 +66,7 @@ try {
                 $_POST['title'],
                 $_POST['message'],
                 $_POST['notification_type'],
-                $_POST['start_time'],
+                $_POST['start_time'], // MySQL TIMESTAMP handles datetime strings
                 $end_date,
                 $is_active,
                 $_POST['id']
