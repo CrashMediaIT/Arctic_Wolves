@@ -122,19 +122,19 @@ try {
         </div>
         <div class="card-body">
             <div class="quick-actions-grid">
-                <button class="quick-action-btn" data-action="create-invoice">
+                <button class="quick-action-btn" data-action="create-invoice" data-page="billing_dashboard">
                     <i class="fas fa-file-invoice-dollar"></i>
                     <span>Create Invoice</span>
                 </button>
-                <button class="quick-action-btn" data-action="record-payment">
+                <button class="quick-action-btn" data-action="record-payment" data-page="billing_dashboard">
                     <i class="fas fa-money-check"></i>
                     <span>Record Payment</span>
                 </button>
-                <button class="quick-action-btn" data-action="add-expense">
+                <button class="quick-action-btn" data-action="add-expense" data-page="expenses">
                     <i class="fas fa-receipt"></i>
                     <span>Add Expense</span>
                 </button>
-                <button class="quick-action-btn" data-action="generate-report">
+                <button class="quick-action-btn" data-action="generate-report" data-page="reports">
                     <i class="fas fa-chart-bar"></i>
                     <span>Generate Report</span>
                 </button>
@@ -146,7 +146,7 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-history"></i> Recent Transactions</h3>
-            <button class="btn btn-secondary" data-action="view-all">View All</button>
+            <button class="btn btn-secondary" data-action="view-all" data-page="billing_dashboard">View All</button>
         </div>
         <div class="card-body">
             <?php if (count($transactions) > 0): ?>

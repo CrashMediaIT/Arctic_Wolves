@@ -790,6 +790,54 @@
     }
 
     // ===================================================================
+    // TAB NAVIGATION
+    // ===================================================================
+
+    /**
+     * Initialize tab switching functionality
+     */
+    function initializeTabNavigation() {
+        // Handle tab buttons with data-action="switch-tab"
+        document.querySelectorAll('[data-action="switch-tab"]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetTab = this.getAttribute('data-tab');
+                const tabContainer = this.closest('.products-content, .content-wrapper, .page-content') || document;
+                
+                // Remove active class from all tabs
+                tabContainer.querySelectorAll('.tab-btn').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Hide all tab content
+                tabContainer.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                    content.style.display = 'none';
+                });
+                
+                // Show target tab content
+                const targetContent = tabContainer.querySelector(`#${targetTab}-tab, [data-tab-content="${targetTab}"]`);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                    targetContent.style.display = 'block';
+                }
+            });
+        });
+        
+        // Handle regular tab links (using href)
+        document.querySelectorAll('.tab-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                // For tab links with hrefs, let them navigate naturally
+                // They already have the active class set by PHP
+            });
+        });
+    }
+
+    // ===================================================================
     // INITIALIZATION
     // ===================================================================
 
@@ -811,6 +859,7 @@
         initializeModals();
         initializeCustomInputs();
         initializeTableSorting();
+        initializeTabNavigation();
         
         console.log('Arctic Wolves App initialized successfully!');
         
