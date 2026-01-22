@@ -623,7 +623,7 @@ $csrf_token = $_SESSION['csrf_token'];
             <span>ℹ️</span> Backup Configuration
         </div>
         <div class="info-box-content">
-            <strong>Backup Format:</strong> All backups are compressed and named <code>crashhockey_backup_YYYYMMDD_HHMMSS.sql.gz</code>
+            <strong>Backup Format:</strong> All backups are compressed and named <code>artic_wolves_backup_YYYYMMDD_HHMMSS.sql.gz</code>
             <ul>
                 <li><strong>Nextcloud:</strong> Backups stored in /CrashHockey/Backups/ (configurable)</li>
                 <li><strong>SMB:</strong> Direct network share storage (Windows/Samba)</li>

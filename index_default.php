@@ -162,7 +162,7 @@
             <div class="footer-right">
                 <div class="footer-col">
                     <h4>Direct Contact</h4>
-                    <a href="mailto:info@crashhockey.ca" class="footer-email-link">info@crashhockey.ca</a>
+                    <a href="mailto:info@articwolves.ca" class="footer-email-link">info@articwolves.ca</a></a>
                 </div>
                 <div class="footer-col">
                     <h4>Account</h4>

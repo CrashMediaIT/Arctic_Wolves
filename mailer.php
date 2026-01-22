@@ -141,7 +141,7 @@ function sendEmail($to, $type, $data) {
     $footer = "
     <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; text-align: center; color: #555; font-size: 11px;'>
         &copy; $year Artic Wolves Performance. All rights reserved.<br>
-        <a href='https://crashhockey.ca' style='color: #555; text-decoration: none;'>crashhockey.ca</a>
+        <a href='https://articwolves.ca' style='color: #555; text-decoration: none;'>articwolves.ca</a>
     </div>";
 
     // 1. VERIFICATION CODE (Self-Registration)

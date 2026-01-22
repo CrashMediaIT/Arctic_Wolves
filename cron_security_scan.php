@@ -181,7 +181,7 @@ function checkFilePermissions() {
     
     $sensitive_files = [
         'db_config.php',
-        'crashhockey.env',
+        'artic_wolves.env',
         'cloud_config.php'
     ];
     

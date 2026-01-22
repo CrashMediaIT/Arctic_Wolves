@@ -222,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="form-group">
                     <label>Database Name</label>
-                    <input type="text" name="db_name" value="crashhockey" required>
+                    <input type="text" name="db_name" value="artic_wolves" required>
                 </div>
                 <div class="form-group">
                     <label>Database User</label>

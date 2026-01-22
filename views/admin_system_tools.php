@@ -40,7 +40,7 @@
                             <h4>Site Email</h4>
                             <p>Primary contact email</p>
                         </div>
-                        <input type="email" class="form-input" value="info@crashhockey.com">
+                        <input type="email" class="form-input" value="info@articwolves.ca">
                     </div>
                     <div class="setting-item">
                         <div class="setting-info">

@@ -209,7 +209,7 @@ try {
 function performBackup($pdo, $job) {
     try {
         // Generate filename
-        $filename = 'crashhockey_backup_' . date('Ymd_His') . '.sql.gz';
+        $filename = 'artic_wolves_backup_' . date('Ymd_His') . '.sql.gz';
         $temp_dir = __DIR__ . '/tmp/';
         
         if (!is_dir($temp_dir)) {
