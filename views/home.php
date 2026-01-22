@@ -190,7 +190,7 @@ try {
             <div class="dashboard-card">
                 <div class="card-header">
                     <h3><i class="fas fa-calendar-alt"></i> Today's Sessions</h3>
-                    <a href="?page=create_session" class="btn-sm btn-secondary">
+                    <a href="?page=booking" class="btn-sm btn-secondary">
                         <i class="fas fa-plus"></i> Add Session
                     </a>
                 </div>

@@ -120,9 +120,9 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-bullseye"></i> Goals Tracker</h3>
-            <button class="btn btn-primary" data-action="add" data-page="goals">
+            <a href="?page=goals" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Add Goal
-            </button>
+            </a>
         </div>
         <div class="card-body">
             <?php if (count($activeGoals) > 0): ?>
@@ -158,8 +158,12 @@ try {
                     </table>
                 </div>
             <?php else: ?>
-                <p class="placeholder-text">No active goals. Start tracking your progress!</p>
-                <a href="?page=goals" class="btn btn-primary">Create Your First Goal</a>
+                <div class="empty-state">
+                    <p class="placeholder-text">No active goals. Start tracking your progress!</p>
+                    <a href="?page=goals" class="btn btn-primary" style="margin-top: 16px;">
+                        <i class="fas fa-plus"></i> Create Your First Goal
+                    </a>
+                </div>
             <?php endif; ?>
         </div>
     </div>
@@ -337,4 +341,13 @@ try {
 .score-badge.score-3 { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
 .score-badge.score-2 { background: rgba(251, 146, 60, 0.15); color: #FB923C; }
 .score-badge.score-1 { background: rgba(239, 68, 68, 0.15); color: var(--error); }
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-state .placeholder-text {
+    margin-bottom: 20px;
+}
 </style>
