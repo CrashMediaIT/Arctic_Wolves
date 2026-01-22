@@ -44,7 +44,7 @@ $payments = $pdo->query($paymentsQuery);
                 <option>Custom Range</option>
             </select>
         </div>
-        <button class="btn-primary"><i class="fas fa-plus"></i> Create Invoice</button>
+        <button class="btn-primary" data-action="add" data-modal="create-invoice-modal"><i class="fas fa-plus"></i> Create Invoice</button>
     </div>
 
     <!-- Invoices Table -->
@@ -52,7 +52,7 @@ $payments = $pdo->query($paymentsQuery);
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Invoices</h3>
             <div class="header-actions">
-                <button class="btn-secondary"><i class="fas fa-file-export"></i> Export</button>
+                <button class="btn-secondary" data-action="export" data-type="invoices"><i class="fas fa-file-export"></i> Export</button>
             </div>
         </div>
         <div class="card-body">

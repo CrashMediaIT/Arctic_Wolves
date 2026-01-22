@@ -325,9 +325,11 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
 </style>
 
 <div class="dash-content billing-container">
-    <div class="dash-header">
-        <h2><i class="fas fa-chart-pie"></i> Billing Dashboard</h2>
-        <p style="color: rgba(255, 255, 255, 0.6);">Financial overview and analytics</p>
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-chart-pie"></i> Billing Dashboard
+        </h1>
+        <p class="page-description">Financial overview and analytics</p>
     </div>
     
     <!-- Date Range Filter -->
@@ -420,10 +422,13 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
     </div>
     
     <!-- Recent Income -->
-    <div class="chart-card" style="margin-top: 25px;">
-        <h3><i class="fas fa-dollar-sign"></i> Recent Income</h3>
-        <div style="overflow-x: auto;">
-            <table class="data-table">
+    <div class="card" style="margin-top: 25px;">
+        <div class="card-header">
+            <h3><i class="fas fa-dollar-sign"></i> Recent Payments</h3>
+        </div>
+        <div class="card-body">
+            <div style="overflow-x: auto;">
+                <table class="data-table">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -460,13 +465,17 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
                 </tbody>
             </table>
         </div>
+        </div>
     </div>
     
     <!-- Recent Expenses -->
-    <div class="chart-card" style="margin-top: 25px;">
-        <h3><i class="fas fa-receipt"></i> Recent Expenses</h3>
-        <div style="overflow-x: auto;">
-            <table class="data-table">
+    <div class="card" style="margin-top: 25px;">
+        <div class="card-header">
+            <h3><i class="fas fa-receipt"></i> Recent Expenses</h3>
+        </div>
+        <div class="card-body">
+            <div style="overflow-x: auto;">
+                <table class="data-table">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -509,14 +518,18 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
                 </tbody>
             </table>
         </div>
+        </div>
     </div>
     
     <!-- Pending Refunds -->
     <?php if (!empty($pending_refunds)): ?>
-    <div class="chart-card" style="margin-top: 25px;">
-        <h3><i class="fas fa-undo"></i> Recent Refunds (Last 30 Days)</h3>
-        <div style="overflow-x: auto;">
-            <table class="data-table">
+    <div class="card" style="margin-top: 25px;">
+        <div class="card-header">
+            <h3><i class="fas fa-undo"></i> Recent Refunds (Last 30 Days)</h3>
+        </div>
+        <div class="card-body">
+            <div style="overflow-x: auto;">
+                <table class="data-table">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -544,6 +557,7 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
         </div>
     </div>
     <?php endif; ?>
