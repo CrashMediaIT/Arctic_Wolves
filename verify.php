@@ -3,6 +3,11 @@
 session_start();
 require 'db_config.php';
 
+// Check database connection
+if (!$db_connected || !$pdo) {
+    die("Database connection failed. Please check your configuration. Error: " . ($db_error ?? 'Unknown error'));
+}
+
 $msg = "";
 $msg_type = "";
 

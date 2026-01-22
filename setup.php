@@ -42,7 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Save to .env file
             $env_content = "DB_HOST=$host\nDB_NAME=$name\nDB_USER=$user\nDB_PASS=$pass\n";
-            file_put_contents(__DIR__ . '/arctic_wolves.env', $env_content);
+            $env_file = __DIR__ . '/arctic_wolves.env';
+            
+            if (file_put_contents($env_file, $env_content) === false) {
+                throw new Exception("Failed to write configuration file. Please check directory permissions.");
+            }
+            
+            // Verify the file was written correctly
+            if (!file_exists($env_file) || !is_readable($env_file)) {
+                throw new Exception("Configuration file was created but is not readable. Please check file permissions.");
+            }
             
             $_SESSION['setup']['database'] = true;
             $_SESSION['db_credentials'] = ['host' => $host, 'name' => $name, 'user' => $user, 'pass' => $pass];
@@ -55,6 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         } catch (PDOException $e) {
             $error = "Database connection failed: " . $e->getMessage();
+        } catch (Exception $e) {
+            $error = $e->getMessage();
         }
     } elseif ($step == 2) {
         // Admin User Creation
@@ -132,16 +143,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($step == 4) {
-        // Finalize Setup
-        file_put_contents($setup_complete_file, date('Y-m-d H:i:s'));
-        
-        // Clear setup session
-        unset($_SESSION['setup']);
-        
-        // Redirect to login
-        $_SESSION['setup_success'] = true;
-        header("Location: login.php");
-        exit();
+        // Finalize Setup - Verify database connection one more time
+        try {
+            // Clear any session-based DB credentials to force reading from .env
+            unset($_SESSION['db_credentials']);
+            
+            // Try to establish connection using saved .env file
+            $env_file = __DIR__ . '/arctic_wolves.env';
+            if (!file_exists($env_file)) {
+                throw new Exception("Configuration file not found. Please restart setup.");
+            }
+            
+            // Load environment variables from file
+            $env_lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            $env_vars = [];
+            foreach ($env_lines as $line) {
+                if (strpos($line, '=') !== false) {
+                    list($key, $value) = explode('=', $line, 2);
+                    $env_vars[trim($key)] = trim($value);
+                }
+            }
+            
+            // Verify all required variables exist
+            if (empty($env_vars['DB_HOST']) || empty($env_vars['DB_NAME']) || empty($env_vars['DB_USER'])) {
+                throw new Exception("Configuration file is incomplete. Please restart setup.");
+            }
+            
+            // Test database connection
+            $test_pdo = new PDO(
+                "mysql:host={$env_vars['DB_HOST']};dbname={$env_vars['DB_NAME']};charset=utf8mb4",
+                $env_vars['DB_USER'],
+                $env_vars['DB_PASS'] ?? ''
+            );
+            $test_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $test_pdo->query("SELECT 1");
+            
+            // All checks passed - finalize setup
+            file_put_contents($setup_complete_file, date('Y-m-d H:i:s'));
+            
+            // Clear setup session
+            unset($_SESSION['setup']);
+            
+            // Redirect to login
+            $_SESSION['setup_success'] = true;
+            header("Location: login.php");
+            exit();
+            
+        } catch (PDOException $e) {
+            $error = "Database connection test failed: " . $e->getMessage() . ". Please restart setup.";
+        } catch (Exception $e) {
+            $error = $e->getMessage();
+        }
     }
 }
 ?>

@@ -2,6 +2,11 @@
 session_start();
 require 'db_config.php';
 
+// Check database connection
+if (!$db_connected || !$pdo) {
+    die("Database connection failed. Please check your configuration. Error: " . ($db_error ?? 'Unknown error'));
+}
+
 // If already logged in, redirect to dashboard
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     header("Location: dashboard.php");
