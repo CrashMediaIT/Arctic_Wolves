@@ -28,8 +28,12 @@ try {
     $termination_reason = trim($_POST['termination_reason']);
     
     // Validation
+    if (empty($coach_to_terminate) || empty($transfer_to_coach)) {
+        throw new Exception('Both coaches must be selected');
+    }
+    
     if ($coach_to_terminate === $transfer_to_coach) {
-        throw new Exception('Cannot transfer to the same coach');
+        throw new Exception('Cannot transfer to the same coach. Please select a different coach to receive the athletes and data.');
     }
     
     if (empty($termination_reason)) {
