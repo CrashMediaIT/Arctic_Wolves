@@ -235,8 +235,8 @@ function createExpenseFromReceipt($pdo, $data, $receipt_file) {
  * Notify all admins about new receipt
  */
 function notifyAdminsNewReceipt($pdo, $filename, $expense_id) {
-    // Get all admin users
-    $admin_stmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' AND is_active = 1");
+    // Get all admin users (verified admins only)
+    $admin_stmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' AND is_verified = 1");
     
     while ($admin = $admin_stmt->fetch()) {
         createNotification(
