@@ -332,8 +332,8 @@ $csrf_token = generateCsrfToken();
         </div>
     </div>
 <?php else: ?>
-    <form class="termination-form" id="terminationForm" onsubmit="submitTermination(event)">
-        <input type="hidden" name="csrf_token" value="<?= csrfTokenInput() ?>">
+    <form class="termination-form" id="terminationForm" method="POST" action="process_coach_termination.php" onsubmit="submitTermination(event)">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
         
         <!-- Step 1: Select Coach to Terminate -->
         <div class="form-section">
@@ -512,7 +512,7 @@ function submitTermination(event) {
     
     const formData = new FormData(event.target);
     
-    fetch('../process_coach_termination.php', {
+    fetch('process_coach_termination.php', {
         method: 'POST',
         body: formData
     })

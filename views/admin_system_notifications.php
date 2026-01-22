@@ -467,8 +467,8 @@ $csrf_token = generateCsrfToken();
             <h2 id="modalTitle">Create System Notification</h2>
             <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
-        <form id="notificationForm" onsubmit="submitForm(event)">
-            <input type="hidden" name="csrf_token" value="<?= csrfTokenInput() ?>">
+        <form id="notificationForm" method="POST" action="process_system_notifications.php" onsubmit="submitForm(event)">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
             <input type="hidden" id="notificationId" name="id">
             <input type="hidden" id="formAction" name="action" value="create">
             
@@ -593,7 +593,7 @@ function submitForm(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
     
-    fetch('../process_system_notifications.php', {
+    fetch('process_system_notifications.php', {
         method: 'POST',
         body: formData
     })
@@ -619,7 +619,7 @@ function toggleActive(id) {
     formData.append('id', id);
     formData.append('csrf_token', '<?= generateCSRFToken() ?>');
     
-    fetch('../process_system_notifications.php', {
+    fetch('process_system_notifications.php', {
         method: 'POST',
         body: formData
     })
@@ -641,7 +641,7 @@ function deleteNotification(id, title) {
     formData.append('id', id);
     formData.append('csrf_token', '<?= generateCSRFToken() ?>');
     
-    fetch('../process_system_notifications.php', {
+    fetch('process_system_notifications.php', {
         method: 'POST',
         body: formData
     })

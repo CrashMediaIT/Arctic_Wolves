@@ -53,7 +53,9 @@ try {
                 <h3><i class="fas fa-sliders-h"></i> System Settings</h3>
             </div>
             <div class="card-body">
-                <form id="settings-form" data-form-type="settings">
+                <form id="settings-form" method="POST" action="process_settings.php" data-form-type="settings">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="action" value="update_settings">
                     <div class="settings-list">
                         <div class="setting-item">
                             <div class="setting-info">
@@ -121,7 +123,9 @@ try {
                 <h3><i class="fas fa-palette"></i> Theme Customization</h3>
             </div>
             <div class="card-body">
-                <form id="theme-form" data-form-type="theme">
+                <form id="theme-form" method="POST" action="process_settings.php" data-form-type="theme">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="action" value="update_theme">
                     <div class="theme-colors">
                         <div class="color-picker-item">
                             <label>Primary Color</label>
