@@ -885,6 +885,129 @@
     }
 
     // ===================================================================
+    // VIDEO FUNCTIONALITY
+    // ===================================================================
+
+    /**
+     * Initialize video-specific functionality
+     */
+    function initializeVideoFeatures() {
+        // Rating selector
+        document.querySelectorAll('[data-component="RatingSelector"]').forEach(selector => {
+            const stars = selector.querySelectorAll('i[data-rating]');
+            const ratingInput = document.querySelector('[data-field="rating-value"]');
+            
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.getAttribute('data-rating'));
+                    
+                    // Update hidden input
+                    if (ratingInput) {
+                        ratingInput.value = rating;
+                    }
+                    
+                    // Update visual state
+                    stars.forEach(s => {
+                        const sRating = parseInt(s.getAttribute('data-rating'));
+                        s.classList.toggle('active', sRating <= rating);
+                    });
+                });
+                
+                // Hover effect
+                star.addEventListener('mouseenter', function() {
+                    const rating = parseInt(this.getAttribute('data-rating'));
+                    stars.forEach(s => {
+                        const sRating = parseInt(s.getAttribute('data-rating'));
+                        s.style.color = sRating <= rating ? '#FF9D00' : '';
+                    });
+                });
+            });
+            
+            selector.addEventListener('mouseleave', function() {
+                const currentRating = ratingInput ? parseInt(ratingInput.value) : 0;
+                stars.forEach(s => {
+                    const sRating = parseInt(s.getAttribute('data-rating'));
+                    s.style.color = sRating <= currentRating ? '#FF9D00' : '';
+                });
+            });
+        });
+        
+        // File upload trigger
+        document.querySelectorAll('[data-action="trigger-file-input"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const fileInput = this.closest('[data-component="FileUpload"]')?.querySelector('input[type="file"]');
+                if (fileInput) {
+                    fileInput.click();
+                }
+            });
+        });
+        
+        // File input change handler
+        document.querySelectorAll('[data-field="video-file"]').forEach(input => {
+            input.addEventListener('change', function() {
+                const fileName = this.files[0]?.name || '';
+                const fileNameDisplay = this.closest('[data-component="FileUpload"]')?.querySelector('.file-name');
+                if (fileNameDisplay && fileName) {
+                    fileNameDisplay.textContent = fileName;
+                    fileNameDisplay.style.display = 'block';
+                }
+            });
+        });
+        
+        // View video action
+        document.querySelectorAll('[data-action="view-video"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const videoId = this.getAttribute('data-video-id');
+                if (videoId) {
+                    // Navigate to video detail page or open modal
+                    window.location.href = `?page=video_detail&id=${videoId}`;
+                }
+            });
+        });
+        
+        // Edit video action
+        document.querySelectorAll('[data-action="edit-video"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const videoId = this.getAttribute('data-video-id');
+                if (videoId) {
+                    // Navigate to edit page or open edit modal
+                    window.location.href = `?page=edit_video&id=${videoId}`;
+                }
+            });
+        });
+        
+        // Delete video action
+        document.querySelectorAll('[data-action="delete-video"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const videoId = this.getAttribute('data-video-id');
+                if (videoId && confirm('Are you sure you want to delete this video?')) {
+                    // Send delete request
+                    fetch('process_video.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `action=delete&video_id=${videoId}&csrf_token=${document.querySelector('[name="csrf_token"]')?.value || ''}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('Video deleted successfully', 'success');
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showToast(data.message || 'Failed to delete video', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('An error occurred', 'error');
+                        console.error('Delete video error:', error);
+                    });
+                }
+            });
+        });
+    }
+
+    // ===================================================================
     // INITIALIZATION
     // ===================================================================
 
@@ -907,6 +1030,7 @@
         initializeCustomInputs();
         initializeTableSorting();
         initializeTabNavigation();
+        initializeVideoFeatures();
         
         console.log('Arctic Wolves App initialized successfully!');
         
