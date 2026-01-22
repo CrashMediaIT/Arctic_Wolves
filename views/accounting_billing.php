@@ -2,7 +2,7 @@
 // Fetch invoices
 $invoicesQuery = "SELECT i.*, u.first_name, u.last_name, u.email
     FROM invoices i
-    LEFT JOIN users u ON i.user_id = u.user_id
+    LEFT JOIN users u ON i.user_id = u.id
     ORDER BY i.invoice_date DESC
     LIMIT 20";
 $invoices = $pdo->query($invoicesQuery);
@@ -11,7 +11,7 @@ $invoices = $pdo->query($invoicesQuery);
 $paymentsQuery = "SELECT p.*, i.invoice_number, u.first_name, u.last_name
     FROM payments p
     LEFT JOIN invoices i ON p.invoice_id = i.invoice_id
-    LEFT JOIN users u ON p.user_id = u.user_id
+    LEFT JOIN users u ON p.user_id = u.id
     ORDER BY p.payment_date DESC
     LIMIT 5";
 $payments = $pdo->query($paymentsQuery);

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `first_name` VARCHAR(100) NOT NULL,
     `last_name` VARCHAR(100) NOT NULL,
     `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach') DEFAULT 'athlete',
+    `is_active` TINYINT(1) DEFAULT 1,
     `is_verified` TINYINT(1) DEFAULT 0,
     `verification_code` VARCHAR(10) DEFAULT NULL,
     `force_pass_change` TINYINT(1) DEFAULT 0,
@@ -1400,6 +1401,76 @@ CREATE TABLE IF NOT EXISTS `training_programs` (
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Athlete program enrollments (links athletes to training programs)
+CREATE TABLE IF NOT EXISTS `athlete_programs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `athlete_id` INT NOT NULL,
+    `program_id` INT NOT NULL,
+    `status` ENUM('active', 'completed', 'paused', 'cancelled') DEFAULT 'active',
+    `enrollment_date` DATE NOT NULL,
+    `completion_date` DATE DEFAULT NULL,
+    `progress_percentage` INT DEFAULT 0,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`program_id`) REFERENCES `training_programs`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_athlete_program` (`athlete_id`, `program_id`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_program` (`program_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Credits and refunds tracking
+CREATE TABLE IF NOT EXISTS `credits_refunds` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `transaction_type` ENUM('credit', 'refund') DEFAULT 'credit',
+    `amount` DECIMAL(10,2) NOT NULL,
+    `reason` TEXT DEFAULT NULL,
+    `status` ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
+    `invoice_id` INT DEFAULT NULL,
+    `payment_id` INT DEFAULT NULL,
+    `processed_by` INT DEFAULT NULL,
+    `processed_at` TIMESTAMP NULL DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`processed_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_type` (`transaction_type`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Employee terminations tracking
+CREATE TABLE IF NOT EXISTS `employee_terminations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `termination_date` DATE NOT NULL,
+    `termination_type` ENUM('voluntary', 'involuntary', 'retirement', 'contract_end') DEFAULT 'voluntary',
+    `reason` TEXT DEFAULT NULL,
+    `notice_period_days` INT DEFAULT NULL,
+    `final_pay_date` DATE DEFAULT NULL,
+    `final_pay_amount` DECIMAL(10,2) DEFAULT NULL,
+    `exit_interview_completed` TINYINT(1) DEFAULT 0,
+    `exit_interview_notes` TEXT DEFAULT NULL,
+    `equipment_returned` TINYINT(1) DEFAULT 0,
+    `access_revoked` TINYINT(1) DEFAULT 0,
+    `processed_by` INT NOT NULL,
+    `status` ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending',
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`processed_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_date` (`termination_date`),
+    INDEX `idx_type` (`termination_type`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- User credits (flexible credit system)
 CREATE TABLE IF NOT EXISTS `user_credits` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -1914,6 +1985,10 @@ CREATE TABLE IF NOT EXISTS `game_schedules` (
     INDEX `idx_status` (`status`),
     INDEX `idx_type` (`game_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create view for backwards compatibility (programs alias)
+CREATE OR REPLACE VIEW `programs` AS SELECT * FROM `training_programs`;
+
 -- Total unique tables: 120+
 -- Total lines: 2500+
 -- =========================================================

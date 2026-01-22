@@ -2,8 +2,8 @@
 // Fetch audit logs
 $auditQuery = "SELECT a.*, u.first_name, u.last_name, u.email
     FROM audit_logs a
-    LEFT JOIN users u ON a.user_id = u.user_id
-    ORDER BY a.timestamp DESC
+    LEFT JOIN users u ON a.user_id = u.id
+    ORDER BY a.created_at DESC
     LIMIT 50";
 $auditLogs = $pdo->query($auditQuery);
 ?>
