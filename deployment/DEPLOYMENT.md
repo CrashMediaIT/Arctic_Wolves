@@ -72,7 +72,7 @@ docker run -d \
   --name mariadb \
   --restart=always \
   -e MYSQL_ROOT_PASSWORD=your_secure_root_password \
-  -e MYSQL_DATABASE=crashhockey \
+  -e MYSQL_DATABASE=arcticwolves \
   -e MYSQL_USER=chroot \
   -e MYSQL_PASSWORD=your_secure_password \
   -v mariadb_data:/var/lib/mysql \
@@ -86,12 +86,12 @@ sleep 30
 docker ps | grep mariadb
 
 # Test connection
-docker exec -it mariadb mysql -uchroot -p crashhockey
+docker exec -it mariadb mysql -u awroot -p arcticwolves
 # Enter the password when prompted, then type 'EXIT;' to quit
 ```
 
 **Important:** Note down these credentials:
-- **Database**: `crashhockey`
+- **Database**: `arcticwolves`
 - **Username**: `chroot`
 - **Password**: `your_secure_password`
 - **Host**: `mariadb` (when accessed from other containers) or `localhost` (from host)
@@ -148,10 +148,10 @@ cd /portainer/nginx/www
 sudo rm -rf html
 
 # Clone the Crash Hockey repository
-sudo git clone https://github.com/CrashMediaIT/crashhockey.git crashhockey
+[sudo git clone https://github.com/CrashMediaIT/Arctic_Wolves.git
 
 # Navigate into the directory
-cd crashhockey
+cd Arctic_Wolves
 
 # Verify files are present
 ls -la
@@ -165,49 +165,49 @@ ls -la
 
 ```bash
 # Create required directories INSIDE container (this ensures PHP sees correct permissions)
-docker exec nginx mkdir -p /config/www/crashhockey/uploads
-docker exec nginx mkdir -p /config/www/crashhockey/sessions
-docker exec nginx mkdir -p /config/www/crashhockey/cache
+docker exec nginx mkdir -p /config/www/Arctic_Wolves/uploads
+docker exec nginx mkdir -p /config/www/Arctic_Wolves/sessions
+docker exec nginx mkdir -p /config/www/Arctic_Wolves/cache
 
 # Set ownership to 'abc' user INSIDE container (what PHP-FPM runs as)
-docker exec nginx chown -R abc:abc /config/www/crashhockey
+docker exec nginx chown -R abc:abc /config/www/Arctic_Wolves
 
-# CRITICAL: Set root directory to 775 (allows PHP to write crashhockey.env during setup)
-docker exec nginx chmod 775 /config/www/crashhockey
+# CRITICAL: Set root directory to 775 (allows PHP to write Arctic_Wolves.env during setup)
+docker exec nginx chmod 775 /config/www/Arctic_Wolves
 
 # Set upload/session/cache directories to 775 (web server needs write access)
-docker exec nginx chmod -R 775 /config/www/crashhockey/uploads
-docker exec nginx chmod -R 775 /config/www/crashhockey/sessions
-docker exec nginx chmod -R 775 /config/www/crashhockey/cache
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/uploads
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/sessions
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/cache
 
 # Set standard permissions for other directories and files
-docker exec nginx find /config/www/crashhockey -type d -exec chmod 755 {} \;
-docker exec nginx find /config/www/crashhockey -type f -exec chmod 644 {} \;
+docker exec nginx find /config/www/Arctic_Wolves -type d -exec chmod 755 {} \;
+docker exec nginx find /config/www/Arctic_Wolves -type f -exec chmod 644 {} \;
 
 # Re-apply critical permissions (find command may have reset them)
-docker exec nginx chmod 775 /config/www/crashhockey
-docker exec nginx chmod -R 775 /config/www/crashhockey/uploads
-docker exec nginx chmod -R 775 /config/www/crashhockey/sessions
-docker exec nginx chmod -R 775 /config/www/crashhockey/cache
+docker exec nginx chmod 775 /config/www/Arctic_Wolves
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/uploads
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/sessions
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/cache
 
 # Verify permissions from inside container (what PHP actually sees)
-docker exec nginx ls -ld /config/www/crashhockey
-# Should show: drwxrwxr-x ... abc abc ... /config/www/crashhockey
+docker exec nginx ls -ld /config/www/Arctic_Wolves
+# Should show: drwxrwxr-x ... abc abc ... /config/www/Arctic_Wolves
 
 # Test if directory is writable by PHP
-docker exec nginx sh -c '[ -w /config/www/crashhockey ] && echo "✅ Directory IS writable by PHP" || echo "❌ Directory NOT writable by PHP"'
+docker exec nginx sh -c '[ -w /config/www/Arctic_Wolves ] && echo "✅ Directory IS writable by PHP" || echo "❌ Directory NOT writable by PHP"'
 
 # Test write access from inside container
-docker exec nginx touch /config/www/crashhockey/test.txt && \
-docker exec nginx rm /config/www/crashhockey/test.txt && \
+docker exec nginx touch /config/www/Arctic_Wolves/test.txt && \
+docker exec nginx rm /config/www/Arctic_Wolves/test.txt && \
 echo "✅ Write access verified - setup can proceed" || \
 echo "❌ Write access FAILED"
 
 # OPTIONAL: If you still have issues on Fedora, configure SELinux on host
 # (Usually NOT needed if permissions are set inside container as shown above)
-# sudo chcon -R -t container_file_t /portainer/nginx/www/crashhockey
-# sudo semanage fcontext -a -t container_file_t "/portainer/nginx/www/crashhockey(/.*)?"
-# sudo restorecon -R /portainer/nginx/www/crashhockey
+# sudo chcon -R -t container_file_t /portainer/nginx/www/Arctic_Wolves
+# sudo semanage fcontext -a -t container_file_t "/portainer/nginx/www/Arctic_Wolves(/.*)?"
+# sudo restorecon -R /portainer/nginx/www/Arctic_Wolves
 ```
 
 **Permission Summary:**
@@ -241,15 +241,15 @@ sudo setenforce 1
 
 ```bash
 # Copy NGINX configuration
-sudo cp /portainer/nginx/www/crashhockey/deployment/crashhockey.conf \
-  /portainer/nginx/nginx/site-confs/crashhockey.conf
+sudo cp /portainer/nginx/www/Arctic_Wolves/deployment/arctic_wolves.conf \
+  /portainer/nginx/nginx/site-confs/arctic_wolves.conf
 
 # Copy PHP configuration
-sudo cp /portainer/nginx/www/crashhockey/deployment/php-config.ini \
+sudo cp /portainer/nginx/www/Arctic_Wolves/deployment/php-config.ini \
   /portainer/nginx/php/php-config.ini
 
 # Set correct ownership
-sudo chown 911:911 /portainer/nginx/nginx/site-confs/crashhockey.conf
+sudo chown 911:911 /portainer/nginx/nginx/site-confs/arctic_wolves.conf
 sudo chown 911:911 /portainer/nginx/php/php-config.ini
 
 # Verify files are in place
@@ -258,7 +258,7 @@ ls -la /portainer/nginx/php/
 ```
 
 **What Each File Does:**
-- **crashhockey.conf**: NGINX server configuration (domain, PHP, upload limits)
+- **arctic_wolves.conf**: NGINX server configuration (domain, PHP, upload limits)
 - **php-config.ini**: PHP settings (upload limits, memory, timeouts)
 
 ---
@@ -310,8 +310,8 @@ curl -I http://localhost
 
 #### **Page 1: Database Configuration**
 - **Database Host**: `mariadb` (Docker container name)
-- **Database Name**: `crashhockey`
-- **Database Username**: `chroot`
+- **Database Name**: `arcticwolves`
+- **Database Username**: `awroot`
 - **Database Password**: `your_secure_password` (from Step 4)
 - **Encryption Key**: Click "Generate" or enter your own 32-character key
 - Click **"Save Configuration"**
@@ -370,7 +370,7 @@ After deployment, verify everything is working:
 - [ ] **Admin Login Works**: Can login at `/login.php`
 - [ ] **Email Sending Works**: Check Email Logs page
 - [ ] **File Uploads Work**: Try uploading a profile picture
-- [ ] **Permissions Correct**: Check `/portainer/nginx/www/crashhockey` ownership is `911:911`
+- [ ] **Permissions Correct**: Check `/portainer/nginx/www/Arctic_Wolves` ownership is `911:911`
 
 ---
 
@@ -383,12 +383,12 @@ After deployment, verify everything is working:
 **Diagnosis Steps:**
 ```bash
 # 1. Check current permissions
-ls -ld /portainer/nginx/www/crashhockey
+ls -ld /portainer/nginx/www/Arctic_Wolves
 # Should show: drwxrwxr-x  911 911
 
 # 2. Test manual write from container (should work)
-docker exec nginx touch /config/www/crashhockey/test.txt && \
-docker exec nginx rm /config/www/crashhockey/test.txt && \
+docker exec nginx touch /config/www/Arctic_Wolves/test.txt && \
+docker exec nginx rm /config/www/Arctic_Wolves/test.txt && \
 echo "✅ Container can write" || echo "❌ Container cannot write"
 
 # 3. Check PHP user
@@ -405,20 +405,20 @@ docker exec nginx whoami
 1. **PRIMARY FIX - Set permissions INSIDE the container:**
 ```bash
 # This fixes the issue where PHP sees directory as "Writable: No"
-docker exec nginx chown -R abc:abc /config/www/crashhockey
-docker exec nginx chmod 775 /config/www/crashhockey
-docker exec nginx chmod -R 775 /config/www/crashhockey/uploads
-docker exec nginx chmod -R 775 /config/www/crashhockey/sessions
-docker exec nginx chmod -R 775 /config/www/crashhockey/cache
+docker exec nginx chown -R abc:abc /config/www/Arctic_Wolves
+docker exec nginx chmod 775 /config/www/Arctic_Wolves
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/uploads
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/sessions
+docker exec nginx chmod -R 775 /config/www/Arctic_Wolves/cache
 
 # Verify directory is now writable by PHP
-docker exec nginx sh -c '[ -w /config/www/crashhockey ] && echo "✅ Fixed" || echo "❌ Still not writable"'
+docker exec nginx sh -c '[ -w /config/www/Arctic_Wolves ] && echo "✅ Fixed" || echo "❌ Still not writable"'
 ```
 
 2. **Alternative - Set permissions on host (less reliable):**
 ```bash
-sudo chmod 775 /portainer/nginx/www/crashhockey
-sudo chown 911:911 /portainer/nginx/www/crashhockey
+sudo chmod 775 /portainer/nginx/www/www/Arctic_Wolves
+sudo chown 911:911 /portainer/nginx/www/www/Arctic_Wolves
 ```
 
 3. **View detailed error from setup wizard:**
@@ -432,7 +432,7 @@ docker exec nginx tail -50 /config/log/php-error.log
 
 5. **Verify directory exists and is accessible:**
 ```bash
-docker exec nginx ls -la /config/www/crashhockey/
+docker exec nginx ls -la /config/www/www/Arctic_Wolves/
 ```
 
 ### Issue: "502 Bad Gateway"
@@ -459,7 +459,7 @@ docker exec nginx ls -la /config/www/crashhockey/
    ```
 2. Test connection:
    ```bash
-   docker exec -it mariadb mysql -uchroot -p crashhockey
+   docker exec -it mariadb mysql -uchroot -p www/Arctic_Wolves
    ```
 3. Check Docker link:
    ```bash
@@ -481,7 +481,7 @@ docker exec nginx ls -la /config/www/crashhockey/
 **Solution:**
 ```bash
 # Reset all permissions
-cd /portainer/nginx/www/crashhockey
+cd /portainer/nginx/www/www/Arctic_Wolves
 sudo chown -R 911:911 .
 sudo find . -type d -exec chmod 755 {} \;
 sudo find . -type f -exec chmod 644 {} \;
@@ -512,11 +512,11 @@ docker exec -it nginx certbot --nginx -d your-domain.com -d www.your-domain.com
 ```bash
 # Copy your certificates to NGINX
 sudo mkdir -p /config/nginx/ssl
-sudo cp your-certificate.crt /config/nginx/ssl/crashhockey.ca.crt
-sudo cp your-private-key.key /config/nginx/ssl/crashhockey.ca.key
+sudo cp your-certificate.crt /config/nginx/ssl/www/Arctic_Wolves.ca.crt
+sudo cp your-private-key.key /config/nginx/ssl/www/Arctic_Wolves.ca.key
 sudo chown -R 911:911 /config/nginx/ssl
 
-# The crashhockey.conf is already configured to use these paths
+# The www/Arctic_Wolves.conf is already configured to use these paths
 # Just restart NGINX
 docker restart nginx
 ```
@@ -528,10 +528,10 @@ docker restart nginx
 ### View Logs
 ```bash
 # NGINX access log
-tail -f /portainer/nginx/log/crashhockey_access.log
+tail -f /portainer/nginx/log/www/Arctic_Wolves_access.log
 
 # NGINX error log
-tail -f /portainer/nginx/log/crashhockey_error.log
+tail -f /portainer/nginx/log/www/Arctic_Wolves_error.log
 
 # PHP error log
 tail -f /portainer/nginx/log/php-error.log
@@ -544,15 +544,15 @@ docker logs mariadb --tail 100 -f
 ### Backup Database
 ```bash
 # Backup to file
-docker exec mariadb mysqldump -uchroot -p crashhockey > backup_$(date +%Y%m%d).sql
+docker exec mariadb mysqldump -uchroot -p www/Arctic_Wolves > backup_$(date +%Y%m%d).sql
 
 # Restore from backup
-docker exec -i mariadb mysql -uchroot -p crashhockey < backup_20260120.sql
+docker exec -i mariadb mysql -uchroot -p www/Arctic_Wolves < backup_20260120.sql
 ```
 
 ### Update Application
 ```bash
-cd /portainer/nginx/www/crashhockey
+cd /portainer/nginx/www/www/Arctic_Wolves
 sudo git pull origin main
 sudo chown -R 911:911 .
 docker restart nginx
@@ -592,7 +592,7 @@ Create a cron script on your host:
 
 ```bash
 # Create cron script
-sudo nano /usr/local/bin/crashhockey-cron.sh
+sudo nano /usr/local/bin/www/Arctic_Wolves-cron.sh
 ```
 
 Add the following:
@@ -601,24 +601,24 @@ Add the following:
 # Crash Hockey Cron Jobs
 
 # Receipt scanner (every 5 minutes)
-docker exec nginx /usr/bin/php /portainer/nginx/www/crashhockey/cron_receipt_scanner.php
+docker exec nginx /usr/bin/php /portainer/nginx/www/www/Arctic_Wolves/cron_receipt_scanner.php
 
 # Notifications (every 10 minutes)
-docker exec nginx /usr/bin/php /portainer/nginx/www/crashhockey/cron_notifications.php
+docker exec nginx /usr/bin/php /portainer/nginx/www/www/Arctic_Wolves/cron_notifications.php
 
 # Credit expiry check (daily at 2 AM)
-docker exec nginx /usr/bin/php /portainer/nginx/www/crashhockey/cron_credit_expiry.php
+docker exec nginx /usr/bin/php /portainer/nginx/www/www/Arctic_Wolves/cron_credit_expiry.php
 ```
 
 Make executable and add to crontab:
 ```bash
-sudo chmod +x /usr/local/bin/crashhockey-cron.sh
+sudo chmod +x /usr/local/bin/www/Arctic_Wolves-cron.sh
 
 # Edit root crontab
 sudo crontab -e
 
 # Add these lines:
-*/5 * * * * /usr/local/bin/crashhockey-cron.sh >> /var/log/crashhockey-cron.log 2>&1
+*/5 * * * * /usr/local/bin/www/Arctic_Wolves-cron.sh >> /var/log/www/Arctic_Wolves-cron.log 2>&1
 ```
 
 ---
@@ -634,8 +634,8 @@ For issues during deployment, check:
 1. Docker container status: `docker ps -a`
 2. NGINX logs: `docker logs nginx`
 3. PHP error log: `tail -f /portainer/nginx/log/php-error.log`
-4. Database connectivity: `docker exec -it mariadb mysql -uchroot -p crashhockey`
-5. File permissions: `ls -la /portainer/nginx/www/crashhockey`
+4. Database connectivity: `docker exec -it mariadb mysql -uchroot -p www/Arctic_Wolves`
+5. File permissions: `ls -la /portainer/nginx/www/www/Arctic_Wolves`
 
 ---
 
