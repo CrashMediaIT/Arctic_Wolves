@@ -43,6 +43,7 @@ $allowed_pages = [
     // Main Menu
     'home'                    => 'views/home.php',
     'stats'                   => 'views/stats.php',
+    'goals'                   => 'views/goals.php',
     
     // Sessions - Parent page with tabs
     'sessions'                => 'views/sessions.php',

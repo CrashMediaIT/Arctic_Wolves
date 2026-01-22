@@ -614,15 +614,21 @@ function createSchedule() {
     global $pdo, $user_id;
     
     $report_type = $_POST['report_type'] ?? '';
-    $frequency = $_POST['frequency'] ?? '';
+    $frequency = trim(strtolower($_POST['frequency'] ?? '')); // Normalize to lowercase
     $format = $_POST['format'] ?? 'pdf';
     $email_recipients = $_POST['email_recipients'] ?? '';
     $parameters = $_POST['parameters'] ?? '';
     $is_active = isset($_POST['is_active']) ? 1 : 0;
     
     // Validate required fields
-    if (empty($report_type) || empty($frequency) || empty($email_recipients)) {
-        throw new Exception('Missing required fields');
+    if (empty($report_type)) {
+        throw new Exception('Report type is required');
+    }
+    if (empty($frequency)) {
+        throw new Exception('Frequency is required');
+    }
+    if (empty($email_recipients)) {
+        throw new Exception('Email recipients are required');
     }
     
     // Validate email format

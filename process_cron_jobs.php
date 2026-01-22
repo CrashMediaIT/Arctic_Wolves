@@ -29,15 +29,11 @@ try {
         case 'create':
             $name = trim($_POST['name'] ?? '');
             $description = trim($_POST['description'] ?? '');
-            $command = trim($_POST['command'] ?? '');
             $schedule = trim($_POST['schedule'] ?? '');
-            $type = $_POST['type'] ?? 'admin';
             $status = $_POST['status'] ?? 'active';
-            $parameters = trim($_POST['parameters'] ?? '');
             
             // Validate inputs
             if (empty($name)) throw new Exception('Job name is required');
-            if (empty($command)) throw new Exception('Command is required');
             if (empty($schedule)) throw new Exception('Schedule is required');
             
             // Validate cron expression
@@ -45,23 +41,20 @@ try {
                 throw new Exception('Invalid cron expression format');
             }
             
-            // Validate parameters if provided
-            if (!empty($parameters)) {
-                $json_test = json_decode($parameters);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new Exception('Parameters must be valid JSON');
-                }
-            }
+            // Note: Removed parameter validation as 'parameters' column doesn't exist in schema
             
             // Calculate next run time
             $next_run = calculateNextRun($schedule);
             
             // Insert cron job
+            // Note: Schema has job_name, job_description, schedule, is_active, next_run_at
+            // Converting: status to is_active (1 for active, 0 for inactive)
+            $is_active = ($status === 'active') ? 1 : 0;
             $stmt = $pdo->prepare("
-                INSERT INTO cron_jobs (name, description, command, schedule, type, status, parameters, created_by, next_run)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO cron_jobs (job_name, job_description, schedule, is_active, next_run_at)
+                VALUES (?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$name, $description, $command, $schedule, $type, $status, $parameters, $user_id, $next_run]);
+            $stmt->execute([$name, $description, $schedule, $is_active, $next_run]);
             
             logAction($pdo, $user_id, 'cron_job_created', 'Created cron job: ' . $name);
             
@@ -72,15 +65,11 @@ try {
             $id = (int)($_POST['id'] ?? 0);
             $name = trim($_POST['name'] ?? '');
             $description = trim($_POST['description'] ?? '');
-            $command = trim($_POST['command'] ?? '');
             $schedule = trim($_POST['schedule'] ?? '');
-            $type = $_POST['type'] ?? 'admin';
             $status = $_POST['status'] ?? 'active';
-            $parameters = trim($_POST['parameters'] ?? '');
             
             if ($id <= 0) throw new Exception('Invalid job ID');
             if (empty($name)) throw new Exception('Job name is required');
-            if (empty($command)) throw new Exception('Command is required');
             if (empty($schedule)) throw new Exception('Schedule is required');
             
             // Validate cron expression
@@ -88,24 +77,18 @@ try {
                 throw new Exception('Invalid cron expression format');
             }
             
-            // Validate parameters if provided
-            if (!empty($parameters)) {
-                $json_test = json_decode($parameters);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new Exception('Parameters must be valid JSON');
-                }
-            }
-            
             // Calculate next run time
             $next_run = calculateNextRun($schedule);
             
             // Update cron job
+            // Converting: status to is_active (1 for active, 0 for inactive)
+            $is_active = ($status === 'active') ? 1 : 0;
             $stmt = $pdo->prepare("
                 UPDATE cron_jobs 
-                SET name = ?, description = ?, command = ?, schedule = ?, type = ?, status = ?, parameters = ?, next_run = ?
+                SET job_name = ?, job_description = ?, schedule = ?, is_active = ?, next_run_at = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$name, $description, $command, $schedule, $type, $status, $parameters, $next_run, $id]);
+            $stmt->execute([$name, $description, $schedule, $is_active, $next_run, $id]);
             
             logAction($pdo, $user_id, 'cron_job_updated', 'Updated cron job: ' . $name);
             
@@ -118,7 +101,7 @@ try {
             if ($id <= 0) throw new Exception('Invalid job ID');
             
             // Get job name for logging
-            $stmt = $pdo->prepare("SELECT name FROM cron_jobs WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT job_name FROM cron_jobs WHERE id = ?");
             $stmt->execute([$id]);
             $job = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -128,7 +111,7 @@ try {
             $stmt = $pdo->prepare("DELETE FROM cron_jobs WHERE id = ?");
             $stmt->execute([$id]);
             
-            logAction($pdo, $user_id, 'cron_job_deleted', 'Deleted cron job: ' . $job['name']);
+            logAction($pdo, $user_id, 'cron_job_deleted', 'Deleted cron job: ' . $job['job_name']);
             
             echo json_encode(['success' => true, 'message' => 'Cron job deleted successfully']);
             break;
@@ -139,21 +122,22 @@ try {
             if ($id <= 0) throw new Exception('Invalid job ID');
             
             // Get current status
-            $stmt = $pdo->prepare("SELECT name, status FROM cron_jobs WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT job_name, is_active FROM cron_jobs WHERE id = ?");
             $stmt->execute([$id]);
             $job = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$job) throw new Exception('Job not found');
             
-            // Toggle status
-            $new_status = ($job['status'] === 'active') ? 'inactive' : 'active';
+            // Toggle status (is_active: 1 or 0)
+            $new_is_active = ($job['is_active'] == 1) ? 0 : 1;
+            $new_status_text = ($new_is_active == 1) ? 'active' : 'inactive';
             
-            $stmt = $pdo->prepare("UPDATE cron_jobs SET status = ? WHERE id = ?");
-            $stmt->execute([$new_status, $id]);
+            $stmt = $pdo->prepare("UPDATE cron_jobs SET is_active = ? WHERE id = ?");
+            $stmt->execute([$new_is_active, $id]);
             
-            logAction($pdo, $user_id, 'cron_job_toggled', 'Toggled cron job status: ' . $job['name'] . ' to ' . $new_status);
+            logAction($pdo, $user_id, 'cron_job_toggled', 'Toggled cron job status: ' . $job['job_name'] . ' to ' . $new_status_text);
             
-            echo json_encode(['success' => true, 'message' => 'Status updated to ' . $new_status]);
+            echo json_encode(['success' => true, 'message' => 'Status updated to ' . $new_status_text]);
             break;
             
         default:

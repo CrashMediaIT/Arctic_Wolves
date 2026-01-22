@@ -24,24 +24,25 @@ try {
     
     switch ($action) {
         case 'create':
+            // Note: Schema uses start_date/end_date (TIMESTAMP columns)
+            // Form sends start_time/end_time which MySQL will accept as TIMESTAMP values
+            // MySQL automatically handles datetime string conversion to TIMESTAMP
             $stmt = $pdo->prepare("
                 INSERT INTO system_notifications 
-                (title, message, notification_type, start_time, end_time, is_active, send_email, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (title, message, notification_type, start_date, end_date, is_active, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
             
-            $end_time = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
+            $end_date = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
             $is_active = isset($_POST['is_active']) ? 1 : 0;
-            $send_email = isset($_POST['send_email']) ? 1 : 0;
             
             $stmt->execute([
                 $_POST['title'],
                 $_POST['message'],
                 $_POST['notification_type'],
-                $_POST['start_time'],
-                $end_time,
+                $_POST['start_time'], // MySQL TIMESTAMP handles datetime strings
+                $end_date,
                 $is_active,
-                $send_email,
                 $user_id
             ]);
             
@@ -49,25 +50,25 @@ try {
             break;
             
         case 'update':
+            // Note: Schema uses start_date/end_date (TIMESTAMP columns)
+            // Form sends start_time/end_time which MySQL will accept as TIMESTAMP values
             $stmt = $pdo->prepare("
                 UPDATE system_notifications 
-                SET title = ?, message = ?, notification_type = ?, start_time = ?, 
-                    end_time = ?, is_active = ?, send_email = ?, updated_at = NOW()
+                SET title = ?, message = ?, notification_type = ?, start_date = ?, 
+                    end_date = ?, is_active = ?
                 WHERE id = ?
             ");
             
-            $end_time = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
+            $end_date = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
             $is_active = isset($_POST['is_active']) ? 1 : 0;
-            $send_email = isset($_POST['send_email']) ? 1 : 0;
             
             $stmt->execute([
                 $_POST['title'],
                 $_POST['message'],
                 $_POST['notification_type'],
-                $_POST['start_time'],
-                $end_time,
+                $_POST['start_time'], // MySQL TIMESTAMP handles datetime strings
+                $end_date,
                 $is_active,
-                $send_email,
                 $_POST['id']
             ]);
             
