@@ -1,3 +1,55 @@
+<?php
+// Get team information
+$team_query = "
+    SELECT t.*, 
+           (SELECT COUNT(*) FROM team_members WHERE team_id = t.id AND is_active = 1) as player_count
+    FROM teams t
+    WHERE t.id = ? AND t.is_active = 1
+";
+$team_stmt = $pdo->prepare($team_query);
+$team_stmt->execute([$_GET['team_id'] ?? 0]);
+$team = $team_stmt->fetch();
+
+// Get filter parameters
+$filter_position = $_GET['position'] ?? 'all';
+$search = $_GET['search'] ?? '';
+
+// Get team roster
+$roster_query = "
+    SELECT u.id, u.first_name, u.last_name, u.email,
+           tm.jersey_number, tm.position,
+           COALESCE(s.goals, 0) as goals,
+           COALESCE(s.assists, 0) as assists,
+           COALESCE(s.points, 0) as points,
+           COALESCE(s.save_percentage, 0) as save_percentage,
+           COALESCE(s.gaa, 0) as gaa,
+           COALESCE(s.wins, 0) as wins
+    FROM team_members tm
+    INNER JOIN users u ON tm.user_id = u.id
+    LEFT JOIN player_stats s ON s.player_id = u.id AND s.season_id = (SELECT id FROM seasons WHERE is_current = 1 LIMIT 1)
+    WHERE tm.team_id = ? AND tm.is_active = 1
+";
+
+$params = [$team['id'] ?? 0];
+
+if ($filter_position !== 'all') {
+    $roster_query .= " AND tm.position = ?";
+    $params[] = $filter_position;
+}
+
+if (!empty($search)) {
+    $roster_query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+}
+
+$roster_query .= " ORDER BY tm.jersey_number";
+
+$roster_stmt = $pdo->prepare($roster_query);
+$roster_stmt->execute($params);
+$players = $roster_stmt->fetchAll();
+?>
+
 <!-- Team Roster View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -7,117 +59,104 @@
 </div>
 
 <div class="roster-content">
+    <?php if ($team): ?>
     <!-- Team Info Card -->
-    <div class="team-info-card">
+    <div class="team-info-card" data-component="TeamCard">
         <div class="team-details">
-            <h3>Bantam AA - Blue Devils</h3>
+            <h3><?= htmlspecialchars($team['name']) ?></h3>
             <div class="team-stats">
-                <span><i class="fas fa-users"></i> 18 Players</span>
-                <span><i class="fas fa-calendar"></i> 2023-2024 Season</span>
-                <span><i class="fas fa-trophy"></i> Division Leaders</span>
+                <span><i class="fas fa-users"></i> <?= $team['player_count'] ?> Players</span>
+                <span><i class="fas fa-calendar"></i> <?= htmlspecialchars($team['season'] ?? '2023-2024 Season') ?></span>
+                <?php if (!empty($team['division'])): ?>
+                    <span><i class="fas fa-trophy"></i> <?= htmlspecialchars($team['division']) ?></span>
+                <?php endif; ?>
             </div>
         </div>
-        <button class="btn-primary"><i class="fas fa-user-plus"></i> Add Player</button>
+        <button class="btn-primary" data-action="add-player" data-team-id="<?= $team['id'] ?>"><i class="fas fa-user-plus"></i> Add Player</button>
     </div>
 
     <!-- Filter and Search -->
     <div class="filter-bar">
-        <div class="filter-group">
-            <select class="form-input-small">
-                <option>All Positions</option>
-                <option>Forward</option>
-                <option>Defense</option>
-                <option>Goalie</option>
+        <form method="GET" action="" class="filter-group">
+            <input type="hidden" name="page" value="team_roster">
+            <input type="hidden" name="team_id" value="<?= $team['id'] ?>">
+            <select name="position" class="form-input-small" data-action="auto-submit">
+                <option value="all">All Positions</option>
+                <option value="Forward" <?= $filter_position === 'Forward' ? 'selected' : '' ?>>Forward</option>
+                <option value="Defense" <?= $filter_position === 'Defense' ? 'selected' : '' ?>>Defense</option>
+                <option value="Goalie" <?= $filter_position === 'Goalie' ? 'selected' : '' ?>>Goalie</option>
             </select>
-            <input type="text" class="form-input-small" placeholder="Search players...">
-        </div>
+            <input type="text" name="search" class="form-input-small" placeholder="Search players..." value="<?= htmlspecialchars($search) ?>" data-action="search-debounce">
+        </form>
         <div class="view-toggle">
-            <button class="view-btn active"><i class="fas fa-th"></i></button>
-            <button class="view-btn"><i class="fas fa-list"></i></button>
+            <button class="view-btn active" data-view="grid"><i class="fas fa-th"></i></button>
+            <button class="view-btn" data-view="list"><i class="fas fa-list"></i></button>
         </div>
     </div>
 
     <!-- Roster Grid -->
-    <div class="roster-grid">
-        <!-- Sample Player Card -->
-        <div class="player-card">
-            <div class="player-number">12</div>
+    <?php if (count($players) > 0): ?>
+    <div class="roster-grid" data-component="PlayerGrid">
+        <?php foreach ($players as $player): ?>
+        <div class="player-card" data-component="PlayerCard" data-player-id="<?= $player['id'] ?>">
+            <div class="player-number"><?= $player['jersey_number'] ?></div>
             <div class="player-avatar">
                 <i class="fas fa-user"></i>
             </div>
-            <h4 class="player-name">John Smith</h4>
-            <div class="player-position">Center</div>
-            <div class="player-stats">
-                <div class="stat-item">
-                    <span class="stat-value">15</span>
-                    <span class="stat-label">Goals</span>
+            <h4 class="player-name"><?= htmlspecialchars($player['first_name'] . ' ' . $player['last_name']) ?></h4>
+            <div class="player-position"><?= htmlspecialchars($player['position']) ?></div>
+            
+            <?php if ($player['position'] === 'Goalie'): ?>
+                <div class="player-stats">
+                    <div class="stat-item">
+                        <span class="stat-value"><?= number_format($player['save_percentage'], 3) ?></span>
+                        <span class="stat-label">Save %</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value"><?= number_format($player['gaa'], 2) ?></span>
+                        <span class="stat-label">GAA</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value"><?= $player['wins'] ?></span>
+                        <span class="stat-label">Wins</span>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-value">22</span>
-                    <span class="stat-label">Assists</span>
+            <?php else: ?>
+                <div class="player-stats">
+                    <div class="stat-item">
+                        <span class="stat-value"><?= $player['goals'] ?></span>
+                        <span class="stat-label">Goals</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value"><?= $player['assists'] ?></span>
+                        <span class="stat-label">Assists</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value"><?= $player['points'] ?></span>
+                        <span class="stat-label">Points</span>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-value">37</span>
-                    <span class="stat-label">Points</span>
-                </div>
-            </div>
+            <?php endif; ?>
+            
             <div class="player-actions">
-                <button class="btn-secondary btn-small"><i class="fas fa-eye"></i> View Profile</button>
+                <button class="btn-secondary btn-small" data-action="view-profile" data-player-id="<?= $player['id'] ?>"><i class="fas fa-eye"></i> View Profile</button>
             </div>
         </div>
-
-        <div class="player-card">
-            <div class="player-number">7</div>
-            <div class="player-avatar">
-                <i class="fas fa-user"></i>
-            </div>
-            <h4 class="player-name">Sarah Johnson</h4>
-            <div class="player-position">Defense</div>
-            <div class="player-stats">
-                <div class="stat-item">
-                    <span class="stat-value">3</span>
-                    <span class="stat-label">Goals</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">18</span>
-                    <span class="stat-label">Assists</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">21</span>
-                    <span class="stat-label">Points</span>
-                </div>
-            </div>
-            <div class="player-actions">
-                <button class="btn-secondary btn-small"><i class="fas fa-eye"></i> View Profile</button>
-            </div>
-        </div>
-
-        <div class="player-card">
-            <div class="player-number">31</div>
-            <div class="player-avatar">
-                <i class="fas fa-user"></i>
-            </div>
-            <h4 class="player-name">Mike Williams</h4>
-            <div class="player-position">Goalie</div>
-            <div class="player-stats">
-                <div class="stat-item">
-                    <span class="stat-value">.915</span>
-                    <span class="stat-label">Save %</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">2.45</span>
-                    <span class="stat-label">GAA</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value">12</span>
-                    <span class="stat-label">Wins</span>
-                </div>
-            </div>
-            <div class="player-actions">
-                <button class="btn-secondary btn-small"><i class="fas fa-eye"></i> View Profile</button>
-            </div>
-        </div>
+        <?php endforeach; ?>
     </div>
+    <?php else: ?>
+    <div class="placeholder-container">
+        <i class="fas fa-users placeholder-icon"></i>
+        <p class="placeholder-text">No players found. Add players to your team.</p>
+    </div>
+    <?php endif; ?>
+    
+    <?php else: ?>
+    <div class="placeholder-container">
+        <i class="fas fa-exclamation-triangle placeholder-icon"></i>
+        <p class="placeholder-text">Team not found or inactive.</p>
+    </div>
+    <?php endif; ?>
 </div>
 
 <style>
