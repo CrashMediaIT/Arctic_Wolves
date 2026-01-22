@@ -83,6 +83,7 @@
 |------------|-------------|------------------|-------------|
 | `invoices` | `id` | `user_id` | Invoice records |
 | `invoice_items` | `id` | `invoice_id` | Invoice line items |
+| `payments` | `id` | `user_id`, `invoice_id` | Payment records |
 | `transactions` | `id` | `user_id`, `invoice_id` | Financial transactions |
 | `expenses` | `id` | `category_id`, `created_by` | Expense tracking |
 | `expense_categories` | `id` | - | Expense categories |
@@ -201,7 +202,7 @@ CORE COLUMNS:
 - status (ENUM: 'scheduled', 'completed', 'cancelled', 'in_progress')
 - session_type_id (INT) -- FK to session_types.id
 - location_id (INT) -- FK to locations.id
-- max_participants (INT DEFAULT 10) -- NOTE: max_parcticipants is TYPO in schema, fix needed
+- max_participants (INT DEFAULT 10) -- Fixed from typo max_parcticipants
 
 RELATIONSHIP COLUMNS:
 - coach_id (INT) -- FK to users.id (ON DELETE SET NULL)
@@ -221,6 +222,32 @@ NOTES:
 TIMESTAMPS:
 - created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
 - updated_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+```
+
+### Payments Table (`payments`)
+```sql
+PRIMARY KEY: id (INT AUTO_INCREMENT)
+
+CORE COLUMNS:
+- amount (DECIMAL(10,2) NOT NULL)
+- payment_method (VARCHAR(50)) -- e.g., 'credit_card', 'cash', 'transfer'
+- payment_date (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+- transaction_id (VARCHAR(255)) -- External payment processor transaction ID
+- payment_status (ENUM: 'pending', 'completed', 'failed', 'refunded')
+- notes (TEXT)
+
+RELATIONSHIP COLUMNS:
+- user_id (INT NOT NULL) -- FK to users.id (ON DELETE CASCADE)
+- invoice_id (INT) -- FK to invoices.id (ON DELETE SET NULL)
+
+TIMESTAMPS:
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+
+INDEXES:
+- idx_user (user_id)
+- idx_invoice (invoice_id)
+- idx_date (payment_date)
+- idx_status (payment_status)
 ```
 
 ---
@@ -287,7 +314,18 @@ SELECT ec.category_name FROM expense_categories ec
 SELECT ec.name as category_name FROM expense_categories ec
 ```
 
-### Pitfall 4: Wrong Timestamp Column
+### Pitfall 4: Wrong Primary Key in JOIN
+```sql
+-- ❌ WRONG - invoices.id is the primary key, not invoices.invoice_id
+SELECT * FROM payments p
+LEFT JOIN invoices i ON p.invoice_id = i.invoice_id
+
+-- ✅ CORRECT
+SELECT * FROM payments p
+LEFT JOIN invoices i ON p.invoice_id = i.id
+```
+
+### Pitfall 5: Wrong Timestamp Column
 ```sql
 -- ❌ WRONG - audit_logs uses 'created_at', not 'timestamp'
 SELECT * FROM audit_logs ORDER BY timestamp DESC
