@@ -332,6 +332,74 @@
                 }
             });
         });
+
+        // Generic action buttons with navigation
+        document.querySelectorAll('[data-action]').forEach(btn => {
+            const action = btn.getAttribute('data-action');
+            
+            // Skip if already handled by specific handlers above
+            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel'].includes(action)) {
+                return;
+            }
+            
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const page = this.getAttribute('data-page');
+                const modal = this.getAttribute('data-modal');
+                const url = this.getAttribute('data-url');
+                const type = this.getAttribute('data-type');
+                
+                // If there's a modal, open it
+                if (modal) {
+                    openModal(modal);
+                    return;
+                }
+                
+                // If there's a URL, navigate to it
+                if (url) {
+                    window.location.href = url;
+                    return;
+                }
+                
+                // If there's a page parameter, navigate to that page
+                if (page) {
+                    window.location.href = `?page=${page}`;
+                    return;
+                }
+                
+                // If there's a type for creating items, navigate to appropriate page
+                if (type && action === 'add') {
+                    // Handle specific types
+                    const typePages = {
+                        'goal': 'goals',
+                        'session': 'create_session',
+                        'invoice': 'billing_dashboard',
+                        'payment': 'billing_dashboard',
+                        'expense': 'expenses',
+                        'refund': 'credits_refunds'
+                    };
+                    
+                    if (typePages[type]) {
+                        window.location.href = `?page=${typePages[type]}`;
+                        return;
+                    }
+                }
+                
+                // If button has a form parent, submit it
+                const form = this.closest('form');
+                if (form) {
+                    form.submit();
+                    return;
+                }
+                
+                // Log warning if no action could be taken
+                console.warn('Button clicked but no action handler found:', {
+                    action: action,
+                    button: this
+                });
+            });
+        });
     }
 
     // ===================================================================
