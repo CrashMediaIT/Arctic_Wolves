@@ -1,0 +1,673 @@
+# Arctic Wolves - Issues Tracker
+
+**Created:** January 22, 2026  
+**Version:** 1.0  
+**Purpose:** Track bugs, issues, and feature improvements requiring multiple revisions
+
+---
+
+## 🚨 IMPORTANT: How to Use This Tracker
+
+### When Working on Issues:
+1. **Update Status** - Change status from `[ ]` to `[x]` when starting work
+2. **Add Notes** - Document progress, blockers, and solutions under each issue
+3. **Update Date** - Add date when issue is resolved
+4. **Link PRs** - Reference pull request numbers when applicable
+5. **Re-run Tests** - Verify fixes don't break other features
+
+### Status Indicators:
+- `[ ]` - Not Started
+- `[~]` - In Progress
+- `[x]` - Completed
+- `[!]` - Blocked/Needs Discussion
+
+---
+
+## Priority Levels
+
+- **P0 (Critical)** - Blocking user workflows, data loss, security issues
+- **P1 (High)** - Major functionality broken, significant UX issues
+- **P2 (Medium)** - Minor functionality issues, cosmetic problems
+- **P3 (Low)** - Nice to have, future enhancements
+
+---
+
+## Issues by Feature Area
+
+### 1. Home Page Issues
+
+#### P1 - [ ] Add Session Navigation Fixed, Booking Still Broken
+- **Status:** Partially Fixed
+- **Issue:** Add session now goes to correct booking, but Booking doesn't work
+- **Details:**
+  - Missing list view in Booking
+  - Missing calendar view in Booking
+  - Stats don't show
+  - Header should show for all users (not just athletes) - Coaches, Admins, Parents may also be athletes
+- **Files Affected:** 
+  - `views/home.php`
+  - `views/sessions_booking.php`
+  - `process_booking.php`
+- **Notes:**
+
+---
+
+### 2. Performance Stats Issues
+
+#### P2 - [ ] Add Goal Button Missing Icon and Navigation Broken
+- **Status:** Not Started
+- **Issue:** Add Goal button missing icon and flips back to home page when pressed
+- **Details:**
+  - Button needs Font Awesome icon
+  - Button redirects to home instead of staying on goals page
+  - "Create First Goal" button has icon but doesn't follow style guide
+- **Files Affected:**
+  - `views/stats.php`
+  - Button needs `data-action` and `data-page` attributes
+- **Notes:**
+
+---
+
+### 3. Sessions - Upcoming Sessions Issues
+
+#### P1 - [ ] Upcoming Sessions Missing List and Calendar Views
+- **Status:** Not Started
+- **Issue:** No sessions display in list or calendar view
+- **Details:**
+  - If no sessions, should show "You don't have any upcoming sessions"
+  - Need ability to search by timeframe (week, month, year)
+  - Calendar doesn't display at all
+- **Files Affected:**
+  - `views/sessions_upcoming.php`
+  - `js/calendar.js`
+- **Notes:**
+
+---
+
+### 4. Video Issues
+
+#### P1 - [ ] Drill Review Shows Nothing
+- **Status:** Not Started
+- **Issue:** Drill Review tab doesn't show any content
+- **Files Affected:** `views/video_drill_review.php`
+- **Notes:**
+
+#### P1 - [ ] Missing Upload Tab
+- **Status:** Not Started
+- **Issue:** Third tab for upload is missing
+- **Files Affected:** `views/video.php`
+- **Notes:**
+
+#### P1 - [ ] Coaches Review Shows Nothing
+- **Status:** Not Started
+- **Issue:** Nothing shows in coaches review
+- **Files Affected:** `views/video_coach_reviews.php`
+- **Notes:**
+
+---
+
+### 5. Health Issues
+
+#### P1 - [ ] Strength & Conditioning Shows Nothing
+- **Status:** Not Started
+- **Issue:** Should show "No plans currently" with option to contact coach
+- **Files Affected:** `views/health_strength.php`
+- **Notes:**
+
+#### P1 - [ ] Nutrition Shows Nothing
+- **Status:** Not Started
+- **Issue:** Should show "No plans currently" with option to contact coach
+- **Files Affected:** `views/health_nutrition.php`
+- **Notes:**
+
+---
+
+### 6. Drills Issues
+
+#### P1 - [ ] Library Doesn't Load Information
+- **Status:** Not Started
+- **Issue:** Library shows nothing - should show drills or "No drills available"
+- **Files Affected:** `views/drills_library.php`
+- **Notes:**
+
+#### P1 - [ ] Create Drill Doesn't Show Drawer
+- **Status:** Not Started
+- **Issue:** Should show drill drawer app that was built
+- **Files Affected:** 
+  - `views/drills.php`
+  - Modal/drawer component
+- **Notes:**
+
+#### P1 - [ ] Import Drill Shows Nothing
+- **Status:** Not Started
+- **Issue:** Import drill function doesn't work
+- **Files Affected:** `process_drills.php`
+- **Notes:**
+
+---
+
+### 7. Practice Plans Issues
+
+#### P1 - [ ] Practice Plans Shows Nothing
+- **Status:** Not Started
+- **Issue:** Same as drills - doesn't show anything
+- **Files Affected:** `views/practice_plans.php`
+- **Notes:**
+
+---
+
+### 8. Roster Issues
+
+#### P1 - [ ] Add Athlete Button Doesn't Work
+- **Status:** Not Started
+- **Issue:** Button goes nowhere
+- **Files Affected:** `views/roster.php`
+- **Notes:**
+
+#### P2 - [ ] My Athlete Header Has 2 Buttons Without Icons
+- **Status:** Not Started
+- **Issue:** Two buttons with no icons - unknown functionality
+- **Files Affected:** `views/roster.php`
+- **Notes:**
+
+---
+
+### 9. Travel Issues
+
+#### P1 - [ ] Mileage Report Doesn't Show
+- **Status:** Not Started
+- **Issue:** Travel page doesn't show mileage report
+- **Files Affected:** `views/travel.php`
+- **Notes:**
+
+---
+
+### 10. Accounting Dashboard Issues
+
+#### P2 - [ ] Quick Actions Button Height Issues
+- **Status:** Not Started
+- **Issue:** Buttons have collisions with boxes, icons, and text
+- **Files Affected:** `views/accounting_dashboard.php`
+- **Notes:**
+
+#### P2 - [ ] Revenue Overview Needs More Timeline Options
+- **Status:** Not Started
+- **Issue:** Add: 1 Week, 1 Month, This Quarter, 6 Months, 1 Year, Past Years option
+- **Files Affected:** `views/accounting_dashboard.php`
+- **Notes:**
+
+---
+
+### 11. Billing Dashboard Issues
+
+#### P1 - [ ] Create Invoice Cancel/X Buttons Don't Work
+- **Status:** Not Started
+- **Issue:** Cannot close create invoice modal - cancel and X buttons broken
+- **Files Affected:** 
+  - `views/billing_dashboard.php`
+  - Modal close handlers
+- **Notes:**
+
+#### P1 - [ ] Add Line Item Doesn't Work
+- **Status:** Not Started
+- **Issue:** Cannot add line items to invoice
+- **Files Affected:** `process_admin_action.php` or invoice process file
+- **Notes:**
+
+#### P2 - [ ] Recent Receipts Timeline Options
+- **Status:** Not Started
+- **Issue:** Should have same timeline options as Revenue Overview
+- **Files Affected:** `views/billing_dashboard.php`
+- **Notes:**
+
+---
+
+### 12. Reports Issues
+
+#### P0 - [ ] Generate Report Buttons Throw Error
+- **Status:** Not Started
+- **Issue:** Error: `{"success":false,"message":"Invalid action"}`
+- **Files Affected:** `process_reports.php`
+- **Notes:**
+
+#### P1 - [ ] Recent Reports Actions Don't Work
+- **Status:** Not Started
+- **Issue:** Download, View, Delete buttons don't work
+- **Files Affected:** `views/reports.php`
+- **Notes:**
+
+#### P0 - [ ] Create Schedule Throws Error
+- **Status:** Not Started
+- **Issue:** Error: `{"success":false,"message":"Invalid frequency"}`
+- **Files Affected:** `process_reports.php`
+- **Notes:**
+
+#### P1 - [ ] Active Schedules Actions Don't Work
+- **Status:** Not Started
+- **Issue:** Edit, Pause, Delete don't work
+- **Files Affected:** `views/reports.php`
+- **Notes:**
+
+---
+
+### 13. Credit and Refunds Issues
+
+#### P1 - [ ] Cancel Button Doesn't Work on Refund Modal
+- **Status:** Not Started
+- **Issue:** Issue refund button works, but cannot cancel (X and Cancel broken)
+- **Files Affected:** `views/credits_refunds.php`
+- **Notes:**
+
+---
+
+### 14. Expenses Issues
+
+#### P1 - [ ] Add Expense Button Kicks Back to Home
+- **Status:** Not Started
+- **Issue:** Clicking add expense redirects to home page
+- **Files Affected:** 
+  - `views/expenses.php`
+  - Button missing proper `data-action` attributes
+- **Notes:**
+
+#### P1 - [ ] Choose File and Take Photo Don't Work
+- **Status:** Not Started
+- **Issue:** File upload buttons do nothing
+- **Files Affected:** `views/expenses.php`
+- **Notes:**
+
+#### P1 - [ ] Export Button Doesn't Work
+- **Status:** Not Started
+- **Issue:** Export functionality broken
+- **Files Affected:** `process_expenses.php`
+- **Notes:**
+
+---
+
+### 15. Products Issues
+
+#### P2 - [ ] Sessions, Packages, Discounts Should Be Tabs Not Buttons
+- **Status:** Not Started
+- **Issue:** Current implementation uses buttons - should be tabs per style guide
+- **Files Affected:** `views/products.php`
+- **Notes:**
+
+#### P2 - [ ] Add Session Type Button Missing Icon
+- **Status:** Not Started
+- **Issue:** Button needs Font Awesome icon
+- **Files Affected:** `views/products.php`
+- **Notes:**
+
+#### P1 - [ ] Add Session Modal Can't Cancel/Submit
+- **Status:** Not Started
+- **Issue:** Modal opens but can't cancel (X/Cancel broken) and submit kicks to home
+- **Files Affected:** 
+  - `views/products.php`
+  - `process_packages.php` or appropriate handler
+- **Notes:**
+
+#### P2 - [ ] Packages Tab Boxes Don't Match Sessions Style
+- **Status:** Not Started
+- **Issue:** Inconsistent styling between tabs
+- **Files Affected:** `views/products.php`
+- **Notes:**
+
+#### P2 - [ ] Create Package Button Missing Icon
+- **Status:** Not Started
+- **Issue:** Button needs Font Awesome icon
+- **Files Affected:** `views/products.php`
+- **Notes:**
+
+#### P1 - [ ] Create Package Kicks Back to Home
+- **Status:** Not Started
+- **Issue:** Form submit redirects to home instead of staying on page
+- **Files Affected:** `process_packages.php`
+- **Notes:**
+
+#### P2 - [ ] Add Discount Button Missing Icon
+- **Status:** Not Started
+- **Issue:** Button needs Font Awesome icon
+- **Files Affected:** `views/products.php`
+- **Notes:**
+
+#### P1 - [ ] Create Discount Invalid Value Error
+- **Status:** Not Started
+- **Issue:** Complains about invalid value if month not changed to next month
+- **Details:** Discounts should allow any time period
+- **Files Affected:** `process_packages.php`
+- **Notes:**
+
+#### P1 - [ ] Create Discount Kicks Back to Home
+- **Status:** Not Started
+- **Issue:** Form submit redirects to home
+- **Files Affected:** `process_packages.php`
+- **Notes:**
+
+---
+
+### 16. HR - Termination Issues
+
+#### P0 - [ ] Process Termination Error
+- **Status:** Not Started
+- **Issue:** Error: `{"success":false,"message":"Cannot transfer to the same coach"}`
+- **Files Affected:** `process_coach_termination.php`
+- **Notes:**
+
+#### P1 - [ ] Cancel Kicks to Products Page
+- **Status:** Not Started
+- **Issue:** Cancel button navigates to wrong page
+- **Files Affected:** `views/hr_termination.php`
+- **Notes:**
+
+#### P1 - [ ] Choose Files Doesn't Work
+- **Status:** Not Started
+- **Issue:** Cannot upload termination documentation
+- **Files Affected:** `views/hr_termination.php`
+- **Notes:**
+
+---
+
+### 17. All Users Issues
+
+#### P1 - [ ] Filter Button Reloads to Home
+- **Status:** Not Started
+- **Issue:** Filter button reloads page and redirects to home
+- **Files Affected:** `views/admin_users.php`
+- **Notes:**
+
+#### P1 - [ ] Cannot Search by Username
+- **Status:** Not Started
+- **Issue:** Search functionality doesn't work
+- **Files Affected:** `views/admin_users.php`
+- **Notes:**
+
+#### P1 - [ ] Create User Form Kicks Back to Home
+- **Status:** Not Started
+- **Issue:** Form opens but submission redirects to home without creating user
+- **Files Affected:** `process_admin_action.php`
+- **Notes:**
+
+#### P1 - [ ] Roles Filter Doesn't Work
+- **Status:** Not Started
+- **Issue:** Admin account shows under all roles instead of just admin
+- **Files Affected:** `views/admin_users.php`
+- **Notes:**
+
+#### P1 - [ ] Export Throws File Not Found
+- **Status:** Not Started
+- **Issue:** Export functionality broken
+- **Files Affected:** `process_admin_action.php`
+- **Notes:**
+
+---
+
+### 18. Categories Issues
+
+#### P2 - [ ] Skills, Drill Types, Positions, Equipment Should Be Tabs
+- **Status:** Not Started
+- **Issue:** Currently buttons - should be tabs per style guide
+- **Files Affected:** `views/admin_age_skill.php`
+- **Notes:**
+
+#### P2 - [ ] Add Skill Button Missing Icon
+- **Status:** Not Started
+- **Issue:** Button needs Font Awesome icon
+- **Files Affected:** `views/admin_age_skill.php`
+- **Notes:**
+
+#### P1 - [ ] Add Skill Creates Then Crashes to Home
+- **Status:** Not Started
+- **Issue:** Modal works but submission redirects to home
+- **Files Affected:** `process_admin_age_skill.php`
+- **Notes:**
+
+#### P1 - [ ] Skill Edit and Delete Don't Work
+- **Status:** Not Started
+- **Issue:** Action buttons non-functional
+- **Files Affected:** `views/admin_age_skill.php`
+- **Notes:**
+
+#### P2 - [ ] Add Type Button Missing Icon
+- **Status:** Not Started
+- **Issue:** Button needs Font Awesome icon (Drill Types tab)
+- **Files Affected:** `views/admin_age_skill.php`
+- **Notes:**
+
+#### P1 - [ ] Add Type Creates Then Crashes to Home
+- **Status:** Not Started
+- **Issue:** Modal works but submission redirects to home
+- **Files Affected:** `process_admin_age_skill.php`
+- **Notes:**
+
+#### P2 - [ ] Add Position Button Missing Icon
+- **Status:** Not Started
+- **Issue:** Button needs Font Awesome icon
+- **Files Affected:** `views/admin_age_skill.php`
+- **Notes:**
+
+#### P1 - [ ] Add Position Creates Then Crashes to Home
+- **Status:** Not Started
+- **Issue:** Modal works but submission redirects to home
+- **Files Affected:** `process_admin_age_skill.php`
+- **Notes:**
+
+#### P2 - [ ] Add Equipment Button Missing Icon
+- **Status:** Not Started
+- **Issue:** Button needs Font Awesome icon
+- **Files Affected:** `views/admin_age_skill.php`
+- **Notes:**
+
+#### P1 - [ ] Add Equipment Can't Cancel
+- **Status:** Not Started
+- **Issue:** X and Cancel buttons don't work
+- **Files Affected:** `views/admin_age_skill.php`
+- **Notes:**
+
+#### P1 - [ ] Add Equipment Creates Then Crashes to Home
+- **Status:** Not Started
+- **Issue:** Modal works but submission redirects to home
+- **Files Affected:** `process_admin_age_skill.php`
+- **Notes:**
+
+---
+
+### 19. Eval Framework Issues
+
+#### P1 - [ ] Drag and Drop Doesn't Work
+- **Status:** Not Started
+- **Issue:** Cannot reorder items via drag-drop
+- **Files Affected:** `views/admin_eval_framework.php`
+- **Notes:**
+
+#### P0 - [ ] Add Eval Category Column Error
+- **Status:** Not Started
+- **Issue:** Error: `{"success":false,"message":"SQLSTATE[42S22]: Column not found: 1054 Unknown column 'display_order' in 'SELECT'"}`
+- **Files Affected:** `process_eval_framework.php`
+- **Notes:**
+
+#### P1 - [ ] Add Eval Category Can't Cancel
+- **Status:** Not Started
+- **Issue:** X and Cancel buttons don't work
+- **Files Affected:** `views/admin_eval_framework.php`
+- **Notes:**
+
+#### P2 - [ ] Add Scale Button Missing Icon
+- **Status:** Not Started
+- **Issue:** Button needs Font Awesome icon
+- **Files Affected:** `views/admin_eval_framework.php`
+- **Notes:**
+
+#### P1 - [ ] Add Scale Doesn't Function
+- **Status:** Not Started
+- **Issue:** Button does nothing
+- **Files Affected:** `views/admin_eval_framework.php`
+- **Notes:**
+
+#### P1 - [ ] Edit Scale Doesn't Function
+- **Status:** Not Started
+- **Issue:** Button does nothing
+- **Files Affected:** `views/admin_eval_framework.php`
+- **Notes:**
+
+---
+
+### 20. System Notifications Issues
+
+#### P0 - [ ] Send Notifications Database Error
+- **Status:** Not Started
+- **Issue:** Error: `{"success":false,"message":"Database error occurred"}`
+- **Files Affected:** `process_system_notifications.php`
+- **Notes:**
+
+#### P1 - [ ] Active Notifications Edit/Delete Don't Work
+- **Status:** Not Started
+- **Issue:** Action buttons non-functional
+- **Files Affected:** `views/admin_notifications.php`
+- **Notes:**
+
+---
+
+### 21. Audit Log Issues
+
+#### P1 - [ ] Export Throws Table Not Found
+- **Status:** Not Started
+- **Issue:** Export functionality broken
+- **Files Affected:** `views/admin_audit_log.php` or export process
+- **Notes:**
+
+---
+
+### 22. Cron Jobs Issues
+
+#### P1 - [ ] Add Cron Job Can't Cancel
+- **Status:** Not Started
+- **Issue:** X and Cancel buttons don't work
+- **Files Affected:** `views/admin_cron_jobs.php`
+- **Notes:**
+
+#### P0 - [ ] Create Cron Job Column Error
+- **Status:** Not Started
+- **Issue:** Error: `{"success":false,"message":"SQLSTATE[42S22]: Column not found: 1054 Unknown column 'name' in 'INSERT INTO'"}`
+- **Files Affected:** `process_cron_jobs.php`
+- **Notes:**
+
+#### P1 - [ ] Active Cron Jobs Actions Don't Work
+- **Status:** Not Started
+- **Issue:** Play, Edit, Pause buttons don't work
+- **Files Affected:** `views/admin_cron_jobs.php`
+- **Notes:**
+
+---
+
+### 23. System Tools Issues
+
+#### P1 - [ ] Tabbed Navigation Doesn't Work
+- **Status:** Not Started
+- **Issue:** Tab switching broken
+- **Files Affected:** `views/admin_settings.php`
+- **Notes:**
+
+#### P1 - [ ] Missing Nextcloud Configuration Tab
+- **Status:** Not Started
+- **Issue:** Tab not present
+- **Files Affected:** `views/admin_settings.php`
+- **Notes:**
+
+#### P1 - [ ] Missing SMTP Settings Tab
+- **Status:** Not Started
+- **Issue:** Tab not present
+- **Files Affected:** `views/admin_settings.php`
+- **Notes:**
+
+#### P1 - [ ] All Buttons Throw Back to Home
+- **Status:** Not Started
+- **Issue:** All action buttons redirect to home page
+- **Files Affected:** `views/admin_settings.php`
+- **Notes:**
+
+---
+
+### 24. Profile Page Issues
+
+#### P1 - [ ] Change Photo Doesn't Work
+- **Status:** Not Started
+- **Issue:** File can be added but photo change doesn't process
+- **Files Affected:** `process_profile_update.php`
+- **Notes:**
+
+#### P2 - [ ] All Users Should Have Extended Profile Fields
+- **Status:** Not Started
+- **Issue:** All users should be able to pick: shooter hands, teams, position, weight, height
+- **Files Affected:** `views/profile.php`
+- **Notes:**
+
+#### P2 - [ ] Profile Picture Upload Should Be On-Click
+- **Status:** Not Started
+- **Issue:** Upload should trigger by clicking profile picture
+- **Files Affected:** `views/profile.php`
+- **Notes:**
+
+#### P1 - [ ] Security Tab Doesn't Work
+- **Status:** Not Started
+- **Issue:** Clicking tab stays on Personal Info page
+- **Files Affected:** `views/profile.php`
+- **Notes:**
+
+#### P1 - [ ] Notifications Tab Doesn't Work
+- **Status:** Not Started
+- **Issue:** Clicking tab stays on Personal Info page
+- **Files Affected:** `views/profile.php`
+- **Notes:**
+
+---
+
+### 25. Style Issues (Global)
+
+#### P2 - [ ] Button Icons Wrong Color
+- **Status:** Not Started
+- **Issue:** Some buttons have icons in wrong color
+- **Files Affected:** Multiple views - style.css or shared_styles.css
+- **Notes:**
+
+#### P2 - [ ] Dropdown Checkered Effect on Highlight
+- **Status:** Not Started
+- **Issue:** Dropdowns have weird checkered pattern when option is highlighted
+- **Details:** Should just highlight outline like rest of site
+- **Files Affected:** `views/shared_styles.css`
+- **Notes:**
+
+---
+
+## Completion Summary
+
+**Total Issues:** 85+  
+**Critical (P0):** 6  
+**High (P1):** 60+  
+**Medium (P2):** 19+  
+**Low (P3):** 0
+
+**Completed:** 0  
+**In Progress:** 0  
+**Not Started:** 85+  
+**Blocked:** 0
+
+---
+
+## Notes
+
+This tracker represents issues reported on January 22, 2026. Issues will require multiple revisions to complete. Always update this tracker when:
+- Starting work on an issue
+- Completing an issue
+- Finding blockers
+- Discovering related issues
+
+Refer to governance documents:
+- `/QA/MAINTENANCE_PROCESS.md` - For maintenance workflow
+- `/QA/STYLE_GUIDE.md` - For UI/styling standards
+- `/QA/STRUCTURE.md` - For application structure and dependencies
+
+---
+
+## Version History
+
+- **v1.0** - January 22, 2026 - Initial issues tracker created with all reported bugs and feature requests
