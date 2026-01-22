@@ -6,7 +6,7 @@
     <title>Artic Wolves | Player Development</title>
     <meta name="description" content="Professional hockey development for players and goalies.">
     
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/18/logo.png">
+    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArticWolves.png">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -17,7 +17,7 @@
     <header>
         <nav class="container nav-flex">
             <div class="logo-area" style="display: flex; align-items: center; gap: 15px;">
-                <img src="https://images.crashmedia.ca/images/2026/01/18/logo.png" alt="Artic Wolves Logo" style="height: 40px; width: auto;">
+                <img src="https://images.crashmedia.ca/images/2026/01/21/ArticWolves.png" alt="Artic Wolves Logo" style="height: 40px; width: auto;">
                 
                 <div>
                     <div class="logo-text">ARTIC<span>WOLVES</span></div>
@@ -148,7 +148,7 @@
         <div class="container footer-flex">
             <div class="footer-left">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                    <img src="https://images.crashmedia.ca/images/2026/01/18/logo.png" alt="Logo" style="height: 30px; opacity: 0.8;">
+                    <img src="https://images.crashmedia.ca/images/2026/01/21/ArticWolves.png" alt="Logo" style="height: 30px; opacity: 0.8;">
                     <div class="logo-text" style="font-size: 1.2rem;">ARTIC<span>WOLVES</span></div>
                 </div>
                 
