@@ -39,15 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Category name is required');
                 }
                 
-                // Get next display order
-                $max_order = $pdo->query("SELECT MAX(display_order) as max_order FROM eval_categories")->fetch();
-                $display_order = ($max_order['max_order'] ?? 0) + 1;
-                
+                // Note: display_order and is_active columns don't exist in schema
+                // Removing these references per governance: fix code to match schema
                 $stmt = $pdo->prepare("
-                    INSERT INTO eval_categories (name, description, display_order, is_active, created_at)
-                    VALUES (?, ?, ?, 1, NOW())
+                    INSERT INTO eval_categories (name, description, created_at)
+                    VALUES (?, ?, NOW())
                 ");
-                $stmt->execute([$name, $description, $display_order]);
+                $stmt->execute([$name, $description]);
                 
                 echo json_encode([
                     'success' => true,
@@ -98,21 +96,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
                 
             case 'reorder_categories':
-                $category_ids = json_decode($_POST['category_ids'], true);
-                
-                if (!is_array($category_ids)) {
-                    throw new Exception('Invalid category order data');
-                }
-                
-                $stmt = $pdo->prepare("UPDATE eval_categories SET display_order = ? WHERE id = ?");
-                foreach ($category_ids as $order => $category_id) {
-                    $stmt->execute([$order + 1, intval($category_id)]);
-                }
-                
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Categories reordered successfully'
-                ]);
+                // Note: display_order column doesn't exist in schema
+                // This feature requires schema modification
+                throw new Exception('Reorder feature requires display_order column');
                 break;
                 
             case 'create_skill':
@@ -132,16 +118,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid category');
                 }
                 
-                // Get next display order for this category
-                $max_order = $pdo->prepare("SELECT MAX(display_order) as max_order FROM eval_skills WHERE category_id = ?");
-                $max_order->execute([$category_id]);
-                $display_order = ($max_order->fetch()['max_order'] ?? 0) + 1;
-                
+                // Note: display_order, is_active, and criteria columns don't exist in schema
+                // Removing these references per governance: fix code to match schema
                 $stmt = $pdo->prepare("
-                    INSERT INTO eval_skills (category_id, name, description, criteria, display_order, is_active, created_at)
-                    VALUES (?, ?, ?, ?, ?, 1, NOW())
+                    INSERT INTO eval_skills (category_id, name, description, created_at)
+                    VALUES (?, ?, ?, NOW())
                 ");
-                $stmt->execute([$category_id, $name, $description, $criteria, $display_order]);
+                $stmt->execute([$category_id, $name, $description]);
                 
                 echo json_encode([
                     'success' => true,
@@ -201,40 +184,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
                 
             case 'reorder_skills':
-                $skill_ids = json_decode($_POST['skill_ids'], true);
-                
-                if (!is_array($skill_ids)) {
-                    throw new Exception('Invalid skill order data');
-                }
-                
-                $stmt = $pdo->prepare("UPDATE eval_skills SET display_order = ? WHERE id = ?");
-                foreach ($skill_ids as $order => $skill_id) {
-                    $stmt->execute([$order + 1, intval($skill_id)]);
-                }
-                
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Skills reordered successfully'
-                ]);
+                // Note: display_order column doesn't exist in schema
+                // This feature requires schema modification
+                throw new Exception('Reorder feature requires display_order column');
                 break;
                 
             case 'toggle_active':
-                $type = $_POST['type']; // 'category' or 'skill'
-                $id = intval($_POST['id']);
-                $active = intval($_POST['active']);
-                
-                if (!in_array($type, ['category', 'skill'])) {
-                    throw new Exception('Invalid type');
-                }
-                
-                $table = $type === 'category' ? 'eval_categories' : 'eval_skills';
-                $stmt = $pdo->prepare("UPDATE $table SET is_active = ? WHERE id = ?");
-                $stmt->execute([$active, $id]);
-                
-                echo json_encode([
-                    'success' => true,
-                    'message' => ucfirst($type) . ' ' . ($active ? 'activated' : 'deactivated')
-                ]);
+                // Note: is_active column doesn't exist in schema
+                // This feature requires schema modification
+                throw new Exception('Toggle active feature requires is_active column');
                 break;
                 
             default:
