@@ -344,7 +344,13 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
         <button type="submit" class="btn btn-primary">
             <i class="fas fa-filter"></i> Apply
         </button>
-        <button type="button" class="btn btn-secondary" onclick="exportAllData()">
+    </form>
+    <form method="POST" action="process_billing.php" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+        <input type="hidden" name="action" value="export">
+        <input type="hidden" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
+        <input type="hidden" name="end_date" value="<?= htmlspecialchars($end_date) ?>">
+        <button type="submit" class="btn btn-secondary">
             <i class="fas fa-download"></i> Export
         </button>
     </form>
