@@ -349,8 +349,12 @@ CREATE TABLE IF NOT EXISTS `food_library` (
 -- Nutrition plans
 CREATE TABLE IF NOT EXISTS `nutrition_plans` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT DEFAULT NULL,
+    `coach_id` INT DEFAULT NULL,
     `name` VARCHAR(255) NOT NULL,
+    `title` VARCHAR(255) DEFAULT NULL,
     `description` TEXT DEFAULT NULL,
+    `content` TEXT DEFAULT NULL,
     `created_by` INT NOT NULL,
     `target_calories` INT DEFAULT NULL,
     `target_protein_g` INT DEFAULT NULL,
@@ -358,6 +362,8 @@ CREATE TABLE IF NOT EXISTS `nutrition_plans` (
     `target_fat_g` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -853,15 +859,21 @@ CREATE TABLE IF NOT EXISTS `evaluation_scores` (
 CREATE TABLE IF NOT EXISTS `workouts` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
+    `coach_id` INT DEFAULT NULL,
     `workout_name` VARCHAR(255) NOT NULL,
-    `workout_date` DATE NOT NULL,
+    `title` VARCHAR(255) DEFAULT NULL, 
+    `description` TEXT DEFAULT NULL,
+    `link` VARCHAR(500) DEFAULT NULL,
+    `workout_date` DATE DEFAULT NULL,
     `workout_type` VARCHAR(100) DEFAULT NULL,
     `duration_minutes` INT DEFAULT NULL,
     `status` ENUM('planned', 'completed', 'skipped') DEFAULT 'planned',
     `notes` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
+    INDEX `idx_coach` (`coach_id`),
     INDEX `idx_date` (`workout_date`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
