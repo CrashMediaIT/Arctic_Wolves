@@ -393,11 +393,14 @@
                     return;
                 }
                 
-                // Log warning if no action could be taken
-                console.warn('Button clicked but no action handler found:', {
-                    action: action,
-                    button: this
-                });
+                // Log warning if no action could be taken (development only)
+                if (typeof console !== 'undefined' && console.warn) {
+                    console.warn('Button clicked but no action handler found:', {
+                        action: action,
+                        buttonId: this.id || 'no-id',
+                        buttonClass: this.className
+                    });
+                }
             });
         });
     }
@@ -803,6 +806,15 @@
                 e.preventDefault();
                 
                 const targetTab = this.getAttribute('data-tab');
+                if (!targetTab) return;
+                
+                // Sanitize tab name to prevent selector injection
+                const sanitizedTab = targetTab.replace(/[^a-zA-Z0-9_-]/g, '');
+                if (sanitizedTab !== targetTab) {
+                    console.warn('Invalid tab name:', targetTab);
+                    return;
+                }
+                
                 const tabContainer = this.closest('.products-content, .content-wrapper, .page-content') || document;
                 
                 // Remove active class from all tabs
@@ -820,7 +832,7 @@
                 });
                 
                 // Show target tab content
-                const targetContent = tabContainer.querySelector(`#${targetTab}-tab, [data-tab-content="${targetTab}"]`);
+                const targetContent = tabContainer.querySelector(`#${sanitizedTab}-tab, [data-tab-content="${sanitizedTab}"]`);
                 if (targetContent) {
                     targetContent.classList.add('active');
                     targetContent.style.display = 'block';

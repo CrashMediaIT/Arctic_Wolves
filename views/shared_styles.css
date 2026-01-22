@@ -633,14 +633,15 @@ select:hover {
     background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%237C3AED" d="M6 9L1 4h10z"/></svg>');
 }
 
-/* Dropdown option styling */
+/* Dropdown option styling 
+   Note: border-radius on options has limited browser support
+   and is mainly for progressive enhancement */
 select option {
     background: #16161F;
     color: #FFFFFF;
     padding: 12px 16px;
     font-family: 'Inter', sans-serif;
     font-size: 14px;
-    border-radius: 4px;
 }
 
 select option:hover,
@@ -650,10 +651,10 @@ select option:checked {
     color: #FFFFFF;
 }
 
-/* Remove checkered pattern on option hover */
+/* Remove default browser styling on option hover */
 select option:hover {
-    background-color: #6B46C1 !important;
-    background-image: none !important;
+    background-color: #6B46C1;
+    background-image: none;
 }
 
 select option:checked {
