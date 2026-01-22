@@ -81,7 +81,7 @@ function sendApprovalNotification($pdo, $to_user_id, $type, $details) {
         
         $email_body .= "
             <p>Please log in to your account to view more details.</p>
-            <p><a href='" . ($_SERVER['REQUEST_SCHEME'] ?? 'https') . "://" . ($_SERVER['HTTP_HOST'] ?? 'articwolves.ca') . "/dashboard.php?page=evaluations_goals'>View Evaluations</a></p>
+            <p><a href='" . ($_SERVER['REQUEST_SCHEME'] ?? 'https') . "://" . ($_SERVER['HTTP_HOST'] ?? 'arcticwolves.ca') . "/dashboard.php?page=evaluations_goals'>View Evaluations</a></p>
         ";
         
         sendEmail($user['email'], $title, $email_body);

@@ -222,9 +222,9 @@ $settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KE
             </div>
         </div>
         
-        <!-- Participant Details -->
+        <!-- Parcticipant Details -->
         <div class="form-section">
-            <h2 class="section-title">Participant Details</h2>
+            <h2 class="section-title">Parcticipant Details</h2>
             
             <div class="form-grid">
                 <div class="form-group">
@@ -255,7 +255,7 @@ $settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KE
                     <label class="form-label">Max Capacity *</label>
                     <input type="number" name="max_capacity" class="form-input" 
                            value="20" min="1" max="100" required>
-                    <p class="help-text">Maximum number of participants</p>
+                    <p class="help-text">Maximum number of parcticipants</p>
                 </div>
             </div>
         </div>

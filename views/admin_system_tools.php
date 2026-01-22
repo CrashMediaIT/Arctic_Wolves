@@ -33,14 +33,14 @@
                             <h4>Site Title</h4>
                             <p>The name of your site</p>
                         </div>
-                        <input type="text" class="form-input" value="Artic Wolves">
+                        <input type="text" class="form-input" value="Arctic Wolves">
                     </div>
                     <div class="setting-item">
                         <div class="setting-info">
                             <h4>Site Email</h4>
                             <p>Primary contact email</p>
                         </div>
-                        <input type="email" class="form-input" value="info@articwolves.ca">
+                        <input type="email" class="form-input" value="info@arcticwolves.ca">
                     </div>
                     <div class="setting-item">
                         <div class="setting-info">

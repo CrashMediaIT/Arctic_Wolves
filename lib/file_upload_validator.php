@@ -1,7 +1,7 @@
 <?php
 /**
  * File Upload Validation Library
- * Centralized, secure file upload validation for Artic Wolves
+ * Centralized, secure file upload validation for Arctic Wolves
  */
 
 class FileUploadValidator {

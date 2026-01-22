@@ -55,9 +55,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login | Artic Wolves</title>
+    <title>Login | Arctic Wolves</title>
     
-    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/18/logo.png">
+    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
     
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -175,13 +175,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="split-left">
         <div class="brand-content">
-            <img src="https://images.crashmedia.ca/images/2026/01/18/logo.png" alt="Logo" style="height: 80px; margin-bottom: 20px;">
-            <h1>ARTIC <span style="color: var(--neon);">WOLVES</span></h1>
+            <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo" style="height: 80px; margin-bottom: 20px;">
+            <h1>ARCTIC <span style="color: var(--neon);">WOLVES</span></h1>
             <p>Player Development. Track your progress. Dominate the ice.</p>
         </div>
         
         <div style="position: absolute; bottom: 30px; z-index: 2; font-size: 12px; color: rgba(255,255,255,0.4);">
-            &copy; <?php echo date('Y'); ?> Artic Wolves Performance.
+            &copy; <?php echo date('Y'); ?> Arctic Wolves Performance.
         </div>
     </div>
 

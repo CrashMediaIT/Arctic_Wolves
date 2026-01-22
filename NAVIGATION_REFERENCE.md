@@ -230,7 +230,7 @@ Columns:
 ```sql
 Columns:
 - id, session_type_id, location_id, title, description
-- session_date, duration_minutes, price, max_participants
+- session_date, duration_minutes, price, max_parcticipants
 - age_group, skill_level, team_id, coach_id, status
 - created_at, updated_at
 ```
