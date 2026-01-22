@@ -2,7 +2,7 @@
 // Fetch credits and refunds
 $creditsQuery = "SELECT cr.*, u.first_name, u.last_name
     FROM credits_refunds cr
-    LEFT JOIN users u ON cr.user_id = u.user_id
+    LEFT JOIN users u ON cr.user_id = u.id
     ORDER BY cr.created_at DESC
     LIMIT 20";
 $credits = $pdo->query($creditsQuery);

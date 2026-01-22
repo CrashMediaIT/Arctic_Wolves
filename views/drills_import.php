@@ -2,7 +2,7 @@
 // Fetch recently imported drills
 $recentImportsQuery = "SELECT d.*, u.first_name, u.last_name 
     FROM drills d 
-    LEFT JOIN users u ON d.created_by = u.user_id 
+    LEFT JOIN users u ON d.created_by = u.id 
     WHERE d.source = 'IHS' 
     ORDER BY d.created_at DESC 
     LIMIT 5";

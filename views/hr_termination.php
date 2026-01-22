@@ -2,7 +2,7 @@
 // Fetch recent terminations
 $terminationsQuery = "SELECT t.*, u.first_name, u.last_name, u.role
     FROM employee_terminations t
-    LEFT JOIN users u ON t.user_id = u.user_id
+    LEFT JOIN users u ON t.user_id = u.id
     ORDER BY t.termination_date DESC
     LIMIT 10";
 $terminations_stmt = $pdo->prepare($terminationsQuery);

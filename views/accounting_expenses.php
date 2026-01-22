@@ -1,8 +1,8 @@
 <?php
 // Fetch expenses
-$expensesQuery = "SELECT e.*, ec.category_name
+$expensesQuery = "SELECT e.*, ec.name as category_name
     FROM expenses e
-    LEFT JOIN expense_categories ec ON e.category_id = ec.category_id
+    LEFT JOIN expense_categories ec ON e.category_id = ec.id
     ORDER BY e.expense_date DESC
     LIMIT 20";
 $expenses = $pdo->query($expensesQuery);
