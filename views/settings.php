@@ -13,31 +13,33 @@
             <h3><i class="fas fa-sliders-h"></i> General Settings</h3>
         </div>
         <div class="card-body">
-            <form class="settings-form">
+            <form class="settings-form" method="POST" action="process_settings.php">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <input type="hidden" name="action" value="update_general">
                 <div class="form-group">
                     <label>Organization Name *</label>
-                    <input type="text" class="form-input" value="Arctic Wolves" required>
+                    <input type="text" name="org_name" class="form-input" value="Arctic Wolves" required>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Contact Email *</label>
-                        <input type="email" class="form-input" value="info@arcticwolves.ca" required>
+                        <input type="email" name="contact_email" class="form-input" value="info@arcticwolves.ca" required>
                     </div>
                     <div class="form-group">
                         <label>Contact Phone</label>
-                        <input type="tel" class="form-input" placeholder="(555) 123-4567">
+                        <input type="tel" name="contact_phone" class="form-input" placeholder="(555) 123-4567">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Organization Address</label>
-                    <textarea class="form-textarea" rows="3" placeholder="Full address"></textarea>
+                    <textarea name="org_address" class="form-textarea" rows="3" placeholder="Full address"></textarea>
                 </div>
 
                 <div class="form-group">
                     <label>Timezone *</label>
-                    <select class="form-input" required>
+                    <select name="timezone" class="form-input" required>
                         <option>-- Select Timezone --</option>
                         <option selected>America/New_York (EST)</option>
                         <option>America/Chicago (CST)</option>
@@ -49,7 +51,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Currency</label>
-                        <select class="form-input">
+                        <select name="currency" class="form-input">
                             <option selected>USD ($)</option>
                             <option>CAD ($)</option>
                             <option>EUR (€)</option>
@@ -57,7 +59,7 @@
                     </div>
                     <div class="form-group">
                         <label>Date Format</label>
-                        <select class="form-input">
+                        <select name="date_format" class="form-input">
                             <option selected>MM/DD/YYYY</option>
                             <option>DD/MM/YYYY</option>
                             <option>YYYY-MM-DD</option>

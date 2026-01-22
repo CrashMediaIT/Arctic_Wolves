@@ -65,10 +65,11 @@ try {
 <div class="users-content">
     <!-- Filter and Actions -->
     <div class="action-bar">
-        <div class="filter-group">
-            <input type="text" class="form-input search-input" placeholder="Search users..." 
-                   data-search-table="users" value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
-            <select class="form-select" data-filter-table="users" data-filter-column="role" id="roleFilter">
+        <form method="GET" action="" class="filter-group" style="display: flex; gap: 10px; flex: 1;">
+            <input type="hidden" name="page" value="admin_users">
+            <input type="text" name="search" class="form-input search-input" placeholder="Search users..." 
+                   value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
+            <select name="role" class="form-select" id="roleFilter">
                 <option value="">All Roles</option>
                 <option value="admin" <?php echo $role_filter === 'admin' ? 'selected' : ''; ?>>Admin</option>
                 <option value="coach" <?php echo $role_filter === 'coach' ? 'selected' : ''; ?>>Coach</option>
@@ -77,13 +78,14 @@ try {
                 <option value="athlete" <?php echo $role_filter === 'athlete' ? 'selected' : ''; ?>>Athlete</option>
                 <option value="parent" <?php echo $role_filter === 'parent' ? 'selected' : ''; ?>>Parent</option>
             </select>
-            <select class="form-select" data-filter-table="users" data-filter-column="status" id="statusFilter">
+            <select name="status" class="form-select" id="statusFilter">
                 <option value="">All Status</option>
                 <option value="active" <?php echo $status_filter === 'active' ? 'selected' : ''; ?>>Active</option>
                 <option value="inactive" <?php echo $status_filter === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
             </select>
-        </div>
-        <button class="btn btn-primary" data-action="add" onclick="openAddUserModal()">
+            <button type="submit" class="btn btn-secondary"><i class="fas fa-filter"></i> Filter</button>
+        </form>
+        <button class="btn btn-primary" onclick="openAddUserModal()">
             <i class="fas fa-user-plus"></i> Add User
         </button>
     </div>
@@ -92,9 +94,13 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-users"></i> All Users (<?php echo $total_users; ?>)</h3>
-            <button class="btn btn-secondary" data-action="export">
-                <i class="fas fa-file-export"></i> Export
-            </button>
+            <form method="POST" action="process_users.php" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <input type="hidden" name="action" value="export">
+                <button type="submit" class="btn btn-secondary">
+                    <i class="fas fa-file-export"></i> Export
+                </button>
+            </form>
         </div>
         <div class="card-body">
             <?php if (count($users) > 0): ?>
