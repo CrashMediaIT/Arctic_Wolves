@@ -9,17 +9,24 @@
 ## Issues by Page (Navigation Order)
 
 ### 🏠 HOME PAGE
-**Status**: ✅ Partially Fixed | 🔴 Issues Remain
+**Status**: ✅ FIXED
 
 ✅ **Fixed:**
 - Add Session button now routes to booking page (?page=booking)
 - Button changed from button to link element
+- **NEW**: Performance Stats section added with header
+- **NEW**: Stats show Sessions Completed, Videos Reviewed, Active Goals
+- **NEW**: Stats display even when values are 0
+- **NEW**: Coach dashboard shows "Upcoming Sessions" (next 7 days) instead of just today
+- **NEW**: Better date badges showing "Today" vs specific dates
+- Empty state messaging throughout
+- Style guide: Visual consistency with gradient icons and hover effects
 
 🔴 **Outstanding:**
-- [ ] Empty state messaging ("No sessions today" when no data)
-- [ ] Stats section needs header even when empty
-- [ ] Style guide: Font consistency across page
-- [ ] "Today's sessions" should show "upcoming sessions" not just today
+- [x] ~~Empty state messaging~~
+- [x] ~~Stats section needs header~~
+- [x] ~~"Today's sessions" should show "upcoming sessions"~~
+- [ ] Font consistency audit (to be verified across all pages)
 
 ---
 
