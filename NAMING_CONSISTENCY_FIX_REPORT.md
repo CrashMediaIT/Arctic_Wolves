@@ -19,7 +19,9 @@ All naming inconsistencies have been identified and corrected. The system is now
 - Log file paths: 
   - `artic_wolves_access.log` → `arctic_wolves_access.log`
   - `artic_wolves_error.log` → `arctic_wolves_error.log`
+  - Log directory: `/config/log/` → `/config/nginx/log/` (to match documented structure)
 - SSL certificate paths: `artic_wolves.ca` → `arctic_wolves.ca`
+- Timeout consistency: Updated fastcgi_read_timeout from 300s to 600s in location block to match global setting
 
 ### 2. Deployment Scripts
 **File:** `deployment/setup_evaluations.sh`
@@ -203,8 +205,8 @@ This is a pure PHP application with no external package manager dependencies (no
 7. Restrict access to setup.php after initial setup
 
 ### Monitoring
-1. Monitor nginx error logs: `/config/log/arctic_wolves_error.log`
-2. Monitor nginx access logs: `/config/log/arctic_wolves_access.log`
+1. Monitor nginx error logs: `/config/nginx/log/arctic_wolves_error.log`
+2. Monitor nginx access logs: `/config/nginx/log/arctic_wolves_access.log`
 3. Review security scan results weekly
 4. Monitor database backup jobs
 
