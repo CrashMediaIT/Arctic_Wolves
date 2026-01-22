@@ -30,10 +30,10 @@ if (!function_exists('loadEnv')) {
 // 2. LOAD ENVIRONMENT FILE
 // Multiple fallback paths for maximum compatibility
 $possible_paths = [
-    '/config/crashhockey.env',      // Production path
-    __DIR__ . '/crashhockey.env',   // Local path
-    __DIR__ . '/.env',              // Standard .env
-    '/var/www/html/crashhockey/.env' // Docker path
+    '/config/artic_wolves.env',      // Production path
+    __DIR__ . '/artic_wolves.env',   // Local path
+    __DIR__ . '/.env',               // Standard .env
+    '/var/www/html/artic_wolves/.env' // Docker path
 ];
 
 $env_loaded = false;
@@ -47,7 +47,7 @@ foreach ($possible_paths as $path) {
 // 3. DB CONNECTION PARAMETERS
 // Defaults provided for development
 $host = $_ENV['DB_HOST'] ?? 'localhost';
-$db   = $_ENV['DB_NAME'] ?? 'crashhockey';
+$db   = $_ENV['DB_NAME'] ?? 'artic_wolves';
 $user = $_ENV['DB_USER'] ?? 'root';
 $pass = $_ENV['DB_PASS'] ?? '';
 

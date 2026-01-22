@@ -1,6 +1,6 @@
 <?php
 // =========================================================
-// CRASH HOCKEY - SYSTEM SETUP WIZARD
+// ARTIC WOLVES - SYSTEM SETUP WIZARD
 // =========================================================
 // This wizard helps configure the system for first-time setup
 // It should be removed or restricted in production
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Save to .env file
             $env_content = "DB_HOST=$host\nDB_NAME=$name\nDB_USER=$user\nDB_PASS=$pass\n";
-            file_put_contents(__DIR__ . '/crashhockey.env', $env_content);
+            file_put_contents(__DIR__ . '/artic_wolves.env', $env_content);
             
             $_SESSION['setup']['database'] = true;
             $_SESSION['db_credentials'] = ['host' => $host, 'name' => $name, 'user' => $user, 'pass' => $pass];

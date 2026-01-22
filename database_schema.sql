@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS `users` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_role` (`role`),
-    INDEX `idx_email` (`email`)
+    INDEX `idx_email` (`email`),
+    INDEX `idx_role_verified` (`role`, `is_verified`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Parent-Athlete relationships
@@ -36,19 +37,6 @@ CREATE TABLE IF NOT EXISTS `parent_athlete_relationships` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Coach-Athlete assignments
-CREATE TABLE IF NOT EXISTS `coach_athlete_assignments` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `coach_id` INT NOT NULL,
-    `athlete_id` INT NOT NULL,
-    `assignment_type` ENUM('active', 'past') DEFAULT 'active',
-    `assigned_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `end_date` TIMESTAMP NULL,
-    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    INDEX `idx_coach` (`coach_id`),
-    INDEX `idx_athlete` (`athlete_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Teams
 CREATE TABLE IF NOT EXISTS `teams` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -128,7 +116,8 @@ CREATE TABLE IF NOT EXISTS `sessions` (
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_date` (`session_date`),
-    INDEX `idx_status` (`status`)
+    INDEX `idx_status` (`status`),
+    INDEX `idx_coach_date` (`coach_id`, `session_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Practice Plans
@@ -197,21 +186,6 @@ CREATE TABLE IF NOT EXISTS `practice_plan_drills` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Session bookings
-CREATE TABLE IF NOT EXISTS `session_bookings` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `session_id` INT NOT NULL,
-    `user_id` INT NOT NULL,
-    `booking_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `payment_status` ENUM('pending', 'paid', 'refunded', 'credit_used') DEFAULT 'pending',
-    `amount_paid` DECIMAL(10,2) DEFAULT 0.00,
-    `credits_used` INT DEFAULT 0,
-    `status` ENUM('booked', 'attended', 'no_show', 'cancelled') DEFAULT 'booked',
-    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    INDEX `idx_user` (`user_id`),
-    INDEX `idx_session` (`session_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Packages
 CREATE TABLE IF NOT EXISTS `packages` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -472,21 +446,6 @@ CREATE TABLE IF NOT EXISTS `goals` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage tracking
-CREATE TABLE IF NOT EXISTS `mileage_tracking` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT NOT NULL,
-    `trip_date` DATE NOT NULL,
-    `start_location` VARCHAR(255) NOT NULL,
-    `end_location` VARCHAR(255) NOT NULL,
-    `distance_km` DECIMAL(10,2) NOT NULL,
-    `purpose` VARCHAR(255) DEFAULT NULL,
-    `notes` TEXT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    INDEX `idx_user` (`user_id`),
-    INDEX `idx_date` (`trip_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Expenses
 CREATE TABLE IF NOT EXISTS `expenses` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -576,7 +535,8 @@ CREATE TABLE IF NOT EXISTS `athlete_evaluations` (
     FOREIGN KEY (`skill_id`) REFERENCES `eval_skills`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     INDEX `idx_athlete` (`athlete_id`),
-    INDEX `idx_skill` (`skill_id`)
+    INDEX `idx_skill` (`skill_id`),
+    INDEX `idx_athlete_date` (`athlete_id`, `evaluation_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Scheduled reports
@@ -606,23 +566,6 @@ CREATE TABLE IF NOT EXISTS `system_settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Audit log
-CREATE TABLE IF NOT EXISTS `audit_log` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT DEFAULT NULL,
-    `action` VARCHAR(100) NOT NULL,
-    `table_name` VARCHAR(100) DEFAULT NULL,
-    `record_id` INT DEFAULT NULL,
-    `old_values` TEXT DEFAULT NULL,
-    `new_values` TEXT DEFAULT NULL,
-    `ip_address` VARCHAR(45) DEFAULT NULL,
-    `user_agent` TEXT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
-    INDEX `idx_user` (`user_id`),
-    INDEX `idx_action` (`action`),
-    INDEX `idx_created` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Theme settings
 CREATE TABLE IF NOT EXISTS `theme_settings` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

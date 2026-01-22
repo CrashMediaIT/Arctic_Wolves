@@ -176,12 +176,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="split-left">
         <div class="brand-content">
             <img src="https://images.crashmedia.ca/images/2026/01/18/logo.png" alt="Logo" style="height: 80px; margin-bottom: 20px;">
-            <h1>CRASH <span style="color: var(--neon);">HOCKEY</span></h1>
-            <p>Elevate your game. Track your progress. Dominate the ice.</p>
+            <h1>ARTIC <span style="color: var(--neon);">WOLVES</span></h1>
+            <p>Player Development. Track your progress. Dominate the ice.</p>
         </div>
         
         <div style="position: absolute; bottom: 30px; z-index: 2; font-size: 12px; color: rgba(255,255,255,0.4);">
-            &copy; <?php echo date('Y'); ?> Crash Hockey Performance.
+            &copy; <?php echo date('Y'); ?> Artic Wolves Performance.
         </div>
     </div>
 
