@@ -21,7 +21,7 @@ if [ -f .env ]; then
     source <(grep -v '^#' .env | sed 's/\r$//' | sed 's/"/\\"/g' | sed "s/'/\\\'/g" | sed 's/=/="/g' | sed 's/$/"/g')
     
     echo "Database credentials found"
-    echo "Database: ${DB_NAME:-artic_wolves}"
+    echo "Database: ${DB_NAME:-arctic_wolves}"
     
     # Ask user if they want to create the tables
     read -p "Do you want to create the database tables now? (y/n): " -n 1 -r
@@ -34,7 +34,7 @@ if [ -f .env ]; then
         mysql -h"${DB_HOST:-localhost}" \
               -u"${DB_USER}" \
               -p"${DB_PASS}" \
-              "${DB_NAME:-artic_wolves}" \
+              "${DB_NAME:-arctic_wolves}" \
               < deployment/sql/goal_evaluations_schema.sql
         
         if [ $? -eq 0 ]; then
