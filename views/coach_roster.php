@@ -1,3 +1,57 @@
+<?php
+// Get filter parameters
+$search = $_GET['search'] ?? '';
+$filter_program = $_GET['program'] ?? 'all';
+$filter_age = $_GET['age_group'] ?? 'all';
+
+// Build query for athletes
+$athletes_query = "
+    SELECT u.id, u.first_name, u.last_name, u.email, u.date_of_birth,
+           (SELECT COUNT(*) FROM sessions WHERE athlete_id = u.id AND status = 'completed') as total_sessions,
+           (SELECT COUNT(*) FROM sessions WHERE athlete_id = u.id AND package_id IS NOT NULL) as package_sessions,
+           (SELECT MAX(session_date) FROM sessions WHERE athlete_id = u.id) as last_session,
+           p.name as program_name
+    FROM users u
+    LEFT JOIN athlete_programs ap ON ap.athlete_id = u.id AND ap.status = 'active'
+    LEFT JOIN programs p ON ap.program_id = p.id
+    WHERE u.role = 'athlete' AND u.is_active = 1
+    AND EXISTS (SELECT 1 FROM sessions WHERE (coach_id = ? OR assistant_coach_id = ?) AND athlete_id = u.id)
+";
+
+$params = [$user_id, $user_id];
+
+// Apply search filter
+if (!empty($search)) {
+    $athletes_query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+}
+
+// Apply program filter  
+if ($filter_program !== 'all') {
+    $athletes_query .= " AND p.id = ?";
+    $params[] = $filter_program;
+}
+
+// Apply age group filter
+if ($filter_age !== 'all') {
+    [$min_age, $max_age] = explode('-', $filter_age);
+    $athletes_query .= " AND TIMESTAMPDIFF(YEAR, u.date_of_birth, CURDATE()) BETWEEN ? AND ?";
+    $params[] = $min_age;
+    $params[] = $max_age;
+}
+
+$athletes_query .= " ORDER BY u.last_name, u.first_name LIMIT 100";
+
+$athletes_stmt = $pdo->prepare($athletes_query);
+$athletes_stmt->execute($params);
+$athletes = $athletes_stmt->fetchAll();
+
+// Get programs for filter
+$programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER BY name")->fetchAll();
+?>
+
 <!-- Coach Roster View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -9,37 +63,41 @@
 <div class="coach-roster-content">
     <!-- Filter and Actions Bar -->
     <div class="action-bar">
-        <div class="filter-group">
-            <input type="text" class="form-input-small" placeholder="Search athletes...">
-            <select class="form-input-small">
-                <option>All Programs</option>
-                <option>Individual Training</option>
-                <option>Team Training</option>
-                <option>Skills Development</option>
+        <form method="GET" action="" class="filter-group">
+            <input type="hidden" name="page" value="coach_roster">
+            <input type="text" name="search" class="form-input-small" placeholder="Search athletes..." value="<?= htmlspecialchars($search) ?>" data-action="search-debounce">
+            <select name="program" class="form-input-small" data-action="auto-submit">
+                <option value="all">All Programs</option>
+                <?php foreach ($programs as $prog): ?>
+                    <option value="<?= $prog['id'] ?>" <?= $filter_program == $prog['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($prog['name']) ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
-            <select class="form-input-small">
-                <option>All Age Groups</option>
-                <option>Under 10</option>
-                <option>Under 12</option>
-                <option>Under 14</option>
-                <option>Under 16</option>
-                <option>Under 18</option>
+            <select name="age_group" class="form-input-small" data-action="auto-submit">
+                <option value="all">All Age Groups</option>
+                <option value="6-9" <?= $filter_age === '6-9' ? 'selected' : '' ?>>Under 10</option>
+                <option value="10-11" <?= $filter_age === '10-11' ? 'selected' : '' ?>>Under 12</option>
+                <option value="12-13" <?= $filter_age === '12-13' ? 'selected' : '' ?>>Under 14</option>
+                <option value="14-15" <?= $filter_age === '14-15' ? 'selected' : '' ?>>Under 16</option>
+                <option value="16-17" <?= $filter_age === '16-17' ? 'selected' : '' ?>>Under 18</option>
             </select>
-        </div>
-        <button class="btn-primary"><i class="fas fa-user-plus"></i> Add Athlete</button>
+        </form>
+        <button class="btn-primary" data-action="add-athlete"><i class="fas fa-user-plus"></i> Add Athlete</button>
     </div>
 
     <!-- Athletes Table -->
     <div class="content-card">
         <div class="card-header">
-            <h3><i class="fas fa-users"></i> My Athletes (15)</h3>
+            <h3><i class="fas fa-users"></i> My Athletes (<?= count($athletes) ?>)</h3>
             <div class="view-toggle">
-                <button class="view-btn active"><i class="fas fa-table"></i></button>
-                <button class="view-btn"><i class="fas fa-th"></i></button>
+                <button class="view-btn active" data-view="table"><i class="fas fa-table"></i></button>
+                <button class="view-btn" data-view="grid"><i class="fas fa-th"></i></button>
             </div>
         </div>
         <div class="card-body">
-            <div class="athletes-table-container">
+            <?php if (count($athletes) > 0): ?>
+            <div class="athletes-table-container" data-component="DataTable">
                 <table class="athletes-table">
                     <thead>
                         <tr>
@@ -53,111 +111,56 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
+                        <?php foreach ($athletes as $athlete): 
+                            $age = date_diff(date_create($athlete['date_of_birth']), date_create('today'))->y;
+                            $session_progress = $athlete['package_sessions'] > 0 ? ($athlete['total_sessions'] / $athlete['package_sessions']) * 100 : 0;
+                        ?>
+                        <tr data-athlete-id="<?= $athlete['id'] ?>">
                             <td>
                                 <div class="athlete-cell">
                                     <div class="athlete-avatar-small">
                                         <i class="fas fa-user"></i>
                                     </div>
                                     <div class="athlete-info">
-                                        <div class="athlete-name">John Smith</div>
-                                        <div class="athlete-email">john.smith@email.com</div>
+                                        <div class="athlete-name"><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></div>
+                                        <div class="athlete-email"><?= htmlspecialchars($athlete['email']) ?></div>
                                     </div>
                                 </div>
                             </td>
-                            <td>14</td>
-                            <td><span class="program-badge">Individual</span></td>
+                            <td><?= $age ?></td>
+                            <td><span class="program-badge"><?= htmlspecialchars($athlete['program_name'] ?? 'None') ?></span></td>
                             <td>
                                 <div class="sessions-info">
-                                    <span class="sessions-count">12 / 20</span>
+                                    <span class="sessions-count"><?= $athlete['total_sessions'] ?> / <?= $athlete['package_sessions'] ?></span>
                                     <div class="mini-progress">
-                                        <div class="mini-progress-bar" style="width: 60%;"></div>
+                                        <div class="mini-progress-bar" style="width: <?= min($session_progress, 100) ?>%;"></div>
                                     </div>
                                 </div>
                             </td>
-                            <td>Jan 15, 2024</td>
+                            <td><?= $athlete['last_session'] ? date('M d, Y', strtotime($athlete['last_session'])) : 'Never' ?></td>
                             <td>
-                                <span class="progress-badge excellent">Excellent</span>
+                                <span class="progress-badge <?= $session_progress >= 70 ? 'excellent' : ($session_progress >= 40 ? 'good' : 'needs-attention') ?>">
+                                    <?= $session_progress >= 70 ? 'Excellent' : ($session_progress >= 40 ? 'Good' : 'Needs Attention') ?>
+                                </span>
                             </td>
                             <td>
                                 <div class="table-actions">
-                                    <button class="btn-icon" title="View Profile"><i class="fas fa-eye"></i></button>
-                                    <button class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></button>
-                                    <button class="btn-icon" title="Message"><i class="fas fa-envelope"></i></button>
+                                    <button class="btn-icon" title="View Profile" data-action="view-profile" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-eye"></i></button>
+                                    <button class="btn-icon" title="Schedule Session" data-action="schedule-session" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-calendar-plus"></i></button>
+                                    <button class="btn-icon" title="Message" data-action="message-athlete" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-envelope"></i></button>
                                 </div>
                             </td>
                         </tr>
-                        <tr>
-                            <td>
-                                <div class="athlete-cell">
-                                    <div class="athlete-avatar-small">
-                                        <i class="fas fa-user"></i>
-                                    </div>
-                                    <div class="athlete-info">
-                                        <div class="athlete-name">Sarah Johnson</div>
-                                        <div class="athlete-email">sarah.j@email.com</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>16</td>
-                            <td><span class="program-badge">Team</span></td>
-                            <td>
-                                <div class="sessions-info">
-                                    <span class="sessions-count">8 / 15</span>
-                                    <div class="mini-progress">
-                                        <div class="mini-progress-bar" style="width: 53%;"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>Jan 14, 2024</td>
-                            <td>
-                                <span class="progress-badge good">Good</span>
-                            </td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View Profile"><i class="fas fa-eye"></i></button>
-                                    <button class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></button>
-                                    <button class="btn-icon" title="Message"><i class="fas fa-envelope"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="athlete-cell">
-                                    <div class="athlete-avatar-small">
-                                        <i class="fas fa-user"></i>
-                                    </div>
-                                    <div class="athlete-info">
-                                        <div class="athlete-name">Mike Williams</div>
-                                        <div class="athlete-email">m.williams@email.com</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>12</td>
-                            <td><span class="program-badge">Skills</span></td>
-                            <td>
-                                <div class="sessions-info">
-                                    <span class="sessions-count">5 / 10</span>
-                                    <div class="mini-progress">
-                                        <div class="mini-progress-bar" style="width: 50%;"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>Jan 10, 2024</td>
-                            <td>
-                                <span class="progress-badge needs-attention">Needs Attention</span>
-                            </td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View Profile"><i class="fas fa-eye"></i></button>
-                                    <button class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></button>
-                                    <button class="btn-icon" title="Message"><i class="fas fa-envelope"></i></button>
-                                </div>
-                            </td>
-                        </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
+            <?php else: ?>
+            <div class="placeholder-container">
+                <i class="fas fa-users placeholder-icon"></i>
+                <p class="placeholder-text">No athletes found. Adjust your filters or add new athletes.</p>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

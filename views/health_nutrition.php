@@ -1,3 +1,55 @@
+<?php
+// Get nutrition plan for athlete
+$nutrition_query = "
+    SELECT np.*, 
+           CONCAT(c.first_name, ' ', c.last_name) as coach_name
+    FROM nutrition_plans np
+    LEFT JOIN users c ON np.coach_id = c.id
+    WHERE np.athlete_id = ? AND np.status = 'active'
+    ORDER BY np.created_at DESC
+    LIMIT 1
+";
+$nutrition_stmt = $pdo->prepare($nutrition_query);
+$nutrition_stmt->execute([$user_id]);
+$nutrition_plan = $nutrition_stmt->fetch();
+
+// Get today's meals
+$meals_query = "
+    SELECT m.*, ml.is_logged, ml.logged_at
+    FROM meals m
+    LEFT JOIN meal_logs ml ON ml.meal_id = m.id AND DATE(ml.logged_at) = CURDATE() AND ml.athlete_id = ?
+    WHERE m.plan_id = ? AND m.day_of_week = DAYOFWEEK(CURDATE())
+    ORDER BY m.meal_time
+";
+$meals = [];
+$daily_totals = [
+    'calories' => 0,
+    'protein' => 0,
+    'carbs' => 0,
+    'fats' => 0,
+    'calories_goal' => $nutrition_plan['daily_calories'] ?? 2500,
+    'protein_goal' => $nutrition_plan['daily_protein'] ?? 180,
+    'carbs_goal' => $nutrition_plan['daily_carbs'] ?? 300,
+    'fats_goal' => $nutrition_plan['daily_fats'] ?? 70
+];
+
+if ($nutrition_plan) {
+    $meals_stmt = $pdo->prepare($meals_query);
+    $meals_stmt->execute([$user_id, $nutrition_plan['id']]);
+    $meals = $meals_stmt->fetchAll();
+    
+    // Calculate daily totals from logged meals
+    foreach ($meals as $meal) {
+        if ($meal['is_logged']) {
+            $daily_totals['calories'] += $meal['calories'];
+            $daily_totals['protein'] += $meal['protein_g'];
+            $daily_totals['carbs'] += $meal['carbs_g'];
+            $daily_totals['fats'] += $meal['fats_g'];
+        }
+    }
+}
+?>
+
 <!-- Health Nutrition View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -7,35 +59,36 @@
 </div>
 
 <div class="nutrition-content">
+    <?php if ($nutrition_plan): ?>
     <!-- Daily Overview Card -->
-    <div class="daily-overview-card">
+    <div class="daily-overview-card" data-component="NutritionOverview">
         <h3><i class="fas fa-calendar-day"></i> Today's Nutrition</h3>
         <div class="macros-grid">
             <div class="macro-card">
                 <div class="macro-circle calories">
-                    <div class="macro-value">1850</div>
-                    <div class="macro-target">/ 2500</div>
+                    <div class="macro-value"><?= $daily_totals['calories'] ?></div>
+                    <div class="macro-target">/ <?= $daily_totals['calories_goal'] ?></div>
                 </div>
                 <div class="macro-label">Calories</div>
             </div>
             <div class="macro-card">
                 <div class="macro-circle protein">
-                    <div class="macro-value">120g</div>
-                    <div class="macro-target">/ 180g</div>
+                    <div class="macro-value"><?= $daily_totals['protein'] ?>g</div>
+                    <div class="macro-target">/ <?= $daily_totals['protein_goal'] ?>g</div>
                 </div>
                 <div class="macro-label">Protein</div>
             </div>
             <div class="macro-card">
                 <div class="macro-circle carbs">
-                    <div class="macro-value">210g</div>
-                    <div class="macro-target">/ 300g</div>
+                    <div class="macro-value"><?= $daily_totals['carbs'] ?>g</div>
+                    <div class="macro-target">/ <?= $daily_totals['carbs_goal'] ?>g</div>
                 </div>
                 <div class="macro-label">Carbs</div>
             </div>
             <div class="macro-card">
                 <div class="macro-circle fats">
-                    <div class="macro-value">45g</div>
-                    <div class="macro-target">/ 70g</div>
+                    <div class="macro-value"><?= $daily_totals['fats'] ?>g</div>
+                    <div class="macro-target">/ <?= $daily_totals['fats_goal'] ?>g</div>
                 </div>
                 <div class="macro-label">Fats</div>
             </div>
@@ -46,115 +99,50 @@
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-utensils"></i> Today's Meal Plan</h3>
-            <button class="btn-primary"><i class="fas fa-plus"></i> Log Meal</button>
+            <button class="btn-primary" data-action="log-meal"><i class="fas fa-plus"></i> Log Meal</button>
         </div>
         <div class="card-body">
             <div class="meals-timeline">
-                <!-- Breakfast -->
-                <div class="meal-item completed">
-                    <div class="meal-time">
-                        <i class="fas fa-check-circle"></i>
-                        <span>7:00 AM</span>
-                    </div>
-                    <div class="meal-content">
-                        <h4><i class="fas fa-mug-hot"></i> Breakfast</h4>
-                        <ul class="meal-foods">
-                            <li>Oatmeal with berries - 350 cal</li>
-                            <li>2 Eggs - 140 cal</li>
-                            <li>Whole wheat toast - 80 cal</li>
-                        </ul>
-                        <div class="meal-macros">
-                            <span><strong>P:</strong> 25g</span>
-                            <span><strong>C:</strong> 55g</span>
-                            <span><strong>F:</strong> 15g</span>
+                <?php if (count($meals) > 0): ?>
+                    <?php foreach ($meals as $meal): ?>
+                    <div class="meal-item <?= $meal['is_logged'] ? 'completed' : 'pending' ?>" data-component="MealItem" data-meal-id="<?= $meal['id'] ?>">
+                        <div class="meal-time">
+                            <i class="fas fa-<?= $meal['is_logged'] ? 'check-circle' : 'circle' ?>"></i>
+                            <span><?= date('g:i A', strtotime($meal['meal_time'])) ?></span>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Morning Snack -->
-                <div class="meal-item completed">
-                    <div class="meal-time">
-                        <i class="fas fa-check-circle"></i>
-                        <span>10:00 AM</span>
-                    </div>
-                    <div class="meal-content">
-                        <h4><i class="fas fa-cookie-bite"></i> Morning Snack</h4>
-                        <ul class="meal-foods">
-                            <li>Greek yogurt with granola - 220 cal</li>
-                            <li>Banana - 105 cal</li>
-                        </ul>
-                        <div class="meal-macros">
-                            <span><strong>P:</strong> 15g</span>
-                            <span><strong>C:</strong> 45g</span>
-                            <span><strong>F:</strong> 5g</span>
+                        <div class="meal-content">
+                            <h4><i class="fas fa-<?= $meal['meal_type_icon'] ?? 'utensils' ?>"></i> <?= htmlspecialchars($meal['meal_name']) ?></h4>
+                            <ul class="meal-foods">
+                                <?php 
+                                $foods = json_decode($meal['foods_json'], true) ?? [];
+                                foreach ($foods as $food): 
+                                ?>
+                                    <li><?= htmlspecialchars($food['name']) ?> - <?= $food['calories'] ?> cal</li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <div class="meal-macros">
+                                <span><strong>P:</strong> <?= $meal['protein_g'] ?>g</span>
+                                <span><strong>C:</strong> <?= $meal['carbs_g'] ?>g</span>
+                                <span><strong>F:</strong> <?= $meal['fats_g'] ?>g</span>
+                            </div>
                         </div>
+                        <?php if (!$meal['is_logged']): ?>
+                            <button class="btn-secondary btn-small" data-action="log-meal" data-meal-id="<?= $meal['id'] ?>">Log</button>
+                        <?php endif; ?>
                     </div>
-                </div>
-
-                <!-- Lunch -->
-                <div class="meal-item pending">
-                    <div class="meal-time">
-                        <i class="fas fa-circle"></i>
-                        <span>12:30 PM</span>
-                    </div>
-                    <div class="meal-content">
-                        <h4><i class="fas fa-hamburger"></i> Lunch</h4>
-                        <ul class="meal-foods">
-                            <li>Grilled chicken breast - 250 cal</li>
-                            <li>Brown rice - 215 cal</li>
-                            <li>Steamed vegetables - 80 cal</li>
-                        </ul>
-                        <div class="meal-macros">
-                            <span><strong>P:</strong> 40g</span>
-                            <span><strong>C:</strong> 60g</span>
-                            <span><strong>F:</strong> 10g</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Afternoon Snack -->
-                <div class="meal-item pending">
-                    <div class="meal-time">
-                        <i class="fas fa-circle"></i>
-                        <span>3:30 PM</span>
-                    </div>
-                    <div class="meal-content">
-                        <h4><i class="fas fa-candy-cane"></i> Pre-Training Snack</h4>
-                        <ul class="meal-foods">
-                            <li>Protein shake - 180 cal</li>
-                            <li>Apple with peanut butter - 200 cal</li>
-                        </ul>
-                        <div class="meal-macros">
-                            <span><strong>P:</strong> 20g</span>
-                            <span><strong>C:</strong> 35g</span>
-                            <span><strong>F:</strong> 8g</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Dinner -->
-                <div class="meal-item pending">
-                    <div class="meal-time">
-                        <i class="fas fa-circle"></i>
-                        <span>7:00 PM</span>
-                    </div>
-                    <div class="meal-content">
-                        <h4><i class="fas fa-pizza-slice"></i> Dinner</h4>
-                        <ul class="meal-foods">
-                            <li>Salmon fillet - 280 cal</li>
-                            <li>Sweet potato - 180 cal</li>
-                            <li>Mixed green salad - 60 cal</li>
-                        </ul>
-                        <div class="meal-macros">
-                            <span><strong>P:</strong> 35g</span>
-                            <span><strong>C:</strong> 50g</span>
-                            <span><strong>F:</strong> 15g</span>
-                        </div>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="placeholder-text">No meal plan for today. Contact your coach for a nutrition plan.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
+    <?php else: ?>
+    <div class="placeholder-container">
+        <i class="fas fa-apple-alt placeholder-icon"></i>
+        <p class="placeholder-text">No active nutrition plan. Contact your coach to create one.</p>
+    </div>
+    <?php endif; ?>
 
     <!-- Nutrition Tips -->
     <div class="content-card">
