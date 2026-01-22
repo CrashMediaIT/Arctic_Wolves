@@ -290,3 +290,199 @@
     border-top: 1px solid var(--border);
 }
 </style>
+
+<!-- Add Session Type Modal -->
+<div id="add-session-type-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Session Type</h2>
+            <button class="modal-close" onclick="closeModal('add-session-type-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_session_type">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Session Name *</label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Price *</label>
+                        <input type="number" name="price" class="form-input" step="0.01" min="0" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Duration (minutes) *</label>
+                        <input type="number" name="duration" class="form-input" min="15" step="15" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Max Participants</label>
+                        <input type="number" name="max_participants" class="form-input" min="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="is_active" class="form-input">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-session-type-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Session Type</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Package Modal -->
+<div id="add-package-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Create Package</h2>
+            <button class="modal-close" onclick="closeModal('add-package-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_packages.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Package Name *</label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Price *</label>
+                        <input type="number" name="price" class="form-input" step="0.01" min="0" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Number of Sessions *</label>
+                        <input type="number" name="session_count" class="form-input" min="1" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Validity (days)</label>
+                        <input type="number" name="validity_days" class="form-input" min="1" placeholder="e.g., 90">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="is_active" class="form-input">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" name="featured" value="1"> Featured Package
+                    </label>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-package-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Package</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Discount Modal -->
+<div id="add-discount-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Create Discount</h2>
+            <button class="modal-close" onclick="closeModal('add-discount-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_discount">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Discount Code *</label>
+                    <input type="text" name="code" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" name="description" class="form-input">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Discount Type *</label>
+                        <select name="type" class="form-input" required>
+                            <option value="">Select Type</option>
+                            <option value="percentage">Percentage</option>
+                            <option value="fixed">Fixed Amount</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Value *</label>
+                        <input type="number" name="value" class="form-input" step="0.01" min="0" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" name="start_date" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="date" name="end_date" class="form-input">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Usage Limit</label>
+                        <input type="number" name="usage_limit" class="form-input" min="1" placeholder="Leave empty for unlimited">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="is_active" class="form-input">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-discount-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Discount</button>
+            </div>
+        </form>
+    </div>
+</div>

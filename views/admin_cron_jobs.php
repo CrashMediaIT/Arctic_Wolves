@@ -11,7 +11,7 @@
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-tasks"></i> Active Cron Jobs</h3>
-            <button class="btn-primary"><i class="fas fa-plus"></i> Add Cron Job</button>
+            <button class="btn-primary" data-action="add" data-modal="add-cron-job-modal"><i class="fas fa-plus"></i> Add Cron Job</button>
         </div>
         <div class="card-body">
             <div class="cron-list">
@@ -203,3 +203,86 @@
     gap: 8px;
 }
 </style>
+
+<!-- Add Cron Job Modal -->
+<div id="add-cron-job-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Cron Job</h2>
+            <button class="modal-close" onclick="closeModal('add-cron-job-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_cron_jobs.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Job Name *</label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Command/Script *</label>
+                    <input type="text" name="command" class="form-input" required placeholder="e.g., cron_notifications.php">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Schedule *</label>
+                    <select name="schedule" class="form-input" required>
+                        <option value="">Select Schedule</option>
+                        <option value="*/5 * * * *">Every 5 minutes</option>
+                        <option value="*/15 * * * *">Every 15 minutes</option>
+                        <option value="*/30 * * * *">Every 30 minutes</option>
+                        <option value="0 * * * *">Every hour</option>
+                        <option value="0 0 * * *">Daily at midnight</option>
+                        <option value="0 8 * * *">Daily at 8:00 AM</option>
+                        <option value="0 0 * * 0">Weekly on Sunday</option>
+                        <option value="0 0 1 * *">Monthly on 1st</option>
+                        <option value="custom">Custom (cron syntax)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="custom-schedule-group" style="display: none;">
+                    <label class="form-label">Custom Cron Expression</label>
+                    <input type="text" name="custom_schedule" class="form-input" placeholder="* * * * *">
+                    <small style="color: var(--text-dim);">Format: minute hour day month weekday</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="is_active" class="form-input">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-cron-job-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Cron Job</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const scheduleSelect = document.querySelector('select[name="schedule"]');
+    const customGroup = document.getElementById('custom-schedule-group');
+    
+    if (scheduleSelect) {
+        scheduleSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customGroup.style.display = 'block';
+            } else {
+                customGroup.style.display = 'none';
+            }
+        });
+    }
+});
+</script>

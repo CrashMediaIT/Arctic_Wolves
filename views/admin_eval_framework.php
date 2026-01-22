@@ -280,3 +280,92 @@
     border-radius: 4px;
 }
 </style>
+
+<!-- Add Evaluation Category Modal -->
+<div id="add-eval-category-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Evaluation Category</h2>
+            <button class="modal-close" onclick="closeModal('add-eval-category-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_category">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Category Name *</label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Weight (%)</label>
+                    <input type="number" name="weight" class="form-input" min="0" max="100" step="1">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Icon (Font Awesome class)</label>
+                    <input type="text" name="icon" class="form-input" placeholder="e.g., fa-star">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-eval-category-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Scale Modal -->
+<div id="add-scale-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Evaluation Scale</h2>
+            <button class="modal-close" onclick="closeModal('add-scale-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_scale">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Scale Name *</label>
+                    <input type="text" name="name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="2"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Min Value *</label>
+                        <input type="number" name="min_value" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Max Value *</label>
+                        <input type="number" name="max_value" class="form-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Step</label>
+                    <input type="number" name="step" class="form-input" step="0.1" value="1">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-scale-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Scale</button>
+            </div>
+        </form>
+    </div>
+</div>
