@@ -1,7 +1,7 @@
 <?php
 /**
  * System Validator Utility Class
- * Comprehensive system validation for Crash Hockey platform
+ * Comprehensive system validation for Artic Wolves platform
  * Performs file system audits, database integrity checks, code cross-references, and security scans
  */
 

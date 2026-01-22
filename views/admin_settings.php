@@ -321,7 +321,7 @@ function getSetting($settings, $key, $default = '') {
                 <div class="form-group">
                     <label class="form-label">Site Name</label>
                     <input type="text" name="site_name" class="form-input" 
-                           value="<?= htmlspecialchars(getSetting($settings, 'site_name', 'Crash Hockey')) ?>" required>
+                           value="<?= htmlspecialchars(getSetting($settings, 'site_name', 'Artic Wolves')) ?>" required>
                     <div class="help-text">Display name for the application</div>
                 </div>
                 
@@ -416,7 +416,7 @@ function getSetting($settings, $key, $default = '') {
                 <div class="form-group">
                     <label class="form-label">From Name</label>
                     <input type="text" name="smtp_from_name" class="form-input" 
-                           value="<?= htmlspecialchars(getSetting($settings, 'smtp_from_name', 'Crash Hockey')) ?>" required>
+                           value="<?= htmlspecialchars(getSetting($settings, 'smtp_from_name', 'Artic Wolves')) ?>" required>
                 </div>
             </div>
             

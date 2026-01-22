@@ -16,13 +16,13 @@
             <form class="settings-form">
                 <div class="form-group">
                     <label>Organization Name *</label>
-                    <input type="text" class="form-input" value="Crash Hockey" required>
+                    <input type="text" class="form-input" value="Artic Wolves" required>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Contact Email *</label>
-                        <input type="email" class="form-input" value="info@crashhockey.com" required>
+                        <input type="email" class="form-input" value="info@articwolves.ca" required>
                     </div>
                     <div class="form-group">
                         <label>Contact Phone</label>

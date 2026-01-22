@@ -21,13 +21,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     try {
         // 1. Verify Database Selection
-        // This checks if we are actually connected to 'crash_hockey'
+        // This checks if we are actually connected to 'artic_wolves'
         $stmt = $pdo->query("SELECT DATABASE()");
         $current_db = $stmt->fetchColumn();
         echo "Connected to database: <strong>$current_db</strong><br>";
 
-        if ($current_db != 'crash_hockey') {
-            die("<span style='color:red'>CRITICAL ERROR: Connected to '$current_db' but expected 'crash_hockey'. Check your .env file.</span>");
+        if ($current_db != 'artic_wolves') {
+            die("<span style='color:red'>CRITICAL ERROR: Connected to '$current_db' but expected 'artic_wolves'. Check your .env file.</span>");
         }
 
         // 2. Attempt the Query

@@ -1,6 +1,6 @@
 <?php
 // =========================================================
-// CRASH HOCKEY - SYSTEM SETUP WIZARD
+// ARTIC WOLVES - SYSTEM SETUP WIZARD
 // =========================================================
 // This wizard helps configure the system for first-time setup
 // It should be removed or restricted in production
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Save to .env file
             $env_content = "DB_HOST=$host\nDB_NAME=$name\nDB_USER=$user\nDB_PASS=$pass\n";
-            file_put_contents(__DIR__ . '/crashhockey.env', $env_content);
+            file_put_contents(__DIR__ . '/artic_wolves.env', $env_content);
             
             $_SESSION['setup']['database'] = true;
             $_SESSION['db_credentials'] = ['host' => $host, 'name' => $name, 'user' => $user, 'pass' => $pass];
@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Setup Wizard | Crash Hockey</title>
+    <title>Setup Wizard | Artic Wolves</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -222,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="form-group">
                     <label>Database Name</label>
-                    <input type="text" name="db_name" value="crashhockey" required>
+                    <input type="text" name="db_name" value="artic_wolves" required>
                 </div>
                 <div class="form-group">
                     <label>Database User</label>

@@ -536,7 +536,7 @@ function generatePDFHTML($report_type, $data, $parameters) {
         <?php endif; ?>
         
         <div class="footer">
-            <strong>Crash Hockey Platform</strong><br>
+            <strong>Artic Wolves Platform</strong><br>
             Confidential - For Internal Use Only
         </div>
     </body>

@@ -49,7 +49,7 @@ $colors = array_merge($defaults, $theme_colors);
 // Get branding settings
 $logo_url = $theme_colors['logo_url'] ?? '';
 $hero_image_url = $theme_colors['hero_image_url'] ?? '';
-$hero_title = $theme_colors['hero_title'] ?? 'Crash Hockey Development';
+$hero_title = $theme_colors['hero_title'] ?? 'Artic Wolves Player Development';
 $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-ice training protocols designed for competitive athletes seeking elite performance levels.';
 ?>
 

@@ -58,7 +58,7 @@
                                 </div>
                             </td>
                             <td><span class="role-badge admin">Admin</span></td>
-                            <td>john@crashhockey.com</td>
+                            <td>john@articwolves.ca</td>
                             <td>(555) 123-4567</td>
                             <td>Jan 1, 2024</td>
                             <td><span class="status-badge active">Active</span></td>

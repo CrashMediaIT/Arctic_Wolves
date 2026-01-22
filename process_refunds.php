@@ -375,7 +375,7 @@ function processStripeRefund($payment_intent_id, $amount, $secret_key) {
  */
 function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $session_name, $reason, $method, $expiry_date = '', $exchange_session_name = '') {
     if ($method === 'refund') {
-        $subject = 'Refund Processed - Crash Hockey';
+        $subject = 'Refund Processed - Artic Wolves';
         $body = "
         <html>
         <body style='font-family: Arial, sans-serif; color: #333;'>
@@ -389,12 +389,12 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
             </div>
             <p>The refund will appear in your account within 5-10 business days.</p>
             <p>If you have any questions, please contact us.</p>
-            <p>Best regards,<br>Crash Hockey Team</p>
+            <p>Best regards,<br>Artic Wolves Team</p>
         </body>
         </html>
         ";
     } elseif ($method === 'credit') {
-        $subject = 'Store Credit Issued - Crash Hockey';
+        $subject = 'Store Credit Issued - Artic Wolves';
         $body = "
         <html>
         <body style='font-family: Arial, sans-serif; color: #333;'>
@@ -410,12 +410,12 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
             <p>This credit can be applied to any future booking. It will be automatically available at checkout.</p>
             <p><a href='https://" . $_SERVER['HTTP_HOST'] . "/dashboard.php?page=user_credits' style='background: #7000a4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 10px;'>View My Credits</a></p>
             <p>If you have any questions, please contact us.</p>
-            <p>Best regards,<br>Crash Hockey Team</p>
+            <p>Best regards,<br>Artic Wolves Team</p>
         </body>
         </html>
         ";
     } elseif ($method === 'exchange') {
-        $subject = 'Booking Exchange Completed - Crash Hockey';
+        $subject = 'Booking Exchange Completed - Artic Wolves';
         $body = "
         <html>
         <body style='font-family: Arial, sans-serif; color: #333;'>
@@ -430,7 +430,7 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
             <p>Your new booking is confirmed. You can view it in your dashboard.</p>
             <p><a href='https://" . $_SERVER['HTTP_HOST'] . "/dashboard.php?page=session_history' style='background: #7000a4; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 10px;'>View My Bookings</a></p>
             <p>If you have any questions, please contact us.</p>
-            <p>Best regards,<br>Crash Hockey Team</p>
+            <p>Best regards,<br>Artic Wolves Team</p>
         </body>
         </html>
         ";

@@ -174,7 +174,7 @@ try {
                 $pdo,
                 $athlete_id,
                 'account',
-                'Welcome to Crash Hockey',
+                'Welcome to Artic Wolves',
                 'Your account has been created. Please check your email for login credentials.',
                 'dashboard.php?page=profile',
                 false // Don't send email notification since we already sent welcome email

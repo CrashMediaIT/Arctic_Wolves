@@ -32,7 +32,7 @@ try {
             $schedule = trim($_POST['schedule'] ?? '');
             $backup_type = $_POST['backup_type'] ?? 'scheduled';
             $destination_type = $_POST['destination_type'] ?? 'nextcloud';
-            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/CrashHockey/Backups/');
+            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/ArticWolves/Backups/');
             $smb_path = trim($_POST['smb_path'] ?? '');
             $smb_username = trim($_POST['smb_username'] ?? '');
             $smb_password = trim($_POST['smb_password'] ?? '');
@@ -87,7 +87,7 @@ try {
             $name = trim($_POST['name'] ?? '');
             $schedule = trim($_POST['schedule'] ?? '');
             $destination_type = $_POST['destination_type'] ?? 'nextcloud';
-            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/CrashHockey/Backups/');
+            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/ArticWolves/Backups/');
             $smb_path = trim($_POST['smb_path'] ?? '');
             $smb_username = trim($_POST['smb_username'] ?? '');
             $smb_password = trim($_POST['smb_password'] ?? '');
@@ -209,7 +209,7 @@ try {
 function performBackup($pdo, $job) {
     try {
         // Generate filename
-        $filename = 'crashhockey_backup_' . date('Ymd_His') . '.sql.gz';
+        $filename = 'artic_wolves_backup_' . date('Ymd_His') . '.sql.gz';
         $temp_dir = __DIR__ . '/tmp/';
         
         if (!is_dir($temp_dir)) {
