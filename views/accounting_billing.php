@@ -10,7 +10,7 @@ $invoices = $pdo->query($invoicesQuery);
 // Fetch recent payments
 $paymentsQuery = "SELECT p.*, i.invoice_number, u.first_name, u.last_name
     FROM payments p
-    LEFT JOIN invoices i ON p.invoice_id = i.invoice_id
+    LEFT JOIN invoices i ON p.invoice_id = i.id
     LEFT JOIN users u ON p.user_id = u.id
     ORDER BY p.payment_date DESC
     LIMIT 5";

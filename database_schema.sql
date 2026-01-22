@@ -501,6 +501,25 @@ CREATE TABLE IF NOT EXISTS `transactions` (
     INDEX `idx_type` (`transaction_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Payments (detailed payment tracking)
+CREATE TABLE IF NOT EXISTS `payments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `invoice_id` INT DEFAULT NULL,
+    `amount` DECIMAL(10,2) NOT NULL,
+    `payment_method` VARCHAR(50) DEFAULT NULL,
+    `payment_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `transaction_id` VARCHAR(255) DEFAULT NULL,
+    `payment_status` ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'completed',
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_invoice` (`invoice_id`),
+    INDEX `idx_date` (`payment_date`),
+    INDEX `idx_status` (`payment_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- System notifications
 CREATE TABLE IF NOT EXISTS `notifications` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
