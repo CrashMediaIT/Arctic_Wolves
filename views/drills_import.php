@@ -6,7 +6,7 @@ $recentImportsQuery = "SELECT d.*, u.first_name, u.last_name
     WHERE d.source = 'IHS' 
     ORDER BY d.created_at DESC 
     LIMIT 5";
-$recentImports = mysqli_query($conn, $recentImportsQuery);
+$recentImports = $pdo->query($recentImportsQuery);
 ?>
 <!-- Import Drill from IHS View -->
 <div class="page-header">
@@ -141,8 +141,8 @@ $recentImports = mysqli_query($conn, $recentImportsQuery);
         </div>
         <div class="card-body">
             <div class="recent-imports-list">
-                <?php if(mysqli_num_rows($recentImports) > 0): ?>
-                    <?php while($import = mysqli_fetch_assoc($recentImports)): ?>
+                <?php if($recentImports && $recentImports->rowCount() > 0): ?>
+                    <?php while($import = $recentImports->fetch()): ?>
                         <div class="import-history-item">
                             <div class="import-icon">
                                 <i class="fas fa-file-import"></i>

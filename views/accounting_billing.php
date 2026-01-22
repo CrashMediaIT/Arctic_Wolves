@@ -5,7 +5,7 @@ $invoicesQuery = "SELECT i.*, u.first_name, u.last_name, u.email
     LEFT JOIN users u ON i.user_id = u.user_id
     ORDER BY i.invoice_date DESC
     LIMIT 20";
-$invoices = mysqli_query($conn, $invoicesQuery);
+$invoices = $pdo->query($invoicesQuery);
 
 // Fetch recent payments
 $paymentsQuery = "SELECT p.*, i.invoice_number, u.first_name, u.last_name
@@ -14,7 +14,7 @@ $paymentsQuery = "SELECT p.*, i.invoice_number, u.first_name, u.last_name
     LEFT JOIN users u ON p.user_id = u.user_id
     ORDER BY p.payment_date DESC
     LIMIT 5";
-$payments = mysqli_query($conn, $paymentsQuery);
+$payments = $pdo->query($paymentsQuery);
 ?>
 <!-- Accounting Billing View -->
 <div class="page-header">
@@ -70,8 +70,8 @@ $payments = mysqli_query($conn, $paymentsQuery);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if(mysqli_num_rows($invoices) > 0): ?>
-                            <?php while($invoice = mysqli_fetch_assoc($invoices)): 
+                        <?php if($invoices && $invoices->rowCount() > 0): ?>
+                            <?php while($invoice = $invoices->fetch()): 
                                 $initials = strtoupper(substr($invoice['first_name'], 0, 1) . substr($invoice['last_name'], 0, 1));
                                 $statusClass = strtolower($invoice['status']);
                             ?>
@@ -116,8 +116,8 @@ $payments = mysqli_query($conn, $paymentsQuery);
         </div>
         <div class="card-body">
             <div class="payments-list">
-                <?php if(mysqli_num_rows($payments) > 0): ?>
-                    <?php while($payment = mysqli_fetch_assoc($payments)): ?>
+                <?php if($payments && $payments->rowCount() > 0): ?>
+                    <?php while($payment = $payments->fetch()): ?>
                         <div class="payment-item">
                             <div class="payment-icon">
                                 <i class="fas fa-<?= $payment['payment_method'] === 'credit_card' ? 'credit-card' : 'money-check' ?>"></i>

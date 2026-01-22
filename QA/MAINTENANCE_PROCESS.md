@@ -221,7 +221,56 @@ For each affected table:
 - [ ] Character set UTF-8
 - [ ] Timezone configuration
 
-### 5.5 Process File Database Calls
+### 5.5 PDO Consistency Check
+**CRITICAL**: The codebase uses PDO for all database operations. Ensure consistency:
+- [ ] **NO mysqli usage**: No `$conn`, `mysqli_query()`, `mysqli_fetch_assoc()`, etc.
+- [ ] **Use $pdo object**: All database calls use `$pdo` from `db_config.php`
+- [ ] **PDO Query Syntax**: Use `$pdo->query()` or `$pdo->prepare()->execute()`
+- [ ] **PDO Fetch Methods**: Use `->fetch()`, `->fetchAll()`, `->rowCount()`
+- [ ] **Prepared Statements**: Use parameterized queries with `->execute([params])`
+- [ ] **Error Handling**: Wrap in try-catch blocks for PDOException
+
+#### Common Conversions
+```php
+// ❌ WRONG (mysqli)
+$result = mysqli_query($conn, $sql);
+while($row = mysqli_fetch_assoc($result)) { }
+if(mysqli_num_rows($result) > 0) { }
+
+// ✅ CORRECT (PDO)
+$result = $pdo->query($sql);
+while($row = $result->fetch()) { }
+if($result && $result->rowCount() > 0) { }
+
+// ❌ WRONG (mysqli prepared)
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("s", $param);
+$stmt->execute();
+$result = $stmt->get_result();
+
+// ✅ CORRECT (PDO prepared)
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$param]);
+while($row = $stmt->fetch()) { }
+```
+
+#### Files to Check
+- [ ] `dashboard.php` - Check parent athlete selector
+- [ ] All `views/*.php` - Check query syntax
+- [ ] All `process_*.php` - Check database operations
+- [ ] Custom scripts and cron jobs
+
+#### Quick Scan Commands
+```bash
+# Find any mysqli usage (should return nothing)
+grep -rn "mysqli_" --include="*.php" .
+grep -rn "\$conn->" --include="*.php" . | grep -v "connection\|config\|mailer"
+
+# Find PDO usage (should find many)
+grep -rn "\$pdo->" --include="*.php" .
+```
+
+### 5.6 Process File Database Calls
 For each process file:
 - [ ] SELECT queries reference correct columns
 - [ ] INSERT queries include all required columns

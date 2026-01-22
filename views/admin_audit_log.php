@@ -5,7 +5,7 @@ $auditQuery = "SELECT a.*, u.first_name, u.last_name, u.email
     LEFT JOIN users u ON a.user_id = u.user_id
     ORDER BY a.timestamp DESC
     LIMIT 50";
-$auditLogs = mysqli_query($conn, $auditQuery);
+$auditLogs = $pdo->query($auditQuery);
 ?>
 <!-- Admin Audit Log View -->
 <div class="page-header">
@@ -57,8 +57,8 @@ $auditLogs = mysqli_query($conn, $auditQuery);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if(mysqli_num_rows($auditLogs) > 0): ?>
-                            <?php while($log = mysqli_fetch_assoc($auditLogs)): 
+                        <?php if($auditLogs && $auditLogs->rowCount() > 0): ?>
+                            <?php while($log = $auditLogs->fetch()): 
                                 $userName = $log['first_name'] ? ($log['first_name'] . ' ' . $log['last_name']) : 'Unknown';
                                 $actionType = strtolower(str_replace(' ', '-', $log['action_type']));
                                 $statusClass = $log['success'] ? 'success' : 'failed';
