@@ -32,8 +32,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if ($user) {
             // Check if account is verified
-            if (isset($user['is_verified']) && $user['is_verified'] == 0) {
+            if (isset($user['is_verified']) && $user['is_verified'] === 0) {
                 $_SESSION['login_error'] = "Account pending verification. Please check your email for the verification code.";
+                $_SESSION['show_verify_link'] = true;
                 ErrorLogger::security("Login attempt for unverified account", ['email' => $email]);
                 header("Location: login.php");
                 exit();
@@ -57,7 +58,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 ]);
 
                 // Check if password change is required (for coach-created accounts)
-                if (isset($user['force_pass_change']) && $user['force_pass_change'] == 1) {
+                if (isset($user['force_pass_change']) && $user['force_pass_change'] === 1) {
                     header("Location: force_change_password.php");
                     exit();
                 }

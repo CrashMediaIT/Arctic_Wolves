@@ -14,11 +14,13 @@ $show_verify_link = false; // Flag to show the "Enter Code" button
 // Check if there's a login error from process_login.php
 if (isset($_SESSION['login_error'])) {
     $error = $_SESSION['login_error'];
-    // Check if it's a verification error to show the verify button
-    if (strpos($error, 'verification') !== false || strpos($error, 'verified') !== false) {
-        $show_verify_link = true;
-    }
     unset($_SESSION['login_error']);
+}
+
+// Check if we should show the verification link
+if (isset($_SESSION['show_verify_link']) && $_SESSION['show_verify_link'] === true) {
+    $show_verify_link = true;
+    unset($_SESSION['show_verify_link']);
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -34,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($user && password_verify($pass, $user['password'])) {
         
         // 1. CHECK VERIFICATION STATUS
-        if ($user['is_verified'] == 0) {
+        if ($user['is_verified'] === 0) {
             $error = "Account pending verification.";
             $show_verify_link = true; // Trigger the verification button
         } else {
@@ -46,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['user_email'] = $user['email']; // Useful for test emails
             
             // 3. CHECK FORCE PASSWORD CHANGE (Coach-created accounts)
-            if (isset($user['force_pass_change']) && $user['force_pass_change'] == 1) {
+            if (isset($user['force_pass_change']) && $user['force_pass_change'] === 1) {
                 header("Location: force_change_password.php");
                 exit();
             }
