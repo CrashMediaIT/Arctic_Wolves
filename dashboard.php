@@ -420,7 +420,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
 <aside class="sidebar">
     <a href="?page=home" class="brand">
-        <img src="https://images.crashmedia.ca/images/2026/01/21/ArticWolves.png" alt="Logo">
+        <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo">
         ARCTIC <span>WOLVES</span>
     </a>
     
