@@ -143,12 +143,25 @@ $view_mode = $_GET['view'] ?? 'list';
                 <button class="btn-icon" id="nextMonth"><i class="fas fa-chevron-right"></i></button>
             </div>
             <div class="calendar-grid" id="calendarGrid">
-                <!-- Calendar grid will be populated by JavaScript or PHP -->
-                <div class="placeholder-container">
-                    <i class="fas fa-calendar placeholder-icon"></i>
-                    <p class="placeholder-text">Calendar view - sessions will be displayed here</p>
-                </div>
+                <!-- Calendar grid will be populated by JavaScript -->
             </div>
+        </div>
+        
+        <!-- Hidden session data for JavaScript -->
+        <div id="sessionsData" style="display: none;">
+            <?php foreach ($sessions as $session): 
+                $session_datetime = strtotime($session['session_date']);
+            ?>
+            <div class="session-data" 
+                 data-component="SessionCard"
+                 data-session-id="<?= $session['id'] ?>"
+                 data-date="<?= date('Y-m-d', $session_datetime) ?>"
+                 data-time="<?= date('g:i A', $session_datetime) ?>"
+                 data-title="<?= htmlspecialchars($session['session_type_name']) ?>"
+                 data-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>"
+                 data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>">
+            </div>
+            <?php endforeach; ?>
         </div>
     <?php else: ?>
         <!-- List View -->
@@ -406,4 +419,131 @@ $view_mode = $_GET['view'] ?? 'list';
 .calendar-grid {
     min-height: 400px;
 }
+
+.calendar-container {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.calendar-day-header {
+    background: var(--bg-main);
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+.calendar-day {
+    background: var(--bg-card);
+    min-height: 100px;
+    padding: 8px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.calendar-day:hover {
+    background: rgba(107, 70, 193, 0.05);
+}
+
+.calendar-day.empty {
+    background: var(--bg-main);
+    cursor: default;
+}
+
+.calendar-day.today {
+    background: rgba(107, 70, 193, 0.1);
+    border: 2px solid var(--neon);
+}
+
+.calendar-day.has-sessions {
+    background: rgba(107, 70, 193, 0.08);
+}
+
+.day-number {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 8px;
+}
+
+.calendar-day.today .day-number {
+    color: var(--neon);
+}
+
+.day-sessions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.session-indicator {
+    background: linear-gradient(135deg, var(--neon), var(--accent));
+    color: white;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.session-indicator:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(107, 70, 193, 0.4);
+}
+
+.session-indicator.more {
+    background: var(--bg-main);
+    color: var(--text-dim);
+    cursor: default;
+}
+
+.btn-icon {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-white);
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover {
+    background: var(--neon);
+    border-color: var(--neon);
+}
+
+@media (max-width: 768px) {
+    .calendar-container {
+        font-size: 12px;
+    }
+    
+    .calendar-day {
+        min-height: 80px;
+        padding: 4px;
+    }
+    
+    .session-indicator {
+        font-size: 9px;
+        padding: 2px 4px;
+    }
+}
 </style>
+
+<!-- Include calendar JavaScript -->
+<script src="js/calendar.js"></script>

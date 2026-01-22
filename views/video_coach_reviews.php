@@ -61,10 +61,22 @@ $videos = $video_stmt->fetchAll();
 </div>
 
 <div class="coach-video-content">
-    <!-- Action Bar -->
-    <div class="action-bar">
-        <button class="btn-primary btn-lg" data-action="show-upload-form"><i class="fas fa-upload"></i> Upload Video</button>
-        <form method="GET" action="" class="filter-group">
+    <!-- Tabs Navigation -->
+    <div class="tabs-container">
+        <div class="tabs-nav">
+            <button class="tab-btn active" data-action="switch-tab" data-tab="pending">
+                <i class="fas fa-clock"></i> Pending
+            </button>
+            <button class="tab-btn" data-action="switch-tab" data-tab="reviewed">
+                <i class="fas fa-check-circle"></i> Reviewed
+            </button>
+            <button class="tab-btn" data-action="switch-tab" data-tab="upload">
+                <i class="fas fa-upload"></i> Upload
+            </button>
+        </div>
+        
+        <!-- Filters (shown for pending and reviewed tabs) -->
+        <form method="GET" action="" class="filter-group tabs-filters">
             <input type="hidden" name="page" value="coaches_reviews">
             <select name="filter_athlete" class="form-input-small" data-action="auto-submit">
                 <option value="all">All Athletes</option>
@@ -82,9 +94,118 @@ $videos = $video_stmt->fetchAll();
             </select>
         </form>
     </div>
+    
+    <?php
+    // Separate videos by status
+    $pending_videos = array_filter($videos, function($v) { 
+        return $v['status'] === 'pending_review'; 
+    });
+    $reviewed_videos = array_filter($videos, function($v) { 
+        return $v['status'] === 'reviewed'; 
+    });
+    ?>
 
-    <!-- Upload Section (Initially Hidden) -->
-    <div class="upload-section" id="uploadSection" style="display: none;">
+    <!-- Tab Content: Pending Videos -->
+    <div class="tab-content active" id="tab-pending">
+        <div class="videos-list">
+            <h3 class="section-title">Pending Reviews (<?= count($pending_videos) ?>)</h3>
+            
+            <?php if (count($pending_videos) > 0): ?>
+                <?php foreach ($pending_videos as $video): ?>
+                <div class="video-list-item" data-component="VideoListItem" data-video-id="<?= $video['id'] ?>">
+                    <div class="video-thumbnail-small">
+                        <?php if (!empty($video['thumbnail_url'])): ?>
+                            <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Thumbnail">
+                        <?php else: ?>
+                            <i class="fas fa-video"></i>
+                        <?php endif; ?>
+                    </div>
+                    <div class="video-details">
+                        <h4><?= htmlspecialchars($video['drill_name']) ?> - <?= htmlspecialchars($video['athlete_name']) ?></h4>
+                        <div class="video-meta">
+                            <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
+                            <?php if (!empty($video['duration'])): ?>
+                                <span><i class="fas fa-clock"></i> <?= htmlspecialchars($video['duration']) ?></span>
+                            <?php endif; ?>
+                            <span><i class="fas fa-tag"></i> <?= htmlspecialchars($video['drill_type']) ?></span>
+                        </div>
+                    </div>
+                    <div class="video-status-badge">
+                        <span class="badge-warning">
+                            <i class="fas fa-clock"></i> Pending
+                        </span>
+                    </div>
+                    <div class="video-actions-inline">
+                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="placeholder-container">
+                    <i class="fas fa-clock placeholder-icon"></i>
+                    <p class="placeholder-text">No pending reviews. All videos have been reviewed!</p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Tab Content: Reviewed Videos -->
+    <div class="tab-content" id="tab-reviewed">
+        <div class="videos-list">
+            <h3 class="section-title">Reviewed Videos (<?= count($reviewed_videos) ?>)</h3>
+            
+            <?php if (count($reviewed_videos) > 0): ?>
+                <?php foreach ($reviewed_videos as $video): ?>
+                <div class="video-list-item" data-component="VideoListItem" data-video-id="<?= $video['id'] ?>">
+                    <div class="video-thumbnail-small">
+                        <?php if (!empty($video['thumbnail_url'])): ?>
+                            <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Thumbnail">
+                        <?php else: ?>
+                            <i class="fas fa-video"></i>
+                        <?php endif; ?>
+                    </div>
+                    <div class="video-details">
+                        <h4><?= htmlspecialchars($video['drill_name']) ?> - <?= htmlspecialchars($video['athlete_name']) ?></h4>
+                        <div class="video-meta">
+                            <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
+                            <?php if (!empty($video['duration'])): ?>
+                                <span><i class="fas fa-clock"></i> <?= htmlspecialchars($video['duration']) ?></span>
+                            <?php endif; ?>
+                            <span><i class="fas fa-tag"></i> <?= htmlspecialchars($video['drill_type']) ?></span>
+                        </div>
+                        <?php if ($video['rating'] > 0): ?>
+                            <div class="video-rating">
+                                <?php for ($i = 1; $i <= 5; $i++): ?>
+                                    <i class="<?= $i <= $video['rating'] ? 'fas' : 'far' ?> fa-star"></i>
+                                <?php endfor; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="video-status-badge">
+                        <span class="badge-success">
+                            <i class="fas fa-check-circle"></i> Reviewed
+                        </span>
+                    </div>
+                    <div class="video-actions-inline">
+                        <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="placeholder-container">
+                    <i class="fas fa-check-circle placeholder-icon"></i>
+                    <p class="placeholder-text">No reviewed videos yet. Review pending videos to see them here.</p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Tab Content: Upload Section -->
+    <div class="tab-content" id="tab-upload">
         <div class="upload-card">
             <h3><i class="fas fa-cloud-upload-alt"></i> Upload Review Video</h3>
             
@@ -160,67 +281,81 @@ $videos = $video_stmt->fetchAll();
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-action="hide-upload-form">Cancel</button>
+                    <button type="button" class="btn-secondary" data-action="cancel">Cancel</button>
                     <button type="submit" class="btn-primary" data-action="submit-form"><i class="fas fa-check"></i> Upload Video</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <!-- Videos List -->
-    <div class="videos-list">
-        <h3 class="section-title">Recent Uploads (<?= count($videos) ?>)</h3>
-        
-        <?php if (count($videos) > 0): ?>
-            <?php foreach ($videos as $video): ?>
-            <div class="video-list-item" data-component="VideoListItem" data-video-id="<?= $video['id'] ?>">
-                <div class="video-thumbnail-small">
-                    <?php if (!empty($video['thumbnail_url'])): ?>
-                        <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Thumbnail">
-                    <?php else: ?>
-                        <i class="fas fa-video"></i>
-                    <?php endif; ?>
-                </div>
-                <div class="video-details">
-                    <h4><?= htmlspecialchars($video['drill_name']) ?> - <?= htmlspecialchars($video['athlete_name']) ?></h4>
-                    <div class="video-meta">
-                        <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
-                        <?php if (!empty($video['duration'])): ?>
-                            <span><i class="fas fa-clock"></i> <?= htmlspecialchars($video['duration']) ?></span>
-                        <?php endif; ?>
-                        <span><i class="fas fa-tag"></i> <?= htmlspecialchars($video['drill_type']) ?></span>
-                    </div>
-                    <?php if ($video['rating'] > 0): ?>
-                        <div class="video-rating">
-                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                <i class="<?= $i <= $video['rating'] ? 'fas' : 'far' ?> fa-star"></i>
-                            <?php endfor; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-                <div class="video-status-badge">
-                    <span class="badge-<?= $video['review_status'] === 'reviewed' ? 'success' : 'warning' ?>">
-                        <i class="fas fa-<?= $video['review_status'] === 'reviewed' ? 'check-circle' : 'clock' ?>"></i> 
-                        <?= ucfirst($video['review_status']) ?>
-                    </span>
-                </div>
-                <div class="video-actions-inline">
-                    <button class="btn-icon" title="View" data-action="view-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-eye"></i></button>
-                    <button class="btn-icon" title="Edit" data-action="edit-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon" title="Delete" data-action="delete-video" data-video-id="<?= $video['id'] ?>"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <div class="placeholder-container">
-                <i class="fas fa-video placeholder-icon"></i>
-                <p class="placeholder-text">No videos uploaded yet. Click "Upload Video" to add your first review video.</p>
-            </div>
-        <?php endif; ?>
-    </div>
 </div>
 
 <style>
+.tabs-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.tabs-nav {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    padding: 12px 24px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-btn:hover {
+    color: var(--text-white);
+    border-color: var(--neon);
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, var(--neon), var(--accent));
+    color: white;
+    border-color: var(--neon);
+}
+
+.tab-btn i {
+    font-size: 14px;
+}
+
+.tabs-filters {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
 .action-bar {
     background: var(--bg-card);
     border: 1px solid var(--border);

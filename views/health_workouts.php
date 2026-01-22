@@ -80,42 +80,49 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 </div>
 
 <div class="workouts-content">
-    <?php if ($current_program): ?>
-    <!-- Current Program Card -->
-    <div class="current-program-card" data-component="ProgramCard">
-        <div class="program-header">
-            <div>
-                <h3><i class="fas fa-fire"></i> Active Program</h3>
-                <p class="program-name"><?= htmlspecialchars($current_program['name']) ?></p>
-            </div>
-            <button class="btn-primary" data-action="start-workout" data-program-id="<?= $current_program['id'] ?>"><i class="fas fa-play"></i> Start Workout</button>
+    <!-- Current Program Section (Always show header) -->
+    <div class="content-section">
+        <div class="section-header-main">
+            <h2><i class="fas fa-fire"></i> Active Program</h2>
         </div>
-        <div class="program-progress">
-            <div class="progress-stats">
-                <div class="stat">
-                    <span class="stat-value"><?= $current_program['completed_workouts'] ?></span>
-                    <span class="stat-label">Workouts Completed</span>
+        
+        <?php if ($current_program): ?>
+        <div class="current-program-card" data-component="ProgramCard">
+            <div class="program-header">
+                <div>
+                    <p class="program-name"><?= htmlspecialchars($current_program['name']) ?></p>
                 </div>
-                <div class="stat">
-                    <span class="stat-value"><?= $current_program['week_workouts'] ?></span>
-                    <span class="stat-label">This Week</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value"><?= number_format($program_progress, 0) ?>%</span>
-                    <span class="stat-label">Program Progress</span>
-                </div>
+                <button class="btn-primary" data-action="start-workout" data-program-id="<?= $current_program['id'] ?>"><i class="fas fa-play"></i> Start Workout</button>
             </div>
-            <div class="progress-bar-container">
-                <div class="progress-bar" style="width: <?= $program_progress ?>%;"></div>
+            <div class="program-progress">
+                <div class="progress-stats">
+                    <div class="stat">
+                        <span class="stat-value"><?= $current_program['completed_workouts'] ?></span>
+                        <span class="stat-label">Workouts Completed</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value"><?= $current_program['week_workouts'] ?></span>
+                        <span class="stat-label">This Week</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value"><?= number_format($program_progress, 0) ?>%</span>
+                        <span class="stat-label">Program Progress</span>
+                    </div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: <?= $program_progress ?>%;"></div>
+                </div>
             </div>
         </div>
+        <?php else: ?>
+        <div class="empty-state-card">
+            <i class="fas fa-dumbbell empty-state-icon"></i>
+            <h3 class="empty-state-title">No Workout Plan Currently Assigned</h3>
+            <p class="empty-state-text">Contact your coach to get a personalized workout program tailored to your hockey training needs.</p>
+            <button class="btn-secondary" data-action="contact" data-page="coach"><i class="fas fa-envelope"></i> Contact Coach</button>
+        </div>
+        <?php endif; ?>
     </div>
-    <?php else: ?>
-    <div class="placeholder-container">
-        <i class="fas fa-dumbbell placeholder-icon"></i>
-        <p class="placeholder-text">No active workout program. Contact your coach to get started.</p>
-    </div>
-    <?php endif; ?>
 
     <!-- Workout Calendar -->
     <div class="content-card">
@@ -243,6 +250,60 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 </div>
 
 <style>
+.content-section {
+    margin-bottom: 30px;
+}
+
+.section-header-main {
+    margin-bottom: 20px;
+}
+
+.section-header-main h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-header-main h2 i {
+    color: var(--neon);
+}
+
+.empty-state-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 60px 40px;
+    text-align: center;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    color: var(--neon);
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 20px;
+}
+
+.empty-state-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 12px;
+}
+
+.empty-state-text {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 24px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .current-program-card {
     background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
     border: 1px solid var(--neon);

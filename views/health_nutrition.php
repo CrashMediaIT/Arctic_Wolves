@@ -49,90 +49,99 @@ if ($nutrition_plan) {
 </div>
 
 <div class="nutrition-content">
-    <?php if ($nutrition_plan): ?>
-    <!-- Daily Overview Card -->
-    <div class="daily-overview-card" data-component="NutritionOverview">
-        <h3><i class="fas fa-calendar-day"></i> Today's Nutrition</h3>
-        <div class="macros-grid">
-            <div class="macro-card">
-                <div class="macro-circle calories">
-                    <div class="macro-value"><?= $daily_totals['calories'] ?></div>
-                    <div class="macro-target">/ <?= $daily_totals['calories_goal'] ?></div>
-                </div>
-                <div class="macro-label">Calories</div>
-            </div>
-            <div class="macro-card">
-                <div class="macro-circle protein">
-                    <div class="macro-value"><?= $daily_totals['protein'] ?>g</div>
-                    <div class="macro-target">/ <?= $daily_totals['protein_goal'] ?>g</div>
-                </div>
-                <div class="macro-label">Protein</div>
-            </div>
-            <div class="macro-card">
-                <div class="macro-circle carbs">
-                    <div class="macro-value"><?= $daily_totals['carbs'] ?>g</div>
-                    <div class="macro-target">/ <?= $daily_totals['carbs_goal'] ?>g</div>
-                </div>
-                <div class="macro-label">Carbs</div>
-            </div>
-            <div class="macro-card">
-                <div class="macro-circle fats">
-                    <div class="macro-value"><?= $daily_totals['fats'] ?>g</div>
-                    <div class="macro-target">/ <?= $daily_totals['fats_goal'] ?>g</div>
-                </div>
-                <div class="macro-label">Fats</div>
-            </div>
+    <!-- Nutrition Plan Section (Always show header) -->
+    <div class="content-section">
+        <div class="section-header-main">
+            <h2><i class="fas fa-apple-alt"></i> Active Nutrition Plan</h2>
         </div>
-    </div>
-
-    <!-- Meal Plan -->
-    <div class="content-card">
-        <div class="card-header">
-            <h3><i class="fas fa-utensils"></i> Today's Meal Plan</h3>
-            <button class="btn-primary" data-action="log-meal"><i class="fas fa-plus"></i> Log Meal</button>
-        </div>
-        <div class="card-body">
-            <div class="meals-timeline">
-                <?php if (count($meals) > 0): ?>
-                    <?php foreach ($meals as $meal): ?>
-                    <div class="meal-item <?= $meal['is_logged'] ? 'completed' : 'pending' ?>" data-component="MealItem" data-meal-id="<?= $meal['id'] ?>">
-                        <div class="meal-time">
-                            <i class="fas fa-<?= $meal['is_logged'] ? 'check-circle' : 'circle' ?>"></i>
-                            <span><?= date('g:i A', strtotime($meal['meal_time'])) ?></span>
-                        </div>
-                        <div class="meal-content">
-                            <h4><i class="fas fa-<?= $meal['meal_type_icon'] ?? 'utensils' ?>"></i> <?= htmlspecialchars($meal['meal_name']) ?></h4>
-                            <ul class="meal-foods">
-                                <?php 
-                                $foods = json_decode($meal['foods_json'], true) ?? [];
-                                foreach ($foods as $food): 
-                                ?>
-                                    <li><?= htmlspecialchars($food['name']) ?> - <?= $food['calories'] ?> cal</li>
-                                <?php endforeach; ?>
-                            </ul>
-                            <div class="meal-macros">
-                                <span><strong>P:</strong> <?= $meal['protein_g'] ?>g</span>
-                                <span><strong>C:</strong> <?= $meal['carbs_g'] ?>g</span>
-                                <span><strong>F:</strong> <?= $meal['fats_g'] ?>g</span>
-                            </div>
-                        </div>
-                        <?php if (!$meal['is_logged']): ?>
-                            <button class="btn-secondary btn-small" data-action="log-meal" data-meal-id="<?= $meal['id'] ?>">Log</button>
-                        <?php endif; ?>
+        
+        <?php if ($nutrition_plan): ?>
+        <!-- Daily Overview Card -->
+        <div class="daily-overview-card" data-component="NutritionOverview">
+            <h3><i class="fas fa-calendar-day"></i> Today's Nutrition</h3>
+            <div class="macros-grid">
+                <div class="macro-card">
+                    <div class="macro-circle calories">
+                        <div class="macro-value"><?= $daily_totals['calories'] ?></div>
+                        <div class="macro-target">/ <?= $daily_totals['calories_goal'] ?></div>
                     </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <p class="placeholder-text">No meal plan for today. Contact your coach for a nutrition plan.</p>
-                <?php endif; ?>
+                    <div class="macro-label">Calories</div>
+                </div>
+                <div class="macro-card">
+                    <div class="macro-circle protein">
+                        <div class="macro-value"><?= $daily_totals['protein'] ?>g</div>
+                        <div class="macro-target">/ <?= $daily_totals['protein_goal'] ?>g</div>
+                    </div>
+                    <div class="macro-label">Protein</div>
+                </div>
+                <div class="macro-card">
+                    <div class="macro-circle carbs">
+                        <div class="macro-value"><?= $daily_totals['carbs'] ?>g</div>
+                        <div class="macro-target">/ <?= $daily_totals['carbs_goal'] ?>g</div>
+                    </div>
+                    <div class="macro-label">Carbs</div>
+                </div>
+                <div class="macro-card">
+                    <div class="macro-circle fats">
+                        <div class="macro-value"><?= $daily_totals['fats'] ?>g</div>
+                        <div class="macro-target">/ <?= $daily_totals['fats_goal'] ?>g</div>
+                    </div>
+                    <div class="macro-label">Fats</div>
+                </div>
             </div>
         </div>
+
+        <!-- Meal Plan -->
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-utensils"></i> Today's Meal Plan</h3>
+                <button class="btn-primary" data-action="log-meal"><i class="fas fa-plus"></i> Log Meal</button>
+            </div>
+            <div class="card-body">
+                <div class="meals-timeline">
+                    <?php if (count($meals) > 0): ?>
+                        <?php foreach ($meals as $meal): ?>
+                        <div class="meal-item <?= $meal['is_logged'] ? 'completed' : 'pending' ?>" data-component="MealItem" data-meal-id="<?= $meal['id'] ?>">
+                            <div class="meal-time">
+                                <i class="fas fa-<?= $meal['is_logged'] ? 'check-circle' : 'circle' ?>"></i>
+                                <span><?= date('g:i A', strtotime($meal['meal_time'])) ?></span>
+                            </div>
+                            <div class="meal-content">
+                                <h4><i class="fas fa-<?= $meal['meal_type_icon'] ?? 'utensils' ?>"></i> <?= htmlspecialchars($meal['meal_name']) ?></h4>
+                                <ul class="meal-foods">
+                                    <?php 
+                                    $foods = json_decode($meal['foods_json'], true) ?? [];
+                                    foreach ($foods as $food): 
+                                    ?>
+                                        <li><?= htmlspecialchars($food['name']) ?> - <?= $food['calories'] ?> cal</li>
+                                    <?php endforeach; ?>
+                                </ul>
+                                <div class="meal-macros">
+                                    <span><strong>P:</strong> <?= $meal['protein_g'] ?>g</span>
+                                    <span><strong>C:</strong> <?= $meal['carbs_g'] ?>g</span>
+                                    <span><strong>F:</strong> <?= $meal['fats_g'] ?>g</span>
+                                </div>
+                            </div>
+                            <?php if (!$meal['is_logged']): ?>
+                                <button class="btn-secondary btn-small" data-action="log-meal" data-meal-id="<?= $meal['id'] ?>">Log</button>
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="placeholder-text">No meal plan for today. Contact your coach for a nutrition plan.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php else: ?>
+        <div class="empty-state-card">
+            <i class="fas fa-apple-alt empty-state-icon"></i>
+            <h3 class="empty-state-title">No Nutrition Plan Currently Assigned</h3>
+            <p class="empty-state-text">Get a customized nutrition plan from your coach to optimize your performance and recovery. Proper nutrition is key to athletic success!</p>
+            <button class="btn-secondary" data-action="contact" data-page="coach"><i class="fas fa-envelope"></i> Contact Coach</button>
+        </div>
+        <?php endif; ?>
     </div>
-    <?php else: ?>
-    <div class="placeholder-container">
-        <i class="fas fa-apple-alt placeholder-icon"></i>
-        <p class="placeholder-text">No active nutrition plan. Contact your coach to create one.</p>
-    </div>
-    <?php endif; ?>
 
     <!-- Nutrition Tips -->
     <div class="content-card">
@@ -162,6 +171,60 @@ if ($nutrition_plan) {
 </div>
 
 <style>
+.content-section {
+    margin-bottom: 30px;
+}
+
+.section-header-main {
+    margin-bottom: 20px;
+}
+
+.section-header-main h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-header-main h2 i {
+    color: var(--neon);
+}
+
+.empty-state-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 60px 40px;
+    text-align: center;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    color: var(--neon);
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 20px;
+}
+
+.empty-state-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 12px;
+}
+
+.empty-state-text {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 24px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .daily-overview-card {
     background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
     border: 1px solid var(--neon);
