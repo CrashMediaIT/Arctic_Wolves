@@ -25,16 +25,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     try {
         // Query user
-        $sql = "SELECT id, first_name, last_name, password, role, active FROM users WHERE email = ? LIMIT 1";
+        $sql = "SELECT id, first_name, last_name, password, role, is_verified, force_pass_change FROM users WHERE email = ? LIMIT 1";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user) {
-            // Check if account is active
-            if (isset($user['active']) && $user['active'] == 0) {
-                $_SESSION['login_error'] = "Your account has been deactivated. Please contact support.";
-                ErrorLogger::security("Login attempt for deactivated account", ['email' => $email]);
+            // Check if account is verified
+            if (isset($user['is_verified']) && $user['is_verified'] == 0) {
+                $_SESSION['login_error'] = "Account pending verification. Please check your email for the verification code.";
+                ErrorLogger::security("Login attempt for unverified account", ['email' => $email]);
                 header("Location: login.php");
                 exit();
             }
@@ -46,6 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['user_id']   = $user['id'];
                 $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
                 $_SESSION['user_role'] = $user['role'];
+                $_SESSION['user_email'] = $email;
                 $_SESSION['logged_in'] = true;
 
                 // Log successful login
@@ -54,6 +55,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     'email' => $email,
                     'role' => $user['role']
                 ]);
+
+                // Check if password change is required (for coach-created accounts)
+                if (isset($user['force_pass_change']) && $user['force_pass_change'] == 1) {
+                    header("Location: force_change_password.php");
+                    exit();
+                }
 
                 // Redirect to dashboard
                 header("Location: dashboard.php");

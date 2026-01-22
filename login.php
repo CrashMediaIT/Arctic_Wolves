@@ -11,6 +11,16 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 $error = "";
 $show_verify_link = false; // Flag to show the "Enter Code" button
 
+// Check if there's a login error from process_login.php
+if (isset($_SESSION['login_error'])) {
+    $error = $_SESSION['login_error'];
+    // Check if it's a verification error to show the verify button
+    if (strpos($error, 'verification') !== false || strpos($error, 'verified') !== false) {
+        $show_verify_link = true;
+    }
+    unset($_SESSION['login_error']);
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email']);
     $pass  = $_POST['password'];
