@@ -581,7 +581,12 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
                 <option value="">Select Athlete</option>
                 <?php
                 // Fetch parent's children/athletes from database
-                $stmt = $pdo->prepare("SELECT id, CONCAT(first_name, ' ', last_name) as name FROM users WHERE parent_id = ? AND role = 'athlete'");
+                $stmt = $pdo->prepare("
+                    SELECT u.id, CONCAT(u.first_name, ' ', u.last_name) as name 
+                    FROM users u
+                    INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
+                    WHERE par.parent_id = ? AND u.role = 'athlete'
+                ");
                 $stmt->execute([$user_id]);
                 while($athlete = $stmt->fetch()):
                     $selected = (isset($_SESSION['viewing_athlete_id']) && $_SESSION['viewing_athlete_id'] == $athlete['id']) ? 'selected' : '';
