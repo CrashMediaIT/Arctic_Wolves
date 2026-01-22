@@ -4,16 +4,70 @@
 This document provides a standardized process for maintaining, updating, and repairing the Arctic Wolves platform. Follow this checklist each time you need a feature update or repair.
 
 ## Table of Contents
-1. [Initial Assessment](#initial-assessment)
-2. [Branding Review](#branding-review)
-3. [Style Guide Compliance](#style-guide-compliance)
-4. [Navigation Verification](#navigation-verification)
-5. [Database Schema Validation](#database-schema-validation)
-6. [Functionality Testing](#functionality-testing)
-7. [UI/UX Quality Assurance](#uiux-quality-assurance)
-8. [Performance Verification](#performance-verification)
-9. [Documentation Update](#documentation-update)
-10. [Deployment Checklist](#deployment-checklist)
+1. [**MANDATORY FIRST STEP: Reference Documents Review**](#mandatory-first-step-reference-documents-review)
+2. [Initial Assessment](#initial-assessment)
+3. [Branding Review](#branding-review)
+4. [Style Guide Compliance](#style-guide-compliance)
+5. [Navigation Verification](#navigation-verification)
+6. [Database Schema Validation](#database-schema-validation)
+7. [Functionality Testing](#functionality-testing)
+8. [UI/UX Quality Assurance](#uiux-quality-assurance)
+9. [Performance Verification](#performance-verification)
+10. [Documentation Update](#documentation-update)
+11. [**MANDATORY LAST STEP: Reference Documents Update**](#mandatory-last-step-reference-documents-update)
+12. [Deployment Checklist](#deployment-checklist)
+
+---
+
+## 🚨 MANDATORY FIRST STEP: Reference Documents Review
+
+**⚠️ CRITICAL**: Before making ANY changes to code or database, you MUST review these authoritative reference documents:
+
+### Required Reference Documents
+
+1. **`/QA/DATABASE_SCHEMA_REFERENCE.md`** - Authoritative database schema guide
+   - [ ] Review table structures relevant to your work
+   - [ ] Check column naming conventions
+   - [ ] Verify foreign key relationships
+   - [ ] Understand common pitfalls section
+   - [ ] Note any legacy compatibility issues
+
+2. **`/QA/STYLE_GUIDE.md`** - UI/UX design standards
+   - [ ] Review color palette
+   - [ ] Check typography standards
+   - [ ] Verify component specifications
+   - [ ] Understand spacing rules
+
+3. **`/QA/NAVIGATION_MAP.md`** - Site navigation structure
+   - [ ] Review page routing
+   - [ ] Check role-based access
+   - [ ] Verify URL patterns
+
+### Why This Matters
+
+**❌ WITHOUT reference document review:**
+- You may change schema to fix one bug and break 10 other features
+- Column name mismatches propagate through codebase
+- Inconsistent implementations across similar features
+- Technical debt accumulates rapidly
+
+**✅ WITH reference document review:**
+- Consistent implementations across entire codebase
+- Fewer breaking changes
+- Faster debugging (know what SHOULD be)
+- Single source of truth for all developers
+
+### Pre-Work Validation
+
+Before proceeding to Initial Assessment, verify:
+- [ ] I have read the relevant sections of DATABASE_SCHEMA_REFERENCE.md
+- [ ] I understand the table/column naming conventions
+- [ ] I know which foreign keys I'll be working with
+- [ ] I have checked the "Common Pitfalls" section
+- [ ] If working with UI: I have reviewed STYLE_GUIDE.md
+- [ ] If working with navigation: I have reviewed NAVIGATION_MAP.md
+
+**⚠️ DO NOT PROCEED** until you have completed this step.
 
 ---
 
@@ -458,7 +512,104 @@ Verify NO collisions between:
 
 ---
 
-## 9. Documentation Update
+## 🚨 MANDATORY LAST STEP: Reference Documents Update
+
+**⚠️ CRITICAL**: After completing all work and before deployment, you MUST update reference documents if you made any changes.
+
+### Reference Document Update Checklist
+
+#### 1. Database Schema Changes
+If you modified ANY database-related code:
+- [ ] Did you add/modify/delete any tables?
+  - [ ] YES → Update `DATABASE_SCHEMA_REFERENCE.md` Table Categories section
+  - [ ] YES → Update `database_schema.sql`
+  - [ ] NO → Skip to next check
+- [ ] Did you add/modify/delete any columns?
+  - [ ] YES → Update `DATABASE_SCHEMA_REFERENCE.md` Critical Column Reference
+  - [ ] YES → Document in schema file with comments
+  - [ ] NO → Skip to next check
+- [ ] Did you add/modify foreign key relationships?
+  - [ ] YES → Update Foreign Key Relationships section
+  - [ ] YES → Add to Common FK Column Names list if new pattern
+  - [ ] NO → Skip to next check
+- [ ] Did you encounter a schema pitfall?
+  - [ ] YES → Add it to the "Common Pitfalls" section
+  - [ ] Include the wrong way and the right way
+  - [ ] NO → Skip to next check
+
+#### 2. Style Guide Changes
+If you modified ANY UI/styling:
+- [ ] Did you create new UI components?
+  - [ ] YES → Add component specifications to STYLE_GUIDE.md
+  - [ ] YES → Include code examples
+  - [ ] NO → Skip to next check
+- [ ] Did you modify existing component styles?
+  - [ ] YES → Update component specifications
+  - [ ] YES → Update screenshots if applicable
+  - [ ] NO → Skip to next check
+- [ ] Did you add new colors/typography?
+  - [ ] YES → Update color palette or typography section
+  - [ ] YES → Ensure CSS variables are documented
+  - [ ] NO → Skip to next check
+
+#### 3. Navigation Changes
+If you modified ANY routing or navigation:
+- [ ] Did you add new pages?
+  - [ ] YES → Update NAVIGATION_MAP.md with new routes
+  - [ ] YES → Document role-based access requirements
+  - [ ] YES → Update dashboard.php routing table
+  - [ ] NO → Skip to next check
+- [ ] Did you modify page URLs?
+  - [ ] YES → Update all affected route documentation
+  - [ ] YES → Check for hardcoded links in code
+  - [ ] NO → Skip to next check
+- [ ] Did you change role-based access?
+  - [ ] YES → Update access control documentation
+  - [ ] NO → Skip to next check
+
+#### 4. Process Files
+If you created/modified ANY process_*.php files:
+- [ ] Document expected parameters in code comments
+- [ ] Document JSON response format
+- [ ] If using redirects, document why (should use JSON instead)
+- [ ] List all database tables accessed
+
+#### 5. Version History
+- [ ] Update version history in modified reference documents
+- [ ] Include date, change summary, and your name/identifier
+- [ ] Reference related issue/ticket number if applicable
+
+### Validation Before Commit
+
+Run these checks before committing:
+```bash
+# Check for schema consistency
+grep -rn "FROM users.*user_id = u.user_id" --include="*.php" .
+# Should return NOTHING - if it does, you have a bug
+
+# Check for mysqli usage
+grep -rn "mysqli_" --include="*.php" .
+# Should return NOTHING - we use PDO only
+
+# Check for hardcoded table names that should be variables
+grep -rn "FROM programs" --include="*.php" .
+# Verify these all match schema (should be training_programs OR use VIEW)
+```
+
+### Cross-Reference Validation
+
+Before marking complete:
+- [ ] All changes documented in relevant reference files
+- [ ] Reference files match actual implementation
+- [ ] No discrepancies between schema and code
+- [ ] All new patterns added to reference guides
+- [ ] Version history updated
+
+**⚠️ DO NOT DEPLOY** until reference documents are updated and validated.
+
+---
+
+## 10. Deployment Checklist
 
 ### 9.1 Code Comments
 - [ ] New functions commented
