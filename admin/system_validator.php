@@ -185,7 +185,7 @@ class SystemValidator {
             
             // Common expected columns based on table
             $expected_columns = [
-                'users' => ['id', 'email', 'password', 'role', 'is_active'],
+                'users' => ['id', 'email', 'password', 'role', 'is_verified'],
                 'athlete_evaluations' => ['id', 'athlete_id', 'created_by', 'evaluation_date', 'status'],
                 'evaluation_scores' => ['id', 'evaluation_id', 'skill_id', 'score'],
                 'eval_categories' => ['id', 'name', 'is_active'],
