@@ -1,8 +1,9 @@
 <?php
-// Get current mileage rate
+// Get current mileage rate (convert to per km)
 $rate_stmt = $pdo->prepare("SELECT value FROM settings WHERE setting_key = 'mileage_rate' LIMIT 1");
 $rate_stmt->execute();
-$mileage_rate = $rate_stmt->fetchColumn() ?: 0.65;
+$mileage_rate_per_mile = $rate_stmt->fetchColumn() ?: 0.65;
+$mileage_rate_per_km = $mileage_rate_per_mile / 1.60934; // Convert to per km
 
 // Get filter period
 $filter_period = $_GET['period'] ?? 'month';
@@ -12,40 +13,43 @@ $date_filter = "";
 $date_params = [$user_id];
 
 if ($filter_period === 'month') {
-    $date_filter = " AND DATE(m.travel_date) >= DATE_SUB(NOW(), INTERVAL 1 MONTH)";
+    $date_filter = " AND m.trip_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
 } elseif ($filter_period === 'last_month') {
-    $date_filter = " AND DATE(m.travel_date) >= DATE_SUB(NOW(), INTERVAL 2 MONTH) AND DATE(m.travel_date) < DATE_SUB(NOW(), INTERVAL 1 MONTH)";
+    $date_filter = " AND m.trip_date >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH) AND m.trip_date < DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
 } elseif ($filter_period === '3months') {
-    $date_filter = " AND DATE(m.travel_date) >= DATE_SUB(NOW(), INTERVAL 3 MONTH)";
+    $date_filter = " AND m.trip_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)";
 } elseif ($filter_period === '6months') {
-    $date_filter = " AND DATE(m.travel_date) >= DATE_SUB(NOW(), INTERVAL 6 MONTH)";
+    $date_filter = " AND m.trip_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)";
 } elseif ($filter_period === 'year') {
-    $date_filter = " AND YEAR(m.travel_date) = YEAR(NOW())";
+    $date_filter = " AND YEAR(m.trip_date) = YEAR(CURDATE())";
 }
 
 // Get mileage entries
 $mileage_query = "
     SELECT m.*,
-           (m.distance_miles * m.rate_per_mile) as calculated_amount
-    FROM mileage_tracking m
+           (m.distance_km * ?) as calculated_amount
+    FROM mileage_logs m
     WHERE m.user_id = ?" . $date_filter . "
-    ORDER BY m.travel_date DESC, m.created_at DESC
+    ORDER BY m.trip_date DESC, m.created_at DESC
     LIMIT 100
 ";
 
 $mileage_stmt = $pdo->prepare($mileage_query);
+array_unshift($date_params, $mileage_rate_per_km);
 $mileage_stmt->execute($date_params);
 $mileage_entries = $mileage_stmt->fetchAll();
 
 // Calculate summary
 $summary = [
+    'total_km' => 0,
     'total_miles' => 0,
     'total_amount' => 0,
     'total_trips' => count($mileage_entries)
 ];
 
 foreach ($mileage_entries as $entry) {
-    $summary['total_miles'] += $entry['distance_miles'];
+    $summary['total_km'] += $entry['distance_km'];
+    $summary['total_miles'] += $entry['distance_km'] / 1.60934;
     $summary['total_amount'] += $entry['calculated_amount'];
 }
 ?>

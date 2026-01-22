@@ -1,29 +1,31 @@
 <?php
-// Get current workout program
+// Get current workout program for this athlete
 $program_query = "
     SELECT wp.*, 
-           (SELECT COUNT(*) FROM workout_logs WHERE program_id = wp.id AND athlete_id = ?) as completed_workouts,
-           (SELECT COUNT(*) FROM workout_logs WHERE program_id = wp.id AND athlete_id = ? AND DATE(completed_at) >= DATE_SUB(NOW(), INTERVAL 1 WEEK)) as week_workouts
-    FROM workout_programs wp
-    WHERE wp.athlete_id = ? AND wp.status = 'active'
-    ORDER BY wp.created_at DESC
+           awa.status as assignment_status,
+           awa.start_date,
+           (SELECT COUNT(*) FROM athlete_workout_feedback WHERE assignment_id = awa.id) as completed_workouts,
+           (SELECT COUNT(*) FROM athlete_workout_feedback WHERE assignment_id = awa.id AND DATE(feedback_date) >= DATE_SUB(NOW(), INTERVAL 1 WEEK)) as week_workouts
+    FROM athlete_workout_assignments awa
+    INNER JOIN workout_plans wp ON awa.workout_plan_id = wp.id
+    WHERE awa.athlete_id = ? AND awa.status = 'active'
+    ORDER BY awa.assigned_date DESC
     LIMIT 1
 ";
 $program_stmt = $pdo->prepare($program_query);
-$program_stmt->execute([$user_id, $user_id, $user_id]);
+$program_stmt->execute([$user_id]);
 $current_program = $program_stmt->fetch();
 
-// Get this week's schedule
-$schedule_query = "
-    SELECT ws.*
-    FROM workout_schedule ws
-    WHERE ws.program_id = ? 
-    AND ws.week_day >= DAYOFWEEK(CURDATE()) - 1
-    AND ws.week_day < DAYOFWEEK(CURDATE()) + 6
-    ORDER BY ws.week_day
-";
+// Get this week's exercises from the plan
 $schedule = [];
 if ($current_program) {
+    $schedule_query = "
+        SELECT wpe.*, el.name as exercise_name, el.description
+        FROM workout_plan_exercises wpe
+        INNER JOIN exercise_library el ON wpe.exercise_id = el.id
+        WHERE wpe.workout_plan_id = ?
+        ORDER BY wpe.day_number, wpe.exercise_order
+    ";
     $schedule_stmt = $pdo->prepare($schedule_query);
     $schedule_stmt->execute([$current_program['id']]);
     $schedule = $schedule_stmt->fetchAll();
@@ -35,7 +37,7 @@ $search_exercise = $_GET['search_exercise'] ?? '';
 
 $exercises_query = "
     SELECT e.* 
-    FROM exercises e
+    FROM exercise_library e
     WHERE 1=1
 ";
 $params = [];

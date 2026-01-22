@@ -13,7 +13,7 @@
             <h3><i class="fas fa-plus-circle"></i> Create Notification</h3>
         </div>
         <div class="card-body">
-            <form class="notification-form" method="POST" action="process_notifications.php">
+            <form class="notification-form" method="POST" action="process_system_notifications.php">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create">
                 <div class="form-row">

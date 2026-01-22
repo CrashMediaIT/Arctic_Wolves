@@ -3,8 +3,8 @@
 $athletes_query = "
     SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
     FROM users u
-    INNER JOIN sessions s ON s.athlete_id = u.id
-    WHERE s.coach_id = ? AND u.is_active = 1
+    INNER JOIN videos v ON v.athlete_id = u.id
+    WHERE v.coach_id = ? AND u.is_active = 1
     ORDER BY u.last_name, u.first_name
 ";
 $athletes_stmt = $pdo->prepare($athletes_query);
@@ -20,10 +20,11 @@ $video_query = "
     SELECT v.*, 
            CONCAT(a.first_name, ' ', a.last_name) as athlete_name,
            s.session_date,
-           s.session_type
+           st.name as session_type_name
     FROM videos v
     LEFT JOIN users a ON v.athlete_id = a.id
     LEFT JOIN sessions s ON v.session_id = s.id
+    LEFT JOIN session_types st ON s.session_type_id = st.id
     WHERE v.coach_id = ?
 ";
 
@@ -37,14 +38,14 @@ if ($filter_athlete !== 'all') {
 
 // Apply period filter
 if ($filter_period === 'today') {
-    $video_query .= " AND DATE(v.created_at) = CURDATE()";
+    $video_query .= " AND DATE(v.upload_date) = CURDATE()";
 } elseif ($filter_period === 'week') {
-    $video_query .= " AND v.created_at >= DATE_SUB(NOW(), INTERVAL 1 WEEK)";
+    $video_query .= " AND v.upload_date >= DATE_SUB(NOW(), INTERVAL 1 WEEK)";
 } elseif ($filter_period === 'month') {
-    $video_query .= " AND v.created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)";
+    $video_query .= " AND v.upload_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)";
 }
 
-$video_query .= " ORDER BY v.created_at DESC LIMIT 50";
+$video_query .= " ORDER BY v.upload_date DESC LIMIT 50";
 
 $video_stmt = $pdo->prepare($video_query);
 $video_stmt->execute($params);

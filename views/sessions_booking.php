@@ -1,17 +1,16 @@
 <?php
 // Get available packages
 $packages_query = "
-    SELECT p.*, pt.name as package_type_name
+    SELECT p.*
     FROM packages p
-    LEFT JOIN package_types pt ON p.type_id = pt.id
-    WHERE p.is_active = 1 AND p.is_available = 1
-    ORDER BY p.display_order, p.price
+    WHERE p.is_active = 1
+    ORDER BY p.price
 ";
 $packages = $pdo->query($packages_query)->fetchAll();
 
 // Get coaches for individual sessions
 $coaches_query = "
-    SELECT u.id, u.first_name, u.last_name, u.specialty
+    SELECT u.id, u.first_name, u.last_name
     FROM users u
     WHERE u.role IN ('coach', 'admin') AND u.is_active = 1
     ORDER BY u.last_name, u.first_name
@@ -19,7 +18,7 @@ $coaches_query = "
 $coaches = $pdo->query($coaches_query)->fetchAll();
 
 // Get session types
-$session_types = $pdo->query("SELECT * FROM session_types WHERE is_active = 1 ORDER BY name")->fetchAll();
+$session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
 ?>
 
 <!-- Session Booking View -->
@@ -46,23 +45,20 @@ $session_types = $pdo->query("SELECT * FROM session_types WHERE is_active = 1 OR
         <?php if (count($packages) > 0): ?>
         <div class="packages-grid" data-component="PackageGrid">
             <?php foreach ($packages as $idx => $package): ?>
-            <div class="package-card <?= $package['is_featured'] ? 'featured' : '' ?>" data-component="PackageCard" data-package-id="<?= $package['id'] ?>">
-                <?php if ($package['badge_text']): ?>
-                    <div class="package-badge"><?= htmlspecialchars($package['badge_text']) ?></div>
-                <?php endif; ?>
+            <div class="package-card" data-component="PackageCard" data-package-id="<?= $package['id'] ?>">
                 <h3 class="package-title"><?= htmlspecialchars($package['name']) ?></h3>
                 <div class="package-price">
                     <span class="price">$<?= number_format($package['price'], 0) ?></span>
-                    <span class="price-detail"><?= $package['session_count'] ?> sessions</span>
+                    <span class="price-detail"><?= $package['credits'] ?> credits</span>
                 </div>
-                <ul class="package-features">
-                    <?php 
-                    $features = json_decode($package['features_json'], true) ?? [];
-                    foreach ($features as $feature): 
-                    ?>
-                        <li><i class="fas fa-check"></i> <?= htmlspecialchars($feature) ?></li>
-                    <?php endforeach; ?>
-                </ul>
+                <div class="package-description">
+                    <p><?= htmlspecialchars($package['description'] ?? '') ?></p>
+                </div>
+                <?php if ($package['valid_days']): ?>
+                    <div class="package-validity">
+                        <i class="fas fa-clock"></i> Valid for <?= $package['valid_days'] ?> days
+                    </div>
+                <?php endif; ?>
                 <button class="btn-primary btn-full" data-action="purchase-package" data-package-id="<?= $package['id'] ?>"><i class="fas fa-shopping-cart"></i> Purchase</button>
             </div>
             <?php endforeach; ?>
@@ -77,11 +73,102 @@ $session_types = $pdo->query("SELECT * FROM session_types WHERE is_active = 1 OR
 
     <!-- Individual Sessions Tab -->
     <div class="tab-content" id="individual-tab">
+        <?php
+        // Get available sessions for booking
+        $available_sessions_query = "
+            SELECT s.*, 
+                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   st.name as session_type_name,
+                   st.price as session_price,
+                   l.name as location_name,
+                   COUNT(DISTINCT b.id) as registered_count,
+                   s.max_participants
+            FROM sessions s
+            LEFT JOIN users c ON s.coach_id = c.id
+            LEFT JOIN session_types st ON s.session_type_id = st.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            LEFT JOIN bookings b ON b.session_id = s.id
+            WHERE s.session_date > NOW() 
+              AND s.status = 'scheduled'
+              AND s.max_participants > (SELECT COUNT(*) FROM bookings WHERE session_id = s.id)
+            GROUP BY s.id
+            ORDER BY s.session_date
+            LIMIT 20
+        ";
+        $available_sessions = $pdo->query($available_sessions_query)->fetchAll();
+        ?>
+        
+        <div class="available-sessions">
+            <h3><i class="fas fa-calendar-check"></i> Available Sessions</h3>
+            <p class="section-description">Register for an upcoming group session</p>
+            
+            <?php if (count($available_sessions) > 0): ?>
+            <div class="sessions-grid">
+                <?php foreach ($available_sessions as $session): 
+                    $session_datetime = strtotime($session['session_date']);
+                    $session_end_time = $session_datetime + ($session['duration_minutes'] ?? 60) * 60;
+                    $spots_left = $session['max_participants'] - $session['registered_count'];
+                ?>
+                <div class="available-session-card" data-session-id="<?= $session['id'] ?>">
+                    <div class="session-header">
+                        <div class="session-date-badge">
+                            <span class="date-day"><?= date('M j', $session_datetime) ?></span>
+                            <span class="date-time"><?= date('g:i A', $session_datetime) ?></span>
+                        </div>
+                        <div class="session-spots">
+                            <span class="spots-count"><?= $spots_left ?></span>
+                            <span class="spots-label">spots left</span>
+                        </div>
+                    </div>
+                    <h4 class="session-name"><?= htmlspecialchars($session['session_type_name']) ?></h4>
+                    <div class="session-info">
+                        <div class="info-item">
+                            <i class="fas fa-user"></i> <?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>
+                        </div>
+                        <?php if ($session['location_name']): ?>
+                        <div class="info-item">
+                            <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?>
+                        </div>
+                        <?php endif; ?>
+                        <div class="info-item">
+                            <i class="fas fa-clock"></i> <?= $session['duration_minutes'] ?? 60 ?> min
+                        </div>
+                    </div>
+                    <?php if (!empty($session['description'])): ?>
+                    <div class="session-brief">
+                        <p><?= htmlspecialchars(substr($session['description'], 0, 100)) ?><?= strlen($session['description']) > 100 ? '...' : '' ?></p>
+                    </div>
+                    <?php endif; ?>
+                    <div class="session-footer">
+                        <div class="session-cost">
+                            <span class="price-amount">$<?= number_format($session['session_price'], 0) ?></span>
+                        </div>
+                        <button class="btn-primary" data-action="register-session" data-session-id="<?= $session['id'] ?>" data-price="<?= $session['session_price'] ?>">
+                            <i class="fas fa-check-circle"></i> Register
+                        </button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+            <div class="placeholder-container">
+                <i class="fas fa-calendar placeholder-icon"></i>
+                <p class="placeholder-text">No sessions currently available for registration.</p>
+                <p class="placeholder-subtext">Check back soon or book a private session below.</p>
+            </div>
+            <?php endif; ?>
+        </div>
+        
+        <div class="booking-divider">
+            <span>OR</span>
+        </div>
+        
         <div class="booking-form-card">
-            <h3><i class="fas fa-calendar-check"></i> Book Individual Session</h3>
+            <h3><i class="fas fa-user-plus"></i> Book Private Session</h3>
+            <p class="section-description">Schedule a one-on-one session with a coach</p>
             
             <form class="booking-form" method="POST" action="process_booking.php" data-form="session-booking">
-                <input type="hidden" name="action" value="book_session">
+                <input type="hidden" name="action" value="book_private_session">
                 <!-- Note: athlete_id will be validated server-side from session -->
                 
                 <div class="form-row">
@@ -346,5 +433,178 @@ $session_types = $pdo->query("SELECT * FROM session_types WHERE is_active = 1 OR
 .price-label {
     font-size: 14px;
     color: var(--text-dim);
+}
+
+.available-sessions {
+    margin-bottom: 40px;
+}
+
+.available-sessions h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.available-sessions h3 i {
+    color: var(--neon);
+    margin-right: 10px;
+}
+
+.section-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-bottom: 25px;
+}
+
+.sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.available-session-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+.available-session-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--neon);
+    box-shadow: 0 8px 25px rgba(255, 77, 0, 0.15);
+}
+
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.session-date-badge {
+    background: linear-gradient(135deg, var(--neon), var(--accent));
+    border-radius: 6px;
+    padding: 10px 15px;
+    text-align: center;
+}
+
+.date-day {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.date-time {
+    display: block;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 2px;
+}
+
+.session-spots {
+    text-align: center;
+}
+
+.spots-count {
+    display: block;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--neon);
+    line-height: 1;
+}
+
+.spots-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.session-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 12px;
+}
+
+.session-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.info-item {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.info-item i {
+    color: var(--neon);
+    margin-right: 8px;
+    width: 16px;
+}
+
+.session-brief {
+    margin-bottom: 15px;
+}
+
+.session-brief p {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+.session-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+}
+
+.session-cost {
+    display: flex;
+    align-items: baseline;
+}
+
+.price-amount {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--neon);
+}
+
+.booking-divider {
+    text-align: center;
+    margin: 40px 0;
+    position: relative;
+}
+
+.booking-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border);
+}
+
+.booking-divider span {
+    position: relative;
+    background: var(--bg-main);
+    padding: 0 20px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-dim);
+}
+
+.placeholder-subtext {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-top: 10px;
 }
 </style>

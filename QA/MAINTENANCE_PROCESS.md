@@ -287,6 +287,19 @@ For each affected table:
   - Common errors: Using `package_id` in sessions table (doesn't exist)
   - Common errors: Using `category_id` in expenses table (uses `category` VARCHAR instead)
   - Common errors: Using `assistant_coach_id` in sessions table (doesn't exist)
+  - Common errors: Using `is_public` in sessions table (doesn't exist)
+  - Common errors: Using `focus_areas` in sessions table (doesn't exist)
+  - Common errors: Using `review_status` in videos table (uses `status` instead)
+  - Common errors: Using `drill_type` in videos table (doesn't exist - JOIN to drills/drill_categories)
+  - Common errors: Using `session_type` in sessions table (doesn't exist - JOIN to session_types)
+  - Common errors: Using `athlete_id` in sessions table (doesn't exist)
+  - Common errors: Using `workout_programs` table (correct name is `workout_plans`)
+  - Common errors: Using `exercises` table (correct name is `exercise_library`)
+  - Common errors: Using `mileage_tracking` table (correct name is `mileage_logs`)
+  - Common errors: Using `travel_date` in mileage_logs (correct name is `trip_date`)
+  - Common errors: Using `distance_miles` in mileage_logs (correct name is `distance_km`)
+
+**Updated:** January 22, 2026 - Added comprehensive list of common column/table name errors found during systematic review.
 
 #### Common Conversions
 ```php

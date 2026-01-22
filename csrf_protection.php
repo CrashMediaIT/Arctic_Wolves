@@ -61,3 +61,13 @@ class CSRFProtection {
         }
     }
 }
+
+/**
+ * Helper function for easy CSRF token field generation
+ * Returns HTML input field with CSRF token
+ */
+if (!function_exists('csrfTokenInput')) {
+    function csrfTokenInput() {
+        return CSRFProtection::getTokenField();
+    }
+}

@@ -4,7 +4,7 @@ $filter_period = $_GET['filter_period'] ?? 'all';
 $filter_coach = $_GET['filter_coach'] ?? 'all';
 
 // Build query for upcoming sessions
-// For athletes, show sessions they're registered for or all public sessions
+// For athletes, show sessions they're registered for
 // For coaches/admins, show all sessions they're involved with
 if ($user_role === 'athlete') {
     $sessions_query = "
@@ -17,9 +17,9 @@ if ($user_role === 'athlete') {
         LEFT JOIN session_types st ON s.session_type_id = st.id
         LEFT JOIN locations l ON s.location_id = l.id
         LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
-        WHERE (b.user_id IS NOT NULL OR s.is_public = 1) 
+        WHERE b.user_id IS NOT NULL
           AND s.session_date >= NOW() 
-          AND s.status IN ('scheduled', 'confirmed')
+          AND s.status = 'scheduled'
     ";
     $params = [$user_id];
 } else {
@@ -34,7 +34,7 @@ if ($user_role === 'athlete') {
         LEFT JOIN locations l ON s.location_id = l.id
         WHERE s.coach_id = ? 
           AND s.session_date >= NOW() 
-          AND s.status IN ('scheduled', 'confirmed')
+          AND s.status = 'scheduled'
     ";
     $params = [$user_id];
 }
@@ -66,8 +66,8 @@ if ($user_role === 'athlete') {
         SELECT DISTINCT c.id, c.first_name, c.last_name
         FROM users c
         INNER JOIN sessions s ON s.coach_id = c.id
-        LEFT JOIN bookings b ON b.session_id = s.id
-        WHERE (b.user_id = ? OR s.is_public = 1) AND c.is_active = 1
+        INNER JOIN bookings b ON b.session_id = s.id
+        WHERE b.user_id = ? AND c.is_active = 1
         ORDER BY c.last_name, c.first_name
     ";
     $coaches_stmt = $pdo->prepare($coaches_query);
@@ -174,14 +174,9 @@ $view_mode = $_GET['view'] ?? 'list';
                             <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span>
                         <?php endif; ?>
                     </div>
-                    <?php if ($session['focus_areas']): ?>
-                        <div class="session-tags">
-                            <?php 
-                            $tags = json_decode($session['focus_areas'], true) ?? [];
-                            foreach ($tags as $tag): 
-                            ?>
-                                <span class="tag"><?= htmlspecialchars($tag) ?></span>
-                            <?php endforeach; ?>
+                    <?php if (!empty($session['description'])): ?>
+                        <div class="session-description">
+                            <p><?= htmlspecialchars(substr($session['description'], 0, 100)) ?><?= strlen($session['description']) > 100 ? '...' : '' ?></p>
                         </div>
                     <?php endif; ?>
                 </div>

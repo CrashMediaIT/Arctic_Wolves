@@ -5,7 +5,7 @@ $nutrition_query = "
            CONCAT(c.first_name, ' ', c.last_name) as coach_name
     FROM nutrition_plans np
     LEFT JOIN users c ON np.coach_id = c.id
-    WHERE np.athlete_id = ? AND np.status = 'active'
+    WHERE np.user_id = ?
     ORDER BY np.created_at DESC
     LIMIT 1
 ";
@@ -13,40 +13,30 @@ $nutrition_stmt = $pdo->prepare($nutrition_query);
 $nutrition_stmt->execute([$user_id]);
 $nutrition_plan = $nutrition_stmt->fetch();
 
-// Get today's meals
-$meals_query = "
-    SELECT m.*, ml.is_logged, ml.logged_at
-    FROM meals m
-    LEFT JOIN meal_logs ml ON ml.meal_id = m.id AND DATE(ml.logged_at) = CURDATE() AND ml.athlete_id = ?
-    WHERE m.plan_id = ? AND m.day_of_week = DAYOFWEEK(CURDATE())
-    ORDER BY m.meal_time
-";
-$meals = [];
+// Initialize daily totals
 $daily_totals = [
     'calories' => 0,
     'protein' => 0,
     'carbs' => 0,
     'fats' => 0,
-    'calories_goal' => $nutrition_plan['daily_calories'] ?? 2500,
-    'protein_goal' => $nutrition_plan['daily_protein'] ?? 180,
-    'carbs_goal' => $nutrition_plan['daily_carbs'] ?? 300,
-    'fats_goal' => $nutrition_plan['daily_fats'] ?? 70
+    'calories_goal' => $nutrition_plan['target_calories'] ?? 2500,
+    'protein_goal' => $nutrition_plan['target_protein_g'] ?? 180,
+    'carbs_goal' => $nutrition_plan['target_carbs_g'] ?? 300,
+    'fats_goal' => $nutrition_plan['target_fat_g'] ?? 70
 ];
 
+// Get nutrition plan meals if plan exists
+$meals = [];
 if ($nutrition_plan) {
+    $meals_query = "
+        SELECT npm.*
+        FROM nutrition_plan_meals npm
+        WHERE npm.nutrition_plan_id = ?
+        ORDER BY npm.meal_order
+    ";
     $meals_stmt = $pdo->prepare($meals_query);
-    $meals_stmt->execute([$user_id, $nutrition_plan['id']]);
+    $meals_stmt->execute([$nutrition_plan['id']]);
     $meals = $meals_stmt->fetchAll();
-    
-    // Calculate daily totals from logged meals
-    foreach ($meals as $meal) {
-        if ($meal['is_logged']) {
-            $daily_totals['calories'] += $meal['calories'];
-            $daily_totals['protein'] += $meal['protein_g'];
-            $daily_totals['carbs'] += $meal['carbs_g'];
-            $daily_totals['fats'] += $meal['fats_g'];
-        }
-    }
 }
 ?>
 

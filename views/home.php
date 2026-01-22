@@ -33,6 +33,17 @@ try {
         $stmt->execute([$user_id]);
         $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        // Get performance stats for athlete
+        $stmt = $pdo->prepare("
+            SELECT 
+                (SELECT COUNT(*) FROM bookings b JOIN sessions s ON b.session_id = s.id 
+                 WHERE b.user_id = ? AND s.status = 'completed') as sessions_completed,
+                (SELECT COUNT(*) FROM videos WHERE athlete_id = ? AND status = 'reviewed') as videos_reviewed,
+                (SELECT COUNT(*) FROM performance_goals WHERE user_id = ? AND status = 'active') as active_goals
+        ");
+        $stmt->execute([$user_id, $user_id, $user_id]);
+        $performanceStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
         // Get recent coach notes (feedback)
         $stmt = $pdo->prepare("
             SELECT vr.*, u.name as coach_name
@@ -45,19 +56,21 @@ try {
         $stmt->execute([$user_id]);
         $coachNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } elseif (in_array($user_role, ['coach', 'health_coach', 'team_coach', 'admin'])) {
-        // Get today's sessions
+        // Get upcoming sessions (next 7 days) instead of just today
         $stmt = $pdo->prepare("
             SELECT s.*, st.name as session_type_name, st.duration,
                    COUNT(DISTINCT sa.athlete_id) as attendee_count
             FROM sessions s
             LEFT JOIN session_types st ON s.session_type_id = st.id
             LEFT JOIN session_attendance sa ON s.id = sa.session_id
-            WHERE s.date = CURDATE()
+            WHERE s.date >= CURDATE() AND s.date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+            AND s.status = 'scheduled'
             GROUP BY s.id
-            ORDER BY s.start_time ASC
+            ORDER BY s.date ASC, s.start_time ASC
+            LIMIT 10
         ");
         $stmt->execute();
-        $todaySessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $upcomingSessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get pending video reviews
         $stmt = $pdo->prepare("
@@ -88,7 +101,7 @@ try {
     $upcomingSessions = [];
     $notifications = [];
     $coachNotes = [];
-    $todaySessions = [];
+    $performanceStats = ['sessions_completed' => 0, 'videos_reviewed' => 0, 'active_goals' => 0];
     $pendingReviews = [];
     $athleteUpdates = [];
 }
@@ -98,6 +111,41 @@ try {
     <!-- Role-specific content will be loaded here -->
     <?php if ($user_role === 'athlete'): ?>
         <!-- Athlete Dashboard -->
+        
+        <!-- Performance Stats Overview -->
+        <div class="stats-overview">
+            <h2 class="section-header"><i class="fas fa-chart-line"></i> Performance Stats</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-running"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value"><?php echo $performanceStats['sessions_completed'] ?? 0; ?></div>
+                        <div class="stat-label">Sessions Completed</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value"><?php echo $performanceStats['videos_reviewed'] ?? 0; ?></div>
+                        <div class="stat-label">Videos Reviewed</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value"><?php echo $performanceStats['active_goals'] ?? 0; ?></div>
+                        <div class="stat-label">Active Goals</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="dashboard-grid">
             <div class="dashboard-card">
                 <div class="card-header">
@@ -189,29 +237,32 @@ try {
         <div class="dashboard-grid">
             <div class="dashboard-card">
                 <div class="card-header">
-                    <h3><i class="fas fa-calendar-alt"></i> Today's Sessions</h3>
-                    <a href="?page=create_session" class="btn-sm btn-secondary">
+                    <h3><i class="fas fa-calendar-alt"></i> Upcoming Sessions</h3>
+                    <a href="?page=booking" class="btn-sm btn-secondary">
                         <i class="fas fa-plus"></i> Add Session
                     </a>
                 </div>
                 <div class="card-body">
-                    <?php if (count($todaySessions) > 0): ?>
+                    <?php if (count($upcomingSessions) > 0): ?>
                         <div class="session-list">
-                            <?php foreach ($todaySessions as $session): ?>
+                            <?php foreach ($upcomingSessions as $session): ?>
                                 <div class="session-item">
                                     <div class="session-info">
                                         <strong><?php echo htmlspecialchars($session['session_type_name'] ?? 'Session'); ?></strong>
                                         <span class="session-meta">
+                                            <?php echo date('M d, Y', strtotime($session['date'])); ?> at
                                             <?php echo date('g:i A', strtotime($session['start_time'])); ?> •
                                             <?php echo htmlspecialchars($session['attendee_count'] ?? 0); ?> athletes
                                         </span>
                                     </div>
-                                    <span class="badge badge-success">Today</span>
+                                    <span class="badge <?php echo (date('Y-m-d') === $session['date']) ? 'badge-success' : 'badge-primary'; ?>">
+                                        <?php echo (date('Y-m-d') === $session['date']) ? 'Today' : date('M d', strtotime($session['date'])); ?>
+                                    </span>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
-                        <p class="placeholder-text">No sessions scheduled for today.</p>
+                        <p class="placeholder-text">No upcoming sessions scheduled.</p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -729,5 +780,77 @@ try {
     .btn-sm {
         width: 100%;
     }
+}
+
+/* Performance Stats Overview */
+.stats-overview {
+    margin-bottom: 30px;
+}
+
+.section-header {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-white);
+}
+
+.section-header i {
+    color: var(--neon);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    border-color: var(--neon);
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--neon), var(--primary));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-white);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-weight: 500;
 }
 </style>

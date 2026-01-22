@@ -1,4 +1,47 @@
 <!-- Practice Library View -->
+<?php
+// Fetch practice plans from database
+try {
+    // Get filter parameters
+    $search = $_GET['search'] ?? '';
+    $filter_team = $_GET['team'] ?? 'all';
+    
+    // Get teams for filter
+    $teams_query = "SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name";
+    $teams_stmt = $pdo->query($teams_query);
+    $teams = $teams_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Build practice plans query
+    $plans_query = "
+        SELECT pp.*, 
+               CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+               (SELECT COUNT(*) FROM practice_plan_drills WHERE practice_plan_id = pp.id) as drill_count
+        FROM practice_plans pp
+        LEFT JOIN users u ON pp.created_by = u.id
+        WHERE 1=1
+    ";
+    $params = [];
+    
+    // Apply search filter
+    if (!empty($search)) {
+        $plans_query .= " AND (pp.name LIKE ? OR pp.description LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+    }
+    
+    $plans_query .= " ORDER BY pp.created_at DESC LIMIT 50";
+    
+    $plans_stmt = $pdo->prepare($plans_query);
+    $plans_stmt->execute($params);
+    $practice_plans = $plans_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch (PDOException $e) {
+    error_log("Practice plans fetch error: " . $e->getMessage());
+    $teams = [];
+    $practice_plans = [];
+}
+?>
+
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-clipboard-list"></i> Practice Plans
@@ -9,129 +52,63 @@
 <div class="practice-content">
     <!-- Actions Bar -->
     <div class="action-bar">
-        <div class="filter-group">
-            <input type="text" class="form-input-small" placeholder="Search practice plans...">
-            <select class="form-input-small">
-                <option>All Teams</option>
-                <!-- Teams will be populated here -->
+        <form method="GET" action="" class="filter-group">
+            <input type="hidden" name="page" value="practice_library">
+            <input type="text" name="search" class="form-input-small" placeholder="Search practice plans..." value="<?= htmlspecialchars($search) ?>">
+            <select name="team" class="form-input-small">
+                <option value="all">All Teams</option>
+                <?php foreach ($teams as $team): ?>
+                    <option value="<?= $team['id'] ?>" <?= $filter_team == $team['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($team['name']) ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
-            <select class="form-input-small">
-                <option>All Seasons</option>
-                <option>2023-2024</option>
-                <option>2022-2023</option>
-            </select>
-        </div>
-        <button class="btn-primary"><i class="fas fa-plus"></i> Create Practice Plan</button>
+        </form>
+        <a href="?page=create_practice" class="btn-primary"><i class="fas fa-plus"></i> Create Practice Plan</a>
     </div>
 
     <!-- Practice Plans List -->
     <div class="practice-list">
-        <!-- Sample Practice Plan Card -->
-        <div class="practice-card">
-            <div class="practice-header">
-                <div class="practice-date">
-                    <div class="date-box">
-                        <span class="date-day">18</span>
-                        <span class="date-month">JAN</span>
-                    </div>
-                </div>
-                <div class="practice-title-section">
-                    <h3 class="practice-title">Power Play Development</h3>
-                    <div class="practice-meta">
-                        <span><i class="fas fa-users"></i> Bantam AA</span>
-                        <span><i class="fas fa-clock"></i> 90 minutes</span>
-                        <span><i class="fas fa-map-marker-alt"></i> Main Rink</span>
-                    </div>
-                </div>
-                <div class="practice-status">
-                    <span class="status-badge upcoming">Upcoming</span>
-                </div>
-            </div>
-            <div class="practice-body">
-                <div class="practice-drills">
-                    <h4><i class="fas fa-list-ul"></i> Drills (5)</h4>
-                    <div class="drill-list-compact">
-                        <div class="drill-item-compact">
-                            <span class="drill-time">5 min</span>
-                            <span class="drill-name">Dynamic Warmup</span>
-                        </div>
-                        <div class="drill-item-compact">
-                            <span class="drill-time">15 min</span>
-                            <span class="drill-name">Figure 8 Skating</span>
-                        </div>
-                        <div class="drill-item-compact">
-                            <span class="drill-time">20 min</span>
-                            <span class="drill-name">PP Zone Entry Drills</span>
-                        </div>
-                        <div class="drill-item-compact">
-                            <span class="drill-time">30 min</span>
-                            <span class="drill-name">5v4 Power Play Situations</span>
-                        </div>
-                        <div class="drill-item-compact">
-                            <span class="drill-time">20 min</span>
-                            <span class="drill-name">Scrimmage</span>
+        <?php if (count($practice_plans) > 0): ?>
+            <?php foreach ($practice_plans as $plan): ?>
+            <div class="practice-card" data-plan-id="<?= $plan['id'] ?>">
+                <div class="practice-header">
+                    <div class="practice-title-section">
+                        <h3 class="practice-title"><?= htmlspecialchars($plan['name']) ?></h3>
+                        <div class="practice-meta">
+                            <span><i class="fas fa-user"></i> <?= htmlspecialchars($plan['creator_name'] ?? 'Unknown') ?></span>
+                            <span><i class="fas fa-list"></i> <?= $plan['drill_count'] ?> drills</span>
+                            <span><i class="fas fa-clock"></i> <?= date('M d, Y', strtotime($plan['created_at'])) ?></span>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="practice-actions">
-                <button class="btn-secondary"><i class="fas fa-eye"></i> View</button>
-                <button class="btn-secondary"><i class="fas fa-edit"></i> Edit</button>
-                <button class="btn-secondary"><i class="fas fa-copy"></i> Duplicate</button>
-                <button class="btn-secondary"><i class="fas fa-print"></i> Print</button>
-            </div>
-        </div>
-
-        <div class="practice-card">
-            <div class="practice-header">
-                <div class="practice-date">
-                    <div class="date-box completed">
-                        <span class="date-day">15</span>
-                        <span class="date-month">JAN</span>
-                    </div>
+                <?php if (!empty($plan['description'])): ?>
+                <div class="practice-body">
+                    <p><?= htmlspecialchars(substr($plan['description'], 0, 200)) ?><?= strlen($plan['description']) > 200 ? '...' : '' ?></p>
                 </div>
-                <div class="practice-title-section">
-                    <h3 class="practice-title">Defensive Zone Coverage</h3>
-                    <div class="practice-meta">
-                        <span><i class="fas fa-users"></i> Bantam AA</span>
-                        <span><i class="fas fa-clock"></i> 90 minutes</span>
-                        <span><i class="fas fa-map-marker-alt"></i> Main Rink</span>
-                    </div>
-                </div>
-                <div class="practice-status">
-                    <span class="status-badge completed">Completed</span>
+                <?php endif; ?>
+                <div class="practice-actions">
+                    <button class="btn-secondary btn-sm" data-action="view-plan" data-plan-id="<?= $plan['id'] ?>">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button class="btn-secondary btn-sm" data-action="edit-plan" data-plan-id="<?= $plan['id'] ?>">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn-danger btn-sm" data-action="delete-plan" data-plan-id="<?= $plan['id'] ?>">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
                 </div>
             </div>
-            <div class="practice-body">
-                <div class="practice-drills">
-                    <h4><i class="fas fa-list-ul"></i> Drills (6)</h4>
-                    <div class="drill-list-compact">
-                        <div class="drill-item-compact">
-                            <span class="drill-time">5 min</span>
-                            <span class="drill-name">Skating Warmup</span>
-                        </div>
-                        <div class="drill-item-compact">
-                            <span class="drill-time">15 min</span>
-                            <span class="drill-name">Edge Work Drills</span>
-                        </div>
-                        <div class="drill-item-compact">
-                            <span class="drill-time">20 min</span>
-                            <span class="drill-name">1v1 Defensive Positioning</span>
-                        </div>
-                    </div>
-                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="placeholder-container">
+                <i class="fas fa-clipboard-list placeholder-icon"></i>
+                <p class="placeholder-text">No practice plans found. Create your first practice plan to get started!</p>
+                <a href="?page=create_practice" class="btn btn-primary" style="margin-top: 20px;">
+                    <i class="fas fa-plus"></i> Create Practice Plan
+                </a>
             </div>
-            <div class="practice-actions">
-                <button class="btn-secondary"><i class="fas fa-eye"></i> View</button>
-                <button class="btn-secondary"><i class="fas fa-copy"></i> Duplicate</button>
-                <button class="btn-secondary"><i class="fas fa-print"></i> Print</button>
-            </div>
-        </div>
-
-        <div class="placeholder-container">
-            <i class="fas fa-clipboard-list placeholder-icon"></i>
-            <p class="placeholder-text">No practice plans found. Click "Create Practice Plan" to get started.</p>
-        </div>
+        <?php endif; ?>
     </div>
 </div>
 

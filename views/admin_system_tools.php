@@ -489,7 +489,6 @@ function switchToolTab(tabName) {
         grid-template-columns: 1fr;
     }
 }
-</style>
 
 .toggle-switch {
     position: relative;
