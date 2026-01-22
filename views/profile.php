@@ -222,7 +222,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                                        value="<?php echo htmlspecialchars($athleteData['jersey_number'] ?? ''); ?>">
                             </div>
                             <div class="form-group">
-                                <!-- Empty to maintain layout -->
+                                <!-- Empty to maintain grid layout -->
                             </div>
                         </div>
                         <?php endif; ?>
