@@ -43,7 +43,7 @@ $csrf_token = generateCsrfToken();
     }
     
     .termination-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .termination-header h1 {
@@ -58,7 +58,7 @@ $csrf_token = generateCsrfToken();
         border: 2px solid var(--danger);
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .warning-banner h3 {
@@ -87,12 +87,12 @@ $csrf_token = generateCsrfToken();
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 30px;
+        padding: 24px;
     }
     
     .form-section {
-        margin-bottom: 30px;
-        padding-bottom: 30px;
+        margin-bottom: 24px;
+        padding-bottom: 24px;
         border-bottom: 1px solid #1e293b;
     }
     
@@ -175,7 +175,7 @@ $csrf_token = generateCsrfToken();
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-top: 10px;
         display: none;
     }
@@ -213,7 +213,7 @@ $csrf_token = generateCsrfToken();
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 15px;
+        padding: 16px;
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
@@ -241,7 +241,7 @@ $csrf_token = generateCsrfToken();
     .btn-danger {
         background: var(--danger);
         color: #fff;
-        padding: 15px 30px;
+        padding: 16px 30px;
         border: none;
         border-radius: 6px;
         font-weight: 700;

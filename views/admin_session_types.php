@@ -29,7 +29,7 @@ $session_types = $pdo->query("
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -64,14 +64,14 @@ $session_types = $pdo->query("
     }
     .types-table th {
         text-align: left;
-        padding: 15px;
+        padding: 16px;
         color: #94a3b8;
         font-size: 12px;
         text-transform: uppercase;
         font-weight: 700;
     }
     .types-table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid #1e293b;
         color: #fff;
     }
@@ -122,7 +122,7 @@ $session_types = $pdo->query("
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 30px;
+        padding: 24px;
         max-width: 500px;
         width: 90%;
     }

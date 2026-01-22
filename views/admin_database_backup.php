@@ -47,7 +47,7 @@ $csrf_token = $_SESSION['csrf_token'];
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .backup-header-left h1 {
@@ -86,7 +86,7 @@ $csrf_token = $_SESSION['csrf_token'];
         display: flex;
         gap: 8px;
         border-bottom: 2px solid #1e293b;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         overflow-x: auto;
     }
     
@@ -122,7 +122,7 @@ $csrf_token = $_SESSION['csrf_token'];
     }
     
     .alert {
-        padding: 15px 20px;
+        padding: 16px 20px;
         border-radius: 6px;
         margin-bottom: 20px;
         display: none;
@@ -150,7 +150,7 @@ $csrf_token = $_SESSION['csrf_token'];
         background: rgba(59, 130, 246, 0.1);
         border: 1px solid #3b82f6;
         border-radius: 6px;
-        padding: 15px 20px;
+        padding: 16px 20px;
         margin-bottom: 20px;
     }
     
@@ -197,7 +197,7 @@ $csrf_token = $_SESSION['csrf_token'];
     }
     
     .table th {
-        padding: 15px;
+        padding: 16px;
         text-align: left;
         font-size: 12px;
         font-weight: 700;
@@ -208,7 +208,7 @@ $csrf_token = $_SESSION['csrf_token'];
     }
     
     .table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid #1e293b;
         color: #fff;
         font-size: 14px;
@@ -381,7 +381,7 @@ $csrf_token = $_SESSION['csrf_token'];
     }
     
     .modal-body {
-        padding: 25px;
+        padding: 24px;
     }
     
     .form-group {
@@ -457,8 +457,8 @@ $csrf_token = $_SESSION['csrf_token'];
         display: none;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
-        margin-top: 15px;
+        padding: 16px;
+        margin-top: 12px;
         background: #161b22;
     }
     
@@ -470,7 +470,7 @@ $csrf_token = $_SESSION['csrf_token'];
         color: #fff;
         font-weight: 600;
         font-size: 14px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         padding-bottom: 10px;
         border-bottom: 1px solid #1e293b;
     }
@@ -497,7 +497,7 @@ $csrf_token = $_SESSION['csrf_token'];
     }
     
     .modal-footer {
-        padding: 15px 25px;
+        padding: 16px 25px;
         border-top: 1px solid #1e293b;
         display: flex;
         justify-content: flex-end;
@@ -577,7 +577,7 @@ $csrf_token = $_SESSION['csrf_token'];
     
     .empty-state-icon {
         font-size: 48px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         opacity: 0.5;
     }
     

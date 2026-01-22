@@ -319,7 +319,7 @@ function analyzePerformance() {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -330,7 +330,7 @@ function analyzePerformance() {
         background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         color: #fff;
     }
     .warning-banner i {
@@ -341,13 +341,13 @@ function analyzePerformance() {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .tool-card {
         background: #0a0f14;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 25px;
+        padding: 24px;
         transition: all 0.2s;
     }
     .tool-card:hover {
@@ -361,7 +361,7 @@ function analyzePerformance() {
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         color: var(--primary);
         font-size: 24px;
     }
@@ -398,8 +398,8 @@ function analyzePerformance() {
         background: #0a0f14;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 30px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     .results-title {
         font-size: 20px;
@@ -455,7 +455,7 @@ function analyzePerformance() {
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 10px;
     }
     .log-header {
@@ -517,7 +517,7 @@ function analyzePerformance() {
         <?php endif; ?>
         
         <?php if (isset($results['message'])): ?>
-        <div style="margin-top: 15px; padding: 15px; background: #06080b; border-radius: 6px;">
+        <div style="margin-top: 12px; padding: 16px; background: #06080b; border-radius: 6px;">
             <?= htmlspecialchars($results['message']) ?>
         </div>
         <?php endif; ?>

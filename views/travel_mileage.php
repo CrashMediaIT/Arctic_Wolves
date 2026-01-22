@@ -240,14 +240,14 @@ foreach ($mileage_entries as $entry) {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .summary-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 25px;
+    padding: 24px;
     display: flex;
     align-items: center;
     gap: 20px;
@@ -299,7 +299,7 @@ foreach ($mileage_entries as $entry) {
 }
 
 .mileage-table th {
-    padding: 15px;
+    padding: 16px;
     text-align: left;
     font-size: 12px;
     font-weight: 700;
@@ -310,7 +310,7 @@ foreach ($mileage_entries as $entry) {
 }
 
 .mileage-table td {
-    padding: 15px;
+    padding: 16px;
     border-bottom: 1px solid var(--border);
     font-size: 14px;
     color: var(--text-white);

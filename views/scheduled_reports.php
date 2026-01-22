@@ -66,7 +66,7 @@ $frequency_labels = [
     }
     
     .page-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -124,7 +124,7 @@ $frequency_labels = [
     }
     
     .reports-table th {
-        padding: 15px 20px;
+        padding: 16px 20px;
         text-align: left;
         font-size: 12px;
         font-weight: 700;
@@ -135,7 +135,7 @@ $frequency_labels = [
     }
     
     .reports-table td {
-        padding: 15px 20px;
+        padding: 16px 20px;
         color: #fff;
         font-size: 14px;
         border-bottom: 1px solid #1e293b;
@@ -233,7 +233,7 @@ $frequency_labels = [
     .empty-state p {
         color: #94a3b8;
         font-size: 14px;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     
     .modal {
@@ -294,7 +294,7 @@ $frequency_labels = [
     }
     
     .modal-body {
-        padding: 25px;
+        padding: 24px;
     }
     
     .form-group {
@@ -388,7 +388,7 @@ $frequency_labels = [
     }
     
     .alert {
-        padding: 15px 20px;
+        padding: 16px 20px;
         border-radius: 6px;
         margin-bottom: 20px;
         display: flex;

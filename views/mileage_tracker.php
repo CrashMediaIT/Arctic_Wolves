@@ -42,14 +42,14 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 30px;
-        margin-top: 30px;
+        margin-top: 24px;
     }
     
     .mileage-card {
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 25px;
+        padding: 24px;
     }
     
     .mileage-card h3 {
@@ -94,9 +94,9 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
     
     .waypoint-container {
         background: rgba(0, 0, 0, 0.2);
-        padding: 15px;
+        padding: 16px;
         border-radius: 8px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         position: relative;
     }
     
@@ -294,9 +294,9 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
                     <textarea name="purpose" id="purpose" rows="2" required placeholder="e.g., Travel to training session"></textarea>
                 </div>
                 
-                <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 25px 0;">
+                <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 24px 0;">
                 
-                <h4 style="color: white; margin-bottom: 15px;">Trip Route</h4>
+                <h4 style="color: white; margin-bottom: 12px;">Trip Route</h4>
                 
                 <div id="waypointsContainer">
                     <div class="waypoint-container" data-index="0">
@@ -313,7 +313,7 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
                     <i class="fas fa-plus"></i> Add Stop
                 </button>
                 
-                <button type="button" class="btn btn-primary" onclick="calculateDistance()" style="width: 100%; margin-bottom: 15px;">
+                <button type="button" class="btn btn-primary" onclick="calculateDistance()" style="width: 100%; margin-bottom: 12px;">
                     <i class="fas fa-calculator"></i> Calculate Distance
                 </button>
                 
@@ -329,7 +329,7 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
                                 <div class="distance-label">miles</div>
                             </div>
                         </div>
-                        <div style="margin-top: 15px; font-size: 1.2rem; color: white;">
+                        <div style="margin-top: 12px; font-size: 1.2rem; color: white;">
                             Reimbursement: <strong style="color: var(--primary);">$<span id="reimbursementDisplay">0.00</span></strong>
                             <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.6); margin-top: 5px;">
                                 Rate: $<?= number_format($rate_per_km, 2) ?>/km

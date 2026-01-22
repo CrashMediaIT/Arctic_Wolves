@@ -134,14 +134,14 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 25px;
-        margin: 30px 0;
+        margin: 24px 0;
     }
     
     .summary-card {
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 25px;
+        padding: 24px;
         position: relative;
         overflow: hidden;
     }
@@ -197,14 +197,14 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
         display: grid;
         grid-template-columns: 2fr 1fr;
         gap: 25px;
-        margin: 30px 0;
+        margin: 24px 0;
     }
     
     .chart-card {
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 25px;
+        padding: 24px;
     }
     
     .chart-card h3 {
@@ -255,7 +255,7 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
         padding: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         display: flex;
         align-items: end;
         gap: 15px;
@@ -422,7 +422,7 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
     </div>
     
     <!-- Recent Income -->
-    <div class="card" style="margin-top: 25px;">
+    <div class="card" style="margin-top: 24px;">
         <div class="card-header">
             <h3><i class="fas fa-dollar-sign"></i> Recent Payments</h3>
         </div>
@@ -441,7 +441,7 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
                 <tbody>
                     <?php if (empty($recent_income)): ?>
                         <tr>
-                            <td colspan="5" style="text-align: center; color: rgba(255, 255, 255, 0.5); padding: 30px;">
+                            <td colspan="5" style="text-align: center; color: rgba(255, 255, 255, 0.5); padding: 24px;">
                                 No income records found
                             </td>
                         </tr>
@@ -469,7 +469,7 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
     </div>
     
     <!-- Recent Expenses -->
-    <div class="card" style="margin-top: 25px;">
+    <div class="card" style="margin-top: 24px;">
         <div class="card-header">
             <h3><i class="fas fa-receipt"></i> Recent Expenses</h3>
         </div>
@@ -488,7 +488,7 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
                 <tbody>
                     <?php if (empty($recent_expenses)): ?>
                         <tr>
-                            <td colspan="5" style="text-align: center; color: rgba(255, 255, 255, 0.5); padding: 30px;">
+                            <td colspan="5" style="text-align: center; color: rgba(255, 255, 255, 0.5); padding: 24px;">
                                 No expense records found
                             </td>
                         </tr>
@@ -523,7 +523,7 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
     
     <!-- Pending Refunds -->
     <?php if (!empty($pending_refunds)): ?>
-    <div class="card" style="margin-top: 25px;">
+    <div class="card" style="margin-top: 24px;">
         <div class="card-header">
             <h3><i class="fas fa-undo"></i> Recent Refunds (Last 30 Days)</h3>
         </div>
@@ -562,8 +562,8 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
     </div>
     <?php endif; ?>
     
-    <div style="margin-top: 30px; text-align: center; padding: 20px; background: rgba(255, 255, 255, 0.03); border-radius: 12px;">
-        <p style="color: rgba(255, 255, 255, 0.6); margin-bottom: 15px;">
+    <div style="margin-top: 24px; text-align: center; padding: 20px; background: rgba(255, 255, 255, 0.03); border-radius: 12px;">
+        <p style="color: rgba(255, 255, 255, 0.6); margin-bottom: 12px;">
             View detailed reports
         </p>
         <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">

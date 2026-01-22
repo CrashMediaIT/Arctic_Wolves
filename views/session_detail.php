@@ -53,7 +53,7 @@ if ($session['practice_plan_id']) {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -80,14 +80,14 @@ if ($session['practice_plan_id']) {
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
+        padding: 24px;
         margin-bottom: 20px;
     }
     .card-title {
         font-size: 20px;
         font-weight: 700;
         color: #fff;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -97,7 +97,7 @@ if ($session['practice_plan_id']) {
         border: 1px solid #1e293b;
         border-radius: 6px;
         padding: 20px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .drill-header {
         display: flex;
@@ -227,7 +227,7 @@ if ($session['practice_plan_id']) {
         <?php endif; ?>
         
         <?php if (!empty($drills)): ?>
-            <h3 style="font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 15px;">
+            <h3 style="font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 12px;">
                 Drills (<?= count($drills) ?>)
             </h3>
             
@@ -303,13 +303,13 @@ if ($session['practice_plan_id']) {
         </div>
     <?php else: ?>
         <div class="content-card" style="text-align: center; padding: 40px;">
-            <i class="fas fa-clipboard" style="font-size: 48px; color: #64748b; opacity: 0.3; margin-bottom: 15px;"></i>
+            <i class="fas fa-clipboard" style="font-size: 48px; color: #64748b; opacity: 0.3; margin-bottom: 12px;"></i>
             <p style="color: #64748b;">No practice plan has been assigned to this session yet.</p>
         </div>
     <?php endif; ?>
 <?php endif; ?>
 
-<div style="margin-top: 30px;">
+<div style="margin-top: 24px;">
     <a href="?page=schedule" class="btn btn-secondary">
         <i class="fas fa-arrow-left"></i> Back to Schedule
     </a>

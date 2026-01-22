@@ -38,7 +38,7 @@ $logs = $stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -48,7 +48,7 @@ $logs = $stmt->fetchAll();
     .stats-bar {
         display: flex;
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .stat-card {
         background: #0d1117;
@@ -82,7 +82,7 @@ $logs = $stmt->fetchAll();
     .logs-table th {
         background: #06080b;
         text-align: left;
-        padding: 15px;
+        padding: 16px;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
@@ -90,7 +90,7 @@ $logs = $stmt->fetchAll();
         border-bottom: 2px solid #1e293b;
     }
     .logs-table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid #1e293b;
         font-size: 13px;
         color: #fff;
@@ -136,7 +136,7 @@ $logs = $stmt->fetchAll();
         display: flex;
         justify-content: center;
         gap: 10px;
-        margin-top: 30px;
+        margin-top: 24px;
         align-items: center;
     }
     .page-btn {
@@ -272,7 +272,7 @@ $stats = $pdo->query("
     <?php endif; ?>
 <?php else: ?>
     <div class="no-data">
-        <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px; opacity: 0.3;"></i>
+        <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;"></i>
         <p>No email logs found.</p>
     </div>
 <?php endif; ?>

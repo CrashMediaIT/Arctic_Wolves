@@ -236,7 +236,7 @@
 .timeline-summary {
     display: flex;
     justify-content: space-around;
-    padding: 25px;
+    padding: 24px;
     background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
     border: 1px solid var(--neon);
     border-radius: 8px;

@@ -129,7 +129,7 @@
 .cron-item {
     display: flex;
     gap: 20px;
-    padding: 25px;
+    padding: 24px;
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;

@@ -98,7 +98,7 @@ $payments = $pdo->query($paymentsQuery);
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 30px;">
+                                <td colspan="7" style="text-align: center; padding: 24px;">
                                     <p class="placeholder-text">No invoices found.</p>
                                 </td>
                             </tr>
@@ -158,7 +158,7 @@ $payments = $pdo->query($paymentsQuery);
 }
 
 .data-table th {
-    padding: 15px;
+    padding: 16px;
     text-align: left;
     font-size: 12px;
     font-weight: 700;
@@ -169,7 +169,7 @@ $payments = $pdo->query($paymentsQuery);
 }
 
 .data-table td {
-    padding: 15px;
+    padding: 16px;
     border-bottom: 1px solid var(--border);
     font-size: 14px;
     color: var(--text-white);

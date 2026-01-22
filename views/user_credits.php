@@ -84,7 +84,7 @@ if ($user_role === 'admin') {
     }
     
     .page-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .page-header h2 {
@@ -102,8 +102,8 @@ if ($user_role === 'admin') {
     .total-credits-card {
         background: linear-gradient(135deg, var(--primary) 0%, #e64500 100%);
         border-radius: 12px;
-        padding: 30px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
         text-align: center;
     }
     
@@ -126,8 +126,8 @@ if ($user_role === 'admin') {
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     
     .card h3 {
@@ -147,7 +147,7 @@ if ($user_role === 'admin') {
     .credits-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 15px;
+        margin-top: 12px;
     }
     
     .credits-table th {
@@ -161,7 +161,7 @@ if ($user_role === 'admin') {
     }
     
     .credits-table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.9);
         font-size: 0.9rem;

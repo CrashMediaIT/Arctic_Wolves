@@ -176,7 +176,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .year-select {
@@ -215,7 +215,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .athlete-card {
-    padding: 15px;
+    padding: 16px;
     background: #020305;
     border: 1px solid #334155;
     border-radius: 8px;
@@ -244,7 +244,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .athlete-header {
-    margin-bottom: 25px;
+    margin-bottom: 24px;
     padding-bottom: 20px;
     border-bottom: 1px solid #334155;
 }

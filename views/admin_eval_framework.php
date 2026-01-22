@@ -194,7 +194,7 @@
 }
 
 .criteria-list {
-    padding: 15px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -262,7 +262,7 @@
     font-size: 16px;
     font-weight: 700;
     color: var(--text-white);
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .scale-levels {

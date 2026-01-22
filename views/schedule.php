@@ -88,7 +88,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         --primary: #7000a4;
     }
     .page-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -105,7 +105,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         display: flex;
         gap: 15px;
         flex-wrap: wrap;
@@ -140,7 +140,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
+        padding: 24px;
         transition: all 0.2s;
     }
     .session-card:hover {
@@ -155,13 +155,13 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         border-radius: 20px;
         font-size: 12px;
         font-weight: 700;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .session-title {
         font-size: 20px;
         font-weight: 700;
         color: #fff;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .session-detail {
         display: flex;
@@ -179,7 +179,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
-        margin: 15px 0;
+        margin: 12px 0;
     }
     .session-tag {
         background: rgba(255, 255, 255, 0.05);
@@ -193,7 +193,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         font-size: 24px;
         font-weight: 900;
         color: var(--primary);
-        margin: 15px 0;
+        margin: 12px 0;
     }
     .session-price small {
         font-size: 12px;
@@ -203,7 +203,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
     .session-capacity {
         font-size: 13px;
         color: #94a3b8;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .session-capacity.low {
         color: #ef4444;
@@ -263,7 +263,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 30px;
+        padding: 24px;
         max-width: 500px;
         width: 90%;
         max-height: 80vh;
@@ -291,7 +291,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         height: 30px;
     }
     .athlete-checkbox-group {
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .athlete-checkbox {
         display: flex;
@@ -355,7 +355,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
     <p class="page-subtitle">Browse and book upcoming training sessions</p>
     
     <?php if ($available_credits > 0): ?>
-        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 15px; margin-top: 15px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 16px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <div style="font-size: 0.9rem; color: rgba(255,255,255,0.9); font-weight: 600;">Available Store Credits</div>
                 <div style="font-size: 1.5rem; color: white; font-weight: 900; margin-top: 5px;">$<?= number_format($available_credits, 2) ?></div>
@@ -563,7 +563,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
             </div>
             
             <?php if ($available_credits > 0): ?>
-                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 15px; margin-top: 20px;">
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 16px; margin-top: 20px;">
                     <label class="athlete-checkbox" style="background: transparent; border: none; margin: 0;">
                         <input type="checkbox" id="applyCreditsCheckbox" onchange="toggleCredits()">
                         <span class="athlete-checkbox-label">
@@ -578,7 +578,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
                 <input type="text" name="discount_code" class="discount-input" placeholder="Enter discount code">
             </div>
             
-            <div id="priceBreakdown" style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 15px; margin-top: 20px; display: none;">
+            <div id="priceBreakdown" style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 16px; margin-top: 20px; display: none;">
                 <div style="font-size: 14px; color: #94a3b8; font-weight: 600; margin-bottom: 12px;">Price Breakdown</div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                     <span style="color: #94a3b8;">Session Price:</span>

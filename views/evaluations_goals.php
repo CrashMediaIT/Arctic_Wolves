@@ -71,7 +71,7 @@ $evaluations = $evals_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         flex-wrap: wrap;
         gap: 15px;
     }
@@ -124,7 +124,7 @@ $evaluations = $evals_stmt->fetchAll();
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .eval-card {
@@ -145,7 +145,7 @@ $evaluations = $evals_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: start;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .eval-title {
@@ -173,7 +173,7 @@ $evaluations = $evals_stmt->fetchAll();
     .status-archived { background: var(--text-light); color: #fff; }
     
     .eval-progress {
-        margin-top: 15px;
+        margin-top: 12px;
     }
     
     .progress-bar-container {
@@ -592,7 +592,7 @@ $evaluations = $evals_stmt->fetchAll();
                     </div>
                     
                     <?php if ($eval['description']): ?>
-                        <p style="color: var(--text-light); font-size: 14px; margin-bottom: 15px;">
+                        <p style="color: var(--text-light); font-size: 14px; margin-bottom: 12px;">
                             <?php echo htmlspecialchars(substr($eval['description'], 0, 100)) . (strlen($eval['description']) > 100 ? '...' : ''); ?>
                         </p>
                     <?php endif; ?>

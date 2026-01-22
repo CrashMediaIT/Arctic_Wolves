@@ -91,7 +91,7 @@ $csrf_token = generateCsrfToken();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .audit-header h1 {
@@ -200,7 +200,7 @@ $csrf_token = generateCsrfToken();
     }
     
     .logs-table th {
-        padding: 15px;
+        padding: 16px;
         text-align: left;
         font-size: 12px;
         font-weight: 700;
@@ -211,7 +211,7 @@ $csrf_token = generateCsrfToken();
     }
     
     .logs-table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid #1e293b;
         color: #fff;
         font-size: 14px;
@@ -365,14 +365,14 @@ $csrf_token = generateCsrfToken();
     }
     
     .modal-body {
-        padding: 25px;
+        padding: 24px;
     }
     
     .json-display {
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         font-family: 'Courier New', monospace;
         font-size: 12px;
         color: #00ff88;

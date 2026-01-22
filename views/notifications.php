@@ -42,7 +42,7 @@ foreach ($notifs as $n) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -69,7 +69,7 @@ foreach ($notifs as $n) {
         border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         display: flex;
         gap: 20px;
         align-items: start;

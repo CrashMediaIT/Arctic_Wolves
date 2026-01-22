@@ -30,7 +30,7 @@ $error = isset($_GET['error']) ? $_GET['error'] : '';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -48,14 +48,14 @@ $error = isset($_GET['error']) ? $_GET['error'] : '';
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 25px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     .card-title {
         font-size: 20px;
         font-weight: 700;
         color: #fff;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -121,7 +121,7 @@ $error = isset($_GET['error']) ? $_GET['error'] : '';
         background: #334155;
     }
     .alert {
-        padding: 15px 20px;
+        padding: 16px 20px;
         border-radius: 6px;
         margin-bottom: 20px;
         font-size: 14px;
@@ -144,7 +144,7 @@ $error = isset($_GET['error']) ? $_GET['error'] : '';
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 10px;
         display: flex;
         justify-content: space-between;

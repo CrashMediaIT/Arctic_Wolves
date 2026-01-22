@@ -183,7 +183,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .header-actions {
@@ -250,7 +250,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 
 .report-summary {
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    padding: 25px;
+    padding: 24px;
     border-radius: 10px;
     margin-bottom: 20px;
     border-left: 4px solid var(--primary, #7000a4);
@@ -292,7 +292,7 @@ thead {
 }
 
 th {
-    padding: 15px;
+    padding: 16px;
     text-align: left;
     color: #94a3b8;
     font-size: 12px;
@@ -301,7 +301,7 @@ th {
 }
 
 td {
-    padding: 15px;
+    padding: 16px;
     color: #e2e8f0;
     border-bottom: 1px solid #1e293b;
 }

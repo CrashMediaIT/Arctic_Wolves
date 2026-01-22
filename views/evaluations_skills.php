@@ -199,7 +199,7 @@ if ($eval_id && $evaluation) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         flex-wrap: wrap;
         gap: 15px;
     }
@@ -291,7 +291,7 @@ if ($eval_id && $evaluation) {
         display: flex;
         justify-content: space-between;
         align-items: start;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .eval-card-title {
@@ -319,7 +319,7 @@ if ($eval_id && $evaluation) {
     .status-archived { background: rgba(100, 116, 139, 0.2); color: #64748b; }
     
     .eval-card-progress {
-        margin-top: 15px;
+        margin-top: 12px;
         padding-top: 15px;
         border-top: 1px solid var(--border);
     }
@@ -349,15 +349,15 @@ if ($eval_id && $evaluation) {
         background: var(--bg-dark);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     
     .eval-detail-header {
         display: flex;
         justify-content: space-between;
         align-items: start;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         padding-bottom: 20px;
         border-bottom: 2px solid var(--border);
     }
@@ -410,8 +410,8 @@ if ($eval_id && $evaluation) {
         background: var(--bg-darker);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 25px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     
     .category-header {
@@ -439,7 +439,7 @@ if ($eval_id && $evaluation) {
         display: flex;
         justify-content: space-between;
         align-items: start;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .skill-name {
@@ -503,7 +503,7 @@ if ($eval_id && $evaluation) {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 15px;
-        margin-top: 15px;
+        margin-top: 12px;
     }
     
     .notes-section {
@@ -616,8 +616,8 @@ if ($eval_id && $evaluation) {
         background: var(--bg-dark);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     
     .comparison-header {
@@ -637,7 +637,7 @@ if ($eval_id && $evaluation) {
         background: var(--bg-darker);
         border: 1px solid var(--border);
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
     }
     
     .comparison-date {
@@ -695,7 +695,7 @@ if ($eval_id && $evaluation) {
         background: var(--bg-dark);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 30px;
+        padding: 24px;
         max-width: 500px;
         width: 90%;
         max-height: 90vh;
@@ -787,7 +787,7 @@ if ($eval_id && $evaluation) {
         padding: 12px;
         border-radius: 6px;
         border: 1px solid var(--border);
-        margin-top: 15px;
+        margin-top: 12px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -940,7 +940,7 @@ if ($eval_id && $evaluation) {
                 
                 <!-- Save Button for Team Mode -->
                 <?php if ($isCoach): ?>
-                    <div style="margin-top: 30px; padding: 20px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px;">
+                    <div style="margin-top: 24px; padding: 20px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px;">
                         <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 14px; font-weight: 600;">
                             <input 
                                 type="checkbox" 
@@ -1457,7 +1457,7 @@ async function generateShareLink(evalId) {
         if (data.success) {
             const content = document.getElementById('shareLinkContent');
             content.innerHTML = `
-                <p style="color: var(--text-light); margin-bottom: 15px;">
+                <p style="color: var(--text-light); margin-bottom: 12px;">
                     Share this link to allow external viewing of the evaluation (public notes only).
                 </p>
                 <div class="share-link-display">

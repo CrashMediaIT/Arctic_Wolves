@@ -114,7 +114,7 @@
 .category-tabs {
     display: flex;
     gap: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
     flex-wrap: wrap;
 }
 

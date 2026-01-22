@@ -49,13 +49,13 @@ $report_type_display = ucwords(str_replace('_', ' ', $report['report_type']));
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
         border-radius: 12px;
         padding: 40px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         color: #fff;
     }
     .report-title {
         font-size: 32px;
         font-weight: 900;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .report-meta {
         font-size: 14px;
@@ -78,7 +78,7 @@ $report_type_display = ucwords(str_replace('_', ' ', $report['report_type']));
     .report-actions {
         display: flex;
         gap: 15px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .btn {
         padding: 12px 24px;

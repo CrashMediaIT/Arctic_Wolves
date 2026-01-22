@@ -62,7 +62,7 @@ $assignments = $assignments_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -88,8 +88,8 @@ $assignments = $assignments_stmt->fetchAll();
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     .section-title {
         font-size: 20px;
@@ -148,7 +148,7 @@ $assignments = $assignments_stmt->fetchAll();
         border-bottom: 2px solid var(--primary);
     }
     .data-table td {
-        padding: 15px 12px;
+        padding: 16px 12px;
         border-bottom: 1px solid #1e293b;
         color: #fff;
         font-size: 14px;
@@ -234,7 +234,7 @@ $assignments = $assignments_stmt->fetchAll();
     </form>
     
     <?php if (!empty($seasons)): ?>
-    <div class="table-container" style="margin-top: 25px;">
+    <div class="table-container" style="margin-top: 24px;">
         <table class="data-table">
             <thead>
                 <tr>
@@ -334,7 +334,7 @@ $assignments = $assignments_stmt->fetchAll();
     </form>
     
     <?php if (!empty($assignments)): ?>
-    <div class="table-container" style="margin-top: 25px;">
+    <div class="table-container" style="margin-top: 24px;">
         <table class="data-table">
             <thead>
                 <tr>

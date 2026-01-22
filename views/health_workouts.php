@@ -251,7 +251,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 
 <style>
 .content-section {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .section-header-main {
@@ -308,15 +308,15 @@ if ($current_program && $current_program['total_workouts'] > 0) {
     background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
     border: 1px solid var(--neon);
     border-radius: 8px;
-    padding: 30px;
-    margin-bottom: 30px;
+    padding: 24px;
+    margin-bottom: 24px;
 }
 
 .program-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
     flex-wrap: wrap;
     gap: 15px;
 }
@@ -405,7 +405,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 15px;
+    padding: 16px;
     text-align: center;
     transition: all 0.3s;
 }
@@ -429,7 +429,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 
 .day-header {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--border);
 }
@@ -512,7 +512,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 .exercise-category {
     font-size: 12px;
     color: var(--text-dim);
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .btn-small {

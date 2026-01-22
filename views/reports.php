@@ -48,7 +48,7 @@ $csrf_token = generateCsrfToken();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -59,7 +59,7 @@ $csrf_token = generateCsrfToken();
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 30px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     @media (max-width: 1200px) {
         .reports-container {
@@ -70,7 +70,7 @@ $csrf_token = generateCsrfToken();
         background: #0a0f14;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 25px;
+        padding: 24px;
     }
     .section-title {
         font-size: 18px;
@@ -179,7 +179,7 @@ $csrf_token = generateCsrfToken();
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -225,7 +225,7 @@ $csrf_token = generateCsrfToken();
     }
     .format-option {
         flex: 1;
-        padding: 15px;
+        padding: 16px;
         background: #06080b;
         border: 2px solid #1e293b;
         border-radius: 8px;
@@ -254,7 +254,7 @@ $csrf_token = generateCsrfToken();
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .checkbox-group input[type="checkbox"] {
         width: 18px;

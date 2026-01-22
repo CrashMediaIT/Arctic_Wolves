@@ -93,7 +93,7 @@ $age_groups = $age_groups_stmt->fetchAll();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -117,7 +117,7 @@ $age_groups = $age_groups_stmt->fetchAll();
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .summary-card {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
@@ -143,7 +143,7 @@ $age_groups = $age_groups_stmt->fetchAll();
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
+        padding: 24px;
         transition: all 0.2s;
     }
     .athlete-card:hover {
@@ -192,7 +192,7 @@ $age_groups = $age_groups_stmt->fetchAll();
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         text-align: center;
     }
     .stat-value {
@@ -256,7 +256,7 @@ $age_groups = $age_groups_stmt->fetchAll();
         border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 15px;

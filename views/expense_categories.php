@@ -100,10 +100,10 @@ $categories = $pdo->query("
 
 <style>
 .expense-categories { padding: 20px; }
-.page-header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+.page-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
 .categories-table { background: #0a0f16; border-radius: 10px; overflow: hidden; }
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 15px; text-align: left; }
+th, td { padding: 16px; text-align: left; }
 th { background: #020305; color: #94a3b8; font-size: 12px; text-transform: uppercase; }
 td { border-bottom: 1px solid #1e293b; color: #e2e8f0; }
 .status-badge { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
@@ -115,13 +115,13 @@ td { border-bottom: 1px solid #1e293b; color: #e2e8f0; }
 .btn-primary { background: var(--primary, #7000a4); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; }
 .btn-secondary { background: #334155; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; }
 .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); overflow-y: auto; }
-.modal-content { background: #0a0f16; margin: 100px auto; padding: 30px; border-radius: 12px; max-width: 600px; position: relative; color: #e2e8f0; }
+.modal-content { background: #0a0f16; margin: 100px auto; padding: 24px; border-radius: 12px; max-width: 600px; position: relative; color: #e2e8f0; }
 .close { position: absolute; right: 20px; top: 20px; font-size: 28px; color: #94a3b8; cursor: pointer; }
 .form-group { margin-bottom: 20px; }
 .form-group label { display: block; margin-bottom: 8px; color: #94a3b8; font-weight: 600; font-size: 14px; }
 .form-group input, .form-group textarea { width: 100%; padding: 10px; background: #020305; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; }
 .required { color: #ef4444; }
-.form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 30px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 </style>
 
 <script>

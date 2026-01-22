@@ -74,7 +74,7 @@ $auditLogs = $pdo->query($auditQuery);
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" style="text-align: center; padding: 30px;">
+                                <td colspan="6" style="text-align: center; padding: 24px;">
                                     <p class="placeholder-text">No audit logs found.</p>
                                 </td>
                             </tr>

@@ -189,6 +189,6 @@
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 </style>

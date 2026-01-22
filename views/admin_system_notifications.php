@@ -35,7 +35,7 @@ $csrf_token = generateCsrfToken();
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .notifications-header h1 {
@@ -90,7 +90,7 @@ $csrf_token = generateCsrfToken();
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .notification-title {
@@ -154,7 +154,7 @@ $csrf_token = generateCsrfToken();
         color: #94a3b8;
         font-size: 14px;
         line-height: 1.6;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .notification-schedule {
@@ -164,7 +164,7 @@ $csrf_token = generateCsrfToken();
         background: #06080b;
         border-radius: 4px;
         font-size: 13px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .schedule-item {
@@ -254,7 +254,7 @@ $csrf_token = generateCsrfToken();
     }
     
     .modal-body {
-        padding: 25px;
+        padding: 24px;
     }
     
     .modal-footer {
@@ -396,7 +396,7 @@ $csrf_token = generateCsrfToken();
         <i class="fas fa-bullhorn"></i>
         <h3>No System Notifications</h3>
         <p>Create your first system-wide notification</p>
-        <button class="btn-create" onclick="openCreateModal()" style="margin-top: 15px;">
+        <button class="btn-create" onclick="openCreateModal()" style="margin-top: 12px;">
             <i class="fas fa-plus"></i> Create Notification
         </button>
     </div>

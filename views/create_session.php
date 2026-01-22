@@ -30,8 +30,8 @@ $settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KE
     .page-header {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
         color: #fff;
     }
     .page-header h1 {
@@ -43,10 +43,10 @@ $settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KE
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 30px;
+        padding: 24px;
     }
     .form-section {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .section-title {
         font-size: 18px;
@@ -114,7 +114,7 @@ $settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KE
         background: rgba(255, 77, 0, 0.1);
         border: 1px solid var(--primary);
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         margin-bottom: 20px;
     }
     .info-box p {

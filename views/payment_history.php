@@ -55,7 +55,7 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
         --primary: #7000a4;
     }
     .page-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -67,7 +67,7 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .summary-card {
         background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
@@ -91,8 +91,8 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     .section-title {
         font-size: 20px;
@@ -117,7 +117,7 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
         border-bottom: 1px solid #1e293b;
     }
     .payment-table td {
-        padding: 15px 12px;
+        padding: 16px 12px;
         border-bottom: 1px solid #1e293b;
         color: #fff;
     }
@@ -158,7 +158,7 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
     }
     .empty-state i {
         font-size: 48px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
         opacity: 0.3;
     }
 </style>

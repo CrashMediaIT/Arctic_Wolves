@@ -229,7 +229,7 @@
     display: flex;
     align-items: start;
     gap: 20px;
-    padding: 25px;
+    padding: 24px;
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -317,7 +317,7 @@
     display: flex;
     align-items: center;
     gap: 15px;
-    padding: 15px;
+    padding: 16px;
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;

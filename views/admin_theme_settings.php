@@ -59,7 +59,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     }
     
     .theme-header {
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .theme-header h1 {
@@ -84,7 +84,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     .tabs-container {
         display: flex;
         gap: 10px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         border-bottom: 2px solid #1e293b;
         overflow-x: auto;
     }
@@ -128,7 +128,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         display: grid;
         grid-template-columns: 1fr 450px;
         gap: 30px;
-        margin-top: 30px;
+        margin-top: 24px;
     }
     
     .color-settings-panel,
@@ -136,7 +136,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 30px;
+        padding: 24px;
     }
     
     .full-width-panel {
@@ -144,7 +144,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 30px;
+        padding: 24px;
     }
     
     .settings-section {
@@ -247,7 +247,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 30px;
+        padding: 24px;
         position: sticky;
         top: 20px;
         max-height: calc(100vh - 140px);
@@ -281,7 +281,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         border: 1px solid var(--border, #1e293b);
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .preview-card h3 {
@@ -332,8 +332,8 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         background: var(--sidebar, #020305);
         border: 1px solid var(--border, #1e293b);
         border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
+        padding: 16px;
+        margin-bottom: 12px;
     }
     
     .preview-nav-item {
@@ -355,7 +355,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     .preview-status {
         display: flex;
         gap: 10px;
-        margin-top: 15px;
+        margin-top: 12px;
     }
     
     .status-badge {
@@ -386,7 +386,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     
     /* Form Elements */
     .form-group {
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     
     .form-group label {
@@ -424,7 +424,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     .radio-group {
         display: flex;
         gap: 20px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .radio-option {
@@ -452,10 +452,10 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     }
     
     .image-preview {
-        margin-top: 15px;
+        margin-top: 12px;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 15px;
+        padding: 16px;
         background: #06080b;
     }
     
@@ -477,8 +477,8 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     .action-buttons {
         display: flex;
         gap: 12px;
-        margin-top: 30px;
-        padding-top: 30px;
+        margin-top: 24px;
+        padding-top: 24px;
         border-top: 1px solid #1e293b;
     }
     
@@ -583,7 +583,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     
     .programs-table {
@@ -597,7 +597,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     }
     
     .programs-table th {
-        padding: 15px;
+        padding: 16px;
         text-align: left;
         font-size: 12px;
         font-weight: 700;
@@ -607,7 +607,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     }
     
     .programs-table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid #1e293b;
         color: #fff;
         font-size: 14px;
@@ -667,7 +667,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 12px;
-        padding: 30px;
+        padding: 24px;
         max-width: 600px;
         width: 100%;
         max-height: 90vh;
@@ -678,7 +678,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 24px;
     }
     
     .modal-header h2 {

@@ -83,7 +83,7 @@ $credits = $pdo->query($creditsQuery);
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 30px;">
+                                <td colspan="8" style="text-align: center; padding: 24px;">
                                     <p class="placeholder-text">No credits or refunds found.</p>
                                 </td>
                             </tr>

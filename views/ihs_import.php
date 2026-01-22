@@ -15,7 +15,7 @@ requirePermission($pdo, $user_id, $user_role, 'import_from_ihs');
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -26,20 +26,20 @@ requirePermission($pdo, $user_id, $user_role, 'import_from_ihs');
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 30px;
-        margin-bottom: 25px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     .section-title {
         font-size: 18px;
         font-weight: 700;
         color: var(--primary);
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     .info-box {
         background: rgba(59, 130, 246, 0.1);
         border: 1px solid #3b82f6;
         color: #3b82f6;
-        padding: 15px;
+        padding: 16px;
         border-radius: 6px;
         margin-bottom: 20px;
         font-size: 13px;
@@ -95,8 +95,8 @@ requirePermission($pdo, $user_id, $user_role, 'import_from_ihs');
         background: #06080b;
         border: 1px solid #1e293b;
         border-radius: 6px;
-        padding: 15px;
-        margin-top: 15px;
+        padding: 16px;
+        margin-top: 12px;
         max-height: 400px;
         overflow-y: auto;
     }
@@ -113,7 +113,7 @@ requirePermission($pdo, $user_id, $user_role, 'import_from_ihs');
         background: rgba(255, 77, 0, 0.1);
         border: 1px solid var(--primary);
         color: var(--primary);
-        padding: 15px;
+        padding: 16px;
         border-radius: 6px;
         margin-bottom: 20px;
         font-size: 13px;

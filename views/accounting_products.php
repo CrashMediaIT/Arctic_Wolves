@@ -192,7 +192,7 @@
 .product-tabs {
     display: flex;
     gap: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
 }
 
 .products-grid {
@@ -205,7 +205,7 @@
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 25px;
+    padding: 24px;
     position: relative;
     transition: all 0.3s;
 }
@@ -236,7 +236,7 @@
     display: flex;
     justify-content: space-between;
     align-items: start;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .product-header h4 {

@@ -241,7 +241,7 @@ $recent_expense_list = $recent_expenses->fetchAll(PDO::FETCH_ASSOC);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .page-header h2 {
@@ -267,13 +267,13 @@ $recent_expense_list = $recent_expenses->fetchAll(PDO::FETCH_ASSOC);
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .summary-card {
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     border-radius: 12px;
-    padding: 25px;
+    padding: 24px;
     display: flex;
     gap: 20px;
     border: 1px solid #334155;
@@ -339,14 +339,14 @@ $recent_expense_list = $recent_expenses->fetchAll(PDO::FETCH_ASSOC);
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .action-btn {
     background: #1e293b;
     border: 1px solid #334155;
     color: #e2e8f0;
-    padding: 15px 20px;
+    padding: 16px 20px;
     border-radius: 8px;
     text-decoration: none;
     text-align: center;
@@ -366,8 +366,8 @@ $recent_expense_list = $recent_expenses->fetchAll(PDO::FETCH_ASSOC);
 .chart-container {
     background: #0a0f16;
     border-radius: 12px;
-    padding: 25px;
-    margin-bottom: 30px;
+    padding: 24px;
+    margin-bottom: 24px;
     border: 1px solid #334155;
 }
 
@@ -385,7 +385,7 @@ $recent_expense_list = $recent_expenses->fetchAll(PDO::FETCH_ASSOC);
 .recent-column {
     background: #0a0f16;
     border-radius: 12px;
-    padding: 25px;
+    padding: 24px;
     border: 1px solid #334155;
 }
 
@@ -404,7 +404,7 @@ $recent_expense_list = $recent_expenses->fetchAll(PDO::FETCH_ASSOC);
 .transaction-item {
     display: flex;
     justify-content: space-between;
-    padding: 15px;
+    padding: 16px;
     background: #020305;
     border-radius: 8px;
     border-left: 3px solid transparent;

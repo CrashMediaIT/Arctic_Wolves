@@ -136,7 +136,7 @@ try {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 25px;
+    padding: 24px;
     background: var(--bg-main);
     border-bottom: 1px solid var(--border);
 }
@@ -205,7 +205,7 @@ try {
 }
 
 .practice-body {
-    padding: 25px;
+    padding: 24px;
 }
 
 .practice-drills h4 {
@@ -214,7 +214,7 @@ try {
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .practice-drills h4 i {

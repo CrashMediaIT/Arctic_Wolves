@@ -35,7 +35,7 @@ if ($user_role !== 'admin') {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .page-title {
@@ -52,7 +52,7 @@ if ($user_role !== 'admin') {
         border: 1px solid var(--primary);
         border-radius: 8px;
         padding: 20px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     
     .info-banner h3 {
@@ -75,7 +75,7 @@ if ($user_role !== 'admin') {
         border-radius: 8px;
         padding: 40px;
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         transition: all 0.2s;
         cursor: pointer;
     }
@@ -93,7 +93,7 @@ if ($user_role !== 'admin') {
     .upload-icon {
         font-size: 48px;
         color: var(--primary);
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .upload-title {
@@ -211,8 +211,8 @@ if ($user_role !== 'admin') {
         background: var(--bg-dark);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 24px;
+        margin-bottom: 24px;
     }
     
     .progress-section.show {
@@ -223,7 +223,7 @@ if ($user_role !== 'admin') {
         font-size: 16px;
         font-weight: 700;
         color: #fff;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .progress-bar-container {
@@ -245,7 +245,7 @@ if ($user_role !== 'admin') {
         background: var(--bg-darker);
         border: 1px solid var(--border);
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         max-height: 300px;
         overflow-y: auto;
         font-family: 'Courier New', monospace;
@@ -314,7 +314,7 @@ if ($user_role !== 'admin') {
         border: 1px solid var(--border);
         border-radius: 8px;
         padding: 20px;
-        margin-top: 30px;
+        margin-top: 24px;
     }
     
     .manifest-example h3 {
@@ -327,7 +327,7 @@ if ($user_role !== 'admin') {
         background: #000;
         border: 1px solid var(--border);
         border-radius: 6px;
-        padding: 15px;
+        padding: 16px;
         overflow-x: auto;
         margin: 0;
         color: #fff;

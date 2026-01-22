@@ -151,7 +151,7 @@ $expenses = $pdo->query($expensesQuery);
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" style="text-align: center; padding: 30px;">
+                                <td colspan="6" style="text-align: center; padding: 24px;">
                                     <p class="placeholder-text">No expenses recorded yet.</p>
                                 </td>
                             </tr>
@@ -167,7 +167,7 @@ $expenses = $pdo->query($expensesQuery);
 .file-upload-zone {
     border: 2px dashed var(--border);
     border-radius: 8px;
-    padding: 30px;
+    padding: 24px;
     text-align: center;
     background: var(--bg-main);
     transition: all 0.3s;
@@ -187,7 +187,7 @@ $expenses = $pdo->query($expensesQuery);
 
 .file-upload-zone p {
     color: var(--text-dim);
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .upload-buttons {

@@ -29,7 +29,7 @@ $locations = $pdo->query("
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
     }
     .page-title {
         font-size: 28px;
@@ -79,14 +79,14 @@ $locations = $pdo->query("
     }
     .locations-table th {
         text-align: left;
-        padding: 15px;
+        padding: 16px;
         color: #94a3b8;
         font-size: 12px;
         text-transform: uppercase;
         font-weight: 700;
     }
     .locations-table td {
-        padding: 15px;
+        padding: 16px;
         border-bottom: 1px solid #1e293b;
         color: #fff;
     }
@@ -137,7 +137,7 @@ $locations = $pdo->query("
         background: #0d1117;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 30px;
+        padding: 24px;
         max-width: 500px;
         width: 90%;
     }
@@ -313,7 +313,7 @@ $locations = $pdo->query("
                 <input type="text" name="city" id="locationCity" class="form-input" required>
             </div>
             
-            <div id="locationPreview" style="display: none; margin-bottom: 15px;">
+            <div id="locationPreview" style="display: none; margin-bottom: 12px;">
                 <label class="form-label">Location Image</label>
                 <img id="previewImage" src="" alt="Location" style="max-width: 100%; border-radius: 6px; margin-top: 5px;">
                 <button type="button" onclick="clearImage()" style="margin-top: 5px; padding: 6px 12px; background: #ef4444; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">

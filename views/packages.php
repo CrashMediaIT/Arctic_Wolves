@@ -188,19 +188,19 @@ $tax_name = $settings['tax_name'] ?? 'HST';
     background: #f8f9fa;
     padding: 20px;
     border-radius: 8px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .credits-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 15px;
-    margin-top: 15px;
+    margin-top: 12px;
 }
 
 .credit-card {
     background: white;
-    padding: 15px;
+    padding: 16px;
     border-radius: 8px;
     border-left: 4px solid var(--primary, #7000a4);
 }
@@ -287,7 +287,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .package-details {
-    margin: 15px 0;
+    margin: 12px 0;
 }
 
 .detail-item {
@@ -305,7 +305,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 
 .package-pricing {
     margin: 20px 0;
-    padding: 15px;
+    padding: 16px;
     background: #f8f9fa;
     border-radius: 8px;
     text-align: center;
@@ -342,7 +342,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
 }
 
 .athlete-selector {
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .athlete-option {
