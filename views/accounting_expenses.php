@@ -116,9 +116,18 @@ $expenses = $pdo->query($expensesQuery);
                                 <td><strong>$<?= number_format($expense['amount'], 2) ?></strong></td>
                                 <td>
                                     <?php if($expense['receipt_url']): ?>
-                                        <a href="<?= htmlspecialchars($expense['receipt_url']) ?>" target="_blank" class="btn-link">
-                                            <i class="fas fa-paperclip"></i> View
-                                        </a>
+                                        <?php 
+                                        // Validate receipt URL is safe (within uploads directory)
+                                        $receipt_url = htmlspecialchars($expense['receipt_url']);
+                                        $is_safe = strpos($receipt_url, 'uploads/receipts/') === 0;
+                                        ?>
+                                        <?php if($is_safe): ?>
+                                            <a href="<?= $receipt_url ?>" target="_blank" rel="noopener noreferrer" class="btn-link">
+                                                <i class="fas fa-paperclip"></i> View
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-dim">Invalid receipt</span>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span class="text-dim">No receipt</span>
                                     <?php endif; ?>

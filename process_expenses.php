@@ -32,6 +32,21 @@ try {
                     mkdir($upload_dir, 0755, true);
                 }
                 
+                // Validate file size (5MB max)
+                if ($_FILES['receipt_file']['size'] > 5 * 1024 * 1024) {
+                    throw new Exception('File size exceeds 5MB limit');
+                }
+                
+                // Validate MIME type
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime_type = finfo_file($finfo, $_FILES['receipt_file']['tmp_name']);
+                finfo_close($finfo);
+                
+                $allowed_mimes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+                if (!in_array($mime_type, $allowed_mimes)) {
+                    throw new Exception('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
+                }
+                
                 $file_ext = strtolower(pathinfo($_FILES['receipt_file']['name'], PATHINFO_EXTENSION));
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
                 
@@ -66,6 +81,22 @@ try {
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
+                
+                // Validate file size (5MB max)
+                if ($_FILES['receipt_file']['size'] > 5 * 1024 * 1024) {
+                    throw new Exception('File size exceeds 5MB limit');
+                }
+                
+                // Validate MIME type
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime_type = finfo_file($finfo, $_FILES['receipt_file']['tmp_name']);
+                finfo_close($finfo);
+                
+                $allowed_mimes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+                if (!in_array($mime_type, $allowed_mimes)) {
+                    throw new Exception('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
+                }
+                
                 $file_ext = strtolower(pathinfo($_FILES['receipt_file']['name'], PATHINFO_EXTENSION));
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
                 
@@ -106,8 +137,14 @@ try {
             $file_stmt->execute([$expense_id]);
             $receipt = $file_stmt->fetchColumn();
             
-            if ($receipt && file_exists($receipt)) {
-                unlink($receipt);
+            // Validate path is within uploads directory and delete
+            if ($receipt && strpos($receipt, 'uploads/receipts/') === 0 && file_exists($receipt)) {
+                // Additional check: ensure no path traversal
+                $real_path = realpath($receipt);
+                $uploads_path = realpath('uploads/receipts/');
+                if ($real_path && $uploads_path && strpos($real_path, $uploads_path) === 0) {
+                    unlink($receipt);
+                }
             }
             
             $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
@@ -149,13 +186,19 @@ try {
         case 'delete_category':
             $category_id = intval($_POST['category_id']);
             
-            // Check if category is in use by checking expenses with this category name
-            $check = $pdo->prepare("SELECT COUNT(*) FROM expenses e JOIN expense_categories ec ON e.category = ec.name WHERE ec.id = ?");
-            $check->execute([$category_id]);
+            // Check if category is in use - Get category name first, then check expenses
+            $cat_stmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ?");
+            $cat_stmt->execute([$category_id]);
+            $category_name = $cat_stmt->fetchColumn();
             
-            if ($check->fetchColumn() > 0) {
-                header("Location: dashboard.php?page=expense_categories&status=error&message=Category+is+in+use");
-                exit();
+            if ($category_name) {
+                $check = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE category = ?");
+                $check->execute([$category_name]);
+                
+                if ($check->fetchColumn() > 0) {
+                    header("Location: dashboard.php?page=expense_categories&status=error&message=Category+is+in+use");
+                    exit();
+                }
             }
             
             $stmt = $pdo->prepare("DELETE FROM expense_categories WHERE id = ?");
