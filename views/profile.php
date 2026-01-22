@@ -75,7 +75,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                         <?php endif; ?>
                     </div>
                     <div class="photo-actions">
-                        <form method="POST" action="process_profile.php" enctype="multipart/form-data" style="display: inline;">
+                        <form method="POST" action="process_profile_update.php" enctype="multipart/form-data" style="display: inline;">
                             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                             <input type="hidden" name="action" value="upload_photo">
                             <input type="file" name="profile_photo" id="profilePhotoInput" accept="image/*" style="display: none;" onchange="this.form.submit()">
@@ -84,7 +84,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                             </button>
                         </form>
                         <?php if (!empty($userData['profile_image'])): ?>
-                            <form method="POST" action="process_profile.php" style="display: inline;">
+                            <form method="POST" action="process_profile_update.php" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                                 <input type="hidden" name="action" value="remove_photo">
                                 <button type="submit" class="btn btn-secondary" onclick="return confirm('Remove profile photo?')">
@@ -95,7 +95,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                     </div>
                 </div>
 
-                <form class="profile-form" id="profile-form" method="POST" action="process_profile.php" data-form-type="profile">
+                <form class="profile-form" id="profile-form" method="POST" action="process_profile_update.php" data-form-type="profile">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                     <input type="hidden" name="action" value="update_profile">
                     <div class="form-row">
@@ -168,7 +168,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                     <h3><i class="fas fa-hockey-puck"></i> Player Information</h3>
                 </div>
                 <div class="card-body">
-                    <form class="player-form" id="player-form" method="POST" action="process_profile.php" data-form-type="player">
+                    <form class="player-form" id="player-form" method="POST" action="process_profile_update.php" data-form-type="player">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                         <input type="hidden" name="action" value="update_player_info">
                         <div class="form-row">
@@ -261,7 +261,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                 <h3><i class="fas fa-lock"></i> Change Password</h3>
             </div>
             <div class="card-body">
-                <form class="password-form" id="password-form" method="POST" action="process_profile.php" data-form-type="password">
+                <form class="password-form" id="password-form" method="POST" action="process_profile_update.php" data-form-type="password">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                     <input type="hidden" name="action" value="change_password">
                     <div class="form-group">
