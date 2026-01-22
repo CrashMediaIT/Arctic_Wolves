@@ -263,6 +263,36 @@ ls -la /portainer/nginx/php/
 
 ---
 
+## Step 8a: Create Required NGINX Directories
+
+The NGINX configuration requires certain directories to exist for logging and temporary files. Run the setup script to create them:
+
+```bash
+# Run the directory setup script inside the container
+docker exec nginx /config/www/Arctic_Wolves/deployment/setup_nginx_directories.sh
+
+# Alternatively, create the directories manually:
+docker exec nginx mkdir -p /config/nginx/log
+docker exec nginx mkdir -p /config/nginx/client_body_temp
+docker exec nginx mkdir -p /config/nginx/ssl
+docker exec nginx chown -R abc:abc /config/nginx/log
+docker exec nginx chmod 755 /config/nginx/log
+```
+
+**What This Creates:**
+- `/config/nginx/log/` - Directory for access and error logs
+- `/config/nginx/client_body_temp/` - Temporary directory for large file uploads
+- `/config/nginx/ssl/` - Directory for SSL certificates (if using HTTPS)
+
+**Verification:**
+```bash
+# Verify directories exist and are writable
+docker exec nginx ls -la /config/nginx/
+docker exec nginx test -w /config/nginx/log && echo "✓ Log directory is writable" || echo "✗ Log directory is NOT writable"
+```
+
+---
+
 ## Step 9: Restart NGINX Container
 
 ```bash
