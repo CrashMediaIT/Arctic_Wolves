@@ -839,9 +839,70 @@ When reporting an issue, include:
 
 ## Version History
 
+- **v1.3** - January 22, 2026 - Added common troubleshooting patterns from systematic issue resolution
 - **v1.2** - January 22, 2026 - Added critical form submission infrastructure section, enhanced PDO column name verification, added form debugging checklist and process file expectations
 - **v1.1** - January 22, 2026 - Added comprehensive button testing procedures, tab navigation checks, dropdown validation, and button configuration patterns section
 - **v1.0** - January 22, 2026 - Initial maintenance process document created
+
+---
+
+## Common Troubleshooting Patterns
+
+### Pattern 1: Page Redirects to Home
+**Symptom:** Clicking link redirects to home page instead of intended page
+**Root Cause:** Page not registered in routing table
+**Solution:** 
+1. Check if view file exists in `/views/` directory
+2. Open `dashboard.php` and find `$allowed_pages` array
+3. Add entry: `'page_name' => 'views/page_name.php'`
+4. Test navigation
+
+### Pattern 2: Button Does Nothing
+**Symptom:** Button click has no effect
+**Root Cause:** Missing data attributes
+**Solution:**
+1. Inspect button HTML
+2. Add appropriate data attributes:
+   - Navigation: `data-action="view"` + `data-page="destination"`
+   - Modal: `data-action="add"` + `data-modal="modal-id"`
+   - Action: `data-action="action-name"` + `data-id="123"`
+3. Ensure app.js is loaded
+4. Test button click
+
+### Pattern 3: Modal Won't Close
+**Symptom:** X or Cancel button doesn't close modal
+**Root Cause:** Modal ID mismatch or missing closeModal function
+**Solution:**
+1. Verify closeModal() function exists in app.js (line 682+)
+2. Check modal container has correct ID
+3. Verify onclick matches: `onclick="closeModal('exact-modal-id')"`
+4. Check for JavaScript errors in console
+
+### Pattern 4: Form Doesn't Submit
+**Symptom:** Form submission redirects to home or does nothing
+**Root Cause:** Missing form attributes
+**Solution:**
+1. Add `action="process_*.php"` attribute
+2. Add `method="POST"` attribute
+3. Add CSRF token: `<input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">`
+4. Ensure all inputs have `name` attributes (not just id/class)
+5. Test form submission
+
+### Pattern 5: Database Column Not Found Error
+**Symptom:** SQL error about missing column
+**Root Cause:** Code uses column name that doesn't exist in schema
+**Solution:**
+1. Check DATABASE_SCHEMA_REFERENCE.md for correct column names
+2. Fix code to match schema (DON'T change schema to match code)
+3. Common fixes:
+   - `name` → `job_name` (cron_jobs)
+   - `start_time` → `start_date` (system_notifications)
+   - Remove references to non-existent columns
+4. Test database operation
+
+---
+
+## Version History
 
 ---
 
