@@ -15,16 +15,18 @@
                     <h3><i class="fas fa-info-circle"></i> Drill Information</h3>
                 </div>
                 <div class="card-body">
-                    <form class="drill-form">
+                    <form class="drill-form" method="POST" action="process_drills.php">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="create">
                         <div class="form-group">
                             <label>Drill Name *</label>
-                            <input type="text" class="form-input" placeholder="Enter drill name" required>
+                            <input type="text" name="drill_name" class="form-input" placeholder="Enter drill name" required>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Category *</label>
-                                <select class="form-input" required>
+                                <select name="category" class="form-input" required>
                                     <option value="">-- Select Category --</option>
                                     <option>Skating</option>
                                     <option>Shooting</option>
@@ -37,7 +39,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Skill Level *</label>
-                                <select class="form-input" required>
+                                <select name="skill_level" class="form-input" required>
                                     <option value="">-- Select Level --</option>
                                     <option>Beginner</option>
                                     <option>Intermediate</option>
@@ -49,41 +51,41 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Duration (minutes)</label>
-                                <input type="number" class="form-input" placeholder="10" min="1">
+                                <input type="number" name="duration" class="form-input" placeholder="10" min="1">
                             </div>
                             <div class="form-group">
                                 <label>Number of Players</label>
-                                <input type="text" class="form-input" placeholder="e.g., 6-18">
+                                <input type="text" name="num_players" class="form-input" placeholder="e.g., 6-18">
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label>Description *</label>
-                            <textarea class="form-textarea" rows="4" placeholder="Describe the drill objectives and key points..." required></textarea>
+                            <textarea name="description" class="form-textarea" rows="4" placeholder="Describe the drill objectives and key points..." required></textarea>
                         </div>
 
                         <div class="form-group">
                             <label>Instructions</label>
-                            <textarea class="form-textarea" rows="6" placeholder="Step-by-step instructions for executing the drill..."></textarea>
+                            <textarea name="instructions" class="form-textarea" rows="6" placeholder="Step-by-step instructions for executing the drill..."></textarea>
                         </div>
 
                         <div class="form-group">
                             <label>Equipment Needed</label>
                             <div class="equipment-tags">
                                 <label class="checkbox-tag">
-                                    <input type="checkbox" value="pucks">
+                                    <input type="checkbox" name="equipment[]" value="pucks">
                                     <span><i class="fas fa-hockey-puck"></i> Pucks</span>
                                 </label>
                                 <label class="checkbox-tag">
-                                    <input type="checkbox" value="cones">
+                                    <input type="checkbox" name="equipment[]" value="cones">
                                     <span><i class="fas fa-traffic-cone"></i> Cones</span>
                                 </label>
                                 <label class="checkbox-tag">
-                                    <input type="checkbox" value="nets">
+                                    <input type="checkbox" name="equipment[]" value="nets">
                                     <span><i class="fas fa-bullseye"></i> Nets</span>
                                 </label>
                                 <label class="checkbox-tag">
-                                    <input type="checkbox" value="sticks">
+                                    <input type="checkbox" name="equipment[]" value="sticks">
                                     <span><i class="fas fa-hockey-sticks"></i> Extra Sticks</span>
                                 </label>
                             </div>
@@ -91,7 +93,11 @@
 
                         <div class="form-group">
                             <label>Tags (comma separated)</label>
-                            <input type="text" class="form-input" placeholder="e.g., warmup, power play, breakout">
+                            <input type="text" name="tags" class="form-input" placeholder="e.g., warmup, power play, breakout">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Create Drill</button>
                         </div>
                     </form>
                 </div>

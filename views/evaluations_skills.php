@@ -1195,7 +1195,7 @@ if ($eval_id && $evaluation) {
             <h2 class="modal-title">Create Skills Evaluation</h2>
             <button class="modal-close" onclick="closeCreateModal()">&times;</button>
         </div>
-        <form id="createForm" onsubmit="createEvaluation(event)">
+        <form id="createForm" method="POST" action="process_evaluations.php" onsubmit="createEvaluation(event)">
             <?= csrfTokenInput() ?>
             <div class="form-group">
                 <label class="form-label">Athlete</label>

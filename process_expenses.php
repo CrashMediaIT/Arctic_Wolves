@@ -19,133 +19,150 @@ $user_id = $_SESSION['user_id'];
 try {
     switch ($action) {
         case 'create':
-            $vendor_name = trim($_POST['vendor_name']);
-            $category_id = intval($_POST['category_id']);
+            $category = trim($_POST['category'] ?? '');
             $description = trim($_POST['description'] ?? '');
             $amount = floatval($_POST['amount']);
-            $tax_amount = floatval($_POST['tax_amount'] ?? 0);
-            $total_amount = floatval($_POST['total_amount']);
             $expense_date = $_POST['expense_date'];
-            $payment_method = trim($_POST['payment_method'] ?? '');
-            $reference_number = trim($_POST['reference_number'] ?? '');
             
             // Handle file upload
-            $receipt_file = null;
+            $receipt_url = null;
             if (isset($_FILES['receipt_file']) && $_FILES['receipt_file']['error'] === UPLOAD_ERR_OK) {
                 $upload_dir = 'uploads/receipts/';
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
                 
+                // Validate file size (5MB max)
+                if ($_FILES['receipt_file']['size'] > 5 * 1024 * 1024) {
+                    throw new Exception('File size exceeds 5MB limit');
+                }
+                
+                // Validate MIME type
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime_type = finfo_file($finfo, $_FILES['receipt_file']['tmp_name']);
+                finfo_close($finfo);
+                
+                $allowed_mimes = ['image/jpeg', 'image/png', 'application/pdf'];
+                if (!in_array($mime_type, $allowed_mimes)) {
+                    throw new Exception('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
+                }
+                
                 $file_ext = strtolower(pathinfo($_FILES['receipt_file']['name'], PATHINFO_EXTENSION));
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
                 
                 if (in_array($file_ext, $allowed_exts)) {
-                    $receipt_file = uniqid('receipt_') . '.' . $file_ext;
-                    move_uploaded_file($_FILES['receipt_file']['tmp_name'], $upload_dir . $receipt_file);
+                    $receipt_url = 'uploads/receipts/' . uniqid('receipt_') . '.' . $file_ext;
+                    move_uploaded_file($_FILES['receipt_file']['tmp_name'], $receipt_url);
                 }
             }
             
             $stmt = $pdo->prepare("
-                INSERT INTO expenses (category_id, vendor_name, description, amount, tax_amount, 
-                                     total_amount, expense_date, receipt_file, payment_method, 
-                                     reference_number, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO expenses (user_id, expense_date, amount, category, description, receipt_url, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending')
             ");
             $stmt->execute([
-                $category_id, $vendor_name, $description, $amount, $tax_amount,
-                $total_amount, $expense_date, $receipt_file, $payment_method,
-                $reference_number, $user_id
+                $user_id, $expense_date, $amount, $category, $description, $receipt_url
             ]);
             
-            header("Location: dashboard.php?page=accounts_payable&status=success");
+            header("Location: dashboard.php?page=accounting_expenses&status=success");
             exit();
             
         case 'update':
             $expense_id = intval($_POST['expense_id']);
-            $vendor_name = trim($_POST['vendor_name']);
-            $category_id = intval($_POST['category_id']);
+            $category = trim($_POST['category'] ?? '');
             $description = trim($_POST['description'] ?? '');
             $amount = floatval($_POST['amount']);
-            $tax_amount = floatval($_POST['tax_amount'] ?? 0);
-            $total_amount = floatval($_POST['total_amount']);
             $expense_date = $_POST['expense_date'];
-            $payment_method = trim($_POST['payment_method'] ?? '');
-            $reference_number = trim($_POST['reference_number'] ?? '');
             
             // Handle file upload for update
-            $receipt_file = null;
+            $receipt_url = null;
             if (isset($_FILES['receipt_file']) && $_FILES['receipt_file']['error'] === UPLOAD_ERR_OK) {
                 $upload_dir = 'uploads/receipts/';
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
+                
+                // Validate file size (5MB max)
+                if ($_FILES['receipt_file']['size'] > 5 * 1024 * 1024) {
+                    throw new Exception('File size exceeds 5MB limit');
+                }
+                
+                // Validate MIME type
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime_type = finfo_file($finfo, $_FILES['receipt_file']['tmp_name']);
+                finfo_close($finfo);
+                
+                $allowed_mimes = ['image/jpeg', 'image/png', 'application/pdf'];
+                if (!in_array($mime_type, $allowed_mimes)) {
+                    throw new Exception('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
+                }
+                
                 $file_ext = strtolower(pathinfo($_FILES['receipt_file']['name'], PATHINFO_EXTENSION));
                 $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
                 
                 if (in_array($file_ext, $allowed_exts)) {
-                    $receipt_file = uniqid('receipt_') . '.' . $file_ext;
-                    move_uploaded_file($_FILES['receipt_file']['tmp_name'], $upload_dir . $receipt_file);
+                    $receipt_url = 'uploads/receipts/' . uniqid('receipt_') . '.' . $file_ext;
+                    move_uploaded_file($_FILES['receipt_file']['tmp_name'], $receipt_url);
                     
                     // Update with new file
                     $stmt = $pdo->prepare("
                         UPDATE expenses 
-                        SET category_id = ?, vendor_name = ?, description = ?, amount = ?, 
-                            tax_amount = ?, total_amount = ?, expense_date = ?, receipt_file = ?, 
-                            payment_method = ?, reference_number = ?
+                        SET category = ?, description = ?, amount = ?, expense_date = ?, receipt_url = ?
                         WHERE id = ?
                     ");
                     $stmt->execute([
-                        $category_id, $vendor_name, $description, $amount, $tax_amount,
-                        $total_amount, $expense_date, $receipt_file, $payment_method,
-                        $reference_number, $expense_id
+                        $category, $description, $amount, $expense_date, $receipt_url, $expense_id
                     ]);
                 }
             } else {
                 // Update without changing file
                 $stmt = $pdo->prepare("
                     UPDATE expenses 
-                    SET category_id = ?, vendor_name = ?, description = ?, amount = ?, 
-                        tax_amount = ?, total_amount = ?, expense_date = ?, 
-                        payment_method = ?, reference_number = ?
+                    SET category = ?, description = ?, amount = ?, expense_date = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
-                    $category_id, $vendor_name, $description, $amount, $tax_amount,
-                    $total_amount, $expense_date, $payment_method,
-                    $reference_number, $expense_id
+                    $category, $description, $amount, $expense_date, $expense_id
                 ]);
             }
             
-            header("Location: dashboard.php?page=accounts_payable&status=success");
+            header("Location: dashboard.php?page=accounting_expenses&status=success");
             exit();
             
         case 'delete':
             $expense_id = intval($_POST['expense_id']);
             
             // Delete receipt file if exists
-            $file_stmt = $pdo->prepare("SELECT receipt_file FROM expenses WHERE id = ?");
+            $file_stmt = $pdo->prepare("SELECT receipt_url FROM expenses WHERE id = ?");
             $file_stmt->execute([$expense_id]);
             $receipt = $file_stmt->fetchColumn();
             
-            if ($receipt && file_exists('uploads/receipts/' . $receipt)) {
-                unlink('uploads/receipts/' . $receipt);
+            // Validate path is within uploads directory and delete
+            if ($receipt && strpos($receipt, 'uploads/receipts/') === 0 && file_exists($receipt)) {
+                // Additional check: ensure no path traversal
+                $real_path = realpath($receipt);
+                $uploads_path = realpath('uploads/receipts/');
+                if ($real_path && $uploads_path && strpos($real_path, $uploads_path) === 0) {
+                    unlink($receipt);
+                }
             }
             
             $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
             $stmt->execute([$expense_id]);
             
-            header("Location: dashboard.php?page=accounts_payable&status=success");
+            header("Location: dashboard.php?page=accounting_expenses&status=success");
             exit();
             
         case 'create_category':
             $name = trim($_POST['name']);
             $description = trim($_POST['description'] ?? '');
-            $display_order = intval($_POST['display_order'] ?? 0);
             $is_active = isset($_POST['is_active']) ? 1 : 0;
             
             $stmt = $pdo->prepare("
-                INSERT INTO expense_categories (name, description, display_order, is_active)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO expense_categories (name, description, is_active)
+                VALUES (?, ?, ?)
             ");
-            $stmt->execute([$name, $description, $display_order, $is_active]);
+            $stmt->execute([$name, $description, $is_active]);
             
             header("Location: dashboard.php?page=expense_categories&status=success");
             exit();
@@ -154,15 +171,14 @@ try {
             $category_id = intval($_POST['category_id']);
             $name = trim($_POST['name']);
             $description = trim($_POST['description'] ?? '');
-            $display_order = intval($_POST['display_order'] ?? 0);
             $is_active = isset($_POST['is_active']) ? 1 : 0;
             
             $stmt = $pdo->prepare("
                 UPDATE expense_categories 
-                SET name = ?, description = ?, display_order = ?, is_active = ?
+                SET name = ?, description = ?, is_active = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$name, $description, $display_order, $is_active, $category_id]);
+            $stmt->execute([$name, $description, $is_active, $category_id]);
             
             header("Location: dashboard.php?page=expense_categories&status=success");
             exit();
@@ -170,13 +186,19 @@ try {
         case 'delete_category':
             $category_id = intval($_POST['category_id']);
             
-            // Check if category is in use
-            $check = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE category_id = ?");
-            $check->execute([$category_id]);
+            // Check if category is in use - Get category name first, then check expenses
+            $cat_stmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ?");
+            $cat_stmt->execute([$category_id]);
+            $category_name = $cat_stmt->fetchColumn();
             
-            if ($check->fetchColumn() > 0) {
-                header("Location: dashboard.php?page=expense_categories&status=error&message=Category+is+in+use");
-                exit();
+            if ($category_name) {
+                $check = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE category = ?");
+                $check->execute([$category_name]);
+                
+                if ($check->fetchColumn() > 0) {
+                    header("Location: dashboard.php?page=expense_categories&status=error&message=Category+is+in+use");
+                    exit();
+                }
             }
             
             $stmt = $pdo->prepare("DELETE FROM expense_categories WHERE id = ?");
@@ -191,7 +213,10 @@ try {
     
 } catch (Exception $e) {
     error_log("Expense processing error: " . $e->getMessage());
-    $redirect_page = isset($_POST['category_id']) ? 'expense_categories' : 'accounts_payable';
+    $redirect_page = 'accounting_expenses';
+    if ($action === 'create_category' || $action === 'update_category' || $action === 'delete_category') {
+        $redirect_page = 'expense_categories';
+    }
     header("Location: dashboard.php?page=$redirect_page&status=error&message=" . urlencode($e->getMessage()));
     exit();
 }

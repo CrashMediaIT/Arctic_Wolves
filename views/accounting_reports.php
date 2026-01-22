@@ -13,11 +13,13 @@
             <h3><i class="fas fa-file-alt"></i> Generate Report</h3>
         </div>
         <div class="card-body">
-            <form class="report-form">
+            <form class="report-form" method="POST" action="process_reports.php">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <input type="hidden" name="action" value="generate_report">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Report Type *</label>
-                        <select class="form-input" required>
+                        <select name="report_type" class="form-input" required>
                             <option value="">-- Select Report Type --</option>
                             <option>Revenue Summary</option>
                             <option>Expense Report</option>
@@ -31,7 +33,7 @@
                     </div>
                     <div class="form-group">
                         <label>Date Range *</label>
-                        <select class="form-input" required>
+                        <select name="date_range" class="form-input" required>
                             <option value="">-- Select Range --</option>
                             <option>Today</option>
                             <option>This Week</option>
@@ -49,11 +51,11 @@
                 <div class="form-row" id="customDateRange" style="display: none;">
                     <div class="form-group">
                         <label>From Date</label>
-                        <input type="date" class="form-input">
+                        <input type="date" name="from_date" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>To Date</label>
-                        <input type="date" class="form-input">
+                        <input type="date" name="to_date" class="form-input">
                     </div>
                 </div>
 
@@ -79,22 +81,22 @@
                     <label>Additional Options</label>
                     <div class="checkbox-options">
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="detailed_breakdown" value="1">
                             <span>Include detailed breakdown</span>
                         </label>
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="show_charts" value="1">
                             <span>Show charts and graphs</span>
                         </label>
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="compare_previous" value="1">
                             <span>Compare with previous period</span>
                         </label>
                     </div>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary" data-action="generate-report">
+                    <button type="submit" class="btn-primary">
                         <i class="fas fa-chart-bar"></i> Generate Report
                     </button>
                 </div>
@@ -115,7 +117,12 @@
                     </div>
                     <h4>Monthly Revenue</h4>
                     <p>Comprehensive revenue breakdown by source and category</p>
-                    <button class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    <form method="POST" action="process_reports.php" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="generate_quick_report">
+                        <input type="hidden" name="report_type" value="monthly_revenue">
+                        <button type="submit" class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    </form>
                 </div>
 
                 <div class="report-card">
@@ -124,7 +131,12 @@
                     </div>
                     <h4>Client Summary</h4>
                     <p>Client billing history and outstanding balances</p>
-                    <button class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    <form method="POST" action="process_reports.php" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="generate_quick_report">
+                        <input type="hidden" name="report_type" value="client_summary">
+                        <button type="submit" class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    </form>
                 </div>
 
                 <div class="report-card">
@@ -133,7 +145,12 @@
                     </div>
                     <h4>Profit & Loss</h4>
                     <p>Complete P&L statement with comparisons</p>
-                    <button class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    <form method="POST" action="process_reports.php" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="generate_quick_report">
+                        <input type="hidden" name="report_type" value="profit_loss">
+                        <button type="submit" class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    </form>
                 </div>
 
                 <div class="report-card">
@@ -142,7 +159,12 @@
                     </div>
                     <h4>Tax Report</h4>
                     <p>Tax-ready financial summary and documentation</p>
-                    <button class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    <form method="POST" action="process_reports.php" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="generate_quick_report">
+                        <input type="hidden" name="report_type" value="tax_report">
+                        <button type="submit" class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    </form>
                 </div>
 
                 <div class="report-card">
@@ -151,7 +173,12 @@
                     </div>
                     <h4>Session Analytics</h4>
                     <p>Session attendance, revenue, and trends</p>
-                    <button class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    <form method="POST" action="process_reports.php" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="generate_quick_report">
+                        <input type="hidden" name="report_type" value="session_analytics">
+                        <button type="submit" class="btn-secondary btn-small"><i class="fas fa-play"></i> Generate</button>
+                    </form>
                 </div>
 
                 <div class="report-card">

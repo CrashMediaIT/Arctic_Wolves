@@ -207,7 +207,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
             <h3><i class="fas fa-book"></i> Exercise Library</h3>
             <form method="GET" action="" class="filter-group">
                 <input type="hidden" name="page" value="strength_conditioning">
-                <select name="category" class="form-input-small" data-action="auto-submit">
+                <select name="category" class="form-input-small" onchange="this.form.submit()">
                     <option value="all">All Categories</option>
                     <?php foreach ($categories as $cat): ?>
                         <option value="<?= htmlspecialchars($cat) ?>" <?= $filter_category === $cat ? 'selected' : '' ?>>
@@ -215,7 +215,8 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <input type="text" name="search_exercise" class="form-input-small" placeholder="Search exercises..." value="<?= htmlspecialchars($search_exercise) ?>" data-action="search-debounce">
+                <input type="text" name="search_exercise" class="form-input-small" placeholder="Search exercises..." value="<?= htmlspecialchars($search_exercise) ?>">
+                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i></button>
             </form>
         </div>
         <div class="card-body">

@@ -336,7 +336,7 @@ $sessions = $sessions_stmt->fetchAll();
             <button class="close-modal" onclick="closeRefundModal()">×</button>
         </div>
         
-        <form id="refundForm">
+        <form id="refundForm" method="POST" action="process_refunds.php">
             <?= csrfTokenInput() ?>
             <input type="hidden" name="action" value="process_refund">
             <input type="hidden" name="booking_id" id="refundBookingId">

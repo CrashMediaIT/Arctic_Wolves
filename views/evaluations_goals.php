@@ -618,7 +618,7 @@ $evaluations = $evals_stmt->fetchAll();
             <h2 class="modal-title" id="modalTitle">Create Evaluation</h2>
             <button class="modal-close" onclick="closeModal('evaluationModal')">&times;</button>
         </div>
-        <form id="evaluationForm">
+        <form id="evaluationForm" method="POST" action="process_evaluations.php">
             <div class="modal-body">
                 <input type="hidden" name="action" id="formAction" value="create_evaluation">
                 <input type="hidden" name="evaluation_id" id="evaluationId">
@@ -679,7 +679,7 @@ $evaluations = $evals_stmt->fetchAll();
             <h2 class="modal-title">Add Step</h2>
             <button class="modal-close" onclick="closeModal('addStepModal')">&times;</button>
         </div>
-        <form id="addStepForm">
+        <form id="addStepForm" method="POST" action="process_evaluations.php">
             <div class="modal-body">
                 <input type="hidden" name="action" value="add_step">
                 <input type="hidden" name="goal_eval_id" id="stepEvalId">

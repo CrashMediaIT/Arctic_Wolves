@@ -13,15 +13,17 @@
             <h3><i class="fas fa-plus-circle"></i> Create Report Schedule</h3>
         </div>
         <div class="card-body">
-            <form class="schedule-form">
+            <form class="schedule-form" method="POST" action="process_reports.php">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <input type="hidden" name="action" value="schedule_create">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Schedule Name *</label>
-                        <input type="text" class="form-input" placeholder="e.g., Monthly Revenue Report" required>
+                        <input type="text" name="schedule_name" class="form-input" placeholder="e.g., Monthly Revenue Report" required>
                     </div>
                     <div class="form-group">
                         <label>Report Type *</label>
-                        <select class="form-input" required>
+                        <select name="report_type" class="form-input" required>
                             <option value="">-- Select Report --</option>
                             <option>Revenue Summary</option>
                             <option>Expense Report</option>
@@ -35,7 +37,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Frequency *</label>
-                        <select class="form-input" required>
+                        <select name="frequency" class="form-input" required>
                             <option value="">-- Select Frequency --</option>
                             <option>Daily</option>
                             <option>Weekly</option>
@@ -46,7 +48,7 @@
                     </div>
                     <div class="form-group">
                         <label>Day of Week/Month</label>
-                        <select class="form-input">
+                        <select name="day_of_period" class="form-input">
                             <option>1st of month</option>
                             <option>15th of month</option>
                             <option>Last day of month</option>
@@ -56,13 +58,13 @@
                     </div>
                     <div class="form-group">
                         <label>Time</label>
-                        <input type="time" class="form-input" value="09:00">
+                        <input type="time" name="time" class="form-input" value="09:00">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Email Recipients</label>
-                    <input type="text" class="form-input" placeholder="email1@example.com, email2@example.com">
+                    <input type="text" name="email_recipients" class="form-input" placeholder="email1@example.com, email2@example.com">
                     <small class="form-hint">Separate multiple emails with commas</small>
                 </div>
 
@@ -81,7 +83,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary" data-action="create-schedule">
+                    <button type="submit" class="btn-primary">
                         <i class="fas fa-check"></i> Create Schedule
                     </button>
                 </div>

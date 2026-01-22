@@ -251,7 +251,7 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
         <div class="mileage-card">
             <h3><i class="fas fa-plus-circle"></i> Log New Trip</h3>
             
-            <form id="mileageForm">
+            <form id="mileageForm" method="POST" action="process_mileage.php">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create" id="formAction">
                 <input type="hidden" name="log_id" id="logId">
