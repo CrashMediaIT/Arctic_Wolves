@@ -9,10 +9,13 @@ $video_query = "
     SELECT v.*, 
            CONCAT(u.first_name, ' ', u.last_name) as coach_name,
            s.session_date,
-           s.session_type
+           st.name as session_type_name,
+           d.name as drill_name
     FROM videos v
     LEFT JOIN users u ON v.coach_id = u.id
     LEFT JOIN sessions s ON v.session_id = s.id
+    LEFT JOIN session_types st ON s.session_type_id = st.id
+    LEFT JOIN drills d ON v.drill_id = d.id
     WHERE v.athlete_id = ?
 ";
 
@@ -20,31 +23,32 @@ $params = [$user_id];
 
 // Apply filters
 if ($filter_status !== 'all') {
-    $video_query .= " AND v.review_status = ?";
+    $video_query .= " AND v.status = ?";
     $params[] = $filter_status;
 }
 
 if ($filter_drill_type !== 'all') {
-    $video_query .= " AND v.drill_type = ?";
+    $video_query .= " AND d.category_id = ?";
     $params[] = $filter_drill_type;
 }
 
 if (!empty($search)) {
-    $video_query .= " AND (v.drill_name LIKE ? OR v.notes LIKE ?)";
+    $video_query .= " AND (v.title LIKE ? OR v.description LIKE ? OR d.name LIKE ?)";
+    $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
 
-$video_query .= " ORDER BY v.created_at DESC";
+$video_query .= " ORDER BY v.upload_date DESC";
 
 $video_stmt = $pdo->prepare($video_query);
 $video_stmt->execute($params);
 $videos = $video_stmt->fetchAll();
 
-// Get drill types for filter
-$drill_types_stmt = $pdo->prepare("SELECT DISTINCT drill_type FROM videos WHERE drill_type IS NOT NULL ORDER BY drill_type");
-$drill_types_stmt->execute();
-$drill_types = $drill_types_stmt->fetchAll(PDO::FETCH_COLUMN);
+// Get drill categories for filter
+$drill_categories_stmt = $pdo->prepare("SELECT id, name FROM drill_categories ORDER BY name");
+$drill_categories_stmt->execute();
+$drill_categories = $drill_categories_stmt->fetchAll();
 ?>
 
 <!-- Player Drill Video Review View -->
@@ -62,15 +66,15 @@ $drill_types = $drill_types_stmt->fetchAll(PDO::FETCH_COLUMN);
             <input type="hidden" name="page" value="drill_review">
             <select name="filter_status" class="form-input-small" data-action="auto-submit">
                 <option value="all" <?= $filter_status === 'all' ? 'selected' : '' ?>>All Videos</option>
-                <option value="pending" <?= $filter_status === 'pending' ? 'selected' : '' ?>>Not Reviewed</option>
+                <option value="pending_review" <?= $filter_status === 'pending_review' ? 'selected' : '' ?>>Pending Review</option>
                 <option value="reviewed" <?= $filter_status === 'reviewed' ? 'selected' : '' ?>>Reviewed</option>
-                <option value="flagged" <?= $filter_status === 'flagged' ? 'selected' : '' ?>>Flagged</option>
+                <option value="archived" <?= $filter_status === 'archived' ? 'selected' : '' ?>>Archived</option>
             </select>
             <select name="filter_drill" class="form-input-small" data-action="auto-submit">
-                <option value="all">All Drills</option>
-                <?php foreach ($drill_types as $type): ?>
-                    <option value="<?= htmlspecialchars($type) ?>" <?= $filter_drill_type === $type ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($type) ?>
+                <option value="all">All Drill Types</option>
+                <?php foreach ($drill_categories as $category): ?>
+                    <option value="<?= $category['id'] ?>" <?= $filter_drill_type == $category['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($category['name']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
