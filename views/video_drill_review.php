@@ -83,52 +83,115 @@ $drill_categories = $drill_categories_stmt->fetchAll();
     </div>
 
     <!-- Video Grid -->
-    <div class="video-grid">
-        <?php if (count($videos) > 0): ?>
-            <?php foreach ($videos as $video): ?>
-            <div class="video-card" data-component="VideoCard" data-video-id="<?= $video['id'] ?>">
-                <div class="video-thumbnail">
-                    <?php if (!empty($video['thumbnail_url'])): ?>
-                        <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Video thumbnail">
-                    <?php else: ?>
-                        <div class="video-placeholder">
-                            <i class="fas fa-play-circle"></i>
+    <div class="video-sections">
+        <!-- Pending Reviews Section -->
+        <?php 
+        $pending_videos = array_filter($videos, function($v) { 
+            return $v['status'] === 'pending_review'; 
+        });
+        $reviewed_videos = array_filter($videos, function($v) { 
+            return $v['status'] === 'reviewed'; 
+        });
+        ?>
+        
+        <?php if (count($pending_videos) > 0): ?>
+        <div class="video-section">
+            <h3 class="section-header">
+                <i class="fas fa-clock"></i> Pending Review (<?= count($pending_videos) ?>)
+            </h3>
+            <div class="video-grid">
+                <?php foreach ($pending_videos as $video): ?>
+                <div class="video-card" data-component="VideoCard" data-video-id="<?= $video['id'] ?>">
+                    <div class="video-thumbnail">
+                        <?php if (!empty($video['thumbnail_url'])): ?>
+                            <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Video thumbnail">
+                        <?php else: ?>
+                            <div class="video-placeholder">
+                                <i class="fas fa-play-circle"></i>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($video['duration'])): ?>
+                            <span class="video-duration"><?= htmlspecialchars($video['duration']) ?></span>
+                        <?php endif; ?>
+                        <span class="video-status pending">
+                            <i class="fas fa-clock"></i>
+                        </span>
+                    </div>
+                    <div class="video-info">
+                        <h4 class="video-title"><?= htmlspecialchars($video['drill_name']) ?></h4>
+                        <div class="video-meta">
+                            <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
+                            <?php if (!empty($video['coach_name'])): ?>
+                                <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
+                            <?php endif; ?>
                         </div>
-                    <?php endif; ?>
-                    <?php if (!empty($video['duration'])): ?>
-                        <span class="video-duration"><?= htmlspecialchars($video['duration']) ?></span>
-                    <?php endif; ?>
-                    <span class="video-status <?= $video['review_status'] ?>">
-                        <i class="fas fa-<?= $video['review_status'] === 'reviewed' ? 'check-circle' : 'clock' ?>"></i>
-                    </span>
+                    </div>
+                    <div class="video-actions">
+                        <button class="btn-primary btn-full" data-action="view-video" data-video-id="<?= $video['id'] ?>">
+                            <i class="fas fa-play"></i> Watch & Review
+                        </button>
+                    </div>
                 </div>
-                <div class="video-info">
-                    <h4 class="video-title"><?= htmlspecialchars($video['drill_name']) ?></h4>
-                    <div class="video-meta">
-                        <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
-                        <?php if (!empty($video['coach_name'])): ?>
-                            <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <!-- Reviewed Videos Section -->
+        <?php if (count($reviewed_videos) > 0): ?>
+        <div class="video-section">
+            <h3 class="section-header">
+                <i class="fas fa-check-circle"></i> Reviewed (<?= count($reviewed_videos) ?>)
+            </h3>
+            <div class="video-grid">
+                <?php foreach ($reviewed_videos as $video): ?>
+                <div class="video-card" data-component="VideoCard" data-video-id="<?= $video['id'] ?>">
+                    <div class="video-thumbnail">
+                        <?php if (!empty($video['thumbnail_url'])): ?>
+                            <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Video thumbnail">
+                        <?php else: ?>
+                            <div class="video-placeholder">
+                                <i class="fas fa-play-circle"></i>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($video['duration'])): ?>
+                            <span class="video-duration"><?= htmlspecialchars($video['duration']) ?></span>
+                        <?php endif; ?>
+                        <span class="video-status reviewed">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                    </div>
+                    <div class="video-info">
+                        <h4 class="video-title"><?= htmlspecialchars($video['drill_name']) ?></h4>
+                        <div class="video-meta">
+                            <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
+                            <?php if (!empty($video['coach_name'])): ?>
+                                <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($video['rating'] > 0): ?>
+                            <div class="video-rating">
+                                <span class="rating-label">Rating:</span>
+                                <div class="stars">
+                                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                                        <i class="<?= $i <= $video['rating'] ? 'fas' : 'far' ?> fa-star"></i>
+                                    <?php endfor; ?>
+                                </div>
+                            </div>
                         <?php endif; ?>
                     </div>
-                    <?php if ($video['rating'] > 0): ?>
-                        <div class="video-rating">
-                            <span class="rating-label">Rating:</span>
-                            <div class="stars">
-                                <?php for ($i = 1; $i <= 5; $i++): ?>
-                                    <i class="<?= $i <= $video['rating'] ? 'fas' : 'far' ?> fa-star"></i>
-                                <?php endfor; ?>
-                            </div>
-                        </div>
-                    <?php endif; ?>
+                    <div class="video-actions">
+                        <button class="btn-secondary btn-full" data-action="view-video" data-video-id="<?= $video['id'] ?>">
+                            <i class="fas fa-eye"></i> View Review
+                        </button>
+                    </div>
                 </div>
-                <div class="video-actions">
-                    <button class="btn-primary btn-full" data-action="view-video" data-video-id="<?= $video['id'] ?>">
-                        <i class="fas fa-play"></i> Watch & Review
-                    </button>
-                </div>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
-        <?php else: ?>
+        </div>
+        <?php endif; ?>
+        
+        <?php if (count($videos) === 0): ?>
             <div class="placeholder-container">
                 <i class="fas fa-video placeholder-icon"></i>
                 <p class="placeholder-text">No drill videos available yet. Your coach will upload videos after your sessions.</p>
@@ -163,6 +226,35 @@ $drill_categories = $drill_categories_stmt->fetchAll();
 </div>
 
 <style>
+.video-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.video-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.section-header {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-header i {
+    color: var(--neon);
+}
+
 .video-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
