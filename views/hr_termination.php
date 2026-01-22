@@ -1,3 +1,12 @@
+<?php
+// Fetch recent terminations
+$terminationsQuery = "SELECT t.*, u.first_name, u.last_name, u.role
+    FROM employee_terminations t
+    LEFT JOIN users u ON t.user_id = u.user_id
+    ORDER BY t.termination_date DESC
+    LIMIT 10";
+$terminations = mysqli_query($conn, $terminationsQuery);
+?>
 <!-- HR Termination View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -130,8 +139,8 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary"><i class="fas fa-times"></i> Cancel</button>
-                    <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Process Termination</button>
+                    <button type="button" class="btn-secondary" data-action="cancel"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="submit" class="btn-primary" data-action="process-termination"><i class="fas fa-check"></i> Process Termination</button>
                 </div>
             </form>
         </div>
@@ -156,18 +165,35 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Mike Johnson</td>
-                            <td>Assistant Coach</td>
-                            <td>Dec 31, 2023</td>
-                            <td>Contract End</td>
-                            <td><span class="status-badge completed">Completed</span></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View Details"><i class="fas fa-eye"></i></button>
-                                </div>
-                            </td>
-                        </tr>
+                        <?php if(mysqli_num_rows($terminations) > 0): ?>
+                            <?php while($term = mysqli_fetch_assoc($terminations)): 
+                                $statusClass = strtolower($term['status']);
+                            ?>
+                            <tr>
+                                <td><?= htmlspecialchars($term['first_name'] . ' ' . $term['last_name']) ?></td>
+                                <td><?= htmlspecialchars($term['role']) ?></td>
+                                <td><?= date('M j, Y', strtotime($term['termination_date'])) ?></td>
+                                <td><?= htmlspecialchars($term['termination_type']) ?></td>
+                                <td><span class="status-badge <?= $statusClass ?>"><?= ucfirst($term['status']) ?></span></td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-icon" title="View Details" data-action="view"><i class="fas fa-eye"></i></button>
+                                        <?php if($term['status'] === 'completed'): ?>
+                                            <button class="btn-icon" title="Restore Employee" data-action="restore" data-termination-id="<?= $term['termination_id'] ?>">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 30px;">
+                                    <p class="placeholder-text">No termination records found.</p>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>

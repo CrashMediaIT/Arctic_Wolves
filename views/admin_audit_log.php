@@ -1,3 +1,12 @@
+<?php
+// Fetch audit logs
+$auditQuery = "SELECT a.*, u.first_name, u.last_name, u.email
+    FROM audit_logs a
+    LEFT JOIN users u ON a.user_id = u.user_id
+    ORDER BY a.timestamp DESC
+    LIMIT 50";
+$auditLogs = mysqli_query($conn, $auditQuery);
+?>
 <!-- Admin Audit Log View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -10,8 +19,8 @@
     <!-- Filter Bar -->
     <div class="action-bar">
         <div class="filter-group">
-            <input type="text" class="form-input-small" placeholder="Search logs...">
-            <select class="form-input-small">
+            <input type="text" class="form-input-small" placeholder="Search logs..." data-filter="search">
+            <select class="form-input-small" data-filter="action">
                 <option>All Actions</option>
                 <option>Login/Logout</option>
                 <option>User Management</option>
@@ -19,14 +28,14 @@
                 <option>Settings</option>
                 <option>Security</option>
             </select>
-            <select class="form-input-small">
+            <select class="form-input-small" data-filter="user">
                 <option>All Users</option>
                 <!-- Users will be populated -->
             </select>
-            <input type="date" class="form-input-small" placeholder="Start Date">
-            <input type="date" class="form-input-small" placeholder="End Date">
+            <input type="date" class="form-input-small" placeholder="Start Date" data-filter="date-start">
+            <input type="date" class="form-input-small" placeholder="End Date" data-filter="date-end">
         </div>
-        <button class="btn-secondary"><i class="fas fa-file-export"></i> Export</button>
+        <button class="btn-secondary" data-action="export"><i class="fas fa-file-export"></i> Export</button>
     </div>
 
     <!-- Audit Log Table -->
@@ -48,30 +57,28 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Jan 15, 2024 3:42 PM</td>
-                            <td>John Doe</td>
-                            <td><span class="action-badge login">Login</span></td>
-                            <td>Successful login</td>
-                            <td>192.168.1.100</td>
-                            <td><span class="status-badge success">Success</span></td>
-                        </tr>
-                        <tr>
-                            <td>Jan 15, 2024 3:35 PM</td>
-                            <td>Mike Smith</td>
-                            <td><span class="action-badge data">Update User</span></td>
-                            <td>Modified athlete profile</td>
-                            <td>192.168.1.101</td>
-                            <td><span class="status-badge success">Success</span></td>
-                        </tr>
-                        <tr>
-                            <td>Jan 15, 2024 3:20 PM</td>
-                            <td>Unknown</td>
-                            <td><span class="action-badge security">Failed Login</span></td>
-                            <td>Invalid credentials</td>
-                            <td>45.123.45.67</td>
-                            <td><span class="status-badge failed">Failed</span></td>
-                        </tr>
+                        <?php if(mysqli_num_rows($auditLogs) > 0): ?>
+                            <?php while($log = mysqli_fetch_assoc($auditLogs)): 
+                                $userName = $log['first_name'] ? ($log['first_name'] . ' ' . $log['last_name']) : 'Unknown';
+                                $actionType = strtolower(str_replace(' ', '-', $log['action_type']));
+                                $statusClass = $log['success'] ? 'success' : 'failed';
+                            ?>
+                            <tr>
+                                <td><?= date('M j, Y g:i A', strtotime($log['timestamp'])) ?></td>
+                                <td><?= htmlspecialchars($userName) ?></td>
+                                <td><span class="action-badge <?= $actionType ?>"><?= htmlspecialchars($log['action']) ?></span></td>
+                                <td><?= htmlspecialchars($log['details']) ?></td>
+                                <td><?= htmlspecialchars($log['ip_address']) ?></td>
+                                <td><span class="status-badge <?= $statusClass ?>"><?= $log['success'] ? 'Success' : 'Failed' ?></span></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 30px;">
+                                    <p class="placeholder-text">No audit logs found.</p>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>

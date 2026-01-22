@@ -94,7 +94,9 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary"><i class="fas fa-chart-bar"></i> Generate Report</button>
+                    <button type="submit" class="btn-primary" data-action="generate-report">
+                        <i class="fas fa-chart-bar"></i> Generate Report
+                    </button>
                 </div>
             </form>
         </div>

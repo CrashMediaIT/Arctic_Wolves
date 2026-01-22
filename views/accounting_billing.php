@@ -1,3 +1,21 @@
+<?php
+// Fetch invoices
+$invoicesQuery = "SELECT i.*, u.first_name, u.last_name, u.email
+    FROM invoices i
+    LEFT JOIN users u ON i.user_id = u.user_id
+    ORDER BY i.invoice_date DESC
+    LIMIT 20";
+$invoices = mysqli_query($conn, $invoicesQuery);
+
+// Fetch recent payments
+$paymentsQuery = "SELECT p.*, i.invoice_number, u.first_name, u.last_name
+    FROM payments p
+    LEFT JOIN invoices i ON p.invoice_id = i.invoice_id
+    LEFT JOIN users u ON p.user_id = u.user_id
+    ORDER BY p.payment_date DESC
+    LIMIT 5";
+$payments = mysqli_query($conn, $paymentsQuery);
+?>
 <!-- Accounting Billing View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -10,15 +28,15 @@
     <!-- Actions Bar -->
     <div class="action-bar">
         <div class="filter-group">
-            <input type="text" class="form-input-small" placeholder="Search invoices...">
-            <select class="form-input-small">
+            <input type="text" class="form-input-small" placeholder="Search invoices..." data-filter="search">
+            <select class="form-input-small" data-filter="status">
                 <option>All Status</option>
                 <option>Paid</option>
                 <option>Pending</option>
                 <option>Overdue</option>
                 <option>Draft</option>
             </select>
-            <select class="form-input-small">
+            <select class="form-input-small" data-filter="date-range">
                 <option>This Month</option>
                 <option>Last Month</option>
                 <option>Last 3 Months</option>
@@ -52,66 +70,39 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td><strong>INV-2024-001</strong></td>
-                            <td>
-                                <div class="client-info">
-                                    <div class="client-avatar">JS</div>
-                                    <span>John Smith</span>
-                                </div>
-                            </td>
-                            <td>Jan 15, 2024</td>
-                            <td>Jan 30, 2024</td>
-                            <td><strong>$549.00</strong></td>
-                            <td><span class="status-badge paid">Paid</span></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                                    <button class="btn-icon" title="Download"><i class="fas fa-download"></i></button>
-                                    <button class="btn-icon" title="Email"><i class="fas fa-envelope"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>INV-2024-002</strong></td>
-                            <td>
-                                <div class="client-info">
-                                    <div class="client-avatar">SJ</div>
-                                    <span>Sarah Johnson</span>
-                                </div>
-                            </td>
-                            <td>Jan 14, 2024</td>
-                            <td>Jan 29, 2024</td>
-                            <td><strong>$299.00</strong></td>
-                            <td><span class="status-badge pending">Pending</span></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                                    <button class="btn-icon" title="Download"><i class="fas fa-download"></i></button>
-                                    <button class="btn-icon" title="Email"><i class="fas fa-envelope"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>INV-2024-003</strong></td>
-                            <td>
-                                <div class="client-info">
-                                    <div class="client-avatar">MW</div>
-                                    <span>Mike Williams</span>
-                                </div>
-                            </td>
-                            <td>Jan 10, 2024</td>
-                            <td>Jan 25, 2024</td>
-                            <td><strong>$150.00</strong></td>
-                            <td><span class="status-badge overdue">Overdue</span></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                                    <button class="btn-icon" title="Download"><i class="fas fa-download"></i></button>
-                                    <button class="btn-icon" title="Send Reminder"><i class="fas fa-bell"></i></button>
-                                </div>
-                            </td>
-                        </tr>
+                        <?php if(mysqli_num_rows($invoices) > 0): ?>
+                            <?php while($invoice = mysqli_fetch_assoc($invoices)): 
+                                $initials = strtoupper(substr($invoice['first_name'], 0, 1) . substr($invoice['last_name'], 0, 1));
+                                $statusClass = strtolower($invoice['status']);
+                            ?>
+                            <tr>
+                                <td><strong><?= htmlspecialchars($invoice['invoice_number']) ?></strong></td>
+                                <td>
+                                    <div class="client-info">
+                                        <div class="client-avatar"><?= $initials ?></div>
+                                        <span><?= htmlspecialchars($invoice['first_name'] . ' ' . $invoice['last_name']) ?></span>
+                                    </div>
+                                </td>
+                                <td><?= date('M j, Y', strtotime($invoice['invoice_date'])) ?></td>
+                                <td><?= date('M j, Y', strtotime($invoice['due_date'])) ?></td>
+                                <td><strong>$<?= number_format($invoice['amount'], 2) ?></strong></td>
+                                <td><span class="status-badge <?= $statusClass ?>"><?= ucfirst($invoice['status']) ?></span></td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
+                                        <button class="btn-icon" title="Download"><i class="fas fa-download"></i></button>
+                                        <button class="btn-icon" title="Email"><i class="fas fa-envelope"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 30px;">
+                                    <p class="placeholder-text">No invoices found.</p>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -125,28 +116,23 @@
         </div>
         <div class="card-body">
             <div class="payments-list">
-                <div class="payment-item">
-                    <div class="payment-icon">
-                        <i class="fas fa-credit-card"></i>
-                    </div>
-                    <div class="payment-details">
-                        <h4>Payment Received - INV-2024-001</h4>
-                        <p>John Smith • Visa ending in 4242</p>
-                        <span class="payment-date">Jan 15, 2024 at 3:42 PM</span>
-                    </div>
-                    <div class="payment-amount">$549.00</div>
-                </div>
-                <div class="payment-item">
-                    <div class="payment-icon">
-                        <i class="fas fa-money-check"></i>
-                    </div>
-                    <div class="payment-details">
-                        <h4>Payment Received - INV-2023-152</h4>
-                        <p>Emily Davis • Bank Transfer</p>
-                        <span class="payment-date">Jan 13, 2024 at 11:20 AM</span>
-                    </div>
-                    <div class="payment-amount">$299.00</div>
-                </div>
+                <?php if(mysqli_num_rows($payments) > 0): ?>
+                    <?php while($payment = mysqli_fetch_assoc($payments)): ?>
+                        <div class="payment-item">
+                            <div class="payment-icon">
+                                <i class="fas fa-<?= $payment['payment_method'] === 'credit_card' ? 'credit-card' : 'money-check' ?>"></i>
+                            </div>
+                            <div class="payment-details">
+                                <h4>Payment Received - <?= htmlspecialchars($payment['invoice_number']) ?></h4>
+                                <p><?= htmlspecialchars($payment['first_name'] . ' ' . $payment['last_name']) ?> • <?= ucwords(str_replace('_', ' ', $payment['payment_method'])) ?></p>
+                                <span class="payment-date"><?= date('M j, Y \a\t g:i A', strtotime($payment['payment_date'])) ?></span>
+                            </div>
+                            <div class="payment-amount">$<?= number_format($payment['amount'], 2) ?></div>
+                        </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <p class="placeholder-text">No recent payments.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>

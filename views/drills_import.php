@@ -1,3 +1,13 @@
+<?php
+// Fetch recently imported drills
+$recentImportsQuery = "SELECT d.*, u.first_name, u.last_name 
+    FROM drills d 
+    LEFT JOIN users u ON d.created_by = u.user_id 
+    WHERE d.source = 'IHS' 
+    ORDER BY d.created_at DESC 
+    LIMIT 5";
+$recentImports = mysqli_query($conn, $recentImportsQuery);
+?>
 <!-- Import Drill from IHS View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -131,7 +141,25 @@
         </div>
         <div class="card-body">
             <div class="recent-imports-list">
-                <p class="placeholder-text">No recent imports. Drills you import will appear here.</p>
+                <?php if(mysqli_num_rows($recentImports) > 0): ?>
+                    <?php while($import = mysqli_fetch_assoc($recentImports)): ?>
+                        <div class="import-history-item">
+                            <div class="import-icon">
+                                <i class="fas fa-file-import"></i>
+                            </div>
+                            <div class="import-info">
+                                <h4><?= htmlspecialchars($import['drill_name']) ?></h4>
+                                <span class="import-meta">
+                                    Imported by <?= htmlspecialchars($import['first_name'] . ' ' . $import['last_name']) ?> 
+                                    on <?= date('M j, Y', strtotime($import['created_at'])) ?>
+                                </span>
+                            </div>
+                            <button class="btn-secondary btn-small"><i class="fas fa-eye"></i> View</button>
+                        </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <p class="placeholder-text">No recent imports. Drills you import will appear here.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -320,5 +348,45 @@
 
 .recent-imports-list {
     min-height: 100px;
+}
+
+.import-history-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.import-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 77, 0, 0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--neon);
+    flex-shrink: 0;
+}
+
+.import-info {
+    flex: 1;
+}
+
+.import-info h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 4px;
+}
+
+.import-meta {
+    font-size: 12px;
+    color: var(--text-dim);
 }
 </style>

@@ -75,7 +75,9 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Send Notification</button>
+                    <button type="submit" class="btn-primary" data-action="send-notification">
+                        <i class="fas fa-paper-plane"></i> Send Notification
+                    </button>
                 </div>
             </form>
         </div>
@@ -101,8 +103,8 @@
                         </div>
                     </div>
                     <div class="notification-actions">
-                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
 
@@ -119,8 +121,8 @@
                         </div>
                     </div>
                     <div class="notification-actions">
-                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>
