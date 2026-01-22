@@ -2011,3 +2011,16 @@ CREATE OR REPLACE VIEW `programs` AS SELECT * FROM `training_programs`;
 -- Total unique tables: 120+
 -- Total lines: 2500+
 -- =========================================================
+
+-- =========================================================
+-- SCHEMA UPDATES - Added Jan 22 2026
+-- Additional athlete profile fields for player information
+-- =========================================================
+
+-- Add missing athlete profile fields to athlete_stats table
+ALTER TABLE `athlete_stats` 
+ADD COLUMN IF NOT EXISTS `height` INT DEFAULT NULL COMMENT 'Height in inches',
+ADD COLUMN IF NOT EXISTS `weight` INT DEFAULT NULL COMMENT 'Weight in pounds',
+ADD COLUMN IF NOT EXISTS `handedness` ENUM('left', 'right') DEFAULT NULL COMMENT 'Shoots left or right',
+ADD COLUMN IF NOT EXISTS `catching_hand` ENUM('left', 'right') DEFAULT NULL COMMENT 'Goalie catching hand',
+ADD COLUMN IF NOT EXISTS `jersey_number` INT DEFAULT NULL COMMENT 'Jersey number';

@@ -15,7 +15,7 @@ try {
     $athleteData = null;
     if ($user_role === 'athlete') {
         $stmt = $pdo->prepare("
-            SELECT * FROM athlete_stats WHERE athlete_id = ? ORDER BY season DESC LIMIT 1
+            SELECT * FROM athlete_stats WHERE user_id = ? ORDER BY season DESC LIMIT 1
         ");
         $stmt->execute([$user_id]);
         $athleteData = $stmt->fetch(PDO::FETCH_ASSOC);
