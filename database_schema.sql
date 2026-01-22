@@ -848,6 +848,24 @@ CREATE TABLE IF NOT EXISTS `evaluation_scores` (
     INDEX `idx_date` (`evaluation_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Workouts (workout sessions - distinct from workout_plans)
+-- MOVED BEFORE exercises table to satisfy foreign key constraint
+CREATE TABLE IF NOT EXISTS `workouts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `workout_name` VARCHAR(255) NOT NULL,
+    `workout_date` DATE NOT NULL,
+    `workout_type` VARCHAR(100) DEFAULT NULL,
+    `duration_minutes` INT DEFAULT NULL,
+    `status` ENUM('planned', 'completed', 'skipped') DEFAULT 'planned',
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_date` (`workout_date`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Exercises (workout exercise entries - distinct from exercise_library)
 CREATE TABLE IF NOT EXISTS `exercises` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -911,6 +929,27 @@ CREATE TABLE IF NOT EXISTS `foods` (
     INDEX `idx_barcode` (`barcode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Goal evaluations (comprehensive goal assessments)
+-- MOVED BEFORE dependent tables to satisfy foreign key constraints
+CREATE TABLE IF NOT EXISTS `goal_evaluations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `goal_id` INT NOT NULL,
+    `athlete_id` INT NOT NULL,
+    `evaluator_id` INT NOT NULL,
+    `evaluation_date` DATE NOT NULL,
+    `score` DECIMAL(5,2) DEFAULT NULL,
+    `progress_percentage` DECIMAL(5,2) DEFAULT NULL,
+    `comments` TEXT DEFAULT NULL,
+    `status` ENUM('in_progress', 'completed', 'archived') DEFAULT 'in_progress',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`goal_id`) REFERENCES `goals`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`evaluator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_goal` (`goal_id`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_date` (`evaluation_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Goal evaluation approvals
 CREATE TABLE IF NOT EXISTS `goal_eval_approvals` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -956,25 +995,7 @@ CREATE TABLE IF NOT EXISTS `goal_eval_steps` (
     INDEX `idx_step_num` (`step_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Goal evaluations (comprehensive goal assessments)
-CREATE TABLE IF NOT EXISTS `goal_evaluations` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `goal_id` INT NOT NULL,
-    `athlete_id` INT NOT NULL,
-    `evaluator_id` INT NOT NULL,
-    `evaluation_date` DATE NOT NULL,
-    `score` DECIMAL(5,2) DEFAULT NULL,
-    `progress_percentage` DECIMAL(5,2) DEFAULT NULL,
-    `comments` TEXT DEFAULT NULL,
-    `status` ENUM('in_progress', 'completed', 'archived') DEFAULT 'in_progress',
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`goal_id`) REFERENCES `goals`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`evaluator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    INDEX `idx_goal` (`goal_id`),
-    INDEX `idx_athlete` (`athlete_id`),
-    INDEX `idx_date` (`evaluation_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- NOTE: goal_evaluations table moved earlier in schema to satisfy FK constraints
 
 -- Goal history (change tracking)
 CREATE TABLE IF NOT EXISTS `goal_history` (
@@ -1173,7 +1194,7 @@ CREATE TABLE IF NOT EXISTS `refunds` (
     `processed_at` TIMESTAMP NULL,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`transaction_id`) REFERENCES `transactions`(`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`booking_id`) REFERENCES `session_bookings`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`requested_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`approved_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
@@ -1484,28 +1505,11 @@ CREATE TABLE IF NOT EXISTS `workout_templates` (
     INDEX `idx_public` (`is_public`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Workouts (workout sessions - distinct from workout_plans)
-CREATE TABLE IF NOT EXISTS `workouts` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT NOT NULL,
-    `workout_name` VARCHAR(255) NOT NULL,
-    `workout_date` DATE NOT NULL,
-    `workout_type` VARCHAR(100) DEFAULT NULL,
-    `duration_minutes` INT DEFAULT NULL,
-    `status` ENUM('planned', 'completed', 'skipped') DEFAULT 'planned',
-    `notes` TEXT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    INDEX `idx_user` (`user_id`),
-    INDEX `idx_date` (`workout_date`),
-    INDEX `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
 -- =========================================================
 -- ADDITIONAL TABLES - Expanding to 120+ tables
 -- Generated from comprehensive PHP codebase analysis
 -- =========================================================
+-- NOTE: workouts table moved earlier in schema to satisfy exercises FK constraint
 
 -- Age groups for athlete categorization
 
