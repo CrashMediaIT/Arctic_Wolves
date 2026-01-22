@@ -9,13 +9,13 @@
 <div class="products-content">
     <!-- Product Tabs -->
     <div class="product-tabs">
-        <button class="tab-btn active" data-tab="sessions">
+        <button class="tab-btn active" data-tab="sessions" data-action="switch-tab">
             <i class="fas fa-calendar-day"></i> Sessions
         </button>
-        <button class="tab-btn" data-tab="packages">
+        <button class="tab-btn" data-tab="packages" data-action="switch-tab">
             <i class="fas fa-box"></i> Packages
         </button>
-        <button class="tab-btn" data-tab="discounts">
+        <button class="tab-btn" data-tab="discounts" data-action="switch-tab">
             <i class="fas fa-tags"></i> Discounts
         </button>
     </div>

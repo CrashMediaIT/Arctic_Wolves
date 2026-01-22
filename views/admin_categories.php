@@ -9,16 +9,16 @@
 <div class="categories-content">
     <!-- Category Tabs -->
     <div class="category-tabs">
-        <button class="tab-btn active" data-tab="skills">
+        <button class="tab-btn active" data-tab="skills" data-action="switch-tab">
             <i class="fas fa-star"></i> Skills
         </button>
-        <button class="tab-btn" data-tab="drills">
+        <button class="tab-btn" data-tab="drills" data-action="switch-tab">
             <i class="fas fa-hockey-puck"></i> Drill Types
         </button>
-        <button class="tab-btn" data-tab="positions">
+        <button class="tab-btn" data-tab="positions" data-action="switch-tab">
             <i class="fas fa-user-tag"></i> Positions
         </button>
-        <button class="tab-btn" data-tab="equipment">
+        <button class="tab-btn" data-tab="equipment" data-action="switch-tab">
             <i class="fas fa-tools"></i> Equipment
         </button>
     </div>
@@ -39,8 +39,8 @@
                             <p>Speed, agility, edge work, transitions</p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <div class="category-item">
@@ -50,8 +50,8 @@
                             <p>Wrist shot, slap shot, snapshot, accuracy</p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <div class="category-item">
@@ -61,8 +61,8 @@
                             <p>Tape to tape, saucer pass, breakout passes</p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                 </div>

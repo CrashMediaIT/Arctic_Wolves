@@ -1,3 +1,55 @@
+<?php
+// Get current mileage rate
+$rate_stmt = $pdo->prepare("SELECT value FROM settings WHERE setting_key = 'mileage_rate' LIMIT 1");
+$rate_stmt->execute();
+$mileage_rate = $rate_stmt->fetchColumn() ?: 0.65;
+
+// Get filter period
+$filter_period = $_GET['period'] ?? 'month';
+
+// Calculate date range
+$date_filter = "";
+$date_params = [$user_id];
+
+if ($filter_period === 'month') {
+    $date_filter = " AND DATE(m.travel_date) >= DATE_SUB(NOW(), INTERVAL 1 MONTH)";
+} elseif ($filter_period === 'last_month') {
+    $date_filter = " AND DATE(m.travel_date) >= DATE_SUB(NOW(), INTERVAL 2 MONTH) AND DATE(m.travel_date) < DATE_SUB(NOW(), INTERVAL 1 MONTH)";
+} elseif ($filter_period === '3months') {
+    $date_filter = " AND DATE(m.travel_date) >= DATE_SUB(NOW(), INTERVAL 3 MONTH)";
+} elseif ($filter_period === '6months') {
+    $date_filter = " AND DATE(m.travel_date) >= DATE_SUB(NOW(), INTERVAL 6 MONTH)";
+} elseif ($filter_period === 'year') {
+    $date_filter = " AND YEAR(m.travel_date) = YEAR(NOW())";
+}
+
+// Get mileage entries
+$mileage_query = "
+    SELECT m.*,
+           (m.distance_miles * m.rate_per_mile) as calculated_amount
+    FROM mileage_tracking m
+    WHERE m.user_id = ?" . $date_filter . "
+    ORDER BY m.travel_date DESC, m.created_at DESC
+    LIMIT 100
+";
+
+$mileage_stmt = $pdo->prepare($mileage_query);
+$mileage_stmt->execute($date_params);
+$mileage_entries = $mileage_stmt->fetchAll();
+
+// Calculate summary
+$summary = [
+    'total_miles' => 0,
+    'total_amount' => 0,
+    'total_trips' => count($mileage_entries)
+];
+
+foreach ($mileage_entries as $entry) {
+    $summary['total_miles'] += $entry['distance_miles'];
+    $summary['total_amount'] += $entry['calculated_amount'];
+}
+?>
+
 <!-- Travel Mileage Tracking View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -9,31 +61,31 @@
 <div class="mileage-content">
     <!-- Summary Cards -->
     <div class="mileage-summary">
-        <div class="summary-card">
+        <div class="summary-card" data-component="StatsCard">
             <div class="summary-icon">
                 <i class="fas fa-car"></i>
             </div>
             <div class="summary-details">
                 <h4>This Month</h4>
-                <p class="summary-value">245 miles</p>
+                <p class="summary-value"><?= number_format($summary['total_miles'], 1) ?> miles</p>
             </div>
         </div>
-        <div class="summary-card">
+        <div class="summary-card" data-component="StatsCard">
             <div class="summary-icon">
                 <i class="fas fa-dollar-sign"></i>
             </div>
             <div class="summary-details">
                 <h4>Estimated Amount</h4>
-                <p class="summary-value">$159.25</p>
+                <p class="summary-value">$<?= number_format($summary['total_amount'], 2) ?></p>
             </div>
         </div>
-        <div class="summary-card">
+        <div class="summary-card" data-component="StatsCard">
             <div class="summary-icon">
                 <i class="fas fa-calendar-alt"></i>
             </div>
             <div class="summary-details">
                 <h4>Total Trips</h4>
-                <p class="summary-value">18</p>
+                <p class="summary-value"><?= $summary['total_trips'] ?></p>
             </div>
         </div>
     </div>
@@ -44,15 +96,18 @@
             <h3><i class="fas fa-plus-circle"></i> Add Mileage Entry</h3>
         </div>
         <div class="card-body">
-            <form class="mileage-form">
+            <form class="mileage-form" method="POST" action="process_mileage.php" data-form="mileage-entry">
+                <input type="hidden" name="action" value="add_mileage">
+                <!-- Note: user_id will be validated server-side from session -->
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label>Date *</label>
-                        <input type="date" class="form-input" required>
+                        <input type="date" name="travel_date" class="form-input" required max="<?= date('Y-m-d') ?>">
                     </div>
                     <div class="form-group">
                         <label>Purpose *</label>
-                        <select class="form-input" required>
+                        <select name="purpose" class="form-input" required>
                             <option value="">-- Select Purpose --</option>
                             <option>Training Session</option>
                             <option>Team Practice</option>
@@ -66,36 +121,36 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>From Location *</label>
-                        <input type="text" class="form-input" placeholder="Starting location" required>
+                        <input type="text" name="from_location" class="form-input" placeholder="Starting location" required>
                     </div>
                     <div class="form-group">
                         <label>To Location *</label>
-                        <input type="text" class="form-input" placeholder="Destination" required>
+                        <input type="text" name="to_location" class="form-input" placeholder="Destination" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Distance (miles) *</label>
-                        <input type="number" class="form-input" placeholder="0.0" step="0.1" min="0" required>
+                        <input type="number" name="distance_miles" class="form-input" placeholder="0.0" step="0.1" min="0" required data-field="distance">
                     </div>
                     <div class="form-group">
                         <label>Rate per Mile</label>
-                        <input type="number" class="form-input" value="0.65" step="0.01" min="0" readonly>
+                        <input type="number" name="rate_per_mile" class="form-input" value="<?= $mileage_rate ?>" step="0.01" min="0" readonly data-field="rate">
                     </div>
                     <div class="form-group">
                         <label>Total Amount</label>
-                        <input type="text" class="form-input" value="$0.00" readonly>
+                        <input type="text" class="form-input" value="$0.00" readonly data-field="total-display">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Notes</label>
-                    <textarea class="form-textarea" rows="2" placeholder="Additional notes (optional)"></textarea>
+                    <textarea name="notes" class="form-textarea" rows="2" placeholder="Additional notes (optional)"></textarea>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Add Entry</button>
+                    <button type="submit" class="btn-primary" data-action="submit-form"><i class="fas fa-plus"></i> Add Entry</button>
                 </div>
             </form>
         </div>
@@ -105,20 +160,21 @@
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Mileage Log</h3>
-            <div class="filter-group">
-                <select class="form-input-small">
-                    <option>This Month</option>
-                    <option>Last Month</option>
-                    <option>Last 3 Months</option>
-                    <option>Last 6 Months</option>
-                    <option>This Year</option>
-                    <option>Custom Range</option>
+            <form method="GET" action="" class="filter-group">
+                <input type="hidden" name="page" value="mileage">
+                <select name="period" class="form-input-small" data-action="auto-submit">
+                    <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
+                    <option value="last_month" <?= $filter_period === 'last_month' ? 'selected' : '' ?>>Last Month</option>
+                    <option value="3months" <?= $filter_period === '3months' ? 'selected' : '' ?>>Last 3 Months</option>
+                    <option value="6months" <?= $filter_period === '6months' ? 'selected' : '' ?>>Last 6 Months</option>
+                    <option value="year" <?= $filter_period === 'year' ? 'selected' : '' ?>>This Year</option>
                 </select>
-                <button class="btn-secondary"><i class="fas fa-file-export"></i> Export</button>
-            </div>
+                <button type="button" class="btn-secondary" data-action="export-mileage"><i class="fas fa-file-export"></i> Export</button>
+            </form>
         </div>
         <div class="card-body">
-            <div class="mileage-table-container">
+            <?php if (count($mileage_entries) > 0): ?>
+            <div class="mileage-table-container" data-component="DataTable">
                 <table class="mileage-table">
                     <thead>
                         <tr>
@@ -132,67 +188,45 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Jan 15, 2024</td>
-                            <td>Training Session</td>
+                        <?php foreach ($mileage_entries as $entry): ?>
+                        <tr data-entry-id="<?= $entry['id'] ?>">
+                            <td><?= date('M d, Y', strtotime($entry['travel_date'])) ?></td>
+                            <td><?= htmlspecialchars($entry['purpose']) ?></td>
                             <td>
                                 <div class="route-info">
-                                    <span class="route-from">Home</span>
+                                    <span class="route-from"><?= htmlspecialchars($entry['from_location']) ?></span>
                                     <i class="fas fa-arrow-right"></i>
-                                    <span class="route-to">Ice Arena</span>
+                                    <span class="route-to"><?= htmlspecialchars($entry['to_location']) ?></span>
                                 </div>
                             </td>
-                            <td>12.5 mi</td>
-                            <td>$8.13</td>
-                            <td><span class="status-badge pending">Pending</span></td>
+                            <td><?= number_format($entry['distance_miles'], 1) ?> mi</td>
+                            <td>$<?= number_format($entry['calculated_amount'], 2) ?></td>
+                            <td>
+                                <span class="status-badge <?= $entry['status'] ?>">
+                                    <?= ucfirst($entry['status']) ?>
+                                </span>
+                            </td>
                             <td>
                                 <div class="table-actions">
-                                    <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                                    <?php if ($entry['status'] === 'pending'): ?>
+                                        <button class="btn-icon" title="Edit" data-action="edit-entry" data-entry-id="<?= $entry['id'] ?>"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-icon" title="Delete" data-action="delete-entry" data-entry-id="<?= $entry['id'] ?>"><i class="fas fa-trash"></i></button>
+                                    <?php else: ?>
+                                        <button class="btn-icon" title="View" data-action="view-entry" data-entry-id="<?= $entry['id'] ?>"><i class="fas fa-eye"></i></button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
-                        <tr>
-                            <td>Jan 14, 2024</td>
-                            <td>Team Practice</td>
-                            <td>
-                                <div class="route-info">
-                                    <span class="route-from">Home</span>
-                                    <i class="fas fa-arrow-right"></i>
-                                    <span class="route-to">Training Center</span>
-                                </div>
-                            </td>
-                            <td>18.2 mi</td>
-                            <td>$11.83</td>
-                            <td><span class="status-badge approved">Approved</span></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Jan 12, 2024</td>
-                            <td>Game/Tournament</td>
-                            <td>
-                                <div class="route-info">
-                                    <span class="route-from">Home</span>
-                                    <i class="fas fa-arrow-right"></i>
-                                    <span class="route-to">Regional Arena</span>
-                                </div>
-                            </td>
-                            <td>32.8 mi</td>
-                            <td>$21.32</td>
-                            <td><span class="status-badge approved">Approved</span></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                                </div>
-                            </td>
-                        </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
+            <?php else: ?>
+            <div class="placeholder-container">
+                <i class="fas fa-car placeholder-icon"></i>
+                <p class="placeholder-text">No mileage entries found for the selected period.</p>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

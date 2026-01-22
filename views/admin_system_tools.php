@@ -1,4 +1,23 @@
 <!-- Admin System Tools View -->
+<?php
+$activeTab = $_GET['tab'] ?? 'settings';
+
+// Fetch system settings from database (if stored there)
+try {
+    // You could have a settings table, for now using defaults
+    $settings = [
+        'site_title' => 'Arctic Wolves',
+        'site_email' => 'info@arcticwolves.ca',
+        'session_duration' => 60,
+        'notifications_enabled' => true,
+        'maintenance_mode' => false
+    ];
+} catch (PDOException $e) {
+    error_log("Settings fetch error: " . $e->getMessage());
+    $settings = [];
+}
+?>
+
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-cog"></i> System Tools
@@ -8,116 +27,140 @@
 
 <div class="system-tools-content">
     <!-- System Tools Tabs -->
-    <div class="system-tabs">
-        <button class="tab-btn active" data-tab="settings">
+    <div class="tabs">
+        <button class="tab-btn <?php echo $activeTab === 'settings' ? 'active' : ''; ?>" 
+                data-tab="settings" onclick="switchToolTab('settings')">
             <i class="fas fa-sliders-h"></i> Settings
         </button>
-        <button class="tab-btn" data-tab="theme">
+        <button class="tab-btn <?php echo $activeTab === 'theme' ? 'active' : ''; ?>" 
+                data-tab="theme" onclick="switchToolTab('theme')">
             <i class="fas fa-palette"></i> Theme
         </button>
-        <button class="tab-btn" data-tab="database">
+        <button class="tab-btn <?php echo $activeTab === 'database' ? 'active' : ''; ?>" 
+                data-tab="database" onclick="switchToolTab('database')">
             <i class="fas fa-database"></i> Database
+        </button>
+        <button class="tab-btn <?php echo $activeTab === 'cron' ? 'active' : ''; ?>" 
+                data-tab="cron" onclick="switchToolTab('cron')">
+            <i class="fas fa-clock"></i> Cron Jobs
         </button>
     </div>
 
     <!-- Settings Tab -->
-    <div class="tab-content active" id="settings-tab">
-        <div class="content-card">
+    <div class="tab-content <?php echo $activeTab === 'settings' ? 'active' : ''; ?>" id="settings-tab">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-sliders-h"></i> System Settings</h3>
             </div>
             <div class="card-body">
-                <div class="settings-list">
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Site Title</h4>
-                            <p>The name of your site</p>
+                <form id="settings-form" data-form-type="settings">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Site Title</h4>
+                                <p>The name of your site</p>
+                            </div>
+                            <input type="text" name="site_title" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['site_title'] ?? 'Arctic Wolves'); ?>">
                         </div>
-                        <input type="text" class="form-input" value="Arctic Wolves">
-                    </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Site Email</h4>
-                            <p>Primary contact email</p>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Site Email</h4>
+                                <p>Primary contact email</p>
+                            </div>
+                            <input type="email" name="site_email" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['site_email'] ?? 'info@arcticwolves.ca'); ?>">
                         </div>
-                        <input type="email" class="form-input" value="info@arcticwolves.ca">
-                    </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Session Duration</h4>
-                            <p>Default session length in minutes</p>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Session Duration</h4>
+                                <p>Default session length in minutes</p>
+                            </div>
+                            <input type="number" name="session_duration" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['session_duration'] ?? 60); ?>">
                         </div>
-                        <input type="number" class="form-input" value="60">
-                    </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Enable Notifications</h4>
-                            <p>Send email notifications to users</p>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Enable Notifications</h4>
+                                <p>Send email notifications to users</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="notifications_enabled" 
+                                       <?php echo !empty($settings['notifications_enabled']) ? 'checked' : ''; ?>
+                                       data-action="toggle-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Maintenance Mode</h4>
-                            <p>Put site in maintenance mode</p>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Maintenance Mode</h4>
+                                <p>Put site in maintenance mode</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="maintenance_mode" 
+                                       <?php echo !empty($settings['maintenance_mode']) ? 'checked' : ''; ?>
+                                       data-action="toggle-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox">
-                            <span class="toggle-slider"></span>
-                        </label>
                     </div>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-primary"><i class="fas fa-save"></i> Save Settings</button>
-                </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
     <!-- Theme Tab -->
-    <div class="tab-content" id="theme-tab">
-        <div class="content-card">
+    <div class="tab-content <?php echo $activeTab === 'theme' ? 'active' : ''; ?>" id="theme-tab">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-palette"></i> Theme Customization</h3>
             </div>
             <div class="card-body">
-                <div class="theme-colors">
-                    <div class="color-picker-item">
-                        <label>Primary Color</label>
-                        <div class="color-input-group">
-                            <input type="color" value="#6B46C1">
-                            <input type="text" class="form-input" value="#6B46C1">
+                <form id="theme-form" data-form-type="theme">
+                    <div class="theme-colors">
+                        <div class="color-picker-item">
+                            <label>Primary Color</label>
+                            <div class="color-input-group">
+                                <input type="color" name="primary_color" value="#6B46C1">
+                                <input type="text" class="form-input" value="#6B46C1" readonly>
+                            </div>
+                        </div>
+                        <div class="color-picker-item">
+                            <label>Accent Color</label>
+                            <div class="color-input-group">
+                                <input type="color" name="accent_color" value="#8B5CF6">
+                                <input type="text" class="form-input" value="#8B5CF6" readonly>
+                            </div>
+                        </div>
+                        <div class="color-picker-item">
+                            <label>Background Color</label>
+                            <div class="color-input-group">
+                                <input type="color" name="bg_color" value="#06080b">
+                                <input type="text" class="form-input" value="#06080b" readonly>
+                            </div>
                         </div>
                     </div>
-                    <div class="color-picker-item">
-                        <label>Accent Color</label>
-                        <div class="color-input-group">
-                            <input type="color" value="#8B5CF6">
-                            <input type="text" class="form-input" value="#8B5CF6">
-                        </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" data-action="reset">
+                            <i class="fas fa-undo"></i> Reset to Default
+                        </button>
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Theme
+                        </button>
                     </div>
-                    <div class="color-picker-item">
-                        <label>Background Color</label>
-                        <div class="color-input-group">
-                            <input type="color" value="#06080b">
-                            <input type="text" class="form-input" value="#06080b">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-secondary"><i class="fas fa-undo"></i> Reset to Default</button>
-                    <button class="btn-primary"><i class="fas fa-save"></i> Save Theme</button>
-                </div>
+                </form>
             </div>
         </div>
     </div>
 
     <!-- Database Tab -->
-    <div class="tab-content" id="database-tab">
-        <div class="content-card">
+    <div class="tab-content <?php echo $activeTab === 'database' ? 'active' : ''; ?>" id="database-tab">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-database"></i> Database Tools</h3>
             </div>
@@ -127,44 +170,121 @@
                         <i class="fas fa-download"></i>
                         <h4>Backup Database</h4>
                         <p>Create a full database backup</p>
-                        <button class="btn-primary"><i class="fas fa-download"></i> Backup Now</button>
+                        <button class="btn btn-primary" data-action="backup">
+                            <i class="fas fa-download"></i> Backup Now
+                        </button>
                     </div>
                     <div class="db-tool-card">
                         <i class="fas fa-upload"></i>
                         <h4>Restore Database</h4>
                         <p>Restore from backup file</p>
-                        <button class="btn-secondary"><i class="fas fa-upload"></i> Restore</button>
+                        <button class="btn btn-secondary" data-action="restore">
+                            <i class="fas fa-upload"></i> Restore
+                        </button>
                     </div>
                     <div class="db-tool-card">
                         <i class="fas fa-sync"></i>
                         <h4>Optimize Database</h4>
                         <p>Optimize tables and clean up</p>
-                        <button class="btn-secondary"><i class="fas fa-sync"></i> Optimize</button>
+                        <button class="btn btn-secondary" data-action="optimize">
+                            <i class="fas fa-sync"></i> Optimize
+                        </button>
                     </div>
                     <div class="db-tool-card warning">
                         <i class="fas fa-trash-alt"></i>
                         <h4>Clear Cache</h4>
                         <p>Clear all cached data</p>
-                        <button class="btn-secondary"><i class="fas fa-trash-alt"></i> Clear</button>
+                        <button class="btn btn-secondary" data-action="clear-cache">
+                            <i class="fas fa-trash-alt"></i> Clear
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Cron Jobs Tab -->
+    <div class="tab-content <?php echo $activeTab === 'cron' ? 'active' : ''; ?>" id="cron-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-clock"></i> Scheduled Tasks</h3>
+                <button class="btn btn-secondary" data-action="run-all">
+                    <i class="fas fa-play"></i> Run All
+                </button>
+            </div>
+            <div class="card-body">
+                <p class="placeholder-text">Cron job monitoring and management</p>
+            </div>
+        </div>
+    </div>
 </div>
 
+<script>
+function switchToolTab(tabName) {
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tabName);
+    window.history.pushState({}, '', url);
+    
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    document.getElementById(tabName + '-tab').classList.add('active');
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+}
+</script>
+
 <style>
-.system-tabs {
+.tabs {
     display: flex;
-    gap: 10px;
-    margin-bottom: 25px;
+    gap: 8px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--border);
+}
+
+.tab-btn {
+    padding: 12px 24px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-dim);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: -2px;
+}
+
+.tab-btn:hover {
+    color: var(--text-white);
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
 }
 
 .settings-list {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    margin-bottom: 30px;
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
 .setting-item {
@@ -174,29 +294,198 @@
     padding: 20px;
     background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
+    transition: border-color 0.3s ease;
+}
+
+.setting-item:hover {
+    border-color: var(--primary);
 }
 
 .setting-info {
     flex: 1;
-    max-width: 50%;
+    max-width: 60%;
 }
 
 .setting-info h4 {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-white);
-    margin-bottom: 5px;
+    margin-bottom: 4px;
 }
 
 .setting-info p {
     font-size: 13px;
     color: var(--text-dim);
+    margin: 0;
 }
 
 .setting-item .form-input {
     max-width: 300px;
 }
+
+.theme-colors {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.color-picker-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.color-picker-item label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-white);
+}
+
+.color-input-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.color-input-group input[type="color"] {
+    width: 60px;
+    height: 45px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+}
+
+.color-input-group .form-input {
+    flex: 1;
+    max-width: 200px;
+}
+
+.db-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.db-tool-card {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.db-tool-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(107, 70, 193, 0.2);
+}
+
+.db-tool-card.warning:hover {
+    border-color: var(--error);
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.2);
+}
+
+.db-tool-card > i {
+    font-size: 40px;
+    color: var(--primary);
+    margin-bottom: 16px;
+}
+
+.db-tool-card.warning > i {
+    color: var(--error);
+}
+
+.db-tool-card h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 8px;
+}
+
+.db-tool-card p {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+}
+
+.db-tool-card button {
+    width: 100%;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border);
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--primary);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+@media (max-width: 768px) {
+    .tabs {
+        overflow-x: auto;
+    }
+    
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .setting-info {
+        max-width: 100%;
+    }
+    
+    .setting-item .form-input {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .db-tools-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 
 .toggle-switch {
     position: relative;

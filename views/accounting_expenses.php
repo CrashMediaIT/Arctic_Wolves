@@ -1,3 +1,12 @@
+<?php
+// Fetch expenses
+$expensesQuery = "SELECT e.*, ec.category_name
+    FROM expenses e
+    LEFT JOIN expense_categories ec ON e.category_id = ec.category_id
+    ORDER BY e.expense_date DESC
+    LIMIT 20";
+$expenses = mysqli_query($conn, $expensesQuery);
+?>
 <!-- Accounting Expenses View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -45,16 +54,25 @@
 
                 <div class="form-group">
                     <label>Receipt/Invoice</label>
-                    <div class="file-upload-zone">
+                    <div class="file-upload-zone" data-upload="receipt">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Drag & drop file or click to browse</p>
-                        <input type="file" style="display: none;">
-                        <button type="button" class="btn-secondary">Choose File</button>
+                        <input type="file" id="receiptFile" accept="image/*,application/pdf" capture="environment" style="display: none;">
+                        <div class="upload-buttons">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('receiptFile').click()">
+                                <i class="fas fa-folder-open"></i> Choose File
+                            </button>
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('receiptFile').setAttribute('capture', 'environment'); document.getElementById('receiptFile').click()">
+                                <i class="fas fa-camera"></i> Take Photo
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Add Expense</button>
+                    <button type="submit" class="btn-primary" data-action="add-expense">
+                        <i class="fas fa-plus"></i> Add Expense
+                    </button>
                 </div>
             </form>
         </div>
@@ -88,32 +106,35 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Jan 15, 2024</td>
-                            <td><span class="category-badge">Ice Time</span></td>
-                            <td>Main rink rental - 2 hours</td>
-                            <td><strong>$250.00</strong></td>
-                            <td><button class="btn-link"><i class="fas fa-paperclip"></i> View</button></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Jan 12, 2024</td>
-                            <td><span class="category-badge">Equipment</span></td>
-                            <td>Training cones and pucks</td>
-                            <td><strong>$85.50</strong></td>
-                            <td><button class="btn-link"><i class="fas fa-paperclip"></i> View</button></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </td>
-                        </tr>
+                        <?php if(mysqli_num_rows($expenses) > 0): ?>
+                            <?php while($expense = mysqli_fetch_assoc($expenses)): ?>
+                            <tr>
+                                <td><?= date('M j, Y', strtotime($expense['expense_date'])) ?></td>
+                                <td><span class="category-badge"><?= htmlspecialchars($expense['category_name']) ?></span></td>
+                                <td><?= htmlspecialchars($expense['description']) ?></td>
+                                <td><strong>$<?= number_format($expense['amount'], 2) ?></strong></td>
+                                <td>
+                                    <?php if($expense['receipt_path']): ?>
+                                        <button class="btn-link" data-receipt="<?= $expense['expense_id'] ?>"><i class="fas fa-paperclip"></i> View</button>
+                                    <?php else: ?>
+                                        <span class="text-dim">No receipt</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 30px;">
+                                    <p class="placeholder-text">No expenses recorded yet.</p>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -146,6 +167,12 @@
 .file-upload-zone p {
     color: var(--text-dim);
     margin-bottom: 15px;
+}
+
+.upload-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
 }
 
 .category-badge {

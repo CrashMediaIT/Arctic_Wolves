@@ -81,7 +81,9 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Create Schedule</button>
+                    <button type="submit" class="btn-primary" data-action="create-schedule">
+                        <i class="fas fa-check"></i> Create Schedule
+                    </button>
                 </div>
             </form>
         </div>

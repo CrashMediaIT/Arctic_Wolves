@@ -1,3 +1,52 @@
+<?php
+// Get filter parameters
+$filter_status = $_GET['filter_status'] ?? 'all';
+$filter_drill_type = $_GET['filter_drill'] ?? 'all';
+$search = $_GET['search'] ?? '';
+
+// Build query for videos
+$video_query = "
+    SELECT v.*, 
+           CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+           s.session_date,
+           s.session_type
+    FROM videos v
+    LEFT JOIN users u ON v.coach_id = u.id
+    LEFT JOIN sessions s ON v.session_id = s.id
+    WHERE v.athlete_id = ?
+";
+
+$params = [$user_id];
+
+// Apply filters
+if ($filter_status !== 'all') {
+    $video_query .= " AND v.review_status = ?";
+    $params[] = $filter_status;
+}
+
+if ($filter_drill_type !== 'all') {
+    $video_query .= " AND v.drill_type = ?";
+    $params[] = $filter_drill_type;
+}
+
+if (!empty($search)) {
+    $video_query .= " AND (v.drill_name LIKE ? OR v.notes LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+}
+
+$video_query .= " ORDER BY v.created_at DESC";
+
+$video_stmt = $pdo->prepare($video_query);
+$video_stmt->execute($params);
+$videos = $video_stmt->fetchAll();
+
+// Get drill types for filter
+$drill_types_stmt = $pdo->prepare("SELECT DISTINCT drill_type FROM videos WHERE drill_type IS NOT NULL ORDER BY drill_type");
+$drill_types_stmt->execute();
+$drill_types = $drill_types_stmt->fetchAll(PDO::FETCH_COLUMN);
+?>
+
 <!-- Player Drill Video Review View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -9,61 +58,78 @@
 <div class="video-content">
     <!-- Filter Bar -->
     <div class="filter-bar">
-        <div class="filter-group">
-            <select class="form-input-small">
-                <option>All Videos</option>
-                <option>Not Reviewed</option>
-                <option>Reviewed</option>
-                <option>Flagged</option>
+        <form method="GET" action="" class="filter-group">
+            <input type="hidden" name="page" value="drill_review">
+            <select name="filter_status" class="form-input-small" data-action="auto-submit">
+                <option value="all" <?= $filter_status === 'all' ? 'selected' : '' ?>>All Videos</option>
+                <option value="pending" <?= $filter_status === 'pending' ? 'selected' : '' ?>>Not Reviewed</option>
+                <option value="reviewed" <?= $filter_status === 'reviewed' ? 'selected' : '' ?>>Reviewed</option>
+                <option value="flagged" <?= $filter_status === 'flagged' ? 'selected' : '' ?>>Flagged</option>
             </select>
-            <select class="form-input-small">
-                <option>All Drills</option>
-                <option>Skating</option>
-                <option>Shooting</option>
-                <option>Passing</option>
-                <option>Stickhandling</option>
+            <select name="filter_drill" class="form-input-small" data-action="auto-submit">
+                <option value="all">All Drills</option>
+                <?php foreach ($drill_types as $type): ?>
+                    <option value="<?= htmlspecialchars($type) ?>" <?= $filter_drill_type === $type ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($type) ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
-            <input type="text" class="form-input-small" placeholder="Search videos...">
-        </div>
+            <input type="text" name="search" class="form-input-small" placeholder="Search videos..." value="<?= htmlspecialchars($search) ?>" data-action="search-debounce">
+        </form>
     </div>
 
     <!-- Video Grid -->
     <div class="video-grid">
-        <!-- Sample Video Card -->
-        <div class="video-card">
-            <div class="video-thumbnail">
-                <div class="video-placeholder">
-                    <i class="fas fa-play-circle"></i>
+        <?php if (count($videos) > 0): ?>
+            <?php foreach ($videos as $video): ?>
+            <div class="video-card" data-component="VideoCard" data-video-id="<?= $video['id'] ?>">
+                <div class="video-thumbnail">
+                    <?php if (!empty($video['thumbnail_url'])): ?>
+                        <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Video thumbnail">
+                    <?php else: ?>
+                        <div class="video-placeholder">
+                            <i class="fas fa-play-circle"></i>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($video['duration'])): ?>
+                        <span class="video-duration"><?= htmlspecialchars($video['duration']) ?></span>
+                    <?php endif; ?>
+                    <span class="video-status <?= $video['review_status'] ?>">
+                        <i class="fas fa-<?= $video['review_status'] === 'reviewed' ? 'check-circle' : 'clock' ?>"></i>
+                    </span>
                 </div>
-                <span class="video-duration">2:35</span>
-                <span class="video-status reviewed"><i class="fas fa-check-circle"></i></span>
-            </div>
-            <div class="video-info">
-                <h4 class="video-title">Crossover Drill - Session #23</h4>
-                <div class="video-meta">
-                    <span><i class="fas fa-calendar"></i> Jan 15, 2024</span>
-                    <span><i class="fas fa-user"></i> Coach Smith</span>
-                </div>
-                <div class="video-rating">
-                    <span class="rating-label">Rating:</span>
-                    <div class="stars">
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="far fa-star"></i>
+                <div class="video-info">
+                    <h4 class="video-title"><?= htmlspecialchars($video['drill_name']) ?></h4>
+                    <div class="video-meta">
+                        <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
+                        <?php if (!empty($video['coach_name'])): ?>
+                            <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
+                        <?php endif; ?>
                     </div>
+                    <?php if ($video['rating'] > 0): ?>
+                        <div class="video-rating">
+                            <span class="rating-label">Rating:</span>
+                            <div class="stars">
+                                <?php for ($i = 1; $i <= 5; $i++): ?>
+                                    <i class="<?= $i <= $video['rating'] ? 'fas' : 'far' ?> fa-star"></i>
+                                <?php endfor; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <div class="video-actions">
+                    <button class="btn-primary btn-full" data-action="view-video" data-video-id="<?= $video['id'] ?>">
+                        <i class="fas fa-play"></i> Watch & Review
+                    </button>
                 </div>
             </div>
-            <div class="video-actions">
-                <button class="btn-primary btn-full"><i class="fas fa-play"></i> Watch & Review</button>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="placeholder-container">
+                <i class="fas fa-video placeholder-icon"></i>
+                <p class="placeholder-text">No drill videos available yet. Your coach will upload videos after your sessions.</p>
             </div>
-        </div>
-
-        <div class="placeholder-container">
-            <i class="fas fa-video placeholder-icon"></i>
-            <p class="placeholder-text">No drill videos available yet. Your coach will upload videos after your sessions.</p>
-        </div>
+        <?php endif; ?>
     </div>
 </div>
 

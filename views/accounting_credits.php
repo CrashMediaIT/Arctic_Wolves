@@ -1,3 +1,12 @@
+<?php
+// Fetch credits and refunds
+$creditsQuery = "SELECT cr.*, u.first_name, u.last_name
+    FROM credits_refunds cr
+    LEFT JOIN users u ON cr.user_id = u.user_id
+    ORDER BY cr.created_at DESC
+    LIMIT 20";
+$credits = mysqli_query($conn, $creditsQuery);
+?>
 <!-- Accounting Credits View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -10,20 +19,20 @@
     <!-- Action Bar -->
     <div class="action-bar">
         <div class="filter-group">
-            <input type="text" class="form-input-small" placeholder="Search...">
-            <select class="form-input-small">
+            <input type="text" class="form-input-small" placeholder="Search..." data-filter="search">
+            <select class="form-input-small" data-filter="type">
                 <option>All Types</option>
                 <option>Credits</option>
                 <option>Refunds</option>
             </select>
-            <select class="form-input-small">
+            <select class="form-input-small" data-filter="status">
                 <option>All Status</option>
                 <option>Pending</option>
                 <option>Approved</option>
                 <option>Completed</option>
             </select>
         </div>
-        <button class="btn-primary"><i class="fas fa-plus"></i> Issue Credit/Refund</button>
+        <button class="btn-primary" data-action="create"><i class="fas fa-plus"></i> Issue Credit/Refund</button>
     </div>
 
     <!-- Credits & Refunds Table -->
@@ -47,35 +56,38 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td><strong>#CR-001</strong></td>
-                            <td>John Smith</td>
-                            <td><span class="type-badge credit">Credit</span></td>
-                            <td><strong>$75.00</strong></td>
-                            <td>Session cancellation</td>
-                            <td>Jan 15, 2024</td>
-                            <td><span class="status-badge completed">Completed</span></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>#RF-002</strong></td>
-                            <td>Sarah Johnson</td>
-                            <td><span class="type-badge refund">Refund</span></td>
-                            <td><strong>$150.00</strong></td>
-                            <td>Package cancellation</td>
-                            <td>Jan 14, 2024</td>
-                            <td><span class="status-badge pending">Pending</span></td>
-                            <td>
-                                <div class="table-actions">
-                                    <button class="btn-icon" title="Approve"><i class="fas fa-check"></i></button>
-                                    <button class="btn-icon" title="Reject"><i class="fas fa-times"></i></button>
-                                </div>
-                            </td>
-                        </tr>
+                        <?php if(mysqli_num_rows($credits) > 0): ?>
+                            <?php while($credit = mysqli_fetch_assoc($credits)): 
+                                $typeClass = strtolower($credit['type']);
+                                $statusClass = strtolower($credit['status']);
+                            ?>
+                            <tr>
+                                <td><strong>#<?= htmlspecialchars($credit['reference_number']) ?></strong></td>
+                                <td><?= htmlspecialchars($credit['first_name'] . ' ' . $credit['last_name']) ?></td>
+                                <td><span class="type-badge <?= $typeClass ?>"><?= ucfirst($credit['type']) ?></span></td>
+                                <td><strong>$<?= number_format($credit['amount'], 2) ?></strong></td>
+                                <td><?= htmlspecialchars($credit['reason']) ?></td>
+                                <td><?= date('M j, Y', strtotime($credit['created_at'])) ?></td>
+                                <td><span class="status-badge <?= $statusClass ?>"><?= ucfirst($credit['status']) ?></span></td>
+                                <td>
+                                    <div class="table-actions">
+                                        <?php if($credit['status'] === 'pending'): ?>
+                                            <button class="btn-icon" title="Approve" data-action="approve"><i class="fas fa-check"></i></button>
+                                            <button class="btn-icon" title="Reject" data-action="reject"><i class="fas fa-times"></i></button>
+                                        <?php else: ?>
+                                            <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 30px;">
+                                    <p class="placeholder-text">No credits or refunds found.</p>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>

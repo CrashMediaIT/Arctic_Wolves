@@ -1,3 +1,57 @@
+<?php
+// Get filter parameters
+$filter_period = $_GET['filter_period'] ?? 'all';
+$filter_coach = $_GET['filter_coach'] ?? 'all';
+
+// Build query for upcoming sessions
+$sessions_query = "
+    SELECT s.*, 
+           CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+           st.name as session_type_name,
+           l.name as location_name
+    FROM sessions s
+    LEFT JOIN users c ON s.coach_id = c.id
+    LEFT JOIN session_types st ON s.type_id = st.id
+    LEFT JOIN locations l ON s.location_id = l.id
+    WHERE s.athlete_id = ? AND s.session_date >= CURDATE() AND s.status IN ('scheduled', 'confirmed')
+";
+
+$params = [$user_id];
+
+// Apply period filter
+if ($filter_period === 'week') {
+    $sessions_query .= " AND s.session_date <= DATE_ADD(CURDATE(), INTERVAL 1 WEEK)";
+} elseif ($filter_period === 'next_week') {
+    $sessions_query .= " AND s.session_date > DATE_ADD(CURDATE(), INTERVAL 1 WEEK) AND s.session_date <= DATE_ADD(CURDATE(), INTERVAL 2 WEEK)";
+} elseif ($filter_period === 'month') {
+    $sessions_query .= " AND s.session_date <= DATE_ADD(CURDATE(), INTERVAL 1 MONTH)";
+}
+
+// Apply coach filter
+if ($filter_coach !== 'all') {
+    $sessions_query .= " AND s.coach_id = ?";
+    $params[] = $filter_coach;
+}
+
+$sessions_query .= " ORDER BY s.session_date, s.session_time LIMIT 50";
+
+$sessions_stmt = $pdo->prepare($sessions_query);
+$sessions_stmt->execute($params);
+$sessions = $sessions_stmt->fetchAll();
+
+// Get coaches for filter
+$coaches_query = "
+    SELECT DISTINCT c.id, c.first_name, c.last_name
+    FROM users c
+    INNER JOIN sessions s ON s.coach_id = c.id
+    WHERE s.athlete_id = ? AND c.is_active = 1
+    ORDER BY c.last_name, c.first_name
+";
+$coaches_stmt = $pdo->prepare($coaches_query);
+$coaches_stmt->execute([$user_id]);
+$coaches = $coaches_stmt->fetchAll();
+?>
+
 <!-- Upcoming Sessions View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -9,53 +63,74 @@
 <div class="sessions-content">
     <!-- Filter Bar -->
     <div class="filter-bar">
-        <div class="filter-group">
+        <form method="GET" action="" class="filter-group">
+            <input type="hidden" name="page" value="upcoming_sessions">
             <label>Filter by:</label>
-            <select class="form-input-small">
-                <option>All Sessions</option>
-                <option>This Week</option>
-                <option>Next Week</option>
-                <option>This Month</option>
+            <select name="filter_period" class="form-input-small" data-action="auto-submit">
+                <option value="all" <?= $filter_period === 'all' ? 'selected' : '' ?>>All Sessions</option>
+                <option value="week" <?= $filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
+                <option value="next_week" <?= $filter_period === 'next_week' ? 'selected' : '' ?>>Next Week</option>
+                <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
             </select>
-            <select class="form-input-small">
-                <option>All Coaches</option>
-                <!-- Coaches will be populated here -->
+            <select name="filter_coach" class="form-input-small" data-action="auto-submit">
+                <option value="all">All Coaches</option>
+                <?php foreach ($coaches as $coach): ?>
+                    <option value="<?= $coach['id'] ?>" <?= $filter_coach == $coach['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
-        </div>
-        <button class="btn-primary"><i class="fas fa-plus"></i> Book Session</button>
+        </form>
+        <button class="btn-primary" data-action="book-session"><i class="fas fa-plus"></i> Book Session</button>
     </div>
 
     <!-- Sessions List -->
     <div class="sessions-list">
-        <!-- Sample Session Card -->
-        <div class="session-card">
-            <div class="session-date">
-                <div class="date-box">
-                    <span class="date-day">15</span>
-                    <span class="date-month">JAN</span>
+        <?php if (count($sessions) > 0): ?>
+            <?php foreach ($sessions as $session): 
+                $session_datetime = strtotime($session['session_date'] . ' ' . $session['session_time']);
+            ?>
+            <div class="session-card" data-component="SessionCard" data-session-id="<?= $session['id'] ?>">
+                <div class="session-date">
+                    <div class="date-box">
+                        <span class="date-day"><?= date('d', $session_datetime) ?></span>
+                        <span class="date-month"><?= strtoupper(date('M', $session_datetime)) ?></span>
+                    </div>
+                </div>
+                <div class="session-details">
+                    <h3 class="session-title"><?= htmlspecialchars($session['session_type_name']) ?></h3>
+                    <div class="session-meta">
+                        <span><i class="fas fa-clock"></i> <?= date('g:i A', strtotime($session['session_time'])) ?> - <?= date('g:i A', strtotime($session['session_time']) + $session['duration_minutes'] * 60) ?></span>
+                        <span><i class="fas fa-user"></i> <?= htmlspecialchars($session['coach_name']) ?></span>
+                        <?php if ($session['location_name']): ?>
+                            <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($session['focus_areas']): ?>
+                        <div class="session-tags">
+                            <?php 
+                            $tags = json_decode($session['focus_areas'], true) ?? [];
+                            foreach ($tags as $tag): 
+                            ?>
+                                <span class="tag"><?= htmlspecialchars($tag) ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <div class="session-actions">
+                    <button class="btn-secondary" data-action="view-session" data-session-id="<?= $session['id'] ?>"><i class="fas fa-eye"></i> View</button>
+                    <?php if (strtotime($session['session_date']) > strtotime('+24 hours')): ?>
+                        <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>"><i class="fas fa-times"></i> Cancel</button>
+                    <?php endif; ?>
                 </div>
             </div>
-            <div class="session-details">
-                <h3 class="session-title">Sample Training Session</h3>
-                <div class="session-meta">
-                    <span><i class="fas fa-clock"></i> 3:00 PM - 4:30 PM</span>
-                    <span><i class="fas fa-user"></i> Coach Name</span>
-                    <span><i class="fas fa-map-marker-alt"></i> Main Rink</span>
-                </div>
-                <div class="session-tags">
-                    <span class="tag">Skating</span>
-                    <span class="tag">Shooting</span>
-                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="placeholder-container">
+                <i class="fas fa-calendar placeholder-icon"></i>
+                <p class="placeholder-text">No upcoming sessions found. Book a session to get started!</p>
             </div>
-            <div class="session-actions">
-                <button class="btn-secondary"><i class="fas fa-eye"></i> View</button>
-                <button class="btn-danger"><i class="fas fa-times"></i> Cancel</button>
-            </div>
-        </div>
-
-        <div class="placeholder-container">
-            <p class="placeholder-text">No upcoming sessions found. Book a session to get started!</p>
-        </div>
+        <?php endif; ?>
     </div>
 </div>
 

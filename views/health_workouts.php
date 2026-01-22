@@ -1,3 +1,74 @@
+<?php
+// Get current workout program
+$program_query = "
+    SELECT wp.*, 
+           (SELECT COUNT(*) FROM workout_logs WHERE program_id = wp.id AND athlete_id = ?) as completed_workouts,
+           (SELECT COUNT(*) FROM workout_logs WHERE program_id = wp.id AND athlete_id = ? AND DATE(completed_at) >= DATE_SUB(NOW(), INTERVAL 1 WEEK)) as week_workouts
+    FROM workout_programs wp
+    WHERE wp.athlete_id = ? AND wp.status = 'active'
+    ORDER BY wp.created_at DESC
+    LIMIT 1
+";
+$program_stmt = $pdo->prepare($program_query);
+$program_stmt->execute([$user_id, $user_id, $user_id]);
+$current_program = $program_stmt->fetch();
+
+// Get this week's schedule
+$schedule_query = "
+    SELECT ws.*
+    FROM workout_schedule ws
+    WHERE ws.program_id = ? 
+    AND ws.week_day >= DAYOFWEEK(CURDATE()) - 1
+    AND ws.week_day < DAYOFWEEK(CURDATE()) + 6
+    ORDER BY ws.week_day
+";
+$schedule = [];
+if ($current_program) {
+    $schedule_stmt = $pdo->prepare($schedule_query);
+    $schedule_stmt->execute([$current_program['id']]);
+    $schedule = $schedule_stmt->fetchAll();
+}
+
+// Get exercises with filter
+$filter_category = $_GET['category'] ?? 'all';
+$search_exercise = $_GET['search_exercise'] ?? '';
+
+$exercises_query = "
+    SELECT e.* 
+    FROM exercises e
+    WHERE 1=1
+";
+$params = [];
+
+if ($filter_category !== 'all') {
+    $exercises_query .= " AND e.category = ?";
+    $params[] = $filter_category;
+}
+
+if (!empty($search_exercise)) {
+    $exercises_query .= " AND (e.name LIKE ? OR e.description LIKE ?)";
+    $params[] = "%$search_exercise%";
+    $params[] = "%$search_exercise%";
+}
+
+$exercises_query .= " ORDER BY e.name LIMIT 20";
+
+$exercises_stmt = $pdo->prepare($exercises_query);
+$exercises_stmt->execute($params);
+$exercises = $exercises_stmt->fetchAll();
+
+// Get exercise categories
+$categories_stmt = $pdo->prepare("SELECT DISTINCT category FROM exercises WHERE category IS NOT NULL ORDER BY category");
+$categories_stmt->execute();
+$categories = $categories_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// Calculate program progress
+$program_progress = 0;
+if ($current_program && $current_program['total_workouts'] > 0) {
+    $program_progress = ($current_program['completed_workouts'] / $current_program['total_workouts']) * 100;
+}
+?>
+
 <!-- Health Workouts View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -7,35 +78,42 @@
 </div>
 
 <div class="workouts-content">
+    <?php if ($current_program): ?>
     <!-- Current Program Card -->
-    <div class="current-program-card">
+    <div class="current-program-card" data-component="ProgramCard">
         <div class="program-header">
             <div>
                 <h3><i class="fas fa-fire"></i> Active Program</h3>
-                <p class="program-name">Off-Season Strength Builder</p>
+                <p class="program-name"><?= htmlspecialchars($current_program['name']) ?></p>
             </div>
-            <button class="btn-primary"><i class="fas fa-play"></i> Start Workout</button>
+            <button class="btn-primary" data-action="start-workout" data-program-id="<?= $current_program['id'] ?>"><i class="fas fa-play"></i> Start Workout</button>
         </div>
         <div class="program-progress">
             <div class="progress-stats">
                 <div class="stat">
-                    <span class="stat-value">12</span>
+                    <span class="stat-value"><?= $current_program['completed_workouts'] ?></span>
                     <span class="stat-label">Workouts Completed</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-value">4</span>
+                    <span class="stat-value"><?= $current_program['week_workouts'] ?></span>
                     <span class="stat-label">This Week</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-value">75%</span>
+                    <span class="stat-value"><?= number_format($program_progress, 0) ?>%</span>
                     <span class="stat-label">Program Progress</span>
                 </div>
             </div>
             <div class="progress-bar-container">
-                <div class="progress-bar" style="width: 75%;"></div>
+                <div class="progress-bar" style="width: <?= $program_progress ?>%;"></div>
             </div>
         </div>
     </div>
+    <?php else: ?>
+    <div class="placeholder-container">
+        <i class="fas fa-dumbbell placeholder-icon"></i>
+        <p class="placeholder-text">No active workout program. Contact your coach to get started.</p>
+    </div>
+    <?php endif; ?>
 
     <!-- Workout Calendar -->
     <div class="content-card">
@@ -127,47 +205,35 @@
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-book"></i> Exercise Library</h3>
-            <div class="filter-group">
-                <select class="form-input-small">
-                    <option>All Categories</option>
-                    <option>Upper Body</option>
-                    <option>Lower Body</option>
-                    <option>Core</option>
-                    <option>Cardio</option>
-                    <option>Flexibility</option>
+            <form method="GET" action="" class="filter-group">
+                <input type="hidden" name="page" value="strength_conditioning">
+                <select name="category" class="form-input-small" data-action="auto-submit">
+                    <option value="all">All Categories</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?= htmlspecialchars($cat) ?>" <?= $filter_category === $cat ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($cat) ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
-                <input type="text" class="form-input-small" placeholder="Search exercises...">
-            </div>
+                <input type="text" name="search_exercise" class="form-input-small" placeholder="Search exercises..." value="<?= htmlspecialchars($search_exercise) ?>" data-action="search-debounce">
+            </form>
         </div>
         <div class="card-body">
             <div class="exercise-grid">
-                <!-- Sample Exercise Card -->
-                <div class="exercise-card">
-                    <div class="exercise-icon">
-                        <i class="fas fa-dumbbell"></i>
+                <?php if (count($exercises) > 0): ?>
+                    <?php foreach ($exercises as $exercise): ?>
+                    <div class="exercise-card" data-component="ExerciseCard" data-exercise-id="<?= $exercise['id'] ?>">
+                        <div class="exercise-icon">
+                            <i class="fas fa-<?= $exercise['category'] === 'Upper Body' ? 'dumbbell' : ($exercise['category'] === 'Lower Body' ? 'running' : 'heartbeat') ?>"></i>
+                        </div>
+                        <h4><?= htmlspecialchars($exercise['name']) ?></h4>
+                        <p class="exercise-category"><?= htmlspecialchars($exercise['category']) ?></p>
+                        <button class="btn-secondary btn-small" data-action="view-demo" data-exercise-id="<?= $exercise['id'] ?>"><i class="fas fa-play"></i> View Demo</button>
                     </div>
-                    <h4>Bench Press</h4>
-                    <p class="exercise-category">Upper Body</p>
-                    <button class="btn-secondary btn-small"><i class="fas fa-play"></i> View Demo</button>
-                </div>
-
-                <div class="exercise-card">
-                    <div class="exercise-icon">
-                        <i class="fas fa-running"></i>
-                    </div>
-                    <h4>Squats</h4>
-                    <p class="exercise-category">Lower Body</p>
-                    <button class="btn-secondary btn-small"><i class="fas fa-play"></i> View Demo</button>
-                </div>
-
-                <div class="exercise-card">
-                    <div class="exercise-icon">
-                        <i class="fas fa-heartbeat"></i>
-                    </div>
-                    <h4>Planks</h4>
-                    <p class="exercise-category">Core</p>
-                    <button class="btn-secondary btn-small"><i class="fas fa-play"></i> View Demo</button>
-                </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="placeholder-text">No exercises found.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>

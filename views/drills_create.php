@@ -182,7 +182,7 @@
 
 .ice-rink-canvas {
     width: 100%;
-    aspect-ratio: 200 / 85;
+    height: 600px;
     background: 
         linear-gradient(to right, var(--border) 1px, transparent 1px),
         linear-gradient(to bottom, var(--border) 1px, transparent 1px),

@@ -1,3 +1,27 @@
+<?php
+// Get available packages
+$packages_query = "
+    SELECT p.*, pt.name as package_type_name
+    FROM packages p
+    LEFT JOIN package_types pt ON p.type_id = pt.id
+    WHERE p.is_active = 1 AND p.is_available = 1
+    ORDER BY p.display_order, p.price
+";
+$packages = $pdo->query($packages_query)->fetchAll();
+
+// Get coaches for individual sessions
+$coaches_query = "
+    SELECT u.id, u.first_name, u.last_name, u.specialty
+    FROM users u
+    WHERE u.role IN ('coach', 'admin') AND u.is_active = 1
+    ORDER BY u.last_name, u.first_name
+";
+$coaches = $pdo->query($coaches_query)->fetchAll();
+
+// Get session types
+$session_types = $pdo->query("SELECT * FROM session_types WHERE is_active = 1 ORDER BY name")->fetchAll();
+?>
+
 <!-- Session Booking View -->
 <div class="page-header">
     <h1 class="page-title">
@@ -19,59 +43,36 @@
 
     <!-- Packages Tab -->
     <div class="tab-content active" id="packages-tab">
-        <div class="packages-grid">
-            <!-- Sample Package Card -->
-            <div class="package-card">
-                <div class="package-badge">Popular</div>
-                <h3 class="package-title">Starter Package</h3>
+        <?php if (count($packages) > 0): ?>
+        <div class="packages-grid" data-component="PackageGrid">
+            <?php foreach ($packages as $idx => $package): ?>
+            <div class="package-card <?= $package['is_featured'] ? 'featured' : '' ?>" data-component="PackageCard" data-package-id="<?= $package['id'] ?>">
+                <?php if ($package['badge_text']): ?>
+                    <div class="package-badge"><?= htmlspecialchars($package['badge_text']) ?></div>
+                <?php endif; ?>
+                <h3 class="package-title"><?= htmlspecialchars($package['name']) ?></h3>
                 <div class="package-price">
-                    <span class="price">$299</span>
-                    <span class="price-detail">5 sessions</span>
+                    <span class="price">$<?= number_format($package['price'], 0) ?></span>
+                    <span class="price-detail"><?= $package['session_count'] ?> sessions</span>
                 </div>
                 <ul class="package-features">
-                    <li><i class="fas fa-check"></i> Individual Training</li>
-                    <li><i class="fas fa-check"></i> Video Analysis</li>
-                    <li><i class="fas fa-check"></i> Progress Tracking</li>
-                    <li><i class="fas fa-check"></i> Valid for 3 months</li>
+                    <?php 
+                    $features = json_decode($package['features_json'], true) ?? [];
+                    foreach ($features as $feature): 
+                    ?>
+                        <li><i class="fas fa-check"></i> <?= htmlspecialchars($feature) ?></li>
+                    <?php endforeach; ?>
                 </ul>
-                <button class="btn-primary btn-full"><i class="fas fa-shopping-cart"></i> Purchase</button>
+                <button class="btn-primary btn-full" data-action="purchase-package" data-package-id="<?= $package['id'] ?>"><i class="fas fa-shopping-cart"></i> Purchase</button>
             </div>
-
-            <div class="package-card featured">
-                <div class="package-badge">Best Value</div>
-                <h3 class="package-title">Pro Package</h3>
-                <div class="package-price">
-                    <span class="price">$549</span>
-                    <span class="price-detail">10 sessions</span>
-                </div>
-                <ul class="package-features">
-                    <li><i class="fas fa-check"></i> Individual Training</li>
-                    <li><i class="fas fa-check"></i> Video Analysis</li>
-                    <li><i class="fas fa-check"></i> Progress Tracking</li>
-                    <li><i class="fas fa-check"></i> Nutrition Plan</li>
-                    <li><i class="fas fa-check"></i> Valid for 6 months</li>
-                </ul>
-                <button class="btn-primary btn-full"><i class="fas fa-shopping-cart"></i> Purchase</button>
-            </div>
-
-            <div class="package-card">
-                <div class="package-badge">Premium</div>
-                <h3 class="package-title">Elite Package</h3>
-                <div class="package-price">
-                    <span class="price">$999</span>
-                    <span class="price-detail">20 sessions</span>
-                </div>
-                <ul class="package-features">
-                    <li><i class="fas fa-check"></i> Individual Training</li>
-                    <li><i class="fas fa-check"></i> Video Analysis</li>
-                    <li><i class="fas fa-check"></i> Progress Tracking</li>
-                    <li><i class="fas fa-check"></i> Nutrition Plan</li>
-                    <li><i class="fas fa-check"></i> Workout Program</li>
-                    <li><i class="fas fa-check"></i> Valid for 12 months</li>
-                </ul>
-                <button class="btn-primary btn-full"><i class="fas fa-shopping-cart"></i> Purchase</button>
-            </div>
+            <?php endforeach; ?>
         </div>
+        <?php else: ?>
+        <div class="placeholder-container">
+            <i class="fas fa-box placeholder-icon"></i>
+            <p class="placeholder-text">No packages available at this time.</p>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- Individual Sessions Tab -->
@@ -79,52 +80,68 @@
         <div class="booking-form-card">
             <h3><i class="fas fa-calendar-check"></i> Book Individual Session</h3>
             
-            <form class="booking-form">
+            <form class="booking-form" method="POST" action="process_booking.php" data-form="session-booking">
+                <input type="hidden" name="action" value="book_session">
+                <!-- Note: athlete_id will be validated server-side from session -->
+                
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Session Type</label>
-                        <select class="form-input">
-                            <option>-- Select Type --</option>
-                            <option>Individual Training</option>
-                            <option>Group Training</option>
-                            <option>Skills Development</option>
-                            <option>Evaluation</option>
+                        <label>Session Type *</label>
+                        <select name="session_type_id" class="form-input" required data-field="session-type">
+                            <option value="">-- Select Type --</option>
+                            <?php foreach ($session_types as $type): ?>
+                                <option value="<?= $type['id'] ?>" data-price="<?= $type['price'] ?>">
+                                    <?= htmlspecialchars($type['name']) ?> - $<?= number_format($type['price'], 0) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Coach</label>
-                        <select class="form-input">
-                            <option>-- Select Coach --</option>
-                            <!-- Coaches will be populated here -->
+                        <label>Coach *</label>
+                        <select name="coach_id" class="form-input" required data-field="coach-select">
+                            <option value="">-- Select Coach --</option>
+                            <?php foreach ($coaches as $coach): ?>
+                                <option value="<?= $coach['id'] ?>">
+                                    <?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?>
+                                    <?php if ($coach['specialty']): ?>
+                                        - <?= htmlspecialchars($coach['specialty']) ?>
+                                    <?php endif; ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Date</label>
-                        <input type="date" class="form-input">
+                        <label>Date *</label>
+                        <input type="date" name="session_date" class="form-input" required min="<?= date('Y-m-d') ?>" data-field="session-date">
                     </div>
                     <div class="form-group">
-                        <label>Time</label>
-                        <select class="form-input">
-                            <option>-- Select Time --</option>
-                            <!-- Available times will be populated here -->
+                        <label>Time *</label>
+                        <select name="session_time" class="form-input" required data-field="session-time">
+                            <option value="">-- Select Time --</option>
+                            <?php 
+                            $times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+                            foreach ($times as $time): 
+                            ?>
+                                <option value="<?= $time ?>"><?= date('g:i A', strtotime($time)) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Special Notes (Optional)</label>
-                    <textarea class="form-textarea" rows="4" placeholder="Any specific goals or focus areas for this session?"></textarea>
+                    <textarea name="notes" class="form-textarea" rows="4" placeholder="Any specific goals or focus areas for this session?"></textarea>
                 </div>
 
                 <div class="form-actions">
                     <div class="session-price">
                         <span class="price-label">Session Price:</span>
-                        <span class="price">$75</span>
+                        <span class="price" data-display="session-price">$0</span>
                     </div>
-                    <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Book Session</button>
+                    <button type="submit" class="btn-primary" data-action="submit-form"><i class="fas fa-check"></i> Book Session</button>
                 </div>
             </form>
         </div>
