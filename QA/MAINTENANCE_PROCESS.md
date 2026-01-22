@@ -283,6 +283,10 @@ For each affected table:
 - [ ] **PDO Fetch Methods**: Use `->fetch()`, `->fetchAll()`, `->rowCount()`
 - [ ] **Prepared Statements**: Use parameterized queries with `->execute([params])`
 - [ ] **Error Handling**: Wrap in try-catch blocks for PDOException
+- [ ] **Column Name Verification**: Ensure all column names in queries match database_schema.sql
+  - Common errors: Using `package_id` in sessions table (doesn't exist)
+  - Common errors: Using `category_id` in expenses table (uses `category` VARCHAR instead)
+  - Common errors: Using `assistant_coach_id` in sessions table (doesn't exist)
 
 #### Common Conversions
 ```php
@@ -366,6 +370,9 @@ Test each button on the page:
 - [ ] **Quick Action** buttons navigate to appropriate pages (not home)
 - [ ] **Tab** buttons switch between tabs without page reload
 - [ ] All buttons have appropriate `data-action` and `data-page`/`data-modal` attributes
+- [ ] All forms have `action="process_*.php"` and `method="POST"` attributes
+- [ ] All forms include CSRF token hidden input: `<input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">`
+- [ ] All form inputs have proper `name` attributes matching what process files expect
 
 ### 6.2 Search Functionality
 - [ ] Search input present and visible
@@ -389,6 +396,12 @@ Test each button on the page:
 - [ ] Success messages show on submission
 - [ ] Form data persists on error
 - [ ] Form resets after successful submission
+- [ ] **CRITICAL**: Every form has `action="process_*.php"` attribute
+- [ ] **CRITICAL**: Every form has `method="POST"` attribute
+- [ ] **CRITICAL**: Every form includes CSRF token: `<input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">`
+- [ ] **CRITICAL**: All form inputs have `name` attributes (not just id/class)
+- [ ] Form action points to correct process file (e.g., expense form → process_expenses.php)
+- [ ] Hidden input for action type: `<input type="hidden" name="action" value="create">` or similar
 
 ### 6.5 Checkboxes
 - [ ] Checkboxes toggle on click
@@ -480,6 +493,69 @@ Test each button on the page:
 #### Testing Procedure:
 1. Click every button on the page
 2. Verify expected action occurs
+3. Check browser console for JavaScript errors
+4. If button fails, inspect HTML for missing data attributes
+5. Add appropriate attributes and test again
+
+### 6.13 Form Submission Infrastructure
+**CRITICAL**: Forms that don't submit are usually missing basic HTML attributes.
+
+#### Required Form Structure:
+```html
+<form method="POST" action="process_specific_action.php">
+    <!-- CSRF Protection (REQUIRED) -->
+    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+    
+    <!-- Action identifier (REQUIRED) -->
+    <input type="hidden" name="action" value="create">
+    
+    <!-- User context (if needed) -->
+    <input type="hidden" name="user_id" value="<?= $_SESSION['user_id'] ?? '' ?>">
+    
+    <!-- Form fields (ALL need name attribute) -->
+    <input type="text" name="field_name" class="form-input" required>
+    <select name="category" class="form-input">
+        <option value="">Select...</option>
+    </select>
+    
+    <!-- Submit button -->
+    <button type="submit" class="btn-primary">
+        <i class="fas fa-save"></i> Submit
+    </button>
+</form>
+```
+
+#### Common Form Issues:
+- [ ] **Form reloads to home**: Missing or empty `action` attribute
+- [ ] **Form doesn't POST data**: Missing `method="POST"` attribute
+- [ ] **Process file doesn't receive data**: Input fields missing `name` attributes (having only `id` or `class` is insufficient)
+- [ ] **CSRF error**: Missing CSRF token hidden input
+- [ ] **Process file can't identify action**: Missing `action` hidden input (create/update/delete)
+- [ ] **Custom data-action ignored**: app.js doesn't handle custom actions without corresponding handler
+
+#### Form Debugging Checklist:
+1. [ ] Open browser DevTools → Network tab
+2. [ ] Submit the form
+3. [ ] Check if POST request is made
+4. [ ] If no request: Form missing `action` or `method`
+5. [ ] If request made but fails: Check process file exists and is correct
+6. [ ] Check POST payload: All fields have values?
+7. [ ] If fields empty: Inputs missing `name` attributes
+
+#### Process File Expectations:
+Every form should POST to a corresponding `process_*.php` file:
+- Expense forms → `process_expenses.php`
+- User forms → `process_admin_action.php` or `process_manage_athletes.php`
+- Settings forms → `process_settings.php`
+- Notification forms → `process_system_notifications.php`
+- Report forms → `process_reports.php`
+- Etc.
+
+Check that:
+- [ ] Process file exists in repository root
+- [ ] Process file expects correct $_POST parameters
+- [ ] Process file includes database operations
+- [ ] Process file returns JSON or redirects appropriately
 3. Check browser console for JavaScript errors
 4. If button fails, inspect HTML for missing data attributes
 5. Add appropriate attributes and test again
@@ -750,6 +826,7 @@ When reporting an issue, include:
 
 ## Version History
 
+- **v1.2** - January 22, 2026 - Added critical form submission infrastructure section, enhanced PDO column name verification, added form debugging checklist and process file expectations
 - **v1.1** - January 22, 2026 - Added comprehensive button testing procedures, tab navigation checks, dropdown validation, and button configuration patterns section
 - **v1.0** - January 22, 2026 - Initial maintenance process document created
 
