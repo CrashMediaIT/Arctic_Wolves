@@ -1445,23 +1445,7 @@ CREATE TABLE IF NOT EXISTS `user_permissions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- User workout items (individual workout exercise logs)
-CREATE TABLE IF NOT EXISTS `user_workout_items` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_workout_id` INT NOT NULL,
-    `exercise_id` INT NOT NULL,
-    `sets_completed` INT DEFAULT 0,
-    `reps_completed` VARCHAR(50) DEFAULT NULL,
-    `weight_used` DECIMAL(10,2) DEFAULT NULL,
-    `duration_minutes` INT DEFAULT NULL,
-    `notes` TEXT DEFAULT NULL,
-    `completed_at` TIMESTAMP NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`user_workout_id`) REFERENCES `user_workouts`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`exercise_id`) REFERENCES `exercise_library`(`id`) ON DELETE CASCADE,
-    INDEX `idx_workout` (`user_workout_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- User workouts (workout sessions)
+-- User workouts (parent table - workout sessions)
 CREATE TABLE IF NOT EXISTS `user_workouts` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
@@ -1479,6 +1463,23 @@ CREATE TABLE IF NOT EXISTS `user_workouts` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- User workout items (child table - references user_workouts)
+CREATE TABLE IF NOT EXISTS `user_workout_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_workout_id` INT NOT NULL,
+    `exercise_id` INT NOT NULL,
+    `sets_completed` INT DEFAULT 0,
+    `reps_completed` VARCHAR(50) DEFAULT NULL,
+    `weight_used` DECIMAL(10,2) DEFAULT NULL,
+    `duration_minutes` INT DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `completed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_workout_id`) REFERENCES `user_workouts`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`exercise_id`) REFERENCES `exercise_library`(`id`) ON DELETE CASCADE,
+    INDEX `idx_workout` (`user_workout_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Workout plan categories
 CREATE TABLE IF NOT EXISTS `workout_plan_categories` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -1490,24 +1491,7 @@ CREATE TABLE IF NOT EXISTS `workout_plan_categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Workout template items
-CREATE TABLE IF NOT EXISTS `workout_template_items` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `template_id` INT NOT NULL,
-    `exercise_id` INT NOT NULL,
-    `day_number` INT DEFAULT 1,
-    `sets` INT DEFAULT NULL,
-    `reps` VARCHAR(50) DEFAULT NULL,
-    `rest_seconds` INT DEFAULT NULL,
-    `order_num` INT DEFAULT 0,
-    `notes` TEXT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`template_id`) REFERENCES `workout_templates`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`exercise_id`) REFERENCES `exercise_library`(`id`) ON DELETE CASCADE,
-    INDEX `idx_template` (`template_id`),
-    INDEX `idx_day` (`day_number`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Workout templates
+-- Workout templates (parent table)
 CREATE TABLE IF NOT EXISTS `workout_templates` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
@@ -1523,6 +1507,24 @@ CREATE TABLE IF NOT EXISTS `workout_templates` (
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_category` (`category_id`),
     INDEX `idx_public` (`is_public`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Workout template items (child table - references workout_templates)
+CREATE TABLE IF NOT EXISTS `workout_template_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `template_id` INT NOT NULL,
+    `exercise_id` INT NOT NULL,
+    `day_number` INT DEFAULT 1,
+    `sets` INT DEFAULT NULL,
+    `reps` VARCHAR(50) DEFAULT NULL,
+    `rest_seconds` INT DEFAULT NULL,
+    `order_num` INT DEFAULT 0,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`template_id`) REFERENCES `workout_templates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`exercise_id`) REFERENCES `exercise_library`(`id`) ON DELETE CASCADE,
+    INDEX `idx_template` (`template_id`),
+    INDEX `idx_day` (`day_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
