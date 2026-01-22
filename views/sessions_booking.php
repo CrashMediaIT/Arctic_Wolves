@@ -1,17 +1,16 @@
 <?php
 // Get available packages
 $packages_query = "
-    SELECT p.*, pt.name as package_type_name
+    SELECT p.*
     FROM packages p
-    LEFT JOIN package_types pt ON p.type_id = pt.id
-    WHERE p.is_active = 1 AND p.is_available = 1
-    ORDER BY p.display_order, p.price
+    WHERE p.is_active = 1
+    ORDER BY p.price
 ";
 $packages = $pdo->query($packages_query)->fetchAll();
 
 // Get coaches for individual sessions
 $coaches_query = "
-    SELECT u.id, u.first_name, u.last_name, u.specialty
+    SELECT u.id, u.first_name, u.last_name
     FROM users u
     WHERE u.role IN ('coach', 'admin') AND u.is_active = 1
     ORDER BY u.last_name, u.first_name
@@ -19,7 +18,7 @@ $coaches_query = "
 $coaches = $pdo->query($coaches_query)->fetchAll();
 
 // Get session types
-$session_types = $pdo->query("SELECT * FROM session_types WHERE is_active = 1 ORDER BY name")->fetchAll();
+$session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
 ?>
 
 <!-- Session Booking View -->
@@ -46,23 +45,20 @@ $session_types = $pdo->query("SELECT * FROM session_types WHERE is_active = 1 OR
         <?php if (count($packages) > 0): ?>
         <div class="packages-grid" data-component="PackageGrid">
             <?php foreach ($packages as $idx => $package): ?>
-            <div class="package-card <?= $package['is_featured'] ? 'featured' : '' ?>" data-component="PackageCard" data-package-id="<?= $package['id'] ?>">
-                <?php if ($package['badge_text']): ?>
-                    <div class="package-badge"><?= htmlspecialchars($package['badge_text']) ?></div>
-                <?php endif; ?>
+            <div class="package-card" data-component="PackageCard" data-package-id="<?= $package['id'] ?>">
                 <h3 class="package-title"><?= htmlspecialchars($package['name']) ?></h3>
                 <div class="package-price">
                     <span class="price">$<?= number_format($package['price'], 0) ?></span>
-                    <span class="price-detail"><?= $package['session_count'] ?> sessions</span>
+                    <span class="price-detail"><?= $package['credits'] ?> credits</span>
                 </div>
-                <ul class="package-features">
-                    <?php 
-                    $features = json_decode($package['features_json'], true) ?? [];
-                    foreach ($features as $feature): 
-                    ?>
-                        <li><i class="fas fa-check"></i> <?= htmlspecialchars($feature) ?></li>
-                    <?php endforeach; ?>
-                </ul>
+                <div class="package-description">
+                    <p><?= htmlspecialchars($package['description'] ?? '') ?></p>
+                </div>
+                <?php if ($package['valid_days']): ?>
+                    <div class="package-validity">
+                        <i class="fas fa-clock"></i> Valid for <?= $package['valid_days'] ?> days
+                    </div>
+                <?php endif; ?>
                 <button class="btn-primary btn-full" data-action="purchase-package" data-package-id="<?= $package['id'] ?>"><i class="fas fa-shopping-cart"></i> Purchase</button>
             </div>
             <?php endforeach; ?>
