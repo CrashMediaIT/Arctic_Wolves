@@ -1,0 +1,429 @@
+# Arctic Wolves - Issue Tracking & Resolution
+
+**Status**: In Progress  
+**Last Updated**: 2026-01-22  
+**Governance**: Following QA/MAINTENANCE_PROCESS.md
+
+---
+
+## Issues by Page (Navigation Order)
+
+### 🏠 HOME PAGE
+**Status**: ✅ Partially Fixed | 🔴 Issues Remain
+
+✅ **Fixed:**
+- Add Session button now routes to booking page (?page=booking)
+- Button changed from button to link element
+
+🔴 **Outstanding:**
+- [ ] Empty state messaging ("No sessions today" when no data)
+- [ ] Stats section needs header even when empty
+- [ ] Style guide: Font consistency across page
+- [ ] "Today's sessions" should show "upcoming sessions" not just today
+
+---
+
+### 📊 PERFORMANCE STATS PAGE  
+**Status**: ✅ Partially Fixed | 🔴 Issues Remain
+
+✅ **Fixed:**
+- Add Goal button has icon and proper styling
+- Proper spacing between text and button
+
+🔴 **Outstanding:**
+- [ ] Create goal form redirects to home instead of processing
+- [ ] Button text proportions need adjustment
+
+---
+
+### 📅 SESSIONS - UPCOMING
+**Status**: ✅ Database Fixed | 🔴 Features Missing
+
+✅ **Fixed:**
+- Database queries corrected (removed is_public, focus_areas columns)
+- Empty state displays properly
+- Data loads from database
+
+🔴 **Outstanding:**
+- [ ] Calendar view not implemented (only list view exists)
+- [ ] Session detail view on click
+- [ ] Filter functionality needs testing
+
+---
+
+### 📅 SESSIONS - BOOKING
+**Status**: ✅ Database Fixed | 🔴 Features Missing
+
+✅ **Fixed:**
+- Database queries corrected (removed package_types table references)
+- Package display works with actual schema
+- Empty state displays
+
+🔴 **Outstanding:**
+- [ ] Calendar view not implemented
+- [ ] Register button to payment flow
+- [ ] Session selection detail view
+
+---
+
+### 🎥 VIDEO - DRILL REVIEW
+**Status**: ✅ Database Fixed | 🔴 Features Missing
+
+✅ **Fixed:**
+- Database queries corrected (status, drill_type columns)
+- Proper JOINs to drills table
+- Filter dropdowns populated
+
+🔴 **Outstanding:**
+- [ ] Pending/Reviewed sections separation
+- [ ] Search functionality by date uploaded, coach, drill type
+- [ ] Session group name search
+
+---
+
+### 🎥 VIDEO - COACHES REVIEW
+**Status**: ✅ Database Fixed | 🔴 Features Missing
+
+✅ **Fixed:**
+- Database queries corrected (athlete query path)
+- Filter functionality working
+
+🔴 **Outstanding:**
+- [ ] Upload tab missing (needs to be added as 3rd tab)
+- [ ] Upload button on page
+- [ ] Pending/Reviewed sections
+
+---
+
+### 💪 HEALTH - WORKOUTS
+**Status**: ✅ Database Fixed | 🔴 Empty State Messaging
+
+✅ **Fixed:**
+- Database queries corrected (workout_plans, exercise_library tables)
+- Data loads from athlete_workout_assignments
+
+🔴 **Outstanding:**
+- [ ] Better empty state: "No workout plan currently assigned"
+- [ ] Header even when empty
+
+---
+
+### 🍎 HEALTH - NUTRITION
+**Status**: ✅ Database Fixed | 🔴 Empty State Messaging
+
+✅ **Fixed:**
+- Database queries corrected (user_id, target_* columns)
+- Data loads from nutrition_plans
+
+🔴 **Outstanding:**
+- [ ] Better empty state: "No nutrition plan currently assigned"
+- [ ] Header even when empty
+
+---
+
+### 🏋️ DRILLS - LIBRARY
+**Status**: ✅ Verified Correct
+
+✅ **Fixed:**
+- Database queries already correct
+- Data loads properly
+
+---
+
+### 🏋️ DRILLS - CREATE
+**Status**: 🔴 Not Reviewed Yet
+
+🔴 **Outstanding:**
+- [ ] Form functionality needs testing
+- [ ] Module connection needs verification
+
+---
+
+### 🏋️ DRILLS - IMPORT
+**Status**: 🔴 Not Reviewed Yet
+
+🔴 **Outstanding:**
+- [ ] IHS import functionality needs verification
+- [ ] Module connection needs testing
+
+---
+
+### 📋 PRACTICE PLANS - LIBRARY
+**Status**: ✅ Database Fixed
+
+✅ **Fixed:**
+- Database queries added (replaced static HTML)
+- Search and filter working
+- Empty state displays
+
+---
+
+### 📋 PRACTICE PLANS - CREATE
+**Status**: 🔴 Not Reviewed Yet
+
+🔴 **Outstanding:**
+- [ ] Form functionality needs testing
+- [ ] Module connection needs verification
+
+---
+
+### 🚗 TRAVEL - MILEAGE
+**Status**: ✅ Database Fixed
+
+✅ **Fixed:**
+- Database queries corrected (mileage_logs table, trip_date column)
+- Distance conversion km/miles
+- Data loads properly
+
+---
+
+### 👥 ROSTER (Coach)
+**Status**: ✅ Database Fixed (in earlier commit)
+
+✅ **Fixed:**
+- PDO query errors resolved
+- No package_id column errors
+
+---
+
+### 💰 ACCOUNTING - DASHBOARD
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Quick actions boxes sizing issues
+- [ ] Broken box with "ice time rental" text
+- [ ] Package purchase overlapping revenue review
+- [ ] Revenue graph not showing when data is $0
+- [ ] Revenue overview inconsistent styling
+- [ ] Graph should always show regardless of amount
+
+---
+
+### 💳 BILLING - DASHBOARD
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Revenue overview heading should match "Recent Payments"
+- [ ] Filter by time period
+- [ ] Graph display below filters
+
+---
+
+### 💳 BILLING - CREATE INVOICE
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Button doesn't work
+- [ ] Export button doesn't work
+- [ ] "Nothing to export" message when empty
+
+---
+
+### 📊 REPORTS - GENERATE
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] CSRF token error: {"success":false,"error":"Invalid CSRF token"}
+- [ ] Form redirects to home instead of generating report
+- [ ] Quick report buttons do nothing
+- [ ] Download/View/Delete buttons on recent reports do nothing
+
+---
+
+### 📊 REPORTS - SCHEDULES  
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] CSRF token error on create schedule
+- [ ] Edit/Pause/Delete buttons do nothing
+- [ ] Confirmation message after creation
+
+---
+
+### 💵 CREDITS & REFUNDS
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Issue credit/refund button does nothing
+- [ ] Should show form with historical purchases
+
+---
+
+### 📝 EXPENSES
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Choose file button doesn't work
+- [ ] Take photo button doesn't work
+- [ ] CSRF token error on add expense
+- [ ] (Database query already fixed - no category_id error)
+
+---
+
+### 🏷️ PRODUCTS - SESSIONS
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Search by location, name, date, skill type
+- [ ] Session history (when/where used, which athletes)
+- [ ] Add button missing icon
+- [ ] Consistent display across tabs
+
+---
+
+### 🏷️ PRODUCTS - PACKAGES
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Same display as sessions tab
+- [ ] Search functionality
+- [ ] Add button missing icon, doesn't open create page
+- [ ] Should be tabs not buttons
+
+---
+
+### 🏷️ PRODUCTS - DISCOUNTS
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Edit/Delete functions don't work
+- [ ] Create discount button doesn't work
+- [ ] Should be tabs not buttons
+
+---
+
+### 👔 HR - TERMINATION
+**Status**: 🔴 Broken - Fatal Error
+
+🔴 **Critical:**
+- [x] ~~Fatal error: Call to undefined function csrfTokenInput()~~ (Fixed in commit 7e7616f)
+- [ ] Process termination button redirects to home
+- [ ] Font style guide compliance
+
+---
+
+### 👥 ADMIN - ALL USERS
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Filter doesn't work (e.g., admin role shows no users)
+- [ ] Search by name not working
+- [ ] Add user button does nothing
+- [ ] Export button missing icon
+- [ ] Table not found error on export
+- [ ] CSS error: .status-badge.inactive showing as text
+
+---
+
+### 🏷️ ADMIN - CATEGORIES
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Should be tabs not buttons (Skills, Drill Types, Positions, Equipment)
+- [ ] Add buttons missing icons
+- [ ] Add buttons don't call module
+- [ ] Edit/Delete buttons don't work
+
+---
+
+### 📊 ADMIN - EVAL FRAMEWORK
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Add evaluation category missing button
+- [ ] Doesn't call skill category library
+- [ ] Plus/Edit/Delete buttons do nothing
+- [ ] Skill edit/delete under categories do nothing
+- [ ] Add scale button missing icon and doesn't work
+
+---
+
+### 🔔 ADMIN - SYSTEM NOTIFICATIONS
+**Status**: 🔴 Broken - Fatal Error
+
+🔴 **Critical:**
+- [x] ~~Fatal error: Call to undefined function csrfTokenInput()~~ (Fixed in commit d56a355)
+- [ ] Form redirects to home instead of creating notification
+- [ ] No confirmation message
+- [ ] Edit/Delete buttons on active notifications do nothing
+
+---
+
+### 📜 ADMIN - AUDIT LOG
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Export button: "table not found" error
+
+---
+
+### ⏰ ADMIN - CRON JOBS
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Add cron job button missing icon
+- [ ] Add button doesn't work
+- [ ] Time setting should use normal time format
+- [ ] Run/Edit/Pause buttons do nothing
+- [ ] Execution history buttons do nothing
+
+---
+
+### ⚙️ ADMIN - SYSTEM TOOLS - SETTINGS
+**Status**: ✅ Partially Fixed | 🔴 Issues Remain
+
+✅ **Fixed:**
+- CSS error display fixed (unclosed style tag)
+
+🔴 **Outstanding:**
+- [ ] Save settings button gives CSRF error
+- [ ] Toggle sliders give CSRF error
+- [ ] Changes redirect to home page
+
+---
+
+### ⚙️ ADMIN - SYSTEM TOOLS - OTHER TABS
+**Status**: 🔴 Not Fixed Yet
+
+🔴 **Outstanding:**
+- [ ] Clicking tabs doesn't switch views (stays on settings)
+
+---
+
+### 👤 PROFILE - SETTINGS
+**Status**: ✅ Partially Fixed | 🔴 Issues Remain
+
+✅ **Fixed:**
+- Form action paths corrected
+- Database schema added for height, weight, handedness, catching_hand, jersey_number
+
+🔴 **Outstanding:**
+- [ ] Save changes redirects to home
+- [ ] Change photo button doesn't work properly
+- [ ] Should click profile picture to upload
+- [ ] No save button after photo selected
+- [ ] Security/Notifications tabs don't work
+
+---
+
+## Summary Statistics
+
+- **Total Pages Reviewed**: 35+
+- **Database Fixes Completed**: 14 commits, 6 modules  
+- **Critical Errors Fixed**: 3 (csrfTokenInput fatal errors, CSS display)
+- **Outstanding Issues**: 100+
+- **Issue Categories**:
+  - 🔴 CSRF Token in AJAX: ~15 instances
+  - 🔴 Button handlers not wired: ~40 instances
+  - 🔴 Missing UI features: ~25 instances
+  - 🔴 Style guide compliance: ~20 instances
+
+---
+
+## Next Steps
+
+1. **Immediate**: Continue page-by-page fixes starting from Home
+2. **Priority**: CSRF token inclusion in JavaScript AJAX calls
+3. **Priority**: Button event handler wiring
+4. **Follow-up**: UI/UX enhancements and style guide compliance
+
