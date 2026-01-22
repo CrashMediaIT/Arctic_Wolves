@@ -5,7 +5,7 @@ $creditsQuery = "SELECT cr.*, u.first_name, u.last_name
     LEFT JOIN users u ON cr.user_id = u.user_id
     ORDER BY cr.created_at DESC
     LIMIT 20";
-$credits = mysqli_query($conn, $creditsQuery);
+$credits = $pdo->query($creditsQuery);
 ?>
 <!-- Accounting Credits View -->
 <div class="page-header">
@@ -56,8 +56,8 @@ $credits = mysqli_query($conn, $creditsQuery);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if(mysqli_num_rows($credits) > 0): ?>
-                            <?php while($credit = mysqli_fetch_assoc($credits)): 
+                        <?php if($credits && $credits->rowCount() > 0): ?>
+                            <?php while($credit = $credits->fetch()): 
                                 $typeClass = strtolower($credit['type']);
                                 $statusClass = strtolower($credit['status']);
                             ?>

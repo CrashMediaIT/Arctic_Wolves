@@ -5,7 +5,7 @@ $expensesQuery = "SELECT e.*, ec.category_name
     LEFT JOIN expense_categories ec ON e.category_id = ec.category_id
     ORDER BY e.expense_date DESC
     LIMIT 20";
-$expenses = mysqli_query($conn, $expensesQuery);
+$expenses = $pdo->query($expensesQuery);
 ?>
 <!-- Accounting Expenses View -->
 <div class="page-header">
@@ -106,8 +106,8 @@ $expenses = mysqli_query($conn, $expensesQuery);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if(mysqli_num_rows($expenses) > 0): ?>
-                            <?php while($expense = mysqli_fetch_assoc($expenses)): ?>
+                        <?php if($expenses && $expenses->rowCount() > 0): ?>
+                            <?php while($expense = $expenses->fetch()): ?>
                             <tr>
                                 <td><?= date('M j, Y', strtotime($expense['expense_date'])) ?></td>
                                 <td><span class="category-badge"><?= htmlspecialchars($expense['category_name']) ?></span></td>
