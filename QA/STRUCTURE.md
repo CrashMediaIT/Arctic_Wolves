@@ -742,9 +742,12 @@ These views are accessed through specific contexts or as sub-pages:
     - Used by: Notifications view, dashboard
     - Key columns: id, user_id, message, is_read
 
-### Complete Table Count: 111 Tables
+### Complete Table Count: 120 Tables
 
-For full database schema, see `database_schema.sql` and `QA/DATABASE_SCHEMA_REFERENCE.md`
+**Note:** The database schema contains 120 tables total. The most commonly used tables are documented above. For the complete list of all 120 tables, see `database_schema.sql` and `QA/DATABASE_SCHEMA_REFERENCE.md`.
+
+**Complete Table List (120 tables):**
+age_groups, announcements, api_keys, athlete_evaluations, athlete_notes, athlete_nutrition_assignments, athlete_nutrition_feedback, athlete_programs, athlete_stats, athlete_teams, athlete_workout_assignments, athlete_workout_feedback, audit_logs, backup_history, backup_jobs, bookings, cloud_receipts, coach_availability, coach_certifications, credits_refunds, cron_jobs, database_maintenance_logs, discount_codes, drill_categories, drill_tags, drills, email_logs, employee_terminations, equipment, equipment_maintenance, eval_categories, eval_skills, evaluation_media, evaluation_scores, event_registrations, events, exercise_library, exercises, expense_categories, expenses, feature_versions, file_uploads, food_library, foods, game_schedules, goal_eval_approvals, goal_eval_progress, goal_eval_steps, goal_evaluations, goal_history, goal_progress, goal_steps, goals, invoice_items, invoices, locations, login_history, managed_athletes, message_attachments, messages, mileage_logs, mileage_stops, notifications, nutrition_plan_categories, nutrition_plan_meal_foods, nutrition_plan_meals, nutrition_plans, nutrition_template_items, nutrition_templates, package_sessions, packages, parent_athlete_relationships, password_resets, payment_methods, payments, performance_stats, permissions, practice_plan_categories, practice_plan_drills, practice_plans, refunds, report_schedules, reports, role_permissions, scheduled_reports, seasons, security_logs, security_scans, session_attendance, session_feedback, session_practice_plans, session_templates, session_types, sessions, skill_levels, system_notifications, system_settings, team_coach_assignments, team_roster, team_stats, teams, testing_results, theme_settings, training_programs, transactions, user_credits, user_package_credits, user_packages, user_permissions, user_workout_items, user_workouts, users, videos, waitlists, workout_plan_categories, workout_plan_exercises, workout_plans, workout_template_items, workout_templates, workouts
 
 ---
 
@@ -978,11 +981,32 @@ Video file storage
 ## Summary
 
 **Total Pages in Navigation:** 33 routes  
-**Total View Files:** 89 files  
-**Total Process Files:** 40+ files  
-**Total Database Tables:** 111 tables  
+**Total View Files:** 97 files  
+**Total Process Files:** 44 files  
+**Total Database Tables:** 120 tables  
 **JavaScript Files:** 2 main files + CDN libraries  
 **User Roles:** 6 (Athlete, Coach, Admin, Parent, Health Coach, Team Coach)
+
+### File Usage Patterns
+
+**View Files Organization:**
+- **Parent Views (27 files):** Main pages accessible via dashboard routing table
+- **Child Views (12 files):** Tab content included by parent views
+- **Component Views (58 files):** Accessed via modals, AJAX, JavaScript redirects, or specific contexts
+
+**All 97 view files are actively used** by the application through various mechanisms:
+- Direct routing via `dashboard.php` routing table
+- Included by parent views as tab content
+- Loaded as modals or embedded content
+- Accessed via JavaScript navigation
+- Linked from process handlers or specific user actions
+
+**Process Files:**
+All 44 process files are actively handling form submissions and backend operations.
+
+**Documentation Files:**
+- **Active Documentation (in `/QA/`):** MAINTENANCE_PROCESS.md, STYLE_GUIDE.md, STRUCTURE.md, DATABASE_SCHEMA_REFERENCE.md, NAVIGATION_MAP.md
+- **Historical Documentation (moved to `/unused/QA/`):** 35+ historical reports, summaries, and implementation documents
 
 **Last Updated:** January 22, 2026  
 **Maintained By:** QA Team  
