@@ -54,7 +54,7 @@ try {
             </div>
             <div class="card-body">
                 <form id="settings-form" method="POST" action="process_settings.php" data-form-type="settings">
-                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="update_settings">
                     <div class="settings-list">
                         <div class="setting-item">
@@ -124,7 +124,7 @@ try {
             </div>
             <div class="card-body">
                 <form id="theme-form" method="POST" action="process_settings.php" data-form-type="theme">
-                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="update_theme">
                     <div class="theme-colors">
                         <div class="color-picker-item">

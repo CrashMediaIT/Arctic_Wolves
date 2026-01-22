@@ -51,6 +51,18 @@ try {
     $stmt->execute();
     $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Get revenue data for last 30 days for chart
+    $stmt = $pdo->prepare("
+        SELECT DATE(payment_date) as date, SUM(amount) as daily_revenue
+        FROM payments
+        WHERE status = 'completed'
+        AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(payment_date)
+        ORDER BY date ASC
+    ");
+    $stmt->execute();
+    $revenueChartData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
 } catch (PDOException $e) {
     error_log("Accounting data fetch error: " . $e->getMessage());
     $revenue = 0;
@@ -58,6 +70,7 @@ try {
     $net_profit = 0;
     $outstandingData = ['count' => 0, 'total' => 0];
     $transactions = [];
+    $revenueChartData = [];
 }
 ?>
 
@@ -186,22 +199,112 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-chart-area"></i> Revenue Overview</h3>
-            <select class="form-input">
-                <option>Last 7 Days</option>
+            <select class="form-input" style="width: auto;">
                 <option>Last 30 Days</option>
-                <option>Last 90 Days</option>
-                <option>This Year</option>
             </select>
         </div>
         <div class="card-body">
-            <div class="chart-placeholder">
-                <i class="fas fa-chart-area" style="font-size: 48px; color: var(--primary); opacity: 0.3; margin-bottom: 12px;"></i>
-                <p>Revenue chart will be displayed here</p>
-                <p style="font-size: 12px; color: var(--text-dim); margin-top: 8px;">Chart displays regardless of revenue amount</p>
-            </div>
+            <canvas id="revenueChart" style="max-height: 300px;"></canvas>
         </div>
     </div>
 </div>
+
+<!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Prepare chart data from PHP
+    const chartData = <?php echo json_encode($revenueChartData); ?>;
+    
+    // Create labels and data arrays
+    const labels = [];
+    const data = [];
+    
+    // Fill in last 30 days
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        
+        // Find revenue for this date
+        const dayData = chartData.find(d => d.date === dateStr);
+        data.push(dayData ? parseFloat(dayData.daily_revenue) : 0);
+    }
+    
+    // Create chart
+    const ctx = document.getElementById('revenueChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daily Revenue',
+                    data: data,
+                    borderColor: '#6B46C1',
+                    backgroundColor: 'rgba(107, 70, 193, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: '#6B46C1',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: '#6B46C1',
+                        borderWidth: 1,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Revenue: $' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#8B92A7',
+                            callback: function(value) {
+                                return '$' + value.toFixed(0);
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#8B92A7',
+                            maxRotation: 45,
+                            minRotation: 45
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 
 <style>
 .financial-summary {

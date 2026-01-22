@@ -33,7 +33,7 @@ $terminations = $terminations_stmt->fetchAll();
             <h3><i class="fas fa-file-alt"></i> Termination Details</h3>
         </div>
         <div class="card-body">
-            <form class="termination-form" method="POST" action="process_termination.php">
+            <form class="termination-form" method="POST" action="process_coach_termination.php">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create">
                 <div class="form-row">
