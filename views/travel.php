@@ -9,8 +9,8 @@ if ($tab === 'travel') $tab = 'mileage'; // Default tab
     <p>Track travel expenses and mileage for reimbursement</p>
 </div>
 
-<div class="tab-navigation">
-    <a href="?page=mileage" class="tab-link <?= $tab === 'mileage' ? 'active' : '' ?>">
+<div class="tab-navigation" data-component="TabNavigation">
+    <a href="?page=mileage" class="tab-link <?= $tab === 'mileage' ? 'active' : '' ?>" data-tab="mileage">
         <i class="fa-solid fa-car"></i> Mileage
     </a>
 </div>

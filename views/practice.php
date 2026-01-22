@@ -9,11 +9,11 @@ if ($tab === 'practice') $tab = 'practice_library'; // Default tab
     <p>Organize practice plans, view library, and create new training schedules</p>
 </div>
 
-<div class="tab-navigation">
-    <a href="?page=practice_library" class="tab-link <?= $tab === 'practice_library' ? 'active' : '' ?>">
+<div class="tab-navigation" data-component="TabNavigation">
+    <a href="?page=practice_library" class="tab-link <?= $tab === 'practice_library' ? 'active' : '' ?>" data-tab="practice_library">
         <i class="fa-solid fa-book"></i> Library
     </a>
-    <a href="?page=create_practice" class="tab-link <?= $tab === 'create_practice' ? 'active' : '' ?>">
+    <a href="?page=create_practice" class="tab-link <?= $tab === 'create_practice' ? 'active' : '' ?>" data-tab="create_practice">
         <i class="fa-solid fa-plus-circle"></i> Create a Practice
     </a>
 </div>

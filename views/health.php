@@ -9,11 +9,11 @@ if ($tab === 'health') $tab = 'strength_conditioning'; // Default tab
     <p>Track your fitness progress, nutrition plans, and workout routines</p>
 </div>
 
-<div class="tab-navigation">
-    <a href="?page=strength_conditioning" class="tab-link <?= $tab === 'strength_conditioning' ? 'active' : '' ?>">
+<div class="tab-navigation" data-component="TabNavigation">
+    <a href="?page=strength_conditioning" class="tab-link <?= $tab === 'strength_conditioning' ? 'active' : '' ?>" data-tab="strength_conditioning">
         <i class="fa-solid fa-dumbbell"></i> Strength & Conditioning
     </a>
-    <a href="?page=nutrition" class="tab-link <?= $tab === 'nutrition' ? 'active' : '' ?>">
+    <a href="?page=nutrition" class="tab-link <?= $tab === 'nutrition' ? 'active' : '' ?>" data-tab="nutrition">
         <i class="fa-solid fa-utensils"></i> Nutrition
     </a>
 </div>

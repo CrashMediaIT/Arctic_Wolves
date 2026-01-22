@@ -9,11 +9,11 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
     <p>Review your drill videos and upload new footage for coach analysis</p>
 </div>
 
-<div class="tab-navigation">
-    <a href="?page=drill_review" class="tab-link <?= $tab === 'drill_review' ? 'active' : '' ?>">
+<div class="tab-navigation" data-component="TabNavigation">
+    <a href="?page=drill_review" class="tab-link <?= $tab === 'drill_review' ? 'active' : '' ?>" data-tab="drill_review">
         <i class="fa-solid fa-film"></i> Drill Review
     </a>
-    <a href="?page=coaches_reviews" class="tab-link <?= $tab === 'coaches_reviews' ? 'active' : '' ?>">
+    <a href="?page=coaches_reviews" class="tab-link <?= $tab === 'coaches_reviews' ? 'active' : '' ?>" data-tab="coaches_reviews">
         <i class="fa-solid fa-comments"></i> Coaches Reviews
         <?php if($isAnyCoach): ?>
         <span style="margin-left: 8px; font-size: 10px; background: var(--primary); padding: 2px 8px; border-radius: 4px;">[Upload]</span>
