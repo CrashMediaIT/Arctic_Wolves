@@ -13,49 +13,51 @@
             <h3><i class="fas fa-plus-circle"></i> Create Notification</h3>
         </div>
         <div class="card-body">
-            <form class="notification-form">
+            <form class="notification-form" method="POST" action="process_notifications.php">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="create">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Title *</label>
-                        <input type="text" class="form-input" placeholder="Notification title" required>
+                        <input type="text" name="title" class="form-input" placeholder="Notification title" required>
                     </div>
                     <div class="form-group">
                         <label>Type *</label>
-                        <select class="form-input" required>
+                        <select name="type" class="form-input" required>
                             <option value="">-- Select Type --</option>
-                            <option>Info</option>
-                            <option>Warning</option>
-                            <option>Success</option>
-                            <option>Error</option>
+                            <option value="info">Info</option>
+                            <option value="warning">Warning</option>
+                            <option value="success">Success</option>
+                            <option value="error">Error</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Message *</label>
-                    <textarea class="form-textarea" rows="3" placeholder="Notification message" required></textarea>
+                    <textarea name="message" class="form-textarea" rows="3" placeholder="Notification message" required></textarea>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Target Audience *</label>
-                        <select class="form-input" required>
+                        <select name="audience" class="form-input" required>
                             <option value="">-- Select Audience --</option>
-                            <option>All Users</option>
-                            <option>Admins Only</option>
-                            <option>Coaches Only</option>
-                            <option>Athletes Only</option>
-                            <option>Parents Only</option>
-                            <option>Custom</option>
+                            <option value="all">All Users</option>
+                            <option value="admin">Admins Only</option>
+                            <option value="coach">Coaches Only</option>
+                            <option value="athlete">Athletes Only</option>
+                            <option value="parent">Parents Only</option>
+                            <option value="custom">Custom</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Priority</label>
-                        <select class="form-input">
-                            <option>Low</option>
-                            <option selected>Normal</option>
-                            <option>High</option>
-                            <option>Urgent</option>
+                        <select name="priority" class="form-input">
+                            <option value="low">Low</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
                         </select>
                     </div>
                 </div>
@@ -75,7 +77,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary" data-action="send-notification">
+                    <button type="submit" class="btn-primary">
                         <i class="fas fa-paper-plane"></i> Send Notification
                     </button>
                 </div>

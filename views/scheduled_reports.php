@@ -574,7 +574,7 @@ $frequency_labels = [
             <h3 id="modalTitle">Create Schedule</h3>
             <span class="close" onclick="closeModal()">&times;</span>
         </div>
-        <form id="scheduleForm">
+        <form id="scheduleForm" method="POST" action="process_scheduled_reports.php">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
             <input type="hidden" name="action" id="formAction" value="schedule_create">
             <input type="hidden" name="schedule_id" id="scheduleId" value="">

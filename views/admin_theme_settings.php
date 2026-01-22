@@ -762,8 +762,9 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
 <div id="tab-colors" class="tab-content active">
     <div class="theme-container">
         <div class="color-settings-panel">
-            <form id="colorsForm">
+            <form id="colorsForm" method="POST" action="process_theme.php">
                 <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="update_colors">
                 
                 <!-- Brand Colors -->
                 <div class="settings-section">
@@ -971,8 +972,9 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
 <!-- TAB 2: LOGO & BRANDING -->
 <div id="tab-branding" class="tab-content">
     <div class="full-width-panel">
-        <form id="brandingForm">
+        <form id="brandingForm" method="POST" action="process_theme.php" enctype="multipart/form-data">
             <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="update_branding">
             
             <h3 class="section-title">
                 <i class="fas fa-image"></i>
@@ -1027,8 +1029,9 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
 <!-- TAB 3: HERO SECTION -->
 <div id="tab-hero" class="tab-content">
     <div class="full-width-panel">
-        <form id="heroForm">
+        <form id="heroForm" method="POST" action="process_theme.php" enctype="multipart/form-data">
             <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="update_hero">
             
             <h3 class="section-title">
                 <i class="fas fa-photo-video"></i>
@@ -1172,8 +1175,9 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
             </button>
         </div>
         
-        <form id="programForm">
+        <form id="programForm" method="POST" action="process_theme.php" enctype="multipart/form-data">
             <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="save_program">
             <input type="hidden" name="program_id" id="program_id">
             
             <div class="form-group">

@@ -543,7 +543,7 @@ function analyzePerformance() {
         <div class="tool-desc">
             Scan for orphaned records, broken relationships, and data consistency issues.
         </div>
-        <form method="POST">
+        <form method="POST" action="">
             <?= csrfTokenInput() ?>
             <input type="hidden" name="maintenance_action" value="check_integrity">
             <button type="submit" class="btn btn-primary">
@@ -558,7 +558,7 @@ function analyzePerformance() {
         <div class="tool-desc">
             Repair corrupted tables and fix table structure issues.
         </div>
-        <form method="POST">
+        <form method="POST" action="">
             <?= csrfTokenInput() ?>
             <input type="hidden" name="maintenance_action" value="repair_tables">
             <button type="submit" class="btn btn-primary">
@@ -573,7 +573,7 @@ function analyzePerformance() {
         <div class="tool-desc">
             Defragment tables and reclaim unused space to improve performance.
         </div>
-        <form method="POST">
+        <form method="POST" action="">
             <?= csrfTokenInput() ?>
             <input type="hidden" name="maintenance_action" value="optimize_tables">
             <button type="submit" class="btn btn-primary">
@@ -588,7 +588,7 @@ function analyzePerformance() {
         <div class="tool-desc">
             Verify referential integrity and identify foreign key constraint violations.
         </div>
-        <form method="POST">
+        <form method="POST" action="">
             <?= csrfTokenInput() ?>
             <input type="hidden" name="maintenance_action" value="check_foreign_keys">
             <button type="submit" class="btn btn-primary">
@@ -603,7 +603,7 @@ function analyzePerformance() {
         <div class="tool-desc">
             Analyze table sizes, identify missing indexes, and detect performance issues.
         </div>
-        <form method="POST">
+        <form method="POST" action="">
             <?= csrfTokenInput() ?>
             <input type="hidden" name="maintenance_action" value="analyze_performance">
             <button type="submit" class="btn btn-primary">
@@ -618,7 +618,7 @@ function analyzePerformance() {
         <div class="tool-desc">
             Attempt to repair foreign key violations (requires manual review).
         </div>
-        <form method="POST">
+        <form method="POST" action="">
             <?= csrfTokenInput() ?>
             <input type="hidden" name="maintenance_action" value="repair_foreign_keys">
             <button type="submit" class="btn btn-primary">

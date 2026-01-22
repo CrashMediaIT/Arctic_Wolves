@@ -33,86 +33,88 @@ $terminations = $terminations_stmt->fetchAll();
             <h3><i class="fas fa-file-alt"></i> Termination Details</h3>
         </div>
         <div class="card-body">
-            <form class="termination-form">
+            <form class="termination-form" method="POST" action="process_termination.php">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="create">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Employee *</label>
-                        <select class="form-input" required>
+                        <select name="user_id" class="form-input" required>
                             <option value="">-- Select Employee --</option>
                             <!-- Employees will be populated here -->
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Termination Date *</label>
-                        <input type="date" class="form-input" required>
+                        <input type="date" name="termination_date" class="form-input" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Termination Type *</label>
-                        <select class="form-input" required>
+                        <select name="termination_type" class="form-input" required>
                             <option value="">-- Select Type --</option>
-                            <option>Voluntary Resignation</option>
-                            <option>Involuntary Termination</option>
-                            <option>Retirement</option>
-                            <option>Contract End</option>
-                            <option>Mutual Agreement</option>
+                            <option value="voluntary">Voluntary Resignation</option>
+                            <option value="involuntary">Involuntary Termination</option>
+                            <option value="retirement">Retirement</option>
+                            <option value="contract_end">Contract End</option>
+                            <option value="mutual">Mutual Agreement</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Reason Category *</label>
-                        <select class="form-input" required>
+                        <select name="reason_category" class="form-input" required>
                             <option value="">-- Select Reason --</option>
-                            <option>Performance Issues</option>
-                            <option>Policy Violation</option>
-                            <option>Downsizing</option>
-                            <option>Better Opportunity</option>
-                            <option>Personal Reasons</option>
-                            <option>Other</option>
+                            <option value="performance">Performance Issues</option>
+                            <option value="policy">Policy Violation</option>
+                            <option value="downsizing">Downsizing</option>
+                            <option value="opportunity">Better Opportunity</option>
+                            <option value="personal">Personal Reasons</option>
+                            <option value="other">Other</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Detailed Reason/Notes *</label>
-                    <textarea class="form-textarea" rows="4" placeholder="Provide detailed reason for termination..." required></textarea>
+                    <textarea name="notes" class="form-textarea" rows="4" placeholder="Provide detailed reason for termination..." required></textarea>
                 </div>
 
                 <div class="form-group">
                     <label>Notice Period (days)</label>
-                    <input type="number" class="form-input" placeholder="14" min="0">
+                    <input type="number" name="notice_period" class="form-input" placeholder="14" min="0">
                 </div>
 
                 <div class="form-group">
                     <label>Offboarding Checklist</label>
                     <div class="checklist">
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="checklist[]" value="equipment">
                             <span>Return company equipment (keys, access cards, etc.)</span>
                         </label>
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="checklist[]" value="access">
                             <span>Revoke system access and credentials</span>
                         </label>
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="checklist[]" value="paycheck">
                             <span>Process final paycheck</span>
                         </label>
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="checklist[]" value="pto">
                             <span>Return unused vacation/PTO</span>
                         </label>
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="checklist[]" value="interview">
                             <span>Conduct exit interview</span>
                         </label>
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="checklist[]" value="records">
                             <span>Update employee records</span>
                         </label>
                         <label class="checkbox-option">
-                            <input type="checkbox">
+                            <input type="checkbox" name="checklist[]" value="letter">
                             <span>Provide termination letter</span>
                         </label>
                     </div>
