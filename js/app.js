@@ -349,6 +349,53 @@
                 const modal = this.getAttribute('data-modal');
                 const url = this.getAttribute('data-url');
                 const type = this.getAttribute('data-type');
+                const sessionId = this.getAttribute('data-session-id');
+                
+                // Handle view-session action specifically
+                if (action === 'view-session' && sessionId) {
+                    window.location.href = `?page=session_detail&id=${sessionId}`;
+                    return;
+                }
+                
+                // Handle cancel-session action
+                if (action === 'cancel-session' && sessionId) {
+                    // Validate sessionId is numeric
+                    if (!/^\d+$/.test(sessionId)) {
+                        console.error('Invalid session ID:', sessionId);
+                        return;
+                    }
+                    
+                    if (confirm('Are you sure you want to cancel this session?')) {
+                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                        if (!csrfToken) {
+                            showToast('Security token missing. Please refresh the page.', 'error');
+                            return;
+                        }
+                        
+                        // Send cancel request
+                        fetch('process_booking.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: `action=cancel&session_id=${encodeURIComponent(sessionId)}&csrf_token=${encodeURIComponent(csrfToken)}`
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast('Session cancelled successfully', 'success');
+                                setTimeout(() => window.location.reload(), 1000);
+                            } else {
+                                showToast(data.message || 'Failed to cancel session', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showToast('An error occurred', 'error');
+                            console.error('Cancel session error:', error);
+                        });
+                    }
+                    return;
+                }
                 
                 // If there's a modal, open it
                 if (modal) {
@@ -850,6 +897,143 @@
     }
 
     // ===================================================================
+    // VIDEO FUNCTIONALITY
+    // ===================================================================
+
+    /**
+     * Initialize video-specific functionality
+     */
+    function initializeVideoFeatures() {
+        // Rating selector
+        document.querySelectorAll('[data-component="RatingSelector"]').forEach(selector => {
+            const stars = selector.querySelectorAll('i[data-rating]');
+            const ratingInput = document.querySelector('[data-field="rating-value"]');
+            
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.getAttribute('data-rating'));
+                    
+                    // Update hidden input
+                    if (ratingInput) {
+                        ratingInput.value = rating;
+                    }
+                    
+                    // Update visual state
+                    stars.forEach(s => {
+                        const sRating = parseInt(s.getAttribute('data-rating'));
+                        s.classList.toggle('active', sRating <= rating);
+                    });
+                });
+                
+                // Hover effect
+                star.addEventListener('mouseenter', function() {
+                    const rating = parseInt(this.getAttribute('data-rating'));
+                    stars.forEach(s => {
+                        const sRating = parseInt(s.getAttribute('data-rating'));
+                        s.style.color = sRating <= rating ? '#FF9D00' : '';
+                    });
+                });
+            });
+            
+            selector.addEventListener('mouseleave', function() {
+                const currentRating = ratingInput ? parseInt(ratingInput.value) : 0;
+                stars.forEach(s => {
+                    const sRating = parseInt(s.getAttribute('data-rating'));
+                    s.style.color = sRating <= currentRating ? '#FF9D00' : '';
+                });
+            });
+        });
+        
+        // File upload trigger
+        document.querySelectorAll('[data-action="trigger-file-input"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const fileInput = this.closest('[data-component="FileUpload"]')?.querySelector('input[type="file"]');
+                if (fileInput) {
+                    fileInput.click();
+                }
+            });
+        });
+        
+        // File input change handler
+        document.querySelectorAll('[data-field="video-file"]').forEach(input => {
+            input.addEventListener('change', function() {
+                const fileName = this.files[0]?.name || '';
+                const fileNameDisplay = this.closest('[data-component="FileUpload"]')?.querySelector('.file-name');
+                if (fileNameDisplay && fileName) {
+                    fileNameDisplay.textContent = fileName;
+                    fileNameDisplay.style.display = 'block';
+                }
+            });
+        });
+        
+        // View video action
+        document.querySelectorAll('[data-action="view-video"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const videoId = this.getAttribute('data-video-id');
+                // Validate videoId is numeric
+                if (videoId && /^\d+$/.test(videoId)) {
+                    // Navigate to video detail page or open modal
+                    window.location.href = `?page=video_detail&id=${encodeURIComponent(videoId)}`;
+                }
+            });
+        });
+        
+        // Edit video action
+        document.querySelectorAll('[data-action="edit-video"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const videoId = this.getAttribute('data-video-id');
+                // Validate videoId is numeric
+                if (videoId && /^\d+$/.test(videoId)) {
+                    // Navigate to edit page or open edit modal
+                    window.location.href = `?page=edit_video&id=${encodeURIComponent(videoId)}`;
+                }
+            });
+        });
+        
+        // Delete video action
+        document.querySelectorAll('[data-action="delete-video"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const videoId = this.getAttribute('data-video-id');
+                // Validate videoId is numeric
+                if (!videoId || !/^\d+$/.test(videoId)) {
+                    console.error('Invalid video ID:', videoId);
+                    return;
+                }
+                
+                if (confirm('Are you sure you want to delete this video?')) {
+                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                    if (!csrfToken) {
+                        showToast('Security token missing. Please refresh the page.', 'error');
+                        return;
+                    }
+                    
+                    // Send delete request
+                    fetch('process_video.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `action=delete&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('Video deleted successfully', 'success');
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showToast(data.message || 'Failed to delete video', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('An error occurred', 'error');
+                        console.error('Delete video error:', error);
+                    });
+                }
+            });
+        });
+    }
+
+    // ===================================================================
     // INITIALIZATION
     // ===================================================================
 
@@ -872,6 +1056,7 @@
         initializeCustomInputs();
         initializeTableSorting();
         initializeTabNavigation();
+        initializeVideoFeatures();
         
         console.log('Arctic Wolves App initialized successfully!');
         

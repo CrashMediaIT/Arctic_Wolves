@@ -106,7 +106,7 @@ $videos = $video_stmt->fetchAll();
     ?>
 
     <!-- Tab Content: Pending Videos -->
-    <div class="tab-content active" id="tab-pending">
+    <div class="tab-content active" id="pending-tab">
         <div class="videos-list">
             <h3 class="section-title">Pending Reviews (<?= count($pending_videos) ?>)</h3>
             
@@ -152,7 +152,7 @@ $videos = $video_stmt->fetchAll();
     </div>
 
     <!-- Tab Content: Reviewed Videos -->
-    <div class="tab-content" id="tab-reviewed">
+    <div class="tab-content" id="reviewed-tab">
         <div class="videos-list">
             <h3 class="section-title">Reviewed Videos (<?= count($reviewed_videos) ?>)</h3>
             
@@ -205,7 +205,7 @@ $videos = $video_stmt->fetchAll();
     </div>
 
     <!-- Tab Content: Upload Section -->
-    <div class="tab-content" id="tab-upload">
+    <div class="tab-content" id="upload-tab">
         <div class="upload-card">
             <h3><i class="fas fa-cloud-upload-alt"></i> Upload Review Video</h3>
             

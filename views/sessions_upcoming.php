@@ -151,13 +151,15 @@ $view_mode = $_GET['view'] ?? 'list';
         <div id="sessionsData" style="display: none;">
             <?php foreach ($sessions as $session): 
                 $session_datetime = strtotime($session['session_date']);
+                // Format date in ISO format for JavaScript parsing
+                $iso_date = date('Y-m-d', $session_datetime);
             ?>
             <div class="session-data" 
                  data-component="SessionCard"
                  data-session-id="<?= $session['id'] ?>"
-                 data-date="<?= date('Y-m-d', $session_datetime) ?>"
+                 data-date="<?= $iso_date ?>"
                  data-time="<?= date('g:i A', $session_datetime) ?>"
-                 data-title="<?= htmlspecialchars($session['session_type_name']) ?>"
+                 data-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>"
                  data-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>"
                  data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>">
             </div>
@@ -179,7 +181,7 @@ $view_mode = $_GET['view'] ?? 'list';
                     </div>
                 </div>
                 <div class="session-details">
-                    <h3 class="session-title"><?= htmlspecialchars($session['session_type_name']) ?></h3>
+                    <h3 class="session-title"><?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?></h3>
                     <div class="session-meta">
                         <span><i class="fas fa-clock"></i> <?= date('g:i A', $session_datetime) ?> - <?= date('g:i A', $session_end_time) ?></span>
                         <span><i class="fas fa-user"></i> <?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?></span>
