@@ -263,6 +263,15 @@ function getSetting($settings, $key, $default = '') {
         font-size: 12px;
         line-height: 1.8;
     }
+    
+    .info-box a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+    
+    .info-box a:hover {
+        text-decoration: underline;
+    }
 </style>
 
 <div class="settings-header">
@@ -550,7 +559,7 @@ function getSetting($settings, $key, $default = '') {
                         $current_currency = getSetting($settings, 'currency', 'CAD');
                         foreach ($currencies as $code => $name) {
                             $selected = ($code === $current_currency) ? 'selected' : '';
-                            echo "<option value=\"$code\" $selected>$name</option>";
+                            echo "<option value=\"" . htmlspecialchars($code) . "\" $selected>" . htmlspecialchars($name) . "</option>";
                         }
                         ?>
                     </select>
@@ -561,7 +570,7 @@ function getSetting($settings, $key, $default = '') {
             <div class="info-box">
                 <h4><i class="fas fa-key"></i> How to Get Your Stripe API Keys</h4>
                 <ul>
-                    <li>Go to <a href="https://dashboard.stripe.com/apikeys" target="_blank" style="color: var(--primary);">Stripe Dashboard → Developers → API Keys</a></li>
+                    <li>Go to <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">Stripe Dashboard → Developers → API Keys</a></li>
                     <li>Copy both Publishable key (pk_...) and Secret key (sk_...)</li>
                     <li>Use test keys (pk_test_... / sk_test_...) for testing</li>
                     <li>Use live keys (pk_live_... / sk_live_...) for production</li>
