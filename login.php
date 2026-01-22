@@ -1,6 +1,12 @@
 <?php
 session_start();
 require 'db_config.php';
+require_once __DIR__ . '/csrf_protection.php';
+require_once __DIR__ . '/security.php';
+
+// Generate CSRF token for this session
+CSRFProtection::generateToken();
+generateCSRFToken();
 
 // Check database connection
 if (!$db_connected || !$pdo) {
