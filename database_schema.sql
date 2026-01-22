@@ -15,13 +15,21 @@ CREATE TABLE IF NOT EXISTS `users` (
     `verification_code` VARCHAR(10) DEFAULT NULL,
     `force_pass_change` TINYINT(1) DEFAULT 0,
     `phone` VARCHAR(20) DEFAULT NULL,
+    `birth_date` DATE DEFAULT NULL,
     `date_of_birth` DATE DEFAULT NULL,
+    `position` VARCHAR(50) DEFAULT NULL,
+    `primary_arena` VARCHAR(255) DEFAULT NULL,
+    `assigned_coach_id` INT DEFAULT NULL,
+    `created_by_coach_id` INT DEFAULT NULL,
     `profile_image` VARCHAR(255) DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`assigned_coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by_coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_role` (`role`),
     INDEX `idx_email` (`email`),
-    INDEX `idx_role_verified` (`role`, `is_verified`)
+    INDEX `idx_role_verified` (`role`, `is_verified`),
+    INDEX `idx_assigned_coach` (`assigned_coach_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Parent-Athlete relationships
