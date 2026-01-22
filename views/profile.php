@@ -75,18 +75,29 @@ $activeTab = $_GET['tab'] ?? 'personal';
                         <?php endif; ?>
                     </div>
                     <div class="photo-actions">
-                        <button class="btn btn-secondary" data-action="upload-photo">
-                            <i class="fas fa-camera"></i> Change Photo
-                        </button>
-                        <?php if (!empty($userData['profile_image'])): ?>
-                            <button class="btn btn-secondary" data-action="remove-photo">
-                                <i class="fas fa-trash"></i> Remove
+                        <form method="POST" action="process_profile.php" enctype="multipart/form-data" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                            <input type="hidden" name="action" value="upload_photo">
+                            <input type="file" name="profile_photo" id="profilePhotoInput" accept="image/*" style="display: none;" onchange="this.form.submit()">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('profilePhotoInput').click()">
+                                <i class="fas fa-camera"></i> Change Photo
                             </button>
+                        </form>
+                        <?php if (!empty($userData['profile_image'])): ?>
+                            <form method="POST" action="process_profile.php" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                                <input type="hidden" name="action" value="remove_photo">
+                                <button type="submit" class="btn btn-secondary" onclick="return confirm('Remove profile photo?')">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </form>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <form class="profile-form" id="profile-form" data-form-type="profile">
+                <form class="profile-form" id="profile-form" method="POST" action="process_profile.php" data-form-type="profile">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="action" value="update_profile">
                     <div class="form-row">
                         <div class="form-group">
                             <label>First Name *</label>
@@ -157,7 +168,9 @@ $activeTab = $_GET['tab'] ?? 'personal';
                     <h3><i class="fas fa-hockey-puck"></i> Player Information</h3>
                 </div>
                 <div class="card-body">
-                    <form class="player-form" id="player-form" data-form-type="player">
+                    <form class="player-form" id="player-form" method="POST" action="process_profile.php" data-form-type="player">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="update_player_info">
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Height (inches)</label>
@@ -183,12 +196,36 @@ $activeTab = $_GET['tab'] ?? 'personal';
                                     <option value="right" <?php echo ($athleteData['handedness'] ?? '') === 'right' ? 'selected' : ''; ?>>Right</option>
                                 </select>
                             </div>
+                            <?php if (($userData['position'] ?? '') === 'goalie'): ?>
+                            <div class="form-group">
+                                <label>Catching Hand (Goalie)</label>
+                                <select name="catching_hand" class="form-select">
+                                    <option value="">Select</option>
+                                    <option value="left" <?php echo ($athleteData['catching_hand'] ?? '') === 'left' ? 'selected' : ''; ?>>Left</option>
+                                    <option value="right" <?php echo ($athleteData['catching_hand'] ?? '') === 'right' ? 'selected' : ''; ?>>Right</option>
+                                </select>
+                            </div>
+                            <?php else: ?>
                             <div class="form-group">
                                 <label>Jersey Number</label>
                                 <input type="number" name="jersey_number" class="form-input" 
                                        value="<?php echo htmlspecialchars($athleteData['jersey_number'] ?? ''); ?>">
                             </div>
+                            <?php endif; ?>
                         </div>
+
+                        <?php if (($userData['position'] ?? '') === 'goalie'): ?>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Jersey Number</label>
+                                <input type="number" name="jersey_number" class="form-input" 
+                                       value="<?php echo htmlspecialchars($athleteData['jersey_number'] ?? ''); ?>">
+                            </div>
+                            <div class="form-group">
+                                <!-- Empty to maintain layout -->
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                         <div class="form-row">
                             <div class="form-group">
@@ -224,7 +261,9 @@ $activeTab = $_GET['tab'] ?? 'personal';
                 <h3><i class="fas fa-lock"></i> Change Password</h3>
             </div>
             <div class="card-body">
-                <form class="password-form" id="password-form" data-form-type="password">
+                <form class="password-form" id="password-form" method="POST" action="process_profile.php" data-form-type="password">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="action" value="change_password">
                     <div class="form-group">
                         <label>Current Password *</label>
                         <input type="password" name="current_password" class="form-input" required>
