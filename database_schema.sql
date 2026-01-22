@@ -1128,24 +1128,7 @@ CREATE TABLE IF NOT EXISTS `nutrition_plan_categories` (
     INDEX `idx_order` (`display_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Nutrition template items
-CREATE TABLE IF NOT EXISTS `nutrition_template_items` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `template_id` INT NOT NULL,
-    `meal_type` ENUM('breakfast', 'lunch', 'dinner', 'snack', 'pre_workout', 'post_workout') DEFAULT 'breakfast',
-    `food_id` INT NOT NULL,
-    `serving_quantity` DECIMAL(10,2) DEFAULT 1,
-    `day_number` INT DEFAULT 1,
-    `order_num` INT DEFAULT 0,
-    `notes` TEXT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`template_id`) REFERENCES `nutrition_templates`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`food_id`) REFERENCES `food_library`(`id`) ON DELETE CASCADE,
-    INDEX `idx_template` (`template_id`),
-    INDEX `idx_meal_type` (`meal_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Nutrition templates
+-- Nutrition templates (parent table - must be created before nutrition_template_items)
 CREATE TABLE IF NOT EXISTS `nutrition_templates` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
@@ -1164,6 +1147,23 @@ CREATE TABLE IF NOT EXISTS `nutrition_templates` (
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_category` (`category_id`),
     INDEX `idx_public` (`is_public`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Nutrition template items (child table - references nutrition_templates)
+CREATE TABLE IF NOT EXISTS `nutrition_template_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `template_id` INT NOT NULL,
+    `meal_type` ENUM('breakfast', 'lunch', 'dinner', 'snack', 'pre_workout', 'post_workout') DEFAULT 'breakfast',
+    `food_id` INT NOT NULL,
+    `serving_quantity` DECIMAL(10,2) DEFAULT 1,
+    `day_number` INT DEFAULT 1,
+    `order_num` INT DEFAULT 0,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`template_id`) REFERENCES `nutrition_templates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`food_id`) REFERENCES `food_library`(`id`) ON DELETE CASCADE,
+    INDEX `idx_template` (`template_id`),
+    INDEX `idx_meal_type` (`meal_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Package sessions (session credits included in packages)

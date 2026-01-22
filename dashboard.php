@@ -421,7 +421,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
 <aside class="sidebar">
     <a href="?page=home" class="brand">
         <img src="https://images.crashmedia.ca/images/2026/01/18/logo.png" alt="Logo">
-        CRASH <span>HOCKEY</span>
+        ARTIC <span>WOLVES</span>
     </a>
     
     <!-- MAIN MENU (For all users) -->

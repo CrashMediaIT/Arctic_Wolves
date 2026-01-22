@@ -186,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="setup-container">
         <div class="logo">
-            <h1>CRASH <span>HOCKEY</span></h1>
+            <h1>ARTIC <span>WOLVES</span></h1>
             <p style="margin-bottom: 0; margin-top: 10px;">System Setup Wizard</p>
         </div>
         

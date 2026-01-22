@@ -848,6 +848,23 @@ CREATE TABLE IF NOT EXISTS `evaluation_scores` (
     INDEX `idx_date` (`evaluation_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Workouts (workout sessions - moved here to satisfy exercises FK constraint)
+CREATE TABLE IF NOT EXISTS `workouts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `workout_name` VARCHAR(255) NOT NULL,
+    `workout_date` DATE NOT NULL,
+    `workout_type` VARCHAR(100) DEFAULT NULL,
+    `duration_minutes` INT DEFAULT NULL,
+    `status` ENUM('planned', 'completed', 'skipped') DEFAULT 'planned',
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_date` (`workout_date`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Exercises (workout exercise entries - distinct from exercise_library)
 CREATE TABLE IF NOT EXISTS `exercises` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -911,6 +928,26 @@ CREATE TABLE IF NOT EXISTS `foods` (
     INDEX `idx_barcode` (`barcode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Goal evaluations (parent table - moved here to satisfy goal_eval_* FK constraints)
+CREATE TABLE IF NOT EXISTS `goal_evaluations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `goal_id` INT NOT NULL,
+    `athlete_id` INT NOT NULL,
+    `evaluator_id` INT NOT NULL,
+    `evaluation_date` DATE NOT NULL,
+    `score` DECIMAL(5,2) DEFAULT NULL,
+    `progress_percentage` DECIMAL(5,2) DEFAULT NULL,
+    `comments` TEXT DEFAULT NULL,
+    `status` ENUM('in_progress', 'completed', 'archived') DEFAULT 'in_progress',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`goal_id`) REFERENCES `goals`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`evaluator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_goal` (`goal_id`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_date` (`evaluation_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Goal evaluation approvals
 CREATE TABLE IF NOT EXISTS `goal_eval_approvals` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -954,26 +991,6 @@ CREATE TABLE IF NOT EXISTS `goal_eval_steps` (
     FOREIGN KEY (`goal_evaluation_id`) REFERENCES `goal_evaluations`(`id`) ON DELETE CASCADE,
     INDEX `idx_goal_eval` (`goal_evaluation_id`),
     INDEX `idx_step_num` (`step_number`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Goal evaluations (comprehensive goal assessments)
-CREATE TABLE IF NOT EXISTS `goal_evaluations` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `goal_id` INT NOT NULL,
-    `athlete_id` INT NOT NULL,
-    `evaluator_id` INT NOT NULL,
-    `evaluation_date` DATE NOT NULL,
-    `score` DECIMAL(5,2) DEFAULT NULL,
-    `progress_percentage` DECIMAL(5,2) DEFAULT NULL,
-    `comments` TEXT DEFAULT NULL,
-    `status` ENUM('in_progress', 'completed', 'archived') DEFAULT 'in_progress',
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`goal_id`) REFERENCES `goals`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`evaluator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    INDEX `idx_goal` (`goal_id`),
-    INDEX `idx_athlete` (`athlete_id`),
-    INDEX `idx_date` (`evaluation_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Goal history (change tracking)
@@ -1087,24 +1104,7 @@ CREATE TABLE IF NOT EXISTS `nutrition_plan_categories` (
     INDEX `idx_order` (`display_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Nutrition template items
-CREATE TABLE IF NOT EXISTS `nutrition_template_items` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `template_id` INT NOT NULL,
-    `meal_type` ENUM('breakfast', 'lunch', 'dinner', 'snack', 'pre_workout', 'post_workout') DEFAULT 'breakfast',
-    `food_id` INT NOT NULL,
-    `serving_quantity` DECIMAL(10,2) DEFAULT 1,
-    `day_number` INT DEFAULT 1,
-    `order_num` INT DEFAULT 0,
-    `notes` TEXT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`template_id`) REFERENCES `nutrition_templates`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`food_id`) REFERENCES `food_library`(`id`) ON DELETE CASCADE,
-    INDEX `idx_template` (`template_id`),
-    INDEX `idx_meal_type` (`meal_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Nutrition templates
+-- Nutrition templates (parent table - must be created before nutrition_template_items)
 CREATE TABLE IF NOT EXISTS `nutrition_templates` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
@@ -1123,6 +1123,23 @@ CREATE TABLE IF NOT EXISTS `nutrition_templates` (
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_category` (`category_id`),
     INDEX `idx_public` (`is_public`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Nutrition template items (child table - references nutrition_templates)
+CREATE TABLE IF NOT EXISTS `nutrition_template_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `template_id` INT NOT NULL,
+    `meal_type` ENUM('breakfast', 'lunch', 'dinner', 'snack', 'pre_workout', 'post_workout') DEFAULT 'breakfast',
+    `food_id` INT NOT NULL,
+    `serving_quantity` DECIMAL(10,2) DEFAULT 1,
+    `day_number` INT DEFAULT 1,
+    `order_num` INT DEFAULT 0,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`template_id`) REFERENCES `nutrition_templates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`food_id`) REFERENCES `food_library`(`id`) ON DELETE CASCADE,
+    INDEX `idx_template` (`template_id`),
+    INDEX `idx_meal_type` (`meal_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Package sessions (session credits included in packages)
@@ -1482,23 +1499,6 @@ CREATE TABLE IF NOT EXISTS `workout_templates` (
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_category` (`category_id`),
     INDEX `idx_public` (`is_public`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Workouts (workout sessions - distinct from workout_plans)
-CREATE TABLE IF NOT EXISTS `workouts` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT NOT NULL,
-    `workout_name` VARCHAR(255) NOT NULL,
-    `workout_date` DATE NOT NULL,
-    `workout_type` VARCHAR(100) DEFAULT NULL,
-    `duration_minutes` INT DEFAULT NULL,
-    `status` ENUM('planned', 'completed', 'skipped') DEFAULT 'planned',
-    `notes` TEXT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    INDEX `idx_user` (`user_id`),
-    INDEX `idx_date` (`workout_date`),
-    INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
