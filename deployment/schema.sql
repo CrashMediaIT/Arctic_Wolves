@@ -1190,7 +1190,7 @@ CREATE TABLE IF NOT EXISTS `refunds` (
     `processed_at` TIMESTAMP NULL,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`transaction_id`) REFERENCES `transactions`(`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`booking_id`) REFERENCES `session_bookings`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`requested_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`approved_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
