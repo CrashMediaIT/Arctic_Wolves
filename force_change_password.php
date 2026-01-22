@@ -15,7 +15,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Security Update | Artic Wolves</title>
+    <title>Security Update | Arctic Wolves</title>
     
     <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArticWolves.png">
     

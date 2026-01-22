@@ -238,14 +238,14 @@ EOF
 
 ## Docker Deployment
 
-**NOTE**: For Artic Wolves deployment, use the following paths:
-- Database name: `articwolves`
-- Web root: `/config/www/Artic_Wolves` (case-sensitive)
-- Domain: `articwolves.ca`
+**NOTE**: For Arctic Wolves deployment, use the following paths:
+- Database name: `arcticwolves`
+- Web root: `/config/www/Arctic_Wolves` (case-sensitive)
+- Domain: `arcticwolves.ca`
 - Database IP: Use environment variable from setup.php (do not hardcode)
 - Database user: Use environment variable from setup.php (do not hardcode)
 
-When running docker exec commands, replace `/var/www/html` with `/config/www/Artic_Wolves` and use the container names for your Artic Wolves deployment.
+When running docker exec commands, replace `/var/www/html` with `/config/www/Arctic_Wolves` and use the container names for your Arctic Wolves deployment.
 
 ### Using Docker Compose (Recommended)
 

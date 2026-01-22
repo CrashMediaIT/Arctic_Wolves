@@ -1,4 +1,4 @@
-# Docker Setup Guide for Artic Wolves
+# Docker Setup Guide for Arctic Wolves
 
 This guide provides Docker deployment instructions using the linuxserver containers.
 
@@ -13,14 +13,14 @@ This guide provides Docker deployment instructions using the linuxserver contain
 
 ```bash
 # Create application directories
-docker exec nginx mkdir -p /config/www/artic_wolves/uploads
-docker exec nginx mkdir -p /config/www/artic_wolves/sessions  
-docker exec nginx mkdir -p /config/www/artic_wolves/cache
-docker exec nginx mkdir -p /config/www/artic_wolves/logs
-docker exec nginx mkdir -p /config/www/artic_wolves/backups
-docker exec nginx mkdir -p /config/www/artic_wolves/receipts
-docker exec nginx mkdir -p /config/www/artic_wolves/videos
-docker exec nginx mkdir -p /config/www/artic_wolves/tmp
+docker exec nginx mkdir -p /config/www/arctic_wolves/uploads
+docker exec nginx mkdir -p /config/www/arctic_wolves/sessions  
+docker exec nginx mkdir -p /config/www/arctic_wolves/cache
+docker exec nginx mkdir -p /config/www/arctic_wolves/logs
+docker exec nginx mkdir -p /config/www/arctic_wolves/backups
+docker exec nginx mkdir -p /config/www/arctic_wolves/receipts
+docker exec nginx mkdir -p /config/www/arctic_wolves/videos
+docker exec nginx mkdir -p /config/www/arctic_wolves/tmp
 ```
 
 ### 2. Set Ownership
@@ -29,53 +29,53 @@ The linuxserver/nginx container runs PHP-FPM as the `abc` user (UID 911, GID 911
 
 ```bash
 # Set ownership to 'abc' user INSIDE container (what PHP-FPM runs as)
-docker exec nginx chown -R abc:abc /config/www/artic_wolves
+docker exec nginx chown -R abc:abc /config/www/arctic_wolves
 ```
 
 ### 3. Set Permissions
 
 ```bash
-# CRITICAL: Set root directory to 775 (allows PHP to write artic_wolves.env during setup)
-docker exec nginx chmod 775 /config/www/artic_wolves
+# CRITICAL: Set root directory to 775 (allows PHP to write arctic_wolves.env during setup)
+docker exec nginx chmod 775 /config/www/arctic_wolves
 
 # Set upload/session/cache directories to 775 (web server needs write access)
-docker exec nginx chmod -R 775 /config/www/artic_wolves/uploads
-docker exec nginx chmod -R 775 /config/www/artic_wolves/sessions
-docker exec nginx chmod -R 775 /config/www/artic_wolves/cache
-docker exec nginx chmod -R 775 /config/www/artic_wolves/logs
-docker exec nginx chmod -R 775 /config/www/artic_wolves/backups
-docker exec nginx chmod -R 775 /config/www/artic_wolves/receipts
-docker exec nginx chmod -R 775 /config/www/artic_wolves/videos
-docker exec nginx chmod -R 775 /config/www/artic_wolves/tmp
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/uploads
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/sessions
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/cache
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/logs
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/backups
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/receipts
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/videos
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/tmp
 
 # Set standard permissions for other directories and files
-docker exec nginx find /config/www/artic_wolves -type d -exec chmod 755 {} \;
-docker exec nginx find /config/www/artic_wolves -type f -exec chmod 644 {} \;
+docker exec nginx find /config/www/arctic_wolves -type d -exec chmod 755 {} \;
+docker exec nginx find /config/www/arctic_wolves -type f -exec chmod 644 {} \;
 
 # Re-apply critical permissions (find command may have reset them)
-docker exec nginx chmod 775 /config/www/artic_wolves
-docker exec nginx chmod -R 775 /config/www/artic_wolves/uploads
-docker exec nginx chmod -R 775 /config/www/artic_wolves/sessions
-docker exec nginx chmod -R 775 /config/www/artic_wolves/cache
-docker exec nginx chmod -R 775 /config/www/artic_wolves/logs
-docker exec nginx chmod -R 775 /config/www/artic_wolves/backups
-docker exec nginx chmod -R 775 /config/www/artic_wolves/receipts
-docker exec nginx chmod -R 775 /config/www/artic_wolves/videos
-docker exec nginx chmod -R 775 /config/www/artic_wolves/tmp
+docker exec nginx chmod 775 /config/www/arctic_wolves
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/uploads
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/sessions
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/cache
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/logs
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/backups
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/receipts
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/videos
+docker exec nginx chmod -R 775 /config/www/arctic_wolves/tmp
 ```
 
 ### 4. Verify Permissions
 
 ```bash
 # Verify permissions from inside container (what PHP actually sees)
-docker exec nginx ls -ld /config/www/artic_wolves
-# Should show: drwxrwxr-x ... abc abc ... /config/www/artic_wolves
+docker exec nginx ls -ld /config/www/arctic_wolves
+# Should show: drwxrwxr-x ... abc abc ... /config/www/arctic_wolves
 
 # Test if directory is writable by PHP
-docker exec nginx sh -c '[ -w /config/www/artic_wolves ] && echo "✅ Directory IS writable by PHP" || echo "❌ Directory NOT writable by PHP"'
+docker exec nginx sh -c '[ -w /config/www/arctic_wolves ] && echo "✅ Directory IS writable by PHP" || echo "❌ Directory NOT writable by PHP"'
 
 # Test if uploads directory is writable
-docker exec nginx sh -c '[ -w /config/www/artic_wolves/uploads ] && echo "✅ Uploads directory IS writable" || echo "❌ Uploads directory NOT writable"'
+docker exec nginx sh -c '[ -w /config/www/arctic_wolves/uploads ] && echo "✅ Uploads directory IS writable" || echo "❌ Uploads directory NOT writable"'
 ```
 
 ## Docker Compose Configuration
@@ -93,8 +93,8 @@ services:
       - PGID=911
       - TZ=America/Toronto
       - MYSQL_ROOT_PASSWORD=your_secure_root_password
-      - MYSQL_DATABASE=artic_wolves
-      - MYSQL_USER=artic_wolves_user
+      - MYSQL_DATABASE=arctic_wolves
+      - MYSQL_USER=arctic_wolves_user
       - MYSQL_PASSWORD=your_secure_password
     volumes:
       - /path/to/mariadb/config:/config
@@ -115,7 +115,7 @@ services:
       - TZ=America/Toronto
     volumes:
       - /path/to/nginx/config:/config
-      - /path/to/artic_wolves:/config/www/artic_wolves
+      - /path/to/arctic_wolves:/config/www/arctic_wolves
     ports:
       - 80:80
       - 443:443
@@ -126,11 +126,11 @@ services:
 
 ## NGINX Configuration
 
-Copy the `deployment/artic_wolves.conf` file to your NGINX container:
+Copy the `deployment/arctic_wolves.conf` file to your NGINX container:
 
 ```bash
 # Copy nginx config
-docker cp deployment/artic_wolves.conf nginx:/config/nginx/site-confs/default.conf
+docker cp deployment/arctic_wolves.conf nginx:/config/nginx/site-confs/default.conf
 
 # Restart nginx to apply changes
 docker restart nginx
@@ -140,33 +140,33 @@ docker restart nginx
 
 ```bash
 # Import the database schema
-docker exec -i mariadb mysql -uartic_wolves_user -pyour_secure_password artic_wolves < database_schema.sql
+docker exec -i mariadb mysql -uarctic_wolves_user -pyour_secure_password arctic_wolves < database_schema.sql
 ```
 
 ## Environment File Setup
 
-The application will create `/config/www/artic_wolves/artic_wolves.env` automatically during the setup wizard. Ensure the directory is writable (775 permissions).
+The application will create `/config/www/arctic_wolves/arctic_wolves.env` automatically during the setup wizard. Ensure the directory is writable (775 permissions).
 
 Alternatively, create it manually:
 
 ```bash
-docker exec nginx sh -c 'cat > /config/www/artic_wolves/artic_wolves.env << EOF
+docker exec nginx sh -c 'cat > /config/www/arctic_wolves/arctic_wolves.env << EOF
 DB_HOST=mariadb
-DB_NAME=artic_wolves
-DB_USER=artic_wolves_user
+DB_NAME=arctic_wolves
+DB_USER=arctic_wolves_user
 DB_PASS=your_secure_password
 EOF'
 
 # Set proper ownership and permissions
-docker exec nginx chown abc:abc /config/www/artic_wolves/artic_wolves.env
-docker exec nginx chmod 640 /config/www/artic_wolves/artic_wolves.env
+docker exec nginx chown abc:abc /config/www/arctic_wolves/arctic_wolves.env
+docker exec nginx chmod 640 /config/www/arctic_wolves/arctic_wolves.env
 ```
 
 ## First-Time Setup
 
 1. Navigate to `http://your-domain.com/setup.php`
 2. Follow the setup wizard
-3. After setup, restrict access to setup.php by uncommenting the deny block in `artic_wolves.conf`
+3. After setup, restrict access to setup.php by uncommenting the deny block in `arctic_wolves.conf`
 
 ## Troubleshooting
 
@@ -185,27 +185,27 @@ docker exec nginx ps aux | grep php-fpm
 
 ```bash
 # Test database connection from nginx container
-docker exec nginx php -r "try { new PDO('mysql:host=mariadb;dbname=artic_wolves', 'artic_wolves_user', 'your_secure_password'); echo 'Connected successfully\n'; } catch(PDOException \$e) { echo 'Connection failed: ' . \$e->getMessage() . '\n'; }"
+docker exec nginx php -r "try { new PDO('mysql:host=mariadb;dbname=arctic_wolves', 'arctic_wolves_user', 'your_secure_password'); echo 'Connected successfully\n'; } catch(PDOException \$e) { echo 'Connection failed: ' . \$e->getMessage() . '\n'; }"
 ```
 
 ### Check Permissions
 
 ```bash
 # Check file ownership
-docker exec nginx ls -la /config/www/artic_wolves/
+docker exec nginx ls -la /config/www/arctic_wolves/
 
 # Check specific directory permissions
-docker exec nginx stat /config/www/artic_wolves/uploads
+docker exec nginx stat /config/www/arctic_wolves/uploads
 ```
 
 ### View Logs
 
 ```bash
 # NGINX error log
-docker exec nginx tail -f /config/log/artic_wolves_error.log
+docker exec nginx tail -f /config/log/arctic_wolves_error.log
 
 # NGINX access log  
-docker exec nginx tail -f /config/log/artic_wolves_access.log
+docker exec nginx tail -f /config/log/arctic_wolves_access.log
 
 # PHP-FPM error log
 docker exec nginx tail -f /config/log/php/error.log
@@ -226,14 +226,14 @@ docker exec nginx tail -f /config/log/php/error.log
 
 ```bash
 # Create backup
-docker exec mariadb mysqldump -uartic_wolves_user -pyour_secure_password artic_wolves | gzip > artic_wolves_backup_$(date +%Y%m%d_%H%M%S).sql.gz
+docker exec mariadb mysqldump -uarctic_wolves_user -pyour_secure_password arctic_wolves | gzip > arctic_wolves_backup_$(date +%Y%m%d_%H%M%S).sql.gz
 ```
 
 ### Restore Database
 
 ```bash
 # Restore from backup
-gunzip < artic_wolves_backup_20260122_120000.sql.gz | docker exec -i mariadb mysql -uartic_wolves_user -pyour_secure_password artic_wolves
+gunzip < arctic_wolves_backup_20260122_120000.sql.gz | docker exec -i mariadb mysql -uarctic_wolves_user -pyour_secure_password arctic_wolves
 ```
 
 ### Update Application Files
@@ -243,9 +243,9 @@ gunzip < artic_wolves_backup_20260122_120000.sql.gz | docker exec -i mariadb mys
 git pull
 
 # Sync files to container
-docker cp /path/to/local/artic_wolves/. nginx:/config/www/artic_wolves/
+docker cp /path/to/local/arctic_wolves/. nginx:/config/www/arctic_wolves/
 
 # Set permissions again
-docker exec nginx chown -R abc:abc /config/www/artic_wolves
-docker exec nginx chmod 775 /config/www/artic_wolves
+docker exec nginx chown -R abc:abc /config/www/arctic_wolves
+docker exec nginx chmod 775 /config/www/arctic_wolves
 ```

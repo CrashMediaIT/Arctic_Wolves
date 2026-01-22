@@ -103,7 +103,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Artic Wolves Dashboard</title>
+    <title>Arctic Wolves Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -421,7 +421,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
 <aside class="sidebar">
     <a href="?page=home" class="brand">
         <img src="https://images.crashmedia.ca/images/2026/01/21/ArticWolves.png" alt="Logo">
-        ARTIC <span>WOLVES</span>
+        ARCTIC <span>WOLVES</span>
     </a>
     
     <!-- MAIN MENU (For all users) -->

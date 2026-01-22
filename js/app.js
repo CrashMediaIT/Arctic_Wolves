@@ -1,5 +1,5 @@
 /**
- * Artic Wolves Main Application JavaScript
+ * Arctic Wolves Main Application JavaScript
  * Complete functionality for all interactive elements
  * Version: 1.0.0
  * 
@@ -729,7 +729,7 @@
      * Initialize all functionality when DOM is ready
      */
     function init() {
-        console.log('Artic Wolves App initializing...');
+        console.log('Arctic Wolves App initializing...');
         
         // Initialize all components
         initializeSearch();
@@ -744,7 +744,7 @@
         initializeCustomInputs();
         initializeTableSorting();
         
-        console.log('Artic Wolves App initialized successfully!');
+        console.log('Arctic Wolves App initialized successfully!');
         
         // Add CSS for animations
         if (!document.getElementById('app-animations')) {
@@ -799,7 +799,7 @@
     }
 
     // Export functions for external use
-    window.ArticWolvesApp = {
+    window.ArcticWolvesApp = {
         showToast,
         showLoading,
         hideLoading,

@@ -59,7 +59,7 @@ class SmtpMailer {
 
         // 7. ENVELOPE
         $fromEmail = !empty($config['smtp_from_email']) ? $config['smtp_from_email'] : $user;
-        $fromName  = !empty($config['smtp_from_name'])  ? $config['smtp_from_name']  : 'Artic Wolves System';
+        $fromName  = !empty($config['smtp_from_name'])  ? $config['smtp_from_name']  : 'Arctic Wolves System';
 
         $this->sendCommand("MAIL FROM: <$user>"); // Neo often requires Envelope From to match Login
         $this->sendCommand("RCPT TO: <$to>");
@@ -134,14 +134,14 @@ function sendEmail($to, $type, $data) {
     $year = date('Y');
     
     // --- TEMPLATE LOGIC ---
-    $subject = "Artic Wolves Notification"; 
+    $subject = "Arctic Wolves Notification"; 
     $body = "";
     
     // Common Footer
     $footer = "
     <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; text-align: center; color: #555; font-size: 11px;'>
-        &copy; $year Artic Wolves Performance. All rights reserved.<br>
-        <a href='https://articwolves.ca' style='color: #555; text-decoration: none;'>articwolves.ca</a>
+        &copy; $year Arctic Wolves Performance. All rights reserved.<br>
+        <a href='https://arcticwolves.ca' style='color: #555; text-decoration: none;'>arcticwolves.ca</a>
     </div>";
 
     // 1. VERIFICATION CODE (Self-Registration)

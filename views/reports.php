@@ -299,7 +299,7 @@ $csrf_token = generateCsrfToken();
                     </div>
                     <div class="report-type-card" data-type="session_attendance">
                         <div class="report-type-title"><i class="fas fa-calendar-check"></i> Session Attendance</div>
-                        <div class="report-type-desc">Attendance tracking and session participation data</div>
+                        <div class="report-type-desc">Attendance tracking and session parcticipation data</div>
                     </div>
                     <?php endif; ?>
                     
