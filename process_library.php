@@ -13,21 +13,22 @@ $action = $_POST['action'];
 // MODULE 1: WORKOUT LIBRARY
 // =========================================================
 
-// A. Add Single Exercise
+// A. Add Single Exercise to Library
 if ($action == 'add_exercise') {
     $name   = trim($_POST['name']);
-    $target = $_POST['target'];
-    $link   = $_POST['link'];
+    $target = $_POST['target']; // This is the category
+    $link   = $_POST['link']; // This is the video_url
 
-    // Check Duplicate
-    $check = $pdo->prepare("SELECT id FROM exercises WHERE name = ?");
+    // Check Duplicate in exercise_library
+    $check = $pdo->prepare("SELECT id FROM exercise_library WHERE name = ?");
     $check->execute([$name]);
     if ($check->rowCount() > 0) {
         header("Location: dashboard.php?page=library_workouts&error=duplicate");
         exit();
     }
 
-    $pdo->prepare("INSERT INTO exercises (name, target_area, video_link) VALUES (?, ?, ?)")->execute([$name, $target, $link]);
+    // Insert into exercise_library with correct columns
+    $pdo->prepare("INSERT INTO exercise_library (name, category, video_url) VALUES (?, ?, ?)")->execute([$name, $target, $link]);
     header("Location: dashboard.php?page=library_workouts&status=added");
 }
 
