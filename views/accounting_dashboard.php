@@ -122,19 +122,19 @@ try {
         </div>
         <div class="card-body">
             <div class="quick-actions-grid">
-                <button class="quick-action-btn" data-action="create-invoice">
+                <button class="quick-action-btn" data-action="create-invoice" data-page="billing_dashboard">
                     <i class="fas fa-file-invoice-dollar"></i>
                     <span>Create Invoice</span>
                 </button>
-                <button class="quick-action-btn" data-action="record-payment">
+                <button class="quick-action-btn" data-action="record-payment" data-page="billing_dashboard">
                     <i class="fas fa-money-check"></i>
                     <span>Record Payment</span>
                 </button>
-                <button class="quick-action-btn" data-action="add-expense">
+                <button class="quick-action-btn" data-action="add-expense" data-page="expenses">
                     <i class="fas fa-receipt"></i>
                     <span>Add Expense</span>
                 </button>
-                <button class="quick-action-btn" data-action="generate-report">
+                <button class="quick-action-btn" data-action="generate-report" data-page="reports">
                     <i class="fas fa-chart-bar"></i>
                     <span>Generate Report</span>
                 </button>
@@ -146,7 +146,7 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-history"></i> Recent Transactions</h3>
-            <button class="btn btn-secondary" data-action="view-all">View All</button>
+            <button class="btn btn-secondary" data-action="view-all" data-page="billing_dashboard">View All</button>
         </div>
         <div class="card-body">
             <?php if (count($transactions) > 0): ?>
@@ -420,153 +420,5 @@ try {
     .quick-actions-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-}
-</style>
-
-.finance-change {
-    font-size: 12px;
-    color: var(--text-dim);
-}
-
-.finance-change.positive {
-    color: #10b981;
-}
-
-.finance-change.negative {
-    color: #ef4444;
-}
-
-.finance-change i {
-    font-size: 10px;
-}
-
-.quick-actions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-}
-
-.quick-action-btn {
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 25px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    transition: all 0.3s;
-    color: var(--text-white);
-}
-
-.quick-action-btn:hover {
-    border-color: var(--neon);
-    background: rgba(255, 77, 0, 0.05);
-}
-
-.quick-action-btn i {
-    font-size: 32px;
-    color: var(--neon);
-}
-
-.quick-action-btn span {
-    font-size: 14px;
-    font-weight: 700;
-    text-align: center;
-}
-
-.transactions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.transaction-item {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 15px;
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    transition: all 0.3s;
-}
-
-.transaction-item:hover {
-    border-color: var(--neon);
-}
-
-.transaction-icon {
-    width: 45px;
-    height: 45px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-}
-
-.transaction-item.income .transaction-icon {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-}
-
-.transaction-item.expense .transaction-icon {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-}
-
-.transaction-details {
-    flex: 1;
-}
-
-.transaction-details h4 {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text-white);
-    margin-bottom: 4px;
-}
-
-.transaction-date {
-    font-size: 12px;
-    color: var(--text-dim);
-}
-
-.transaction-amount {
-    font-size: 18px;
-    font-weight: 900;
-}
-
-.transaction-amount.positive {
-    color: #10b981;
-}
-
-.transaction-amount.negative {
-    color: #ef4444;
-}
-
-.chart-placeholder {
-    min-height: 300px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-main);
-    border: 1px dashed var(--border);
-    border-radius: 8px;
-}
-
-.chart-placeholder i {
-    font-size: 48px;
-    color: var(--neon);
-    opacity: 0.3;
-    margin-bottom: 15px;
-}
-
-.chart-placeholder p {
-    font-size: 14px;
-    color: var(--text-dim);
 }
 </style>

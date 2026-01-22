@@ -120,7 +120,7 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-bullseye"></i> Goals Tracker</h3>
-            <button class="btn btn-primary" data-action="add" data-type="goal">
+            <button class="btn btn-primary" data-action="add" data-page="goals">
                 <i class="fas fa-plus"></i> Add Goal
             </button>
         </div>

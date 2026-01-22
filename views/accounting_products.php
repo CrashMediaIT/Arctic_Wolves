@@ -25,7 +25,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-calendar-day"></i> Session Types</h3>
-                <button class="btn-primary"><i class="fas fa-plus"></i> Add Session Type</button>
+                <button class="btn-primary" data-action="add" data-modal="add-session-type-modal"><i class="fas fa-plus"></i> Add Session Type</button>
             </div>
             <div class="card-body">
                 <div class="products-grid">

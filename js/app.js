@@ -332,6 +332,77 @@
                 }
             });
         });
+
+        // Generic action buttons with navigation
+        document.querySelectorAll('[data-action]').forEach(btn => {
+            const action = btn.getAttribute('data-action');
+            
+            // Skip if already handled by specific handlers above
+            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel'].includes(action)) {
+                return;
+            }
+            
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const page = this.getAttribute('data-page');
+                const modal = this.getAttribute('data-modal');
+                const url = this.getAttribute('data-url');
+                const type = this.getAttribute('data-type');
+                
+                // If there's a modal, open it
+                if (modal) {
+                    openModal(modal);
+                    return;
+                }
+                
+                // If there's a URL, navigate to it
+                if (url) {
+                    window.location.href = url;
+                    return;
+                }
+                
+                // If there's a page parameter, navigate to that page
+                if (page) {
+                    window.location.href = `?page=${page}`;
+                    return;
+                }
+                
+                // If there's a type for creating items, navigate to appropriate page
+                if (type && action === 'add') {
+                    // Handle specific types
+                    const typePages = {
+                        'goal': 'goals',
+                        'session': 'create_session',
+                        'invoice': 'billing_dashboard',
+                        'payment': 'billing_dashboard',
+                        'expense': 'expenses',
+                        'refund': 'credits_refunds'
+                    };
+                    
+                    if (typePages[type]) {
+                        window.location.href = `?page=${typePages[type]}`;
+                        return;
+                    }
+                }
+                
+                // If button has a form parent, submit it
+                const form = this.closest('form');
+                if (form) {
+                    form.submit();
+                    return;
+                }
+                
+                // Log warning if no action could be taken (development only)
+                if (typeof console !== 'undefined' && console.warn) {
+                    console.warn('Button clicked but no action handler found:', {
+                        action: action,
+                        buttonId: this.id || 'no-id',
+                        buttonClass: this.className
+                    });
+                }
+            });
+        });
     }
 
     // ===================================================================
@@ -722,6 +793,63 @@
     }
 
     // ===================================================================
+    // TAB NAVIGATION
+    // ===================================================================
+
+    /**
+     * Initialize tab switching functionality
+     */
+    function initializeTabNavigation() {
+        // Handle tab buttons with data-action="switch-tab"
+        document.querySelectorAll('[data-action="switch-tab"]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetTab = this.getAttribute('data-tab');
+                if (!targetTab) return;
+                
+                // Sanitize tab name to prevent selector injection
+                const sanitizedTab = targetTab.replace(/[^a-zA-Z0-9_-]/g, '');
+                if (sanitizedTab !== targetTab) {
+                    console.warn('Invalid tab name:', targetTab);
+                    return;
+                }
+                
+                const tabContainer = this.closest('.products-content, .content-wrapper, .page-content') || document;
+                
+                // Remove active class from all tabs
+                tabContainer.querySelectorAll('.tab-btn').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Hide all tab content
+                tabContainer.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                    content.style.display = 'none';
+                });
+                
+                // Show target tab content
+                const targetContent = tabContainer.querySelector(`#${sanitizedTab}-tab, [data-tab-content="${sanitizedTab}"]`);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                    targetContent.style.display = 'block';
+                }
+            });
+        });
+        
+        // Handle regular tab links (using href)
+        document.querySelectorAll('.tab-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                // For tab links with hrefs, let them navigate naturally
+                // They already have the active class set by PHP
+            });
+        });
+    }
+
+    // ===================================================================
     // INITIALIZATION
     // ===================================================================
 
@@ -743,6 +871,7 @@
         initializeModals();
         initializeCustomInputs();
         initializeTableSorting();
+        initializeTabNavigation();
         
         console.log('Arctic Wolves App initialized successfully!');
         

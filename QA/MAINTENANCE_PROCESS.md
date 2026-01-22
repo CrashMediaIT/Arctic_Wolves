@@ -363,6 +363,9 @@ Test each button on the page:
 - [ ] **Submit** buttons validate and process forms
 - [ ] **Filter** buttons apply filters correctly
 - [ ] **Clear** buttons reset filters/forms
+- [ ] **Quick Action** buttons navigate to appropriate pages (not home)
+- [ ] **Tab** buttons switch between tabs without page reload
+- [ ] All buttons have appropriate `data-action` and `data-page`/`data-modal` attributes
 
 ### 6.2 Search Functionality
 - [ ] Search input present and visible
@@ -429,6 +432,9 @@ Test each button on the page:
 - [ ] Active tab visually indicated
 - [ ] Tab content loads correctly
 - [ ] Deep linking to tabs works (if applicable)
+- [ ] Tabs use either query parameter navigation OR JavaScript switching
+- [ ] Tab buttons have `data-action="switch-tab"` and `data-tab="tab-name"` for JS tabs
+- [ ] Tab content containers have matching IDs or data attributes
 
 ### 6.11 Dropdowns
 - [ ] Dropdown opens on click
@@ -436,6 +442,47 @@ Test each button on the page:
 - [ ] Hover states work
 - [ ] Selection updates value
 - [ ] Dropdown closes after selection
+- [ ] No checkered background pattern on option hover
+- [ ] Options use consistent Inter font
+- [ ] Selected option has distinct styling
+- [ ] Dropdown matches site theme colors
+
+### 6.12 Button Configuration Patterns
+**CRITICAL**: All interactive buttons MUST have proper data attributes to work correctly.
+
+#### Required Data Attributes by Button Type:
+```html
+<!-- Add/Create buttons -->
+<button data-action="add" data-modal="modal-id">Add Item</button>
+<button data-action="add" data-page="page-name">Add Item</button>
+
+<!-- Edit buttons -->
+<button data-action="edit" data-id="123" data-modal="edit-modal">Edit</button>
+
+<!-- Delete buttons -->
+<button data-action="delete" data-id="123" data-name="Item Name">Delete</button>
+
+<!-- Navigation buttons -->
+<button data-action="view" data-page="page-name">View</button>
+<button data-action="custom-action" data-page="destination">Action</button>
+
+<!-- Tab buttons -->
+<button data-action="switch-tab" data-tab="tab-name">Tab</button>
+```
+
+#### Common Button Issues:
+- [ ] **Button reloads to home**: Missing `data-page`, `data-modal`, or `data-url` attribute
+- [ ] **Button does nothing**: Missing `data-action` attribute entirely
+- [ ] **Tab doesn't switch**: Missing `data-action="switch-tab"` and `data-tab`
+- [ ] **Modal doesn't open**: Modal ID doesn't match or modal HTML missing
+- [ ] **Form doesn't submit**: Form missing `action` attribute or proper submit handler
+
+#### Testing Procedure:
+1. Click every button on the page
+2. Verify expected action occurs
+3. Check browser console for JavaScript errors
+4. If button fails, inspect HTML for missing data attributes
+5. Add appropriate attributes and test again
 
 ---
 
@@ -703,6 +750,7 @@ When reporting an issue, include:
 
 ## Version History
 
+- **v1.1** - January 22, 2026 - Added comprehensive button testing procedures, tab navigation checks, dropdown validation, and button configuration patterns section
 - **v1.0** - January 22, 2026 - Initial maintenance process document created
 
 ---
