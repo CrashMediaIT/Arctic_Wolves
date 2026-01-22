@@ -359,14 +359,26 @@
                 
                 // Handle cancel-session action
                 if (action === 'cancel-session' && sessionId) {
+                    // Validate sessionId is numeric
+                    if (!/^\d+$/.test(sessionId)) {
+                        console.error('Invalid session ID:', sessionId);
+                        return;
+                    }
+                    
                     if (confirm('Are you sure you want to cancel this session?')) {
+                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                        if (!csrfToken) {
+                            showToast('Security token missing. Please refresh the page.', 'error');
+                            return;
+                        }
+                        
                         // Send cancel request
                         fetch('process_booking.php', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded',
                             },
-                            body: `action=cancel&session_id=${sessionId}&csrf_token=${document.querySelector('[name="csrf_token"]')?.value || ''}`
+                            body: `action=cancel&session_id=${encodeURIComponent(sessionId)}&csrf_token=${encodeURIComponent(csrfToken)}`
                         })
                         .then(response => response.json())
                         .then(data => {
@@ -958,9 +970,10 @@
         document.querySelectorAll('[data-action="view-video"]').forEach(btn => {
             btn.addEventListener('click', function() {
                 const videoId = this.getAttribute('data-video-id');
-                if (videoId) {
+                // Validate videoId is numeric
+                if (videoId && /^\d+$/.test(videoId)) {
                     // Navigate to video detail page or open modal
-                    window.location.href = `?page=video_detail&id=${videoId}`;
+                    window.location.href = `?page=video_detail&id=${encodeURIComponent(videoId)}`;
                 }
             });
         });
@@ -969,9 +982,10 @@
         document.querySelectorAll('[data-action="edit-video"]').forEach(btn => {
             btn.addEventListener('click', function() {
                 const videoId = this.getAttribute('data-video-id');
-                if (videoId) {
+                // Validate videoId is numeric
+                if (videoId && /^\d+$/.test(videoId)) {
                     // Navigate to edit page or open edit modal
-                    window.location.href = `?page=edit_video&id=${videoId}`;
+                    window.location.href = `?page=edit_video&id=${encodeURIComponent(videoId)}`;
                 }
             });
         });
@@ -980,14 +994,26 @@
         document.querySelectorAll('[data-action="delete-video"]').forEach(btn => {
             btn.addEventListener('click', function() {
                 const videoId = this.getAttribute('data-video-id');
-                if (videoId && confirm('Are you sure you want to delete this video?')) {
+                // Validate videoId is numeric
+                if (!videoId || !/^\d+$/.test(videoId)) {
+                    console.error('Invalid video ID:', videoId);
+                    return;
+                }
+                
+                if (confirm('Are you sure you want to delete this video?')) {
+                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                    if (!csrfToken) {
+                        showToast('Security token missing. Please refresh the page.', 'error');
+                        return;
+                    }
+                    
                     // Send delete request
                     fetch('process_video.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
                         },
-                        body: `action=delete&video_id=${videoId}&csrf_token=${document.querySelector('[name="csrf_token"]')?.value || ''}`
+                        body: `action=delete&video_id=${encodeURIComponent(videoId)}&csrf_token=${encodeURIComponent(csrfToken)}`
                     })
                     .then(response => response.json())
                     .then(data => {

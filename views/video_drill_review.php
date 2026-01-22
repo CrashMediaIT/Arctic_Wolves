@@ -33,7 +33,7 @@ if ($filter_drill_type !== 'all') {
 }
 
 if (!empty($search)) {
-    $video_query .= " AND (v.title LIKE ? OR v.description LIKE ? OR d.name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR DATE_FORMAT(v.created_at, '%Y-%m-%d') LIKE ?)";
+    $video_query .= " AND (v.title LIKE ? OR v.description LIKE ? OR d.name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR DATE_FORMAT(v.upload_date, '%Y-%m-%d') LIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
