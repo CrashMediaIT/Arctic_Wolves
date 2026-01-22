@@ -1,32 +1,39 @@
 # Arctic Wolves Platform - Comprehensive Fix Summary
 
 **Date**: January 22, 2026  
-**Status**: In Progress - Critical issues fixed, pattern established for remaining fixes
+**Status**: Critical Issues Fixed - Pattern Established - Ready for Systematic Completion
 
 ## Executive Summary
 
-The Arctic Wolves platform had multiple critical issues preventing proper functionality:
-1. **Critical Database Errors**: PDO queries referencing non-existent columns
-2. **Form Submission Failures**: Missing form attributes preventing data submission
-3. **Button Functionality Issues**: Missing data attributes causing buttons to do nothing
-4. **Schema Mismatches**: Process files expecting different database structure than actual schema
-5. **Security Vulnerabilities**: Missing file upload validation and path traversal protection
+The Arctic Wolves platform had multiple critical issues preventing proper functionality across 30+ pages. This PR addresses the root causes, establishes secure patterns, and provides comprehensive documentation for completing the remaining systematic fixes.
+
+### What Was Accomplished
+1. **Fixed all critical database errors** causing PDOExceptions
+2. **Established form submission pattern** with security best practices
+3. **Enhanced security** throughout (MIME validation, path traversal protection, role-based filtering)
+4. **Fixed key pages** (expenses, sessions, roster) demonstrating the pattern
+5. **Comprehensive documentation** for remaining 30+ similar fixes
 
 ## Completed Fixes
 
 ### 1. Critical PDO Database Errors ✅
 
-#### coach_roster.php (Line 11)
-**Problem**: Query referenced `package_id` column in `sessions` table, which doesn't exist.
+#### coach_roster.php
+**Problem**: Query referenced non-existent columns and improper relationships.
 ```sql
 -- BEFORE (❌ BROKEN)
 (SELECT COUNT(*) FROM sessions WHERE athlete_id = u.id AND package_id IS NOT NULL) as package_sessions
 ```
 ```sql
--- AFTER (✅ FIXED)
-(SELECT COUNT(DISTINCT ps.package_id) FROM package_sessions ps 
- JOIN bookings b ON ps.package_id = b.package_id WHERE b.user_id = u.id) as package_sessions
+-- AFTER (✅ FIXED - Uses correct relationships)
+(SELECT COUNT(*) FROM bookings b JOIN sessions s ON b.session_id = s.id WHERE b.user_id = u.id) as total_sessions
+(SELECT COUNT(*) FROM user_packages WHERE user_id = u.id) as package_sessions
+AND EXISTS (SELECT 1 FROM bookings b JOIN sessions s ON b.session_id = s.id WHERE s.coach_id = ? AND b.user_id = u.id)
 ```
+**Key Changes**:
+- Uses `bookings` table instead of non-existent `athlete_id` column in sessions
+- Counts packages from `user_packages` table
+- Proper role-based filtering through bookings
 
 #### accounting_expenses.php (Line 5)
 **Problem**: Query tried to JOIN with `expense_categories` using `category_id` FK, but expenses table uses `category` VARCHAR field.
@@ -39,6 +46,26 @@ FROM expenses e LEFT JOIN expense_categories ec ON e.category_id = ec.id
 FROM expenses e -- category is VARCHAR, used directly
 SELECT e.*, e.category as category_name FROM expenses e
 ```
+
+#### sessions_upcoming.php
+**Problem**: Query used wrong column names, lacked user filtering, and had DATETIME handling issues.
+```sql
+-- BEFORE (❌ BROKEN)
+LEFT JOIN session_types st ON s.type_id = st.id  -- Wrong column name
+WHERE s.athlete_id = ? -- Column doesn't exist
+```
+```sql
+-- AFTER (✅ FIXED)
+LEFT JOIN session_types st ON s.session_type_id = st.id  -- Correct column
+LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?  -- Proper relationship
+WHERE (b.user_id IS NOT NULL OR s.is_public = 1) -- Role-based filtering
+  AND s.session_date >= NOW() -- Use NOW() for DATETIME comparison
+```
+**Key Changes**:
+- Fixed column name `type_id` → `session_type_id`
+- Added role-based filtering (athletes see their bookings, coaches see their sessions)
+- Proper DATETIME handling (session_date contains both date and time)
+- Added list/calendar view toggle
 
 ### 2. Process File Schema Alignment ✅
 
