@@ -36,8 +36,8 @@
 
 ### 1. Home Page Issues
 
-#### P1 - [ ] Add Session Navigation Fixed, Booking Still Broken
-- **Status:** Partially Fixed
+#### P1 - [~] Add Session Navigation Fixed, Booking Still Broken
+- **Status:** In Progress (Partially Fixed)
 - **Issue:** Add session now goes to correct booking, but Booking doesn't work
 - **Details:**
   - Missing list view in Booking
@@ -640,16 +640,18 @@
 
 ## Completion Summary
 
-**Total Issues:** 85+  
+**Total Issues:** 87  
 **Critical (P0):** 6  
-**High (P1):** 60+  
-**Medium (P2):** 19+  
+**High (P1):** 62  
+**Medium (P2):** 19  
 **Low (P3):** 0
 
 **Completed:** 0  
-**In Progress:** 0  
-**Not Started:** 85+  
+**In Progress:** 1  
+**Not Started:** 86  
 **Blocked:** 0
+
+**Note:** Issue counts should be manually updated as issues are resolved. Count all checkboxes in the document to maintain accuracy.
 
 ---
 

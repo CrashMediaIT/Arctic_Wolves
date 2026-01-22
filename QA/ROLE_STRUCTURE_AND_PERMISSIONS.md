@@ -270,10 +270,10 @@ Admin (Full System Access)
 | Delete Plans | ✗ | ✗ | ✓ (own) | ✓ (own) | ✓ (own) | ✓ |
 | View Plans | ✓ (assigned) | ✓ (child) | ✓ | ✓ | ✓ | ✓ |
 | **Sessions** |
-| Book Sessions | ✓ | ? | ✓ | ✓ | ✓ | ✓ |
+| Book Sessions | ✓ | ✓ (child) | ✓ | ✓ | ✓ | ✓ |
 | Create Sessions | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
 | Edit Sessions | ✗ | ✗ | ✓ (own) | ✓ (own) | ✓ | ✓ |
-| Cancel Sessions | ✓ (own) | ✗ | ✓ | ✓ | ✓ | ✓ |
+| Cancel Sessions | ✓ (own) | ✓ (child) | ✓ | ✓ | ✓ | ✓ |
 | **Videos** |
 | Upload Videos | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ |
 | Review Videos | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
@@ -307,7 +307,6 @@ Admin (Full System Access)
 - (own) = Only their own content
 - (assigned) = Content they are responsible for
 - (child) = Their child athlete's content
-- ? = To be determined/configured
 
 ---
 
@@ -482,6 +481,8 @@ Admin (Full System Access)
 
 ### Users Table
 
+**Note:** The following shows role-related fields. See `/database_schema.sql` for complete schema.
+
 ```sql
 CREATE TABLE IF NOT EXISTS `users` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -490,7 +491,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `first_name` VARCHAR(100) NOT NULL,
     `last_name` VARCHAR(100) NOT NULL,
     `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach') DEFAULT 'athlete',
-    ...
+    -- Additional fields in database_schema.sql
 );
 ```
 
