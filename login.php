@@ -55,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login | Crash Hockey</title>
+    <title>Login | Artic Wolves</title>
     
     <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/18/logo.png">
     

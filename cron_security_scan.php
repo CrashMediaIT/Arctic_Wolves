@@ -376,7 +376,7 @@ function notifyAdmins($count, $vulnerabilities, $scan_id) {
         <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
             <h2 style='color: #ff4444; margin-top: 0;'>Security Vulnerability Scan Results</h2>
             
-            <p style='color: #ccc;'>The weekly security scan has detected <strong>$count vulnerabilities</strong> in the Crash Hockey platform.</p>
+            <p style='color: #ccc;'>The weekly security scan has detected <strong>$count vulnerabilities</strong> in the Artic Wolves platform.</p>
             
             <div style='background: #1e293b; padding: 20px; border-radius: 6px; margin: 20px 0;'>
                 <h3 style='color: #fff; margin-top: 0;'>Summary by Severity:</h3>
@@ -411,7 +411,7 @@ function notifyAdmins($count, $vulnerabilities, $scan_id) {
             </div>
             
             <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; text-align: center; color: #555; font-size: 11px;'>
-                &copy; " . date('Y') . " Crash Hockey Performance. All rights reserved.
+                &copy; " . date('Y') . " Artic Wolves Performance. All rights reserved.
             </div>
         </div>";
         

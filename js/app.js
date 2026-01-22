@@ -1,5 +1,5 @@
 /**
- * Crash Hockey Main Application JavaScript
+ * Artic Wolves Main Application JavaScript
  * Complete functionality for all interactive elements
  * Version: 1.0.0
  * 

@@ -1,5 +1,5 @@
 -- =========================================================
--- CRASH HOCKEY DATABASE SCHEMA
+-- ARTIC WOLVES DATABASE SCHEMA
 -- Complete database structure for the application
 -- =========================================================
 

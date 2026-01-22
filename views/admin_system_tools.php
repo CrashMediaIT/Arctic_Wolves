@@ -33,7 +33,7 @@
                             <h4>Site Title</h4>
                             <p>The name of your site</p>
                         </div>
-                        <input type="text" class="form-input" value="Crash Hockey">
+                        <input type="text" class="form-input" value="Artic Wolves">
                     </div>
                     <div class="setting-item">
                         <div class="setting-info">

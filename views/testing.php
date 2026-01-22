@@ -96,7 +96,7 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
 
 <div class="testing-header">
     <h1><i class="fa-solid fa-flask-vial"></i> System Testing</h1>
-    <p>Run tests and view diagnostics for the Crash Hockey system</p>
+    <p>Run tests and view diagnostics for the Artic Wolves system</p>
 </div>
 
 <?php if (isset($_GET['status']) && $_GET['status'] === 'recorded'): ?>

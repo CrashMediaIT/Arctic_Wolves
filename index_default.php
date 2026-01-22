@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>Crash Hockey | Elite Development</title>
+    <title>Artic Wolves | Player Development</title>
     <meta name="description" content="Professional hockey development for players and goalies.">
     
     <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/18/logo.png">
@@ -17,10 +17,11 @@
     <header>
         <nav class="container nav-flex">
             <div class="logo-area" style="display: flex; align-items: center; gap: 15px;">
-                <img src="https://images.crashmedia.ca/images/2026/01/18/logo.png" alt="Crash Hockey Logo" style="height: 40px; width: auto;">
+                <img src="https://images.crashmedia.ca/images/2026/01/18/logo.png" alt="Artic Wolves Logo" style="height: 40px; width: auto;">
                 
                 <div>
-                    <div class="logo-text">CRASH<span>HOCKEY</span></div>
+                    <div class="logo-text">ARTIC<span>WOLVES</span></div>
+                    <div class="header-affiliation">Player Development</div>
                 </div>
             </div>
             
@@ -43,7 +44,7 @@
                     </div>
                 </a>
 
-                <h1>Crash Hockey <br><span class="highlight">Development</span></h1>
+                <h1>Artic Wolves <br><span class="highlight">Player Development</span></h1>
                 <p>Specialized on-ice and off-ice training protocols designed for competitive athletes seeking elite performance levels.</p>
                 
                 <div class="hero-actions">
@@ -148,7 +149,7 @@
             <div class="footer-left">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
                     <img src="https://images.crashmedia.ca/images/2026/01/18/logo.png" alt="Logo" style="height: 30px; opacity: 0.8;">
-                    <div class="logo-text" style="font-size: 1.2rem;">CRASH<span>HOCKEY</span></div>
+                    <div class="logo-text" style="font-size: 1.2rem;">ARTIC<span>WOLVES</span></div>
                 </div>
                 
                 <p class="footer-desc">High-performance athletic development.</p>
@@ -172,7 +173,7 @@
         </div>
         <div class="footer-bottom">
             <div class="container footer-bottom-flex">
-                <p>&copy; 2026 Crash Hockey Development. All Rights Reserved.</p>
+                <p>&copy; 2026 Artic Wolves Player Development. All Rights Reserved.</p>
             </div>
         </div>
     </footer>

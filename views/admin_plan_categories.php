@@ -21,7 +21,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plan Categories - Crash Hockey</title>
+    <title>Plan Categories - Artic Wolves</title>
     <link rel="stylesheet" href="../style.css">
     <style>
         :root {

@@ -59,7 +59,7 @@ class SmtpMailer {
 
         // 7. ENVELOPE
         $fromEmail = !empty($config['smtp_from_email']) ? $config['smtp_from_email'] : $user;
-        $fromName  = !empty($config['smtp_from_name'])  ? $config['smtp_from_name']  : 'Crash Hockey System';
+        $fromName  = !empty($config['smtp_from_name'])  ? $config['smtp_from_name']  : 'Artic Wolves System';
 
         $this->sendCommand("MAIL FROM: <$user>"); // Neo often requires Envelope From to match Login
         $this->sendCommand("RCPT TO: <$to>");
@@ -134,13 +134,13 @@ function sendEmail($to, $type, $data) {
     $year = date('Y');
     
     // --- TEMPLATE LOGIC ---
-    $subject = "Crash Hockey Notification"; 
+    $subject = "Artic Wolves Notification"; 
     $body = "";
     
     // Common Footer
     $footer = "
     <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; text-align: center; color: #555; font-size: 11px;'>
-        &copy; $year Crash Hockey Performance. All rights reserved.<br>
+        &copy; $year Artic Wolves Performance. All rights reserved.<br>
         <a href='https://crashhockey.ca' style='color: #555; text-decoration: none;'>crashhockey.ca</a>
     </div>";
 

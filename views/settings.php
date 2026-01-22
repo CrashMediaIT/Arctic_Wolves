@@ -16,7 +16,7 @@
             <form class="settings-form">
                 <div class="form-group">
                     <label>Organization Name *</label>
-                    <input type="text" class="form-input" value="Crash Hockey" required>
+                    <input type="text" class="form-input" value="Artic Wolves" required>
                 </div>
 
                 <div class="form-row">
