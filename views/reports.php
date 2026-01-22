@@ -511,6 +511,43 @@ document.addEventListener('DOMContentLoaded', function() {
     scheduleCheckbox.addEventListener('change', function() {
         scheduleOptions.style.display = this.checked ? 'block' : 'none';
     });
+    
+    // Form submission handler
+    const generateForm = document.getElementById('generateReportForm');
+    if (generateForm) {
+        generateForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            
+            fetch('process_reports.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                
+                if (data.success) {
+                    alert('Report generated successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to generate report'));
+                }
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                alert('Error: ' + error.message);
+            });
+        });
+    }
 });
 
 function resetForm() {
