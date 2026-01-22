@@ -117,12 +117,15 @@ $expenses = $pdo->query($expensesQuery);
                                 <td>
                                     <?php if($expense['receipt_url']): ?>
                                         <?php 
-                                        // Validate receipt URL is safe (within uploads directory)
-                                        $receipt_url = htmlspecialchars($expense['receipt_url']);
-                                        $is_safe = strpos($receipt_url, 'uploads/receipts/') === 0;
+                                        // Validate receipt URL is safe (within uploads directory using realpath)
+                                        $receipt_url = $expense['receipt_url'];
+                                        $receipt_real_path = realpath($receipt_url);
+                                        $uploads_real_path = realpath('uploads/receipts');
+                                        $is_safe = $receipt_real_path && $uploads_real_path && 
+                                                   strpos($receipt_real_path, $uploads_real_path) === 0;
                                         ?>
                                         <?php if($is_safe): ?>
-                                            <a href="<?= $receipt_url ?>" target="_blank" rel="noopener noreferrer" class="btn-link">
+                                            <a href="<?= htmlspecialchars($receipt_url) ?>" target="_blank" rel="noopener noreferrer" class="btn-link">
                                                 <i class="fas fa-paperclip"></i> View
                                             </a>
                                         <?php else: ?>

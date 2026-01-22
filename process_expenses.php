@@ -42,7 +42,7 @@ try {
                 $mime_type = finfo_file($finfo, $_FILES['receipt_file']['tmp_name']);
                 finfo_close($finfo);
                 
-                $allowed_mimes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+                $allowed_mimes = ['image/jpeg', 'image/png', 'application/pdf'];
                 if (!in_array($mime_type, $allowed_mimes)) {
                     throw new Exception('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
                 }
@@ -92,7 +92,7 @@ try {
                 $mime_type = finfo_file($finfo, $_FILES['receipt_file']['tmp_name']);
                 finfo_close($finfo);
                 
-                $allowed_mimes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+                $allowed_mimes = ['image/jpeg', 'image/png', 'application/pdf'];
                 if (!in_array($mime_type, $allowed_mimes)) {
                     throw new Exception('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
                 }

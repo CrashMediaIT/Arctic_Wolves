@@ -4,19 +4,40 @@ $filter_period = $_GET['filter_period'] ?? 'all';
 $filter_coach = $_GET['filter_coach'] ?? 'all';
 
 // Build query for upcoming sessions
-$sessions_query = "
-    SELECT s.*, 
-           CONCAT(c.first_name, ' ', c.last_name) as coach_name,
-           st.name as session_type_name,
-           l.name as location_name
-    FROM sessions s
-    LEFT JOIN users c ON s.coach_id = c.id
-    LEFT JOIN session_types st ON s.session_type_id = st.id
-    LEFT JOIN locations l ON s.location_id = l.id
-    WHERE s.session_date >= CURDATE() AND s.status IN ('scheduled', 'confirmed')
-";
-
-$params = [];
+// For athletes, show sessions they're registered for or all public sessions
+// For coaches/admins, show all sessions they're involved with
+if ($user_role === 'athlete') {
+    $sessions_query = "
+        SELECT s.*, 
+               CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+               st.name as session_type_name,
+               l.name as location_name
+        FROM sessions s
+        LEFT JOIN users c ON s.coach_id = c.id
+        LEFT JOIN session_types st ON s.session_type_id = st.id
+        LEFT JOIN locations l ON s.location_id = l.id
+        LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
+        WHERE (b.user_id IS NOT NULL OR s.is_public = 1) 
+          AND s.session_date >= NOW() 
+          AND s.status IN ('scheduled', 'confirmed')
+    ";
+    $params = [$user_id];
+} else {
+    $sessions_query = "
+        SELECT s.*, 
+               CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+               st.name as session_type_name,
+               l.name as location_name
+        FROM sessions s
+        LEFT JOIN users c ON s.coach_id = c.id
+        LEFT JOIN session_types st ON s.session_type_id = st.id
+        LEFT JOIN locations l ON s.location_id = l.id
+        WHERE s.coach_id = ? 
+          AND s.session_date >= NOW() 
+          AND s.status IN ('scheduled', 'confirmed')
+    ";
+    $params = [$user_id];
+}
 
 // Apply period filter
 if ($filter_period === 'week') {
@@ -39,16 +60,28 @@ $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute($params);
 $sessions = $sessions_stmt->fetchAll();
 
-// Get coaches for filter
-$coaches_query = "
-    SELECT DISTINCT c.id, c.first_name, c.last_name
-    FROM users c
-    INNER JOIN sessions s ON s.coach_id = c.id
-    WHERE c.is_active = 1
-    ORDER BY c.last_name, c.first_name
-";
-$coaches_stmt = $pdo->prepare($coaches_query);
-$coaches_stmt->execute([]);
+// Get coaches for filter - based on user role
+if ($user_role === 'athlete') {
+    $coaches_query = "
+        SELECT DISTINCT c.id, c.first_name, c.last_name
+        FROM users c
+        INNER JOIN sessions s ON s.coach_id = c.id
+        LEFT JOIN bookings b ON b.session_id = s.id
+        WHERE (b.user_id = ? OR s.is_public = 1) AND c.is_active = 1
+        ORDER BY c.last_name, c.first_name
+    ";
+    $coaches_stmt = $pdo->prepare($coaches_query);
+    $coaches_stmt->execute([$user_id]);
+} else {
+    $coaches_query = "
+        SELECT DISTINCT id, first_name, last_name
+        FROM users
+        WHERE role IN ('coach', 'admin', 'team_coach') AND is_active = 1
+        ORDER BY last_name, first_name
+    ";
+    $coaches_stmt = $pdo->prepare($coaches_query);
+    $coaches_stmt->execute([]);
+}
 $coaches = $coaches_stmt->fetchAll();
 
 // Get current view mode
