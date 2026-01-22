@@ -40,8 +40,8 @@
                             <p><i class="fas fa-user"></i> 1-on-1</p>
                         </div>
                         <div class="product-actions">
-                            <button class="btn-secondary btn-small"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small"><i class="fas fa-toggle-on"></i> Disable</button>
+                            <button class="btn-secondary btn-small" data-action="edit" data-id="1" data-type="session"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="1" data-type="session"><i class="fas fa-toggle-on"></i> Disable</button>
                         </div>
                     </div>
 
@@ -56,8 +56,8 @@
                             <p><i class="fas fa-users"></i> 4-8 players</p>
                         </div>
                         <div class="product-actions">
-                            <button class="btn-secondary btn-small"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small"><i class="fas fa-toggle-on"></i> Disable</button>
+                            <button class="btn-secondary btn-small" data-action="edit" data-id="2" data-type="session"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="2" data-type="session"><i class="fas fa-toggle-on"></i> Disable</button>
                         </div>
                     </div>
 
@@ -72,8 +72,8 @@
                             <p><i class="fas fa-user"></i> 1-on-1</p>
                         </div>
                         <div class="product-actions">
-                            <button class="btn-secondary btn-small"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small"><i class="fas fa-toggle-on"></i> Disable</button>
+                            <button class="btn-secondary btn-small" data-action="edit" data-id="3" data-type="session"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="3" data-type="session"><i class="fas fa-toggle-on"></i> Disable</button>
                         </div>
                     </div>
                 </div>
@@ -86,7 +86,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-box"></i> Training Packages</h3>
-                <button class="btn-primary"><i class="fas fa-plus"></i> Create Package</button>
+                <button class="btn-primary" data-action="add" data-modal="add-package-modal"><i class="fas fa-plus"></i> Create Package</button>
             </div>
             <div class="card-body">
                 <div class="products-grid">
@@ -135,7 +135,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-tags"></i> Discount Codes</h3>
-                <button class="btn-primary"><i class="fas fa-plus"></i> Create Discount</button>
+                <button class="btn-primary" data-action="add" data-modal="add-discount-modal"><i class="fas fa-plus"></i> Create Discount</button>
             </div>
             <div class="card-body">
                 <div class="table-container">
@@ -161,8 +161,8 @@
                                 <td><span class="status-badge active">Active</span></td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                                        <button class="btn-icon" title="Edit" data-action="edit" data-id="discount-1" data-type="discount"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-icon" title="Delete" data-action="delete" data-id="discount-1" data-type="discount"><i class="fas fa-trash"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -175,8 +175,8 @@
                                 <td><span class="status-badge active">Active</span></td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                                        <button class="btn-icon" title="Edit" data-action="edit" data-id="discount-2" data-type="discount"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-icon" title="Delete" data-action="delete" data-id="discount-2" data-type="discount"><i class="fas fa-trash"></i></button>
                                     </div>
                                 </td>
                             </tr>
