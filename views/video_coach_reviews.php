@@ -89,7 +89,7 @@ $videos = $video_stmt->fetchAll();
             
             <form class="upload-form" method="POST" action="process_video.php" enctype="multipart/form-data" data-form="video-upload">
                 <input type="hidden" name="action" value="upload_video">
-                <input type="hidden" name="coach_id" value="<?= $user_id ?>">
+                <!-- Note: coach_id will be validated server-side from session -->
                 
                 <div class="form-row">
                     <div class="form-group">

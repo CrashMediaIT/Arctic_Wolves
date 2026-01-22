@@ -82,7 +82,7 @@ $session_types = $pdo->query("SELECT * FROM session_types WHERE is_active = 1 OR
             
             <form class="booking-form" method="POST" action="process_booking.php" data-form="session-booking">
                 <input type="hidden" name="action" value="book_session">
-                <input type="hidden" name="athlete_id" value="<?= $user_id ?>">
+                <!-- Note: athlete_id will be validated server-side from session -->
                 
                 <div class="form-row">
                     <div class="form-group">

@@ -79,9 +79,7 @@ $drill_types = $pdo->query("SELECT DISTINCT drill_type FROM videos WHERE drill_t
     <!-- Video Grid -->
     <div class="video-grid">
         <?php if (count($videos) > 0): ?>
-            <?php foreach ($videos as $video): 
-                $progress = $video['total_steps'] > 0 ? ($video['completed_steps'] / $video['total_steps']) * 100 : 0;
-            ?>
+            <?php foreach ($videos as $video): ?>
             <div class="video-card" data-component="VideoCard" data-video-id="<?= $video['id'] ?>">
                 <div class="video-thumbnail">
                     <?php if (!empty($video['thumbnail_url'])): ?>

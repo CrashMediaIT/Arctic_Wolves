@@ -1,4 +1,25 @@
 <?php
+// Validate and sanitize team_id
+$team_id = isset($_GET['team_id']) ? intval($_GET['team_id']) : 0;
+
+// Verify user has permission to view this team (coaches, admins, team members)
+$team_access_query = "
+    SELECT 1 FROM teams t
+    WHERE t.id = ? 
+    AND (
+        t.coach_id = ? 
+        OR t.assistant_coach_id = ?
+        OR ? IN (SELECT user_id FROM team_members WHERE team_id = t.id)
+        OR (SELECT role FROM users WHERE id = ?) IN ('admin', 'superadmin')
+    )
+    LIMIT 1
+";
+$access_stmt = $pdo->prepare($team_access_query);
+$access_stmt->execute([$team_id, $user_id, $user_id, $user_id, $user_id]);
+if (!$access_stmt->fetch()) {
+    die("Access denied: You do not have permission to view this team.");
+}
+
 // Get team information
 $team_query = "
     SELECT t.*, 
@@ -7,7 +28,7 @@ $team_query = "
     WHERE t.id = ? AND t.is_active = 1
 ";
 $team_stmt = $pdo->prepare($team_query);
-$team_stmt->execute([$_GET['team_id'] ?? 0]);
+$team_stmt->execute([$team_id]);
 $team = $team_stmt->fetch();
 
 // Get filter parameters
