@@ -15,12 +15,12 @@ CREATE TABLE IF NOT EXISTS `users` (
     `verification_code` VARCHAR(10) DEFAULT NULL,
     `force_pass_change` TINYINT(1) DEFAULT 0,
     `phone` VARCHAR(20) DEFAULT NULL,
-    `birth_date` DATE DEFAULT NULL,
-    `date_of_birth` DATE DEFAULT NULL,
-    `position` VARCHAR(50) DEFAULT NULL,
-    `primary_arena` VARCHAR(255) DEFAULT NULL,
-    `assigned_coach_id` INT DEFAULT NULL,
-    `created_by_coach_id` INT DEFAULT NULL,
+    `birth_date` DATE DEFAULT NULL, -- Primary column used by PHP code
+    `date_of_birth` DATE DEFAULT NULL, -- Legacy alias for backward compatibility
+    `position` VARCHAR(50) DEFAULT NULL, -- Player position (forward, defense, goalie, etc.)
+    `primary_arena` VARCHAR(255) DEFAULT NULL, -- Home arena/facility
+    `assigned_coach_id` INT DEFAULT NULL, -- Primary coach assigned to this athlete
+    `created_by_coach_id` INT DEFAULT NULL, -- Coach who created this athlete account
     `profile_image` VARCHAR(255) DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -357,12 +357,12 @@ CREATE TABLE IF NOT EXISTS `food_library` (
 -- Nutrition plans
 CREATE TABLE IF NOT EXISTS `nutrition_plans` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT DEFAULT NULL,
-    `coach_id` INT DEFAULT NULL,
-    `name` VARCHAR(255) NOT NULL,
-    `title` VARCHAR(255) DEFAULT NULL,
+    `user_id` INT DEFAULT NULL, -- Athlete this plan is assigned to (for legacy code)
+    `coach_id` INT DEFAULT NULL, -- Coach who created the plan (for legacy code)
+    `name` VARCHAR(255) NOT NULL, -- Official plan name (primary field)
+    `title` VARCHAR(255) DEFAULT NULL, -- Legacy alias for backward compatibility
     `description` TEXT DEFAULT NULL,
-    `content` TEXT DEFAULT NULL,
+    `content` TEXT DEFAULT NULL, -- Legacy detailed content field
     `created_by` INT NOT NULL,
     `target_calories` INT DEFAULT NULL,
     `target_protein_g` INT DEFAULT NULL,
