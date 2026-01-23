@@ -341,32 +341,30 @@ try {
  * Process Stripe refund
  */
 function processStripeRefund($payment_intent_id, $amount, $secret_key) {
-    $url = 'https://api.stripe.com/v1/refunds';
-    
-    $data = [
-        'payment_intent' => $payment_intent_id,
-        'amount' => intval($amount * 100) // Convert to cents
-    ];
-    
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $secret_key
-    ]);
-    
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    $result = json_decode($response, true);
-    
-    if ($http_code === 200 && isset($result['id'])) {
-        return ['success' => true, 'refund_id' => $result['id']];
+    // Load Stripe library
+    if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+        require_once __DIR__ . '/vendor/autoload.php';
+    } elseif (file_exists(__DIR__ . '/stripe-php/init.php')) {
+        require_once __DIR__ . '/stripe-php/init.php';
     } else {
-        $error = $result['error']['message'] ?? 'Unknown error';
-        return ['success' => false, 'message' => $error];
+        return ['success' => false, 'message' => 'Stripe library not found'];
+    }
+    
+    try {
+        \Stripe\Stripe::setApiKey($secret_key);
+        
+        // Create refund through Stripe API
+        $refund = \Stripe\Refund::create([
+            'payment_intent' => $payment_intent_id,
+            'amount' => intval($amount * 100) // Convert to cents
+        ]);
+        
+        return ['success' => true, 'refund_id' => $refund->id];
+        
+    } catch (\Stripe\Exception\ApiErrorException $e) {
+        return ['success' => false, 'message' => $e->getMessage()];
+    } catch (Exception $e) {
+        return ['success' => false, 'message' => $e->getMessage()];
     }
 }
 
