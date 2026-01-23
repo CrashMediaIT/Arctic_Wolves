@@ -842,7 +842,7 @@ class DemoDataSeeder {
 }
 
 // If run directly from command line
-if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['PHP_SELF'])) {
+if (php_sapi_name() === 'cli') {
     require_once __DIR__ . '/db_config.php';
     
     if (!$db_connected || $pdo === null) {
