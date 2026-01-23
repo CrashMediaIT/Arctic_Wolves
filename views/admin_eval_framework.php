@@ -113,7 +113,7 @@
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-star-half-alt"></i> Scoring Scales</h3>
-            <button class="btn-primary"><i class="fas fa-plus"></i> Add Scale</button>
+            <button class="btn-primary" data-action="add" data-modal="add-scale-modal"><i class="fas fa-plus"></i> Add Scale</button>
         </div>
         <div class="card-body">
             <div class="scales-grid">
@@ -126,7 +126,7 @@
                         <div class="scale-level">4 - Above Average</div>
                         <div class="scale-level">5 - Excellent</div>
                     </div>
-                    <button class="btn-secondary btn-small"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="btn-secondary btn-small" data-action="edit" data-id="1" data-modal="edit-scale-modal"><i class="fas fa-edit"></i> Edit</button>
                 </div>
 
                 <div class="scale-card">
@@ -138,7 +138,7 @@
                         <div class="scale-level">7-8 - Very Good</div>
                         <div class="scale-level">9-10 - Excellent</div>
                     </div>
-                    <button class="btn-secondary btn-small"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="btn-secondary btn-small" data-action="edit" data-id="2" data-modal="edit-scale-modal"><i class="fas fa-edit"></i> Edit</button>
                 </div>
             </div>
         </div>
@@ -365,6 +365,54 @@
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('add-scale-modal')">Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Scale</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Scale Modal -->
+<div id="edit-scale-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Scale</h2>
+            <button class="modal-close" onclick="closeModal('edit-scale-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="edit_scale">
+            <input type="hidden" name="scale_id" id="edit-scale-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Scale Name *</label>
+                    <input type="text" name="name" id="edit-scale-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-scale-description" class="form-textarea" rows="2"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Min Value *</label>
+                    <input type="number" name="min_value" id="edit-scale-min" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Max Value *</label>
+                    <input type="number" name="max_value" id="edit-scale-max" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Scale Levels (JSON format)</label>
+                    <textarea name="scale_data" id="edit-scale-data" class="form-textarea" rows="8" placeholder='{"1": "Needs Improvement", "2": "Below Average", ...}'></textarea>
+                    <small>Enter score levels in JSON format</small>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-scale-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Scale</button>
             </div>
         </form>
     </div>

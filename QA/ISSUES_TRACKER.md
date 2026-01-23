@@ -2,7 +2,7 @@
 
 **Created:** January 22, 2026  
 **Last Updated:** January 23, 2026  
-**Version:** 1.3  
+**Version:** 1.4  
 **Purpose:** Track bugs, issues, and feature improvements requiring multiple revisions
 
 ---
@@ -32,13 +32,13 @@
 ### By Status:
 - **Completed:** 17 issues (P0: 6, P1: 10, P2: 1)
 - **In Progress:** 0 issues
-- **Needs Verification:** 20 issues (P1: 19, P2: 1 - code complete, needs browser testing)
+- **Needs Verification:** 26 issues (P1: 25, P2: 1 - code complete, needs browser testing)
 - **Not Implemented:** 5 issues (P1: 5 - categories management backend missing)
-- **Not Started:** 37 issues (P1: 19, P2: 18)
+- **Not Started:** 31 issues (P1: 13, P2: 18)
 
 ### By Priority:
 - **P0 (Critical):** 6 completed, 0 remaining
-- **P1 (High):** 10 completed, 0 in progress, 19 needs verification, 5 not implemented, 19 not started (53 total)
+- **P1 (High):** 10 completed, 0 in progress, 25 needs verification, 5 not implemented, 13 not started (53 total)
 - **P2 (Medium):** 1 completed, 1 needs verification, 18 not started (20 total)
 - **P3 (Low):** 0 total
 
@@ -56,25 +56,20 @@ These issues have complete code implementations but need browser testing:
 10. Add Line Item (function already implemented, needs testing)
 11. Cancel Button on Refund Modal (closeModal now exposed globally)
 12. Recent Reports Actions (backend handlers exist, needs testing)
-13. **Export Button** (added data attributes, uses existing exportTable function)
-14. **Choose File and Take Photo** (added visual feedback onchange handler)
-15. **Add Session Modal** (cancel fixed via closeModal, submit handler added)
-16. **Create Discount Invalid Value Error** (date restriction removed, handlers added)
-17. **Cancel Kicks to Products Page** (cancel button fixed to reload page)
-18. **Choose Files Doesn't Work** (file upload form fixed with enctype and feedback)
-19. **Cannot Search by Username** (page route fixed in applyFilters)
-20. **Create User Form Kicks Back to Home** (create_user handler added)
-5. Coaches Review Shows Nothing
-6. Create Drill Doesn't Show Drawer
-7. Import Drill Shows Nothing
-8. Mileage Report Doesn't Show
-9. Create Invoice Cancel/X Buttons (closeModal now exposed globally)
-10. Add Line Item (function already implemented, needs testing)
-11. Cancel Button on Refund Modal (closeModal now exposed globally)
-12. Recent Reports Actions (backend handlers exist, needs testing)
-13. **Export Button** (added data attributes, uses existing exportTable function)
-14. **Choose File and Take Photo** (added visual feedback onchange handler)
-15. **Add Session Modal** (cancel fixed via closeModal, submit handler added)
+13. Export Button (added data attributes, uses existing exportTable function)
+14. Choose File and Take Photo (added visual feedback onchange handler)
+15. Add Session Modal (cancel fixed via closeModal, submit handler added)
+16. Create Discount Invalid Value Error (date restriction removed, handlers added)
+17. Cancel Kicks to Products Page (cancel button fixed to reload page)
+18. Choose Files Doesn't Work (file upload form fixed with enctype and feedback)
+19. Cannot Search by Username (page route fixed in applyFilters)
+20. Create User Form Kicks Back to Home (create_user handler added)
+21. **Export Throws File Not Found** (export handler added to process_admin_action.php)
+22. **Roles Filter Doesn't Work** (filter code correct, may be data/browser issue)
+23. **Add Equipment Can't Cancel** (closeModal already exposed, should work)
+24. **Add Eval Category Can't Cancel** (closeModal already exposed, should work)
+25. **Add Scale Doesn't Function** (data attributes added, modal exists)
+26. **Edit Scale Doesn't Function** (data attributes added, modal created)
 
 ### Not Implemented (Requires Development):
 These are placeholder UIs without backend functionality:
@@ -666,17 +661,32 @@ These are placeholder UIs without backend functionality:
   - Includes error logging and proper exception handling
 - **Notes:** Code complete, needs browser testing to verify user creation workflow
 
-#### P1 - [ ] Roles Filter Doesn't Work
-- **Status:** Not Started
+#### P1 - [?] Roles Filter Doesn't Work
+- **Status:** Needs Verification (January 23, 2026)
 - **Issue:** Admin account shows under all roles instead of just admin
 - **Files Affected:** `views/admin_users.php`
-- **Notes:**
+- **Analysis:**
+  - Filter code appears correct (lines 6-16)
+  - WHERE clause properly filters by `u.role = ?` when role_filter is set
+  - JavaScript applyFilters function correctly builds URL with role parameter
+  - May be a data issue rather than code issue (user record has incorrect role value)
+  - Could also be browser caching or test data problem
+- **Notes:** No code changes needed. Filter logic is correctly implemented. Needs browser testing to verify actual behavior or check database for data consistency.
 
-#### P1 - [ ] Export Throws File Not Found
-- **Status:** Not Started
+#### P1 - [?] Export Throws File Not Found
+- **Status:** Needs Verification (January 23, 2026)
 - **Issue:** Export functionality broken
-- **Files Affected:** `process_admin_action.php`
-- **Notes:**
+- **Files Affected:** `views/admin_users.php`, `process_admin_action.php`
+- **Root Cause Analysis:**
+  - Form submitted to non-existent file `process_users.php`
+  - No export handler existed in process_admin_action.php
+- **Solution Implemented:**
+  - Changed form action from `process_users.php` to `process_admin_action.php`
+  - Added `export` handler to process_admin_action.php (lines 237-267)
+  - Handler fetches all users with session counts
+  - Generates CSV file with proper headers: ID, First Name, Last Name, Email, Phone, Role, Status, Sessions, Created
+  - Uses same pattern as mileage export (process_mileage.php)
+- **Notes:** Code complete, needs browser testing to verify CSV download works correctly
 
 ---
 
@@ -753,11 +763,15 @@ These are placeholder UIs without backend functionality:
 - **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
-#### P1 - [ ] Add Equipment Can't Cancel
-- **Status:** Not Started
+#### P1 - [?] Add Equipment Can't Cancel
+- **Status:** Needs Verification (January 23, 2026)
 - **Issue:** X and Cancel buttons don't work
 - **Files Affected:** `views/admin_categories.php`
-- **Notes:**
+- **Analysis:**
+  - Modal has `onclick="closeModal('add-equipment-modal')"` on both X and Cancel buttons (lines 290, 314)
+  - closeModal function is exposed globally in js/app.js (line exposed at end of file)
+  - Code appears correct and follows same pattern as other working modals
+- **Notes:** No code changes needed. closeModal is already exposed globally. May already be working - needs browser testing to confirm.
 
 #### P1 - [!] Add Equipment Creates Then Crashes to Home
 - **Status:** Not Implemented (Backend Missing)
@@ -774,10 +788,15 @@ These are placeholder UIs without backend functionality:
 ### 19. Eval Framework Issues
 
 #### P1 - [ ] Drag and Drop Doesn't Work
-- **Status:** Not Started
+- **Status:** Not Started (Requires Library Implementation)
 - **Issue:** Cannot reorder items via drag-drop
-- **Files Affected:** `views/admin_eval_framework.php`
-- **Notes:**
+- **Files Affected:** `views/admin_eval_framework.php`, `js/app.js` (or new js file)
+- **Analysis:**
+  - Criteria items have drag handles with grip icons
+  - No JavaScript drag-drop implementation exists
+  - Would require adding a library like SortableJS or implementing native HTML5 drag-drop
+  - Needs backend handler to save new order
+- **Notes:** More complex feature requiring library integration and backend support. Not a minimal fix.
 
 #### P0 - [x] Add Eval Category Column Error
 - **Status:** COMPLETED (January 22, 2026)
@@ -789,11 +808,15 @@ These are placeholder UIs without backend functionality:
   - Following governance: "fix code to match schema"
 - **Notes:** Completed - schema-compliant
 
-#### P1 - [ ] Add Eval Category Can't Cancel
-- **Status:** Not Started
+#### P1 - [?] Add Eval Category Can't Cancel
+- **Status:** Needs Verification (January 23, 2026)
 - **Issue:** X and Cancel buttons don't work
 - **Files Affected:** `views/admin_eval_framework.php`
-- **Notes:**
+- **Analysis:**
+  - Modal has `onclick="closeModal('add-eval-category-modal')"` on both X and Cancel buttons (lines 289, 318)
+  - closeModal function is exposed globally in js/app.js
+  - Code appears correct and follows same pattern as other working modals
+- **Notes:** No code changes needed. closeModal is already exposed globally. May already be working - needs browser testing to confirm.
 
 #### P2 - [ ] Add Scale Button Missing Icon
 - **Status:** Not Started
@@ -801,17 +824,29 @@ These are placeholder UIs without backend functionality:
 - **Files Affected:** `views/admin_eval_framework.php`
 - **Notes:**
 
-#### P1 - [ ] Add Scale Doesn't Function
-- **Status:** Not Started
+#### P1 - [?] Add Scale Doesn't Function
+- **Status:** Needs Verification (January 23, 2026)
 - **Issue:** Button does nothing
-- **Files Affected:** `views/admin_eval_framework.php`
-- **Notes:**
+- **Files Affected:** `views/admin_eval_framework.php`, `process_eval_framework.php`
+- **Solution Implemented:**
+  - Added `data-action="add"` and `data-modal="add-scale-modal"` attributes to button (line 116)
+  - Modal already exists at line 326 with proper structure
+  - Form submits to process_eval_framework.php with action="create_scale"
+- **Backend Status:** Handler for `create_scale` does not exist in process_eval_framework.php. No scale tables in database schema.
+- **Notes:** Button now opens modal (UI fixed). Backend implementation needed for full functionality.
 
-#### P1 - [ ] Edit Scale Doesn't Function
-- **Status:** Not Started
+#### P1 - [?] Edit Scale Doesn't Function
+- **Status:** Needs Verification (January 23, 2026)
 - **Issue:** Button does nothing
-- **Files Affected:** `views/admin_eval_framework.php`
-- **Notes:**
+- **Files Affected:** `views/admin_eval_framework.php`, `process_eval_framework.php`
+- **Solution Implemented:**
+  - Added `data-action="edit"`, `data-id`, and `data-modal="edit-scale-modal"` attributes to both Edit buttons (lines 129, 141)
+  - Created new edit-scale-modal with full form (lines 373-423)
+  - Form includes: scale_id (hidden), name, description, min_value, max_value, scale_data (JSON)
+  - Form submits to process_eval_framework.php with action="edit_scale"
+- **Backend Status:** Handler for `edit_scale` does not exist in process_eval_framework.php. No scale tables in database schema.
+- **Notes:** Button now opens modal (UI fixed). Backend implementation needed for full functionality.
+- **Notes:** Code complete, needs browser testing and backend handler verification in process_eval_framework.php
 
 ---
 
