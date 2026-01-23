@@ -105,8 +105,8 @@
                         </div>
                     </div>
                     <div class="notification-actions">
-                        <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit" data-id="1" data-modal="edit-notification-modal"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete" data-id="1" onclick="deleteNotification(1)"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
 
@@ -123,8 +123,8 @@
                         </div>
                     </div>
                     <div class="notification-actions">
-                        <button class="btn-icon" title="Edit" data-action="edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete" data-action="delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit" data-id="2" data-modal="edit-notification-modal"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete" data-id="2" onclick="deleteNotification(2)"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>
@@ -224,3 +224,33 @@
     gap: 8px;
 }
 </style>
+
+<script>
+function deleteNotification(notificationId) {
+    if (!confirm('Are you sure you want to delete this notification?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'delete');
+    formData.append('notification_id', notificationId);
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    
+    fetch('process_system_notifications.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to delete notification'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while deleting the notification');
+    });
+}
+</script>

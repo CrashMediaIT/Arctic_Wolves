@@ -399,6 +399,9 @@ $csrf_token = generateCsrfToken();
         <h1><i class="fas fa-history"></i> Audit Logs</h1>
         <p>Complete audit trail with restore capabilities</p>
     </div>
+    <button class="btn-primary" onclick="exportAuditLogs()">
+        <i class="fas fa-download"></i> Export
+    </button>
 </div>
 
 <!-- Filters -->
@@ -659,4 +662,10 @@ document.getElementById('viewModal').addEventListener('click', function(e) {
         closeModal();
     }
 });
+
+function exportAuditLogs() {
+    const currentUrl = new URL(window.location.href);
+    const exportUrl = 'process_audit_logs_export.php?' + currentUrl.searchParams.toString();
+    window.location.href = exportUrl;
+}
 </script>
