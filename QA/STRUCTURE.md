@@ -7,13 +7,12 @@
 
 ---
 
-## Recent Updates
+## Version History
 
-**Version 1.1 (January 23, 2026):**
-- Expanded routing table in dashboard.php from 46 to 74 routes
-- Added 28 new page routes across admin, athlete/coach, evaluation, notification, report, session, and other categories
-- This expansion resolves Pattern 1 issues where pages were redirecting to home due to missing routes
-- New routes enable proper navigation to: admin_age_skill, admin_settings, athlete_evaluations, coach_evaluations, manage_athletes, notifications, reports_athlete, session_history, workouts, testing, parent_home, and more
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.1 | January 23, 2026 | Expanded routing table in dashboard.php from 46 to 74 routes (+28 routes). Added admin, athlete/coach, evaluation, notification, report, session, and other page routes. Resolves Pattern 1 "redirect to home" issues. |
+| 1.0 | January 22, 2026 | Initial structure document created. Documented navigation hierarchy, page dependencies, database schema cross-references, process handlers, and JavaScript dependencies. |
 
 ---
 

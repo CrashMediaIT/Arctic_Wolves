@@ -137,7 +137,7 @@ $allowed_pages = [
     'testing'                 => 'views/testing.php',
     'parent_home'             => 'views/parent_home.php',
     
-    // Additional views
+    // Profile and Settings
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php'
 ];
