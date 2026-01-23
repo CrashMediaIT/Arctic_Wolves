@@ -107,6 +107,9 @@ $allowed_pages = [
     'admin_permissions'       => 'views/admin_permissions.php',
     'admin_locations'         => 'views/admin_locations.php',
     'admin_team_coaches'      => 'views/admin_team_coaches.php',
+    'admin_discounts'         => 'views/admin_discounts.php',
+    'admin_session_types'     => 'views/admin_session_types.php',
+    'admin_email_reports'     => 'views/email_logs.php',
     
     // Athlete/Coach Views
     'athlete_evaluations'     => 'views/athlete_evaluations.php',
