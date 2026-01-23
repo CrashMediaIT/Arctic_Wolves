@@ -61,21 +61,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->exec($schema);
             
             // Run migrations for existing installations
+            // Use try-catch approach for portability
             try {
-                // Check if display_order column exists in eval_categories
-                $stmt = $pdo->query("SHOW COLUMNS FROM eval_categories LIKE 'display_order'");
-                if ($stmt->rowCount() === 0) {
-                    $pdo->exec("ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description");
-                }
-                
-                // Check if display_order column exists in eval_skills
-                $stmt = $pdo->query("SHOW COLUMNS FROM eval_skills LIKE 'display_order'");
-                if ($stmt->rowCount() === 0) {
-                    $pdo->exec("ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description");
-                }
+                // Try to add display_order column to eval_categories
+                $pdo->exec("ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description");
             } catch (PDOException $e) {
-                // Migrations failed, but table creation might have succeeded
-                // Log this but don't fail the setup
+                // Column might already exist, which is fine
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    // Some other error occurred, but don't fail setup
+                }
+            }
+            
+            try {
+                // Try to add display_order column to eval_skills
+                $pdo->exec("ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description");
+            } catch (PDOException $e) {
+                // Column might already exist, which is fine
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    // Some other error occurred, but don't fail setup
+                }
             }
             
             header("Location: setup.php?step=2");

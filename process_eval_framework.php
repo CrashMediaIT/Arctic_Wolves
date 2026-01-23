@@ -102,10 +102,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid order data');
                 }
                 
+                // Validate array structure
+                foreach ($order_data as $item) {
+                    if (!isset($item['category_id']) || !isset($item['display_order'])) {
+                        throw new Exception('Invalid order data structure');
+                    }
+                    if (!is_numeric($item['category_id']) || !is_numeric($item['display_order'])) {
+                        throw new Exception('Invalid order data types');
+                    }
+                }
+                
                 // Update display_order for each category
                 $stmt = $pdo->prepare("UPDATE eval_categories SET display_order = ? WHERE id = ?");
                 foreach ($order_data as $item) {
-                    $stmt->execute([$item['display_order'], $item['category_id']]);
+                    $stmt->execute([intval($item['display_order']), intval($item['category_id'])]);
                 }
                 
                 echo json_encode([
@@ -204,6 +214,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid order data');
                 }
                 
+                // Validate array structure
+                foreach ($order_data as $item) {
+                    if (!isset($item['skill_id']) || !isset($item['display_order'])) {
+                        throw new Exception('Invalid order data structure');
+                    }
+                    if (!is_numeric($item['skill_id']) || !is_numeric($item['display_order'])) {
+                        throw new Exception('Invalid order data types');
+                    }
+                }
+                
                 // Verify category exists
                 $check = $pdo->prepare("SELECT id FROM eval_categories WHERE id = ?");
                 $check->execute([$category_id]);
@@ -214,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update display_order for each skill
                 $stmt = $pdo->prepare("UPDATE eval_skills SET display_order = ? WHERE id = ? AND category_id = ?");
                 foreach ($order_data as $item) {
-                    $stmt->execute([$item['display_order'], $item['skill_id'], $category_id]);
+                    $stmt->execute([intval($item['display_order']), intval($item['skill_id']), $category_id]);
                 }
                 
                 echo json_encode([
