@@ -81,6 +81,29 @@ CREATE TABLE IF NOT EXISTS `team_roster` (
     UNIQUE KEY `unique_team_athlete` (`team_id`, `athlete_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Player positions (standardized position categories)
+CREATE TABLE IF NOT EXISTS `player_positions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `abbreviation` VARCHAR(10) DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
+    `position_type` ENUM('forward', 'defense', 'goalie') DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `unique_position_name` (`name`),
+    INDEX `idx_position_type` (`position_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default hockey positions
+INSERT INTO `player_positions` (`name`, `abbreviation`, `description`, `position_type`) VALUES
+('Left Wing', 'LW', 'Left wing forward position', 'forward'),
+('Center', 'C', 'Center forward position', 'forward'),
+('Right Wing', 'RW', 'Right wing forward position', 'forward'),
+('Left Defense', 'LD', 'Left side defenseman', 'defense'),
+('Right Defense', 'RD', 'Right side defenseman', 'defense'),
+('Goalie', 'G', 'Goaltender position', 'goalie')
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+
 -- Locations
 CREATE TABLE IF NOT EXISTS `locations` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

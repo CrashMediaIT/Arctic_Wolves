@@ -405,13 +405,71 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
 }
 
 // === POSITIONS MANAGEMENT ===
-// Note: No positions table exists yet. For now, we'll store positions as a simple lookup table.
-// A proper implementation would require creating a player_positions table first.
+// Manages player positions (Forward, Defense, Goalie variations)
 if ($action == 'create_position') {
-    // TODO: This requires creating a player_positions table in the database schema
-    // For now, return an error message indicating this feature needs database setup
-    error_log("Create position attempted but player_positions table does not exist");
-    header("Location: dashboard.php?page=admin_categories&status=error&message=positions_table_missing");
+    $name = $_POST['name'] ?? '';
+    $abbreviation = $_POST['abbreviation'] ?? '';
+    $description = $_POST['description'] ?? '';
+    $position_type = $_POST['position_type'] ?? null;
+    
+    if (empty($name)) {
+        header("Location: dashboard.php?page=admin_categories&status=error&message=position_name_required");
+        exit();
+    }
+    
+    try {
+        $stmt = $pdo->prepare("INSERT INTO player_positions (name, abbreviation, description, position_type) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$name, $abbreviation, $description, $position_type]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=success&message=position_created");
+    } catch (PDOException $e) {
+        error_log("Error creating position: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error&message=position_creation_failed");
+    }
+    exit();
+}
+
+if ($action == 'update_position') {
+    $id = $_POST['id'] ?? 0;
+    $name = $_POST['name'] ?? '';
+    $abbreviation = $_POST['abbreviation'] ?? '';
+    $description = $_POST['description'] ?? '';
+    $position_type = $_POST['position_type'] ?? null;
+    
+    if (empty($name) || empty($id)) {
+        header("Location: dashboard.php?page=admin_categories&status=error&message=invalid_data");
+        exit();
+    }
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE player_positions SET name = ?, abbreviation = ?, description = ?, position_type = ? WHERE id = ?");
+        $stmt->execute([$name, $abbreviation, $description, $position_type, $id]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=success&message=position_updated");
+    } catch (PDOException $e) {
+        error_log("Error updating position: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error&message=position_update_failed");
+    }
+    exit();
+}
+
+if ($action == 'delete_position') {
+    $id = $_POST['id'] ?? 0;
+    
+    if (empty($id)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid position ID']);
+        exit();
+    }
+    
+    try {
+        $stmt = $pdo->prepare("DELETE FROM player_positions WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        echo json_encode(['success' => true, 'message' => 'Position deleted successfully']);
+    } catch (PDOException $e) {
+        error_log("Error deleting position: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to delete position']);
+    }
     exit();
 }
 

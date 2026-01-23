@@ -11,6 +11,7 @@
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.6 | January 23, 2026 | Added player_positions table to database schema. Implemented complete CRUD handlers for player positions in process_admin_action.php (create_position, update_position, delete_position). Updated admin_categories.php with position management UI and JavaScript handlers. |
 | 1.5 | January 23, 2026 | Added MODULE 9 (Category Management) to process_admin_action.php. Documented new backend handlers for skills (eval_skills), drill types (drill_categories), and equipment management. Updated admin_categories.php to display dynamic database content. |
 | 1.4 | January 23, 2026 | Added process_audit_logs_export.php to process handlers. Documented new export functionality for audit logs. |
 | 1.3 | January 23, 2026 | Documented JavaScript function export pattern. Added detail on IIFE dual export strategy (namespace + global) for js/app.js. Included best practices for inline onclick handlers vs programmatic calls. Addresses modal close button pattern issue. |
