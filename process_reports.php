@@ -29,20 +29,20 @@ if (!in_array($user_role, ['coach', 'coach_plus', 'admin', 'team_coach'])) {
 $action = $_POST['action'] ?? '';
 
 try {
-    if ($action === 'generate') {
+    if ($action === 'generate' || $action === 'generate_report') {
         generateReport();
-    } elseif ($action === 'delete') {
+    } elseif ($action === 'delete' || $action === 'delete_report') {
         deleteReport();
     } elseif ($action === 'delete_schedule' || $action === 'schedule_delete') {
         deleteSchedule();
     } elseif ($action === 'toggle_schedule' || $action === 'schedule_toggle') {
         toggleSchedule();
-    } elseif ($action === 'schedule_create') {
+    } elseif ($action === 'schedule_create' || $action === 'create_schedule') {
         createSchedule();
-    } elseif ($action === 'schedule_update') {
+    } elseif ($action === 'schedule_update' || $action === 'update_schedule') {
         updateSchedule();
     } else {
-        throw new Exception('Invalid action');
+        throw new Exception('Invalid action: ' . htmlspecialchars($action));
     }
 } catch (Exception $e) {
     http_response_code(400);
