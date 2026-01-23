@@ -1,4 +1,59 @@
 <!-- Admin Evaluation Framework View -->
+<?php
+// Fetch categories and skills from database
+try {
+    // Get all categories and their skills in a single query to avoid N+1 problem
+    $stmt = $pdo->prepare("
+        SELECT 
+            c.id as category_id,
+            c.name as category_name,
+            c.description as category_description,
+            c.display_order as category_order,
+            s.id as skill_id,
+            s.name as skill_name,
+            s.description as skill_description,
+            s.display_order as skill_order
+        FROM eval_categories c
+        LEFT JOIN eval_skills s ON c.id = s.category_id
+        ORDER BY c.display_order ASC, c.id ASC, s.display_order ASC, s.id ASC
+    ");
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Group results by category
+    $categories = [];
+    $skillsByCategory = [];
+    
+    foreach ($rows as $row) {
+        $catId = $row['category_id'];
+        
+        // Add category if not already added
+        if (!isset($categories[$catId])) {
+            $categories[$catId] = [
+                'id' => $row['category_id'],
+                'name' => $row['category_name'],
+                'description' => $row['category_description'],
+                'display_order' => $row['category_order']
+            ];
+            $skillsByCategory[$catId] = [];
+        }
+        
+        // Add skill if exists
+        if ($row['skill_id']) {
+            $skillsByCategory[$catId][] = [
+                'id' => $row['skill_id'],
+                'name' => $row['skill_name'],
+                'description' => $row['skill_description'],
+                'display_order' => $row['skill_order']
+            ];
+        }
+    }
+} catch (Exception $e) {
+    $categories = [];
+    $skillsByCategory = [];
+}
+?>
+
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-clipboard-check"></i> Evaluation Framework
@@ -15,96 +70,53 @@
         </div>
         <div class="card-body">
             <div class="framework-tree">
-                <!-- Skating Category -->
-                <div class="framework-category">
-                    <div class="category-header">
-                        <div class="category-title">
-                            <i class="fas fa-skating"></i>
-                            <h4>Skating</h4>
-                            <span class="criteria-count">8 criteria</span>
-                        </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Add Criteria"><i class="fas fa-plus"></i></button>
-                            <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
-                        </div>
+                <?php if (empty($categories)): ?>
+                    <div class="empty-state">
+                        <i class="fas fa-clipboard-check" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
+                        <p>No evaluation categories yet. Click "Add Evaluation Category" to get started.</p>
                     </div>
-                    <div class="criteria-list">
-                        <div class="criteria-item">
-                            <div class="criteria-handle"><i class="fas fa-grip-vertical"></i></div>
-                            <div class="criteria-details">
-                                <span class="criteria-name">Forward Stride</span>
-                                <span class="criteria-weight">Weight: 15%</span>
+                <?php else: ?>
+                    <?php foreach ($categories as $category): ?>
+                        <!-- Category -->
+                        <div class="framework-category" data-category-id="<?php echo $category['id']; ?>">
+                            <div class="category-header">
+                                <div class="category-title">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    <h4><?php echo htmlspecialchars($category['name']); ?></h4>
+                                    <span class="criteria-count"><?php echo count($skillsByCategory[$category['id']] ?? []); ?> criteria</span>
+                                </div>
+                                <div class="category-actions">
+                                    <button class="btn-icon" title="Add Criteria" data-action="add-skill" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-plus"></i></button>
+                                    <button class="btn-icon" title="Edit" data-action="edit-category" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-icon" title="Delete" data-action="delete-category" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-trash"></i></button>
+                                </div>
                             </div>
-                            <div class="criteria-actions">
-                                <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                        <div class="criteria-item">
-                            <div class="criteria-handle"><i class="fas fa-grip-vertical"></i></div>
-                            <div class="criteria-details">
-                                <span class="criteria-name">Crossovers</span>
-                                <span class="criteria-weight">Weight: 12%</span>
-                            </div>
-                            <div class="criteria-actions">
-                                <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                        <div class="criteria-item">
-                            <div class="criteria-handle"><i class="fas fa-grip-vertical"></i></div>
-                            <div class="criteria-details">
-                                <span class="criteria-name">Edge Work</span>
-                                <span class="criteria-weight">Weight: 10%</span>
-                            </div>
-                            <div class="criteria-actions">
-                                <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Shooting Category -->
-                <div class="framework-category">
-                    <div class="category-header">
-                        <div class="category-title">
-                            <i class="fas fa-hockey-puck"></i>
-                            <h4>Shooting</h4>
-                            <span class="criteria-count">5 criteria</span>
-                        </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Add Criteria"><i class="fas fa-plus"></i></button>
-                            <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>
-                    <div class="criteria-list">
-                        <div class="criteria-item">
-                            <div class="criteria-handle"><i class="fas fa-grip-vertical"></i></div>
-                            <div class="criteria-details">
-                                <span class="criteria-name">Wrist Shot Accuracy</span>
-                                <span class="criteria-weight">Weight: 20%</span>
-                            </div>
-                            <div class="criteria-actions">
-                                <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                            <div class="criteria-list">
+                                <?php 
+                                $skills = $skillsByCategory[$category['id']] ?? [];
+                                if (empty($skills)): 
+                                ?>
+                                    <div class="empty-criteria">
+                                        <p style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">No criteria in this category yet.</p>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($skills as $skill): ?>
+                                        <div class="criteria-item" data-skill-id="<?php echo $skill['id']; ?>">
+                                            <div class="criteria-handle"><i class="fas fa-grip-vertical"></i></div>
+                                            <div class="criteria-details">
+                                                <span class="criteria-name"><?php echo htmlspecialchars($skill['name']); ?></span>
+                                            </div>
+                                            <div class="criteria-actions">
+                                                <button class="btn-icon" title="Edit" data-action="edit-skill" data-skill-id="<?php echo $skill['id']; ?>"><i class="fas fa-edit"></i></button>
+                                                <button class="btn-icon" title="Delete" data-action="delete-skill" data-skill-id="<?php echo $skill['id']; ?>"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
                         </div>
-                        <div class="criteria-item">
-                            <div class="criteria-handle"><i class="fas fa-grip-vertical"></i></div>
-                            <div class="criteria-details">
-                                <span class="criteria-name">Shot Release Speed</span>
-                                <span class="criteria-weight">Weight: 15%</span>
-                            </div>
-                            <div class="criteria-actions">
-                                <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -279,6 +291,50 @@
     background: var(--bg-card);
     border-radius: 4px;
 }
+
+/* Drag and Drop Styles */
+.sortable-ghost {
+    opacity: 0.4;
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.sortable-drag {
+    opacity: 0.8;
+    cursor: grabbing !important;
+}
+
+.criteria-item {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.criteria-item.sortable-chosen {
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+    transform: scale(1.02);
+}
+
+.framework-category {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.framework-category.sortable-chosen {
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+    transform: scale(1.01);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+}
+
+.empty-state i {
+    display: block;
+    margin: 0 auto 16px;
+}
+
+.empty-state p {
+    margin: 0;
+}
 </style>
 
 <!-- Add Evaluation Category Modal -->
@@ -417,3 +473,11 @@
         </form>
     </div>
 </div>
+
+<!-- Include SortableJS library for drag-and-drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" 
+        integrity="sha256-ipiJrswvAR4VAx/th+6zWsdeYmVae0iJuiR+6OqHJHQ=" 
+        crossorigin="anonymous"></script>
+
+<!-- Include Evaluation Framework JavaScript -->
+<script src="js/eval_framework.js"></script>

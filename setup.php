@@ -60,6 +60,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $schema = file_get_contents(__DIR__ . '/database_schema.sql');
             $pdo->exec($schema);
             
+            // Run migrations for existing installations
+            // Use try-catch approach for portability
+            try {
+                // Try to add display_order column to eval_categories
+                $pdo->exec("ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description");
+            } catch (PDOException $e) {
+                // Column might already exist, which is fine
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    // Some other error occurred, but don't fail setup
+                }
+            }
+            
+            try {
+                // Try to add display_order column to eval_skills
+                $pdo->exec("ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description");
+            } catch (PDOException $e) {
+                // Column might already exist, which is fine
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    // Some other error occurred, but don't fail setup
+                }
+            }
+            
             header("Location: setup.php?step=2");
             exit();
         } catch (PDOException $e) {

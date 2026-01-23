@@ -563,6 +563,7 @@ CREATE TABLE IF NOT EXISTS `eval_categories` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `description` TEXT DEFAULT NULL,
+    `display_order` INT DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -572,6 +573,7 @@ CREATE TABLE IF NOT EXISTS `eval_skills` (
     `category_id` INT NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT DEFAULT NULL,
+    `display_order` INT DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`category_id`) REFERENCES `eval_categories`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

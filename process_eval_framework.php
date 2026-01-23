@@ -96,16 +96,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
                 
             case 'reorder_categories':
-                // Note: display_order column doesn't exist in schema
-                // This feature requires schema modification
-                throw new Exception('Reorder feature requires display_order column');
+                $order_data = json_decode($_POST['order'], true);
+                
+                if (!is_array($order_data)) {
+                    throw new Exception('Invalid order data');
+                }
+                
+                // Validate array structure
+                foreach ($order_data as $item) {
+                    if (!isset($item['category_id']) || !isset($item['display_order'])) {
+                        throw new Exception('Invalid order data structure');
+                    }
+                    if (!is_numeric($item['category_id']) || !is_numeric($item['display_order'])) {
+                        throw new Exception('Invalid order data types');
+                    }
+                }
+                
+                // Update display_order for each category
+                $stmt = $pdo->prepare("UPDATE eval_categories SET display_order = ? WHERE id = ?");
+                foreach ($order_data as $item) {
+                    $stmt->execute([intval($item['display_order']), intval($item['category_id'])]);
+                }
+                
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Category order updated successfully'
+                ]);
                 break;
                 
             case 'create_skill':
                 $category_id = intval($_POST['category_id']);
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description']);
-                $criteria = trim($_POST['criteria'] ?? '');
                 
                 if (empty($name) || empty($description)) {
                     throw new Exception('Skill name and description are required');
@@ -118,8 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid category');
                 }
                 
-                // Note: display_order, is_active, and criteria columns don't exist in schema
-                // Removing these references per governance: fix code to match schema
                 $stmt = $pdo->prepare("
                     INSERT INTO eval_skills (category_id, name, description, created_at)
                     VALUES (?, ?, ?, NOW())
@@ -138,7 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $category_id = intval($_POST['category_id']);
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description']);
-                $criteria = trim($_POST['criteria'] ?? '');
                 
                 if (empty($name) || empty($description)) {
                     throw new Exception('Skill name and description are required');
@@ -153,10 +172,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt = $pdo->prepare("
                     UPDATE eval_skills
-                    SET category_id = ?, name = ?, description = ?, criteria = ?
+                    SET category_id = ?, name = ?, description = ?
                     WHERE id = ?
                 ");
-                $stmt->execute([$category_id, $name, $description, $criteria, $skill_id]);
+                $stmt->execute([$category_id, $name, $description, $skill_id]);
                 
                 echo json_encode([
                     'success' => true,
@@ -184,9 +203,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
                 
             case 'reorder_skills':
-                // Note: display_order column doesn't exist in schema
-                // This feature requires schema modification
-                throw new Exception('Reorder feature requires display_order column');
+                $category_id = intval($_POST['category_id']);
+                $order_data = json_decode($_POST['order'], true);
+                
+                if (!is_array($order_data)) {
+                    throw new Exception('Invalid order data');
+                }
+                
+                // Validate array structure
+                foreach ($order_data as $item) {
+                    if (!isset($item['skill_id']) || !isset($item['display_order'])) {
+                        throw new Exception('Invalid order data structure');
+                    }
+                    if (!is_numeric($item['skill_id']) || !is_numeric($item['display_order'])) {
+                        throw new Exception('Invalid order data types');
+                    }
+                }
+                
+                // Verify category exists
+                $check = $pdo->prepare("SELECT id FROM eval_categories WHERE id = ?");
+                $check->execute([$category_id]);
+                if (!$check->fetch()) {
+                    throw new Exception('Invalid category');
+                }
+                
+                // Update display_order for each skill
+                $stmt = $pdo->prepare("UPDATE eval_skills SET display_order = ? WHERE id = ? AND category_id = ?");
+                foreach ($order_data as $item) {
+                    $stmt->execute([intval($item['display_order']), intval($item['skill_id']), $category_id]);
+                }
+                
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Skill order updated successfully'
+                ]);
                 break;
                 
             case 'toggle_active':
