@@ -1,7 +1,8 @@
 # Arctic Wolves - Issues Tracker
 
 **Created:** January 22, 2026  
-**Version:** 1.0  
+**Last Updated:** January 23, 2026  
+**Version:** 1.1  
 **Purpose:** Track bugs, issues, and feature improvements requiring multiple revisions
 
 ---
@@ -16,10 +17,48 @@
 5. **Re-run Tests** - Verify fixes don't break other features
 
 ### Status Indicators:
-- `[ ]` - Not Started
-- `[~]` - In Progress
-- `[x]` - Completed
-- `[!]` - Blocked/Needs Discussion
+- `[ ]` - Not Started (not yet analyzed or worked on)
+- `[~]` - In Progress (actively being worked on)
+- `[x]` - Completed (verified as working)
+- `[?]` - Needs Verification (code exists, needs browser testing)
+- `[!]` - Not Implemented (requires new backend development)
+
+---
+
+## Current Status Summary
+
+**Total Issues:** 79
+
+### By Status:
+- **Completed:** 16 issues (P0: 6, P1: 10)
+- **In Progress:** 1 issue (P1: 1 - Booking page)
+- **Needs Verification:** 7 issues (P1: 7 - code complete, needs browser testing)
+- **Not Implemented:** 5 issues (P1: 5 - categories management backend missing)
+- **Not Started:** 50 issues (awaiting analysis or fixes)
+
+### By Priority:
+- **P0 (Critical):** 6 completed, 0 remaining
+- **P1 (High):** 10 completed, 1 in progress, 7 needs verification, 5 not implemented, ~20 not started
+- **P2 (Medium):** 0 completed, ~30 not started
+- **P3 (Low):** 0 completed, ~5 not started
+
+### Verification Needed (Browser Testing):
+These issues have complete code implementations but need browser testing:
+1. Upcoming Sessions Missing List/Calendar Views
+2. Drill Review Shows Nothing
+3. Missing Upload Tab (implemented as sub-tab)
+4. Coaches Review Shows Nothing
+5. Create Drill Doesn't Show Drawer
+6. Import Drill Shows Nothing
+7. Mileage Report Doesn't Show
+
+### Not Implemented (Requires Development):
+These are placeholder UIs without backend functionality:
+1. Add Skill Creates Then Crashes to Home
+2. Skill Edit and Delete Don't Work
+3. Add Type Creates Then Crashes to Home (Drill Types)
+4. Add Position Creates Then Crashes to Home
+5. Add Equipment Creates Then Crashes to Home
 
 ---
 
