@@ -536,6 +536,76 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'equipment
     exit();
 }
 
+// =========================================================
+// MODULE: PRODUCTION MODE - DEMO DATA MANAGEMENT
+// =========================================================
+
+// Get count of demo data records
+if ($action == 'get_demo_count') {
+    try {
+        $total = 0;
+        
+        // Get all tables
+        $stmt = $pdo->query("SHOW TABLES");
+        $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($tables as $table) {
+            try {
+                // Try to count demo records in this table
+                $count_stmt = $pdo->query("SELECT COUNT(*) FROM `$table` WHERE is_demo = 1");
+                $count = $count_stmt->fetchColumn();
+                $total += $count;
+            } catch (PDOException $e) {
+                // Table might not have is_demo column, skip it
+                continue;
+            }
+        }
+        
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'count' => $total]);
+        exit();
+        
+    } catch (PDOException $e) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit();
+    }
+}
+
+// Cleanup all demo data
+if ($action == 'cleanup_demo_data') {
+    try {
+        require_once __DIR__ . '/demo_data_seeder.php';
+        
+        $seeder = new DemoDataSeeder($pdo);
+        $deleted_count = $seeder->cleanupDemoData();
+        
+        // Log the action
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, details, ip_address, created_at) VALUES (?, 'production_mode_activated', ?, ?, NOW())");
+        $stmt->execute([
+            $_SESSION['user_id'],
+            "Removed $deleted_count demo records",
+            $_SERVER['REMOTE_ADDR']
+        ]);
+        
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true, 
+            'deleted_count' => $deleted_count,
+            'message' => 'Demo data successfully removed'
+        ]);
+        exit();
+        
+    } catch (Exception $e) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false, 
+            'message' => $e->getMessage()
+        ]);
+        exit();
+    }
+}
+
 // Fallback
 header("Location: dashboard.php");
 exit();
