@@ -64,7 +64,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
     <!-- Filter and Actions Bar -->
     <div class="action-bar">
         <form method="GET" action="" class="filter-group">
-            <input type="hidden" name="page" value="coach_roster">
+            <input type="hidden" name="page" value="roster">
             <input type="text" name="search" class="form-input-small" placeholder="Search athletes..." value="<?= htmlspecialchars($search) ?>" data-action="search-debounce">
             <select name="program" class="form-input-small" data-action="auto-submit">
                 <option value="all">All Programs</option>

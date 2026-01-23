@@ -66,7 +66,7 @@ try {
     <!-- Filter and Actions -->
     <div class="action-bar">
         <form method="GET" action="" class="filter-group" style="display: flex; gap: 10px; flex: 1;">
-            <input type="hidden" name="page" value="admin_users">
+            <input type="hidden" name="page" value="all_users">
             <input type="text" name="search" class="form-input search-input" placeholder="Search users..." 
                    value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
             <select name="role" class="form-select" id="roleFilter">
