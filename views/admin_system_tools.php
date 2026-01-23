@@ -48,6 +48,10 @@ try {
                 data-tab="production" onclick="switchToolTab('production')">
             <i class="fas fa-rocket"></i> Production Mode
         </button>
+        <button class="tab-btn <?php echo $activeTab === 'validator' ? 'active' : ''; ?>" 
+                data-tab="validator" onclick="window.location.href='system_health_validator.php'">
+            <i class="fas fa-heartbeat"></i> Health Check
+        </button>
     </div>
 
     <!-- Settings Tab -->
