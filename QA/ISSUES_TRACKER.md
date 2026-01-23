@@ -112,7 +112,7 @@
 #### P1 - [x] Strength & Conditioning Shows Nothing
 - **Status:** COMPLETED (January 23, 2026)
 - **Issue:** Should show "No plans currently" with option to contact coach
-- **Files Affected:** `views/health_workouts.php`
+- **Files Affected:** `views/health_workouts.php` (Note: health.php parent includes this as "Strength & Conditioning" tab)
 - **Fix Verified:**
   - Empty state already properly implemented (lines 118-122)
   - Shows icon, title "No Workout Plan Currently Assigned", descriptive text
@@ -711,7 +711,7 @@
 **In Progress:** 0  
 **Not Started:** 73  
 **Blocked:** 0
-**Needs Verification:** ~30 (many reported issues may already be fixed)
+**Needs Verification:** 25-30 estimated (icons, modals, tabs, forms - browser testing required)
 
 **Latest Update:** January 23, 2026
 - ✅ **Phase 1 Complete**: Routing table audit and expansion (Pattern 1)
