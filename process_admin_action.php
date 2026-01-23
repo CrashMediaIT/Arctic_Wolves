@@ -235,6 +235,54 @@ if ($action == 'create_user') {
     exit();
 }
 
+if ($action == 'export') {
+    try {
+        // Fetch all users
+        $stmt = $pdo->prepare("
+            SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.role, 
+                   u.is_verified, u.created_at,
+                   COUNT(DISTINCT s.id) as session_count
+            FROM users u
+            LEFT JOIN sessions s ON u.id = s.coach_id
+            GROUP BY u.id
+            ORDER BY u.created_at DESC
+        ");
+        $stmt->execute();
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Set CSV headers
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="users_export_' . date('Y-m-d') . '.csv"');
+        
+        $output = fopen('php://output', 'w');
+        
+        // Write headers
+        fputcsv($output, ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Status', 'Sessions', 'Created']);
+        
+        // Write data
+        foreach ($users as $user) {
+            fputcsv($output, [
+                $user['id'],
+                $user['first_name'],
+                $user['last_name'],
+                $user['email'],
+                $user['phone'] ?? '',
+                ucfirst($user['role']),
+                $user['is_verified'] ? 'Active' : 'Inactive',
+                $user['session_count'],
+                date('Y-m-d', strtotime($user['created_at']))
+            ]);
+        }
+        
+        fclose($output);
+        exit();
+    } catch (PDOException $e) {
+        error_log("Export users error: " . $e->getMessage());
+        header("Location: dashboard.php?page=all_users&status=export_error");
+        exit();
+    }
+}
+
 // Fallback
 header("Location: dashboard.php");
 exit();

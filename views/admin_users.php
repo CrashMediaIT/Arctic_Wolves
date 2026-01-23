@@ -94,7 +94,7 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-users"></i> All Users (<?php echo $total_users; ?>)</h3>
-            <form method="POST" action="process_users.php" style="display: inline;">
+            <form method="POST" action="process_admin_action.php" style="display: inline;">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                 <input type="hidden" name="action" value="export">
                 <button type="submit" class="btn btn-secondary">
