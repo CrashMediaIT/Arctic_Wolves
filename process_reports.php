@@ -658,8 +658,8 @@ function createSchedule() {
     
     $stmt = $pdo->prepare("
         INSERT INTO report_schedules 
-        (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, created_at, report_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+        (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, report_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
     
     $stmt->execute([
