@@ -93,13 +93,51 @@ $allowed_pages = [
     // Administration (Admin)
     'all_users'               => 'views/admin_users.php',
     'categories'              => 'views/admin_categories.php',
+    'admin_age_skill'         => 'views/admin_age_skill.php',
     'eval_framework'          => 'views/admin_eval_framework.php',
     'system_notification'     => 'views/admin_notifications.php',
     'audit_log'               => 'views/admin_audit_log.php',
     'cron_jobs'               => 'views/admin_cron_jobs.php',
     'system_tools'            => 'views/admin_system_tools.php',
+    'admin_settings'          => 'views/admin_settings.php',
+    'admin_database_tools'    => 'views/admin_database_tools.php',
+    'admin_database_backup'   => 'views/admin_database_backup.php',
+    'admin_database_restore'  => 'views/admin_database_restore.php',
+    'admin_system_check'      => 'views/admin_system_check.php',
+    'admin_permissions'       => 'views/admin_permissions.php',
+    'admin_locations'         => 'views/admin_locations.php',
+    'admin_team_coaches'      => 'views/admin_team_coaches.php',
     
-    // Additional views
+    // Athlete/Coach Views
+    'athlete_evaluations'     => 'views/athlete_evaluations.php',
+    'athlete_goals'           => 'views/athlete_goals.php',
+    'coach_evaluations'       => 'views/coach_evaluations.php',
+    'coach_goals'             => 'views/coach_goals.php',
+    'manage_athletes'         => 'views/manage_athletes.php',
+    'athletes'                => 'views/athletes.php',
+    
+    // Evaluations
+    'evaluations_goals'       => 'views/evaluations_goals.php',
+    'evaluations_skills'      => 'views/evaluations_skills.php',
+    
+    // Notifications
+    'notifications'           => 'views/notifications.php',
+    
+    // Reports
+    'reports_athlete'         => 'views/reports_athlete.php',
+    'reports_income'          => 'views/reports_income.php',
+    
+    // Sessions
+    'create_session'          => 'views/create_session.php',
+    'session_history'         => 'views/session_history.php',
+    'session_detail'          => 'views/session_detail.php',
+    
+    // Other
+    'workouts'                => 'views/workouts.php',
+    'testing'                 => 'views/testing.php',
+    'parent_home'             => 'views/parent_home.php',
+    
+    // Profile and Settings
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php'
 ];
