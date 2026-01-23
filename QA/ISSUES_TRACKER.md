@@ -543,13 +543,13 @@ These are placeholder UIs without backend functionality:
 #### P2 - [ ] Skills, Drill Types, Positions, Equipment Should Be Tabs
 - **Status:** Not Started
 - **Issue:** Currently buttons - should be tabs per style guide
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
 #### P2 - [ ] Add Skill Button Missing Icon
 - **Status:** Not Started
 - **Issue:** Button needs Font Awesome icon
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
 #### P1 - [!] Add Skill Creates Then Crashes to Home
@@ -576,7 +576,7 @@ These are placeholder UIs without backend functionality:
 #### P2 - [ ] Add Type Button Missing Icon
 - **Status:** Not Started
 - **Issue:** Button needs Font Awesome icon (Drill Types tab)
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
 #### P1 - [!] Add Type Creates Then Crashes to Home
@@ -592,7 +592,7 @@ These are placeholder UIs without backend functionality:
 #### P2 - [ ] Add Position Button Missing Icon
 - **Status:** Not Started
 - **Issue:** Button needs Font Awesome icon
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
 #### P1 - [!] Add Position Creates Then Crashes to Home
@@ -608,13 +608,13 @@ These are placeholder UIs without backend functionality:
 #### P2 - [ ] Add Equipment Button Missing Icon
 - **Status:** Not Started
 - **Issue:** Button needs Font Awesome icon
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
 #### P1 - [ ] Add Equipment Can't Cancel
 - **Status:** Not Started
 - **Issue:** X and Cancel buttons don't work
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
 #### P1 - [!] Add Equipment Creates Then Crashes to Home
