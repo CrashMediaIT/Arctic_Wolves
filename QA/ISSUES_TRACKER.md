@@ -71,8 +71,8 @@
 
 ### 3. Sessions - Upcoming Sessions Issues
 
-#### P1 - [ ] Upcoming Sessions Missing List and Calendar Views
-- **Status:** Not Started
+#### P1 - [?] Upcoming Sessions Missing List and Calendar Views
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** No sessions display in list or calendar view
 - **Details:**
   - If no sessions, should show "You don't have any upcoming sessions"
@@ -81,29 +81,56 @@
 - **Files Affected:**
   - `views/sessions_upcoming.php`
   - `js/calendar.js`
-- **Notes:**
+- **Verification Results (January 23, 2026):**
+  - ✅ List view implemented (lines 169-212)
+  - ✅ Calendar view implemented (lines 137-167)
+  - ✅ View toggle buttons present (lines 123-130)
+  - ✅ Filter controls for timeframe (lines 106-111)
+  - ✅ Empty state with proper messaging (lines 207-210)
+  - ✅ calendar.js exists with full implementation
+- **Notes:** Code appears complete. Browser testing needed to verify functionality.
 
 ---
 
 ### 4. Video Issues
 
-#### P1 - [ ] Drill Review Shows Nothing
-- **Status:** Not Started
+#### P1 - [?] Drill Review Shows Nothing
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Drill Review tab doesn't show any content
 - **Files Affected:** `views/video_drill_review.php`
-- **Notes:**
+- **Verification Results (January 23, 2026):**
+  - ✅ Database query implemented (lines 8-48)
+  - ✅ Filter controls present (lines 66-84)
+  - ✅ Video grid with sections (Pending, Reviewed)
+  - ✅ Empty state with proper messaging (lines 196-201)
+  - ✅ Video modal for viewing (lines 206-228)
+  - ✅ Routing exists: 'drill_review' => 'views/video.php' in dashboard.php
+- **Notes:** Code appears complete with proper empty state. Shows "No drill videos available yet." when no data. Browser testing needed.
 
-#### P1 - [ ] Missing Upload Tab
-- **Status:** Not Started
+#### P1 - [?] Missing Upload Tab
+- **Status:** Needs Verification (Implemented as Sub-Tab)
 - **Issue:** Third tab for upload is missing
-- **Files Affected:** `views/video.php`
-- **Notes:**
+- **Files Affected:** `views/video.php`, `views/video_coach_reviews.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ Upload functionality exists in video_coach_reviews.php
+  - ✅ Implemented as SUB-TAB within Coaches Reviews (line 73-75)
+  - ✅ Three sub-tabs: Pending | Reviewed | Upload
+  - ✅ Upload form with file upload area (lines 208-285)
+  - ✅ Badge indicator "[Upload]" shown for coaches (video.php line 19)
+- **Notes:** Upload is implemented as a sub-tab within Coaches Reviews, not as a main tab. Browser testing needed to verify tab switching works.
 
-#### P1 - [ ] Coaches Review Shows Nothing
-- **Status:** Not Started
+#### P1 - [?] Coaches Review Shows Nothing
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Nothing shows in coaches review
 - **Files Affected:** `views/video_coach_reviews.php`
-- **Notes:**
+- **Verification Results (January 23, 2026):**
+  - ✅ Database query implemented (lines 18-53)
+  - ✅ Filter controls for athlete and period (lines 79-97)
+  - ✅ Three sub-tabs: Pending, Reviewed, Upload (lines 67-76)
+  - ✅ Video sections with cards (lines 103-205)
+  - ✅ Upload form for coaches (lines 208-285)
+  - ✅ Routing exists: 'coaches_reviews' => 'views/video.php' in dashboard.php
+- **Notes:** Code appears complete. Browser testing needed to verify functionality and data display.
 
 ---
 
@@ -143,19 +170,29 @@
   - Includes CTA button "Create Your First Drill" with proper navigation
 - **Notes:** Completed - proper empty state with action button
 
-#### P1 - [ ] Create Drill Doesn't Show Drawer
-- **Status:** Not Started
+#### P1 - [?] Create Drill Doesn't Show Drawer
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Should show drill drawer app that was built
 - **Files Affected:** 
   - `views/drills.php`
-  - Modal/drawer component
-- **Notes:**
+  - `views/drills_create.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ Create Drill tab exists in drills.php (line 16-17)
+  - ✅ drills_create.php file exists
+  - ✅ Routing exists: 'create_drill' => 'views/drills.php' in dashboard.php
+  - ✅ Tab navigation implemented with proper data attributes
+- **Notes:** Code structure is in place. Browser testing needed to verify drawer/modal functionality.
 
-#### P1 - [ ] Import Drill Shows Nothing
-- **Status:** Not Started
+#### P1 - [?] Import Drill Shows Nothing
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Import drill function doesn't work
-- **Files Affected:** `process_drills.php`
-- **Notes:**
+- **Files Affected:** `process_drills.php`, `views/drills_import.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ Import Drill tab exists in drills.php (line 19-20)
+  - ✅ drills_import.php file exists (11,376 bytes)
+  - ✅ Routing exists: 'import_drill' => 'views/drills.php' in dashboard.php
+  - ✅ Tab navigation implemented
+- **Notes:** Import page file exists. Browser testing needed to verify import functionality and form.
 
 ---
 
@@ -197,11 +234,17 @@
 
 ### 9. Travel Issues
 
-#### P1 - [ ] Mileage Report Doesn't Show
-- **Status:** Not Started
+#### P1 - [?] Mileage Report Doesn't Show
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Travel page doesn't show mileage report
-- **Files Affected:** `views/travel.php`
-- **Notes:**
+- **Files Affected:** `views/travel.php`, `views/travel_mileage.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ Mileage query implemented (lines 28-40 in travel_mileage.php)
+  - ✅ Summary cards showing total miles, amount, trips (lines 67-95)
+  - ✅ Add mileage form present (line 98+)
+  - ✅ Filter controls for time periods (month, 3months, 6months, year)
+  - ✅ Routing exists: 'travel' => 'views/travel.php', 'mileage' => 'views/travel.php' in dashboard.php
+- **Notes:** Code appears complete with summary and entry list. Browser testing needed to verify data display.
 
 ---
 
