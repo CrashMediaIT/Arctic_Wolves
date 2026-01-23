@@ -106,7 +106,7 @@ function generateReport() {
         
         $stmt = $pdo->prepare("
             INSERT INTO report_schedules (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, report_name)
-            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $user_id,
@@ -115,6 +115,7 @@ function generateReport() {
             $frequency,
             $email_recipients,
             $next_run,
+            1,
             $report_type . ' Report'
         ]);
     }
