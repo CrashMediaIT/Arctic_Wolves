@@ -833,7 +833,7 @@ These are placeholder UIs without backend functionality:
   - Button has proper attributes: `data-action="add"`, `data-modal="add-position-modal"` (line 91)
   - Handler does NOT exist in process_admin_action.php
   - Positions tab shows placeholder text (line 94)
-- **Database Table:** NO positions or player_positions table EXISTS ❌
+- **Database Table:** NO positions or player_positions table exist ❌
 - **Implementation Required:**
   1. CREATE NEW TABLE `player_positions`:
      - Columns: id, name, abbreviation, description, position_type (forward/defense/goalie), created_at
