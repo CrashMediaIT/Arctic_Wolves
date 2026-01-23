@@ -337,11 +337,16 @@
 - **Files Affected:** `views/products.php`
 - **Notes:**
 
-#### P1 - [ ] Create Package Kicks Back to Home
-- **Status:** Not Started
+#### P1 - [x] Create Package Kicks Back to Home
+- **Status:** COMPLETED (January 23, 2026)
 - **Issue:** Form submit redirects to home instead of staying on page
 - **Files Affected:** `process_packages.php`
-- **Notes:**
+- **Root Cause:** Incorrect route name in redirects (admin_packages vs products)
+- **Fix Applied:**
+  - Changed all redirects from `admin_packages` to `products` (5 instances)
+  - Now redirects to correct page after create/update/delete operations
+  - Also fixed Create Discount redirect in same file
+- **Notes:** Routing table in dashboard.php uses 'products', not 'admin_packages'
 
 #### P2 - [ ] Add Discount Button Missing Icon
 - **Status:** Not Started
@@ -356,11 +361,12 @@
 - **Files Affected:** `process_packages.php`
 - **Notes:**
 
-#### P1 - [ ] Create Discount Kicks Back to Home
-- **Status:** Not Started
+#### P1 - [x] Create Discount Kicks Back to Home
+- **Status:** COMPLETED (January 23, 2026)
 - **Issue:** Form submit redirects to home
 - **Files Affected:** `process_packages.php`
-- **Notes:**
+- **Fix Applied:** Same fix as Create Package - changed admin_packages to products route
+- **Notes:** Fixed as part of comprehensive process_packages.php routing fix
 
 ---
 
@@ -684,13 +690,15 @@
 **Medium (P2):** 19  
 **Low (P3):** 0
 
-**Completed:** 8 (P0: 6, P1: 2, P2: 0)  
+**Completed:** 10 (P0: 6, P1: 4, P2: 0)  
 **In Progress:** 0  
-**Not Started:** 79  
+**Not Started:** 77  
 **Blocked:** 0
 
 **Latest Update:** January 23, 2026
 - ✅ Fixed Add Athlete button in coach_roster.php (P1 issue)
+- ✅ Fixed Create Package redirect in process_packages.php (P1 issue)
+- ✅ Fixed Create Discount redirect in process_packages.php (P1 issue)
 - ✅ Verified modal close handlers are working correctly in multiple views
 - 📋 Many reported modal issues appear to be already fixed
 - ✅ All 6 P0 critical database schema issues RESOLVED
