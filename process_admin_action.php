@@ -412,6 +412,11 @@ if ($action == 'create_position') {
     $description = $_POST['description'] ?? '';
     $position_type = $_POST['position_type'] ?? null;
     
+    // Convert empty string to null for position_type
+    if ($position_type === '') {
+        $position_type = null;
+    }
+    
     if (empty($name)) {
         header("Location: dashboard.php?page=admin_categories&status=error&message=position_name_required");
         exit();
@@ -435,6 +440,11 @@ if ($action == 'update_position') {
     $abbreviation = $_POST['abbreviation'] ?? '';
     $description = $_POST['description'] ?? '';
     $position_type = $_POST['position_type'] ?? null;
+    
+    // Convert empty string to null for position_type
+    if ($position_type === '') {
+        $position_type = null;
+    }
     
     if (empty($name) || empty($id)) {
         header("Location: dashboard.php?page=admin_categories&status=error&message=invalid_data");

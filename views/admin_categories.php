@@ -142,8 +142,23 @@
                             <?php endif; ?>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $position['id'] ?>" data-type="position"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $position['id'] ?>" data-type="position" data-name="<?= htmlspecialchars($position['name']) ?>"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" 
+                                    data-action="edit" 
+                                    data-id="<?= $position['id'] ?>" 
+                                    data-type="position"
+                                    data-name="<?= htmlspecialchars($position['name']) ?>"
+                                    data-abbreviation="<?= htmlspecialchars($position['abbreviation']) ?>"
+                                    data-description="<?= htmlspecialchars($position['description']) ?>"
+                                    data-position-type="<?= htmlspecialchars($position['position_type']) ?>">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon" title="Delete" 
+                                    data-action="delete" 
+                                    data-id="<?= $position['id'] ?>" 
+                                    data-type="position" 
+                                    data-name="<?= htmlspecialchars($position['name']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                     <?php 
@@ -474,15 +489,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const type = this.getAttribute('data-type');
             
             if (type === 'position') {
-                // Fetch position data and populate edit modal
-                const item = this.closest('.category-item');
-                const name = item.querySelector('h4').textContent.trim().split('(')[0].trim();
-                const description = item.querySelector('p').textContent;
+                // Get position data from data attributes
+                const name = this.getAttribute('data-name');
+                const abbreviation = this.getAttribute('data-abbreviation') || '';
+                const description = this.getAttribute('data-description') || '';
+                const positionType = this.getAttribute('data-position-type') || '';
                 
-                // Simple approach: populate from DOM
+                // Populate edit modal
                 document.getElementById('edit-position-id').value = id;
                 document.getElementById('edit-position-name').value = name;
-                document.getElementById('edit-position-description').value = description !== 'No description' ? description : '';
+                document.getElementById('edit-position-abbreviation').value = abbreviation;
+                document.getElementById('edit-position-description').value = description;
+                document.getElementById('edit-position-type').value = positionType;
                 
                 // Show modal
                 document.getElementById('edit-position-modal').style.display = 'block';
@@ -499,13 +517,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (type === 'position') {
                 if (confirm(`Are you sure you want to delete the position "${name}"?`)) {
+                    // Get CSRF token from hidden input in the page
+                    const csrfInput = document.querySelector('input[name="csrf_token"]');
+                    const csrfToken = csrfInput ? csrfInput.value : '';
+                    
                     // Send delete request
                     fetch('process_admin_action.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
                         },
-                        body: `action=delete_position&id=${id}&<?php echo csrfTokenInput(); ?>`
+                        body: `action=delete_position&id=${id}&csrf_token=${csrfToken}`
                     })
                     .then(response => response.json())
                     .then(data => {
