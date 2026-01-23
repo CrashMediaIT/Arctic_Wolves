@@ -14,7 +14,7 @@ if ($action == 'delete') {
     // Note: Foreign keys in 'bookings' should be set to ON DELETE CASCADE
     // If not, you'd delete bookings first: $pdo->prepare("DELETE FROM bookings WHERE session_id=?")->execute([$id]);
     $pdo->prepare("DELETE FROM sessions WHERE id = ?")->execute([$id]);
-    header("Location: dashboard.php?page=schedule&status=deleted");
+    header("Location: dashboard.php?page=session_history&status=deleted");
     exit();
 }
 
@@ -38,7 +38,7 @@ if ($action == 'update') {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$type, $title, $date, $time, $plan, $locName, $city, $id]);
         
-        header("Location: dashboard.php?page=schedule&status=updated");
+        header("Location: dashboard.php?page=session_history&status=updated");
         exit();
     } catch (PDOException $e) {
         die("Error updating session: " . $e->getMessage());

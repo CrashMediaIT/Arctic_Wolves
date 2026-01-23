@@ -37,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$type, $age_group, $title, $desc, $plan, $date, $time, $capacity, $coaches, $arena, $city, $country]);
 
-        header("Location: dashboard.php?page=manage_sessions&status=created");
+        header("Location: dashboard.php?page=session_history&status=created");
         exit();
     } catch (PDOException $e) {
         die("Error: " . $e->getMessage());

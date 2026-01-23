@@ -404,7 +404,7 @@ $csrf_token = generateCsrfToken();
 <!-- Filters -->
 <div class="filters-container">
     <form method="GET" action="">
-        <input type="hidden" name="page" value="admin_audit_logs">
+        <input type="hidden" name="page" value="audit_log">
         <div class="filters-grid">
             <div class="filter-group">
                 <label>Table</label>

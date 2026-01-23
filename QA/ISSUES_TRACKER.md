@@ -298,13 +298,17 @@
 
 ### 14. Expenses Issues
 
-#### P1 - [ ] Add Expense Button Kicks Back to Home
-- **Status:** Not Started
+#### P1 - [x] Add Expense Button Kicks Back to Home
+- **Status:** COMPLETED (January 23, 2026)
 - **Issue:** Clicking add expense redirects to home page
 - **Files Affected:** 
-  - `views/expenses.php`
-  - Button missing proper `data-action` attributes
-- **Notes:**
+  - `process_expenses.php` (routing fix)
+- **Root Cause:** Incorrect route name in redirects (`accounting_expenses` vs `expenses`)
+- **Fix Applied:**
+  - Changed 3 redirect instances from `accounting_expenses` to `expenses`
+  - Route `expenses` maps to `views/accounting_expenses.php` in dashboard.php
+  - Same pattern as previously fixed package redirect issue
+- **Notes:** Completed - expenses now stay on correct page after create/update/delete
 
 #### P1 - [ ] Choose File and Take Photo Don't Work
 - **Status:** Not Started
@@ -415,11 +419,16 @@
 
 ### 17. All Users Issues
 
-#### P1 - [ ] Filter Button Reloads to Home
-- **Status:** Not Started
+#### P1 - [x] Filter Button Reloads to Home
+- **Status:** COMPLETED (January 23, 2026)
 - **Issue:** Filter button reloads page and redirects to home
 - **Files Affected:** `views/admin_users.php`
-- **Notes:**
+- **Root Cause:** Incorrect page parameter value (`admin_users` vs `all_users`)
+- **Fix Applied:**
+  - Changed hidden input from `admin_users` to `all_users` (correct route)
+  - Route `all_users` maps to `views/admin_users.php` in dashboard.php
+  - Similar fixes applied to admin_audit_logs.php and coach_roster.php
+- **Notes:** Completed - filter forms now stay on correct page
 
 #### P1 - [ ] Cannot Search by Username
 - **Status:** Not Started
@@ -707,13 +716,28 @@
 **Medium (P2):** 19  
 **Low (P3):** 0
 
-**Completed:** 14 (P0: 6, P1: 8, P2: 0)  
+**Completed:** 16 (P0: 6, P1: 10, P2: 0)  
 **In Progress:** 0  
-**Not Started:** 73  
+**Not Started:** 71  
 **Blocked:** 0
 **Needs Verification:** 25-30 estimated (icons, modals, tabs, forms - browser testing required)
 
-**Latest Update:** January 23, 2026
+**Latest Update:** January 23, 2026 (Evening Session - Continued)
+- ✅ **Form Filter Fixes**: Fixed incorrect page parameter values in filter forms
+  - Fixed admin_users.php: Changed `admin_users` → `all_users`
+  - Fixed admin_audit_logs.php: Changed `admin_audit_logs` → `audit_log`
+  - Fixed coach_roster.php: Changed `coach_roster` → `roster`
+  - **Impact**: Resolves P1 "Filter Button Reloads to Home" and similar issues
+- ✅ **Button Navigation Fixes**: Fixed drills_create.php action buttons
+  - Cancel button changed from non-functional button to link navigation
+  - Create Drill button triggers form submission
+- ✅ **Routing Fixes - Process Files**: Fixed incorrect route names in process file redirects
+  - Fixed process_expenses.php: Changed `accounting_expenses` → `expenses` (3 redirects)
+  - Fixed process_create_session.php: Changed `manage_sessions` → `session_history`
+  - Fixed process_edit_session.php: Changed `schedule` → `session_history` (2 redirects)
+  - Added 3 missing admin routes: admin_discounts, admin_session_types, admin_email_reports
+  - **Impact**: Resolves P1 "Add Expense Button Kicks Back to Home" and related issues
+  - **Pattern**: Same root cause as previously fixed package redirect issue
 - ✅ **Phase 1 Complete**: Routing table audit and expansion (Pattern 1)
   - Added 28 missing routes to dashboard.php $allowed_pages array
   - Categories: 9 admin/system pages, 6 athlete/coach views, 2 evaluations, 1 notifications, 2 reports, 3 sessions, 3 other pages

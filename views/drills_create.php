@@ -136,10 +136,10 @@
 
     <!-- Form Actions -->
     <div class="form-actions-bar">
-        <button class="btn-secondary"><i class="fas fa-times"></i> Cancel</button>
+        <a href="?page=drill_library" class="btn-secondary"><i class="fas fa-times"></i> Cancel</a>
         <div class="action-group">
-            <button class="btn-secondary"><i class="fas fa-save"></i> Save Draft</button>
-            <button class="btn-primary"><i class="fas fa-check"></i> Create Drill</button>
+            <button type="button" class="btn-secondary" disabled title="Save draft feature coming soon"><i class="fas fa-save"></i> Save Draft</button>
+            <button type="button" class="btn-primary" onclick="document.querySelector('.drill-form').submit()"><i class="fas fa-check"></i> Create Drill</button>
         </div>
     </div>
 </div>
