@@ -1,7 +1,7 @@
 # Crash Hockey - Style Guide
 
-**Version**: 1.0  
-**Last Updated**: January 21, 2026
+**Version**: 1.1  
+**Last Updated**: January 23, 2026
 
 ---
 
