@@ -590,7 +590,7 @@ function deleteSchedule() {
     
     $schedule_id = $_POST['schedule_id'] ?? 0;
     
-    $stmt = $pdo->prepare("DELETE FROM report_schedules WHERE id = ? AND user_id = ?");
+    $stmt = $pdo->prepare("DELETE FROM report_schedules WHERE id = ? AND created_by = ?");
     $stmt->execute([$schedule_id, $user_id]);
     
     echo json_encode(['success' => true]);
@@ -603,7 +603,7 @@ function toggleSchedule() {
     $schedule_id = $_POST['schedule_id'] ?? 0;
     $status = $_POST['is_active'] ?? $_POST['status'] ?? 1;
     
-    $stmt = $pdo->prepare("UPDATE report_schedules SET is_active = ? WHERE id = ? AND user_id = ?");
+    $stmt = $pdo->prepare("UPDATE report_schedules SET is_active = ? WHERE id = ? AND created_by = ?");
     $stmt->execute([$status, $schedule_id, $user_id]);
     
     echo json_encode(['success' => true, 'message' => 'Schedule updated successfully']);
@@ -657,8 +657,8 @@ function createSchedule() {
     
     $stmt = $pdo->prepare("
         INSERT INTO report_schedules 
-        (user_id, report_type, parameters, frequency, format, email_recipients, next_run, is_active, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, created_at, report_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)
     ");
     
     $stmt->execute([
@@ -666,10 +666,10 @@ function createSchedule() {
         $report_type,
         $parameters,
         $frequency,
-        $format,
         $email_recipients,
         $next_run->format('Y-m-d H:i:s'),
-        $is_active
+        $is_active,
+        $report_type . ' Report'
     ]);
     
     echo json_encode(['success' => true, 'message' => 'Schedule created successfully']);
@@ -701,7 +701,7 @@ function updateSchedule() {
     }
     
     // Verify ownership
-    $check = $pdo->prepare("SELECT id FROM report_schedules WHERE id = ? AND user_id = ?");
+    $check = $pdo->prepare("SELECT id FROM report_schedules WHERE id = ? AND created_by = ?");
     $check->execute([$schedule_id, $user_id]);
     if (!$check->fetch()) {
         throw new Exception('Schedule not found or access denied');
@@ -725,16 +725,15 @@ function updateSchedule() {
     
     $stmt = $pdo->prepare("
         UPDATE report_schedules 
-        SET report_type = ?, parameters = ?, frequency = ?, format = ?, 
-            email_recipients = ?, next_run = ?, is_active = ?
-        WHERE id = ? AND user_id = ?
+        SET report_type = ?, parameters = ?, schedule_frequency = ?, 
+            recipients = ?, next_run = ?, is_active = ?
+        WHERE id = ? AND created_by = ?
     ");
     
     $stmt->execute([
         $report_type,
         $parameters,
         $frequency,
-        $format,
         $email_recipients,
         $next_run->format('Y-m-d H:i:s'),
         $is_active,
