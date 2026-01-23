@@ -36,6 +36,8 @@ if ($action == 'add_type') {
 }
 if ($action == 'create_session_type') {
     // Full session type creation with pricing and details
+    // Note: max_participants and is_active from form are ignored as they don't exist in session_types schema
+    // max_participants is a per-session field (in sessions table), not a session type field
     $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
     $stmt->execute([
         trim($_POST['name']), 

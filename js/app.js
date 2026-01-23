@@ -1106,6 +1106,37 @@
     }
 
     // Run initialization when DOM is ready
+    // ===================================================================
+    // FILE UPLOAD HELPER
+    // ===================================================================
+    
+    /**
+     * Update file label with selected filename
+     * @param {string} labelId - ID of the label element to update
+     * @param {HTMLInputElement} fileInput - The file input element
+     */
+    function updateFileLabel(labelId, fileInput) {
+        const label = document.getElementById(labelId);
+        if (!label) return;
+        
+        if (fileInput.files && fileInput.files[0]) {
+            // Truncate long filenames
+            let filename = fileInput.files[0].name;
+            if (filename.length > 50) {
+                filename = filename.substring(0, 47) + '...';
+            }
+            label.textContent = filename;
+            label.style.color = '#10B981';
+        } else {
+            label.textContent = 'Drag & drop file or click to browse';
+            label.style.color = '';
+        }
+    }
+
+    // ===================================================================
+    // INITIALIZATION
+    // ===================================================================
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
@@ -1126,5 +1157,6 @@
     window.closeModal = closeModal;
     window.openModal = openModal;
     window.showToast = showToast;
+    window.updateFileLabel = updateFileLabel;
 
 })();

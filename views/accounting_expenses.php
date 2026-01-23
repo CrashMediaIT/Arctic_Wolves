@@ -58,7 +58,7 @@ $expenses = $pdo->query($expensesQuery);
                     <div class="file-upload-zone" data-upload="receipt">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p id="receiptFileLabel">Drag & drop file or click to browse</p>
-                        <input type="file" name="receipt_file" id="receiptFile" accept="image/*,application/pdf" capture="environment" style="display: none;" onchange="document.getElementById('receiptFileLabel').textContent = this.files[0] ? this.files[0].name : 'Drag & drop file or click to browse'; document.getElementById('receiptFileLabel').style.color = this.files[0] ? '#10B981' : '';">
+                        <input type="file" name="receipt_file" id="receiptFile" accept="image/*,application/pdf" capture="environment" style="display: none;" onchange="updateFileLabel('receiptFileLabel', this)">
                         <div class="upload-buttons">
                             <button type="button" class="btn-secondary" onclick="document.getElementById('receiptFile').click()">
                                 <i class="fas fa-folder-open"></i> Choose File
