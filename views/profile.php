@@ -67,7 +67,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
             </div>
             <div class="card-body">
                 <div class="profile-photo-section">
-                    <div class="profile-photo">
+                    <div class="profile-photo" onclick="document.getElementById('profilePhotoInput').click()" style="cursor: pointer;" title="Click to change profile photo">
                         <?php if (!empty($userData['profile_image'])): ?>
                             <img src="<?php echo htmlspecialchars($userData['profile_image']); ?>" alt="Profile">
                         <?php else: ?>
