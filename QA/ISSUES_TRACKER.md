@@ -30,17 +30,17 @@
 **Total Issues:** 79
 
 ### By Status:
-- **Completed:** 17 issues (P0: 6, P1: 11)
+- **Completed:** 17 issues (P0: 6, P1: 10, P2: 1)
 - **In Progress:** 0 issues
-- **Needs Verification:** 8 issues (P1: 8 - code complete, needs browser testing)
+- **Needs Verification:** 12 issues (P1: 11, P2: 1 - code complete, needs browser testing)
 - **Not Implemented:** 5 issues (P1: 5 - categories management backend missing)
-- **Not Started:** 49 issues (awaiting analysis or fixes)
+- **Not Started:** 45 issues (P1: 27, P2: 18)
 
 ### By Priority:
 - **P0 (Critical):** 6 completed, 0 remaining
-- **P1 (High):** 11 completed, 0 in progress, 8 needs verification, 5 not implemented, ~19 not started
-- **P2 (Medium):** 0 completed, ~30 not started
-- **P3 (Low):** 0 completed, ~5 not started
+- **P1 (High):** 10 completed, 0 in progress, 11 needs verification, 5 not implemented, 27 not started (53 total)
+- **P2 (Medium):** 1 completed, 1 needs verification, 18 not started (20 total)
+- **P3 (Low):** 0 total
 
 ### Verification Needed (Browser Testing):
 These issues have complete code implementations but need browser testing:
@@ -52,6 +52,10 @@ These issues have complete code implementations but need browser testing:
 6. Create Drill Doesn't Show Drawer
 7. Import Drill Shows Nothing
 8. Mileage Report Doesn't Show
+9. Create Invoice Cancel/X Buttons (closeModal now exposed globally)
+10. Add Line Item (function already implemented, needs testing)
+11. Cancel Button on Refund Modal (closeModal now exposed globally)
+12. Recent Reports Actions (backend handlers exist, needs testing)
 
 ### Not Implemented (Requires Development):
 These are placeholder UIs without backend functionality:
@@ -322,19 +326,36 @@ These are placeholder UIs without backend functionality:
 
 ### 11. Billing Dashboard Issues
 
-#### P1 - [ ] Create Invoice Cancel/X Buttons Don't Work
-- **Status:** Not Started
+#### P1 - [?] Create Invoice Cancel/X Buttons Don't Work
+- **Status:** Needs Verification (Fix Applied)
 - **Issue:** Cannot close create invoice modal - cancel and X buttons broken
 - **Files Affected:** 
-  - `views/billing_dashboard.php`
-  - Modal close handlers
-- **Notes:**
+  - `views/accounting_billing.php` (modal with closeModal calls)
+  - `js/app.js` (closeModal function)
+- **Root Cause:** closeModal function was inside IIFE and only exported to window.ArcticWolvesApp, not globally accessible to inline onclick handlers
+- **Fix Applied (January 23, 2026):**
+  - Exposed closeModal, openModal, and showToast functions globally in app.js
+  - Added `window.closeModal = closeModal` after ArcticWolvesApp export
+  - All onclick="closeModal(...)" handlers now have access to function
+- **Verification Results:**
+  - ✅ JS syntax check passed (node -c js/app.js)
+  - ✅ Functions now globally accessible
+  - ✅ Modal HTML structure correct
+  - 🔲 Needs browser testing to verify modal close behavior
+- **Notes:** Same fix applies to all modals using closeModal onclick handlers
 
-#### P1 - [ ] Add Line Item Doesn't Work
-- **Status:** Not Started
+#### P1 - [?] Add Line Item Doesn't Work
+- **Status:** Needs Verification (Already Implemented)
 - **Issue:** Cannot add line items to invoice
-- **Files Affected:** `process_admin_action.php` or invoice process file
-- **Notes:**
+- **Files Affected:** `views/accounting_billing.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ addLineItem() function exists in accounting_billing.php (line 366)
+  - ✅ Function properly creates new line item inputs
+  - ✅ Includes delete button for each line item
+  - ✅ calculateInvoiceTotal() function updates total automatically
+  - ✅ Event listeners attached to price/qty inputs
+  - 🔲 Needs browser testing to verify functionality
+- **Notes:** Function appears complete and properly implemented. Issue may already be resolved.
 
 #### P2 - [ ] Recent Receipts Timeline Options
 - **Status:** Not Started
@@ -360,11 +381,19 @@ These are placeholder UIs without backend functionality:
   - Form requires report type selection before submission
 - **Notes:** Completed - existing implementation is correct, error is user-flow related
 
-#### P1 - [ ] Recent Reports Actions Don't Work
-- **Status:** Not Started
+#### P1 - [?] Recent Reports Actions Don't Work
+- **Status:** Needs Verification (Backend Exists)
 - **Issue:** Download, View, Delete buttons don't work
-- **Files Affected:** `views/reports.php`
-- **Notes:**
+- **Files Affected:** `views/reports.php`, `process_reports.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ deleteReport() function exists in views/reports.php (line 569)
+  - ✅ Backend handler exists in process_reports.php (line 561)
+  - ✅ Function sends POST to process_reports.php with action=delete
+  - ✅ CSRF token included
+  - ✅ Download link uses direct href to file_path
+  - ✅ copyShareLink() function exists for share functionality
+  - 🔲 Needs browser testing to verify all actions work
+- **Notes:** All backend handlers properly implemented. Likely already working.
 
 #### P0 - [x] Create Schedule Throws Error
 - **Status:** COMPLETED (January 22, 2026)
@@ -377,21 +406,38 @@ These are placeholder UIs without backend functionality:
   - Frequency values now case-insensitive
 - **Notes:** Completed - more robust validation
 
-#### P1 - [ ] Active Schedules Actions Don't Work
-- **Status:** Not Started
+#### P1 - [?] Active Schedules Actions Don't Work
+- **Status:** Needs Verification (Backend Exists)
 - **Issue:** Edit, Pause, Delete don't work
-- **Files Affected:** `views/reports.php`
-- **Notes:**
+- **Files Affected:** `views/reports.php`, `process_reports.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ toggleSchedule() function exists in views/reports.php (line 605)
+  - ✅ deleteSchedule() function exists in views/reports.php (line 587)
+  - ✅ Backend toggleSchedule handler in process_reports.php (line 600)
+  - ✅ Backend deleteSchedule handler in process_reports.php (line 588)
+  - ✅ Functions send proper POST requests with action/schedule_id
+  - ✅ CSRF token included
+  - 🔲 Needs browser testing to verify pause/delete work
+- **Notes:** All backend handlers properly implemented. Likely already working.
 
 ---
 
 ### 13. Credit and Refunds Issues
 
-#### P1 - [ ] Cancel Button Doesn't Work on Refund Modal
-- **Status:** Not Started
+#### P1 - [?] Cancel Button Doesn't Work on Refund Modal
+- **Status:** Needs Verification (Fix Applied)
 - **Issue:** Issue refund button works, but cannot cancel (X and Cancel broken)
-- **Files Affected:** `views/credits_refunds.php`
-- **Notes:**
+- **Files Affected:** `views/accounting_credits.php`
+- **Root Cause:** Same as Create Invoice - closeModal not globally accessible
+- **Fix Applied (January 23, 2026):**
+  - closeModal now exposed globally via js/app.js fix
+  - Modal uses onclick="closeModal('issue-credit-refund-modal')"
+  - Both X button and Cancel button call closeModal
+- **Verification Results:**
+  - ✅ Same global function fix as invoice modal
+  - ✅ Modal HTML structure correct
+  - 🔲 Needs browser testing to verify
+- **Notes:** Fixed as part of comprehensive modal close button repair
 
 ---
 
