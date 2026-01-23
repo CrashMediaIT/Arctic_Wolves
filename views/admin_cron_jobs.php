@@ -270,6 +270,61 @@
     </div>
 </div>
 
+<!-- Edit Cron Job Modal -->
+<div id="edit-cron-job-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Cron Job</h2>
+            <button class="modal-close" onclick="closeModal('edit-cron-job-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_cron_jobs.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="id" id="edit-cron-job-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Job Name *</label>
+                    <input type="text" name="name" id="edit-cron-job-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-cron-job-description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Schedule *</label>
+                    <select name="schedule" id="edit-cron-job-schedule" class="form-input" required>
+                        <option value="">Select Schedule</option>
+                        <option value="*/5 * * * *">Every 5 minutes</option>
+                        <option value="*/15 * * * *">Every 15 minutes</option>
+                        <option value="*/30 * * * *">Every 30 minutes</option>
+                        <option value="0 * * * *">Every hour</option>
+                        <option value="0 0 * * *">Daily at midnight</option>
+                        <option value="0 8 * * *">Daily at 8:00 AM</option>
+                        <option value="0 0 * * 0">Weekly on Sunday</option>
+                        <option value="0 0 1 * *">Monthly on 1st</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" id="edit-cron-job-status" class="form-input">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-cron-job-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Cron Job</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const scheduleSelect = document.querySelector('select[name="schedule"]');

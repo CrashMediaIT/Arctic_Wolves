@@ -40,9 +40,9 @@ $filter_name = $_GET['filter_name'] ?? '';
 $query = "
     SELECT u.*, 
            (SELECT COUNT(*) FROM athlete_notes WHERE user_id = u.id) as note_count,
-           (SELECT COUNT(*) FROM athlete_teams at WHERE at.user_id = u.id AND at.is_current = 1) as current_teams,
+           (SELECT COUNT(*) FROM athlete_teams at WHERE at.athlete_id = u.id AND at.status = 'active') as current_teams,
            (SELECT COUNT(*) FROM bookings b INNER JOIN sessions s ON b.session_id = s.id WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id) AND b.status = 'paid' AND s.session_date <= CURDATE()) as sessions_attended,
-           (SELECT GROUP_CONCAT(at2.name SEPARATOR ', ') FROM athlete_teams at2 WHERE at2.user_id = u.id AND at2.is_current = 1) as team_names
+           (SELECT GROUP_CONCAT(t.name SEPARATOR ', ') FROM athlete_teams at2 INNER JOIN teams t ON at2.team_id = t.id WHERE at2.athlete_id = u.id AND at2.status = 'active') as team_names
     FROM users u
     WHERE u.assigned_coach_id = ? AND u.role = 'athlete'
 ";
@@ -51,7 +51,7 @@ $params = [$user_id];
 
 // Add filter conditions
 if (!empty($filter_team)) {
-    $query .= " AND EXISTS (SELECT 1 FROM athlete_teams at WHERE at.user_id = u.id AND at.id = ? AND at.is_current = 1)";
+    $query .= " AND EXISTS (SELECT 1 FROM athlete_teams at WHERE at.athlete_id = u.id AND at.team_id = ? AND at.status = 'active')";
     $params[] = $filter_team;
 }
 
@@ -77,7 +77,7 @@ $athletes_stmt->execute($params);
 $athletes = $athletes_stmt->fetchAll();
 
 // Get teams for filter dropdown
-$teams_stmt = $pdo->query("SELECT id, name FROM athlete_teams WHERE is_current = 1 ORDER BY name");
+$teams_stmt = $pdo->query("SELECT id, name FROM teams ORDER BY name");
 $teams = $teams_stmt->fetchAll();
 
 // Get age groups for filter dropdown
