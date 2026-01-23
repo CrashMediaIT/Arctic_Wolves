@@ -128,7 +128,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $category_id = intval($_POST['category_id']);
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description']);
-                $criteria = trim($_POST['criteria'] ?? '');
                 
                 if (empty($name) || empty($description)) {
                     throw new Exception('Skill name and description are required');
@@ -141,8 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Invalid category');
                 }
                 
-                // Note: display_order, is_active, and criteria columns don't exist in schema
-                // Removing these references per governance: fix code to match schema
                 $stmt = $pdo->prepare("
                     INSERT INTO eval_skills (category_id, name, description, created_at)
                     VALUES (?, ?, ?, NOW())
@@ -161,7 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $category_id = intval($_POST['category_id']);
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description']);
-                $criteria = trim($_POST['criteria'] ?? '');
                 
                 if (empty($name) || empty($description)) {
                     throw new Exception('Skill name and description are required');
@@ -176,10 +172,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt = $pdo->prepare("
                     UPDATE eval_skills
-                    SET category_id = ?, name = ?, description = ?, criteria = ?
+                    SET category_id = ?, name = ?, description = ?
                     WHERE id = ?
                 ");
-                $stmt->execute([$category_id, $name, $description, $criteria, $skill_id]);
+                $stmt->execute([$category_id, $name, $description, $skill_id]);
                 
                 echo json_encode([
                     'success' => true,

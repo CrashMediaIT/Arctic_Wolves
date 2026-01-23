@@ -85,7 +85,7 @@
             const skillId = item.dataset.skillId;
             if (skillId) {
                 order.push({
-                    skill_id: parseInt(skillId),
+                    skill_id: parseInt(skillId, 10),
                     display_order: index
                 });
             }
@@ -129,7 +129,7 @@
             const categoryId = category.dataset.categoryId;
             if (categoryId) {
                 order.push({
-                    category_id: parseInt(categoryId),
+                    category_id: parseInt(categoryId, 10),
                     display_order: index
                 });
             }

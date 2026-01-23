@@ -2,26 +2,51 @@
 <?php
 // Fetch categories and skills from database
 try {
-    // Get all categories ordered by display_order
+    // Get all categories and their skills in a single query to avoid N+1 problem
     $stmt = $pdo->prepare("
-        SELECT id, name, description, display_order
-        FROM eval_categories
-        ORDER BY display_order ASC, id ASC
+        SELECT 
+            c.id as category_id,
+            c.name as category_name,
+            c.description as category_description,
+            c.display_order as category_order,
+            s.id as skill_id,
+            s.name as skill_name,
+            s.description as skill_description,
+            s.display_order as skill_order
+        FROM eval_categories c
+        LEFT JOIN eval_skills s ON c.id = s.category_id
+        ORDER BY c.display_order ASC, c.id ASC, s.display_order ASC, s.id ASC
     ");
     $stmt->execute();
-    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get all skills grouped by category
+    // Group results by category
+    $categories = [];
     $skillsByCategory = [];
-    foreach ($categories as $category) {
-        $stmt = $pdo->prepare("
-            SELECT id, name, description, display_order
-            FROM eval_skills
-            WHERE category_id = ?
-            ORDER BY display_order ASC, id ASC
-        ");
-        $stmt->execute([$category['id']]);
-        $skillsByCategory[$category['id']] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($rows as $row) {
+        $catId = $row['category_id'];
+        
+        // Add category if not already added
+        if (!isset($categories[$catId])) {
+            $categories[$catId] = [
+                'id' => $row['category_id'],
+                'name' => $row['category_name'],
+                'description' => $row['category_description'],
+                'display_order' => $row['category_order']
+            ];
+            $skillsByCategory[$catId] = [];
+        }
+        
+        // Add skill if exists
+        if ($row['skill_id']) {
+            $skillsByCategory[$catId][] = [
+                'id' => $row['skill_id'],
+                'name' => $row['skill_name'],
+                'description' => $row['skill_description'],
+                'display_order' => $row['skill_order']
+            ];
+        }
     }
 } catch (Exception $e) {
     $categories = [];
@@ -450,7 +475,9 @@ try {
 </div>
 
 <!-- Include SortableJS library for drag-and-drop -->
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" 
+        integrity="sha256-ipiJrswvAR4VAx/th+6zWsdeYmVae0iJuiR+6OqHJHQ=" 
+        crossorigin="anonymous"></script>
 
 <!-- Include Evaluation Framework JavaScript -->
 <script src="js/eval_framework.js"></script>
