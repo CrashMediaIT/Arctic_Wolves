@@ -83,7 +83,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                 <option value="16-17" <?= $filter_age === '16-17' ? 'selected' : '' ?>>Under 18</option>
             </select>
         </form>
-        <button class="btn-primary" data-action="add-athlete"><i class="fas fa-user-plus"></i> Add Athlete</button>
+        <button class="btn-primary" data-action="add" data-modal="add-athlete-modal"><i class="fas fa-user-plus"></i> Add Athlete</button>
     </div>
 
     <!-- Athletes Table -->
