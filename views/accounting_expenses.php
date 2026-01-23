@@ -57,8 +57,8 @@ $expenses = $pdo->query($expensesQuery);
                     <label>Receipt/Invoice</label>
                     <div class="file-upload-zone" data-upload="receipt">
                         <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Drag & drop file or click to browse</p>
-                        <input type="file" name="receipt_file" id="receiptFile" accept="image/*,application/pdf" capture="environment" style="display: none;">
+                        <p id="receiptFileLabel">Drag & drop file or click to browse</p>
+                        <input type="file" name="receipt_file" id="receiptFile" accept="image/*,application/pdf" capture="environment" style="display: none;" onchange="document.getElementById('receiptFileLabel').textContent = this.files[0] ? this.files[0].name : 'Drag & drop file or click to browse'; document.getElementById('receiptFileLabel').style.color = this.files[0] ? '#10B981' : '';">
                         <div class="upload-buttons">
                             <button type="button" class="btn-secondary" onclick="document.getElementById('receiptFile').click()">
                                 <i class="fas fa-folder-open"></i> Choose File
@@ -90,12 +90,12 @@ $expenses = $pdo->query($expensesQuery);
                     <option>Last 3 Months</option>
                     <option>This Year</option>
                 </select>
-                <button class="btn-secondary"><i class="fas fa-file-export"></i> Export</button>
+                <button class="btn-secondary" data-action="export" data-table="expenses"><i class="fas fa-file-export"></i> Export</button>
             </div>
         </div>
         <div class="card-body">
             <div class="table-container">
-                <table class="data-table">
+                <table class="data-table" data-table="expenses">
                     <thead>
                         <tr>
                             <th>Date</th>

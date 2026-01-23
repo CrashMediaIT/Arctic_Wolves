@@ -34,6 +34,17 @@ if ($action == 'add_type') {
     $pdo->prepare("INSERT INTO session_types (name, description) VALUES (?, ?)")->execute([trim($_POST['name']), trim($_POST['desc'])]);
     header("Location: dashboard.php?page=admin_session_types&status=added"); exit();
 }
+if ($action == 'create_session_type') {
+    // Full session type creation with pricing and details
+    $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
+    $stmt->execute([
+        trim($_POST['name']), 
+        trim($_POST['description'] ?? ''),
+        floatval($_POST['price'] ?? 0),
+        intval($_POST['duration'] ?? 60)
+    ]);
+    header("Location: dashboard.php?page=accounting_products&status=added"); exit();
+}
 if ($action == 'delete_type') {
     $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$_POST['id']]);
     header("Location: dashboard.php?page=admin_session_types&status=deleted"); exit();
