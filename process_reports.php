@@ -105,17 +105,17 @@ function generateReport() {
         $next_run = calculateNextRun($frequency);
         
         $stmt = $pdo->prepare("
-            INSERT INTO report_schedules (user_id, report_type, parameters, frequency, format, email_recipients, next_run, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            INSERT INTO report_schedules (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, report_name)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
         ");
         $stmt->execute([
             $user_id,
             $report_type,
             json_encode($parameters),
             $frequency,
-            $format,
             $email_recipients,
-            $next_run
+            $next_run,
+            $report_type . ' Report'
         ]);
     }
     

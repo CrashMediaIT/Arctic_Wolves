@@ -10,6 +10,9 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 
+// Set security headers including CSP
+setSecurityHeaders();
+
 // Generate CSRF token for this session
 CSRFProtection::generateToken();
 generateCSRFToken();
