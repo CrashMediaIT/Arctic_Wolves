@@ -283,6 +283,186 @@ if ($action == 'export') {
     }
 }
 
+// =========================================================
+// MODULE 9: CATEGORY MANAGEMENT (Skills, Drill Types, Positions, Equipment)
+// =========================================================
+
+// === SKILLS MANAGEMENT ===
+if ($action == 'create_skill') {
+    try {
+        // Skills are evaluation skills tied to categories
+        // For simplicity, we'll use a default category or create general category
+        // Check if a general/uncategorized category exists
+        $stmt = $pdo->prepare("SELECT id FROM eval_categories WHERE name = 'General' LIMIT 1");
+        $stmt->execute();
+        $category = $stmt->fetch();
+        
+        if (!$category) {
+            // Create a General category if it doesn't exist
+            $stmt = $pdo->prepare("INSERT INTO eval_categories (name, description) VALUES ('General', 'General evaluation skills')");
+            $stmt->execute();
+            $category_id = $pdo->lastInsertId();
+        } else {
+            $category_id = $category['id'];
+        }
+        
+        // Now create the skill
+        $stmt = $pdo->prepare("INSERT INTO eval_skills (category_id, name, description) VALUES (?, ?, ?)");
+        $stmt->execute([
+            $category_id,
+            trim($_POST['name']),
+            trim($_POST['description'] ?? '')
+        ]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=skill_added");
+    } catch (PDOException $e) {
+        error_log("Create skill error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
+if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'skill') {
+    try {
+        $stmt = $pdo->prepare("UPDATE eval_skills SET name = ?, description = ? WHERE id = ?");
+        $stmt->execute([
+            trim($_POST['name']),
+            trim($_POST['description'] ?? ''),
+            intval($_POST['id'])
+        ]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=skill_updated");
+    } catch (PDOException $e) {
+        error_log("Edit skill error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
+if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'skill') {
+    try {
+        $stmt = $pdo->prepare("DELETE FROM eval_skills WHERE id = ?");
+        $stmt->execute([intval($_POST['id'])]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=skill_deleted");
+    } catch (PDOException $e) {
+        error_log("Delete skill error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
+// === DRILL TYPES MANAGEMENT ===
+if ($action == 'create_drill_type') {
+    try {
+        $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description) VALUES (?, ?)");
+        $stmt->execute([
+            trim($_POST['name']),
+            trim($_POST['description'] ?? '')
+        ]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=drill_type_added");
+    } catch (PDOException $e) {
+        error_log("Create drill type error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
+if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'drill_type') {
+    try {
+        $stmt = $pdo->prepare("UPDATE drill_categories SET name = ?, description = ? WHERE id = ?");
+        $stmt->execute([
+            trim($_POST['name']),
+            trim($_POST['description'] ?? ''),
+            intval($_POST['id'])
+        ]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=drill_type_updated");
+    } catch (PDOException $e) {
+        error_log("Edit drill type error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
+if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_type') {
+    try {
+        $stmt = $pdo->prepare("DELETE FROM drill_categories WHERE id = ?");
+        $stmt->execute([intval($_POST['id'])]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=drill_type_deleted");
+    } catch (PDOException $e) {
+        error_log("Delete drill type error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
+// === POSITIONS MANAGEMENT ===
+// Note: No positions table exists yet. For now, we'll store positions as a simple lookup table.
+// A proper implementation would require creating a player_positions table first.
+if ($action == 'create_position') {
+    // TODO: This requires creating a player_positions table in the database schema
+    // For now, return an error message indicating this feature needs database setup
+    error_log("Create position attempted but player_positions table does not exist");
+    header("Location: dashboard.php?page=admin_categories&status=error&message=positions_table_missing");
+    exit();
+}
+
+// === EQUIPMENT MANAGEMENT ===
+// Note: The equipment table is designed for inventory tracking, not category management
+// This might need clarification on whether we want equipment categories or equipment items
+if ($action == 'create_equipment') {
+    try {
+        // Using the equipment table for basic equipment type storage
+        // Setting default values for inventory fields
+        $stmt = $pdo->prepare("INSERT INTO equipment (name, equipment_type, quantity, notes) VALUES (?, ?, ?, ?)");
+        $stmt->execute([
+            trim($_POST['name']),
+            'category', // Mark this as a category type
+            0,  // No quantity for category items
+            trim($_POST['description'] ?? '')
+        ]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=equipment_added");
+    } catch (PDOException $e) {
+        error_log("Create equipment error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
+if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'equipment') {
+    try {
+        $stmt = $pdo->prepare("UPDATE equipment SET name = ?, notes = ? WHERE id = ?");
+        $stmt->execute([
+            trim($_POST['name']),
+            trim($_POST['description'] ?? ''),
+            intval($_POST['id'])
+        ]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=equipment_updated");
+    } catch (PDOException $e) {
+        error_log("Edit equipment error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
+if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'equipment') {
+    try {
+        $stmt = $pdo->prepare("DELETE FROM equipment WHERE id = ?");
+        $stmt->execute([intval($_POST['id'])]);
+        
+        header("Location: dashboard.php?page=admin_categories&status=equipment_deleted");
+    } catch (PDOException $e) {
+        error_log("Delete equipment error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_categories&status=error");
+    }
+    exit();
+}
+
 // Fallback
 header("Location: dashboard.php");
 exit();

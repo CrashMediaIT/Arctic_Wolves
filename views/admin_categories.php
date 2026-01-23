@@ -32,39 +32,38 @@
             </div>
             <div class="card-body">
                 <div class="categories-list">
+                    <?php
+                    // Fetch all skills from database
+                    $stmt = $pdo->prepare("SELECT es.id, es.name, es.description, ec.name as category_name 
+                                          FROM eval_skills es 
+                                          LEFT JOIN eval_categories ec ON es.category_id = ec.id 
+                                          ORDER BY es.created_at DESC");
+                    $stmt->execute();
+                    $skills = $stmt->fetchAll();
+                    
+                    if (count($skills) > 0):
+                        foreach ($skills as $skill):
+                    ?>
                     <div class="category-item">
-                        <div class="category-icon"><i class="fas fa-skating"></i></div>
+                        <div class="category-icon"><i class="fas fa-star"></i></div>
                         <div class="category-info">
-                            <h4>Skating</h4>
-                            <p>Speed, agility, edge work, transitions</p>
+                            <h4><?= htmlspecialchars($skill['name']) ?></h4>
+                            <p><?= htmlspecialchars($skill['description'] ?: 'No description') ?></p>
+                            <?php if ($skill['category_name']): ?>
+                            <small style="color: var(--text-dim);">Category: <?= htmlspecialchars($skill['category_name']) ?></small>
+                            <?php endif; ?>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="skill-1" data-type="skill"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="skill-1" data-type="skill" data-name="Skating"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $skill['id'] ?>" data-type="skill"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $skill['id'] ?>" data-type="skill" data-name="<?= htmlspecialchars($skill['name']) ?>"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                    <div class="category-item">
-                        <div class="category-icon"><i class="fas fa-hockey-puck"></i></div>
-                        <div class="category-info">
-                            <h4>Shooting</h4>
-                            <p>Wrist shot, slap shot, snapshot, accuracy</p>
-                        </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="skill-2" data-type="skill"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="skill-2" data-type="skill" data-name="Shooting"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>
-                    <div class="category-item">
-                        <div class="category-icon"><i class="fas fa-exchange-alt"></i></div>
-                        <div class="category-info">
-                            <h4>Passing</h4>
-                            <p>Tape to tape, saucer pass, breakout passes</p>
-                        </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="skill-3" data-type="skill"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="skill-3" data-type="skill" data-name="Passing"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>
+                    <?php 
+                        endforeach;
+                    else:
+                    ?>
+                    <p class="placeholder-text">No skills found. Click "Add Skill" to create your first skill.</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -78,7 +77,34 @@
                 <button class="btn-primary" data-action="add" data-modal="add-drill-type-modal"><i class="fas fa-plus"></i> Add Type</button>
             </div>
             <div class="card-body">
-                <p class="placeholder-text">Drill type categories will be managed here.</p>
+                <div class="categories-list">
+                    <?php
+                    // Fetch all drill categories from database
+                    $stmt = $pdo->prepare("SELECT id, name, description FROM drill_categories ORDER BY created_at DESC");
+                    $stmt->execute();
+                    $drill_types = $stmt->fetchAll();
+                    
+                    if (count($drill_types) > 0):
+                        foreach ($drill_types as $type):
+                    ?>
+                    <div class="category-item">
+                        <div class="category-icon"><i class="fas fa-hockey-puck"></i></div>
+                        <div class="category-info">
+                            <h4><?= htmlspecialchars($type['name']) ?></h4>
+                            <p><?= htmlspecialchars($type['description'] ?: 'No description') ?></p>
+                        </div>
+                        <div class="category-actions">
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $type['id'] ?>" data-type="drill_type"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $type['id'] ?>" data-type="drill_type" data-name="<?= htmlspecialchars($type['name']) ?>"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <?php 
+                        endforeach;
+                    else:
+                    ?>
+                    <p class="placeholder-text">No drill types found. Click "Add Type" to create your first drill type.</p>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -91,7 +117,13 @@
                 <button class="btn-primary" data-action="add" data-modal="add-position-modal"><i class="fas fa-plus"></i> Add Position</button>
             </div>
             <div class="card-body">
-                <p class="placeholder-text">Player position categories will be managed here.</p>
+                <div class="alert alert-warning" style="padding: 16px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; margin-bottom: 20px;">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <strong>Database Table Required:</strong> 
+                    The <code>player_positions</code> table does not exist in the database. 
+                    Position management requires database schema updates before this feature can be used.
+                </div>
+                <p class="placeholder-text">Position management will be available once the database schema is updated.</p>
             </div>
         </div>
     </div>
@@ -104,7 +136,34 @@
                 <button class="btn-primary" data-action="add" data-modal="add-equipment-modal"><i class="fas fa-plus"></i> Add Equipment</button>
             </div>
             <div class="card-body">
-                <p class="placeholder-text">Equipment type categories will be managed here.</p>
+                <div class="categories-list">
+                    <?php
+                    // Fetch equipment categories (marked with equipment_type = 'category')
+                    $stmt = $pdo->prepare("SELECT id, name, notes FROM equipment WHERE equipment_type = 'category' ORDER BY created_at DESC");
+                    $stmt->execute();
+                    $equipment_items = $stmt->fetchAll();
+                    
+                    if (count($equipment_items) > 0):
+                        foreach ($equipment_items as $item):
+                    ?>
+                    <div class="category-item">
+                        <div class="category-icon"><i class="fas fa-tools"></i></div>
+                        <div class="category-info">
+                            <h4><?= htmlspecialchars($item['name']) ?></h4>
+                            <p><?= htmlspecialchars($item['notes'] ?: 'No description') ?></p>
+                        </div>
+                        <div class="category-actions">
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $item['id'] ?>" data-type="equipment"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $item['id'] ?>" data-type="equipment" data-name="<?= htmlspecialchars($item['name']) ?>"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <?php 
+                        endforeach;
+                    else:
+                    ?>
+                    <p class="placeholder-text">No equipment types found. Click "Add Equipment" to create your first equipment type.</p>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
