@@ -29,9 +29,9 @@
                         <p class="cron-description">Sends reminder emails to athletes 24 hours before sessions</p>
                     </div>
                     <div class="cron-actions">
-                        <button class="btn-icon" title="Run Now"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Disable"><i class="fas fa-pause"></i></button>
+                        <button class="btn-icon" title="Run Now" data-action="run" data-id="1" onclick="runCronJob(1)"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit" data-id="1" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Disable" data-action="toggle" data-id="1" onclick="toggleCronJob(1)"><i class="fas fa-pause"></i></button>
                     </div>
                 </div>
 
@@ -49,9 +49,9 @@
                         <p class="cron-description">Creates daily database backups</p>
                     </div>
                     <div class="cron-actions">
-                        <button class="btn-icon" title="Run Now"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Disable"><i class="fas fa-pause"></i></button>
+                        <button class="btn-icon" title="Run Now" data-action="run" data-id="2" onclick="runCronJob(2)"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit" data-id="2" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Disable" data-action="toggle" data-id="2" onclick="toggleCronJob(2)"><i class="fas fa-pause"></i></button>
                     </div>
                 </div>
 
@@ -68,9 +68,9 @@
                         <p class="cron-description">Removes temporary files older than 7 days</p>
                     </div>
                     <div class="cron-actions">
-                        <button class="btn-icon" title="Enable"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Enable" data-action="toggle" data-id="3" onclick="toggleCronJob(3)"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Edit" data-action="edit" data-id="3" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete" data-id="3" onclick="deleteCronJob(3)"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>
@@ -285,4 +285,85 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function runCronJob(jobId) {
+    if (!confirm('Run this cron job now?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'run');
+    formData.append('job_id', jobId);
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    
+    fetch('process_cron_jobs.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Cron job executed successfully');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to run cron job'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while running the cron job');
+    });
+}
+
+function toggleCronJob(jobId) {
+    const formData = new FormData();
+    formData.append('action', 'toggle');
+    formData.append('job_id', jobId);
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    
+    fetch('process_cron_jobs.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to toggle cron job'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while toggling the cron job');
+    });
+}
+
+function deleteCronJob(jobId) {
+    if (!confirm('Are you sure you want to delete this cron job?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'delete');
+    formData.append('job_id', jobId);
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    
+    fetch('process_cron_jobs.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to delete cron job'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while deleting the cron job');
+    });
+}
 </script>
