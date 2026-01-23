@@ -88,17 +88,23 @@ These are placeholder UIs without backend functionality:
   - Private session booking form submitted to `process_booking.php` with `action="book_private_session"` (line 171)
   - NO HANDLER for `book_private_session` action in process_booking.php
 - **Solution Implemented:**
-  - Added handler for `book_private_session` action in process_booking.php (lines 33-113)
+  - Added handler for `book_private_session` action in process_booking.php (lines 33-128)
   - Handler creates new session record with provided details
   - Creates booking record and initiates Stripe checkout
-  - Properly handles session_date + session_time combination
-  - Uses session_type price and duration
+  - Properly validates date/time format using DateTime
+  - Sets booking status to 'pending' until payment confirmed
+  - Includes comprehensive error handling and validation
+- **Code Review Improvements Applied:**
+  - Added date/time format validation (YYYY-MM-DD, HH:MM)
+  - Used DateTime::createFromFormat() for safe date handling
+  - Fixed booking status to 'pending' (was incorrectly 'confirmed')
+  - Fixed logic flow to handle action-based routing correctly
 - **Files Fixed:** 
   - `views/home.php` ✅ Already working
   - `views/sessions_booking.php` ✅ UI Complete
-  - `process_booking.php` ✅ Handler implemented
+  - `process_booking.php` ✅ Handler implemented with validation
 - **Verification Date:** January 23, 2026
-- **Testing Notes:** Backend handler implemented. Needs browser testing to verify Stripe integration.
+- **Testing Notes:** Backend handler implemented with proper validation. Needs browser testing to verify Stripe integration.
 
 ---
 

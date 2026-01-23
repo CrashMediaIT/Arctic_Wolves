@@ -45,14 +45,28 @@ if ($action === 'book_private_session') {
             die("Missing required fields for private session booking.");
         }
         
+        // Validate date format (YYYY-MM-DD)
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $session_date)) {
+            die("Invalid date format. Expected YYYY-MM-DD.");
+        }
+        
+        // Validate time format (HH:MM)
+        if (!preg_match('/^\d{2}:\d{2}$/', $session_time)) {
+            die("Invalid time format. Expected HH:MM.");
+        }
+        
         // Get session type details for pricing
         $stmt = $pdo->prepare("SELECT * FROM session_types WHERE id = ?");
         $stmt->execute([$session_type_id]);
         $session_type = $stmt->fetch();
         if (!$session_type) { die("Session type not found."); }
         
-        // Combine date and time
+        // Combine date and time using proper date validation
         $session_datetime = $session_date . ' ' . $session_time . ':00';
+        $dt = DateTime::createFromFormat('Y-m-d H:i:s', $session_datetime);
+        if (!$dt || $dt->format('Y-m-d H:i:s') !== $session_datetime) {
+            die("Invalid date/time combination.");
+        }
         
         // Create the private session
         $stmt = $pdo->prepare("
@@ -86,7 +100,7 @@ if ($action === 'book_private_session') {
                     'unit_amount' => round($final_price * 100),
                     'product_data' => [
                         'name' => 'Private Session: ' . $session_type['name'],
-                        'description' => 'Private training session on ' . date('M d, Y', strtotime($session_date)),
+                        'description' => 'Private training session on ' . $dt->format('M d, Y'),
                     ],
                 ],
                 'quantity' => 1,
@@ -97,10 +111,11 @@ if ($action === 'book_private_session') {
             'client_reference_id' => $user_id,
         ]);
         
-        // Save pending booking
+        // Save booking with pending status until payment confirmed
+        // Note: payment_status='pending' until Stripe webhook confirms payment
         $stmt = $pdo->prepare("
             INSERT INTO bookings (session_id, user_id, amount, payment_status, status, notes) 
-            VALUES (?, ?, ?, 'pending', 'confirmed', ?)
+            VALUES (?, ?, ?, 'pending', 'pending', ?)
         ");
         $stmt->execute([$session_id, $user_id, $final_price, $notes]);
         
@@ -114,7 +129,7 @@ if ($action === 'book_private_session') {
     }
 }
 
-// 4. GET BOOKING DETAILS FOR EXISTING SESSION
+// 5. HANDLE EXISTING SESSION BOOKING
 $session_id = $_POST['session_id'] ?? null;
 if (!$session_id) {
     die("No session specified for booking.");
