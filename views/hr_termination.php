@@ -33,7 +33,7 @@ $terminations = $terminations_stmt->fetchAll();
             <h3><i class="fas fa-file-alt"></i> Termination Details</h3>
         </div>
         <div class="card-body">
-            <form class="termination-form" method="POST" action="process_coach_termination.php">
+            <form class="termination-form" method="POST" action="process_coach_termination.php" enctype="multipart/form-data">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create">
                 <div class="form-row">
@@ -125,8 +125,9 @@ $terminations = $terminations_stmt->fetchAll();
                     <div class="file-upload-zone">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Upload relevant documentation (resignation letter, termination notice, etc.)</p>
-                        <input type="file" multiple style="display: none;">
-                        <button type="button" class="btn-secondary">Choose Files</button>
+                        <input type="file" name="documents[]" id="terminationDocuments" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display: none;">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('terminationDocuments').click()">Choose Files</button>
+                        <span id="fileCount" style="margin-left: 10px; color: #10b981;"></span>
                     </div>
                 </div>
 
@@ -143,8 +144,8 @@ $terminations = $terminations_stmt->fetchAll();
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-action="cancel"><i class="fas fa-times"></i> Cancel</button>
-                    <button type="submit" class="btn-primary" data-action="process-termination"><i class="fas fa-check"></i> Process Termination</button>
+                    <button type="button" class="btn-secondary" onclick="location.reload()"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Process Termination</button>
                 </div>
             </form>
         </div>
@@ -253,3 +254,16 @@ $terminations = $terminations_stmt->fetchAll();
     gap: 12px;
 }
 </style>
+
+<script>
+// Show file count when files are selected
+document.getElementById('terminationDocuments').addEventListener('change', function(e) {
+    const fileCount = e.target.files.length;
+    const fileCountSpan = document.getElementById('fileCount');
+    if (fileCount > 0) {
+        fileCountSpan.textContent = fileCount + ' file(s) selected';
+    } else {
+        fileCountSpan.textContent = '';
+    }
+});
+</script>
