@@ -1122,4 +1122,9 @@
         exportTable
     };
 
+    // Also expose critical functions globally for inline onclick handlers
+    window.closeModal = closeModal;
+    window.openModal = openModal;
+    window.showToast = showToast;
+
 })();
