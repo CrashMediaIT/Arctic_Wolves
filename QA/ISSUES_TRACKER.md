@@ -167,7 +167,8 @@
   - Added proper `data-modal="add-athlete-modal"` attribute to button
   - Created complete Add Athlete modal with form
   - Included close handlers (X and Cancel buttons) per STYLE_GUIDE.md Pattern 3
-  - Form submits to process_manage_athletes.php with proper CSRF protection
+  - Form submits to process_create_athlete.php (supports both coach and admin roles)
+  - Uses proper field names (birth_date, position)
 - **Notes:** Button now properly opens modal for adding new athletes to roster
 
 #### P2 - [ ] My Athlete Header Has 2 Buttons Without Icons

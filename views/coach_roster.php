@@ -172,10 +172,8 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
             <h2 class="modal-title"><i class="fas fa-user-plus"></i> Add Athlete</h2>
             <button class="modal-close" onclick="closeModal('add-athlete-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <form method="POST" action="process_create_athlete.php">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="create_user">
-            <input type="hidden" name="role" value="athlete">
             
             <div class="modal-body">
                 <div class="form-row">
@@ -195,14 +193,21 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                     <input type="email" name="email" class="form-input" required>
                 </div>
                 
-                <div class="form-group">
-                    <label class="form-label">Date of Birth</label>
-                    <input type="date" name="date_of_birth" class="form-input" max="<?= date('Y-m-d') ?>">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Parent Email (for notifications)</label>
-                    <input type="email" name="parent_email" class="form-input">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="date" name="birth_date" class="form-input" max="<?= date('Y-m-d') ?>">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Position</label>
+                        <select name="position" class="form-input">
+                            <option value="">Select Position</option>
+                            <option value="Forward">Forward</option>
+                            <option value="Defense">Defense</option>
+                            <option value="Goalie">Goalie</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
