@@ -18,26 +18,26 @@ try {
     $filter_action = $_GET['action'] ?? '';
     $filter_user = $_GET['user'] ?? '';
     
-    // Build query
+    // Build query with proper parameter binding
     $where = [];
     $params = [];
     
-    if ($filter_table) {
+    if (!empty($filter_table)) {
         $where[] = "table_name = ?";
         $params[] = $filter_table;
     }
     
-    if ($filter_action) {
+    if (!empty($filter_action)) {
         $where[] = "action_type = ?";
         $params[] = $filter_action;
     }
     
-    if ($filter_user) {
+    if (!empty($filter_user)) {
         $where[] = "al.user_id = ?";
         $params[] = $filter_user;
     }
     
-    $where_clause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+    $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
     
     // Get audit logs
     $query = $pdo->prepare("

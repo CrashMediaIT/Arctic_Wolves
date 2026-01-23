@@ -286,6 +286,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Helper function to get CSRF token
+function getCsrfToken() {
+    return '<?= $_SESSION['csrf_token'] ?? '' ?>';
+}
+
 function runCronJob(jobId) {
     if (!confirm('Run this cron job now?')) {
         return;
@@ -294,7 +299,7 @@ function runCronJob(jobId) {
     const formData = new FormData();
     formData.append('action', 'run');
     formData.append('job_id', jobId);
-    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    formData.append('csrf_token', getCsrfToken());
     
     fetch('process_cron_jobs.php', {
         method: 'POST',
@@ -319,7 +324,7 @@ function toggleCronJob(jobId) {
     const formData = new FormData();
     formData.append('action', 'toggle');
     formData.append('job_id', jobId);
-    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    formData.append('csrf_token', getCsrfToken());
     
     fetch('process_cron_jobs.php', {
         method: 'POST',
@@ -347,7 +352,7 @@ function deleteCronJob(jobId) {
     const formData = new FormData();
     formData.append('action', 'delete');
     formData.append('job_id', jobId);
-    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    formData.append('csrf_token', getCsrfToken());
     
     fetch('process_cron_jobs.php', {
         method: 'POST',
