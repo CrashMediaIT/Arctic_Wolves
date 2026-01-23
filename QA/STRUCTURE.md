@@ -1,8 +1,19 @@
 # Arctic Wolves - Application Structure Document
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Created:** January 22, 2026  
+**Last Updated:** January 23, 2026  
 **Purpose:** Master layout of the entire Arctic Wolves application documenting navigation, dependencies, and file structure
+
+---
+
+## Recent Updates
+
+**Version 1.1 (January 23, 2026):**
+- Expanded routing table in dashboard.php from 46 to 74 routes
+- Added 28 new page routes across admin, athlete/coach, evaluation, notification, report, session, and other categories
+- This expansion resolves Pattern 1 issues where pages were redirecting to home due to missing routes
+- New routes enable proper navigation to: admin_age_skill, admin_settings, athlete_evaluations, coach_evaluations, manage_athletes, notifications, reports_athlete, session_history, workouts, testing, parent_home, and more
 
 ---
 

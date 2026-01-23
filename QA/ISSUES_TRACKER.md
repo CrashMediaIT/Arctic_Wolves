@@ -695,6 +695,7 @@
 **In Progress:** 0  
 **Not Started:** 77  
 **Blocked:** 0
+**Needs Verification:** ~30 (many reported issues may already be fixed)
 
 **Latest Update:** January 23, 2026
 - ✅ **Phase 1 Complete**: Routing table audit and expansion (Pattern 1)
@@ -702,6 +703,12 @@
   - Categories: 9 admin/system pages, 6 athlete/coach views, 2 evaluations, 1 notifications, 2 reports, 3 sessions, 3 other pages
   - Pages affected: admin_age_skill, admin_settings, athlete_evaluations, coach_evaluations, manage_athletes, notifications, reports_athlete, session_history, workouts, testing, and more
   - This resolves ~15 reported "redirect to home" issues across multiple sections
+- 📋 **Verification Needed**: Many reported issues appear already fixed:
+  - Icon issues (P2): All checked buttons already have Font Awesome icons
+  - Modal close handlers: Create Invoice, Refund, Session Type modals properly implemented
+  - Tab navigation: admin_settings.php, admin_categories.php have proper tab functions
+  - Forms: Most forms have correct action/method attributes
+  - Routing: New routes should fix many "kicks to home" issues
 - ✅ Fixed Add Athlete button in coach_roster.php (P1 issue)
   - Added modal with proper data attributes per STYLE_GUIDE.md
   - Form submits to process_create_athlete.php
