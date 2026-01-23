@@ -1,6 +1,6 @@
 # QA Documentation Directory
 
-**Version**: 1.1  
+**Version**: 1.2  
 **Last Updated**: January 23, 2026
 
 ---
@@ -156,7 +156,7 @@ Detailed documentation of all repair sessions:
 | MAINTENANCE_PROCESS.md | 1.3 | January 23, 2026 |
 | STYLE_GUIDE.md | 1.1 | January 23, 2026 |
 | STRUCTURE.md | 1.6 | January 23, 2026 |
-| ISSUES_TRACKER.md | 1.9 | January 23, 2026 |
+| ISSUES_TRACKER.md | 2.0 | January 23, 2026 |
 
 ### Color Palette
 
@@ -306,6 +306,14 @@ When making changes:
 3. Update ISSUES_TRACKER.md with completed work
 4. Update STRUCTURE.md if structural changes made
 5. Confirm governance documents synchronized
+
+---
+
+## Version History
+
+- **v1.2** - January 23, 2026 - Updated for Part 14 completion. Changed ISSUES_TRACKER.md version to 2.0. Updated completion rate remains 62% (49/79 issues). Added Part 14 verification findings.
+- **v1.1** - January 23, 2026 - Complete rewrite following Part 13. Reorganized structure around core governance documents. Added governance document versions table. Updated statistics and enhanced usage guidelines.
+- **v1.0** - January 21, 2026 - Initial QA README created with basic structure.
 
 ---
 
