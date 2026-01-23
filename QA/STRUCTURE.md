@@ -1,6 +1,6 @@
 # Arctic Wolves - Application Structure Document
 
-**Version:** 1.4  
+**Version:** 1.5  
 **Created:** January 22, 2026  
 **Last Updated:** January 23, 2026  
 **Purpose:** Master layout of the entire Arctic Wolves application documenting navigation, dependencies, and file structure
@@ -11,6 +11,7 @@
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.5 | January 23, 2026 | Added MODULE 9 (Category Management) to process_admin_action.php. Documented new backend handlers for skills (eval_skills), drill types (drill_categories), and equipment management. Updated admin_categories.php to display dynamic database content. |
 | 1.4 | January 23, 2026 | Added process_audit_logs_export.php to process handlers. Documented new export functionality for audit logs. |
 | 1.3 | January 23, 2026 | Documented JavaScript function export pattern. Added detail on IIFE dual export strategy (namespace + global) for js/app.js. Included best practices for inline onclick handlers vs programmatic calls. Addresses modal close button pattern issue. |
 | 1.2 | January 23, 2026 | Added 3 missing admin routes (admin_discounts, admin_session_types, admin_email_reports). Fixed process file redirects: process_expenses.php (3 fixes), process_create_session.php (1 fix), process_edit_session.php (2 fixes). Total routes now 77. |
@@ -773,7 +774,7 @@ age_groups, announcements, api_keys, athlete_evaluations, athlete_notes, athlete
 - `process_profile_update.php` - Profile updates
 
 ### Admin Operations
-- `process_admin_action.php` - General admin actions
+- `process_admin_action.php` - General admin actions (locations, session types, roles, SMTP, billing, discounts, email reports, users, **category management: skills, drill types, equipment**)
 - `process_admin_age_skill.php` - Age/skill management
 - `process_admin_team_coaches.php` - Team coach assignments
 - `process_permissions.php` - Permission management
