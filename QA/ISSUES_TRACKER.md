@@ -2,7 +2,7 @@
 
 **Created:** January 22, 2026  
 **Last Updated:** January 23, 2026  
-**Version:** 1.1  
+**Version:** 1.2  
 **Purpose:** Track bugs, issues, and feature improvements requiring multiple revisions
 
 ---
@@ -32,13 +32,13 @@
 ### By Status:
 - **Completed:** 17 issues (P0: 6, P1: 10, P2: 1)
 - **In Progress:** 0 issues
-- **Needs Verification:** 12 issues (P1: 11, P2: 1 - code complete, needs browser testing)
+- **Needs Verification:** 15 issues (P1: 14, P2: 1 - code complete, needs browser testing)
 - **Not Implemented:** 5 issues (P1: 5 - categories management backend missing)
-- **Not Started:** 45 issues (P1: 27, P2: 18)
+- **Not Started:** 42 issues (P1: 24, P2: 18)
 
 ### By Priority:
 - **P0 (Critical):** 6 completed, 0 remaining
-- **P1 (High):** 10 completed, 0 in progress, 11 needs verification, 5 not implemented, 27 not started (53 total)
+- **P1 (High):** 10 completed, 0 in progress, 14 needs verification, 5 not implemented, 24 not started (53 total)
 - **P2 (Medium):** 1 completed, 1 needs verification, 18 not started (20 total)
 - **P3 (Low):** 0 total
 
@@ -56,6 +56,9 @@ These issues have complete code implementations but need browser testing:
 10. Add Line Item (function already implemented, needs testing)
 11. Cancel Button on Refund Modal (closeModal now exposed globally)
 12. Recent Reports Actions (backend handlers exist, needs testing)
+13. **Export Button** (added data attributes, uses existing exportTable function)
+14. **Choose File and Take Photo** (added visual feedback onchange handler)
+15. **Add Session Modal** (cancel fixed via closeModal, submit handler added)
 
 ### Not Implemented (Requires Development):
 These are placeholder UIs without backend functionality:
@@ -455,17 +458,32 @@ These are placeholder UIs without backend functionality:
   - Same pattern as previously fixed package redirect issue
 - **Notes:** Completed - expenses now stay on correct page after create/update/delete
 
-#### P1 - [ ] Choose File and Take Photo Don't Work
-- **Status:** Not Started
-- **Issue:** File upload buttons do nothing
-- **Files Affected:** `views/expenses.php`
-- **Notes:**
+#### P1 - [?] Choose File and Take Photo Don't Work
+- **Status:** Needs Verification (January 23, 2026)
+- **Issue:** File upload buttons do nothing, no visual feedback when file selected
+- **Files Affected:** `views/accounting_expenses.php` (formerly `views/expenses.php`)
+- **Root Cause:** Missing visual feedback when file is selected - buttons work but user doesn't see filename
+- **Solution Implemented:**
+  - Added ID to file label (`receiptFileLabel`) in line 60
+  - Added onchange handler to file input (line 61)
+  - Handler updates label text to show filename when file selected
+  - Handler changes text color to green (#10B981) on success
+- **Notes:** Buttons functionality was working, just needed user feedback. Needs browser testing to verify.
 
-#### P1 - [ ] Export Button Doesn't Work
-- **Status:** Not Started
-- **Issue:** Export functionality broken
-- **Files Affected:** `process_expenses.php`
-- **Notes:**
+#### P1 - [?] Export Button Doesn't Work
+- **Status:** Needs Verification (January 23, 2026)
+- **Issue:** Export functionality broken - button has no action
+- **Files Affected:** `views/accounting_expenses.php` (formerly `process_expenses.php`)
+- **Root Cause:** Export button missing required data attributes
+  - Missing `data-action="export"` to trigger event handler
+  - Missing `data-table="expenses"` to identify which table to export
+  - Table missing `data-table` attribute for selection
+- **Solution Implemented:**
+  - Added `data-action="export"` and `data-table="expenses"` to button (line 93)
+  - Added `data-table="expenses"` attribute to table element (line 98)
+  - Uses existing `exportTable()` function from js/app.js
+  - Exports table data as CSV with automatic filename
+- **Notes:** Backend export not needed - client-side CSV export using existing function. Needs browser testing.
 
 ---
 
@@ -483,13 +501,25 @@ These are placeholder UIs without backend functionality:
 - **Files Affected:** `views/products.php`
 - **Notes:**
 
-#### P1 - [ ] Add Session Modal Can't Cancel/Submit
-- **Status:** Not Started
+#### P1 - [?] Add Session Modal Can't Cancel/Submit
+- **Status:** Needs Verification (January 23, 2026)
 - **Issue:** Modal opens but can't cancel (X/Cancel broken) and submit kicks to home
 - **Files Affected:** 
-  - `views/products.php`
-  - `process_packages.php` or appropriate handler
-- **Notes:**
+  - `views/accounting_products.php` (formerly `views/products.php`)
+  - `process_admin_action.php`
+- **Root Cause:** 
+  - Cancel button issue: Uses onclick="closeModal()" - **Already fixed in Part 4** (global export added to js/app.js)
+  - Submit issue: Form posts to `process_admin_action.php` with `action=create_session_type` but no handler existed
+  - Only `add_type` handler existed, which only saved name and description (no price, duration, etc.)
+- **Solution Implemented:**
+  - Added `create_session_type` handler in process_admin_action.php (lines 38-47)
+  - Handler accepts: name, description, price (as default_price), duration (as duration_minutes)
+  - Properly maps form fields to database schema
+  - Redirects to `accounting_products` page on success
+- **Notes:** 
+  - Cancel functionality fixed by global closeModal export from Part 4
+  - Submit now has proper backend handler
+  - Needs browser testing to verify full workflow
 
 #### P2 - [ ] Packages Tab Boxes Don't Match Sessions Style
 - **Status:** Not Started

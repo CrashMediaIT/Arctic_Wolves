@@ -1,6 +1,6 @@
 # Arctic Wolves - Application Structure Document
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Created:** January 22, 2026  
 **Last Updated:** January 23, 2026  
 **Purpose:** Master layout of the entire Arctic Wolves application documenting navigation, dependencies, and file structure
@@ -11,6 +11,7 @@
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3 | January 23, 2026 | Documented JavaScript function export pattern. Added detail on IIFE dual export strategy (namespace + global) for js/app.js. Included best practices for inline onclick handlers vs programmatic calls. Addresses modal close button pattern issue. |
 | 1.2 | January 23, 2026 | Added 3 missing admin routes (admin_discounts, admin_session_types, admin_email_reports). Fixed process file redirects: process_expenses.php (3 fixes), process_create_session.php (1 fix), process_edit_session.php (2 fixes). Total routes now 77. |
 | 1.1 | January 23, 2026 | Expanded routing table in dashboard.php from 46 to 74 routes (+28 routes). Added admin, athlete/coach, evaluation, notification, report, session, and other page routes. Resolves Pattern 1 "redirect to home" issues. |
 | 1.0 | January 22, 2026 | Initial structure document created. Documented navigation hierarchy, page dependencies, database schema cross-references, process handlers, and JavaScript dependencies. |
@@ -843,6 +844,40 @@ age_groups, announcements, api_keys, athlete_evaluations, athlete_notes, athlete
 - UI interactions
 - Modal management
 - Toast notifications
+
+**Function Export Pattern:**
+The application uses an IIFE (Immediately Invoked Function Expression) to encapsulate functions, with a dual export strategy:
+
+1. **Namespace Export:** Functions exported via `window.ArcticWolvesApp` object (preferred method)
+   ```javascript
+   window.ArcticWolvesApp = {
+       showToast,
+       showLoading,
+       hideLoading,
+       openModal,
+       closeModal,
+       exportTable
+   };
+   ```
+
+2. **Global Export:** Key functions also exposed directly to `window` scope for inline onclick handlers
+   ```javascript
+   window.closeModal = closeModal;
+   window.openModal = openModal;
+   window.showToast = showToast;
+   ```
+
+**Why Dual Export?**
+- IIFE pattern provides encapsulation and prevents global namespace pollution
+- Inline onclick handlers (e.g., `onclick="closeModal('modal-id')"`) require global scope access
+- Functions must be available at `window.functionName` for onclick to work
+- Namespace export (`ArcticWolvesApp.closeModal()`) preferred for programmatic calls
+
+**Best Practices:**
+- **For HTML inline handlers:** Use global functions: `onclick="closeModal('id')"`
+- **For JavaScript code:** Use namespace: `window.ArcticWolvesApp.closeModal('id')`
+- **New functions:** If used in onclick, must be exported globally
+- **Future code:** Consider using `data-action` attributes with event listeners instead of onclick to avoid global scope requirement
 
 #### `js/calendar.js`
 **Purpose:** Calendar and date picker functionality  
