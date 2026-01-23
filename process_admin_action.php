@@ -160,7 +160,7 @@ if ($action == 'delete_discount') {
     $discount_id = intval($_POST['discount_id']);
     try {
         // Verify discount exists before deletion
-        $stmt = $pdo->prepare("SELECT id FROM discount_codes WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT 1 FROM discount_codes WHERE id = ? LIMIT 1");
         $stmt->execute([$discount_id]);
         if (!$stmt->fetch()) {
             error_log("Delete discount error: Discount ID $discount_id not found");
@@ -218,13 +218,14 @@ if ($action == 'create_user') {
     try {
         // Hash the password
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+        $force_pass_change = 1; // Require password change on first login
         
         // Insert new user
         $stmt = $pdo->prepare("
             INSERT INTO users (email, password, first_name, last_name, role, phone, is_verified, force_pass_change, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$email, $hashed_password, $first_name, $last_name, $role, $phone, $is_verified]);
+        $stmt->execute([$email, $hashed_password, $first_name, $last_name, $role, $phone, $is_verified, $force_pass_change]);
         
         header("Location: dashboard.php?page=all_users&status=success");
     } catch (PDOException $e) {
