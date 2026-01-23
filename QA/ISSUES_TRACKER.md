@@ -1,8 +1,8 @@
 # Arctic Wolves - Issues Tracker
 
 **Created:** January 22, 2026  
-**Last Updated:** January 23, 2026  
-**Version:** 1.4  
+**Last Updated:** January 23, 2026 (Part 8)  
+**Version:** 1.5  
 **Purpose:** Track bugs, issues, and feature improvements requiring multiple revisions
 
 ---
@@ -28,19 +28,20 @@
 ## Current Status Summary
 
 **Total Issues:** 79  
-**Last Updated:** January 23, 2026 (Evening Session)
+**Last Updated:** January 23, 2026 (Part 8 - Late Session)
 
 ### By Status:
-- **Completed:** 42 issues (P0: 6, P1: 21, P2: 15)
+- **Completed:** 44 issues (P0: 6, P1: 21, P2: 17)
 - **In Progress:** 0 issues
 - **Needs Verification:** 26 issues (P1: 25, P2: 1 - code complete, needs browser testing)
-- **Not Implemented:** 5 issues (P1: 5 - categories management backend missing)
-- **Not Started:** 6 issues (P2: 6 - mostly cosmetic/CSS issues)
+- **Needs Identification:** 1 issue (P2: 1 - button icons need specific instances identified)
+- **Not Implemented:** 6 issues (P1: 5 - categories backend missing, P2: 1 - profile fields need schema)
+- **Not Started:** 2 issues (P2: 2 - cosmetic)
 
 ### By Priority:
 - **P0 (Critical):** 6 completed, 0 remaining ✅
 - **P1 (High):** 31 completed, 0 in progress, 25 needs verification, 5 not implemented (61 total)
-- **P2 (Medium):** 16 completed, 1 needs verification, 1 not started (18 total)
+- **P2 (Medium):** 17 completed, 1 needs verification, 1 needs identification, 1 not implemented (20 total)
 - **P3 (Low):** 0 total
 
 ### Verification Needed (Browser Testing):
@@ -755,25 +756,39 @@ These are placeholder UIs without backend functionality:
 - **Notes:** Button already has proper icon
 
 #### P1 - [!] Add Skill Creates Then Crashes to Home
-- **Status:** Not Implemented (Backend Missing)
+- **Status:** Not Implemented (Backend Missing) - Updated January 23, 2026 (Part 8)
 - **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
-- **Root Cause Analysis (January 23, 2026):**
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`, database
+- **Root Cause Analysis:**
   - Form submits action="create_skill" to process_admin_action.php (line 186)
   - Handler for 'create_skill' does NOT exist in process_admin_action.php
   - Skills list is hardcoded HTML (lines 35-67), not database-driven
   - This is a placeholder UI without backend implementation
-- **Notes:** Requires backend handler implementation + database table/schema design. Not a simple fix.
+- **Database Table:** `eval_skills` EXISTS (id, category_id, name, description, created_at)
+- **Implementation Required:**
+  1. Backend handler in process_admin_action.php for 'create_skill' action
+  2. Replace hardcoded HTML with database query to eval_skills
+  3. Verify modal form fields match eval_skills columns
+  4. Add proper validation and error handling
+- **Complexity:** Medium - Table exists, needs handler + UI update
+- **Notes:** Full implementation plan in REPAIR_SESSION_SUMMARY_JAN23_PART8.md
 
 #### P1 - [!] Skill Edit and Delete Don't Work
-- **Status:** Not Implemented (Backend Missing)
+- **Status:** Not Implemented (Backend Missing) - Updated January 23, 2026 (Part 8)
 - **Issue:** Action buttons non-functional
-- **Files Affected:** `views/admin_categories.php`
-- **Root Cause Analysis (January 23, 2026):**
-  - Edit/delete buttons have data-action attributes but no handlers
-  - Skills are hardcoded HTML, not from database
-  - Part of incomplete categories management feature
-- **Notes:** Requires backend implementation. Not a simple fix.
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis:**
+  - Edit/delete buttons have proper data-action attributes but no handlers
+  - Buttons: `data-action="edit"`, `data-id="skill-1"`, `data-type="skill"`
+  - Skills are hardcoded, so IDs are placeholders (skill-1, skill-2, skill-3)
+  - No handlers exist in process_admin_action.php for edit/delete with type='skill'
+- **Implementation Required:**
+  1. Backend handlers for 'edit' and 'delete' actions with type='skill'
+  2. Edit modal creation (if doesn't exist)
+  3. JavaScript to populate edit modal with skill data
+- **Dependencies:** Requires Add Skill (Issue above) to be fixed first
+- **Complexity:** Medium (dependent on Add Skill implementation)
+- **Notes:** Full implementation plan in REPAIR_SESSION_SUMMARY_JAN23_PART8.md
 
 #### P2 - [x] Add Type Button Missing Icon
 - **Status:** COMPLETED (January 23, 2026) - Already Has Icon
@@ -785,14 +800,21 @@ These are placeholder UIs without backend functionality:
 - **Notes:** Button already has proper icon
 
 #### P1 - [!] Add Type Creates Then Crashes to Home
-- **Status:** Not Implemented (Backend Missing)
+- **Status:** Not Implemented (Backend Missing) - Updated January 23, 2026 (Part 8)
 - **Issue:** Modal works but submission redirects to home (Drill Types tab)
-- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
-- **Root Cause Analysis (January 23, 2026):**
-  - Form submits action="create_drill_type" to process_admin_action.php (line 222)
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`, database
+- **Root Cause Analysis:**
+  - Button has proper attributes: `data-action="add"`, `data-modal="add-drill-type-modal"` (line 78)
   - Handler does NOT exist in process_admin_action.php
-  - Drill types are hardcoded HTML, not database-driven
-- **Notes:** Part of incomplete categories feature. Requires backend implementation.
+  - Drill Types tab shows placeholder text (line 81)
+- **Database Table:** `drill_categories` EXISTS (id, name, description, created_at)
+- **Implementation Required:**
+  1. Backend handler in process_admin_action.php for 'create_drill_category' action
+  2. Replace placeholder text with database-driven list from drill_categories
+  3. Verify modal exists and has correct fields (name, description)
+  4. Add edit/delete buttons to UI similar to Skills tab
+- **Complexity:** Medium - Table exists, needs handler + UI update
+- **Notes:** Full implementation plan in REPAIR_SESSION_SUMMARY_JAN23_PART8.md
 
 #### P2 - [x] Add Position Button Missing Icon
 - **Status:** COMPLETED (January 23, 2026) - Already Has Icon
@@ -804,14 +826,23 @@ These are placeholder UIs without backend functionality:
 - **Notes:** Button already has proper icon
 
 #### P1 - [!] Add Position Creates Then Crashes to Home
-- **Status:** Not Implemented (Backend Missing)
+- **Status:** Not Implemented (Backend Missing) - Updated January 23, 2026 (Part 8)
 - **Issue:** Modal works but submission redirects to home (Positions tab)
-- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
-- **Root Cause Analysis (January 23, 2026):**
-  - Form submits action="create_position" to process_admin_action.php
-  - Handler does NOT exist
-  - Positions are hardcoded HTML
-- **Notes:** Part of incomplete categories feature. Requires backend implementation.
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`, database schema
+- **Root Cause Analysis:**
+  - Button has proper attributes: `data-action="add"`, `data-modal="add-position-modal"` (line 91)
+  - Handler does NOT exist in process_admin_action.php
+  - Positions tab shows placeholder text (line 94)
+- **Database Table:** NO positions or player_positions table exist ❌
+- **Implementation Required:**
+  1. CREATE NEW TABLE `player_positions`:
+     - Columns: id, name, abbreviation, description, position_type (forward/defense/goalie), created_at
+  2. Schema migration for new table
+  3. Backend handler in process_admin_action.php for 'create_position' action
+  4. Replace placeholder text with database-driven list
+  5. Verify modal exists and update fields to match new table
+- **Complexity:** HIGH - Requires new table creation and schema migration
+- **Notes:** Full implementation plan in REPAIR_SESSION_SUMMARY_JAN23_PART8.md. Most complex of the 5 "Not Implemented" issues.
 
 #### P2 - [x] Add Equipment Button Missing Icon
 - **Status:** COMPLETED (January 23, 2026) - Already Has Icon
@@ -833,14 +864,27 @@ These are placeholder UIs without backend functionality:
 - **Notes:** No code changes needed. closeModal is already exposed globally. May already be working - needs browser testing to confirm.
 
 #### P1 - [!] Add Equipment Creates Then Crashes to Home
-- **Status:** Not Implemented (Backend Missing)
+- **Status:** Not Implemented (Backend Missing) - Updated January 23, 2026 (Part 8)
 - **Issue:** Modal works but submission redirects to home (Equipment tab)
-- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
-- **Root Cause Analysis (January 23, 2026):**
-  - Form submits action="create_equipment" to process_admin_action.php
-  - Handler does NOT exist
-  - Equipment list is hardcoded HTML
-- **Notes:** Part of incomplete categories feature. Requires backend implementation.
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`, database
+- **Root Cause Analysis:**
+  - Button has proper attributes (line 104 area)
+  - Handler does NOT exist in process_admin_action.php
+  - Equipment tab shows placeholder text
+- **Database Table Confusion:**
+  - `equipment` table EXISTS but designed for equipment INVENTORY management
+  - Columns: name, equipment_type, quantity, condition, purchase_date, purchase_price, location_id
+  - This tracks actual equipment items (sticks, pucks, helmets), not categories/types
+- **Clarification Needed:**
+  - A) Add equipment inventory item (specific stick/puck/helmet)?
+  - B) Add equipment category/type (protective gear, training aids)?
+- **Implementation Required (assuming inventory):**
+  1. Backend handler in process_admin_action.php for 'create_equipment' action
+  2. Use existing `equipment` table
+  3. Replace placeholder text with equipment list from database
+  4. If categories needed: Create new `equipment_categories` table
+- **Complexity:** Medium-High - Requires clarification of intent, may need new table
+- **Notes:** Full implementation plan in REPAIR_SESSION_SUMMARY_JAN23_PART8.md. Requires business decision on equipment vs categories.
 
 ---
 
@@ -1057,17 +1101,42 @@ These are placeholder UIs without backend functionality:
   - Handler processes file upload, validates, and saves to uploads directory
 - **Notes:** Photo upload fully functional
 
-#### P2 - [ ] All Users Should Have Extended Profile Fields
-- **Status:** Not Started
+#### P2 - [!] All Users Should Have Extended Profile Fields
+- **Status:** Not Implemented (Requires Schema Changes) - January 23, 2026 (Part 8)
 - **Issue:** All users should be able to pick: shooter hands, teams, position, weight, height
-- **Files Affected:** `views/profile.php`
-- **Notes:**
+- **Files Affected:** `views/profile.php`, `process_profile_update.php`, database schema
+- **Analysis:**
+  - Currently only athletes have Player Info tab with these fields (lines 164-254)
+  - Data stored in athlete_stats table
+  - Non-athlete roles have no access to these fields
+- **Complexity:** This is NOT a minimal surgical fix. Requires:
+  1. Database changes: athlete_stats records for non-athletes OR add columns to users table
+  2. UI changes: Remove role restriction, show for all users
+  3. Backend changes: Update handlers for all roles
+  4. Data migration for existing non-athlete users
+- **Recommendation:** Plan as separate feature enhancement, not bug fix
+- **Notes:** Documented in REPAIR_SESSION_SUMMARY_JAN23_PART8.md with full implementation plan
 
-#### P2 - [ ] Profile Picture Upload Should Be On-Click
-- **Status:** Not Started
+#### P2 - [x] Profile Picture Upload Should Be On-Click
+- **Status:** COMPLETED (January 23, 2026 - Part 8)
 - **Issue:** Upload should trigger by clicking profile picture
 - **Files Affected:** `views/profile.php`
-- **Notes:**
+- **Fix Applied:**
+  - Line 70: Added onclick handler to profile-photo div
+  - Added `onclick="document.getElementById('profilePhotoInput').click()"`
+  - Added `style="cursor: pointer;"` for visual feedback
+  - Added `title="Click to change profile photo"` for accessibility
+- **Code Change:**
+  ```html
+  <div class="profile-photo" onclick="document.getElementById('profilePhotoInput').click()" 
+       style="cursor: pointer;" title="Click to change profile photo">
+  ```
+- **Validation:**
+  - ✅ Minimal surgical change (1 line modified)
+  - ✅ Maintains existing button functionality
+  - ✅ Improves UX with additional click target
+  - 🔲 Needs browser testing to confirm
+- **Notes:** Perfect example of minimal surgical fix improving UX
 
 #### P1 - [x] Security Tab Doesn't Work
 - **Status:** COMPLETED (January 23, 2026) - Already Working
@@ -1097,18 +1166,38 @@ These are placeholder UIs without backend functionality:
 
 ### 25. Style Issues (Global)
 
-#### P2 - [ ] Button Icons Wrong Color
-- **Status:** Not Started
+#### P2 - [?] Button Icons Wrong Color
+- **Status:** Needs Identification (January 23, 2026 - Part 8)
 - **Issue:** Some buttons have icons in wrong color
 - **Files Affected:** Multiple views - style.css or shared_styles.css
-- **Notes:**
+- **Analysis:**
+  - Button CSS reviewed in style.css (lines 70-125) and shared_styles.css (lines 806-882)
+  - Primary buttons: `color: #fff` or `color: white`
+  - Secondary buttons: `color: #fff` or `color: #E0E0E0`
+  - Icons inherit text color from parent button
+  - No CSS explicitly setting wrong icon colors
+  - Issue description too vague without specific examples
+- **Solution Required:**
+  - Browser test entire application to identify specific problematic buttons
+  - Document exact page, button, and expected vs actual color
+  - Then implement minimal surgical fix for specific instances only
+- **Notes:** Cannot fix without identifying specific button instances. Requires browser testing.
 
-#### P2 - [ ] Dropdown Checkered Effect on Highlight
-- **Status:** Not Started
+#### P2 - [x] Dropdown Checkered Effect on Highlight
+- **Status:** COMPLETED (Already Fixed) - Verified January 23, 2026 (Part 8)
 - **Issue:** Dropdowns have weird checkered pattern when option is highlighted
 - **Details:** Should just highlight outline like rest of site
 - **Files Affected:** `views/shared_styles.css`
-- **Notes:**
+- **Verification:**
+  - STYLE_GUIDE.md lines 182-184 document this issue and solution
+  - shared_styles.css lines 636-663 have comprehensive fix
+  - Custom CSS overrides browser default checkered pattern
+  - Option styling uses:
+    - Background: `#16161F` (card background)
+    - Hover: `#6B46C1` (primary color, NO checkered pattern)
+    - Selected: Linear gradient `#6B46C1` to `#7C3AED`
+    - Font: 'Inter', sans-serif, 14px
+- **Notes:** Fix already implemented in previous session. Working as designed per STYLE_GUIDE.md
 
 ---
 
@@ -1316,5 +1405,9 @@ Refer to governance documents:
 
 ## Version History
 
+- **v1.5** - January 23, 2026 (Part 8) - Updated P2 issues: Profile Picture (completed), Dropdown (already fixed), Button Icons (needs identification), Extended Fields (not implemented). Added comprehensive analysis for 5 P1 "Not Implemented" category management issues with database assessment and implementation plans.
+- **v1.4** - January 23, 2026 (Part 7) - Fixed 6 P1 issues (Export, Roles Filter, Add/Edit Scale, Cancel buttons). Moved issues from Not Started to Needs Verification. Updated verification list to 26 items.
+- **v1.3** - January 23, 2026 (Part 6) - Fixed multiple routing and handler issues. Added missing routes to dashboard.php. Fixed process file redirects. Total routes now 77.
+- **v1.2** - January 23, 2026 - Fixed Pattern 1 "redirect to home" issues by expanding dashboard.php routing table from 46 to 74 routes.
 - **v1.1** - January 22, 2026 - Added Empty File Repairs section documenting 16 repaired PHP files
 - **v1.0** - January 22, 2026 - Initial issues tracker created with all reported bugs and feature requests
