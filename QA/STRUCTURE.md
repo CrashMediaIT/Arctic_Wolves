@@ -1,6 +1,6 @@
 # Arctic Wolves - Application Structure Document
 
-**Version:** 1.5  
+**Version:** 1.6  
 **Created:** January 22, 2026  
 **Last Updated:** January 23, 2026  
 **Purpose:** Master layout of the entire Arctic Wolves application documenting navigation, dependencies, and file structure
