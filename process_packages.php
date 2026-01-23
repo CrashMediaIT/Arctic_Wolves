@@ -58,7 +58,7 @@ try {
                 $age_group_id, $skill_level_id, $is_active
             ]);
             
-            header("Location: dashboard.php?page=admin_packages&status=success");
+            header("Location: dashboard.php?page=products&status=success");
             exit();
             
         case 'update':
@@ -88,7 +88,7 @@ try {
                 $age_group_id, $skill_level_id, $is_active, $package_id
             ]);
             
-            header("Location: dashboard.php?page=admin_packages&status=success");
+            header("Location: dashboard.php?page=products&status=success");
             exit();
             
         case 'delete':
@@ -106,7 +106,7 @@ try {
             $stmt = $pdo->prepare("DELETE FROM packages WHERE id = ?");
             $stmt->execute([$package_id]);
             
-            header("Location: dashboard.php?page=admin_packages&status=success&action=delete");
+            header("Location: dashboard.php?page=products&status=success&action=delete");
             exit();
             
         case 'update_sessions':
@@ -130,7 +130,7 @@ try {
             
             $pdo->commit();
             
-            header("Location: dashboard.php?page=admin_packages&status=success");
+            header("Location: dashboard.php?page=products&status=success");
             exit();
             
         default:
@@ -143,7 +143,7 @@ try {
     }
     
     error_log("Package processing error: " . $e->getMessage());
-    header("Location: dashboard.php?page=admin_packages&status=error");
+    header("Location: dashboard.php?page=products&status=error");
     exit();
 }
 ?>

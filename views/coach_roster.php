@@ -83,7 +83,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                 <option value="16-17" <?= $filter_age === '16-17' ? 'selected' : '' ?>>Under 18</option>
             </select>
         </form>
-        <button class="btn-primary" data-action="add-athlete"><i class="fas fa-user-plus"></i> Add Athlete</button>
+        <button class="btn-primary" data-action="add" data-modal="add-athlete-modal"><i class="fas fa-user-plus"></i> Add Athlete</button>
     </div>
 
     <!-- Athletes Table -->
@@ -162,6 +162,60 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
             </div>
             <?php endif; ?>
         </div>
+    </div>
+</div>
+
+<!-- Add Athlete Modal -->
+<div id="add-athlete-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-user-plus"></i> Add Athlete</h2>
+            <button class="modal-close" onclick="closeModal('add-athlete-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_create_athlete.php">
+            <?php echo csrfTokenInput(); ?>
+            
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" name="first_name" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" name="last_name" class="form-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" class="form-input" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="date" name="birth_date" class="form-input" max="<?= date('Y-m-d') ?>">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Position</label>
+                        <select name="position" class="form-input">
+                            <option value="">Select Position</option>
+                            <option value="Forward">Forward</option>
+                            <option value="Defense">Defense</option>
+                            <option value="Goalie">Goalie</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-athlete-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Add Athlete</button>
+            </div>
+        </form>
     </div>
 </div>
 
