@@ -64,7 +64,7 @@ try {
                 $user_id, $expense_date, $amount, $category, $description, $receipt_url
             ]);
             
-            header("Location: dashboard.php?page=accounting_expenses&status=success");
+            header("Location: dashboard.php?page=expenses&status=success");
             exit();
             
         case 'update':
@@ -126,7 +126,7 @@ try {
                 ]);
             }
             
-            header("Location: dashboard.php?page=accounting_expenses&status=success");
+            header("Location: dashboard.php?page=expenses&status=success");
             exit();
             
         case 'delete':
@@ -150,7 +150,7 @@ try {
             $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
             $stmt->execute([$expense_id]);
             
-            header("Location: dashboard.php?page=accounting_expenses&status=success");
+            header("Location: dashboard.php?page=expenses&status=success");
             exit();
             
         case 'create_category':
