@@ -513,17 +513,26 @@
 - **Files Affected:** `views/admin_age_skill.php`
 - **Notes:**
 
-#### P1 - [ ] Add Skill Creates Then Crashes to Home
-- **Status:** Not Started
+#### P1 - [!] Add Skill Creates Then Crashes to Home
+- **Status:** Not Implemented (Backend Missing)
 - **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `process_admin_age_skill.php`
-- **Notes:**
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Form submits action="create_skill" to process_admin_action.php (line 186)
+  - Handler for 'create_skill' does NOT exist in process_admin_action.php
+  - Skills list is hardcoded HTML (lines 35-67), not database-driven
+  - This is a placeholder UI without backend implementation
+- **Notes:** Requires backend handler implementation + database table/schema design. Not a simple fix.
 
-#### P1 - [ ] Skill Edit and Delete Don't Work
-- **Status:** Not Started
+#### P1 - [!] Skill Edit and Delete Don't Work
+- **Status:** Not Implemented (Backend Missing)
 - **Issue:** Action buttons non-functional
-- **Files Affected:** `views/admin_age_skill.php`
-- **Notes:**
+- **Files Affected:** `views/admin_categories.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Edit/delete buttons have data-action attributes but no handlers
+  - Skills are hardcoded HTML, not from database
+  - Part of incomplete categories management feature
+- **Notes:** Requires backend implementation. Not a simple fix.
 
 #### P2 - [ ] Add Type Button Missing Icon
 - **Status:** Not Started
@@ -531,11 +540,15 @@
 - **Files Affected:** `views/admin_age_skill.php`
 - **Notes:**
 
-#### P1 - [ ] Add Type Creates Then Crashes to Home
-- **Status:** Not Started
-- **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `process_admin_age_skill.php`
-- **Notes:**
+#### P1 - [!] Add Type Creates Then Crashes to Home
+- **Status:** Not Implemented (Backend Missing)
+- **Issue:** Modal works but submission redirects to home (Drill Types tab)
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Form submits action="create_drill_type" to process_admin_action.php (line 222)
+  - Handler does NOT exist in process_admin_action.php
+  - Drill types are hardcoded HTML, not database-driven
+- **Notes:** Part of incomplete categories feature. Requires backend implementation.
 
 #### P2 - [ ] Add Position Button Missing Icon
 - **Status:** Not Started
@@ -543,11 +556,15 @@
 - **Files Affected:** `views/admin_age_skill.php`
 - **Notes:**
 
-#### P1 - [ ] Add Position Creates Then Crashes to Home
-- **Status:** Not Started
-- **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `process_admin_age_skill.php`
-- **Notes:**
+#### P1 - [!] Add Position Creates Then Crashes to Home
+- **Status:** Not Implemented (Backend Missing)
+- **Issue:** Modal works but submission redirects to home (Positions tab)
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Form submits action="create_position" to process_admin_action.php
+  - Handler does NOT exist
+  - Positions are hardcoded HTML
+- **Notes:** Part of incomplete categories feature. Requires backend implementation.
 
 #### P2 - [ ] Add Equipment Button Missing Icon
 - **Status:** Not Started
@@ -561,11 +578,15 @@
 - **Files Affected:** `views/admin_age_skill.php`
 - **Notes:**
 
-#### P1 - [ ] Add Equipment Creates Then Crashes to Home
-- **Status:** Not Started
-- **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `process_admin_age_skill.php`
-- **Notes:**
+#### P1 - [!] Add Equipment Creates Then Crashes to Home
+- **Status:** Not Implemented (Backend Missing)
+- **Issue:** Modal works but submission redirects to home (Equipment tab)
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Form submits action="create_equipment" to process_admin_action.php
+  - Handler does NOT exist
+  - Equipment list is hardcoded HTML
+- **Notes:** Part of incomplete categories feature. Requires backend implementation.
 
 ---
 
