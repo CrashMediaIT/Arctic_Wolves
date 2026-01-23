@@ -60,6 +60,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $schema = file_get_contents(__DIR__ . '/database_schema.sql');
             $pdo->exec($schema);
             
+            // Run migrations for existing installations
+            try {
+                // Check if display_order column exists in eval_categories
+                $stmt = $pdo->query("SHOW COLUMNS FROM eval_categories LIKE 'display_order'");
+                if ($stmt->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description");
+                }
+                
+                // Check if display_order column exists in eval_skills
+                $stmt = $pdo->query("SHOW COLUMNS FROM eval_skills LIKE 'display_order'");
+                if ($stmt->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description");
+                }
+            } catch (PDOException $e) {
+                // Migrations failed, but table creation might have succeeded
+                // Log this but don't fail the setup
+            }
+            
             header("Location: setup.php?step=2");
             exit();
         } catch (PDOException $e) {
