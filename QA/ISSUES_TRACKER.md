@@ -1,7 +1,8 @@
 # Arctic Wolves - Issues Tracker
 
 **Created:** January 22, 2026  
-**Version:** 1.0  
+**Last Updated:** January 23, 2026  
+**Version:** 1.1  
 **Purpose:** Track bugs, issues, and feature improvements requiring multiple revisions
 
 ---
@@ -16,10 +17,48 @@
 5. **Re-run Tests** - Verify fixes don't break other features
 
 ### Status Indicators:
-- `[ ]` - Not Started
-- `[~]` - In Progress
-- `[x]` - Completed
-- `[!]` - Blocked/Needs Discussion
+- `[ ]` - Not Started (not yet analyzed or worked on)
+- `[~]` - In Progress (actively being worked on)
+- `[x]` - Completed (verified as working)
+- `[?]` - Needs Verification (code exists, needs browser testing)
+- `[!]` - Not Implemented (requires new backend development)
+
+---
+
+## Current Status Summary
+
+**Total Issues:** 79
+
+### By Status:
+- **Completed:** 16 issues (P0: 6, P1: 10)
+- **In Progress:** 1 issue (P1: 1 - Booking page)
+- **Needs Verification:** 7 issues (P1: 7 - code complete, needs browser testing)
+- **Not Implemented:** 5 issues (P1: 5 - categories management backend missing)
+- **Not Started:** 50 issues (awaiting analysis or fixes)
+
+### By Priority:
+- **P0 (Critical):** 6 completed, 0 remaining
+- **P1 (High):** 10 completed, 1 in progress, 7 needs verification, 5 not implemented, ~20 not started
+- **P2 (Medium):** 0 completed, ~30 not started
+- **P3 (Low):** 0 completed, ~5 not started
+
+### Verification Needed (Browser Testing):
+These issues have complete code implementations but need browser testing:
+1. Upcoming Sessions Missing List/Calendar Views
+2. Drill Review Shows Nothing
+3. Missing Upload Tab (implemented as sub-tab)
+4. Coaches Review Shows Nothing
+5. Create Drill Doesn't Show Drawer
+6. Import Drill Shows Nothing
+7. Mileage Report Doesn't Show
+
+### Not Implemented (Requires Development):
+These are placeholder UIs without backend functionality:
+1. Add Skill Creates Then Crashes to Home
+2. Skill Edit and Delete Don't Work
+3. Add Type Creates Then Crashes to Home (Drill Types)
+4. Add Position Creates Then Crashes to Home
+5. Add Equipment Creates Then Crashes to Home
 
 ---
 
@@ -71,8 +110,8 @@
 
 ### 3. Sessions - Upcoming Sessions Issues
 
-#### P1 - [ ] Upcoming Sessions Missing List and Calendar Views
-- **Status:** Not Started
+#### P1 - [?] Upcoming Sessions Missing List and Calendar Views
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** No sessions display in list or calendar view
 - **Details:**
   - If no sessions, should show "You don't have any upcoming sessions"
@@ -81,29 +120,56 @@
 - **Files Affected:**
   - `views/sessions_upcoming.php`
   - `js/calendar.js`
-- **Notes:**
+- **Verification Results (January 23, 2026):**
+  - ✅ List view implemented (lines 169-212)
+  - ✅ Calendar view implemented (lines 137-167)
+  - ✅ View toggle buttons present (lines 123-130)
+  - ✅ Filter controls for timeframe (lines 106-111)
+  - ✅ Empty state with proper messaging (lines 207-210)
+  - ✅ calendar.js exists with full implementation
+- **Notes:** Code appears complete. Browser testing needed to verify functionality.
 
 ---
 
 ### 4. Video Issues
 
-#### P1 - [ ] Drill Review Shows Nothing
-- **Status:** Not Started
+#### P1 - [?] Drill Review Shows Nothing
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Drill Review tab doesn't show any content
 - **Files Affected:** `views/video_drill_review.php`
-- **Notes:**
+- **Verification Results (January 23, 2026):**
+  - ✅ Database query implemented (lines 8-48)
+  - ✅ Filter controls present (lines 66-84)
+  - ✅ Video grid with sections (Pending, Reviewed)
+  - ✅ Empty state with proper messaging (lines 196-201)
+  - ✅ Video modal for viewing (lines 206-228)
+  - ✅ Routing exists: 'drill_review' => 'views/video.php' in dashboard.php
+- **Notes:** Code appears complete with proper empty state. Shows "No drill videos available yet." when no data. Browser testing needed.
 
-#### P1 - [ ] Missing Upload Tab
-- **Status:** Not Started
+#### P1 - [?] Missing Upload Tab
+- **Status:** Needs Verification (Implemented as Sub-Tab)
 - **Issue:** Third tab for upload is missing
-- **Files Affected:** `views/video.php`
-- **Notes:**
+- **Files Affected:** `views/video.php`, `views/video_coach_reviews.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ Upload functionality exists in video_coach_reviews.php
+  - ✅ Implemented as SUB-TAB within Coaches Reviews (line 73-75)
+  - ✅ Three sub-tabs: Pending | Reviewed | Upload
+  - ✅ Upload form with file upload area (lines 208-285)
+  - ✅ Badge indicator "[Upload]" shown for coaches (video.php line 19)
+- **Notes:** Upload is implemented as a sub-tab within Coaches Reviews, not as a main tab. Browser testing needed to verify tab switching works.
 
-#### P1 - [ ] Coaches Review Shows Nothing
-- **Status:** Not Started
+#### P1 - [?] Coaches Review Shows Nothing
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Nothing shows in coaches review
 - **Files Affected:** `views/video_coach_reviews.php`
-- **Notes:**
+- **Verification Results (January 23, 2026):**
+  - ✅ Database query implemented (lines 18-53)
+  - ✅ Filter controls for athlete and period (lines 79-97)
+  - ✅ Three sub-tabs: Pending, Reviewed, Upload (lines 67-76)
+  - ✅ Video sections with cards (lines 103-205)
+  - ✅ Upload form for coaches (lines 208-285)
+  - ✅ Routing exists: 'coaches_reviews' => 'views/video.php' in dashboard.php
+- **Notes:** Code appears complete. Browser testing needed to verify functionality and data display.
 
 ---
 
@@ -143,19 +209,29 @@
   - Includes CTA button "Create Your First Drill" with proper navigation
 - **Notes:** Completed - proper empty state with action button
 
-#### P1 - [ ] Create Drill Doesn't Show Drawer
-- **Status:** Not Started
+#### P1 - [?] Create Drill Doesn't Show Drawer
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Should show drill drawer app that was built
 - **Files Affected:** 
   - `views/drills.php`
-  - Modal/drawer component
-- **Notes:**
+  - `views/drills_create.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ Create Drill tab exists in drills.php (line 16-17)
+  - ✅ drills_create.php file exists
+  - ✅ Routing exists: 'create_drill' => 'views/drills.php' in dashboard.php
+  - ✅ Tab navigation implemented with proper data attributes
+- **Notes:** Code structure is in place. Browser testing needed to verify drawer/modal functionality.
 
-#### P1 - [ ] Import Drill Shows Nothing
-- **Status:** Not Started
+#### P1 - [?] Import Drill Shows Nothing
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Import drill function doesn't work
-- **Files Affected:** `process_drills.php`
-- **Notes:**
+- **Files Affected:** `process_drills.php`, `views/drills_import.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ Import Drill tab exists in drills.php (line 19-20)
+  - ✅ drills_import.php file exists (11,376 bytes)
+  - ✅ Routing exists: 'import_drill' => 'views/drills.php' in dashboard.php
+  - ✅ Tab navigation implemented
+- **Notes:** Import page file exists. Browser testing needed to verify import functionality and form.
 
 ---
 
@@ -197,11 +273,17 @@
 
 ### 9. Travel Issues
 
-#### P1 - [ ] Mileage Report Doesn't Show
-- **Status:** Not Started
+#### P1 - [?] Mileage Report Doesn't Show
+- **Status:** Needs Verification (Appears Implemented)
 - **Issue:** Travel page doesn't show mileage report
-- **Files Affected:** `views/travel.php`
-- **Notes:**
+- **Files Affected:** `views/travel.php`, `views/travel_mileage.php`
+- **Verification Results (January 23, 2026):**
+  - ✅ Mileage query implemented (lines 28-40 in travel_mileage.php)
+  - ✅ Summary cards showing total miles, amount, trips (lines 67-95)
+  - ✅ Add mileage form present (line 98+)
+  - ✅ Filter controls for time periods (month, 3months, 6months, year)
+  - ✅ Routing exists: 'travel' => 'views/travel.php', 'mileage' => 'views/travel.php' in dashboard.php
+- **Notes:** Code appears complete with summary and entry list. Browser testing needed to verify data display.
 
 ---
 
@@ -461,68 +543,89 @@
 #### P2 - [ ] Skills, Drill Types, Positions, Equipment Should Be Tabs
 - **Status:** Not Started
 - **Issue:** Currently buttons - should be tabs per style guide
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
 #### P2 - [ ] Add Skill Button Missing Icon
 - **Status:** Not Started
 - **Issue:** Button needs Font Awesome icon
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
-#### P1 - [ ] Add Skill Creates Then Crashes to Home
-- **Status:** Not Started
+#### P1 - [!] Add Skill Creates Then Crashes to Home
+- **Status:** Not Implemented (Backend Missing)
 - **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `process_admin_age_skill.php`
-- **Notes:**
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Form submits action="create_skill" to process_admin_action.php (line 186)
+  - Handler for 'create_skill' does NOT exist in process_admin_action.php
+  - Skills list is hardcoded HTML (lines 35-67), not database-driven
+  - This is a placeholder UI without backend implementation
+- **Notes:** Requires backend handler implementation + database table/schema design. Not a simple fix.
 
-#### P1 - [ ] Skill Edit and Delete Don't Work
-- **Status:** Not Started
+#### P1 - [!] Skill Edit and Delete Don't Work
+- **Status:** Not Implemented (Backend Missing)
 - **Issue:** Action buttons non-functional
-- **Files Affected:** `views/admin_age_skill.php`
-- **Notes:**
+- **Files Affected:** `views/admin_categories.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Edit/delete buttons have data-action attributes but no handlers
+  - Skills are hardcoded HTML, not from database
+  - Part of incomplete categories management feature
+- **Notes:** Requires backend implementation. Not a simple fix.
 
 #### P2 - [ ] Add Type Button Missing Icon
 - **Status:** Not Started
 - **Issue:** Button needs Font Awesome icon (Drill Types tab)
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
-#### P1 - [ ] Add Type Creates Then Crashes to Home
-- **Status:** Not Started
-- **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `process_admin_age_skill.php`
-- **Notes:**
+#### P1 - [!] Add Type Creates Then Crashes to Home
+- **Status:** Not Implemented (Backend Missing)
+- **Issue:** Modal works but submission redirects to home (Drill Types tab)
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Form submits action="create_drill_type" to process_admin_action.php (line 222)
+  - Handler does NOT exist in process_admin_action.php
+  - Drill types are hardcoded HTML, not database-driven
+- **Notes:** Part of incomplete categories feature. Requires backend implementation.
 
 #### P2 - [ ] Add Position Button Missing Icon
 - **Status:** Not Started
 - **Issue:** Button needs Font Awesome icon
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
-#### P1 - [ ] Add Position Creates Then Crashes to Home
-- **Status:** Not Started
-- **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `process_admin_age_skill.php`
-- **Notes:**
+#### P1 - [!] Add Position Creates Then Crashes to Home
+- **Status:** Not Implemented (Backend Missing)
+- **Issue:** Modal works but submission redirects to home (Positions tab)
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Form submits action="create_position" to process_admin_action.php
+  - Handler does NOT exist
+  - Positions are hardcoded HTML
+- **Notes:** Part of incomplete categories feature. Requires backend implementation.
 
 #### P2 - [ ] Add Equipment Button Missing Icon
 - **Status:** Not Started
 - **Issue:** Button needs Font Awesome icon
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
 #### P1 - [ ] Add Equipment Can't Cancel
 - **Status:** Not Started
 - **Issue:** X and Cancel buttons don't work
-- **Files Affected:** `views/admin_age_skill.php`
+- **Files Affected:** `views/admin_categories.php`
 - **Notes:**
 
-#### P1 - [ ] Add Equipment Creates Then Crashes to Home
-- **Status:** Not Started
-- **Issue:** Modal works but submission redirects to home
-- **Files Affected:** `process_admin_age_skill.php`
-- **Notes:**
+#### P1 - [!] Add Equipment Creates Then Crashes to Home
+- **Status:** Not Implemented (Backend Missing)
+- **Issue:** Modal works but submission redirects to home (Equipment tab)
+- **Files Affected:** `views/admin_categories.php`, `process_admin_action.php`
+- **Root Cause Analysis (January 23, 2026):**
+  - Form submits action="create_equipment" to process_admin_action.php
+  - Handler does NOT exist
+  - Equipment list is hardcoded HTML
+- **Notes:** Part of incomplete categories feature. Requires backend implementation.
 
 ---
 
