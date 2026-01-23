@@ -159,11 +159,16 @@
 
 ### 8. Roster Issues
 
-#### P1 - [ ] Add Athlete Button Doesn't Work
-- **Status:** Not Started
+#### P1 - [x] Add Athlete Button Doesn't Work
+- **Status:** COMPLETED (January 23, 2026)
 - **Issue:** Button goes nowhere
-- **Files Affected:** `views/roster.php`
-- **Notes:**
+- **Files Affected:** `views/coach_roster.php`
+- **Fix Applied:**
+  - Added proper `data-modal="add-athlete-modal"` attribute to button
+  - Created complete Add Athlete modal with form
+  - Included close handlers (X and Cancel buttons) per STYLE_GUIDE.md Pattern 3
+  - Form submits to process_manage_athletes.php with proper CSRF protection
+- **Notes:** Button now properly opens modal for adding new athletes to roster
 
 #### P2 - [ ] My Athlete Header Has 2 Buttons Without Icons
 - **Status:** Not Started
@@ -679,12 +684,15 @@
 **Medium (P2):** 19  
 **Low (P3):** 0
 
-**Completed:** 7 (P0: 6, P1: 1, P2: 0)  
+**Completed:** 8 (P0: 6, P1: 2, P2: 0)  
 **In Progress:** 0  
-**Not Started:** 80  
+**Not Started:** 79  
 **Blocked:** 0
 
-**Latest Update:** January 22, 2026
+**Latest Update:** January 23, 2026
+- ✅ Fixed Add Athlete button in coach_roster.php (P1 issue)
+- ✅ Verified modal close handlers are working correctly in multiple views
+- 📋 Many reported modal issues appear to be already fixed
 - ✅ All 6 P0 critical database schema issues RESOLVED
 - ✅ Fixed Stats Add Goal button navigation
 - ✅ Repaired all 16 empty PHP files (cron, process, library, goals, views)
