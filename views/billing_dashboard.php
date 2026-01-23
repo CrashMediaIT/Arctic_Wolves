@@ -425,6 +425,13 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
     <div class="card" style="margin-top: 24px;">
         <div class="card-header">
             <h3><i class="fas fa-dollar-sign"></i> Recent Payments</h3>
+            <select class="form-input" style="width: auto;" onchange="window.location.href='?page=billing_dashboard&payment_days='+this.value">
+                <option value="7">1 Week</option>
+                <option value="30" selected>1 Month</option>
+                <option value="90">This Quarter</option>
+                <option value="180">6 Months</option>
+                <option value="365">1 Year</option>
+            </select>
         </div>
         <div class="card-body">
             <div style="overflow-x: auto;">
@@ -472,6 +479,13 @@ $pending_refunds = $pending_refunds_stmt->fetchAll();
     <div class="card" style="margin-top: 24px;">
         <div class="card-header">
             <h3><i class="fas fa-receipt"></i> Recent Expenses</h3>
+            <select class="form-input" style="width: auto;" onchange="window.location.href='?page=billing_dashboard&expense_days='+this.value">
+                <option value="7">1 Week</option>
+                <option value="30" selected>1 Month</option>
+                <option value="90">This Quarter</option>
+                <option value="180">6 Months</option>
+                <option value="365">1 Year</option>
+            </select>
         </div>
         <div class="card-body">
             <div style="overflow-x: auto;">

@@ -199,8 +199,12 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-chart-area"></i> Revenue Overview</h3>
-            <select class="form-input" style="width: auto;">
-                <option>Last 30 Days</option>
+            <select class="form-input" style="width: auto;" id="revenueTimeframe" onchange="updateRevenueChart(this.value)">
+                <option value="7">1 Week</option>
+                <option value="30" selected>1 Month</option>
+                <option value="90">This Quarter</option>
+                <option value="180">6 Months</option>
+                <option value="365">1 Year</option>
             </select>
         </div>
         <div class="card-body">
@@ -304,6 +308,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function updateRevenueChart(days) {
+    // This would typically require server-side data fetch
+    // For now, just reload the page with parameter
+    window.location.href = '?page=accounting_dashboard&days=' + days;
+}
 </script>
 
 <style>
