@@ -697,6 +697,11 @@
 **Blocked:** 0
 
 **Latest Update:** January 23, 2026
+- ✅ **Phase 1 Complete**: Routing table audit and expansion (Pattern 1)
+  - Added 28 missing routes to dashboard.php $allowed_pages array
+  - Categories: 9 admin/system pages, 6 athlete/coach views, 2 evaluations, 1 notifications, 2 reports, 3 sessions, 3 other pages
+  - Pages affected: admin_age_skill, admin_settings, athlete_evaluations, coach_evaluations, manage_athletes, notifications, reports_athlete, session_history, workouts, testing, and more
+  - This resolves ~15 reported "redirect to home" issues across multiple sections
 - ✅ Fixed Add Athlete button in coach_roster.php (P1 issue)
   - Added modal with proper data attributes per STYLE_GUIDE.md
   - Form submits to process_create_athlete.php
@@ -722,11 +727,12 @@
 
 ### Common Issue Patterns Identified
 
-**Pattern 1: Missing Routing Entries (~15 issues)**
+**Pattern 1: Missing Routing Entries (~15 issues)** ✅ **COMPLETED**
 - Symptom: Pages redirect to home
 - Root Cause: View files exist but not in `$allowed_pages` array in dashboard.php
 - Example: goals.php was missing from routing
 - Solution: Audit all view files and add missing routes
+- **Status**: Completed January 23, 2026 - Added 28 missing routes to dashboard.php
 
 **Pattern 2: Missing Button Data Attributes (~20 issues)**  
 - Symptom: Buttons do nothing or reload page
