@@ -827,22 +827,25 @@ These are placeholder UIs without backend functionality:
 #### P1 - [?] Add Scale Doesn't Function
 - **Status:** Needs Verification (January 23, 2026)
 - **Issue:** Button does nothing
-- **Files Affected:** `views/admin_eval_framework.php`
+- **Files Affected:** `views/admin_eval_framework.php`, `process_eval_framework.php`
 - **Solution Implemented:**
   - Added `data-action="add"` and `data-modal="add-scale-modal"` attributes to button (line 116)
   - Modal already exists at line 326 with proper structure
   - Form submits to process_eval_framework.php with action="create_scale"
-- **Notes:** Code complete, needs browser testing and backend handler verification in process_eval_framework.php
+- **Backend Status:** Handler for `create_scale` does not exist in process_eval_framework.php. No scale tables in database schema.
+- **Notes:** Button now opens modal (UI fixed). Backend implementation needed for full functionality.
 
 #### P1 - [?] Edit Scale Doesn't Function
 - **Status:** Needs Verification (January 23, 2026)
 - **Issue:** Button does nothing
-- **Files Affected:** `views/admin_eval_framework.php`
+- **Files Affected:** `views/admin_eval_framework.php`, `process_eval_framework.php`
 - **Solution Implemented:**
   - Added `data-action="edit"`, `data-id`, and `data-modal="edit-scale-modal"` attributes to both Edit buttons (lines 129, 141)
   - Created new edit-scale-modal with full form (lines 373-423)
-  - Form includes: scale_id (hidden), name, description, min_score, max_score, scale_data (JSON)
+  - Form includes: scale_id (hidden), name, description, min_value, max_value, scale_data (JSON)
   - Form submits to process_eval_framework.php with action="edit_scale"
+- **Backend Status:** Handler for `edit_scale` does not exist in process_eval_framework.php. No scale tables in database schema.
+- **Notes:** Button now opens modal (UI fixed). Backend implementation needed for full functionality.
 - **Notes:** Code complete, needs browser testing and backend handler verification in process_eval_framework.php
 
 ---

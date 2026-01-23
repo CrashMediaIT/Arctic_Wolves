@@ -394,13 +394,13 @@
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Minimum Score *</label>
-                    <input type="number" name="min_score" id="edit-scale-min" class="form-input" required>
+                    <label class="form-label">Min Value *</label>
+                    <input type="number" name="min_value" id="edit-scale-min" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Maximum Score *</label>
-                    <input type="number" name="max_score" id="edit-scale-max" class="form-input" required>
+                    <label class="form-label">Max Value *</label>
+                    <input type="number" name="max_value" id="edit-scale-max" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
