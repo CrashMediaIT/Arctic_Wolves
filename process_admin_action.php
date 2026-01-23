@@ -119,9 +119,61 @@ if ($action == 'add_discount') {
     exit();
 }
 
+if ($action == 'create_discount') {
+    $code = strtoupper(trim($_POST['code']));
+    $type = $_POST['type']; // percent or fixed
+    $value = floatval($_POST['value']);
+    $usage_limit = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : NULL;
+    $expiry_date = !empty($_POST['expiry_date']) ? $_POST['expiry_date'] : NULL;
+
+    try {
+        $stmt = $pdo->prepare("INSERT INTO discount_codes (code, type, value, usage_limit, expiry_date) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$code, $type, $value, $usage_limit, $expiry_date]);
+        header("Location: dashboard.php?page=admin_discounts&status=success");
+    } catch (PDOException $e) {
+        error_log("Create discount error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_discounts&status=error");
+    }
+    exit();
+}
+
+if ($action == 'edit_discount') {
+    $discount_id = intval($_POST['discount_id']);
+    $code = strtoupper(trim($_POST['code']));
+    $type = $_POST['type'];
+    $value = floatval($_POST['value']);
+    $usage_limit = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : NULL;
+    $expiry_date = !empty($_POST['expiry_date']) ? $_POST['expiry_date'] : NULL;
+
+    try {
+        $stmt = $pdo->prepare("UPDATE discount_codes SET code = ?, type = ?, value = ?, usage_limit = ?, expiry_date = ? WHERE id = ?");
+        $stmt->execute([$code, $type, $value, $usage_limit, $expiry_date, $discount_id]);
+        header("Location: dashboard.php?page=admin_discounts&status=success");
+    } catch (PDOException $e) {
+        error_log("Edit discount error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_discounts&status=error");
+    }
+    exit();
+}
+
 if ($action == 'delete_discount') {
-    $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$_POST['id']]);
-    header("Location: dashboard.php?page=admin_discounts&status=deleted");
+    $discount_id = intval($_POST['discount_id']);
+    try {
+        // Verify discount exists before deletion
+        $stmt = $pdo->prepare("SELECT 1 FROM discount_codes WHERE id = ? LIMIT 1");
+        $stmt->execute([$discount_id]);
+        if (!$stmt->fetch()) {
+            error_log("Delete discount error: Discount ID $discount_id not found");
+            header("Location: dashboard.php?page=admin_discounts&status=error");
+            exit();
+        }
+        
+        $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$discount_id]);
+        header("Location: dashboard.php?page=admin_discounts&status=success");
+    } catch (PDOException $e) {
+        error_log("Delete discount error: " . $e->getMessage());
+        header("Location: dashboard.php?page=admin_discounts&status=error");
+    }
     exit();
 }
 
@@ -147,6 +199,38 @@ if ($action == 'resend_email') {
         header("Location: dashboard.php?page=admin_email_reports&status=resent");
     } else {
         header("Location: dashboard.php?page=admin_email_reports&error=not_found");
+    }
+    exit();
+}
+
+// =========================================================
+// MODULE 8: USER MANAGEMENT
+// =========================================================
+if ($action == 'create_user') {
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone'] ?? '');
+    $role = $_POST['role'];
+    $is_verified = intval($_POST['is_verified'] ?? 1);
+    $password = $_POST['password'];
+
+    try {
+        // Hash the password
+        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+        $force_pass_change = 1; // Require password change on first login
+        
+        // Insert new user
+        $stmt = $pdo->prepare("
+            INSERT INTO users (email, password, first_name, last_name, role, phone, is_verified, force_pass_change, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$email, $hashed_password, $first_name, $last_name, $role, $phone, $is_verified, $force_pass_change]);
+        
+        header("Location: dashboard.php?page=all_users&status=success");
+    } catch (PDOException $e) {
+        error_log("Create user error: " . $e->getMessage());
+        header("Location: dashboard.php?page=all_users&status=error");
     }
     exit();
 }

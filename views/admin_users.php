@@ -186,7 +186,7 @@ function applyFilters() {
     const status = document.getElementById('statusFilter').value;
     const search = document.getElementById('userSearch').value;
     
-    let url = '?page=admin_users';
+    let url = '?page=all_users';
     if (role) url += '&role=' + encodeURIComponent(role);
     if (status) url += '&status=' + encodeURIComponent(status);
     if (search) url += '&search=' + encodeURIComponent(search);

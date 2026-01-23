@@ -2,7 +2,7 @@
 
 **Created:** January 22, 2026  
 **Last Updated:** January 23, 2026  
-**Version:** 1.2  
+**Version:** 1.3  
 **Purpose:** Track bugs, issues, and feature improvements requiring multiple revisions
 
 ---
@@ -32,13 +32,13 @@
 ### By Status:
 - **Completed:** 17 issues (P0: 6, P1: 10, P2: 1)
 - **In Progress:** 0 issues
-- **Needs Verification:** 15 issues (P1: 14, P2: 1 - code complete, needs browser testing)
+- **Needs Verification:** 20 issues (P1: 19, P2: 1 - code complete, needs browser testing)
 - **Not Implemented:** 5 issues (P1: 5 - categories management backend missing)
-- **Not Started:** 42 issues (P1: 24, P2: 18)
+- **Not Started:** 37 issues (P1: 19, P2: 18)
 
 ### By Priority:
 - **P0 (Critical):** 6 completed, 0 remaining
-- **P1 (High):** 10 completed, 0 in progress, 14 needs verification, 5 not implemented, 24 not started (53 total)
+- **P1 (High):** 10 completed, 0 in progress, 19 needs verification, 5 not implemented, 19 not started (53 total)
 - **P2 (Medium):** 1 completed, 1 needs verification, 18 not started (20 total)
 - **P3 (Low):** 0 total
 
@@ -48,6 +48,22 @@ These issues have complete code implementations but need browser testing:
 2. Upcoming Sessions Missing List/Calendar Views
 3. Drill Review Shows Nothing
 4. Missing Upload Tab (implemented as sub-tab)
+5. Coaches Review Shows Nothing
+6. Create Drill Doesn't Show Drawer
+7. Import Drill Shows Nothing
+8. Mileage Report Doesn't Show
+9. Create Invoice Cancel/X Buttons (closeModal now exposed globally)
+10. Add Line Item (function already implemented, needs testing)
+11. Cancel Button on Refund Modal (closeModal now exposed globally)
+12. Recent Reports Actions (backend handlers exist, needs testing)
+13. **Export Button** (added data attributes, uses existing exportTable function)
+14. **Choose File and Take Photo** (added visual feedback onchange handler)
+15. **Add Session Modal** (cancel fixed via closeModal, submit handler added)
+16. **Create Discount Invalid Value Error** (date restriction removed, handlers added)
+17. **Cancel Kicks to Products Page** (cancel button fixed to reload page)
+18. **Choose Files Doesn't Work** (file upload form fixed with enctype and feedback)
+19. **Cannot Search by Username** (page route fixed in applyFilters)
+20. **Create User Form Kicks Back to Home** (create_user handler added)
 5. Coaches Review Shows Nothing
 6. Create Drill Doesn't Show Drawer
 7. Import Drill Shows Nothing
@@ -550,12 +566,23 @@ These are placeholder UIs without backend functionality:
 - **Files Affected:** `views/products.php`
 - **Notes:**
 
-#### P1 - [ ] Create Discount Invalid Value Error
-- **Status:** Not Started
-- **Issue:** Complains about invalid value if month not changed to next month
-- **Details:** Discounts should allow any time period
-- **Files Affected:** `process_packages.php`
-- **Notes:**
+#### P1 - [?] Create Discount Invalid Value Error
+- **Status:** NEEDS VERIFICATION (January 23, 2026)
+- **Issue:** Complains about invalid value if month not changed to next month; missing handlers
+- **Details:** Discounts should allow any time period; form actions didn't match handlers
+- **Files Affected:** `views/admin_discounts.php`, `process_admin_action.php`
+- **Root Cause:**
+  - Date field had `min="<?= date('Y-m-d') ?>"` preventing past/custom dates
+  - Form sent `create_discount` but handler expected `add_discount`
+  - Field name mismatch: `usage_limit` vs `limit`, `expiry_date` vs `expiry`
+  - Missing handlers for `edit_discount` and proper `delete_discount`
+- **Fix Applied:**
+  - Removed min date restriction from expiry_date field (line 360)
+  - Added `create_discount` handler matching form field names
+  - Added `edit_discount` handler for discount updates
+  - Fixed `delete_discount` handler to use correct POST field name
+  - All handlers redirect to `admin_discounts` page with status
+- **Notes:** Code complete, needs browser testing to verify discount creation with any date
 
 #### P1 - [x] Create Discount Kicks Back to Home
 - **Status:** COMPLETED (January 23, 2026)
@@ -578,17 +605,30 @@ These are placeholder UIs without backend functionality:
   - Backend now properly validates even though JavaScript disables duplicate selection
 - **Notes:** Completed - improved validation and UX
 
-#### P1 - [ ] Cancel Kicks to Products Page
-- **Status:** Not Started
+#### P1 - [?] Cancel Kicks to Products Page
+- **Status:** NEEDS VERIFICATION (January 23, 2026)
 - **Issue:** Cancel button navigates to wrong page
 - **Files Affected:** `views/hr_termination.php`
-- **Notes:**
+- **Root Cause:** Button had `data-action="cancel"` which may have been triggering default navigation
+- **Fix Applied:** Changed cancel button to use `onclick="location.reload()"` to stay on termination page (line 146)
+- **Notes:** Code complete, needs browser testing to verify cancel stays on page
 
-#### P1 - [ ] Choose Files Doesn't Work
-- **Status:** Not Started
+#### P1 - [?] Choose Files Doesn't Work
+- **Status:** NEEDS VERIFICATION (January 23, 2026)
 - **Issue:** Cannot upload termination documentation
 - **Files Affected:** `views/hr_termination.php`
-- **Notes:**
+- **Root Cause:**
+  - File input was hidden with no trigger mechanism
+  - Missing `name` attribute so files wouldn't be submitted
+  - Form missing `enctype="multipart/form-data"`
+  - No visual feedback when files selected
+- **Fix Applied:**
+  - Added `name="documents[]"` and `id="terminationDocuments"` to file input
+  - Added `onclick="document.getElementById('terminationDocuments').click()"` to button
+  - Added `enctype="multipart/form-data"` to form
+  - Added JavaScript to show file count when files selected
+  - Added accept attribute for PDF, DOC, and image files
+- **Notes:** Code complete, needs browser testing and backend handler verification
 
 ---
 
@@ -605,17 +645,26 @@ These are placeholder UIs without backend functionality:
   - Similar fixes applied to admin_audit_logs.php and coach_roster.php
 - **Notes:** Completed - filter forms now stay on correct page
 
-#### P1 - [ ] Cannot Search by Username
-- **Status:** Not Started
-- **Issue:** Search functionality doesn't work
+#### P1 - [?] Cannot Search by Username
+- **Status:** NEEDS VERIFICATION (January 23, 2026)
+- **Issue:** Search functionality doesn't work - redirects to wrong page
 - **Files Affected:** `views/admin_users.php`
-- **Notes:**
+- **Root Cause:** JavaScript `applyFilters()` function used incorrect page route (`admin_users` instead of `all_users`)
+- **Fix Applied:** Changed line 189 from `?page=admin_users` to `?page=all_users` in applyFilters() function
+- **Notes:** Code complete, needs browser testing. Note: search works by first_name, last_name, email (no username column exists)
 
-#### P1 - [ ] Create User Form Kicks Back to Home
-- **Status:** Not Started
+#### P1 - [?] Create User Form Kicks Back to Home
+- **Status:** NEEDS VERIFICATION (January 23, 2026)
 - **Issue:** Form opens but submission redirects to home without creating user
 - **Files Affected:** `process_admin_action.php`
-- **Notes:**
+- **Root Cause:** Missing `create_user` action handler in process_admin_action.php
+- **Fix Applied:**
+  - Added complete `create_user` handler (lines 144-168)
+  - Handler validates input, hashes password, inserts user into database
+  - Sets `force_pass_change=1` for security
+  - Redirects to `all_users` page with status message
+  - Includes error logging and proper exception handling
+- **Notes:** Code complete, needs browser testing to verify user creation workflow
 
 #### P1 - [ ] Roles Filter Doesn't Work
 - **Status:** Not Started

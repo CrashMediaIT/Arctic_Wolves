@@ -357,8 +357,7 @@ $discounts = $pdo->query("
             
             <div class="form-group">
                 <label class="form-label">Expiry Date</label>
-                <input type="date" name="expiry_date" id="expiryDate" class="form-input"
-                       min="<?= date('Y-m-d') ?>">
+                <input type="date" name="expiry_date" id="expiryDate" class="form-input">
             </div>
             
             <button type="submit" class="btn-submit">
