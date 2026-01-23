@@ -125,6 +125,7 @@ $terminations = $terminations_stmt->fetchAll();
                     <div class="file-upload-zone">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Upload relevant documentation (resignation letter, termination notice, etc.)</p>
+                        <!-- TODO: Add server-side file validation using file_upload_validator.php -->
                         <input type="file" name="documents[]" id="terminationDocuments" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display: none;">
                         <button type="button" class="btn-secondary" onclick="document.getElementById('terminationDocuments').click()">Choose Files</button>
                         <span id="fileCount" style="margin-left: 10px; color: #10b981;"></span>

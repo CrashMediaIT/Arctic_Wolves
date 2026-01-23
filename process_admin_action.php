@@ -159,6 +159,15 @@ if ($action == 'edit_discount') {
 if ($action == 'delete_discount') {
     $discount_id = intval($_POST['discount_id']);
     try {
+        // Verify discount exists before deletion
+        $stmt = $pdo->prepare("SELECT id FROM discount_codes WHERE id = ?");
+        $stmt->execute([$discount_id]);
+        if (!$stmt->fetch()) {
+            error_log("Delete discount error: Discount ID $discount_id not found");
+            header("Location: dashboard.php?page=admin_discounts&status=error");
+            exit();
+        }
+        
         $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$discount_id]);
         header("Location: dashboard.php?page=admin_discounts&status=success");
     } catch (PDOException $e) {
