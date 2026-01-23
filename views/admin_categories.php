@@ -34,6 +34,7 @@
                 <div class="categories-list">
                     <?php
                     // Fetch all skills from database
+                    // Performance optimization suggestion: Consider adding index on eval_skills.created_at for faster ordering
                     $stmt = $pdo->prepare("SELECT es.id, es.name, es.description, ec.name as category_name 
                                           FROM eval_skills es 
                                           LEFT JOIN eval_categories ec ON es.category_id = ec.id 
@@ -139,6 +140,7 @@
                 <div class="categories-list">
                     <?php
                     // Fetch equipment categories (marked with equipment_type = 'category')
+                    // Performance optimization suggestion: Consider adding compound index on (equipment_type, created_at) for faster filtering and ordering
                     $stmt = $pdo->prepare("SELECT id, name, notes FROM equipment WHERE equipment_type = 'category' ORDER BY created_at DESC");
                     $stmt->execute();
                     $equipment_items = $stmt->fetchAll();

@@ -287,20 +287,25 @@ if ($action == 'export') {
 // MODULE 9: CATEGORY MANAGEMENT (Skills, Drill Types, Positions, Equipment)
 // =========================================================
 
+// Constants for category management
+define('DEFAULT_EVAL_CATEGORY', 'General');
+define('EQUIPMENT_TYPE_CATEGORY', 'category');
+define('CATEGORY_DEFAULT_QUANTITY', 0);
+
 // === SKILLS MANAGEMENT ===
 if ($action == 'create_skill') {
     try {
         // Skills are evaluation skills tied to categories
         // For simplicity, we'll use a default category or create general category
         // Check if a general/uncategorized category exists
-        $stmt = $pdo->prepare("SELECT id FROM eval_categories WHERE name = 'General' LIMIT 1");
-        $stmt->execute();
+        $stmt = $pdo->prepare("SELECT id FROM eval_categories WHERE name = ? LIMIT 1");
+        $stmt->execute([DEFAULT_EVAL_CATEGORY]);
         $category = $stmt->fetch();
         
         if (!$category) {
             // Create a General category if it doesn't exist
-            $stmt = $pdo->prepare("INSERT INTO eval_categories (name, description) VALUES ('General', 'General evaluation skills')");
-            $stmt->execute();
+            $stmt = $pdo->prepare("INSERT INTO eval_categories (name, description) VALUES (?, ?)");
+            $stmt->execute([DEFAULT_EVAL_CATEGORY, 'General evaluation skills']);
             $category_id = $pdo->lastInsertId();
         } else {
             $category_id = $category['id'];
@@ -420,8 +425,8 @@ if ($action == 'create_equipment') {
         $stmt = $pdo->prepare("INSERT INTO equipment (name, equipment_type, quantity, notes) VALUES (?, ?, ?, ?)");
         $stmt->execute([
             trim($_POST['name']),
-            'category', // Mark this as a category type
-            0,  // No quantity for category items
+            EQUIPMENT_TYPE_CATEGORY, // Mark this as a category type
+            CATEGORY_DEFAULT_QUANTITY,  // No quantity for category items
             trim($_POST['description'] ?? '')
         ]);
         
