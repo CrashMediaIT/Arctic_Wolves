@@ -225,6 +225,69 @@
 }
 </style>
 
+<!-- Edit Notification Modal -->
+<div id="edit-notification-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Notification</h2>
+            <button class="modal-close" onclick="closeModal('edit-notification-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_system_notifications.php">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="id" id="edit-notification-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" name="title" id="edit-notification-title" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Type *</label>
+                    <select name="type" id="edit-notification-type" class="form-input" required>
+                        <option value="info">Info</option>
+                        <option value="warning">Warning</option>
+                        <option value="success">Success</option>
+                        <option value="error">Error</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Message *</label>
+                    <textarea name="message" id="edit-notification-message" class="form-textarea" rows="3" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Target Audience *</label>
+                    <select name="audience" id="edit-notification-audience" class="form-input" required>
+                        <option value="all">All Users</option>
+                        <option value="admin">Admins Only</option>
+                        <option value="coach">Coaches Only</option>
+                        <option value="athlete">Athletes Only</option>
+                        <option value="parent">Parents Only</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select name="priority" id="edit-notification-priority" class="form-input">
+                        <option value="low">Low</option>
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-notification-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Notification</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function deleteNotification(notificationId) {
     if (!confirm('Are you sure you want to delete this notification?')) {
