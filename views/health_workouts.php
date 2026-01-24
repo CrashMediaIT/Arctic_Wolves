@@ -119,7 +119,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
             <i class="fas fa-dumbbell empty-state-icon"></i>
             <h3 class="empty-state-title">No Workout Plan Currently Assigned</h3>
             <p class="empty-state-text">Contact your coach to get a personalized workout program tailored to your hockey training needs.</p>
-            <button class="btn-secondary" data-action="contact" data-page="notifications"><i class="fas fa-envelope"></i> Contact Coach</button>
+            <button class="btn-secondary" data-action="contact" data-modal="contact-coach-modal"><i class="fas fa-envelope"></i> Contact Coach</button>
         </div>
         <?php endif; ?>
     </div>
@@ -246,6 +246,42 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                 <?php endif; ?>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Contact Coach Modal -->
+<div class="modal" id="contact-coach-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Contact Your Coach</h2>
+            <button class="modal-close" onclick="closeModal('contact-coach-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_contact.php" id="contact-coach-form">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <input type="hidden" name="action" value="send_message">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Subject *</label>
+                    <input type="text" name="subject" class="form-input" placeholder="Enter message subject" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message *</label>
+                    <textarea name="message" class="form-textarea" rows="6" placeholder="Type your message here..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select name="priority" class="form-input">
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('contact-coach-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Send Message</button>
+            </div>
+        </form>
     </div>
 </div>
 
