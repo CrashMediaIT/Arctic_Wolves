@@ -114,9 +114,9 @@
                         </div>
                     </div>
                     <div class="schedule-actions">
-                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Pause"><i class="fas fa-pause"></i></button>
-                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" data-action="edit" data-id="1" data-type="schedule" data-modal="edit-schedule-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" data-action="toggle" data-id="1" data-type="schedule" title="Pause"><i class="fas fa-pause"></i></button>
+                        <button class="btn-icon" data-action="delete" data-id="1" data-type="schedule" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
 
@@ -136,9 +136,9 @@
                         </div>
                     </div>
                     <div class="schedule-actions">
-                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Pause"><i class="fas fa-pause"></i></button>
-                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" data-action="edit" data-id="2" data-type="schedule" data-modal="edit-schedule-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" data-action="toggle" data-id="2" data-type="schedule" title="Pause"><i class="fas fa-pause"></i></button>
+                        <button class="btn-icon" data-action="delete" data-id="2" data-type="schedule" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
 
@@ -158,9 +158,9 @@
                         </div>
                     </div>
                     <div class="schedule-actions">
-                        <button class="btn-icon" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Resume"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" data-action="edit" data-id="3" data-type="schedule" data-modal="edit-schedule-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" data-action="toggle" data-id="3" data-type="schedule" title="Resume"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" data-action="delete" data-id="3" data-type="schedule" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>

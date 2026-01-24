@@ -15,7 +15,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $last  = trim($_POST['last_name']);
     $email = trim($_POST['email']);
     $pos   = $_POST['position'];
-    $dob   = $_POST['birth_date'];
+    $dob   = !empty($_POST['birth_date']) ? $_POST['birth_date'] : null;
     
     // Auto-generate a random password if one wasn't provided, or use the input
     $raw_pass = !empty($_POST['password']) ? $_POST['password'] : substr(str_shuffle('abcdefhkmnrstuvwxyz23456789'), 0, 8);

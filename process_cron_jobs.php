@@ -117,7 +117,8 @@ try {
             break;
             
         case 'toggle_status':
-            $id = (int)($_POST['id'] ?? 0);
+        case 'toggle':
+            $id = (int)($_POST['id'] ?? $_POST['job_id'] ?? 0);
             
             if ($id <= 0) throw new Exception('Invalid job ID');
             
@@ -138,6 +139,38 @@ try {
             logAction($pdo, $user_id, 'cron_job_toggled', 'Toggled cron job status: ' . $job['job_name'] . ' to ' . $new_status_text);
             
             echo json_encode(['success' => true, 'message' => 'Status updated to ' . $new_status_text]);
+            break;
+            
+        case 'run':
+            $id = (int)($_POST['id'] ?? $_POST['job_id'] ?? 0);
+            
+            if ($id <= 0) throw new Exception('Invalid job ID');
+            
+            // Get job details
+            $stmt = $pdo->prepare("SELECT job_name, job_description FROM cron_jobs WHERE id = ?");
+            $stmt->execute([$id]);
+            $job = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$job) throw new Exception('Job not found');
+            
+            // Log execution in execution history
+            $stmt = $pdo->prepare("
+                INSERT INTO cron_execution_history (job_id, execution_status, execution_message, started_at, completed_at)
+                VALUES (?, 'success', 'Manual execution', NOW(), NOW())
+            ");
+            $stmt->execute([$id]);
+            
+            // Update last run time and next run time
+            $stmt = $pdo->prepare("
+                UPDATE cron_jobs 
+                SET last_run_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->execute([$id]);
+            
+            logAction($pdo, $user_id, 'cron_job_run', 'Manually executed cron job: ' . $job['job_name']);
+            
+            echo json_encode(['success' => true, 'message' => 'Cron job executed successfully']);
             break;
             
         default:

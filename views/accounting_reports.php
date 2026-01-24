@@ -209,9 +209,9 @@
                         <span class="report-meta">Generated on Jan 5, 2024 • 245 KB</span>
                     </div>
                     <div class="report-actions">
-                        <button class="btn-icon" title="Download"><i class="fas fa-download"></i></button>
-                        <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" data-action="download-report" data-id="1" data-file="reports/monthly_revenue_dec_2023.pdf" title="Download"><i class="fas fa-download"></i></button>
+                        <button class="btn-icon" data-action="view-report" data-id="1" data-file="reports/monthly_revenue_dec_2023.pdf" title="View"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" data-action="delete" data-id="1" data-type="report" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
 
@@ -224,9 +224,9 @@
                         <span class="report-meta">Generated on Dec 28, 2023 • 128 KB</span>
                     </div>
                     <div class="report-actions">
-                        <button class="btn-icon" title="Download"><i class="fas fa-download"></i></button>
-                        <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" data-action="download-report" data-id="2" data-file="reports/client_billing_q4_2023.xlsx" title="Download"><i class="fas fa-download"></i></button>
+                        <button class="btn-icon" data-action="view-report" data-id="2" data-file="reports/client_billing_q4_2023.xlsx" title="View"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" data-action="delete" data-id="2" data-type="report" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>
