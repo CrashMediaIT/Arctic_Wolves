@@ -1,8 +1,8 @@
 # Arctic Wolves - Issues Tracker
 
 **Created:** January 22, 2026  
-**Last Updated:** January 23, 2026 (Part 15 - Demo Data & Production Mode Features)  
-**Version:** 2.1  
+**Last Updated:** January 24, 2026 (Part 20 - Enhanced Demo Data for Type F Issues)  
+**Version:** 2.2  
 **Purpose:** Track bugs, issues, and feature improvements requiring multiple revisions
 
 ---
@@ -28,7 +28,7 @@
 ## Current Status Summary
 
 **Total Issues:** 79  
-**Last Updated:** January 24, 2026 (Part 19 - Type C & Type D Button Fixes)
+**Last Updated:** January 24, 2026 (Part 20 - Enhanced Demo Data for Type F Issues)
 
 ### By Status:
 - **Completed:** 59 issues (P0: 6, P1: 35, P2: 18)
@@ -48,7 +48,31 @@
 - **P2 (Medium):** 18 completed, 1 needs verification, 0 needs identification, 1 not implemented (20 total)
 - **P3 (Low):** 0 total
 
-### Latest Fix (Part 19 - January 24, 2026):
+### Latest Fix (Part 20 - January 24, 2026):
+**Enhanced Demo Data for Type F Issues** - Added missing demo data for workout plans, nutrition plans, credits/refunds, and employee terminations
+- **Root Cause**: Demo data seeder was missing seed methods for several key features, making it difficult to test and showcase these features
+- **Impact**: Type F issues - Missing Features/Demo Data for termination, nutrition plans, workout plans, and credits/refunds
+- **Solution**: 
+  1. Added seedWorkoutPlans() method creating 3 complete workout plans with exercises and athlete assignments
+  2. Added seedNutritionPlans() method creating 3 nutrition plans with meals, foods, and athlete assignments
+  3. Added seedCreditsRefunds() method creating 5 demo transactions with various statuses
+  4. Added seedEmployeeTerminations() method creating 1 demo termination record
+  5. All demo data properly marked with is_demo=1 for easy cleanup
+- **Demo Data Created**:
+  - **Workout Plans**: 3 plans (Off-Season Strength, Pre-Season Conditioning, In-Season Maintenance) with exercises, assignments, and feedback
+  - **Nutrition Plans**: 3 plans (High Performance, Recovery & Muscle Building, Game Day) with 5 meals each, foods, assignments, and feedback
+  - **Credits/Refunds**: 5 transactions including credits for cancellations, refunds for overpayments, with various statuses (completed, approved, pending)
+  - **Employee Terminations**: 1 termination record (voluntary, 30-day notice, pending status with notes)
+- **Files Modified**: 
+  - demo_data_seeder.php (added 4 new seed methods and updated seedAll() to call them)
+- **Issues Resolved**: 
+  - Type F: Termination now has demo data
+  - Type F: Nutrition plan now has demo data
+  - Type F: Workout plan now has demo data
+  - Type F: Credits/refunds now has demo data
+- **Testing**: Run `php demo_data_seeder.php` to populate database with all demo data including new features
+
+### Previous Fix (Part 19 - January 24, 2026):
 **Type C & Type D Button Functionality Fixes** - Fixed redirect-to-home and non-functional button issues across the application
 - **Root Cause**: Buttons missing proper data attributes (data-page, data-modal, data-action-url), inline onclick handlers conflicting with centralized event delegation
 - **Impact**: ~45 buttons across application either redirected to home page or had no functionality
@@ -1454,6 +1478,7 @@ Refer to governance documents:
 
 ## Version History
 
+- **v2.2** - January 24, 2026 (Part 20) - Enhanced Demo Data for Type F Issues: Added missing demo data seeders to address Type F (Missing Features/Demo Data) issues. Implemented seedWorkoutPlans() creating 3 workout plans with exercises and athlete assignments. Implemented seedNutritionPlans() creating 3 nutrition plans with meals, foods, and athlete assignments. Implemented seedCreditsRefunds() creating 5 demo transactions with various statuses. Implemented seedEmployeeTerminations() creating 1 demo termination record. All demo data properly marked with is_demo=1 flag for production mode cleanup. Addresses problem statement requirements for termination demo data, nutrition plan demo data, and credits/refunds demo data. File modified: demo_data_seeder.php (added 302 lines, 4 new methods).
 - **v2.1** - January 24, 2026 (Part 18) - Button Style Guide Violations Fix: Fixed 32+ buttons across 19 view files to comply with STYLE_GUIDE.md standards. Added Font Awesome icons to Cancel buttons (fa-times), Save buttons (fa-save), and action buttons (fa-list, fa-user-edit, fa-clipboard-check, fa-chart-line, fa-copy, fa-ban, fa-share-alt, etc.). Fixed neon green button color (#00ff88) in schedule.php to use var(--success). Removed non-standard inline style overrides (padding: 8px 15px, font-size: 0.85rem) from refunds.php and mileage_tracker.php. Marked P2 "Button Icons Wrong Color" as COMPLETED. Updated status counts: 59 completed (up from 58), 0 needs identification (down from 1). Completion rate now 75% (59/79). Files affected: schedule.php, accounting_billing.php, accounting_credits.php, accounting_dashboard.php, accounting_products.php, accounts_payable.php, admin_categories.php, admin_cron_jobs.php, admin_eval_framework.php, admin_notifications.php, admin_packages.php, admin_plan_categories.php, athlete_detail.php, athlete_goals.php, coach_roster.php, evaluations_goals.php, expense_categories.php, refunds.php, mileage_tracker.php.
 - **v2.0** - January 23, 2026 (Part 14) - Application Health Verification: Comprehensive quality assurance session. Verified all governance documents current (MAINTENANCE_PROCESS.md v1.3, STYLE_GUIDE.md v1.1, STRUCTURE.md v1.6, ISSUES_TRACKER.md v2.0, README.md v1.1). Performed full application health check: validated all PHP syntax, verified routing (77+ routes), confirmed security practices, analyzed code patterns for consistency. No broken functionality identified. Categorized all 30 outstanding issues into: 26 needing browser testing (33%), 3 requiring feature development (4%), 1 needing specific examples (1%). Confirmed 62% completion rate (49/79) with 100% of P0 critical issues resolved. Created comprehensive recommendations for browser testing, Evaluation Scales feature, and Drag & Drop implementation. Application confirmed in excellent repair state. No code changes required this session.
 - **v1.9** - January 23, 2026 (Part 12) - Player Positions Implementation: Created player_positions table in database_schema.sql with proper structure (id, name, abbreviation, description, position_type, timestamps). Pre-populated with 6 default hockey positions. Implemented full CRUD handlers in process_admin_action.php (create_position, update_position, delete_position). Updated admin_categories.php UI to show database-driven position list, added edit modal with position_type dropdown, and JavaScript for edit/delete operations. Marked "Add Position Creates Then Crashes to Home" as COMPLETED. Updated status counts: 49 completed (up from 48), 1 not implemented (down from 2). Completion rate now 62% (49/79).
