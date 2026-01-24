@@ -285,3 +285,6 @@
     gap: 10px;
 }
 </style>
+
+<!-- Load Drill Designer JavaScript -->
+<script src="js/drill_designer.js"></script>

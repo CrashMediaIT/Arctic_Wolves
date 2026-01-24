@@ -28,21 +28,40 @@ $action = $_POST['action'] ?? '';
 // =========================================================
 // CREATE/UPDATE DRILL
 // =========================================================
-if ($action === 'save_drill') {
+if ($action === 'save_drill' || $action === 'create') {
     requirePermission($pdo, $user_id, $user_role, 'create_drills');
     
     $drill_id = !empty($_POST['drill_id']) ? intval($_POST['drill_id']) : null;
-    $title = trim($_POST['title']);
+    $title = trim($_POST['title'] ?? $_POST['drill_name'] ?? '');
     $description = trim($_POST['description'] ?? '');
+    $category_name = trim($_POST['category'] ?? '');
     $category_id = !empty($_POST['category_id']) ? intval($_POST['category_id']) : null;
     $diagram_data = trim($_POST['diagram_data'] ?? '');
-    $duration = !empty($_POST['duration_minutes']) ? intval($_POST['duration_minutes']) : null;
+    $duration = !empty($_POST['duration_minutes']) ? intval($_POST['duration_minutes']) : (!empty($_POST['duration']) ? intval($_POST['duration']) : null);
     $skill_level = $_POST['skill_level'] ?? 'all';
     $age_group = trim($_POST['age_group'] ?? '');
-    $equipment = trim($_POST['equipment_needed'] ?? '');
+    $num_players = trim($_POST['num_players'] ?? '');
+    $instructions = trim($_POST['instructions'] ?? '');
+    $equipment = isset($_POST['equipment']) && is_array($_POST['equipment']) ? implode(', ', $_POST['equipment']) : trim($_POST['equipment_needed'] ?? '');
     $coaching_points = trim($_POST['coaching_points'] ?? '');
     $video_url = trim($_POST['video_url'] ?? '');
-    $tags = isset($_POST['tags']) ? $_POST['tags'] : [];
+    $tags_input = $_POST['tags'] ?? '';
+    $tags = is_array($tags_input) ? $tags_input : array_map('trim', explode(',', $tags_input));
+    
+    // If category name is provided instead of ID, look up or create the category
+    if (empty($category_id) && !empty($category_name)) {
+        $stmt = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+        $stmt->execute([$category_name]);
+        $cat = $stmt->fetch();
+        if ($cat) {
+            $category_id = $cat['id'];
+        } else {
+            // Create new category
+            $stmt = $pdo->prepare("INSERT INTO drill_categories (name, created_by) VALUES (?, ?)");
+            $stmt->execute([$category_name, $user_id]);
+            $category_id = $pdo->lastInsertId();
+        }
+    }
     
     if (empty($title)) {
         header("Location: dashboard.php?page=drills&error=title_required");
@@ -50,20 +69,29 @@ if ($action === 'save_drill') {
     }
     
     try {
+        // Combine additional fields into description if needed
+        $full_description = $description;
+        if (!empty($instructions)) {
+            $full_description .= "\n\n**Instructions:**\n" . $instructions;
+        }
+        if (!empty($num_players)) {
+            $full_description .= "\n\n**Players:** " . $num_players;
+        }
+        if (!empty($equipment)) {
+            $full_description .= "\n\n**Equipment:** " . $equipment;
+        }
+        
         if ($drill_id) {
             // Update existing drill
             $stmt = $pdo->prepare("
                 UPDATE drills SET 
                     title = ?, description = ?, category_id = ?, diagram_data = ?,
-                    duration_minutes = ?, skill_level = ?, age_group = ?,
-                    equipment_needed = ?, coaching_points = ?, video_url = ?,
-                    updated_at = NOW()
+                    video_url = ?, updated_at = NOW()
                 WHERE id = ? AND created_by = ?
             ");
             $stmt->execute([
-                $title, $description, $category_id, $diagram_data, $duration,
-                $skill_level, $age_group, $equipment, $coaching_points, $video_url,
-                $drill_id, $user_id
+                $title, $full_description, $category_id, $diagram_data,
+                $video_url, $drill_id, $user_id
             ]);
             
             // Delete old tags
@@ -72,15 +100,11 @@ if ($action === 'save_drill') {
             // Insert new drill
             $stmt = $pdo->prepare("
                 INSERT INTO drills (
-                    title, description, category_id, diagram_data, duration_minutes,
-                    skill_level, age_group, equipment_needed, coaching_points, video_url,
-                    created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    title, description, category_id, diagram_data, video_url, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $title, $description, $category_id, $diagram_data, $duration,
-                $skill_level, $age_group, $equipment, $coaching_points, $video_url,
-                $user_id
+                $title, $full_description, $category_id, $diagram_data, $video_url, $user_id
             ]);
             $drill_id = $pdo->lastInsertId();
         }
