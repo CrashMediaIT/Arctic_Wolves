@@ -31,6 +31,8 @@ function setupPermissions() {
     foreach ($required_dirs as $dir) {
         $full_path = $base_dir . '/' . $dir;
         if (!file_exists($full_path)) {
+            // NOTE: 0775 permissions allow web server (group) write access, required for uploads/sessions/cache
+            // This is appropriate for these specific writable directories in Docker environments
             if (!@mkdir($full_path, 0775, true)) {
                 $last_error = error_get_last();
                 $error_msg = $last_error ? $last_error['message'] : 'unknown error';
@@ -48,6 +50,8 @@ function setupPermissions() {
     }
     
     // Ensure root directory is writable (775)
+    // NOTE: 775 is required for setup.php to write arctic_wolves.env file during initial setup
+    // This is specific to Docker environments where PHP-FPM runs as 'abc' user (UID 911)
     if (!@chmod($base_dir, 0775)) {
         $permission_issues[] = "Failed to set permissions on root directory";
     }
@@ -62,6 +66,7 @@ if (!file_exists($permissions_flag_file)) {
     $permission_issues = setupPermissions();
     
     // Create flag file to mark permissions as set up
+    // Suppress errors as this is a convenience flag - if it fails, setup will just run again
     @file_put_contents($permissions_flag_file, date('Y-m-d H:i:s'));
     
     if (!empty($permission_issues)) {
