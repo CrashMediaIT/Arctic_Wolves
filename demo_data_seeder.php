@@ -89,6 +89,10 @@ class DemoDataSeeder {
         $this->seedExpenses();
         $this->seedNotifications();
         $this->seedAuditLogs();
+        $this->seedWorkoutPlans();
+        $this->seedNutritionPlans();
+        $this->seedCreditsRefunds();
+        $this->seedEmployeeTerminations();
         
         echo "\n=== Demo Data Seeding Complete! ===\n";
         echo "Total demo records created: " . $this->getTotalDemoRecords() . "\n\n";
@@ -782,6 +786,304 @@ class DemoDataSeeder {
         }
         
         echo "  ✓ Created " . count($logs) . " demo audit logs\n";
+    }
+    
+    /**
+     * Seed workout plans and assignments
+     */
+    private function seedWorkoutPlans() {
+        echo "Seeding Workout Plans...\n";
+        
+        $coach_id = $this->demo_ids['users']['coach'][0] ?? 1;
+        $athlete_ids = $this->demo_ids['users']['athlete'] ?? [];
+        $exercise_ids = $this->demo_ids['exercise_library'] ?? [];
+        
+        // Create workout plans
+        $plans = [
+            [
+                'Off-Season Strength Program',
+                'Building foundational strength for hockey players during off-season',
+                12,
+                'intermediate'
+            ],
+            [
+                'Pre-Season Conditioning',
+                'High-intensity conditioning to prepare for season start',
+                8,
+                'advanced'
+            ],
+            [
+                'In-Season Maintenance',
+                'Maintain fitness during competitive season without overtraining',
+                16,
+                'intermediate'
+            ]
+        ];
+        
+        foreach ($plans as $plan) {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO workout_plans (name, description, created_by, duration_weeks, difficulty_level, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, 1, NOW())
+            ");
+            $stmt->execute([$plan[0], $plan[1], $coach_id, $plan[2], $plan[3]]);
+            $plan_id = $this->pdo->lastInsertId();
+            $this->demo_ids['workout_plans'][] = $plan_id;
+            
+            // Add exercises to each plan
+            if (!empty($exercise_ids)) {
+                $exercises_to_add = array_slice($exercise_ids, 0, min(5, count($exercise_ids)));
+                $day = 1;
+                foreach ($exercises_to_add as $exercise_id) {
+                    $stmt = $this->pdo->prepare("
+                        INSERT INTO workout_plan_exercises (workout_plan_id, exercise_id, day_number, sets, reps, rest_seconds, is_demo)
+                        VALUES (?, ?, ?, ?, ?, ?, 1)
+                    ");
+                    $stmt->execute([$plan_id, $exercise_id, $day, rand(3, 4), rand(8, 12), rand(60, 90)]);
+                    $day = ($day % 5) + 1; // Rotate through days 1-5
+                }
+            }
+        }
+        
+        // Assign workout plans to athletes
+        if (!empty($athlete_ids) && !empty($this->demo_ids['workout_plans'])) {
+            foreach (array_slice($athlete_ids, 0, 3) as $index => $athlete_id) {
+                $plan_id = $this->demo_ids['workout_plans'][$index % count($this->demo_ids['workout_plans'])];
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO athlete_workout_assignments (athlete_id, workout_plan_id, assigned_by, start_date, status, is_demo, created_at)
+                    VALUES (?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), 'active', 1, NOW())
+                ");
+                $stmt->execute([$athlete_id, $plan_id, $coach_id, rand(1, 30)]);
+                
+                // Add some feedback
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO athlete_workout_feedback (athlete_id, workout_plan_id, rating, feedback, is_demo, created_at)
+                    VALUES (?, ?, ?, ?, 1, DATE_SUB(NOW(), INTERVAL ? DAY))
+                ");
+                $stmt->execute([
+                    $athlete_id,
+                    $plan_id,
+                    rand(4, 5),
+                    'Great workout plan! Feeling stronger already.',
+                    rand(1, 20)
+                ]);
+            }
+        }
+        
+        echo "  ✓ Created " . count($plans) . " demo workout plans with exercises and assignments\n";
+    }
+    
+    /**
+     * Seed nutrition plans and assignments
+     */
+    private function seedNutritionPlans() {
+        echo "Seeding Nutrition Plans...\n";
+        
+        $coach_id = $this->demo_ids['users']['coach'][0] ?? 1;
+        $athlete_ids = $this->demo_ids['users']['athlete'] ?? [];
+        $food_ids = $this->demo_ids['food_library'] ?? [];
+        
+        // Create nutrition plans
+        $plans = [
+            [
+                'High Performance Meal Plan',
+                'Optimized nutrition for peak athletic performance',
+                3200,
+                180,
+                350,
+                100
+            ],
+            [
+                'Recovery & Muscle Building',
+                'High protein plan for muscle recovery and growth',
+                2800,
+                200,
+                280,
+                80
+            ],
+            [
+                'Game Day Nutrition',
+                'Strategic meal timing for competition days',
+                3000,
+                160,
+                400,
+                90
+            ]
+        ];
+        
+        foreach ($plans as $plan) {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO nutrition_plans (name, description, created_by, target_calories, target_protein_g, target_carbs_g, target_fat_g, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
+            ");
+            $stmt->execute([$plan[0], $plan[1], $coach_id, $plan[2], $plan[3], $plan[4], $plan[5]]);
+            $plan_id = $this->pdo->lastInsertId();
+            $this->demo_ids['nutrition_plans'][] = $plan_id;
+            
+            // Add meals to each plan
+            $meals = ['Breakfast', 'Lunch', 'Dinner', 'Pre-Workout Snack', 'Post-Workout Snack'];
+            foreach ($meals as $index => $meal_name) {
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO nutrition_plan_meals (nutrition_plan_id, meal_name, meal_time, calories, protein_g, carbs_g, fat_g, is_demo)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                ");
+                $meal_calories = $plan[2] / 5; // Divide total calories by 5 meals
+                $stmt->execute([
+                    $plan_id,
+                    $meal_name,
+                    sprintf('%02d:00:00', 6 + ($index * 3)), // 6am, 9am, 12pm, 3pm, 6pm
+                    $meal_calories,
+                    $plan[3] / 5,
+                    $plan[4] / 5,
+                    $plan[5] / 5
+                ]);
+                $meal_id = $this->pdo->lastInsertId();
+                
+                // Add foods to each meal
+                if (!empty($food_ids)) {
+                    $foods_to_add = array_slice($food_ids, 0, min(3, count($food_ids)));
+                    foreach ($foods_to_add as $food_id) {
+                        $stmt = $this->pdo->prepare("
+                            INSERT INTO nutrition_plan_meal_foods (meal_id, food_id, quantity, is_demo)
+                            VALUES (?, ?, ?, 1)
+                        ");
+                        $stmt->execute([$meal_id, $food_id, rand(1, 2)]);
+                    }
+                }
+            }
+        }
+        
+        // Assign nutrition plans to athletes
+        if (!empty($athlete_ids) && !empty($this->demo_ids['nutrition_plans'])) {
+            foreach (array_slice($athlete_ids, 0, 3) as $index => $athlete_id) {
+                $plan_id = $this->demo_ids['nutrition_plans'][$index % count($this->demo_ids['nutrition_plans'])];
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO athlete_nutrition_assignments (athlete_id, nutrition_plan_id, assigned_by, start_date, status, is_demo, created_at)
+                    VALUES (?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), 'active', 1, NOW())
+                ");
+                $stmt->execute([$athlete_id, $plan_id, $coach_id, rand(1, 30)]);
+                
+                // Add some feedback
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO athlete_nutrition_feedback (athlete_id, nutrition_plan_id, rating, feedback, is_demo, created_at)
+                    VALUES (?, ?, ?, ?, 1, DATE_SUB(NOW(), INTERVAL ? DAY))
+                ");
+                $stmt->execute([
+                    $athlete_id,
+                    $plan_id,
+                    rand(4, 5),
+                    'Easy to follow meal plan. Seeing great results!',
+                    rand(1, 20)
+                ]);
+            }
+        }
+        
+        echo "  ✓ Created " . count($plans) . " demo nutrition plans with meals and assignments\n";
+    }
+    
+    /**
+     * Seed credits and refunds
+     */
+    private function seedCreditsRefunds() {
+        echo "Seeding Credits and Refunds...\n";
+        
+        $user_ids = array_merge(
+            $this->demo_ids['users']['athlete'] ?? [],
+            $this->demo_ids['users']['parent'] ?? []
+        );
+        $admin_id = $this->demo_ids['users']['admin'][0] ?? 1;
+        
+        if (empty($user_ids)) {
+            echo "  ⚠ Skipping credits/refunds - no users available\n";
+            return;
+        }
+        
+        $transactions = [
+            ['credit', 25.00, 'Account credit for session cancellation', 'completed'],
+            ['refund', 50.00, 'Refund for overpayment', 'completed'],
+            ['credit', 15.00, 'Good faith credit for scheduling issue', 'completed'],
+            ['refund', 75.00, 'Season package refund', 'approved'],
+            ['credit', 30.00, 'Promotional credit', 'pending']
+        ];
+        
+        foreach ($transactions as $index => $transaction) {
+            $user_id = $user_ids[$index % count($user_ids)];
+            $stmt = $this->pdo->prepare("
+                INSERT INTO credits_refunds (user_id, transaction_type, amount, reason, status, processed_by, processed_at, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, DATE_SUB(NOW(), INTERVAL ? DAY))
+            ");
+            $days_ago = rand(1, 60);
+            $processed_at = in_array($transaction[3], ['completed', 'approved']) ? date('Y-m-d H:i:s', strtotime("-$days_ago days")) : null;
+            $processed_by = $processed_at ? $admin_id : null;
+            
+            $stmt->execute([
+                $user_id,
+                $transaction[0],
+                $transaction[1],
+                $transaction[2],
+                $transaction[3],
+                $processed_by,
+                $processed_at,
+                $days_ago
+            ]);
+            $this->demo_ids['credits_refunds'][] = $this->pdo->lastInsertId();
+        }
+        
+        echo "  ✓ Created " . count($transactions) . " demo credits and refunds\n";
+    }
+    
+    /**
+     * Seed employee terminations
+     */
+    private function seedEmployeeTerminations() {
+        echo "Seeding Employee Terminations...\n";
+        
+        $coach_ids = $this->demo_ids['users']['coach'] ?? [];
+        $admin_id = $this->demo_ids['users']['admin'][0] ?? 1;
+        
+        if (empty($coach_ids)) {
+            echo "  ⚠ Skipping terminations - no coaches available\n";
+            return;
+        }
+        
+        // Only terminate one coach for demo purposes
+        if (count($coach_ids) > 1) {
+            $terminated_coach = $coach_ids[count($coach_ids) - 1]; // Use last coach
+            
+            $stmt = $this->pdo->prepare("
+                INSERT INTO employee_terminations (
+                    user_id, termination_date, termination_type, reason,
+                    notice_period_days, final_pay_date, final_pay_amount,
+                    exit_interview_completed, exit_interview_notes,
+                    equipment_returned, access_revoked, processed_by, status,
+                    notes, is_demo, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())
+            ");
+            
+            $termination_date = date('Y-m-d', strtotime('+30 days'));
+            $final_pay_date = date('Y-m-d', strtotime('+45 days'));
+            
+            $stmt->execute([
+                $terminated_coach,
+                $termination_date,
+                'voluntary',
+                'Relocating to another city for family reasons',
+                30,
+                $final_pay_date,
+                2500.00,
+                0,
+                null,
+                0,
+                0,
+                $admin_id,
+                'pending',
+                'Notice provided. Need to reassign athletes and sessions.'
+            ]);
+            
+            $this->demo_ids['employee_terminations'][] = $this->pdo->lastInsertId();
+            echo "  ✓ Created 1 demo employee termination record\n";
+        } else {
+            echo "  ⚠ Skipping terminations - need at least 2 coaches\n";
+        }
     }
     
     /**
