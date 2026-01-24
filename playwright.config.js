@@ -28,6 +28,11 @@ export default defineConfig({
   /* Shared settings for all projects */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
+    /* NOTE: Update this to match your local development environment */
+    /* Examples: */
+    /* - Docker: http://localhost/Arctic_Wolves */
+    /* - PHP Built-in: http://localhost:8000 */
+    /* - Apache/Nginx: http://localhost/Arctic_Wolves */
     baseURL: process.env.BASE_URL || 'http://localhost/Arctic_Wolves',
     
     /* Collect trace when retrying the failed test */

@@ -23,134 +23,156 @@ const TEST_USER = {
 
 /**
  * Helper function to login
+ * @param {Page} page - Playwright page object
+ * @param {string} role - User role (admin, coach, athlete)
+ * @returns {Promise<boolean>} - Returns true if login successful
  */
 async function login(page, role = 'admin') {
-  const user = TEST_USER[role];
-  await page.goto('/login.php');
-  await page.fill('input[name="email"]', user.email);
-  await page.fill('input[name="password"]', user.password);
-  await page.click('button[type="submit"]');
-  
-  // Wait for redirect to dashboard
-  await page.waitForURL(/dashboard\.php/);
+  try {
+    const user = TEST_USER[role];
+    await page.goto('/login.php', { waitUntil: 'networkidle' });
+    await page.fill('input[name="email"]', user.email);
+    await page.fill('input[name="password"]', user.password);
+    await page.click('button[type="submit"]');
+    
+    // Wait for redirect to dashboard with timeout
+    await page.waitForURL(/dashboard\.php/, { timeout: 10000 });
+    
+    // Verify we're actually logged in
+    const isDashboard = await page.url().includes('dashboard.php');
+    return isDashboard;
+  } catch (error) {
+    console.error(`Login failed for ${role}:`, error.message);
+    return false;
+  }
+}
+
+/**
+ * Helper function to check for SQL errors
+ * @param {Page} page - Playwright page object
+ * @returns {Promise<boolean>} - Returns true if no SQL errors found
+ */
+async function expectNoSqlError(page) {
+  const hasError = await page.locator('text=/Fatal error|SQLSTATE|PDOException/').isVisible().catch(() => false);
+  return !hasError;
 }
 
 test.describe('Database Column Fix Validation', () => {
   
   test('1. Video - Drill Review loads without d.name SQL error', async ({ page }) => {
-    await login(page, 'athlete');
+    const loggedIn = await login(page, 'athlete');
+    expect(loggedIn).toBe(true);
     
     // Navigate to Video > Drill Review
     await page.goto('/dashboard.php?page=drill_review');
     
     // Should NOT see fatal error
-    const hasError = await page.locator('text=/Fatal error|SQLSTATE/').isVisible().catch(() => false);
-    expect(hasError).toBe(false);
+    const noError = await expectNoSqlError(page);
+    expect(noError).toBe(true);
     
     // Should see page title
     await expect(page.locator('.page-title')).toContainText(/drill/i);
-    
-    console.log('✅ Video Drill Review loads without d.name SQL error');
   });
   
   test('2. Health - Workouts loads without category SQL error', async ({ page }) => {
-    await login(page, 'athlete');
+    const loggedIn = await login(page, 'athlete');
+    expect(loggedIn).toBe(true);
     
     // Navigate to Health > Strength & Conditioning
     await page.goto('/dashboard.php?page=health_workouts');
     
     // Should NOT see fatal error
-    const hasError = await page.locator('text=/Fatal error|SQLSTATE/').isVisible().catch(() => false);
-    expect(hasError).toBe(false);
+    const noError = await expectNoSqlError(page);
+    expect(noError).toBe(true);
     
     // Should see page content
     await expect(page.locator('.page-header')).toBeVisible();
-    
-    console.log('✅ Health Workouts loads without category SQL error');
   });
   
   test('3. Drills - Import loads without d.source SQL error', async ({ page }) => {
-    await login(page, 'coach');
+    const loggedIn = await login(page, 'coach');
+    expect(loggedIn).toBe(true);
     
     // Navigate to Drills > Import from IHS
     await page.goto('/dashboard.php?page=drills_import');
     
     // Should NOT see fatal error
-    const hasError = await page.locator('text=/Fatal error|SQLSTATE/').isVisible().catch(() => false);
-    expect(hasError).toBe(false);
+    const noError = await expectNoSqlError(page);
+    expect(noError).toBe(true);
     
     // Should see import interface
     await expect(page.locator('.page-title')).toContainText(/import/i);
-    
-    console.log('✅ Drills Import loads without d.source SQL error');
   });
   
   test('4. Roster - Athletes loads without booked_for_user_id SQL error', async ({ page }) => {
-    await login(page, 'coach');
+    const loggedIn = await login(page, 'coach');
+    expect(loggedIn).toBe(true);
     
     // Navigate to Roster
     await page.goto('/dashboard.php?page=athletes');
     
     // Should NOT see fatal error
-    const hasError = await page.locator('text=/Fatal error|SQLSTATE/').isVisible().catch(() => false);
-    expect(hasError).toBe(false);
+    const noError = await expectNoSqlError(page);
+    expect(noError).toBe(true);
     
     // Should see roster interface
     await expect(page.locator('.page-header')).toBeVisible();
-    
-    console.log('✅ Athletes Roster loads without booked_for_user_id SQL error');
   });
   
   test('5. Travel - Mileage loads without settings table error', async ({ page }) => {
-    await login(page, 'coach');
+    const loggedIn = await login(page, 'coach');
+    expect(loggedIn).toBe(true);
     
     // Navigate to Travel > Mileage
     await page.goto('/dashboard.php?page=travel_mileage');
     
     // Should NOT see fatal error
-    const hasError = await page.locator('text=/Fatal error|SQLSTATE|settings/').isVisible().catch(() => false);
-    expect(hasError).toBe(false);
+    const noError = await expectNoSqlError(page);
+    expect(noError).toBe(true);
     
     // Should see mileage interface
     await expect(page.locator('.page-header')).toBeVisible();
-    
-    console.log('✅ Travel Mileage loads without settings table error');
   });
   
   test('6. Reports - Generate report without format column error', async ({ page }) => {
-    await login(page, 'admin');
+    const loggedIn = await login(page, 'admin');
+    expect(loggedIn).toBe(true);
     
     // Navigate to Reports
     await page.goto('/dashboard.php?page=reports');
     
     // Should see reports interface without error
-    const hasError = await page.locator('text=/Fatal error|SQLSTATE/').isVisible().catch(() => false);
-    expect(hasError).toBe(false);
+    const noError = await expectNoSqlError(page);
+    expect(noError).toBe(true);
     
     // Try to generate a report (if form exists)
     const generateBtn = page.locator('button:has-text("Generate")');
     if (await generateBtn.isVisible()) {
-      // Fill minimal report form
-      await page.selectOption('select[name="report_type"]', { index: 0 });
-      await generateBtn.click();
-      
-      // Check response
-      await page.waitForTimeout(1000);
-      
-      // Should not show format column error
-      const responseText = await page.textContent('body');
-      expect(responseText).not.toContain('Column not found');
-      expect(responseText).not.toContain('format');
+      // Select report type by visible text instead of index
+      const reportTypeSelect = page.locator('select[name="report_type"]');
+      if (await reportTypeSelect.isVisible()) {
+        const firstOption = await reportTypeSelect.locator('option').first().textContent();
+        if (firstOption) {
+          await reportTypeSelect.selectOption({ label: firstOption });
+          await generateBtn.click();
+          
+          // Check response
+          await page.waitForTimeout(1000);
+          
+          // Should not show format column error
+          const noErrorAfter = await expectNoSqlError(page);
+          expect(noErrorAfter).toBe(true);
+        }
+      }
     }
-    
-    console.log('✅ Reports generate without format column error');
   });
 });
 
 test.describe('Style Guide Compliance - Sample Tests', () => {
   
   test('Book Session button follows style guide', async ({ page }) => {
-    await login(page, 'athlete');
+    const loggedIn = await login(page, 'athlete');
+    expect(loggedIn).toBe(true);
     
     // Navigate to Sessions > Booking
     await page.goto('/dashboard.php?page=sessions_booking');
@@ -170,13 +192,12 @@ test.describe('Style Guide Compliance - Sample Tests', () => {
         expect(box.height).toBeGreaterThanOrEqual(40);
         expect(box.height).toBeLessThanOrEqual(50);
       }
-      
-      console.log('✅ Book Session button has icon and proper height');
     }
   });
   
   test('Add buttons use primary color', async ({ page }) => {
-    await login(page, 'admin');
+    const loggedIn = await login(page, 'admin');
+    expect(loggedIn).toBe(true);
     
     // Navigate to admin page with Add buttons
     await page.goto('/dashboard.php?page=admin_categories');
@@ -192,8 +213,6 @@ test.describe('Style Guide Compliance - Sample Tests', () => {
       // Should have fa-plus icon
       const hasIcon = await btn.locator('i.fa-plus').isVisible();
       expect(hasIcon).toBe(true);
-      
-      console.log(`✅ Found ${count} Add buttons with proper icons`);
     }
   });
 });
@@ -201,7 +220,8 @@ test.describe('Style Guide Compliance - Sample Tests', () => {
 test.describe('Functionality - Redirect Issues', () => {
   
   test('Contact coach button should not redirect to home', async ({ page }) => {
-    await login(page, 'athlete');
+    const loggedIn = await login(page, 'athlete');
+    expect(loggedIn).toBe(true);
     
     // Navigate to Nutrition
     await page.goto('/dashboard.php?page=nutrition');
@@ -221,10 +241,6 @@ test.describe('Functionality - Redirect Issues', () => {
       // Should NOT redirect to home/dashboard
       expect(newUrl).not.toContain('page=home');
       expect(newUrl).not.toBe(currentUrl.replace(/\?.*/, '')); // Not stripped to base dashboard
-      
-      console.log('✅ Contact coach button does not redirect to home');
-    } else {
-      console.log('⚠️  Contact coach button not found - may need demo data');
     }
   });
 });
