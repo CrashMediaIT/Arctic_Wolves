@@ -21,9 +21,9 @@ if ($tab === 'sessions') $tab = 'upcoming_sessions'; // Default tab
 <div class="tab-content">
     <?php
     if ($tab === 'upcoming_sessions') {
-        include 'sessions_upcoming.php';
+        include __DIR__ . '/sessions_upcoming.php';
     } elseif ($tab === 'booking') {
-        include 'sessions_booking.php';
+        include __DIR__ . '/sessions_booking.php';
     }
     ?>
 </div>
