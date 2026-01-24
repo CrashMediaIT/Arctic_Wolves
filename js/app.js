@@ -358,9 +358,9 @@
                         openModal(modal);
                         return;
                     }
-                    if (page === 'coach') {
-                        // Navigate to coach contact/messages page
-                        window.location.href = '?page=notifications';
+                    if (page) {
+                        // Navigate to contact/messages page
+                        window.location.href = `?page=${page}`;
                         return;
                     }
                 }

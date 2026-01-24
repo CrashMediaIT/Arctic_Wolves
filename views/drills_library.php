@@ -95,7 +95,7 @@ try {
                             <i class="fas fa-plus"></i>
                         </button>
                         <?php if ($drill['created_by'] == $user_id || in_array($user_role, ['admin', 'coach'])): ?>
-                            <button class="btn-icon" data-action="edit" data-id="<?php echo $drill['id']; ?>" data-page="drills" title="Edit">
+                            <button class="btn-icon" data-action="edit" data-id="<?php echo $drill['id']; ?>" data-modal="edit-drill-modal" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
                         <?php endif; ?>
