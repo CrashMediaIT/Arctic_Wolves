@@ -434,6 +434,55 @@
                     return;
                 }
                 
+                // Handle toggle-status action (enable/disable users, sessions, packages, etc.)
+                if (action === 'toggle-status' && itemId) {
+                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                    const entityType = type || 'item';
+                    
+                    if (confirm(`Are you sure you want to toggle the status of this ${entityType}?`)) {
+                        let endpoint = 'process_admin_action.php';
+                        let actionName = 'toggle_status';
+                        
+                        // Determine endpoint based on type
+                        if (entityType === 'session') {
+                            endpoint = 'process_admin_action.php';
+                            actionName = 'toggle_session_status';
+                        } else if (entityType === 'package') {
+                            endpoint = 'process_packages.php';
+                            actionName = 'toggle_status';
+                        } else if (entityType === 'user') {
+                            endpoint = 'process_admin_action.php';
+                            actionName = 'toggle_user_status';
+                        }
+                        
+                        fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `action=${actionName}&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast(data.message || 'Status updated successfully', 'success');
+                                setTimeout(() => window.location.reload(), 1000);
+                            } else {
+                                showToast(data.message || 'Failed to update status', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showToast('Error updating status', 'error');
+                            console.error('Toggle status error:', error);
+                        });
+                    }
+                    return;
+                }
+                
+                // Handle permissions action (user permissions)
+                if (action === 'permissions' && itemId) {
+                    window.location.href = `?page=user_permissions&user_id=${itemId}`;
+                    return;
+                }
+                
                 // Handle view-session action specifically
                 if (action === 'view-session' && sessionId) {
                     window.location.href = `?page=session_detail&id=${sessionId}`;
@@ -476,6 +525,28 @@
                             showToast('An error occurred', 'error');
                             console.error('Cancel session error:', error);
                         });
+                    }
+                    return;
+                }
+                
+                // Handle download-report action
+                if (action === 'download-report') {
+                    const file = this.getAttribute('data-file');
+                    if (file) {
+                        window.location.href = file;
+                    } else if (itemId) {
+                        window.location.href = `process_reports.php?action=download&report_id=${itemId}`;
+                    }
+                    return;
+                }
+                
+                // Handle view-report action
+                if (action === 'view-report') {
+                    const file = this.getAttribute('data-file');
+                    if (file) {
+                        window.open(file, '_blank');
+                    } else if (itemId) {
+                        window.open(`process_reports.php?action=view&report_id=${itemId}`, '_blank');
                     }
                     return;
                 }
