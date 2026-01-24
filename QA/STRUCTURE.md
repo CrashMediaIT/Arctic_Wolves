@@ -11,6 +11,7 @@
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.7 | January 24, 2026 | **CRITICAL FIX**: Fixed systematic include path bug in all 6 parent view files with tab navigation. Changed relative includes to use `__DIR__` constant, resolving blank tab content for Sessions, Video, Health, Drills, Practice, and Travel pages. Affects 12 child views. |
 | 1.6 | January 23, 2026 | Added player_positions table to database schema. Implemented complete CRUD handlers for player positions in process_admin_action.php (create_position, update_position, delete_position). Updated admin_categories.php with position management UI and JavaScript handlers. |
 | 1.5 | January 23, 2026 | Added MODULE 9 (Category Management) to process_admin_action.php. Documented new backend handlers for skills (eval_skills), drill types (drill_categories), and equipment management. Updated admin_categories.php to display dynamic database content. |
 | 1.4 | January 23, 2026 | Added process_audit_logs_export.php to process handlers. Documented new export functionality for audit logs. |
@@ -921,6 +922,45 @@ Many views contain inline JavaScript for:
 - Form submission handling
 - Dynamic content loading
 - Data table interactions
+
+### Parent-Child View Pattern (CRITICAL)
+
+**Pattern:** Parent views with tab navigation include child views  
+**Affected Files:** 6 parent views with 12 child views
+
+**CRITICAL REQUIREMENT:** Parent views MUST use `__DIR__` constant when including child views.
+
+**Correct Pattern:**
+```php
+// Parent view (e.g., views/sessions.php)
+if ($tab === 'upcoming_sessions') {
+    include __DIR__ . '/sessions_upcoming.php';  // ✅ CORRECT
+}
+```
+
+**Incorrect Pattern (WILL FAIL):**
+```php
+// Parent view
+if ($tab === 'upcoming_sessions') {
+    include 'sessions_upcoming.php';  // ❌ WRONG - causes blank content
+}
+```
+
+**Why This Matters:**
+- Parent views are included from `dashboard.php` (root directory)
+- Without `__DIR__`, relative includes look in root directory, not views/
+- Results in child views not loading, showing blank tab content
+- Affects all tabbed pages: Sessions, Video, Health, Drills, Practice, Travel
+
+**Affected Parent Views:**
+1. `views/sessions.php` → includes `sessions_upcoming.php`, `sessions_booking.php`
+2. `views/video.php` → includes `video_drill_review.php`, `video_coach_reviews.php`
+3. `views/health.php` → includes `health_workouts.php`, `health_nutrition.php`
+4. `views/drills.php` → includes `drills_library.php`, `drills_create.php`, `drills_import.php`
+5. `views/practice.php` → includes `practice_library.php`, `practice_create.php`
+6. `views/travel.php` → includes `travel_mileage.php`
+
+**Fix History:** January 24, 2026 - All 6 parent views corrected to use `__DIR__` constant (v1.7)
 
 ---
 

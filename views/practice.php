@@ -21,9 +21,9 @@ if ($tab === 'practice') $tab = 'practice_library'; // Default tab
 <div class="tab-content">
     <?php
     if ($tab === 'practice_library') {
-        include 'practice_library.php';
+        include __DIR__ . '/practice_library.php';
     } elseif ($tab === 'create_practice') {
-        include 'practice_create.php';
+        include __DIR__ . '/practice_create.php';
     }
     ?>
 </div>

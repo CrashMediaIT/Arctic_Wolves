@@ -24,11 +24,11 @@ if ($tab === 'drills') $tab = 'drill_library'; // Default tab
 <div class="tab-content">
     <?php
     if ($tab === 'drill_library') {
-        include 'drills_library.php';
+        include __DIR__ . '/drills_library.php';
     } elseif ($tab === 'create_drill') {
-        include 'drills_create.php';
+        include __DIR__ . '/drills_create.php';
     } elseif ($tab === 'import_drill') {
-        include 'drills_import.php';
+        include __DIR__ . '/drills_import.php';
     }
     ?>
 </div>
