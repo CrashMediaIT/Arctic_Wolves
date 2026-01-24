@@ -1,0 +1,17 @@
+{
+  "name": "arctic-wolves-tests",
+  "version": "1.0.0",
+  "description": "Browser tests for Arctic Wolves hockey coaching platform",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug"
+  },
+  "keywords": ["playwright", "testing", "browser-automation"],
+  "author": "Arctic Wolves Team",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}

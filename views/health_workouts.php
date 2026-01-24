@@ -60,7 +60,7 @@ $exercises_stmt->execute($params);
 $exercises = $exercises_stmt->fetchAll();
 
 // Get exercise categories
-$categories_stmt = $pdo->prepare("SELECT DISTINCT category FROM exercises WHERE category IS NOT NULL ORDER BY category");
+$categories_stmt = $pdo->prepare("SELECT DISTINCT category FROM exercise_library WHERE category IS NOT NULL ORDER BY category");
 $categories_stmt->execute();
 $categories = $categories_stmt->fetchAll(PDO::FETCH_COLUMN);
 

@@ -1,6 +1,6 @@
 <?php
 // Get current mileage rate (convert to per km)
-$rate_stmt = $pdo->prepare("SELECT value FROM settings WHERE setting_key = 'mileage_rate' LIMIT 1");
+$rate_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'mileage_rate' LIMIT 1");
 $rate_stmt->execute();
 $mileage_rate_per_mile = $rate_stmt->fetchColumn() ?: 0.65;
 $mileage_rate_per_km = $mileage_rate_per_mile / 1.60934; // Convert to per km

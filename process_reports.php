@@ -82,17 +82,14 @@ function generateReport() {
     
     // Save report record
     $stmt = $pdo->prepare("
-        INSERT INTO reports (report_type, generated_by, parameters, format, file_path, share_token, scheduled, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO reports (report_type, generated_by, parameters, file_path, status)
+        VALUES (?, ?, ?, ?, 'completed')
     ");
     $stmt->execute([
         $report_type,
         $user_id,
         json_encode($parameters),
-        $format,
-        $filename,
-        $share_token,
-        $schedule ? 1 : 0
+        $filename
     ]);
     
     $report_id = $pdo->lastInsertId();

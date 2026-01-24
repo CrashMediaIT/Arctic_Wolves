@@ -3,7 +3,7 @@
 $recentImportsQuery = "SELECT d.*, u.first_name, u.last_name 
     FROM drills d 
     LEFT JOIN users u ON d.created_by = u.id 
-    WHERE d.source = 'IHS' 
+    WHERE d.ihs_source_url IS NOT NULL 
     ORDER BY d.created_at DESC 
     LIMIT 5";
 $recentImports = $pdo->query($recentImportsQuery);
