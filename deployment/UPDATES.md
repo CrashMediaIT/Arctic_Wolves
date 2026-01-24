@@ -4,7 +4,47 @@ This file tracks all major updates and changes to the Crash Hockey platform. Eac
 
 ---
 
-## January 20, 2026 (Latest) - Fix: Permissions Set INSIDE Container
+## January 24, 2026 (Latest) - Fix: NGINX 403 Error for PHP Files
+
+**Primary Changes:**
+- **Security fix**: Added `try_files $uri =404;` to PHP location block in nginx configuration
+- **Root cause**: Missing file existence check before passing requests to PHP-FPM
+- **Solution**: Nginx now verifies file exists before processing, preventing 403 errors on valid files
+- **Security benefit**: Prevents path traversal attacks and provides clearer error messages (404 instead of 403)
+
+**Configuration Updated:**
+- `deployment/arctic_wolves.conf` - Line 65-66 now includes security check
+```nginx
+location ~ \.php$ {
+    # Security: Don't process non-existent files
+    try_files $uri =404;
+    
+    include fastcgi_params;
+    fastcgi_pass 127.0.0.1:9000;
+    ...
+}
+```
+
+**Why This Matters:**
+- **Before**: Nginx passed ALL `.php` requests to PHP-FPM, even for non-existent files, causing 403 errors
+- **After**: Nginx checks file existence first, returns 404 for missing files, only processes valid PHP files
+- **Security**: Protects against path traversal attacks and reduces attack surface
+- **Standard practice**: Recommended by nginx documentation for all PHP-FPM setups
+
+**Documentation Added:**
+- `deployment/NGINX_403_FIX.md` - Comprehensive documentation of the fix, root cause, and testing procedures
+- Includes testing commands to verify the fix works correctly
+- Links to official nginx documentation for reference
+
+**Testing:**
+After applying this fix and restarting nginx:
+- Valid PHP files (index.php, setup.php) return 200 OK
+- Non-existent PHP files return 404 Not Found (not 403 Forbidden)
+- Path traversal attempts are blocked
+
+---
+
+## January 20, 2026 - Fix: Permissions Set INSIDE Container
 
 **Primary Changes:**
 - **Permission fix**: Changed deployment to set permissions INSIDE container instead of on host
