@@ -235,15 +235,16 @@ These issues require actual browser testing with Playwright to validate and fix 
 - [ ] Fix non-functional buttons (Type D)
 
 ### Sprint 3: UI/UX Polish
-- [ ] Fix dropdown styling
-- [ ] Fix button proportions
-- [ ] Fix icon placements
-- [ ] Fix tabs vs buttons
+- [x] Using QA docs as governance
+- [x] Fix dropdown styling
+- [x] Fix button proportions
+- [x] Fix icon placements
+- [x] Fix tabs vs buttons
 
 ### Sprint 4: Demo Data & Testing
-- [ ] Add comprehensive demo data
-- [ ] Browser test all features
-- [ ] Document with screenshots
+- [x] Add comprehensive demo data
+- [x] Browser test all features
+- [x] Document with screenshots
 
 ---
 
