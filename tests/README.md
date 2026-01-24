@@ -16,6 +16,21 @@ npm install
 npx playwright install chromium
 ```
 
+**Note:** If browser installation fails due to network restrictions (e.g., DNS monitoring proxy), you can:
+- Install browsers on a different network
+- Use system-installed Chrome/Chromium
+- Skip browser tests and rely on manual QA with screenshots
+
+### 3. Verify Installation
+
+```bash
+# Check if Playwright is installed
+npm list @playwright/test
+
+# List available tests without running them
+npx playwright test --list
+```
+
 ## Running Tests
 
 ### Run All Tests
@@ -130,6 +145,46 @@ This enables:
 - Automatic retries (2 attempts)
 - Single-threaded execution
 - Fail-fast on test.only
+
+## QA Governance Checks
+
+The test infrastructure supports QA governance checks by:
+
+1. **Automated Screenshots**: Tests automatically capture screenshots on failure
+   - Configuration: `screenshot: 'only-on-failure'` in playwright.config.js
+   - Location: `test-results/` directory
+   - Format: PNG files with test names
+
+2. **Test Reports**: HTML reports with visual evidence
+   - View with: `npx playwright show-report`
+   - Includes screenshots, traces, and videos of failures
+
+3. **Prerequisites for QA Checks**:
+   - Dependencies installed: `npm install`
+   - Application running at configured BASE_URL
+   - Test database with required test users
+
+4. **Common Issues**:
+   - **MODULE_NOT_FOUND error**: Run `npm install` to install @playwright/test
+   - **Browser installation fails**: Network restrictions may block downloads
+   - **Tests won't run**: Check that dependencies are installed with `npm list`
+
+### Running Tests as Governance Checks
+
+```bash
+# 1. Ensure dependencies are installed
+npm install
+
+# 2. Verify setup
+npm list @playwright/test
+npx playwright test --list
+
+# 3. Run tests (requires running application)
+BASE_URL=http://your-server/Arctic_Wolves npm test
+
+# 4. View results with screenshots
+npx playwright show-report
+```
 
 ## Troubleshooting
 
