@@ -854,7 +854,14 @@ class DemoDataSeeder {
                 ");
                 $stmt->execute([$athlete_id, $plan_id, $coach_id, rand(1, 30)]);
                 
-                // Add some feedback
+                // Add some feedback with variety
+                $feedback_messages = [
+                    'Great workout plan! Feeling stronger already.',
+                    'Love the structured approach. Seeing real progress!',
+                    'Challenging but achievable. Perfect intensity level.',
+                    'This plan has improved my on-ice performance significantly.',
+                    'Well-balanced exercises. Recovery time is just right.'
+                ];
                 $stmt = $this->pdo->prepare("
                     INSERT INTO athlete_workout_feedback (athlete_id, workout_plan_id, rating, feedback, is_demo, created_at)
                     VALUES (?, ?, ?, ?, 1, DATE_SUB(NOW(), INTERVAL ? DAY))
@@ -863,7 +870,7 @@ class DemoDataSeeder {
                     $athlete_id,
                     $plan_id,
                     rand(4, 5),
-                    'Great workout plan! Feeling stronger already.',
+                    $feedback_messages[$index % count($feedback_messages)],
                     rand(1, 20)
                 ]);
             }
@@ -921,6 +928,7 @@ class DemoDataSeeder {
             
             // Add meals to each plan
             $meals = ['Breakfast', 'Lunch', 'Dinner', 'Pre-Workout Snack', 'Post-Workout Snack'];
+            $meal_times = ['07:00:00', '12:00:00', '18:00:00', '15:00:00', '20:30:00']; // 7am, 12pm, 6pm, 3pm, 8:30pm
             foreach ($meals as $index => $meal_name) {
                 $stmt = $this->pdo->prepare("
                     INSERT INTO nutrition_plan_meals (nutrition_plan_id, meal_name, meal_time, calories, protein_g, carbs_g, fat_g, is_demo)
@@ -930,7 +938,7 @@ class DemoDataSeeder {
                 $stmt->execute([
                     $plan_id,
                     $meal_name,
-                    sprintf('%02d:00:00', 6 + ($index * 3)), // 6am, 9am, 12pm, 3pm, 6pm
+                    $meal_times[$index],
                     $meal_calories,
                     $plan[3] / 5,
                     $plan[4] / 5,
@@ -962,7 +970,14 @@ class DemoDataSeeder {
                 ");
                 $stmt->execute([$athlete_id, $plan_id, $coach_id, rand(1, 30)]);
                 
-                // Add some feedback
+                // Add some feedback with variety
+                $feedback_messages = [
+                    'Easy to follow meal plan. Seeing great results!',
+                    'Meals are delicious and I have more energy on the ice.',
+                    'Perfect balance of nutrients. Recovery time has improved.',
+                    'Love the variety! Never feel like I\'m on a restrictive diet.',
+                    'Noticing better endurance and faster recovery between games.'
+                ];
                 $stmt = $this->pdo->prepare("
                     INSERT INTO athlete_nutrition_feedback (athlete_id, nutrition_plan_id, rating, feedback, is_demo, created_at)
                     VALUES (?, ?, ?, ?, 1, DATE_SUB(NOW(), INTERVAL ? DAY))
@@ -971,7 +986,7 @@ class DemoDataSeeder {
                     $athlete_id,
                     $plan_id,
                     rand(4, 5),
-                    'Easy to follow meal plan. Seeing great results!',
+                    $feedback_messages[$index % count($feedback_messages)],
                     rand(1, 20)
                 ]);
             }
