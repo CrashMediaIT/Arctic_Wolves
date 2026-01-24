@@ -13,23 +13,22 @@ This file tracks all major updates and changes to the Crash Hockey platform. Eac
 - **Security maintained**: SQL files remain protected via existing global deny rules
 
 **Configuration Updated:**
-- `deployment/arctic_wolves.conf` - Lines 105-110: Documentation directory access rules
+- `deployment/arctic_wolves.conf` - Lines 105-108: Documentation directory access rules
 
 ```nginx
-# Documentation directory access (lines 105-110)
-location ~ ^/(QA|deployment)/.*\.(md|txt|json|conf)$ {
-    default_type text/plain;
+# Documentation directory access (lines 105-108)
+location ~ ^/(QA|deployment)/.*\.(md|txt|json)$ {
     add_header Content-Type "text/plain; charset=utf-8";
     add_header X-Content-Type-Options "nosniff" always;
 }
 ```
 
-Note: SQL files are protected by existing global deny rules at lines 100-103 and 130-132. PHP security (`try_files $uri =404;`) was previously added and remains at lines 65-66.
+Note: SQL files and nginx configuration files are protected by existing global deny rules. PHP security (`try_files $uri =404;`) was previously added and remains at lines 65-66.
 
 **Why This Matters:**
 - **Docs - Before**: No location blocks for /QA and /deployment, resulting in 403 Forbidden errors on governance documents
-- **Docs - After**: Explicit access granted to documentation files (.md, .txt, .json, .conf), SQL files remain protected
-- **Security maintained**: Existing global deny rules protect SQL and sensitive files
+- **Docs - After**: Explicit access granted to documentation files (.md, .txt, .json), SQL and config files remain protected
+- **Security maintained**: Existing global deny rules protect SQL, nginx configs, and sensitive files
 - **Governance**: QA team can now access maintenance process, style guides, and deployment documentation
 - **Standard practice**: Proper content-type headers set for documentation files
 

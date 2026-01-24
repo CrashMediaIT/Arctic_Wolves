@@ -7,18 +7,17 @@ Nginx was returning 403 Forbidden errors when accessing governance documentation
 The nginx configuration had no location blocks to allow access to documentation directories (/QA and /deployment), causing 403 Forbidden errors when trying to view governance documents like MAINTENANCE_PROCESS.md, UPDATES.md, etc.
 
 ## Solution
-Added location blocks to allow access to documentation files in /QA and /deployment directories (lines 105-110):
+Added location blocks to allow access to documentation files in /QA and /deployment directories (lines 105-108):
 
 ```nginx
 # Allow access to QA and deployment documentation directories
-location ~ ^/(QA|deployment)/.*\.(md|txt|json|conf)$ {
-    default_type text/plain;
+location ~ ^/(QA|deployment)/.*\.(md|txt|json)$ {
     add_header Content-Type "text/plain; charset=utf-8";
     add_header X-Content-Type-Options "nosniff" always;
 }
 ```
 
-Note: SQL files in these directories are protected by the global SQL deny rule at lines 100-103.
+Note: SQL files and nginx configuration files (.conf) in these directories are protected by global deny rules.
 
 ## Why This Fixes the 403 Errors
 
@@ -31,9 +30,9 @@ Without specific location blocks for /QA and /deployment:
 
 ### Documentation Directories - After the Fix
 With dedicated location blocks for documentation:
-1. **Explicit access granted** to .md, .txt, .json, and .conf files in /QA and /deployment
+1. **Explicit access granted** to .md, .txt, and .json files in /QA and /deployment
 2. **Proper content type** headers set for text files
-3. **SQL files still protected** from being served directly (via global deny rules)
+3. **SQL and config files protected** from being served directly (via global deny rules)
 4. **Governance documents accessible** for review and updates
 
 ## Security Benefits
@@ -71,4 +70,4 @@ curl -I http://yourdomain.com/deployment/schema.sql
 January 24, 2026
 
 ## Files Modified
-- `deployment/arctic_wolves.conf` - Lines 105-110: Added location blocks for QA and deployment documentation access
+- `deployment/arctic_wolves.conf` - Lines 105-108: Added location blocks for QA and deployment documentation access
