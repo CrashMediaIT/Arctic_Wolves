@@ -350,6 +350,89 @@
                 const url = this.getAttribute('data-url');
                 const type = this.getAttribute('data-type');
                 const sessionId = this.getAttribute('data-session-id');
+                const itemId = this.getAttribute('data-id');
+                
+                // Handle contact action (Contact Coach buttons)
+                if (action === 'contact') {
+                    if (modal) {
+                        openModal(modal);
+                        return;
+                    }
+                    if (page === 'coach') {
+                        // Navigate to coach contact/messages page
+                        window.location.href = '?page=notifications';
+                        return;
+                    }
+                }
+                
+                // Handle add-expense action
+                if (action === 'add-expense') {
+                    if (page) {
+                        window.location.href = `?page=${page}`;
+                        return;
+                    }
+                }
+                
+                // Handle create-invoice action
+                if (action === 'create-invoice') {
+                    if (page) {
+                        window.location.href = `?page=${page}`;
+                        return;
+                    }
+                }
+                
+                // Handle run action (cron jobs, etc.)
+                if (action === 'run' && itemId) {
+                    if (confirm('Run this job now?')) {
+                        const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                        showToast('Running job...', 'info');
+                        
+                        fetch('process_cron_jobs.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `action=run_now&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast('Job completed successfully', 'success');
+                                setTimeout(() => window.location.reload(), 1500);
+                            } else {
+                                showToast(data.message || 'Job failed', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showToast('Error running job', 'error');
+                            console.error('Run job error:', error);
+                        });
+                    }
+                    return;
+                }
+                
+                // Handle toggle action (pause/resume cron jobs)
+                if (action === 'toggle' && itemId) {
+                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                    
+                    fetch('process_cron_jobs.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `action=toggle&id=${itemId}&csrf_token=${encodeURIComponent(csrfToken)}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast(data.message || 'Status updated', 'success');
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            showToast(data.message || 'Update failed', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Error updating status', 'error');
+                        console.error('Toggle error:', error);
+                    });
+                    return;
+                }
                 
                 // Handle view-session action specifically
                 if (action === 'view-session' && sessionId) {
@@ -424,7 +507,9 @@
                         'invoice': 'billing_dashboard',
                         'payment': 'billing_dashboard',
                         'expense': 'expenses',
-                        'refund': 'credits_refunds'
+                        'refund': 'credits_refunds',
+                        'drill': 'create_drill',
+                        'practice_plan': 'create_practice'
                     };
                     
                     if (typePages[type]) {

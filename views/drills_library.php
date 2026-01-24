@@ -43,10 +43,10 @@ try {
             </select>
         </div>
         <div class="action-buttons">
-            <button class="btn btn-secondary" data-action="import" onclick="window.location='?page=import_drill'">
+            <button class="btn btn-secondary" data-action="view" data-page="import_drill">
                 <i class="fas fa-download"></i> Import from IHS
             </button>
-            <button class="btn btn-primary" data-action="add" onclick="window.location='?page=create_drill'">
+            <button class="btn btn-primary" data-action="view" data-page="create_drill">
                 <i class="fas fa-plus"></i> Create Drill
             </button>
         </div>
@@ -95,7 +95,7 @@ try {
                             <i class="fas fa-plus"></i>
                         </button>
                         <?php if ($drill['created_by'] == $user_id || in_array($user_role, ['admin', 'coach'])): ?>
-                            <button class="btn-icon" data-action="edit" data-id="<?php echo $drill['id']; ?>" title="Edit">
+                            <button class="btn-icon" data-action="edit" data-id="<?php echo $drill['id']; ?>" data-page="drills" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
                         <?php endif; ?>
@@ -107,7 +107,7 @@ try {
                 <i class="fas fa-clipboard-list fa-3x"></i>
                 <h3>No Drills Yet</h3>
                 <p>Start building your drill library by creating or importing drills.</p>
-                <button class="btn btn-primary" onclick="window.location='?page=create_drill'">
+                <button class="btn btn-primary" data-action="view" data-page="create_drill">
                     <i class="fas fa-plus"></i> Create Your First Drill
                 </button>
             </div>
