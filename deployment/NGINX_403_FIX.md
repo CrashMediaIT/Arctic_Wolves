@@ -7,17 +7,18 @@ Nginx was returning 403 Forbidden errors when accessing governance documentation
 The nginx configuration had no location blocks to allow access to documentation directories (/QA and /deployment), causing 403 Forbidden errors when trying to view governance documents like MAINTENANCE_PROCESS.md, UPDATES.md, etc.
 
 ## Solution
-Added location blocks to allow access to documentation files in /QA and /deployment directories (lines 105-108):
+Added location block to allow access to documentation files in /QA and /deployment directories (lines 105-109):
 
 ```nginx
 # Allow access to QA and deployment documentation directories
+# Only allows .md, .txt, and .json files (.sql already denied above)
 location ~ ^/(QA|deployment)/.*\.(md|txt|json)$ {
     add_header Content-Type "text/plain; charset=utf-8";
     add_header X-Content-Type-Options "nosniff" always;
 }
 ```
 
-Note: SQL files and nginx configuration files (.conf) in these directories are protected by global deny rules.
+**Security Note**: SQL files in these directories are protected by the global SQL deny rule at lines 100-103. Since nginx evaluates regex location blocks in order and stops at the first match, any `.sql` file (regardless of directory) matches the deny rule first and is blocked before reaching the documentation allow block.
 
 ## Why This Fixes the 403 Errors
 
@@ -70,4 +71,4 @@ curl -I http://yourdomain.com/deployment/schema.sql
 January 24, 2026
 
 ## Files Modified
-- `deployment/arctic_wolves.conf` - Lines 105-108: Added location blocks for QA and deployment documentation access
+- `deployment/arctic_wolves.conf` - Lines 99-109: Added comments and location block for QA and deployment documentation access
