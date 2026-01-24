@@ -1,6 +1,12 @@
 # Dependencies (if using composer in the future)
 vendor/
 
+# Node modules and Playwright
+node_modules/
+playwright-report/
+test-results/
+.playwright/
+
 # Logs
 logs/*.log
 error_log.txt
