@@ -387,7 +387,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
                     <input type="number" id="display_order" name="display_order" value="0" min="0">
                 </div>
 
-                <button type="submit" class="btn btn-primary">Create Category</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Create Category</button>
             </form>
         </div>
     </div>

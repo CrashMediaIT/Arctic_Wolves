@@ -219,9 +219,9 @@ $teams = $teams_stmt->fetchAll();
     <div class="detail-card">
         <h2>Management Actions</h2>
         <div style="display: flex; gap: 10px; margin-top: 12px;">
-            <a href="?page=manage_athletes&id=<?= $athlete_id ?>" class="btn-primary">Edit Profile</a>
-            <a href="?page=evaluations_skills&athlete_id=<?= $athlete_id ?>" class="btn-primary">New Evaluation</a>
-            <a href="?page=stats&athlete_id=<?= $athlete_id ?>" class="btn-primary">Update Stats</a>
+            <a href="?page=manage_athletes&id=<?= $athlete_id ?>" class="btn-primary"><i class="fas fa-user-edit"></i> Edit Profile</a>
+            <a href="?page=evaluations_skills&athlete_id=<?= $athlete_id ?>" class="btn-primary"><i class="fas fa-clipboard-check"></i> New Evaluation</a>
+            <a href="?page=stats&athlete_id=<?= $athlete_id ?>" class="btn-primary"><i class="fas fa-chart-line"></i> Update Stats</a>
         </div>
     </div>
 <?php endif; ?>

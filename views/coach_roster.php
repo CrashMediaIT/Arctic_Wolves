@@ -212,7 +212,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-athlete-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-athlete-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Add Athlete</button>
             </div>
         </form>
