@@ -307,7 +307,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-skill-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-skill-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Skill</button>
             </div>
         </form>
@@ -343,7 +343,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-drill-type-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-drill-type-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Drill Type</button>
             </div>
         </form>
@@ -389,7 +389,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-position-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-position-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Position</button>
             </div>
         </form>
@@ -425,7 +425,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-equipment-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Equipment</button>
             </div>
         </form>
@@ -472,7 +472,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-position-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-position-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Position</button>
             </div>
         </form>

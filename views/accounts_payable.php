@@ -211,8 +211,8 @@ $recent_expenses = $pdo->query("
             </div>
             
             <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="closeExpenseModal()">Cancel</button>
-                <button type="submit" class="btn-primary">Save Expense</button>
+                <button type="button" class="btn-secondary" onclick="closeExpenseModal()"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Expense</button>
             </div>
         </form>
     </div>

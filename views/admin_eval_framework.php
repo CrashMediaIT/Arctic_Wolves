@@ -371,7 +371,7 @@ try {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-eval-category-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-eval-category-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Category</button>
             </div>
         </form>
@@ -419,7 +419,7 @@ try {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-scale-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-scale-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Scale</button>
             </div>
         </form>
@@ -467,7 +467,7 @@ try {
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-scale-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-scale-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Scale</button>
             </div>
         </form>

@@ -159,7 +159,7 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-history"></i> Recent Transactions</h3>
-            <button class="btn btn-secondary" data-action="view-all" data-page="billing_dashboard">View All</button>
+            <button class="btn btn-secondary" data-action="view-all" data-page="billing_dashboard"><i class="fas fa-list"></i> View All</button>
         </div>
         <div class="card-body">
             <?php if (count($transactions) > 0): ?>

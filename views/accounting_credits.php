@@ -192,7 +192,7 @@ $credits = $pdo->query($creditsQuery);
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('issue-credit-refund-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('issue-credit-refund-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Issue Credit/Refund</button>
             </div>
         </form>

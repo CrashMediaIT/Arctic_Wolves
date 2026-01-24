@@ -91,8 +91,8 @@ $categories = $pdo->query("
             </div>
             
             <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="closeCategoryModal()">Cancel</button>
-                <button type="submit" class="btn-primary">Save Category</button>
+                <button type="button" class="btn-secondary" onclick="closeCategoryModal()"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Category</button>
             </div>
         </form>
     </div>

@@ -348,7 +348,7 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
         <div class="mileage-card">
             <h3>
                 <i class="fas fa-list"></i> Recent Logs
-                <button class="btn btn-secondary" onclick="exportLogs()" style="margin-left: auto; padding: 8px 15px; font-size: 0.85rem;">
+                <button class="btn btn-secondary" onclick="exportLogs()" style="margin-left: auto;">
                     <i class="fas fa-download"></i> Export CSV
                 </button>
             </h3>

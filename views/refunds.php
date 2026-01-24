@@ -299,7 +299,7 @@ $sessions = $sessions_stmt->fetchAll();
         <div class="search-card">
             <h3>
                 <i class="fas fa-history"></i> Refund History
-                <button class="btn btn-secondary" onclick="exportRefunds()" style="margin-left: auto; padding: 8px 15px; font-size: 0.85rem;">
+                <button class="btn btn-secondary" onclick="exportRefunds()" style="margin-left: auto;">
                     <i class="fas fa-download"></i> Export CSV
                 </button>
             </h3>
@@ -497,7 +497,7 @@ function displayBookings(bookings) {
         html += `<td>$${parseFloat(booking.amount_paid).toFixed(2)}</td>`;
         html += `<td><span class="badge badge-success">${booking.payment_status}</span></td>`;
         html += `<td>
-            <button class="btn btn-primary" style="padding: 8px 15px; font-size: 0.85rem;" onclick='openRefundModal(${JSON.stringify(booking)})'>
+            <button class="btn btn-primary" onclick='openRefundModal(${JSON.stringify(booking)})'>
                 <i class="fas fa-undo"></i> Refund
             </button>
         </td>`;

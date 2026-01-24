@@ -142,7 +142,7 @@ try {
             </div>
             
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-goal-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-goal-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary">
                     <i class="fas fa-check"></i> Create Goal
                 </button>

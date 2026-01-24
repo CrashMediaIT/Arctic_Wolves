@@ -652,8 +652,8 @@ $evaluations = $evals_stmt->fetchAll();
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('evaluationModal')">Cancel</button>
-                <button type="submit" class="btn-primary">Save Evaluation</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('evaluationModal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Evaluation</button>
             </div>
         </form>
     </div>
@@ -703,8 +703,8 @@ $evaluations = $evals_stmt->fetchAll();
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('addStepModal')">Cancel</button>
-                <button type="submit" class="btn-primary">Add Step</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('addStepModal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Add Step</button>
             </div>
         </form>
     </div>
@@ -813,11 +813,11 @@ function renderEvaluationDetail(evaluation, steps) {
                         <input type="text" class="share-link-input" readonly 
                                value="${window.location.origin}/public_eval.php?token=${evaluation.share_token}" 
                                id="shareLink">
-                        <button class="btn-secondary btn-sm" onclick="copyShareLink()">Copy</button>
-                        <button class="btn-danger btn-sm" onclick="revokeShareLink(${evaluation.id})">Revoke</button>
+                        <button class="btn-secondary btn-sm" onclick="copyShareLink()"><i class="fas fa-copy"></i> Copy</button>
+                        <button class="btn-danger btn-sm" onclick="revokeShareLink(${evaluation.id})"><i class="fas fa-ban"></i> Revoke</button>
                     </div>
                 ` : `
-                    <button class="btn-primary" onclick="generateShareLink(${evaluation.id})">Generate Share Link</button>
+                    <button class="btn-primary" onclick="generateShareLink(${evaluation.id})"><i class="fas fa-share-alt"></i> Generate Share Link</button>
                 `}
             </div>
         `;
