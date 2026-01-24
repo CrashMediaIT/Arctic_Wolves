@@ -4,28 +4,18 @@ This file tracks all major updates and changes to the Crash Hockey platform. Eac
 
 ---
 
-## January 24, 2026 (Latest) - Fix: NGINX 403 Error for PHP Files and Documentation Access
+## January 24, 2026 (Latest) - Fix: NGINX 403 Error for Governance Documentation Access
 
 **Primary Changes:**
-- **Security fix**: Added `try_files $uri =404;` to PHP location block in nginx configuration
 - **Documentation access fix**: Added location blocks to allow access to /QA and /deployment directories
-- **Root cause 1**: Missing file existence check before passing requests to PHP-FPM
-- **Root cause 2**: No nginx rules to serve documentation files from governance directories
-- **Solution**: Nginx now verifies PHP files exist and explicitly allows documentation access
-- **Security benefit**: Prevents path traversal attacks, provides clearer error messages, protects SQL files
+- **Root cause**: No nginx rules to serve documentation files from governance directories
+- **Solution**: Nginx now explicitly allows documentation access with proper content type headers
+- **Security maintained**: SQL files remain protected via existing global deny rules
 
 **Configuration Updated:**
-- `deployment/arctic_wolves.conf` - Line 65-66: PHP security check
-- `deployment/arctic_wolves.conf` - Line 105-110: Documentation directory access rules
+- `deployment/arctic_wolves.conf` - Lines 105-110: Documentation directory access rules
 
 ```nginx
-# PHP file security check (lines 65-66)
-location ~ \.php$ {
-    # Security: Don't process non-existent files
-    try_files $uri =404;
-    ...
-}
-
 # Documentation directory access (lines 105-110)
 location ~ ^/(QA|deployment)/.*\.(md|txt|json|conf)$ {
     default_type text/plain;
@@ -34,16 +24,14 @@ location ~ ^/(QA|deployment)/.*\.(md|txt|json|conf)$ {
 }
 ```
 
-Note: SQL files are protected by the global deny rule at lines 100-103.
+Note: SQL files are protected by existing global deny rules at lines 100-103 and 130-132. PHP security (`try_files $uri =404;`) was previously added and remains at lines 65-66.
 
 **Why This Matters:**
-- **PHP Files - Before**: Nginx passed ALL `.php` requests to PHP-FPM, even for non-existent files, causing 403 errors
-- **PHP Files - After**: Nginx checks file existence first, returns 404 for missing files, only processes valid PHP files
 - **Docs - Before**: No location blocks for /QA and /deployment, resulting in 403 Forbidden errors on governance documents
-- **Docs - After**: Explicit access granted to documentation files (.md, .txt, .json, .conf), SQL files still protected
-- **Security**: Protects against path traversal attacks and reduces attack surface
+- **Docs - After**: Explicit access granted to documentation files (.md, .txt, .json, .conf), SQL files remain protected
+- **Security maintained**: Existing global deny rules protect SQL and sensitive files
 - **Governance**: QA team can now access maintenance process, style guides, and deployment documentation
-- **Standard practice**: Recommended by nginx documentation for all PHP-FPM setups
+- **Standard practice**: Proper content-type headers set for documentation files
 
 **Documentation Added/Updated:**
 - `deployment/NGINX_403_FIX.md` - Comprehensive documentation of both fixes, root causes, and testing procedures
@@ -53,12 +41,10 @@ Note: SQL files are protected by the global deny rule at lines 100-103.
 - Links to official nginx documentation for reference
 
 **Testing:**
-After applying these fixes and restarting nginx:
-- Valid PHP files (index.php, setup.php) return 200 OK
-- Non-existent PHP files return 404 Not Found (not 403 Forbidden)
+After applying this fix and restarting nginx:
 - Governance documents (*.md, *.txt) in /QA and /deployment are accessible
 - SQL files in documentation directories remain protected (404)
-- Path traversal attempts are blocked
+- Path traversal attempts continue to be blocked by existing rules
 
 **Governance Impact:**
 This fix ensures that governance documents are accessible for review and updates, addressing the issue where the QA team and stakeholders could not access documentation files like:
