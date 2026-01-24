@@ -7,6 +7,73 @@
 
 session_start();
 
+// =========================================================
+// AUTOMATIC PERMISSION SETUP FOR DOCKER ENVIRONMENTS
+// =========================================================
+// This function sets up directories and permissions automatically
+// when running in Docker containers (linuxserver/nginx)
+function setupPermissions() {
+    $base_dir = __DIR__;
+    $required_dirs = [
+        'uploads',
+        'sessions',
+        'cache',
+        'logs',
+        'backups',
+        'receipts',
+        'videos',
+        'tmp'
+    ];
+    
+    $permission_issues = [];
+    
+    // Create required directories if they don't exist
+    foreach ($required_dirs as $dir) {
+        $full_path = $base_dir . '/' . $dir;
+        if (!file_exists($full_path)) {
+            // NOTE: 0775 permissions allow web server (group) write access, required for uploads/sessions/cache
+            // This is appropriate for these specific writable directories in Docker environments
+            if (!@mkdir($full_path, 0775, true)) {
+                $last_error = error_get_last();
+                $error_msg = $last_error ? $last_error['message'] : 'unknown error';
+                $permission_issues[] = "Failed to create directory: $dir - $error_msg";
+                continue;
+            }
+        }
+        
+        // Set permissions to 775 for writable directories
+        if (file_exists($full_path)) {
+            if (!@chmod($full_path, 0775)) {
+                $permission_issues[] = "Failed to set permissions on directory: $dir";
+            }
+        }
+    }
+    
+    // Ensure root directory is writable (775)
+    // NOTE: 775 is required for setup.php to write arctic_wolves.env file during initial setup
+    // This is specific to Docker environments where PHP-FPM runs as 'abc' user (UID 911)
+    if (!@chmod($base_dir, 0775)) {
+        $permission_issues[] = "Failed to set permissions on root directory";
+    }
+    
+    return $permission_issues;
+}
+
+// Run permission setup automatically on first load
+// Use a persistent flag file to prevent repeated attempts
+$permissions_flag_file = __DIR__ . '/.permissions_setup_done';
+if (!file_exists($permissions_flag_file)) {
+    $permission_issues = setupPermissions();
+    
+    // Create flag file to mark permissions as set up
+    // Suppress errors as this is a convenience flag - if it fails, setup will just run again
+    @file_put_contents($permissions_flag_file, date('Y-m-d H:i:s'));
+    
+    if (!empty($permission_issues)) {
+        $_SESSION['permission_warnings'] = $permission_issues;
+    }
+}
+
 // Check if setup is already completed
 $setup_complete_file = __DIR__ . '/.setup_complete';
 if (file_exists($setup_complete_file) && !isset($_GET['force'])) {
@@ -295,6 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; }
         .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; }
         .alert-success { background: rgba(0, 255, 136, 0.1); border: 1px solid #00ff88; color: #00ff88; }
+        .alert-warning { background: rgba(251, 191, 36, 0.1); border: 1px solid #fbbf24; color: #fbbf24; }
         .step-info { background: rgba(107, 70, 193, 0.05); border-left: 3px solid var(--primary); padding: 15px; margin-bottom: 20px; font-size: 13px; color: #94a3b8; }
     </style>
 </head>
@@ -322,6 +390,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($success): ?>
             <div class="alert alert-success">
                 <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($success) ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php if (isset($_SESSION['permission_warnings']) && !empty($_SESSION['permission_warnings'])): ?>
+            <div class="alert alert-warning">
+                <i class="fa-solid fa-exclamation-triangle"></i> <strong>Permission Warnings:</strong><br/>
+                <?php foreach ($_SESSION['permission_warnings'] as $warning): ?>
+                    • <?= htmlspecialchars($warning) ?><br/>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
         
