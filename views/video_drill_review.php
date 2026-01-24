@@ -10,7 +10,7 @@ $video_query = "
            CONCAT(u.first_name, ' ', u.last_name) as coach_name,
            s.session_date,
            st.name as session_type_name,
-           d.name as drill_name
+           d.title as drill_name
     FROM videos v
     LEFT JOIN users u ON v.coach_id = u.id
     LEFT JOIN sessions s ON v.session_id = s.id
@@ -33,7 +33,7 @@ if ($filter_drill_type !== 'all') {
 }
 
 if (!empty($search)) {
-    $video_query .= " AND (v.title LIKE ? OR v.description LIKE ? OR d.name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR DATE_FORMAT(v.upload_date, '%Y-%m-%d') LIKE ?)";
+    $video_query .= " AND (v.title LIKE ? OR v.description LIKE ? OR d.title LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR DATE_FORMAT(v.upload_date, '%Y-%m-%d') LIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
