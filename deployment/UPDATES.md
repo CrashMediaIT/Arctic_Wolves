@@ -4,7 +4,58 @@ This file tracks all major updates and changes to the Crash Hockey platform. Eac
 
 ---
 
-## January 20, 2026 (Latest) - Fix: Permissions Set INSIDE Container
+## January 24, 2026 (Latest) - Fix: NGINX 403 Error for Governance Documentation Access
+
+**Primary Changes:**
+- **Documentation access fix**: Added location blocks to allow access to /QA and /deployment directories
+- **Root cause**: No nginx rules to serve documentation files from governance directories
+- **Solution**: Nginx now explicitly allows documentation access with proper content type headers
+- **Security maintained**: SQL files remain protected via existing global deny rules
+
+**Configuration Updated:**
+- `deployment/arctic_wolves.conf` - Lines 105-108: Documentation directory access rules
+
+```nginx
+# Documentation directory access (lines 105-108)
+location ~ ^/(QA|deployment)/.*\.(md|txt|json)$ {
+    add_header Content-Type "text/plain; charset=utf-8";
+    add_header X-Content-Type-Options "nosniff" always;
+}
+```
+
+Note: SQL files and nginx configuration files are protected by existing global deny rules. PHP security (`try_files $uri =404;`) was previously added and remains at lines 65-66.
+
+**Why This Matters:**
+- **Docs - Before**: No location blocks for /QA and /deployment, resulting in 403 Forbidden errors on governance documents
+- **Docs - After**: Explicit access granted to documentation files (.md, .txt, .json), SQL and config files remain protected
+- **Security maintained**: Existing global deny rules protect SQL, nginx configs, and sensitive files
+- **Governance**: QA team can now access maintenance process, style guides, and deployment documentation
+- **Standard practice**: Proper content-type headers set for documentation files
+
+**Documentation Added/Updated:**
+- `deployment/NGINX_403_FIX.md` - Comprehensive documentation of both fixes, root causes, and testing procedures
+- `deployment/UPDATES.md` - This changelog entry
+- `QA/MAINTENANCE_PROCESS.md` - Added deployment documentation references
+- Includes testing commands to verify both fixes work correctly
+- Links to official nginx documentation for reference
+
+**Testing:**
+After applying this fix and restarting nginx:
+- Governance documents (*.md, *.txt) in /QA and /deployment are accessible
+- SQL files in documentation directories remain protected (404)
+- Path traversal attempts continue to be blocked by existing rules
+
+**Governance Impact:**
+This fix ensures that governance documents are accessible for review and updates, addressing the issue where the QA team and stakeholders could not access documentation files like:
+- MAINTENANCE_PROCESS.md
+- STYLE_GUIDE.md
+- DATABASE_SCHEMA_REFERENCE.md
+- UPDATES.md
+- NGINX_403_FIX.md
+
+---
+
+## January 20, 2026 - Fix: Permissions Set INSIDE Container
 
 **Primary Changes:**
 - **Permission fix**: Changed deployment to set permissions INSIDE container instead of on host

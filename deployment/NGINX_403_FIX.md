@@ -1,50 +1,51 @@
-# NGINX 403 Error Fix for PHP Files
+# NGINX 403 Error Fix for Governance Documentation Access
 
 ## Issue
-Nginx was returning 403 Forbidden errors when accessing index.php and setup.php.
+Nginx was returning 403 Forbidden errors when accessing governance documentation in /QA and /deployment directories.
 
 ## Root Cause
-The PHP-FPM location block was missing a critical security check that verifies the requested PHP file exists before attempting to execute it. This is a common nginx security issue.
+The nginx configuration had no location blocks to allow access to documentation directories (/QA and /deployment), causing 403 Forbidden errors when trying to view governance documents like MAINTENANCE_PROCESS.md, UPDATES.md, etc.
 
 ## Solution
-Added `try_files $uri =404;` to the PHP location block (line 65-66 in arctic_wolves.conf):
+Added location block to allow access to documentation files in /QA and /deployment directories (lines 105-109):
 
 ```nginx
-location ~ \.php$ {
-    # Security: Don't process non-existent files
-    try_files $uri =404;
-    
-    include fastcgi_params;
-    fastcgi_pass 127.0.0.1:9000;
-    ...
+# Allow access to QA and deployment documentation directories
+# Only allows .md, .txt, and .json files (.sql already denied above)
+location ~ ^/(QA|deployment)/.*\.(md|txt|json)$ {
+    add_header Content-Type "text/plain; charset=utf-8";
+    add_header X-Content-Type-Options "nosniff" always;
 }
 ```
 
-## Why This Fixes the 403 Error
+**Security Note**: SQL files in these directories are protected by the global SQL deny rule at lines 100-103. Since nginx evaluates regex location blocks in order and stops at the first match, any `.sql` file (regardless of directory) matches the deny rule first and is blocked before reaching the documentation allow block.
 
-### Before the Fix
-Without `try_files`, nginx would pass ALL requests matching `\.php$` to PHP-FPM, even if:
-- The file doesn't exist
-- nginx worker doesn't have permission to read it
-- The path is invalid or malformed
+## Why This Fixes the 403 Errors
 
-This could result in:
-- 403 Forbidden errors (when permissions are wrong)
-- Security vulnerabilities (path traversal attacks)
-- Confusing error messages
+### Documentation Directories - Before the Fix
+Without specific location blocks for /QA and /deployment:
+- Nginx had no explicit rule to serve files from these directories
+- Requests fell through to default deny behavior
+- Governance documents were inaccessible (403 Forbidden)
+- QA team could not review documentation files
 
-### After the Fix
-With `try_files $uri =404;`, nginx:
-1. **Checks if the file exists** before passing to PHP-FPM
-2. **Returns 404** for non-existent files (clearer error)
-3. **Only processes valid PHP files** that exist and are readable
-4. **Prevents security issues** from processing invalid paths
+### Documentation Directories - After the Fix
+With dedicated location blocks for documentation:
+1. **Explicit access granted** to .md, .txt, and .json files in /QA and /deployment
+2. **Proper content type** headers set for text files
+3. **SQL and config files protected** from being served directly (via global deny rules)
+4. **Governance documents accessible** for review and updates
 
 ## Security Benefits
-1. **Path Traversal Protection**: Prevents attempts to execute PHP files outside the document root
-2. **Clear Error Messages**: Returns 404 for missing files instead of 403
-3. **Reduced Attack Surface**: PHP-FPM only processes legitimate, existing files
-4. **Standard Best Practice**: Recommended by nginx documentation for all PHP setups
+1. **Documentation Access Control**: Allows governance docs while protecting sensitive SQL files
+2. **Proper Content Types**: Sets appropriate headers for security
+3. **Maintains Protection**: Existing global deny rules continue to protect .sql, .env, and backup files
+
+## Pre-existing Security Features
+The nginx configuration also includes these security features (added in previous updates):
+- **PHP File Verification** (line 66): `try_files $uri =404;` prevents processing non-existent PHP files
+- **Global SQL Protection** (lines 100-103): Denies access to all .sql files
+- **Backup File Protection** (lines 130-132): Denies access to .bak, .backup, .old, .tmp files
 
 ## Testing
 After applying this fix:
@@ -52,21 +53,22 @@ After applying this fix:
 # Restart nginx
 sudo systemctl restart nginx
 
-# Test valid PHP files (should work)
-curl -I http://yourdomain.com/index.php
-curl -I http://yourdomain.com/setup.php
+# Test governance documentation access (should return 200)
+curl -I http://yourdomain.com/QA/MAINTENANCE_PROCESS.md
+curl -I http://yourdomain.com/deployment/UPDATES.md
+curl -I http://yourdomain.com/deployment/NGINX_403_FIX.md
 
-# Test non-existent PHP file (should return 404, not 403)
-curl -I http://yourdomain.com/nonexistent.php
+# Test SQL file protection (should return 404)
+curl -I http://yourdomain.com/QA/test.sql
+curl -I http://yourdomain.com/deployment/schema.sql
 ```
 
 ## Related Documentation
-- nginx PHP-FPM configuration: https://www.nginx.com/resources/wiki/start/topics/examples/phpfcgi/
 - nginx location matching: https://nginx.org/en/docs/http/ngx_http_core_module.html#location
-- try_files directive: https://nginx.org/en/docs/http/ngx_http_core_module.html#try_files
+- nginx add_header directive: https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header
 
 ## Date Applied
 January 24, 2026
 
 ## Files Modified
-- `deployment/arctic_wolves.conf` - Added try_files security check to PHP location block (lines 65-66)
+- `deployment/arctic_wolves.conf` - Lines 99-109: Added comments and location block for QA and deployment documentation access

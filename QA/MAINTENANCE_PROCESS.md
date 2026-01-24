@@ -822,6 +822,12 @@ Before marking complete:
 - **Database Validation**: `/QA/DATABASE_VALIDATION.md`
 - **Database Schema Diagram**: `/QA/DATABASE_SCHEMA_DIAGRAM.md`
 
+### Deployment
+- **Deployment Guide**: `/deployment/DEPLOYMENT.md`
+- **Updates Log**: `/deployment/UPDATES.md`
+- **NGINX Config**: `/deployment/arctic_wolves.conf`
+- **NGINX 403 Fix**: `/deployment/NGINX_403_FIX.md`
+
 ---
 
 ## Issue Reporting Template
