@@ -97,7 +97,7 @@ try {
             <form method="POST" action="process_admin_action.php" style="display: inline;">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                 <input type="hidden" name="action" value="export">
-                <button type="submit" class="btn btn-secondary">
+                <button type="submit" class="btn btn-primary">
                     <i class="fas fa-file-export"></i> Export
                 </button>
             </form>

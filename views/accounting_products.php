@@ -25,7 +25,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-calendar-day"></i> Session Types</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-session-type-modal"><i class="fas fa-plus"></i> Add Session Type</button>
+                <button class="btn btn-primary" data-action="add" data-modal="add-session-type-modal"><i class="fas fa-plus"></i> Add Session Type</button>
             </div>
             <div class="card-body">
                 <div class="products-grid">
@@ -86,7 +86,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-box"></i> Training Packages</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-package-modal"><i class="fas fa-plus"></i> Create Package</button>
+                <button class="btn btn-primary" data-action="add" data-modal="add-package-modal"><i class="fas fa-plus"></i> Create Package</button>
             </div>
             <div class="card-body">
                 <div class="products-grid">
@@ -135,7 +135,7 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-tags"></i> Discount Codes</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-discount-modal"><i class="fas fa-plus"></i> Create Discount</button>
+                <button class="btn btn-primary" data-action="add" data-modal="add-discount-modal"><i class="fas fa-plus"></i> Create Discount</button>
             </div>
             <div class="card-body">
                 <div class="table-container">
@@ -343,7 +343,7 @@
             
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('add-session-type-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Session Type</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Session Type</button>
             </div>
         </form>
     </div>
@@ -407,7 +407,7 @@
             
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('add-package-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Package</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Package</button>
             </div>
         </form>
     </div>
@@ -481,7 +481,7 @@
             
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('add-discount-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Discount</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Discount</button>
             </div>
         </form>
     </div>

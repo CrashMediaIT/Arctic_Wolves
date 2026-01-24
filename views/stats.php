@@ -354,7 +354,7 @@ try {
 
 .empty-state .empty-icon {
     font-size: 48px;
-    color: var(--text-dim);
+    color: var(--primary);
     opacity: 0.5;
     margin-bottom: 16px;
     display: block;
