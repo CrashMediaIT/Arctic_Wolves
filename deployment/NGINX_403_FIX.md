@@ -30,7 +30,7 @@ location ~ \.php$ {
 ```
 
 ### Solution 2: Documentation Directory Access (PRIMARY FIX)
-Added location blocks to allow access to documentation files in /QA and /deployment directories (lines 105-116):
+Added location blocks to allow access to documentation files in /QA and /deployment directories (lines 105-110):
 
 ```nginx
 # Allow access to QA and deployment documentation directories
@@ -39,13 +39,9 @@ location ~ ^/(QA|deployment)/.*\.(md|txt|json|conf)$ {
     add_header Content-Type "text/plain; charset=utf-8";
     add_header X-Content-Type-Options "nosniff" always;
 }
-
-# Deny SQL files in QA and deployment directories
-location ~ ^/(QA|deployment)/.*\.sql$ {
-    deny all;
-    return 404;
-}
 ```
+
+Note: SQL files in these directories are protected by the global SQL deny rule at lines 100-103.
 
 ## Why This Fixes the 403 Errors
 
@@ -121,4 +117,4 @@ January 24, 2026
 
 ## Files Modified
 - `deployment/arctic_wolves.conf` - Lines 65-66: Added try_files security check to PHP location block
-- `deployment/arctic_wolves.conf` - Lines 105-116: Added location blocks for QA and deployment documentation access
+- `deployment/arctic_wolves.conf` - Lines 105-110: Added location blocks for QA and deployment documentation access

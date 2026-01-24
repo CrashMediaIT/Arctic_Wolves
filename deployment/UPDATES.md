@@ -16,7 +16,7 @@ This file tracks all major updates and changes to the Crash Hockey platform. Eac
 
 **Configuration Updated:**
 - `deployment/arctic_wolves.conf` - Line 65-66: PHP security check
-- `deployment/arctic_wolves.conf` - Line 105-116: Documentation directory access rules
+- `deployment/arctic_wolves.conf` - Line 105-110: Documentation directory access rules
 
 ```nginx
 # PHP file security check (lines 65-66)
@@ -26,18 +26,15 @@ location ~ \.php$ {
     ...
 }
 
-# Documentation directory access (lines 105-116)
+# Documentation directory access (lines 105-110)
 location ~ ^/(QA|deployment)/.*\.(md|txt|json|conf)$ {
     default_type text/plain;
     add_header Content-Type "text/plain; charset=utf-8";
     add_header X-Content-Type-Options "nosniff" always;
 }
-
-location ~ ^/(QA|deployment)/.*\.sql$ {
-    deny all;
-    return 404;
-}
 ```
+
+Note: SQL files are protected by the global deny rule at lines 100-103.
 
 **Why This Matters:**
 - **PHP Files - Before**: Nginx passed ALL `.php` requests to PHP-FPM, even for non-existent files, causing 403 errors
