@@ -24,6 +24,7 @@ backups/*
 # Environment configuration (if added in the future)
 .env
 .env.local
+arctic_wolves.env
 
 # IDE and editor files
 .vscode/
