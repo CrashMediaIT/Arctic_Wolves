@@ -639,7 +639,7 @@ function deleteNotification(id, title) {
     const formData = new FormData();
     formData.append('action', 'delete');
     formData.append('id', id);
-    formData.append('csrf_token', '<?= generateCSRFToken() ?>');
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
     
     fetch('process_system_notifications.php', {
         method: 'POST',

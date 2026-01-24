@@ -101,7 +101,7 @@ foreach ($mileage_entries as $entry) {
         </div>
         <div class="card-body">
             <form class="mileage-form" method="POST" action="process_mileage.php" data-form="mileage-entry">
-                <input type="hidden" name="action" value="add_mileage">
+                <input type="hidden" name="action" value="create">
                 <!-- Note: user_id will be validated server-side from session -->
                 
                 <div class="form-row">

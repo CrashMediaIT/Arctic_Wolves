@@ -29,7 +29,7 @@ if (!in_array($user_role, ['coach', 'coach_plus', 'admin', 'team_coach'])) {
 $action = $_POST['action'] ?? '';
 
 try {
-    if ($action === 'generate' || $action === 'generate_report') {
+    if ($action === 'generate' || $action === 'generate_report' || $action === 'generate_quick_report') {
         generateReport();
     } elseif ($action === 'delete' || $action === 'delete_report') {
         deleteReport();
@@ -81,11 +81,13 @@ function generateReport() {
     $share_token = bin2hex(random_bytes(32));
     
     // Save report record
+    $report_name = $_POST['report_name'] ?? ucfirst(str_replace('_', ' ', $report_type)) . ' Report - ' . date('Y-m-d');
     $stmt = $pdo->prepare("
-        INSERT INTO reports (report_type, generated_by, parameters, file_path, status)
-        VALUES (?, ?, ?, ?, 'completed')
+        INSERT INTO reports (report_name, report_type, generated_by, parameters, file_path, status)
+        VALUES (?, ?, ?, ?, ?, 'completed')
     ");
     $stmt->execute([
+        $report_name,
         $report_type,
         $user_id,
         json_encode($parameters),
