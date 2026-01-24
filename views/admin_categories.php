@@ -55,8 +55,8 @@
                             <?php endif; ?>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $skill['id'] ?>" data-type="skill"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $skill['id'] ?>" data-type="skill" data-name="<?= htmlspecialchars($skill['name']) ?>"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $skill['id'] ?>" data-type="skill" data-modal="edit-skill-modal"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $skill['id'] ?>" data-type="skill" data-name="<?= htmlspecialchars($skill['name']) ?>" data-action-url="process_admin_action.php"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <?php 
@@ -95,8 +95,8 @@
                             <p><?= htmlspecialchars($type['description'] ?: 'No description') ?></p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $type['id'] ?>" data-type="drill_type"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $type['id'] ?>" data-type="drill_type" data-name="<?= htmlspecialchars($type['name']) ?>"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $type['id'] ?>" data-type="drill_type" data-modal="edit-drill-type-modal"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $type['id'] ?>" data-type="drill_type" data-name="<?= htmlspecialchars($type['name']) ?>" data-action-url="process_admin_action.php"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <?php 
@@ -198,8 +198,8 @@
                             <p><?= htmlspecialchars($item['notes'] ?: 'No description') ?></p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $item['id'] ?>" data-type="equipment"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $item['id'] ?>" data-type="equipment" data-name="<?= htmlspecialchars($item['name']) ?>"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $item['id'] ?>" data-type="equipment" data-modal="edit-equipment-modal"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $item['id'] ?>" data-type="equipment" data-name="<?= htmlspecialchars($item['name']) ?>" data-action-url="process_admin_action.php"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <?php 

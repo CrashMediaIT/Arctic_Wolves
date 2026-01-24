@@ -106,7 +106,7 @@
                     </div>
                     <div class="notification-actions">
                         <button class="btn-icon" title="Edit" data-action="edit" data-id="1" data-modal="edit-notification-modal"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete" data-action="delete" data-id="1" onclick="deleteNotification(1)"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete" data-id="1" data-action-url="process_system_notifications.php"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
 
@@ -124,7 +124,7 @@
                     </div>
                     <div class="notification-actions">
                         <button class="btn-icon" title="Edit" data-action="edit" data-id="2" data-modal="edit-notification-modal"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete" data-action="delete" data-id="2" onclick="deleteNotification(2)"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete" data-id="2" data-action-url="process_system_notifications.php"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>
