@@ -102,6 +102,65 @@ if ($action == 'update_billing') {
 }
 
 // =========================================================
+// MODULE 5.5: INVOICE MANAGEMENT
+// =========================================================
+if ($action == 'create_invoice') {
+    // Generate unique invoice number
+    $invoice_number = 'INV-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+    
+    // Check if invoice number already exists, regenerate if needed
+    $check_stmt = $pdo->prepare("SELECT id FROM invoices WHERE invoice_number = ?");
+    $check_stmt->execute([$invoice_number]);
+    while ($check_stmt->rowCount() > 0) {
+        $invoice_number = 'INV-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        $check_stmt->execute([$invoice_number]);
+    }
+    
+    $user_id = intval($_POST['user_id']);
+    $invoice_date = $_POST['invoice_date'];
+    $due_date = $_POST['due_date'];
+    $description = trim($_POST['description'] ?? '');
+    $notes = trim($_POST['notes'] ?? '');
+    $total_amount = floatval($_POST['total_amount']);
+    $subtotal = $total_amount; // Can calculate tax later if needed
+    $tax_amount = 0.00;
+    
+    try {
+        // Insert invoice
+        $stmt = $pdo->prepare("
+            INSERT INTO invoices (invoice_number, user_id, invoice_date, due_date, subtotal, tax_amount, total_amount, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?)
+        ");
+        $stmt->execute([$invoice_number, $user_id, $invoice_date, $due_date, $subtotal, $tax_amount, $total_amount, $notes]);
+        $invoice_id = $pdo->lastInsertId();
+        
+        // Insert line items if provided
+        if (isset($_POST['item_description']) && is_array($_POST['item_description'])) {
+            $item_stmt = $pdo->prepare("
+                INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, total_price)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            
+            foreach ($_POST['item_description'] as $index => $item_desc) {
+                if (!empty($item_desc)) {
+                    $quantity = intval($_POST['item_quantity'][$index] ?? 1);
+                    $unit_price = floatval($_POST['item_price'][$index] ?? 0);
+                    $total_price = $quantity * $unit_price;
+                    
+                    $item_stmt->execute([$invoice_id, $item_desc, $quantity, $unit_price, $total_price]);
+                }
+            }
+        }
+        
+        header("Location: dashboard.php?page=accounting_billing&status=invoice_created&invoice_id=$invoice_id");
+    } catch (PDOException $e) {
+        error_log("Invoice creation error: " . $e->getMessage());
+        header("Location: dashboard.php?page=accounting_billing&error=invoice_creation_failed");
+    }
+    exit();
+}
+
+// =========================================================
 // MODULE 6: DISCOUNT CODES
 // =========================================================
 if ($action == 'add_discount') {

@@ -28,17 +28,24 @@ $action = $_POST['action'] ?? '';
 // =========================================================
 // CREATE/UPDATE PRACTICE PLAN
 // =========================================================
-if ($action === 'save_plan') {
+if ($action === 'save_plan' || $action === 'create' || $action === 'update') {
     requirePermission($pdo, $user_id, $user_role, 'create_practice_plans');
     
     $plan_id = !empty($_POST['plan_id']) ? intval($_POST['plan_id']) : null;
-    $title = trim($_POST['title']);
-    $description = trim($_POST['description'] ?? '');
-    $total_duration = !empty($_POST['total_duration']) ? intval($_POST['total_duration']) : 60;
+    $title = trim($_POST['title'] ?? $_POST['practice_title'] ?? '');
+    $description = trim($_POST['description'] ?? $_POST['practice_goals'] ?? '');
+    $total_duration = !empty($_POST['total_duration']) ? intval($_POST['total_duration']) : (!empty($_POST['duration']) ? intval($_POST['duration']) : 60);
     $age_group = trim($_POST['age_group'] ?? '');
     $focus_area = trim($_POST['focus_area'] ?? '');
     $is_public = isset($_POST['is_public']) ? 1 : 0;
     $drills = isset($_POST['drills']) ? json_decode($_POST['drills'], true) : [];
+    
+    // Handle practice_create.php form fields
+    $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
+    $practice_date = $_POST['practice_date'] ?? null;
+    $practice_time = $_POST['practice_time'] ?? null;
+    $location = trim($_POST['location'] ?? '');
+    $notes = trim($_POST['notes'] ?? '');
     
     if (empty($title)) {
         header("Location: dashboard.php?page=practice_plans&error=title_required");
@@ -104,7 +111,13 @@ if ($action === 'save_plan') {
         }
         
         $pdo->commit();
-        header("Location: dashboard.php?page=practice_plans&status=plan_saved");
+        
+        // Redirect based on action - create goes back to practice_create, update/save_plan goes to practice_plans
+        if ($action === 'create') {
+            header("Location: dashboard.php?page=practice_create&status=plan_created&plan_id=$plan_id");
+        } else {
+            header("Location: dashboard.php?page=practice_plans&status=plan_saved");
+        }
         exit();
         
     } catch (PDOException $e) {
