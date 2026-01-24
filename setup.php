@@ -7,6 +7,56 @@
 
 session_start();
 
+// =========================================================
+// AUTOMATIC PERMISSION SETUP FOR DOCKER ENVIRONMENTS
+// =========================================================
+// This function sets up directories and permissions automatically
+// when running in Docker containers (linuxserver/nginx)
+function setupPermissions() {
+    $base_dir = __DIR__;
+    $required_dirs = [
+        'uploads',
+        'sessions',
+        'cache',
+        'logs',
+        'backups',
+        'receipts',
+        'videos',
+        'tmp'
+    ];
+    
+    $permission_issues = [];
+    
+    // Create required directories if they don't exist
+    foreach ($required_dirs as $dir) {
+        $full_path = $base_dir . '/' . $dir;
+        if (!file_exists($full_path)) {
+            if (!@mkdir($full_path, 0775, true)) {
+                $permission_issues[] = "Failed to create directory: $dir";
+            }
+        }
+        
+        // Set permissions to 775 for writable directories
+        if (file_exists($full_path)) {
+            @chmod($full_path, 0775);
+        }
+    }
+    
+    // Ensure root directory is writable (775)
+    @chmod($base_dir, 0775);
+    
+    return $permission_issues;
+}
+
+// Run permission setup automatically on first load
+if (!isset($_SESSION['permissions_setup_done'])) {
+    $permission_issues = setupPermissions();
+    $_SESSION['permissions_setup_done'] = true;
+    if (!empty($permission_issues)) {
+        $_SESSION['permission_warnings'] = $permission_issues;
+    }
+}
+
 // Check if setup is already completed
 $setup_complete_file = __DIR__ . '/.setup_complete';
 if (file_exists($setup_complete_file) && !isset($_GET['force'])) {
@@ -295,6 +345,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; }
         .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; }
         .alert-success { background: rgba(0, 255, 136, 0.1); border: 1px solid #00ff88; color: #00ff88; }
+        .alert-warning { background: rgba(251, 191, 36, 0.1); border: 1px solid #fbbf24; color: #fbbf24; }
         .step-info { background: rgba(107, 70, 193, 0.05); border-left: 3px solid var(--primary); padding: 15px; margin-bottom: 20px; font-size: 13px; color: #94a3b8; }
     </style>
 </head>
@@ -322,6 +373,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($success): ?>
             <div class="alert alert-success">
                 <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($success) ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php if (isset($_SESSION['permission_warnings']) && !empty($_SESSION['permission_warnings'])): ?>
+            <div class="alert alert-warning">
+                <i class="fa-solid fa-exclamation-triangle"></i> <strong>Permission Warnings:</strong><br/>
+                <?php foreach ($_SESSION['permission_warnings'] as $warning): ?>
+                    • <?= htmlspecialchars($warning) ?><br/>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
         

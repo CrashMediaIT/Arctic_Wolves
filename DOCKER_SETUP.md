@@ -9,7 +9,24 @@ This guide provides Docker deployment instructions using the linuxserver contain
 
 ## Initial Setup Commands
 
-### 1. Create Required Directories
+### 1. Automated Setup (Recommended)
+
+The setup wizard (`setup.php`) **automatically creates directories and sets permissions** when you first run it. This is the recommended approach for most installations.
+
+Simply navigate to `http://your-domain.com/setup.php` and follow the wizard. The permission setup happens automatically in the background.
+
+### 2. Manual Setup (Optional)
+
+If you prefer to set up permissions manually before running the setup wizard, you can use the provided script:
+
+```bash
+# Run the automated permission setup script
+bash deployment/setup_permissions.sh
+```
+
+Or run the commands manually:
+
+#### Create Required Directories
 
 ```bash
 # Create application directories
@@ -23,7 +40,7 @@ docker exec nginx mkdir -p /config/www/arctic_wolves/videos
 docker exec nginx mkdir -p /config/www/arctic_wolves/tmp
 ```
 
-### 2. Set Ownership
+#### Set Ownership
 
 The linuxserver/nginx container runs PHP-FPM as the `abc` user (UID 911, GID 911).
 
@@ -32,7 +49,7 @@ The linuxserver/nginx container runs PHP-FPM as the `abc` user (UID 911, GID 911
 docker exec nginx chown -R abc:abc /config/www/arctic_wolves
 ```
 
-### 3. Set Permissions
+#### Set Permissions
 
 ```bash
 # CRITICAL: Set root directory to 775 (allows PHP to write arctic_wolves.env during setup)
@@ -64,7 +81,7 @@ docker exec nginx chmod -R 775 /config/www/arctic_wolves/videos
 docker exec nginx chmod -R 775 /config/www/arctic_wolves/tmp
 ```
 
-### 4. Verify Permissions
+### 3. Verify Permissions
 
 ```bash
 # Verify permissions from inside container (what PHP actually sees)

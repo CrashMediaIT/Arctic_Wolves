@@ -159,9 +159,28 @@ ls -la
 
 ---
 
-## Step 7: Create Missing Folders and Set Permissions (ON HOST)
+## Step 7: Setup Permissions
 
-**IMPORTANT:** All permissions must be set on the **HOST** at `/portainer/nginx/` since that's where files actually exist.
+**IMPORTANT:** The setup wizard (`setup.php`) **automatically creates directories and sets permissions** when you first run it. This is the recommended approach.
+
+### Option 1: Automatic Setup (Recommended)
+
+Simply navigate to `http://your-domain.com/setup.php` and the permission setup happens automatically in the background.
+
+### Option 2: Manual Setup Script
+
+If you prefer to set up permissions before running the setup wizard, use the provided script:
+
+```bash
+# Run the automated permission setup script
+bash /portainer/nginx/www/Arctic_Wolves/deployment/setup_permissions.sh
+```
+
+### Option 3: Manual Commands
+
+For advanced users who want full control, run these commands manually:
+
+**IMPORTANT:** All permissions must be set **INSIDE the container** since that's what PHP-FPM sees.
 
 ```bash
 # Create required directories INSIDE container (this ensures PHP sees correct permissions)
