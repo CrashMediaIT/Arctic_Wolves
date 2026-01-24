@@ -15,7 +15,7 @@ if ($tab === 'travel') $tab = 'mileage'; // Default tab
     </a>
 </div>
 
-<div class="tab-content">
+<div class="page-tab-content">
     <?php
     if ($tab === 'mileage') {
         include __DIR__ . '/travel_mileage.php';

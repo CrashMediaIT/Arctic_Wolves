@@ -18,7 +18,7 @@ if ($tab === 'sessions') $tab = 'upcoming_sessions'; // Default tab
     </a>
 </div>
 
-<div class="tab-content">
+<div class="page-tab-content">
     <?php
     if ($tab === 'upcoming_sessions') {
         include __DIR__ . '/sessions_upcoming.php';

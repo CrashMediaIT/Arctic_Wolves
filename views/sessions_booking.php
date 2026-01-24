@@ -267,11 +267,11 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
     color: #fff;
 }
 
-.tab-content {
+.booking-content .tab-content {
     display: none;
 }
 
-.tab-content.active {
+.booking-content .tab-content.active {
     display: block;
 }
 
