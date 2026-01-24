@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e  # Exit immediately on command failure
 
 # Arctic Wolves - Test Setup Verification Script
 # This script verifies that the Playwright test infrastructure is properly set up
@@ -53,8 +54,11 @@ fi
 # Check if @playwright/test is installed
 echo -n "Checking if @playwright/test is installed... "
 if npm list @playwright/test &> /dev/null; then
-    VERSION=$(npm list @playwright/test --depth=0 2>/dev/null | grep @playwright/test | awk '{print $2}')
-    echo -e "${GREEN}✓ Installed ($VERSION)${NC}"
+    VERSION=$(npm list @playwright/test --depth=0 2>/dev/null | grep @playwright/test | sed 's/.*@playwright\/test@//' | sed 's/ .*//')
+    if [ -z "$VERSION" ]; then
+        VERSION="installed"
+    fi
+    echo -e "${GREEN}✓ Installed (v$VERSION)${NC}"
 else
     echo -e "${RED}✗ Not installed${NC}"
     echo "Running 'npm install' to fix..."

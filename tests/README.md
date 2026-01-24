@@ -16,7 +16,7 @@ npm install
 npx playwright install chromium
 ```
 
-**Note:** If browser installation fails due to network restrictions (e.g., DNS monitoring proxy), you can:
+**Note:** If browser installation fails due to network restrictions (e.g., corporate firewalls, proxy restrictions), you can:
 - Install browsers on a different network
 - Use system-installed Chrome/Chromium
 - Skip browser tests and rely on manual QA with screenshots

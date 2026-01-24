@@ -34,7 +34,7 @@ Check that test configuration is valid:
 # List all available tests
 npx playwright test --list
 
-# Shows: "Total: 25 tests in 2 files"
+# Output will show: "Total: X tests in Y files"
 ```
 
 ### Option 2: Full Test Run (Requires Running Server)
