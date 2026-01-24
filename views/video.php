@@ -21,7 +21,7 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
     </a>
 </div>
 
-<div class="tab-content">
+<div class="page-tab-content">
     <?php
     if ($tab === 'drill_review') {
         include __DIR__ . '/video_drill_review.php';

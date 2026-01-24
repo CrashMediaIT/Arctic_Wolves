@@ -21,7 +21,7 @@ if ($tab === 'drills') $tab = 'drill_library'; // Default tab
     </a>
 </div>
 
-<div class="tab-content">
+<div class="page-tab-content">
     <?php
     if ($tab === 'drill_library') {
         include __DIR__ . '/drills_library.php';

@@ -18,7 +18,7 @@ if ($tab === 'practice') $tab = 'practice_library'; // Default tab
     </a>
 </div>
 
-<div class="tab-content">
+<div class="page-tab-content">
     <?php
     if ($tab === 'practice_library') {
         include __DIR__ . '/practice_library.php';

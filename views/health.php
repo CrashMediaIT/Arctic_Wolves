@@ -18,7 +18,7 @@ if ($tab === 'health') $tab = 'strength_conditioning'; // Default tab
     </a>
 </div>
 
-<div class="tab-content">
+<div class="page-tab-content">
     <?php
     if ($tab === 'strength_conditioning') {
         include __DIR__ . '/health_workouts.php';
