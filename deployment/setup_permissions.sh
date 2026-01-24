@@ -64,7 +64,14 @@ directories=(
 
 for dir in "${directories[@]}"; do
     echo "  Creating: $dir"
-    docker exec nginx mkdir -p "$dir" 2>/dev/null || true
+    if docker exec nginx mkdir -p "$dir" 2>/dev/null; then
+        echo -e "    ${GREEN}✓${NC} Created successfully"
+    elif docker exec nginx test -d "$dir" 2>/dev/null; then
+        echo -e "    ${YELLOW}⚠${NC} Already exists"
+    else
+        echo -e "    ${RED}✗${NC} Failed to create"
+        echo "    This may indicate a permission issue on the host filesystem"
+    fi
 done
 
 echo -e "${GREEN}✓${NC} Directories created"
@@ -99,22 +106,34 @@ writable_dirs=(
 
 echo "  Setting writable directories to 775..."
 for dir in "${writable_dirs[@]}"; do
-    docker exec nginx chmod -R 775 "$dir" 2>/dev/null || true
+    if docker exec nginx chmod -R 775 "$dir" 2>/dev/null; then
+        : # Success, continue silently
+    else
+        echo -e "    ${YELLOW}⚠${NC} Warning: Could not set permissions on $dir"
+    fi
 done
 
 # Set standard permissions for other directories and files
 echo "  Setting standard permissions for directories (755)..."
-docker exec nginx find /config/www/Arctic_Wolves -type d -exec chmod 755 {} \; 2>/dev/null || true
+if ! docker exec nginx find /config/www/Arctic_Wolves -type d -exec chmod 755 {} \; 2>/dev/null; then
+    echo -e "    ${YELLOW}⚠${NC} Warning: Some directory permissions could not be set"
+fi
 
 echo "  Setting standard permissions for files (644)..."
-docker exec nginx find /config/www/Arctic_Wolves -type f -exec chmod 644 {} \; 2>/dev/null || true
+if ! docker exec nginx find /config/www/Arctic_Wolves -type f -exec chmod 644 {} \; 2>/dev/null; then
+    echo -e "    ${YELLOW}⚠${NC} Warning: Some file permissions could not be set"
+fi
 
 # Re-apply critical permissions (find command may have reset them)
 echo "  Re-applying critical permissions..."
 docker exec nginx chmod 775 /config/www/Arctic_Wolves
 
 for dir in "${writable_dirs[@]}"; do
-    docker exec nginx chmod -R 775 "$dir" 2>/dev/null || true
+    if docker exec nginx chmod -R 775 "$dir" 2>/dev/null; then
+        : # Success, continue silently
+    else
+        echo -e "    ${YELLOW}⚠${NC} Warning: Could not re-apply permissions on $dir"
+    fi
 done
 
 echo -e "${GREEN}✓${NC} Permissions set"

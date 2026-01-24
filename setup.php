@@ -32,26 +32,38 @@ function setupPermissions() {
         $full_path = $base_dir . '/' . $dir;
         if (!file_exists($full_path)) {
             if (!@mkdir($full_path, 0775, true)) {
-                $permission_issues[] = "Failed to create directory: $dir";
+                $last_error = error_get_last();
+                $error_msg = $last_error ? $last_error['message'] : 'unknown error';
+                $permission_issues[] = "Failed to create directory: $dir - $error_msg";
+                continue;
             }
         }
         
         // Set permissions to 775 for writable directories
         if (file_exists($full_path)) {
-            @chmod($full_path, 0775);
+            if (!@chmod($full_path, 0775)) {
+                $permission_issues[] = "Failed to set permissions on directory: $dir";
+            }
         }
     }
     
     // Ensure root directory is writable (775)
-    @chmod($base_dir, 0775);
+    if (!@chmod($base_dir, 0775)) {
+        $permission_issues[] = "Failed to set permissions on root directory";
+    }
     
     return $permission_issues;
 }
 
 // Run permission setup automatically on first load
-if (!isset($_SESSION['permissions_setup_done'])) {
+// Use a persistent flag file to prevent repeated attempts
+$permissions_flag_file = __DIR__ . '/.permissions_setup_done';
+if (!file_exists($permissions_flag_file)) {
     $permission_issues = setupPermissions();
-    $_SESSION['permissions_setup_done'] = true;
+    
+    // Create flag file to mark permissions as set up
+    @file_put_contents($permissions_flag_file, date('Y-m-d H:i:s'));
+    
     if (!empty($permission_issues)) {
         $_SESSION['permission_warnings'] = $permission_issues;
     }
