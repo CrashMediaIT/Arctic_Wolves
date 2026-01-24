@@ -21,9 +21,9 @@ if ($tab === 'health') $tab = 'strength_conditioning'; // Default tab
 <div class="tab-content">
     <?php
     if ($tab === 'strength_conditioning') {
-        include 'health_workouts.php';
+        include __DIR__ . '/health_workouts.php';
     } elseif ($tab === 'nutrition') {
-        include 'health_nutrition.php';
+        include __DIR__ . '/health_nutrition.php';
     }
     ?>
 </div>

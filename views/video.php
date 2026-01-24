@@ -24,9 +24,9 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
 <div class="tab-content">
     <?php
     if ($tab === 'drill_review') {
-        include 'video_drill_review.php';
+        include __DIR__ . '/video_drill_review.php';
     } elseif ($tab === 'coaches_reviews') {
-        include 'video_coach_reviews.php';
+        include __DIR__ . '/video_coach_reviews.php';
     }
     ?>
 </div>
