@@ -119,7 +119,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
             <i class="fas fa-dumbbell empty-state-icon"></i>
             <h3 class="empty-state-title">No Workout Plan Currently Assigned</h3>
             <p class="empty-state-text">Contact your coach to get a personalized workout program tailored to your hockey training needs.</p>
-            <button class="btn-secondary" data-action="contact" data-page="coach"><i class="fas fa-envelope"></i> Contact Coach</button>
+            <button class="btn-secondary" data-action="contact" data-page="notifications"><i class="fas fa-envelope"></i> Contact Coach</button>
         </div>
         <?php endif; ?>
     </div>

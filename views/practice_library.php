@@ -64,7 +64,7 @@ try {
                 <?php endforeach; ?>
             </select>
         </form>
-        <a href="?page=create_practice" class="btn-primary"><i class="fas fa-plus"></i> Create Practice Plan</a>
+        <button class="btn-primary" data-action="view" data-page="create_practice"><i class="fas fa-plus"></i> Create Practice Plan</button>
     </div>
 
     <!-- Practice Plans List -->
@@ -104,9 +104,9 @@ try {
             <div class="placeholder-container">
                 <i class="fas fa-clipboard-list placeholder-icon"></i>
                 <p class="placeholder-text">No practice plans found. Create your first practice plan to get started!</p>
-                <a href="?page=create_practice" class="btn btn-primary" style="margin-top: 20px;">
+                <button class="btn btn-primary" style="margin-top: 20px;" data-action="view" data-page="create_practice">
                     <i class="fas fa-plus"></i> Create Practice Plan
-                </a>
+                </button>
             </div>
         <?php endif; ?>
     </div>

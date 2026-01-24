@@ -29,9 +29,9 @@
                         <p class="cron-description">Sends reminder emails to athletes 24 hours before sessions</p>
                     </div>
                     <div class="cron-actions">
-                        <button class="btn-icon" title="Run Now" data-action="run" data-id="1" onclick="runCronJob(1)"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Run Now" data-action="run" data-id="1"><i class="fas fa-play"></i></button>
                         <button class="btn-icon" title="Edit" data-action="edit" data-id="1" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Disable" data-action="toggle" data-id="1" onclick="toggleCronJob(1)"><i class="fas fa-pause"></i></button>
+                        <button class="btn-icon" title="Disable" data-action="toggle" data-id="1"><i class="fas fa-pause"></i></button>
                     </div>
                 </div>
 
@@ -49,9 +49,9 @@
                         <p class="cron-description">Creates daily database backups</p>
                     </div>
                     <div class="cron-actions">
-                        <button class="btn-icon" title="Run Now" data-action="run" data-id="2" onclick="runCronJob(2)"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Run Now" data-action="run" data-id="2"><i class="fas fa-play"></i></button>
                         <button class="btn-icon" title="Edit" data-action="edit" data-id="2" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Disable" data-action="toggle" data-id="2" onclick="toggleCronJob(2)"><i class="fas fa-pause"></i></button>
+                        <button class="btn-icon" title="Disable" data-action="toggle" data-id="2"><i class="fas fa-pause"></i></button>
                     </div>
                 </div>
 
@@ -68,9 +68,9 @@
                         <p class="cron-description">Removes temporary files older than 7 days</p>
                     </div>
                     <div class="cron-actions">
-                        <button class="btn-icon" title="Enable" data-action="toggle" data-id="3" onclick="toggleCronJob(3)"><i class="fas fa-play"></i></button>
+                        <button class="btn-icon" title="Enable" data-action="toggle" data-id="3"><i class="fas fa-play"></i></button>
                         <button class="btn-icon" title="Edit" data-action="edit" data-id="3" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete" data-action="delete" data-id="3" onclick="deleteCronJob(3)"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon" title="Delete" data-action="delete" data-id="3" data-action-url="process_cron_jobs.php"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>

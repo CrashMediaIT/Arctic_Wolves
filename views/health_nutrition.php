@@ -138,7 +138,7 @@ if ($nutrition_plan) {
             <i class="fas fa-apple-alt empty-state-icon"></i>
             <h3 class="empty-state-title">No Nutrition Plan Currently Assigned</h3>
             <p class="empty-state-text">Get a customized nutrition plan from your coach to optimize your performance and recovery. Proper nutrition is key to athletic success!</p>
-            <button class="btn-secondary" data-action="contact" data-page="coach"><i class="fas fa-envelope"></i> Contact Coach</button>
+            <button class="btn-secondary" data-action="contact" data-page="notifications"><i class="fas fa-envelope"></i> Contact Coach</button>
         </div>
         <?php endif; ?>
     </div>
