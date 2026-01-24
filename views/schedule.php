@@ -488,7 +488,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
                 </div>
                 
                 <?php if ($booked): ?>
-                    <button class="btn-book" style="background: #00ff88; color: #06080b;" disabled>
+                    <button class="btn-book" style="background: var(--success); color: white;" disabled>
                         <i class="fas fa-check-circle"></i> Already Booked
                     </button>
                 <?php elseif ($is_full): ?>

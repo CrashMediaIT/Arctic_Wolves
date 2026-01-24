@@ -355,7 +355,7 @@ $payments = $pdo->query($paymentsQuery);
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('create-invoice-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('create-invoice-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Invoice</button>
             </div>
         </form>

@@ -263,7 +263,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-cron-job-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-cron-job-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Cron Job</button>
             </div>
         </form>
@@ -318,7 +318,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-cron-job-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-cron-job-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Cron Job</button>
             </div>
         </form>

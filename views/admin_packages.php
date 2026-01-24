@@ -219,8 +219,8 @@ $sessions = $pdo->query("
             </div>
             
             <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="closePackageModal()">Cancel</button>
-                <button type="submit" class="btn-primary">Save Package</button>
+                <button type="button" class="btn-secondary" onclick="closePackageModal()"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Package</button>
             </div>
         </form>
     </div>
@@ -256,8 +256,8 @@ $sessions = $pdo->query("
             </div>
             
             <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="closeSessionsModal()">Cancel</button>
-                <button type="submit" class="btn-primary">Update Sessions</button>
+                <button type="button" class="btn-secondary" onclick="closeSessionsModal()"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-sync-alt"></i> Update Sessions</button>
             </div>
         </form>
     </div>

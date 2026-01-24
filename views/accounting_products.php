@@ -342,7 +342,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-session-type-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-session-type-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Session Type</button>
             </div>
         </form>
@@ -406,7 +406,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-package-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-package-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Package</button>
             </div>
         </form>
@@ -480,7 +480,7 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-discount-modal')">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-discount-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Discount</button>
             </div>
         </form>
