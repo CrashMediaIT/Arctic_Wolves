@@ -93,6 +93,8 @@ class DemoDataSeeder {
         $this->seedNutritionPlans();
         $this->seedCreditsRefunds();
         $this->seedEmployeeTerminations();
+        $this->seedInvoices();
+        $this->seedPayments();
         
         echo "\n=== Demo Data Seeding Complete! ===\n";
         echo "Total demo records created: " . $this->getTotalDemoRecords() . "\n\n";
@@ -1261,6 +1263,114 @@ class DemoDataSeeder {
         } else {
             echo "  ⚠ Skipping terminations - need at least 2 coaches\n";
         }
+    }
+    
+    /**
+     * Seed invoices for billing dashboard
+     */
+    private function seedInvoices() {
+        echo "Seeding Invoices...\n";
+        
+        $user_ids = array_merge(
+            $this->demo_ids['users']['athlete'] ?? [],
+            $this->demo_ids['users']['parent'] ?? []
+        );
+        
+        if (empty($user_ids)) {
+            echo "  ⚠ Skipping invoices - no users available\n";
+            return;
+        }
+        
+        $invoices = [
+            ['INV-DEMO-001', 225.00, 29.25, 254.25, 'paid', -45],
+            ['INV-DEMO-002', 400.00, 52.00, 452.00, 'paid', -30],
+            ['INV-DEMO-003', 750.00, 97.50, 847.50, 'paid', -15],
+            ['INV-DEMO-004', 150.00, 19.50, 169.50, 'sent', -7],
+            ['INV-DEMO-005', 300.00, 39.00, 339.00, 'pending', -3],
+            ['INV-DEMO-006', 175.00, 22.75, 197.75, 'overdue', -45],
+            ['INV-DEMO-007', 450.00, 58.50, 508.50, 'sent', -5],
+            ['INV-DEMO-008', 125.00, 16.25, 141.25, 'draft', 0],
+        ];
+        
+        foreach ($invoices as $index => $invoice) {
+            $user_id = $user_ids[$index % count($user_ids)];
+            $invoice_date = date('Y-m-d', strtotime("{$invoice[4]} days"));
+            $due_date = date('Y-m-d', strtotime("{$invoice[4]} days + 30 days"));
+            $paid_date = $invoice[3] === 'paid' ? date('Y-m-d', strtotime("{$invoice[4]} days + 7 days")) : null;
+            
+            $stmt = $this->pdo->prepare("
+                INSERT INTO invoices (invoice_number, user_id, invoice_date, due_date, subtotal, tax_amount, total_amount, status, paid_date, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())
+            ");
+            $stmt->execute([
+                $invoice[0],
+                $user_id,
+                $invoice_date,
+                $due_date,
+                $invoice[1],
+                $invoice[2],
+                $invoice[3],
+                $invoice[4] === 'paid' ? 'paid' : ($invoice[4] === 'overdue' ? 'overdue' : ($invoice[4] === 'sent' ? 'sent' : ($invoice[4] === 'draft' ? 'draft' : 'sent'))),
+                $paid_date
+            ]);
+            $this->demo_ids['invoices'][] = $this->pdo->lastInsertId();
+        }
+        
+        echo "  ✓ Created " . count($invoices) . " demo invoices\n";
+    }
+    
+    /**
+     * Seed payments for billing/accounting dashboard
+     */
+    private function seedPayments() {
+        echo "Seeding Payments...\n";
+        
+        $user_ids = array_merge(
+            $this->demo_ids['users']['athlete'] ?? [],
+            $this->demo_ids['users']['parent'] ?? []
+        );
+        
+        if (empty($user_ids)) {
+            echo "  ⚠ Skipping payments - no users available\n";
+            return;
+        }
+        
+        $invoice_ids = $this->demo_ids['invoices'] ?? [];
+        
+        $payments = [
+            [254.25, 'credit_card', 'completed', -40],
+            [452.00, 'credit_card', 'completed', -25],
+            [847.50, 'credit_card', 'completed', -10],
+            [169.50, 'bank_transfer', 'pending', -2],
+            [75.00, 'credit_card', 'completed', -35],
+            [150.00, 'debit_card', 'completed', -20],
+            [225.00, 'credit_card', 'completed', -15],
+            [95.00, 'credit_card', 'completed', -8],
+            [320.00, 'bank_transfer', 'completed', -5],
+            [180.00, 'credit_card', 'completed', -3],
+        ];
+        
+        foreach ($payments as $index => $payment) {
+            $user_id = $user_ids[$index % count($user_ids)];
+            $invoice_id = !empty($invoice_ids) ? $invoice_ids[$index % count($invoice_ids)] : null;
+            $payment_date = date('Y-m-d H:i:s', strtotime("{$payment[3]} days"));
+            
+            $stmt = $this->pdo->prepare("
+                INSERT INTO payments (user_id, invoice_id, amount, payment_method, payment_date, payment_status, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 1, NOW())
+            ");
+            $stmt->execute([
+                $user_id,
+                $invoice_id,
+                $payment[0],
+                $payment[1],
+                $payment_date,
+                $payment[2]
+            ]);
+            $this->demo_ids['payments'][] = $this->pdo->lastInsertId();
+        }
+        
+        echo "  ✓ Created " . count($payments) . " demo payments\n";
     }
     
     /**

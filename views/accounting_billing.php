@@ -13,38 +13,91 @@ $paymentsQuery = "SELECT p.*, i.invoice_number, u.first_name, u.last_name
     LEFT JOIN invoices i ON p.invoice_id = i.id
     LEFT JOIN users u ON p.user_id = u.id
     ORDER BY p.payment_date DESC
-    LIMIT 5";
+    LIMIT 8";
 $payments = $pdo->query($paymentsQuery);
+
+// Fetch billing statistics
+$statsQuery = "SELECT 
+    COALESCE(SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END), 0) as total_paid,
+    COALESCE(SUM(CASE WHEN status IN ('sent', 'pending') THEN total_amount ELSE 0 END), 0) as total_pending,
+    COALESCE(SUM(CASE WHEN status = 'overdue' THEN total_amount ELSE 0 END), 0) as total_overdue,
+    COUNT(*) as total_invoices
+    FROM invoices";
+try {
+    $statsResult = $pdo->query($statsQuery);
+    $stats = $statsResult->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $stats = ['total_paid' => 0, 'total_pending' => 0, 'total_overdue' => 0, 'total_invoices' => 0];
+}
 ?>
 <!-- Accounting Billing View -->
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-file-invoice-dollar"></i> Billing & Invoices
     </h1>
-    <p class="page-description">Manage invoices and billing history</p>
+    <p class="page-description">Manage invoices, track payments, and monitor billing status</p>
 </div>
 
 <div class="billing-content">
+    <!-- Billing Statistics Cards -->
+    <div class="billing-stats">
+        <div class="billing-stat-card paid">
+            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">$<?= number_format($stats['total_paid'], 2) ?></span>
+                <span class="stat-label">Total Collected</span>
+            </div>
+        </div>
+        <div class="billing-stat-card pending">
+            <div class="stat-icon"><i class="fas fa-clock"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">$<?= number_format($stats['total_pending'], 2) ?></span>
+                <span class="stat-label">Pending Payment</span>
+            </div>
+        </div>
+        <div class="billing-stat-card overdue">
+            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">$<?= number_format($stats['total_overdue'], 2) ?></span>
+                <span class="stat-label">Overdue</span>
+            </div>
+        </div>
+        <div class="billing-stat-card total">
+            <div class="stat-icon"><i class="fas fa-file-invoice"></i></div>
+            <div class="stat-info">
+                <span class="stat-value"><?= $stats['total_invoices'] ?></span>
+                <span class="stat-label">Total Invoices</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Actions Bar -->
     <div class="action-bar">
         <div class="filter-group">
-            <input type="text" class="form-input-small" placeholder="Search invoices..." data-filter="search">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" class="form-input-small" placeholder="Search invoices..." data-filter="search">
+            </div>
             <select class="form-input-small" data-filter="status">
-                <option>All Status</option>
-                <option>Paid</option>
-                <option>Pending</option>
-                <option>Overdue</option>
-                <option>Draft</option>
+                <option value="">All Status</option>
+                <option value="paid">Paid</option>
+                <option value="sent">Sent</option>
+                <option value="pending">Pending</option>
+                <option value="overdue">Overdue</option>
+                <option value="draft">Draft</option>
             </select>
             <select class="form-input-small" data-filter="date-range">
-                <option>This Month</option>
-                <option>Last Month</option>
-                <option>Last 3 Months</option>
-                <option>This Year</option>
-                <option>Custom Range</option>
+                <option value="this_month">This Month</option>
+                <option value="last_month">Last Month</option>
+                <option value="last_3_months">Last 3 Months</option>
+                <option value="this_year">This Year</option>
+                <option value="custom">Custom Range</option>
             </select>
         </div>
-        <button class="btn-primary" data-action="add" data-modal="create-invoice-modal"><i class="fas fa-plus"></i> Create Invoice</button>
+        <div class="action-buttons">
+            <button class="btn-secondary" data-action="export" data-type="invoices"><i class="fas fa-file-export"></i> Export</button>
+            <button class="btn-primary" data-action="add" data-modal="create-invoice-modal"><i class="fas fa-plus"></i> Create Invoice</button>
+        </div>
     </div>
 
     <!-- Invoices Table -->
@@ -52,7 +105,7 @@ $payments = $pdo->query($paymentsQuery);
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Invoices</h3>
             <div class="header-actions">
-                <button class="btn-secondary" data-action="export" data-type="invoices"><i class="fas fa-file-export"></i> Export</button>
+                <span class="results-count"><?= $invoices ? $invoices->rowCount() : 0 ?> invoices</span>
             </div>
         </div>
         <div class="card-body">
@@ -139,9 +192,112 @@ $payments = $pdo->query($paymentsQuery);
 </div>
 
 <style>
+/* Billing Statistics Cards */
+.billing-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.billing-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.billing-stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100%;
+    opacity: 0.05;
+    pointer-events: none;
+}
+
+.billing-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.billing-stat-card .stat-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.billing-stat-card.paid .stat-icon { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.billing-stat-card.pending .stat-icon { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.billing-stat-card.overdue .stat-icon { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.billing-stat-card.total .stat-icon { background: rgba(107, 70, 193, 0.15); color: #8B5CF6; }
+
+.billing-stat-card .stat-info { flex: 1; }
+
+.billing-stat-card .stat-value {
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--text-white);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.billing-stat-card .stat-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+/* Search Box */
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-box i {
+    position: absolute;
+    left: 14px;
+    color: var(--text-dim);
+    font-size: 14px;
+    pointer-events: none;
+}
+
+.search-box input {
+    padding-left: 40px;
+    min-width: 250px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.results-count {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 500;
+}
+
 .header-actions {
     display: flex;
     gap: 10px;
+    align-items: center;
 }
 
 .table-container {
@@ -160,12 +316,12 @@ $payments = $pdo->query($paymentsQuery);
 .data-table th {
     padding: 16px;
     text-align: left;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-dim);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.8px;
+    border-bottom: 2px solid var(--border);
 }
 
 .data-table td {
@@ -180,96 +336,103 @@ $payments = $pdo->query($paymentsQuery);
 }
 
 .data-table tbody tr:hover {
-    background: var(--bg-main);
+    background: rgba(107, 70, 193, 0.05);
 }
 
 .client-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .client-avatar {
-    width: 35px;
-    height: 35px;
-    background: linear-gradient(135deg, var(--neon), var(--accent));
-    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 12px;
-    font-weight: 900;
+    font-weight: 800;
     color: #fff;
 }
 
-.status-badge.paid {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
+.status-badge {
+    display: inline-flex;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.status-badge.pending {
-    background: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
-}
-
-.status-badge.overdue {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-}
-
-.status-badge.draft {
-    background: rgba(148, 163, 184, 0.1);
-    color: var(--text-dim);
-}
+.status-badge.paid { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.status-badge.sent { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.status-badge.pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.status-badge.overdue { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.status-badge.draft { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
 
 .payments-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 16px;
 }
 
 .payment-item {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 16px;
     padding: 20px;
     background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.payment-item:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 .payment-icon {
-    width: 50px;
-    height: 50px;
-    background: rgba(16, 185, 129, 0.1);
-    border-radius: 8px;
+    width: 52px;
+    height: 52px;
+    background: rgba(16, 185, 129, 0.15);
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 22px;
     color: #10b981;
     flex-shrink: 0;
 }
 
 .payment-details {
     flex: 1;
+    min-width: 0;
 }
 
 .payment-details h4 {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text-white);
-    margin-bottom: 4px;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .payment-details p {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-dim);
     margin-bottom: 4px;
 }
 
 .payment-date {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-dim);
 }
 
@@ -277,6 +440,55 @@ $payments = $pdo->query($paymentsQuery);
     font-size: 20px;
     font-weight: 900;
     color: #10b981;
+    white-space: nowrap;
+}
+
+.placeholder-text {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 40px;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .billing-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .payments-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-bar {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .filter-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .search-box input {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .action-buttons {
+        width: 100%;
+        justify-content: stretch;
+    }
+    
+    .action-buttons .btn-primary,
+    .action-buttons .btn-secondary {
+        flex: 1;
+    }
+}
+
+@media (max-width: 480px) {
+    .billing-stats {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 
