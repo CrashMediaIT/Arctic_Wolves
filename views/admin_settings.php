@@ -240,6 +240,24 @@ function getSetting($settings, $key, $default = '') {
         color: #ef4444;
     }
     
+    .alert-danger {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid #ef4444;
+        color: #ef4444;
+    }
+    
+    .alert-warning {
+        background: rgba(251, 191, 36, 0.1);
+        border: 1px solid #fbbf24;
+        color: #fbbf24;
+    }
+    
+    .alert-info {
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid #3b82f6;
+        color: #3b82f6;
+    }
+    
     .info-box {
         background: rgba(112, 0, 164, 0.1);
         border: 1px solid var(--primary);
@@ -311,6 +329,9 @@ function getSetting($settings, $key, $default = '') {
     </button>
     <button class="tab" onclick="switchTab('advanced')">
         <i class="fas fa-code"></i> Advanced
+    </button>
+    <button class="tab" onclick="switchTab('updates')">
+        <i class="fas fa-download"></i> Updates
     </button>
 </div>
 
@@ -672,6 +693,69 @@ function getSetting($settings, $key, $default = '') {
     </form>
 </div>
 
+<!-- Updates Tab -->
+<div id="tab-updates" class="tab-content">
+    <form method="POST" action="process_settings.php">
+        <?= csrfTokenInput() ?>
+        <input type="hidden" name="action" value="update_github_settings">
+        
+        <div class="settings-card">
+            <div class="card-header">
+                <h3 class="card-title">GitHub Authentication</h3>
+                <p class="card-description">Configure GitHub access for private repository updates</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">GitHub Personal Access Token</label>
+                <input type="password" name="github_token" class="form-input" 
+                       value="<?= htmlspecialchars(getSetting($settings, 'github_token', '')) ?>" 
+                       placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                <div class="help-text">
+                    Required for private repositories. 
+                    <a href="https://github.com/settings/tokens/new?scopes=repo&description=Arctic%20Wolves%20Updater" 
+                       target="_blank" style="color: var(--primary);">Generate token here</a> with 'repo' scope.
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <button type="button" onclick="testGitHubConnection()" class="btn-secondary">
+                    <i class="fas fa-plug"></i> Test Connection
+                </button>
+            </div>
+            
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i> Save GitHub Settings
+            </button>
+        </div>
+    </form>
+    
+    <div class="settings-card" style="margin-top: 20px;">
+        <div class="card-header">
+            <h3 class="card-title">System Updates</h3>
+            <p class="card-description">Check for and apply updates from GitHub repository</p>
+        </div>
+        
+        <div id="update-status" class="form-group" style="display: none;">
+            <div class="alert"></div>
+        </div>
+        
+        <div class="form-group">
+            <button type="button" onclick="checkForUpdates()" class="btn-secondary">
+                <i class="fas fa-search"></i> Check for Updates
+            </button>
+            
+            <button type="button" onclick="applyUpdates()" class="btn-primary" style="margin-left: 10px;">
+                <i class="fas fa-download"></i> Apply Updates
+            </button>
+        </div>
+        
+        <div class="help-text" style="margin-top: 20px;">
+            <strong>⚠️ Important:</strong> Updates will modify system files. Always backup your database and custom configurations before applying updates.
+            Files removed from the repository will be deleted from your installation.
+        </div>
+    </div>
+</div>
+
 <script>
 function switchTab(tabName) {
     // Hide all tabs
@@ -749,6 +833,129 @@ function testReceiptUpload() {
         } else {
             alert('✗ Test failed:\n\n' + data.message);
         }
+    });
+}
+
+function testGitHubConnection() {
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'action': 'test_github',
+            'csrf_token': document.querySelector('[name="csrf_token"]').value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✓ GitHub Connection Successful!\n\n' + data.message + 
+                  (data.repo_name ? '\n\nRepository: ' + data.repo_name : '') +
+                  (data.private !== undefined ? '\n\nPrivate: ' + (data.private ? 'Yes' : 'No') : ''));
+        } else {
+            alert('✗ Connection failed:\n\n' + data.message);
+        }
+    });
+}
+
+function checkForUpdates() {
+    const statusDiv = document.getElementById('update-status');
+    const alertDiv = statusDiv.querySelector('.alert');
+    
+    statusDiv.style.display = 'block';
+    alertDiv.className = 'alert alert-info';
+    alertDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking for updates...';
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'action': 'check_updates',
+            'csrf_token': document.querySelector('[name="csrf_token"]').value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.has_updates) {
+                alertDiv.className = 'alert alert-warning';
+                alertDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>Updates Available!</strong><br>' +
+                    'Latest commit: ' + data.latest_commit.message + '<br>' +
+                    'Date: ' + new Date(data.latest_commit.date).toLocaleString() + '<br>' +
+                    'Author: ' + data.latest_commit.author;
+            } else {
+                alertDiv.className = 'alert alert-success';
+                alertDiv.innerHTML = '<i class="fas fa-check-circle"></i> Your system is up to date!';
+            }
+        } else {
+            alertDiv.className = 'alert alert-danger';
+            alertDiv.innerHTML = '<i class="fas fa-times-circle"></i> Error: ' + data.message;
+        }
+    })
+    .catch(error => {
+        alertDiv.className = 'alert alert-danger';
+        alertDiv.innerHTML = '<i class="fas fa-times-circle"></i> Error checking for updates: ' + error;
+    });
+}
+
+function applyUpdates() {
+    if (!confirm('⚠️ WARNING: This will update system files and delete files removed from the repository.\n\n' +
+                 'Please ensure you have:\n' +
+                 '• Backed up your database\n' +
+                 '• Backed up custom configurations\n' +
+                 '• Tested in a staging environment\n\n' +
+                 'Continue with update?')) {
+        return;
+    }
+    
+    const statusDiv = document.getElementById('update-status');
+    const alertDiv = statusDiv.querySelector('.alert');
+    
+    statusDiv.style.display = 'block';
+    alertDiv.className = 'alert alert-info';
+    alertDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying updates... This may take a few minutes.';
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'action': 'apply_updates',
+            'csrf_token': document.querySelector('[name="csrf_token"]').value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let message = '<i class="fas fa-check-circle"></i> <strong>Update Completed!</strong><br>' + data.message;
+            if (data.errors && data.errors.length > 0) {
+                message += '<br><br><strong>Errors:</strong><br>' + data.errors.join('<br>');
+                alertDiv.className = 'alert alert-warning';
+            } else {
+                alertDiv.className = 'alert alert-success';
+            }
+            alertDiv.innerHTML = message;
+            
+            // Suggest reload if successful
+            if (data.errors.length === 0) {
+                setTimeout(() => {
+                    if (confirm('Update completed successfully! Reload the page to see changes?')) {
+                        location.reload();
+                    }
+                }, 2000);
+            }
+        } else {
+            alertDiv.className = 'alert alert-danger';
+            alertDiv.innerHTML = '<i class="fas fa-times-circle"></i> Error: ' + data.message;
+        }
+    })
+    .catch(error => {
+        alertDiv.className = 'alert alert-danger';
+        alertDiv.innerHTML = '<i class="fas fa-times-circle"></i> Error applying updates: ' + error;
     });
 }
 </script>

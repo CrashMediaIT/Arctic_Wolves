@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 $action = $_POST['action'] ?? '';
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -183,6 +183,34 @@ try {
             updateSetting($pdo, 'mileage_rate_per_mile', $rate_mile);
             
             header('Location: dashboard.php?page=settings&success=1');
+            exit;
+            
+        case 'update_github_settings':
+            $github_token = trim($_POST['github_token']);
+            updateSetting($pdo, 'github_token', $github_token);
+            
+            header('Location: dashboard.php?page=admin_settings&success=1');
+            exit;
+            
+        case 'test_github':
+            require_once __DIR__ . '/lib/github_updater.php';
+            $updater = new GitHubUpdater($pdo);
+            $result = $updater->testGitHubConnection();
+            echo json_encode($result);
+            exit;
+            
+        case 'check_updates':
+            require_once __DIR__ . '/lib/github_updater.php';
+            $updater = new GitHubUpdater($pdo);
+            $result = $updater->checkForUpdates();
+            echo json_encode($result);
+            exit;
+            
+        case 'apply_updates':
+            require_once __DIR__ . '/lib/github_updater.php';
+            $updater = new GitHubUpdater($pdo);
+            $result = $updater->applyUpdates();
+            echo json_encode($result);
             exit;
             
         default:
