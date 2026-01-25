@@ -9,6 +9,49 @@ require 'db_config.php';
 require 'mailer.php';
 require_once __DIR__ . '/security.php';
 
+/**
+ * Generate a unique email for an athlete based on parent's email
+ * @param PDO $pdo Database connection
+ * @param string $parentEmail Parent's email address
+ * @param string $athleteFirstName Athlete's first name
+ * @return string Unique email for the athlete
+ */
+function generateUniqueAthleteEmail($pdo, $parentEmail, $athleteFirstName) {
+    $sanitizedName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $athleteFirstName));
+    $baseEmail = preg_replace('/@/', '+' . $sanitizedName . '@', $parentEmail, 1);
+    $athleteEmail = $baseEmail;
+    
+    // Check if this email exists, if so, add a number
+    $check_stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    $check_stmt->execute([$athleteEmail]);
+    $counter = 1;
+    
+    while ($check_stmt->rowCount() > 0) {
+        $athleteEmail = preg_replace('/@/', '+' . $sanitizedName . $counter . '@', $parentEmail, 1);
+        $check_stmt->execute([$athleteEmail]);
+        $counter++;
+    }
+    
+    return $athleteEmail;
+}
+
+/**
+ * Generate a secure random password
+ * @param int $length Length of the password (default 16)
+ * @return string Random password with mixed characters
+ */
+function generateSecurePassword($length = 16) {
+    $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    $password = '';
+    $charsLength = strlen($chars);
+    
+    for ($i = 0; $i < $length; $i++) {
+        $password .= $chars[random_int(0, $charsLength - 1)];
+    }
+    
+    return $password;
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Validate CSRF token
     if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
@@ -122,23 +165,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 // If athlete email is same as parent, create a unique email for the athlete
                 // by appending a suffix (this allows multiple athletes under one parent email)
                 if ($athlete_email === $email) {
-                    // Generate unique athlete email using parent email + athlete name
-                    $base_email = preg_replace('/@/', '+' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $athlete_first)) . '@', $email, 1);
-                    $athlete_email = $base_email;
-                    
-                    // Check if this email exists, if so, add a number
-                    $check_stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-                    $check_stmt->execute([$athlete_email]);
-                    $counter = 1;
-                    while ($check_stmt->rowCount() > 0) {
-                        $athlete_email = preg_replace('/@/', '+' . strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $athlete_first)) . $counter . '@', $email, 1);
-                        $check_stmt->execute([$athlete_email]);
-                        $counter++;
-                    }
+                    $athlete_email = generateUniqueAthleteEmail($pdo, $email, $athlete_first);
                 }
                 
-                // Generate random password for athlete (they can reset later or parent can manage)
-                $athlete_password = bin2hex(random_bytes(8));
+                // Generate secure random password for athlete (they can reset later or parent can manage)
+                $athlete_password = generateSecurePassword(16);
                 $athlete_hash_pass = password_hash($athlete_password, PASSWORD_DEFAULT);
                 
                 // Insert athlete

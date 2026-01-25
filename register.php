@@ -10,7 +10,6 @@ require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 
 // Generate CSRF token
-CSRFProtection::generateToken();
 generateCSRFToken();
 
 // Check database connection
@@ -37,6 +36,12 @@ if (isset($_GET['error'])) {
             break;
         case 'password_mismatch':
             $error = "Passwords do not match.";
+            break;
+        case 'database_error':
+            $error = "A database error occurred. Please try again later.";
+            break;
+        case 'csrf_invalid':
+            $error = "Security token expired. Please refresh and try again.";
             break;
         default:
             $error = "An error occurred during registration. Please try again.";
