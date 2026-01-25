@@ -125,9 +125,9 @@
                         </div>
                     </div>
                     <div class="canvas-controls">
-                        <button class="btn-secondary"><i class="fas fa-undo"></i> Undo</button>
-                        <button class="btn-secondary"><i class="fas fa-redo"></i> Redo</button>
-                        <button class="btn-secondary"><i class="fas fa-download"></i> Export Image</button>
+                        <button class="btn-secondary" data-drill-action="undo"><i class="fas fa-undo"></i> Undo</button>
+                        <button class="btn-secondary" data-drill-action="redo"><i class="fas fa-redo"></i> Redo</button>
+                        <button class="btn-secondary" data-drill-action="export"><i class="fas fa-download"></i> Export Image</button>
                     </div>
                 </div>
             </div>

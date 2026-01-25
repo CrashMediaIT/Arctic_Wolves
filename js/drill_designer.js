@@ -54,15 +54,13 @@ class DrillDesigner {
             });
         });
         
-        // Canvas controls
-        const undoBtn = document.querySelector('[data-action="undo-drill"]');
-        const redoBtn = document.querySelector('[data-action="redo-drill"]');
-        const clearBtn = document.querySelector('[data-action="clear-drill"]');
-        const exportBtn = document.querySelector('[data-action="export-drill"]');
+        // Canvas controls with data attributes
+        const undoBtn = document.querySelector('[data-drill-action="undo"]');
+        const redoBtn = document.querySelector('[data-drill-action="redo"]');
+        const exportBtn = document.querySelector('[data-drill-action="export"]');
         
         if (undoBtn) undoBtn.addEventListener('click', () => this.undo());
         if (redoBtn) redoBtn.addEventListener('click', () => this.redo());
-        if (clearBtn) clearBtn.addEventListener('click', () => this.clearAll());
         if (exportBtn) exportBtn.addEventListener('click', () => this.exportImage());
     }
     
@@ -413,9 +411,6 @@ function initDrillDesigner() {
     // Initialize designer
     window.drillDesigner = new DrillDesigner('drill-canvas');
     
-    // Update canvas controls
-    updateCanvasControls();
-    
     // Hook into form submission to save diagram data
     const drillForm = document.querySelector('.drill-form');
     if (drillForm) {
@@ -430,18 +425,5 @@ function initDrillDesigner() {
             }
             diagramInput.value = diagramData;
         });
-    }
-}
-
-function updateCanvasControls() {
-    // Update button actions with more specific selectors
-    const canvasControls = document.querySelector('.canvas-controls');
-    if (!canvasControls) return;
-    
-    const buttons = canvasControls.querySelectorAll('.btn-secondary');
-    if (buttons.length >= 3) {
-        buttons[0].setAttribute('data-action', 'undo-drill');
-        buttons[1].setAttribute('data-action', 'redo-drill');
-        buttons[2].setAttribute('data-action', 'export-drill');
     }
 }
