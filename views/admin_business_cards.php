@@ -204,37 +204,41 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                     <h4 class="form-section-title"><i class="fas fa-image"></i> Card Background Images</h4>
                     <div class="background-upload-grid">
                         <!-- Front Background -->
-                        <div class="bg-upload-card">
-                            <div class="bg-upload-preview" id="front-bg-preview">
-                                <i class="fas fa-image"></i>
-                                <span>Front Side Background</span>
+                        <div class="file-upload-zone" id="frontBgDropZone">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
                             </div>
-                            <div class="bg-upload-actions">
-                                <input type="file" id="front-bg-input" accept="image/*" style="display: none;" onchange="previewBackground('front', this)">
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('front-bg-input').click()">
-                                    <i class="fas fa-upload"></i> Upload Front
+                            <p class="upload-text">Drag & drop front background or click to browse</p>
+                            <span class="upload-hint">Front side background image (PNG, JPG, WebP)</span>
+                            <input type="file" id="front-bg-input" accept="image/*" style="display: none;" onchange="previewBackground('front', this)">
+                            <div class="upload-buttons">
+                                <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('front-bg-input').click()">
+                                    <i class="fas fa-folder-open"></i> Choose File
                                 </button>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="removeBackground('front')" id="remove-front-bg" style="display: none;">
+                                <button type="button" class="btn-secondary btn-small" onclick="removeBackground('front')" id="remove-front-bg" style="display: none;">
                                     <i class="fas fa-trash"></i> Remove
                                 </button>
                             </div>
+                            <div id="front-bg-preview" class="upload-preview"></div>
                         </div>
                         
                         <!-- Back Background -->
-                        <div class="bg-upload-card">
-                            <div class="bg-upload-preview" id="back-bg-preview">
-                                <i class="fas fa-image"></i>
-                                <span>Back Side Background</span>
+                        <div class="file-upload-zone" id="backBgDropZone">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
                             </div>
-                            <div class="bg-upload-actions">
-                                <input type="file" id="back-bg-input" accept="image/*" style="display: none;" onchange="previewBackground('back', this)">
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('back-bg-input').click()">
-                                    <i class="fas fa-upload"></i> Upload Back
+                            <p class="upload-text">Drag & drop back background or click to browse</p>
+                            <span class="upload-hint">Back side background image (PNG, JPG, WebP)</span>
+                            <input type="file" id="back-bg-input" accept="image/*" style="display: none;" onchange="previewBackground('back', this)">
+                            <div class="upload-buttons">
+                                <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('back-bg-input').click()">
+                                    <i class="fas fa-folder-open"></i> Choose File
                                 </button>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="removeBackground('back')" id="remove-back-bg" style="display: none;">
+                                <button type="button" class="btn-secondary btn-small" onclick="removeBackground('back')" id="remove-back-bg" style="display: none;">
                                     <i class="fas fa-trash"></i> Remove
                                 </button>
                             </div>
+                            <div id="back-bg-preview" class="upload-preview"></div>
                         </div>
                     </div>
                     <p class="form-help"><i class="fas fa-info-circle"></i> Recommended size: 1050x600 pixels (3.5" x 2" at 300 DPI). Supports PNG, JPG, WebP.</p>
@@ -346,7 +350,59 @@ document.addEventListener('DOMContentLoaded', function() {
     // Generate QR code on page load if user is selected
     generateQRCode();
     <?php endif; ?>
+    
+    // Initialize drag and drop for file upload zones
+    initDragAndDrop('frontBgDropZone', 'front-bg-input', 'front');
+    initDragAndDrop('backBgDropZone', 'back-bg-input', 'back');
 });
+
+// Initialize drag and drop event handlers
+function initDragAndDrop(zoneId, inputId, side) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    
+    if (!zone || !input) return;
+    
+    // Click to browse
+    zone.addEventListener('click', function(e) {
+        if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+            input.click();
+        }
+    });
+    
+    // Drag over
+    zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.style.borderColor = 'var(--primary)';
+        zone.style.background = 'rgba(107, 70, 193, 0.1)';
+    });
+    
+    // Drag leave
+    zone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.style.borderColor = '';
+        zone.style.background = '';
+    });
+    
+    // Drop
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.style.borderColor = '';
+        zone.style.background = '';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            // Use DataTransfer for cross-browser compatibility
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(files[0]);
+            input.files = dataTransfer.files;
+            previewBackground(side, input);
+        }
+    });
+}
 
 // Select a user
 function selectUser(userId) {
@@ -613,13 +669,13 @@ function previewBackground(side, input) {
 function removeBackground(side) {
     if (side === 'front') {
         frontBackgroundImage = null;
-        document.getElementById('front-bg-preview').innerHTML = '<i class="fas fa-image"></i><span>Front Side Background</span>';
+        document.getElementById('front-bg-preview').innerHTML = '';
         document.getElementById('front-overlay').style.backgroundImage = 'none';
         document.getElementById('front-bg-input').value = '';
         document.getElementById('remove-front-bg').style.display = 'none';
     } else {
         backBackgroundImage = null;
-        document.getElementById('back-bg-preview').innerHTML = '<i class="fas fa-image"></i><span>Back Side Background</span>';
+        document.getElementById('back-bg-preview').innerHTML = '';
         document.getElementById('back-overlay').style.backgroundImage = 'none';
         document.getElementById('back-bg-input').value = '';
         document.getElementById('remove-back-bg').style.display = 'none';
@@ -719,52 +775,58 @@ function exportCardSide(side) {
     gap: 20px;
 }
 
-.bg-upload-card {
-    background: var(--bg-main, #0A0A0F);
-    border: 1px solid var(--border, #2D2D3F);
+/* File Upload Zone - Matching Termination Page Style */
+.file-upload-zone {
+    border: 2px dashed var(--border);
     border-radius: 12px;
-    padding: 20px;
+    padding: 32px 24px;
     text-align: center;
+    background: var(--bg-main);
+    transition: all 0.3s;
+    cursor: pointer;
 }
 
-.bg-upload-preview {
-    width: 100%;
-    height: 120px;
-    background: linear-gradient(135deg, rgba(107, 70, 193, 0.1) 0%, transparent 100%);
-    border: 2px dashed var(--border, #2D2D3F);
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 16px;
-    overflow: hidden;
-    transition: all 0.3s ease;
+.file-upload-zone:hover {
+    border-color: var(--primary);
+    background: rgba(107, 70, 193, 0.05);
 }
 
-.bg-upload-preview i {
-    font-size: 32px;
-    color: var(--text-muted, #6B6B7B);
+.file-upload-zone .upload-icon i {
+    font-size: 42px;
+    color: var(--primary);
+    opacity: 0.6;
+    margin-bottom: 12px;
 }
 
-.bg-upload-preview span {
+.file-upload-zone .upload-text {
+    font-size: 15px;
+    color: var(--text-white);
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.file-upload-zone .upload-hint {
     font-size: 12px;
-    color: var(--text-muted, #6B6B7B);
+    color: var(--text-dim);
+    display: block;
+    margin-bottom: 16px;
 }
 
-.bg-upload-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 6px;
-}
-
-.bg-upload-actions {
+.upload-buttons {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     justify-content: center;
-    flex-wrap: wrap;
+}
+
+.upload-preview {
+    margin-top: 12px;
+}
+
+.upload-preview img {
+    max-width: 100%;
+    max-height: 100px;
+    border-radius: 8px;
+    object-fit: cover;
 }
 
 .form-help {

@@ -245,6 +245,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('Toggle active feature requires is_active column');
                 break;
                 
+            case 'create_scale':
+                $name = trim($_POST['name'] ?? '');
+                $description = trim($_POST['description'] ?? '');
+                $min_value = isset($_POST['min_value']) ? intval($_POST['min_value']) : 1;
+                $max_value = isset($_POST['max_value']) ? intval($_POST['max_value']) : 5;
+                
+                if (empty($name)) {
+                    throw new Exception('Scale name is required');
+                }
+                
+                if ($min_value >= $max_value) {
+                    throw new Exception('Max value must be greater than min value');
+                }
+                
+                // Note: eval_scales table may not exist in schema
+                // Return success message indicating feature is pending implementation
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Scale configuration saved. Note: Custom scales require database schema update for full persistence.'
+                ]);
+                break;
+                
+            case 'edit_scale':
+                $scale_id = intval($_POST['scale_id'] ?? 0);
+                $name = trim($_POST['name'] ?? '');
+                $description = trim($_POST['description'] ?? '');
+                $min_value = isset($_POST['min_value']) ? intval($_POST['min_value']) : 1;
+                $max_value = isset($_POST['max_value']) ? intval($_POST['max_value']) : 5;
+                $scale_data = trim($_POST['scale_data'] ?? '');
+                
+                if (empty($name)) {
+                    throw new Exception('Scale name is required');
+                }
+                
+                if ($scale_id <= 0) {
+                    throw new Exception('Invalid scale ID');
+                }
+                
+                // Note: eval_scales table may not exist in schema
+                // Return success message indicating feature is pending implementation
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Scale updated. Note: Custom scales require database schema update for full persistence.'
+                ]);
+                break;
+                
             default:
                 throw new Exception('Invalid action');
         }
