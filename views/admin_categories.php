@@ -633,13 +633,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
-    document.getElementById(modalId).style.display = 'none';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+    }
 }
 
 function openModal(modalId) {
-    document.getElementById(modalId).classList.add('active');
-    document.getElementById(modalId).style.display = 'flex';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+    }
 }
 </script>
 

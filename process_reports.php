@@ -613,15 +613,21 @@ function toggleSchedule() {
 function createSchedule() {
     global $pdo, $user_id;
     
-    $schedule_name = $_POST['schedule_name'] ?? '';
-    $report_type = $_POST['report_type'] ?? '';
+    // Sanitize and validate inputs
+    $schedule_name = trim(strip_tags($_POST['schedule_name'] ?? ''));
+    $report_type = trim(strip_tags($_POST['report_type'] ?? ''));
     $frequency = trim(strtolower($_POST['frequency'] ?? '')); // Normalize to lowercase
-    $format = $_POST['format'] ?? 'pdf';
-    $email_recipients = $_POST['email_recipients'] ?? '';
+    $format = in_array($_POST['format'] ?? 'pdf', ['pdf', 'excel', 'csv']) ? $_POST['format'] : 'pdf';
+    $email_recipients = trim($_POST['email_recipients'] ?? '');
     $time = $_POST['time'] ?? '09:00';
-    $day_of_period = $_POST['day_of_period'] ?? '';
-    $parameters = $_POST['parameters'] ?? '';
+    $day_of_period = trim(strip_tags($_POST['day_of_period'] ?? ''));
+    $parameters = trim($_POST['parameters'] ?? '');
     $is_active = 1;
+    
+    // Validate time format (HH:MM)
+    if (!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/', $time)) {
+        $time = '09:00'; // Default to 9:00 AM if invalid
+    }
     
     // Validate required fields
     if (empty($report_type)) {
@@ -631,6 +637,21 @@ function createSchedule() {
     if (empty($frequency)) {
         header('Location: dashboard.php?page=accounting_schedules&error=' . urlencode('Frequency is required'));
         exit;
+    }
+    
+    // Validate email recipients if provided
+    if (!empty($email_recipients)) {
+        $emails = array_map('trim', explode(',', $email_recipients));
+        foreach ($emails as $email) {
+            if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                header('Location: dashboard.php?page=accounting_schedules&error=' . urlencode('Invalid email address: ' . htmlspecialchars($email)));
+                exit;
+            }
+        }
+        // Clean up the emails
+        $email_recipients = implode(', ', array_filter($emails, function($e) { 
+            return filter_var($e, FILTER_VALIDATE_EMAIL); 
+        }));
     }
     
     // Calculate next run time
