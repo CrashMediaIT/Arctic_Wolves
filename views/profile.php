@@ -29,33 +29,54 @@ try {
 $activeTab = $_GET['tab'] ?? 'personal';
 ?>
 
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-user"></i> My Profile
-    </h1>
-    <p class="page-description">Manage your personal information and preferences</p>
+<div class="profile-page-header">
+    <div class="profile-header-content">
+        <div class="profile-header-avatar">
+            <?php if (!empty($userData['profile_image'])): ?>
+                <img src="<?php echo htmlspecialchars($userData['profile_image']); ?>" alt="Profile">
+            <?php else: ?>
+                <span class="avatar-initials"><?php echo strtoupper(substr($userData['first_name'] ?? 'U', 0, 1) . substr($userData['last_name'] ?? 'N', 0, 1)); ?></span>
+            <?php endif; ?>
+            <div class="avatar-badge">
+                <i class="fas fa-check"></i>
+            </div>
+        </div>
+        <div class="profile-header-info">
+            <h1 class="profile-name"><?php echo htmlspecialchars(($userData['first_name'] ?? '') . ' ' . ($userData['last_name'] ?? '')); ?></h1>
+            <p class="profile-role">
+                <span class="role-badge <?php echo $user_role; ?>"><?php echo ucfirst(str_replace('_', ' ', $user_role)); ?></span>
+                <span class="profile-email"><i class="fas fa-envelope"></i> <?php echo htmlspecialchars($userData['email'] ?? ''); ?></span>
+            </p>
+        </div>
+    </div>
 </div>
 
-<!-- Tab Navigation -->
-<div class="tabs">
-    <button class="tab-btn <?php echo $activeTab === 'personal' ? 'active' : ''; ?>" 
-            data-tab="personal" onclick="switchTab('personal')">
-        <i class="fas fa-id-card"></i> Personal Info
-    </button>
-    <?php if ($user_role === 'athlete'): ?>
-        <button class="tab-btn <?php echo $activeTab === 'player' ? 'active' : ''; ?>" 
-                data-tab="player" onclick="switchTab('player')">
-            <i class="fas fa-hockey-puck"></i> Player Info
+<!-- Tab Navigation - Enhanced -->
+<div class="profile-tabs-wrapper">
+    <div class="profile-tabs">
+        <button class="profile-tab-btn <?php echo $activeTab === 'personal' ? 'active' : ''; ?>" 
+                data-tab="personal" onclick="switchTab('personal')">
+            <i class="fas fa-id-card"></i>
+            <span>Personal Info</span>
         </button>
-    <?php endif; ?>
-    <button class="tab-btn <?php echo $activeTab === 'security' ? 'active' : ''; ?>" 
-            data-tab="security" onclick="switchTab('security')">
-        <i class="fas fa-lock"></i> Security
-    </button>
-    <button class="tab-btn <?php echo $activeTab === 'notifications' ? 'active' : ''; ?>" 
-            data-tab="notifications" onclick="switchTab('notifications')">
-        <i class="fas fa-bell"></i> Notifications
-    </button>
+        <?php if ($user_role === 'athlete'): ?>
+            <button class="profile-tab-btn <?php echo $activeTab === 'player' ? 'active' : ''; ?>" 
+                    data-tab="player" onclick="switchTab('player')">
+                <i class="fas fa-hockey-puck"></i>
+                <span>Player Info</span>
+            </button>
+        <?php endif; ?>
+        <button class="profile-tab-btn <?php echo $activeTab === 'security' ? 'active' : ''; ?>" 
+                data-tab="security" onclick="switchTab('security')">
+            <i class="fas fa-lock"></i>
+            <span>Security</span>
+        </button>
+        <button class="profile-tab-btn <?php echo $activeTab === 'notifications' ? 'active' : ''; ?>" 
+                data-tab="notifications" onclick="switchTab('notifications')">
+            <i class="fas fa-bell"></i>
+            <span>Notifications</span>
+        </button>
+    </div>
 </div>
 
 <div class="profile-content">
@@ -405,42 +426,186 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Tab Navigation */
-.tabs {
-    display: flex;
-    gap: 8px;
+/* Profile Page Enhanced Styles */
+.profile-page-header {
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
     margin-bottom: 24px;
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 0;
 }
 
-.tab-btn {
-    padding: 12px 24px;
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--text-dim);
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
+.profile-header-content {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.profile-header-avatar {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    color: #fff;
+    font-weight: 700;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+    flex-shrink: 0;
+}
+
+.profile-header-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-header-avatar .avatar-initials {
+    font-size: 36px;
+    font-weight: 700;
+}
+
+.avatar-badge {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 28px;
+    height: 28px;
+    background: var(--success);
+    border: 3px solid var(--bg-card);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #fff;
+}
+
+.profile-header-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+}
+
+.profile-role {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 0;
+    flex-wrap: wrap;
+}
+
+.profile-role .role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.profile-role .role-badge.admin {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.profile-role .role-badge.coach,
+.profile-role .role-badge.team_coach,
+.profile-role .role-badge.health_coach {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3B82F6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.profile-role .role-badge.athlete {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.profile-role .role-badge.parent {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.profile-email {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: -2px;
+    color: var(--text-secondary);
+    font-size: 14px;
 }
 
-.tab-btn:hover {
-    color: var(--text-white);
+.profile-email i {
+    color: var(--primary-light);
+}
+
+/* Profile Tabs - Enhanced */
+.profile-tabs-wrapper {
+    margin-bottom: 24px;
+}
+
+.profile-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+}
+
+.profile-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.profile-tab-btn:hover {
     background: rgba(107, 70, 193, 0.1);
+    color: var(--text-primary);
 }
 
-.tab-btn.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
+.profile-tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
 }
 
+.profile-tab-btn i {
+    font-size: 16px;
+}
+
+/* Tab Navigation - Legacy Override */
+.tabs {
+    display: none !important;
+}
+
+/* Tab Content */
 .tab-content {
     display: none;
 }
@@ -449,29 +614,37 @@ document.addEventListener('DOMContentLoaded', function() {
     display: block;
 }
 
+/* Profile Photo Section - Enhanced */
 .profile-photo-section {
     display: flex;
     align-items: center;
     gap: 30px;
-    padding: 24px;
-    background: var(--bg-main);
+    padding: 28px;
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.08) 0%, transparent 100%);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 24px;
+    border-radius: 16px;
+    margin-bottom: 28px;
 }
 
 .profile-photo {
-    width: 120px;
-    height: 120px;
+    width: 130px;
+    height: 130px;
     background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 48px;
+    font-size: 52px;
     color: #fff;
     flex-shrink: 0;
     overflow: hidden;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.profile-photo:hover {
+    transform: scale(1.05);
 }
 
 .profile-photo img {
@@ -486,14 +659,43 @@ document.addEventListener('DOMContentLoaded', function() {
     flex-wrap: wrap;
 }
 
-.form-hint {
-    display: block;
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--text-dim);
-    font-style: italic;
+/* Form Enhancements */
+.profile-form .form-row,
+.player-form .form-row,
+.password-form .form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 0;
 }
 
+.profile-form .form-group,
+.player-form .form-group,
+.password-form .form-group {
+    margin-bottom: 24px;
+}
+
+.profile-form label,
+.player-form label,
+.password-form label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: normal;
+}
+
+/* Preferences List - Enhanced */
 .preferences-list {
     display: flex;
     flex-direction: column;
@@ -504,15 +706,16 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px;
-    background: var(--bg-main);
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.05) 0%, transparent 100%);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    transition: border-color 0.3s ease;
+    border-radius: 14px;
+    transition: all 0.3s ease;
 }
 
 .preference-item:hover {
     border-color: var(--primary);
+    transform: translateX(4px);
 }
 
 .preference-info {
@@ -520,24 +723,24 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .preference-info h4 {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
-    color: var(--text-white);
-    margin-bottom: 4px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
 }
 
 .preference-info p {
     font-size: 13px;
-    color: var(--text-dim);
+    color: var(--text-muted);
     margin: 0;
 }
 
-/* Toggle Switch */
+/* Toggle Switch - Enhanced */
 .toggle-switch {
     position: relative;
     display: inline-block;
-    width: 50px;
-    height: 26px;
+    width: 56px;
+    height: 30px;
     flex-shrink: 0;
 }
 
@@ -556,37 +759,97 @@ document.addEventListener('DOMContentLoaded', function() {
     bottom: 0;
     background-color: var(--border);
     transition: 0.3s;
-    border-radius: 26px;
+    border-radius: 30px;
 }
 
 .toggle-slider:before {
     position: absolute;
     content: "";
-    height: 20px;
-    width: 20px;
+    height: 24px;
+    width: 24px;
     left: 3px;
     bottom: 3px;
     background-color: white;
     transition: 0.3s;
     border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-switch input:checked + .toggle-slider {
-    background-color: var(--primary);
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(24px);
+    transform: translateX(26px);
 }
 
 .toggle-switch:hover .toggle-slider {
-    opacity: 0.9;
+    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
+}
+
+/* Card Enhancements */
+.profile-content .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.profile-content .card-header {
+    padding: 24px;
+    background: linear-gradient(180deg, rgba(107, 70, 193, 0.08) 0%, transparent 100%);
+    border-bottom: 1px solid var(--border);
+}
+
+.profile-content .card-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+}
+
+.profile-content .card-header h3 i {
+    color: var(--primary-light);
+}
+
+.profile-content .card-body {
+    padding: 28px;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
 }
 
 @media (max-width: 768px) {
-    .tabs {
+    .profile-header-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .profile-role {
+        justify-content: center;
+    }
+    
+    .profile-tabs {
+        flex-wrap: nowrap;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+    }
+    
+    .profile-tab-btn span {
+        display: none;
+    }
+    
+    .profile-tab-btn {
+        padding: 14px;
     }
     
     .profile-photo-section {
@@ -597,6 +860,11 @@ document.addEventListener('DOMContentLoaded', function() {
     .photo-actions {
         width: 100%;
         flex-direction: column;
+    }
+    
+    .profile-form .form-row,
+    .player-form .form-row {
+        grid-template-columns: 1fr;
     }
 }
 </style>

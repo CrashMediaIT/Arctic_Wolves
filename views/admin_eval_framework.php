@@ -48,17 +48,44 @@ try {
             ];
         }
     }
+    
+    $total_categories = count($categories);
+    $total_skills = 0;
+    foreach ($skillsByCategory as $skills) {
+        $total_skills += count($skills);
+    }
 } catch (Exception $e) {
     $categories = [];
     $skillsByCategory = [];
+    $total_categories = 0;
+    $total_skills = 0;
 }
 ?>
 
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-clipboard-check"></i> Evaluation Framework
-    </h1>
-    <p class="page-description">Build and manage athlete evaluation criteria</p>
+<div class="eval-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-clipboard-check"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Evaluation Framework</h1>
+            <p class="page-description">Build and manage athlete evaluation criteria, categories, and scoring scales</p>
+        </div>
+    </div>
+    <div class="page-header-stats">
+        <div class="header-stat">
+            <span class="stat-value"><?php echo $total_categories; ?></span>
+            <span class="stat-label">Categories</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value"><?php echo $total_skills; ?></span>
+            <span class="stat-label">Criteria</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value">2</span>
+            <span class="stat-label">Scales</span>
+        </div>
+    </div>
 </div>
 
 <div class="eval-framework-content">
@@ -158,6 +185,113 @@ try {
 </div>
 
 <style>
+/* Eval Framework Enhanced Styles */
+.eval-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+
+.page-header-text h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+
+.page-header-text p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.page-header-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.header-stat {
+    text-align: center;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 90px;
+}
+
+.header-stat .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-light);
+}
+
+.header-stat .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Content Card Enhanced */
+.content-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.content-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: linear-gradient(180deg, rgba(107, 70, 193, 0.08) 0%, transparent 100%);
+    border-bottom: 1px solid var(--border);
+}
+
+.content-card .card-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+}
+
+.content-card .card-header h3 i {
+    color: var(--primary-light);
+}
+
+.content-card .card-body {
+    padding: 24px;
+}
+
 .framework-tree {
     display: flex;
     flex-direction: column;
@@ -167,69 +301,131 @@ try {
 .framework-category {
     background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.framework-category:hover {
+    border-color: var(--primary);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .category-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px;
-    background: rgba(255, 77, 0, 0.05);
+    padding: 20px 24px;
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.1) 0%, transparent 100%);
     border-bottom: 1px solid var(--border);
 }
 
 .category-title {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
 }
 
 .category-title i {
-    font-size: 20px;
-    color: var(--neon);
+    font-size: 22px;
+    color: var(--primary-light);
 }
 
 .category-title h4 {
     font-size: 18px;
     font-weight: 700;
-    color: var(--text-white);
+    color: var(--text-primary);
+    margin: 0;
 }
 
 .criteria-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 12px;
-    color: var(--text-dim);
-    padding: 4px 10px;
+    color: var(--text-muted);
+    padding: 6px 14px;
     background: var(--bg-card);
-    border-radius: 4px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+}
+
+.category-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.category-actions .btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.category-actions .btn-icon:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.category-actions .btn-icon[title="Delete"]:hover {
+    background: var(--error);
+    border-color: var(--error);
 }
 
 .criteria-list {
-    padding: 16px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .criteria-item {
     display: flex;
     align-items: center;
-    gap: 15px;
-    padding: 12px 15px;
+    gap: 16px;
+    padding: 16px 18px;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 10px;
     transition: all 0.3s;
+    position: relative;
+}
+
+.criteria-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--primary);
+    opacity: 0;
+    border-radius: 10px 0 0 10px;
+    transition: opacity 0.3s ease;
 }
 
 .criteria-item:hover {
-    border-color: var(--neon);
+    border-color: var(--primary);
+    transform: translateX(4px);
+}
+
+.criteria-item:hover::before {
+    opacity: 1;
 }
 
 .criteria-handle {
-    color: var(--text-dim);
+    color: var(--text-muted);
     cursor: grab;
+    padding: 4px;
 }
 
 .criteria-handle:active {
@@ -244,19 +440,51 @@ try {
 }
 
 .criteria-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-white);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 .criteria-weight {
     font-size: 12px;
-    color: var(--text-dim);
+    color: var(--text-muted);
     padding: 4px 10px;
     background: var(--bg-main);
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
+.criteria-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.criteria-actions .btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.criteria-actions .btn-icon:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.criteria-actions .btn-icon[title="Delete"]:hover {
+    background: var(--error);
+    border-color: var(--error);
+}
+
+/* Scales Grid */
 .scales-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -266,30 +494,49 @@ try {
 .scale-card {
     background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s ease;
+}
+
+.scale-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .scale-card h4 {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
-    color: var(--text-white);
-    margin-bottom: 12px;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.scale-card h4::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: var(--primary);
+    border-radius: 2px;
 }
 
 .scale-levels {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     margin-bottom: 20px;
 }
 
 .scale-level {
     font-size: 13px;
-    color: var(--text-dim);
-    padding: 8px 12px;
+    color: var(--text-secondary);
+    padding: 12px 16px;
     background: var(--bg-card);
-    border-radius: 4px;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary);
 }
 
 /* Drag and Drop Styles */
@@ -303,17 +550,9 @@ try {
     cursor: grabbing !important;
 }
 
-.criteria-item {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
 .criteria-item.sortable-chosen {
     box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
     transform: scale(1.02);
-}
-
-.framework-category {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .framework-category.sortable-chosen {
@@ -324,16 +563,57 @@ try {
 .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: var(--text-dim);
+    color: var(--text-muted);
 }
 
 .empty-state i {
     display: block;
-    margin: 0 auto 16px;
+    font-size: 56px;
+    margin: 0 auto 20px;
+    color: var(--border);
 }
 
 .empty-state p {
     margin: 0;
+    font-size: 14px;
+}
+
+.empty-criteria {
+    text-align: center;
+    padding: 24px;
+}
+
+.empty-criteria p {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 768px) {
+    .eval-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .page-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .page-header-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .category-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    
+    .category-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
 }
 </style>
 

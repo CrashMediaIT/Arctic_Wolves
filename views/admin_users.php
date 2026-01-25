@@ -53,22 +53,58 @@ try {
     $users = [];
     $total_users = 0;
 }
+
+// Count by role for stats
+$admin_count = 0;
+$coach_count = 0;
+$athlete_count = 0;
+$parent_count = 0;
+foreach ($users as $u) {
+    switch ($u['role']) {
+        case 'admin': $admin_count++; break;
+        case 'coach': case 'team_coach': case 'health_coach': $coach_count++; break;
+        case 'athlete': $athlete_count++; break;
+        case 'parent': $parent_count++; break;
+    }
+}
 ?>
 
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-users-cog"></i> User Management
-    </h1>
-    <p class="page-description">Manage all system users and permissions</p>
+<div class="users-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-users-cog"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">User Management</h1>
+            <p class="page-description">Manage all system users, roles, and permissions</p>
+        </div>
+    </div>
+    <div class="page-header-stats">
+        <div class="header-stat">
+            <span class="stat-value"><?php echo $total_users; ?></span>
+            <span class="stat-label">Total Users</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value"><?php echo $coach_count; ?></span>
+            <span class="stat-label">Coaches</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value"><?php echo $athlete_count; ?></span>
+            <span class="stat-label">Athletes</span>
+        </div>
+    </div>
 </div>
 
 <div class="users-content">
     <!-- Filter and Actions -->
-    <div class="action-bar">
-        <form method="GET" action="" class="filter-group" style="display: flex; gap: 10px; flex: 1;">
+    <div class="action-bar-enhanced">
+        <form method="GET" action="" class="filter-form-enhanced">
             <input type="hidden" name="page" value="all_users">
-            <input type="text" name="search" class="form-input search-input" placeholder="Search users..." 
-                   value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
+            <div class="search-input-wrapper">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" class="form-input" placeholder="Search users by name or email..." 
+                       value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
+            </div>
             <select name="role" class="form-select" id="roleFilter">
                 <option value="">All Roles</option>
                 <option value="admin" <?php echo $role_filter === 'admin' ? 'selected' : ''; ?>>Admin</option>
@@ -85,27 +121,30 @@ try {
             </select>
             <button type="submit" class="btn btn-secondary"><i class="fas fa-filter"></i> Filter</button>
         </form>
-        <button class="btn btn-primary" data-action="add" data-modal="add-user-modal">
-            <i class="fas fa-user-plus"></i> Add User
-        </button>
-    </div>
-
-    <!-- Users Table -->
-    <div class="card">
-        <div class="card-header">
-            <h3><i class="fas fa-users"></i> All Users (<?php echo $total_users; ?>)</h3>
+        <div class="action-buttons">
             <form method="POST" action="process_admin_action.php" style="display: inline;">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                 <input type="hidden" name="action" value="export">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-secondary">
                     <i class="fas fa-file-export"></i> Export
                 </button>
             </form>
+            <button class="btn btn-primary" data-action="add" data-modal="add-user-modal">
+                <i class="fas fa-user-plus"></i> Add User
+            </button>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card users-card">
+        <div class="card-header">
+            <h3><i class="fas fa-users"></i> All Users</h3>
+            <span class="users-count-badge"><?php echo $total_users; ?> users</span>
         </div>
         <div class="card-body">
             <?php if (count($users) > 0): ?>
                 <div class="table-wrapper">
-                    <table class="data-table" id="users-table">
+                    <table class="data-table enhanced-table" id="users-table">
                         <thead>
                             <tr>
                                 <th>User</th>
@@ -128,7 +167,10 @@ try {
                                                     echo htmlspecialchars($initials);
                                                 ?>
                                             </div>
-                                            <span><?php echo htmlspecialchars($user['full_name']); ?></span>
+                                            <div class="user-info-cell">
+                                                <span class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></span>
+                                                <span class="user-id">#<?php echo $user['id']; ?></span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td>
@@ -136,11 +178,12 @@ try {
                                             <?php echo ucfirst(str_replace('_', ' ', $user['role'])); ?>
                                         </span>
                                     </td>
-                                    <td><?php echo htmlspecialchars($user['email']); ?></td>
+                                    <td class="email-cell"><?php echo htmlspecialchars($user['email']); ?></td>
                                     <td><?php echo htmlspecialchars($user['phone'] ?? '-'); ?></td>
-                                    <td><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
+                                    <td class="date-cell"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
                                     <td>
                                         <span class="status-badge <?php echo $user['is_verified'] ? 'active' : 'inactive'; ?>">
+                                            <i class="fas fa-<?php echo $user['is_verified'] ? 'check-circle' : 'clock'; ?>"></i>
                                             <?php echo $user['is_verified'] ? 'Active' : 'Pending'; ?>
                                         </span>
                                     </td>
@@ -153,7 +196,7 @@ try {
                                                 <i class="fas fa-key"></i>
                                             </button>
                                             <?php if ($user['id'] != $user_id): ?>
-                                                <button class="btn-icon" data-action="toggle-status" data-id="<?php echo $user['id']; ?>" title="<?php echo $user['is_verified'] ? 'Disable' : 'Enable'; ?>">
+                                                <button class="btn-icon <?php echo $user['is_verified'] ? 'danger' : 'success'; ?>" data-action="toggle-status" data-id="<?php echo $user['id']; ?>" title="<?php echo $user['is_verified'] ? 'Disable' : 'Enable'; ?>">
                                                     <i class="fas fa-<?php echo $user['is_verified'] ? 'ban' : 'check'; ?>"></i>
                                                 </button>
                                             <?php endif; ?>
@@ -165,7 +208,11 @@ try {
                     </table>
                 </div>
             <?php else: ?>
-                <p class="placeholder-text">No users found matching your criteria.</p>
+                <div class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>No Users Found</h3>
+                    <p>No users match your search criteria. Try adjusting your filters.</p>
+                </div>
             <?php endif; ?>
         </div>
     </div>
@@ -196,7 +243,80 @@ function applyFilters() {
 </script>
 
 <style>
-.action-bar {
+/* Users Page Enhanced Styles */
+.users-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+
+.page-header-text h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+
+.page-header-text p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.page-header-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.header-stat {
+    text-align: center;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 90px;
+}
+
+.header-stat .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-light);
+}
+
+.header-stat .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Action Bar Enhanced */
+.action-bar-enhanced {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -205,37 +325,138 @@ function applyFilters() {
     flex-wrap: wrap;
 }
 
-.filter-group {
+.filter-form-enhanced {
     display: flex;
     gap: 12px;
     flex: 1;
-    min-width: 300px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.search-input-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+}
+
+.search-input-wrapper i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.search-input-wrapper input {
+    padding-left: 42px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+/* Users Card */
+.users-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.users-count-badge {
+    padding: 6px 14px;
+    background: rgba(107, 70, 193, 0.15);
+    color: var(--primary-light);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Enhanced Table */
+.enhanced-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.enhanced-table thead th {
+    padding: 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(107, 70, 193, 0.05);
+    border-bottom: 2px solid var(--border);
+}
+
+.enhanced-table tbody td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.enhanced-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.enhanced-table tbody tr:hover {
+    background: rgba(107, 70, 193, 0.05);
 }
 
 .user-cell {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
 }
 
 .user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    border-radius: 50%;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: #fff;
     flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.25);
+}
+
+.user-info-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-info-cell .user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.user-info-cell .user-id {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.email-cell {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.date-cell {
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 .role-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 20px;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
@@ -245,27 +466,33 @@ function applyFilters() {
 .role-badge.admin {
     background: rgba(239, 68, 68, 0.15);
     color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .role-badge.coach, .role-badge.team_coach, .role-badge.health_coach {
     background: rgba(59, 130, 246, 0.15);
     color: #3B82F6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .role-badge.athlete {
     background: rgba(16, 185, 129, 0.15);
     color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .role-badge.parent {
     background: rgba(245, 158, 11, 0.15);
     color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
@@ -274,11 +501,13 @@ function applyFilters() {
 .status-badge.active {
     background: rgba(16, 185, 129, 0.15);
     color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.status-badge.inactive, .status-badge.pending {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--error);
+.status-badge.inactive {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
 }
 
 .table-actions {
@@ -287,41 +516,88 @@ function applyFilters() {
 }
 
 .btn-icon {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
+    background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-white);
+    border-radius: 8px;
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     padding: 0;
 }
 
 .btn-icon:hover {
-    background: rgba(107, 70, 193, 0.1);
+    background: var(--primary);
     border-color: var(--primary);
-    color: var(--primary);
+    color: #fff;
+}
+
+.btn-icon.danger:hover {
+    background: var(--error);
+    border-color: var(--error);
+}
+
+.btn-icon.success:hover {
+    background: var(--success);
+    border-color: var(--success);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 24px;
+}
+
+.empty-state i {
+    font-size: 56px;
+    color: var(--border);
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.empty-state p {
+    color: var(--text-muted);
+    font-size: 14px;
 }
 
 @media (max-width: 768px) {
-    .action-bar {
+    .users-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .page-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .page-header-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .action-bar-enhanced {
         flex-direction: column;
         align-items: stretch;
     }
     
-    .filter-group {
+    .filter-form-enhanced {
         flex-direction: column;
     }
-}
-</style>
-
-.status-badge.inactive {
-    background: rgba(148, 163, 184, 0.1);
-    color: var(--text-dim);
+    
+    .action-buttons {
+        width: 100%;
+        justify-content: flex-end;
+    }
 }
 </style>
 
