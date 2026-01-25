@@ -84,9 +84,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
+    /* Schedule View - Uses application theme colors */
     .page-header {
         margin-bottom: 24px;
     }
@@ -97,12 +95,12 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         margin-bottom: 10px;
     }
     .page-subtitle {
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         font-size: 14px;
     }
     .filters-bar {
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 24px;
@@ -118,15 +116,15 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         display: block;
         font-size: 12px;
         font-weight: 700;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         margin-bottom: 8px;
         text-transform: uppercase;
     }
     .filter-select {
         width: 100%;
         padding: 10px;
-        background: #06080b;
-        border: 1px solid #1e293b;
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 6px;
         color: #fff;
         font-size: 14px;
@@ -137,19 +135,19 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         gap: 20px;
     }
     .session-card {
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         padding: 24px;
         transition: all 0.2s;
     }
     .session-card:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         transform: translateY(-2px);
     }
     .session-type-badge {
         display: inline-block;
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
         padding: 5px 12px;
         border-radius: 20px;
@@ -167,12 +165,12 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         display: flex;
         align-items: center;
         gap: 10px;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         margin-bottom: 8px;
         font-size: 14px;
     }
     .session-detail i {
-        color: var(--primary);
+        color: var(--primary, #6B46C1);
         width: 18px;
     }
     .session-tags {
@@ -183,36 +181,36 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
     }
     .session-tag {
         background: rgba(255, 255, 255, 0.05);
-        border: 1px solid #1e293b;
+        border: 1px solid var(--border, #2D2D3F);
         padding: 4px 10px;
         border-radius: 15px;
         font-size: 12px;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
     }
     .session-price {
         font-size: 24px;
         font-weight: 900;
-        color: var(--primary);
+        color: var(--primary, #6B46C1);
         margin: 12px 0;
     }
     .session-price small {
         font-size: 12px;
-        color: #64748b;
+        color: var(--text-muted, #6B6B7B);
         font-weight: 600;
     }
     .session-capacity {
         font-size: 13px;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         margin-bottom: 12px;
     }
     .session-capacity.low {
-        color: #ef4444;
+        color: var(--error, #EF4444);
         font-weight: 700;
     }
     .btn-book {
         width: 100%;
         padding: 12px;
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
         border: none;
         border-radius: 6px;
@@ -222,23 +220,23 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         transition: all 0.2s;
     }
     .btn-book:hover {
-        background: #e64500;
+        background: var(--primary-hover, #7C3AED);
     }
     .btn-book:disabled {
-        background: #1e293b;
-        color: #64748b;
+        background: var(--border, #2D2D3F);
+        color: var(--text-muted, #6B6B7B);
         cursor: not-allowed;
     }
     .empty-state {
         text-align: center;
         padding: 60px 20px;
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
     }
     .empty-state i {
         font-size: 64px;
-        color: #64748b;
+        color: var(--text-muted, #6B6B7B);
         opacity: 0.3;
         margin-bottom: 20px;
     }
@@ -260,8 +258,8 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         display: flex;
     }
     .modal-content {
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         padding: 24px;
         max-width: 500px;
@@ -283,7 +281,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
     .modal-close {
         background: none;
         border: none;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         font-size: 24px;
         cursor: pointer;
         padding: 0;
@@ -298,15 +296,15 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         align-items: center;
         gap: 12px;
         padding: 12px;
-        background: #06080b;
-        border: 1px solid #1e293b;
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 6px;
         margin-bottom: 10px;
         cursor: pointer;
         transition: all 0.2s;
     }
     .athlete-checkbox:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
     }
     .athlete-checkbox input[type="checkbox"] {
         width: 20px;
@@ -322,8 +320,8 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
     .discount-input {
         width: 100%;
         padding: 10px;
-        background: #06080b;
-        border: 1px solid #1e293b;
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 6px;
         color: #fff;
         font-size: 14px;
@@ -333,7 +331,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         display: block;
         font-size: 12px;
         font-weight: 700;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         margin-bottom: 8px;
         text-transform: uppercase;
     }
