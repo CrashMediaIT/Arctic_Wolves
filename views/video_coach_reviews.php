@@ -52,10 +52,10 @@ $video_stmt->execute($params);
 $videos = $video_stmt->fetchAll();
 ?>
 
-<!-- Coach Review Videos View -->
+<!-- Coach Uploads View -->
 <div class="page-header">
     <h1 class="page-title">
-        <i class="fas fa-video"></i> Coach Review Videos
+        <i class="fas fa-video"></i> Coach Uploads
     </h1>
     <p class="page-description">Upload and manage athlete review videos</p>
 </div>
