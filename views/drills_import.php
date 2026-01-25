@@ -467,4 +467,71 @@ function refreshDrillList() {
     font-size: 12px;
     color: var(--text-dim);
 }
+
+/* Filter Box Styles */
+.filter-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.filter-box-header {
+    background: var(--bg-main);
+    padding: 14px 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-box-header i {
+    color: var(--primary);
+}
+
+.filter-box-content {
+    padding: 20px;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    align-items: end;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-field .form-input,
+.filter-field .form-select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-white);
+    font-size: 14px;
+}
+
+.filter-field .form-input:focus,
+.filter-field .form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
 </style>

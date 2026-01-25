@@ -61,38 +61,64 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
 </div>
 
 <div class="coach-roster-content">
-    <!-- Filter and Actions Bar -->
+    <!-- Filter Box - Separated from title bar -->
+    <div class="filter-box">
+        <div class="filter-box-header">
+            <i class="fas fa-filter"></i> Search & Filter Athletes
+        </div>
+        <div class="filter-box-content">
+            <form method="GET" action="" class="filter-row">
+                <input type="hidden" name="page" value="roster">
+                <div class="filter-field" style="flex: 2;">
+                    <label>Search</label>
+                    <input type="text" name="search" class="form-input" placeholder="Search by name or email..." value="<?= htmlspecialchars($search) ?>">
+                </div>
+                <div class="filter-field">
+                    <label>Program</label>
+                    <select name="program" class="form-select">
+                        <option value="all">All Programs</option>
+                        <?php foreach ($programs as $prog): ?>
+                            <option value="<?= $prog['id'] ?>" <?= $filter_program == $prog['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($prog['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Age Group</label>
+                    <select name="age_group" class="form-select">
+                        <option value="all">All Age Groups</option>
+                        <option value="6-9" <?= $filter_age === '6-9' ? 'selected' : '' ?>>Under 10</option>
+                        <option value="10-11" <?= $filter_age === '10-11' ? 'selected' : '' ?>>Under 12</option>
+                        <option value="12-13" <?= $filter_age === '12-13' ? 'selected' : '' ?>>Under 14</option>
+                        <option value="14-15" <?= $filter_age === '14-15' ? 'selected' : '' ?>>Under 16</option>
+                        <option value="16-17" <?= $filter_age === '16-17' ? 'selected' : '' ?>>Under 18</option>
+                    </select>
+                </div>
+                <div class="filter-field filter-actions">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+                    <a href="?page=roster" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Action Bar -->
     <div class="action-bar">
-        <form method="GET" action="" class="filter-group">
-            <input type="hidden" name="page" value="roster">
-            <input type="text" name="search" class="form-input-small" placeholder="Search athletes..." value="<?= htmlspecialchars($search) ?>" data-action="search-debounce">
-            <select name="program" class="form-input-small" data-action="auto-submit">
-                <option value="all">All Programs</option>
-                <?php foreach ($programs as $prog): ?>
-                    <option value="<?= $prog['id'] ?>" <?= $filter_program == $prog['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($prog['name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <select name="age_group" class="form-input-small" data-action="auto-submit">
-                <option value="all">All Age Groups</option>
-                <option value="6-9" <?= $filter_age === '6-9' ? 'selected' : '' ?>>Under 10</option>
-                <option value="10-11" <?= $filter_age === '10-11' ? 'selected' : '' ?>>Under 12</option>
-                <option value="12-13" <?= $filter_age === '12-13' ? 'selected' : '' ?>>Under 14</option>
-                <option value="14-15" <?= $filter_age === '14-15' ? 'selected' : '' ?>>Under 16</option>
-                <option value="16-17" <?= $filter_age === '16-17' ? 'selected' : '' ?>>Under 18</option>
-            </select>
-        </form>
+        <div class="results-info">
+            <span><?= count($athletes) ?> athlete<?= count($athletes) !== 1 ? 's' : '' ?> found</span>
+        </div>
         <button class="btn-primary" data-action="add" data-modal="add-athlete-modal"><i class="fas fa-user-plus"></i> Add Athlete</button>
     </div>
 
     <!-- Athletes Table -->
     <div class="content-card">
         <div class="card-header">
-            <h3><i class="fas fa-users"></i> My Athletes (<?= count($athletes) ?>)</h3>
+            <h3><i class="fas fa-users"></i> My Athletes</h3>
             <div class="view-toggle">
-                <button class="view-btn active" data-view="table"><i class="fas fa-table"></i></button>
-                <button class="view-btn" data-view="grid"><i class="fas fa-th"></i></button>
+                <button class="view-btn active" data-view="table" title="Table View"><i class="fas fa-table"></i></button>
+                <button class="view-btn" data-view="grid" title="Grid View"><i class="fas fa-th"></i></button>
             </div>
         </div>
         <div class="card-body">
@@ -358,5 +384,71 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
 .table-actions {
     display: flex;
     gap: 5px;
+}
+
+/* Filter Box Styles */
+.filter-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.filter-box-header {
+    background: var(--bg-main);
+    padding: 14px 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-box-header i {
+    color: var(--primary);
+}
+
+.filter-box-content {
+    padding: 20px;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    align-items: end;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-actions {
+    display: flex;
+    flex-direction: row !important;
+    gap: 8px !important;
+    align-items: flex-end;
+}
+
+.filter-actions label {
+    display: none;
+}
+
+.results-info {
+    color: var(--text-dim);
+    font-size: 14px;
 }
 </style>
