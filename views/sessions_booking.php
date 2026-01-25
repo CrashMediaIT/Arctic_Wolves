@@ -19,6 +19,37 @@ $coaches = $pdo->query($coaches_query)->fetchAll();
 
 // Get session types
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
+
+// Demo data for packages if none exist
+if (count($packages) === 0) {
+    $packages = [
+        ['id' => 'demo-1', 'name' => 'Starter Pack', 'price' => 150, 'credits' => 5, 'description' => 'Perfect for getting started with training', 'valid_days' => 30],
+        ['id' => 'demo-2', 'name' => 'Training Bundle', 'price' => 275, 'credits' => 10, 'description' => 'Our most popular package for regular training', 'valid_days' => 60],
+        ['id' => 'demo-3', 'name' => 'Elite Package', 'price' => 500, 'credits' => 20, 'description' => 'Best value for dedicated athletes', 'valid_days' => 90]
+    ];
+    $is_demo_packages = true;
+} else {
+    $is_demo_packages = false;
+}
+
+// Demo data for coaches if none exist
+if (count($coaches) === 0) {
+    $coaches = [
+        ['id' => 'demo-1', 'first_name' => 'Mike', 'last_name' => 'Smith'],
+        ['id' => 'demo-2', 'first_name' => 'Sarah', 'last_name' => 'Johnson'],
+        ['id' => 'demo-3', 'first_name' => 'David', 'last_name' => 'Williams']
+    ];
+}
+
+// Demo data for session types if none exist
+if (count($session_types) === 0) {
+    $session_types = [
+        ['id' => 'demo-1', 'name' => 'Skating Skills', 'price' => 45],
+        ['id' => 'demo-2', 'name' => 'Power Skating', 'price' => 55],
+        ['id' => 'demo-3', 'name' => 'Shooting Practice', 'price' => 50],
+        ['id' => 'demo-4', 'name' => 'Private Lesson', 'price' => 75]
+    ];
+}
 ?>
 
 <!-- Session Booking View -->
@@ -28,6 +59,13 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
     </h1>
     <p class="page-description">Choose from packages or individual sessions</p>
 </div>
+
+<?php if (isset($is_demo_packages) && $is_demo_packages): ?>
+<div class="demo-data-notice">
+    <i class="fas fa-info-circle"></i>
+    <span>Showing demo packages. Contact admin to set up real packages.</span>
+</div>
+<?php endif; ?>
 
 <div class="booking-content">
     <!-- Booking Type Tabs -->
@@ -629,5 +667,23 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
     font-size: 16px;
     color: var(--text-dim);
     line-height: 1.6;
+}
+
+/* Demo Data Notice */
+.demo-data-notice {
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary-light);
+    font-size: 14px;
+}
+
+.demo-data-notice i {
+    font-size: 16px;
 }
 </style>

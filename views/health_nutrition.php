@@ -15,10 +15,10 @@ $nutrition_plan = $nutrition_stmt->fetch();
 
 // Initialize daily totals
 $daily_totals = [
-    'calories' => 0,
-    'protein' => 0,
-    'carbs' => 0,
-    'fats' => 0,
+    'calories' => $nutrition_plan ? 1850 : 0,
+    'protein' => $nutrition_plan ? 95 : 0,
+    'carbs' => $nutrition_plan ? 210 : 0,
+    'fats' => $nutrition_plan ? 45 : 0,
     'calories_goal' => $nutrition_plan['target_calories'] ?? 2500,
     'protein_goal' => $nutrition_plan['target_protein_g'] ?? 180,
     'carbs_goal' => $nutrition_plan['target_carbs_g'] ?? 300,
@@ -38,6 +38,116 @@ if ($nutrition_plan) {
     $meals_stmt->execute([$nutrition_plan['id']]);
     $meals = $meals_stmt->fetchAll();
 }
+
+// Demo nutrition data if no real plan exists
+if (!$nutrition_plan) {
+    // Create demo nutrition plan
+    $nutrition_plan = [
+        'id' => 'demo',
+        'name' => 'Hockey Performance Plan',
+        'target_calories' => 2500,
+        'target_protein_g' => 180,
+        'target_carbs_g' => 300,
+        'target_fat_g' => 70,
+        'coach_name' => 'Coach Martinez'
+    ];
+    
+    $daily_totals = [
+        'calories' => 1850,
+        'protein' => 95,
+        'carbs' => 210,
+        'fats' => 45,
+        'calories_goal' => 2500,
+        'protein_goal' => 180,
+        'carbs_goal' => 300,
+        'fats_goal' => 70
+    ];
+    
+    // Demo meals
+    $meals = [
+        [
+            'id' => 1,
+            'meal_name' => 'Breakfast',
+            'meal_time' => '07:00:00',
+            'is_logged' => true,
+            'meal_type_icon' => 'sun',
+            'protein_g' => 35,
+            'carbs_g' => 45,
+            'fats_g' => 12,
+            'foods_json' => json_encode([
+                ['name' => 'Scrambled Eggs (3)', 'calories' => 270],
+                ['name' => 'Whole Wheat Toast (2)', 'calories' => 160],
+                ['name' => 'Greek Yogurt', 'calories' => 120],
+                ['name' => 'Orange Juice', 'calories' => 110]
+            ])
+        ],
+        [
+            'id' => 2,
+            'meal_name' => 'Morning Snack',
+            'meal_time' => '10:00:00',
+            'is_logged' => true,
+            'meal_type_icon' => 'apple-alt',
+            'protein_g' => 15,
+            'carbs_g' => 30,
+            'fats_g' => 8,
+            'foods_json' => json_encode([
+                ['name' => 'Protein Bar', 'calories' => 200],
+                ['name' => 'Banana', 'calories' => 105]
+            ])
+        ],
+        [
+            'id' => 3,
+            'meal_name' => 'Lunch',
+            'meal_time' => '12:30:00',
+            'is_logged' => false,
+            'meal_type_icon' => 'utensils',
+            'protein_g' => 45,
+            'carbs_g' => 60,
+            'fats_g' => 15,
+            'foods_json' => json_encode([
+                ['name' => 'Grilled Chicken Breast', 'calories' => 280],
+                ['name' => 'Brown Rice (1 cup)', 'calories' => 215],
+                ['name' => 'Steamed Broccoli', 'calories' => 55],
+                ['name' => 'Mixed Salad', 'calories' => 45]
+            ])
+        ],
+        [
+            'id' => 4,
+            'meal_name' => 'Pre-Workout',
+            'meal_time' => '15:00:00',
+            'is_logged' => false,
+            'meal_type_icon' => 'bolt',
+            'protein_g' => 20,
+            'carbs_g' => 40,
+            'fats_g' => 5,
+            'foods_json' => json_encode([
+                ['name' => 'Protein Shake', 'calories' => 150],
+                ['name' => 'Apple', 'calories' => 95],
+                ['name' => 'Almonds (handful)', 'calories' => 80]
+            ])
+        ],
+        [
+            'id' => 5,
+            'meal_name' => 'Dinner',
+            'meal_time' => '18:30:00',
+            'is_logged' => false,
+            'meal_type_icon' => 'moon',
+            'protein_g' => 50,
+            'carbs_g' => 55,
+            'fats_g' => 20,
+            'foods_json' => json_encode([
+                ['name' => 'Salmon Fillet', 'calories' => 350],
+                ['name' => 'Sweet Potato', 'calories' => 180],
+                ['name' => 'Asparagus', 'calories' => 40],
+                ['name' => 'Quinoa', 'calories' => 120]
+            ])
+        ]
+    ];
+    
+    $is_demo_nutrition = true;
+} else {
+    $is_demo_nutrition = false;
+}
 ?>
 
 <!-- Health Nutrition View -->
@@ -47,6 +157,13 @@ if ($nutrition_plan) {
     </h1>
     <p class="page-description">Fuel your performance with proper nutrition</p>
 </div>
+
+<?php if (isset($is_demo_nutrition) && $is_demo_nutrition): ?>
+<div class="demo-data-notice">
+    <i class="fas fa-info-circle"></i>
+    <span>Showing demo nutrition plan. Contact your coach for a personalized plan.</span>
+</div>
+<?php endif; ?>
 
 <div class="nutrition-content">
     <!-- Nutrition Plan Section (Always show header) -->
@@ -471,5 +588,23 @@ if ($nutrition_plan) {
     font-size: 14px;
     color: var(--text-dim);
     line-height: 1.6;
+}
+
+/* Demo Data Notice */
+.demo-data-notice {
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary-light);
+    font-size: 14px;
+}
+
+.demo-data-notice i {
+    font-size: 16px;
 }
 </style>

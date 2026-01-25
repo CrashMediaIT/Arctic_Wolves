@@ -546,4 +546,50 @@ $videos = $video_stmt->fetchAll();
     border-color: var(--neon);
     color: #fff;
 }
+
+/* Placeholder Container for empty states */
+.placeholder-container {
+    text-align: center;
+    padding: 40px 20px;
+    margin-top: 20px;
+}
+
+.placeholder-icon {
+    font-size: 48px;
+    color: var(--primary);
+    opacity: 0.4;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.placeholder-text {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+}
+
+/* Improved spacing between badge icon and text */
+.badge-warning i,
+.badge-success i {
+    margin-right: 6px;
+}
+
+/* Video meta spacing */
+.video-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.video-meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.video-meta i {
+    color: var(--primary);
+}
 </style>

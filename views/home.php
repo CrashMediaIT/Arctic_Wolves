@@ -112,6 +112,26 @@ try {
     <?php if ($user_role === 'athlete'): ?>
         <!-- Athlete Dashboard -->
         
+        <!-- Performance Metrics Placeholder Section -->
+        <div class="performance-metrics-section">
+            <div class="section-header-bar">
+                <h2 class="section-header"><i class="fas fa-chart-bar"></i> Performance Metrics</h2>
+                <a href="?page=stats" class="btn btn-primary btn-sm">
+                    <i class="fas fa-chart-line"></i> View Details
+                </a>
+            </div>
+            <div class="metrics-placeholder-card">
+                <div class="placeholder-content">
+                    <i class="fas fa-chart-area placeholder-icon"></i>
+                    <h3>Performance Metrics Coming Soon</h3>
+                    <p>Track your progress with detailed performance analytics, skill assessments, and goal tracking.</p>
+                    <a href="?page=stats" class="btn btn-secondary">
+                        <i class="fas fa-arrow-right"></i> Go to Performance Stats
+                    </a>
+                </div>
+            </div>
+        </div>
+        
         <!-- Performance Stats Overview -->
         <div class="stats-overview">
             <h2 class="section-header"><i class="fas fa-chart-line"></i> Performance Stats</h2>
@@ -852,5 +872,58 @@ try {
     font-size: 14px;
     color: var(--text-dim);
     font-weight: 500;
+}
+
+/* Performance Metrics Placeholder Section */
+.performance-metrics-section {
+    margin-bottom: 30px;
+}
+
+.section-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.section-header-bar .section-header {
+    margin-bottom: 0;
+}
+
+.metrics-placeholder-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+}
+
+.placeholder-content {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.placeholder-content .placeholder-icon {
+    font-size: 64px;
+    color: var(--primary);
+    opacity: 0.5;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.placeholder-content h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 12px;
+}
+
+.placeholder-content p {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 20px;
 }
 </style>
