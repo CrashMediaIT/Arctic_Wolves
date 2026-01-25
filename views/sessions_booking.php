@@ -1401,21 +1401,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 const price = card.querySelector('.session-price-tag')?.textContent || '';
                 const spots = card.querySelector('.spots-number')?.textContent || '';
                 
+                // Create elements safely to prevent XSS
                 const itemEl = document.createElement('div');
                 itemEl.className = 'panel-session-item';
-                itemEl.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                        <h5 style="margin: 0; font-size: 15px; font-weight: 700; color: #fff;">${title}</h5>
-                        <span style="font-weight: 800; color: var(--primary, #6B46C1);">${price}</span>
-                    </div>
-                    <div style="font-size: 13px; color: #A8A8B8; margin-bottom: 10px;">
-                        <i class="fas fa-clock" style="color: var(--primary, #6B46C1); margin-right: 6px;"></i>${time}
-                        <span style="margin-left: 12px;"><i class="fas fa-users" style="color: var(--primary, #6B46C1); margin-right: 6px;"></i>${spots} spots left</span>
-                    </div>
-                    <button class="btn-register" data-action="register-session" data-session-id="${session.id}" style="width: 100%; justify-content: center;">
-                        <i class="fas fa-plus-circle"></i> Register
-                    </button>
-                `;
+                
+                // Header row
+                const headerDiv = document.createElement('div');
+                headerDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;';
+                
+                const titleEl = document.createElement('h5');
+                titleEl.style.cssText = 'margin: 0; font-size: 15px; font-weight: 700; color: #fff;';
+                titleEl.textContent = title;
+                
+                const priceEl = document.createElement('span');
+                priceEl.style.cssText = 'font-weight: 800; color: var(--primary, #6B46C1);';
+                priceEl.textContent = price;
+                
+                headerDiv.appendChild(titleEl);
+                headerDiv.appendChild(priceEl);
+                
+                // Details row
+                const detailsDiv = document.createElement('div');
+                detailsDiv.style.cssText = 'font-size: 13px; color: #A8A8B8; margin-bottom: 10px;';
+                detailsDiv.innerHTML = '<i class="fas fa-clock" style="color: var(--primary, #6B46C1); margin-right: 6px;"></i>';
+                const timeSpan = document.createElement('span');
+                timeSpan.textContent = time;
+                detailsDiv.appendChild(timeSpan);
+                
+                const spotsContainer = document.createElement('span');
+                spotsContainer.style.marginLeft = '12px';
+                spotsContainer.innerHTML = '<i class="fas fa-users" style="color: var(--primary, #6B46C1); margin-right: 6px;"></i>';
+                const spotsSpan = document.createElement('span');
+                spotsSpan.textContent = spots + ' spots left';
+                spotsContainer.appendChild(spotsSpan);
+                detailsDiv.appendChild(spotsContainer);
+                
+                // Register button
+                const registerBtn = document.createElement('button');
+                registerBtn.className = 'btn-register';
+                registerBtn.setAttribute('data-action', 'register-session');
+                registerBtn.setAttribute('data-session-id', session.id);
+                registerBtn.style.cssText = 'width: 100%; justify-content: center;';
+                registerBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Register';
+                
+                itemEl.appendChild(headerDiv);
+                itemEl.appendChild(detailsDiv);
+                itemEl.appendChild(registerBtn);
                 sessionsList.appendChild(itemEl);
             });
         } else {

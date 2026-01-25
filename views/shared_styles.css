@@ -1724,6 +1724,28 @@ button:disabled,
     100% { background-position: -200% 0; }
 }
 
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+        background: #1A1A2E;
+    }
+    
+    .stat-card:hover,
+    .card:hover,
+    .package-card:hover,
+    .session-list-card:hover,
+    .list-item:hover {
+        transform: none;
+    }
+    
+    .btn:hover,
+    .btn-primary:hover,
+    .btn-secondary:hover {
+        transform: none;
+    }
+}
+
 /* Status Indicators */
 .status-dot {
     width: 8px;
