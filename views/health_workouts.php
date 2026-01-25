@@ -322,7 +322,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 
 .section-header-main h2 i {
-    color: var(--neon);
+    color: var(--primary);
 }
 
 .empty-state-card {
@@ -335,7 +335,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 
 .empty-state-icon {
     font-size: 64px;
-    color: var(--neon);
+    color: var(--primary);
     opacity: 0.3;
     display: block;
     margin-bottom: 20px;
@@ -360,7 +360,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 
 .current-program-card {
     background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
-    border: 1px solid var(--neon);
+    border: 1px solid var(--primary);
     border-radius: 8px;
     padding: 24px;
     margin-bottom: 24px;
@@ -385,7 +385,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 
 .program-header h3 i {
-    color: var(--neon);
+    color: var(--primary);
     margin-right: 8px;
 }
 
@@ -410,7 +410,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
     display: block;
     font-size: 32px;
     font-weight: 900;
-    color: var(--neon);
+    color: var(--primary);
     line-height: 1;
     margin-bottom: 5px;
 }
@@ -432,7 +432,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 
 .progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--neon), var(--accent));
+    background: linear-gradient(90deg, var(--primary), var(--accent));
     border-radius: 4px;
     transition: width 0.5s;
 }
@@ -465,7 +465,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 
 .schedule-day:hover {
-    border-color: var(--neon);
+    border-color: var(--primary);
 }
 
 .schedule-day.completed {
@@ -474,7 +474,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 
 .schedule-day.active {
-    border-color: var(--neon);
+    border-color: var(--primary);
     background: rgba(255, 77, 0, 0.1);
 }
 
@@ -520,7 +520,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 
 .schedule-day.active .day-workout i {
-    color: var(--neon);
+    color: var(--primary);
 }
 
 .exercise-grid {
@@ -539,14 +539,14 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 
 .exercise-card:hover {
-    border-color: var(--neon);
+    border-color: var(--primary);
     transform: translateY(-3px);
 }
 
 .exercise-icon {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, var(--neon), var(--accent));
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -717,7 +717,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 
 .exercise-detail-card:hover {
-    border-color: var(--neon);
+    border-color: var(--primary);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 

@@ -358,7 +358,7 @@ if (!$nutrition_plan) {
 }
 
 .section-header-main h2 i {
-    color: var(--neon);
+    color: var(--primary);
 }
 
 .empty-state-card {
@@ -371,7 +371,7 @@ if (!$nutrition_plan) {
 
 .empty-state-icon {
     font-size: 64px;
-    color: var(--neon);
+    color: var(--primary);
     opacity: 0.3;
     display: block;
     margin-bottom: 20px;
@@ -396,7 +396,7 @@ if (!$nutrition_plan) {
 
 .daily-overview-card {
     background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
-    border: 1px solid var(--neon);
+    border: 1px solid var(--primary);
     border-radius: 8px;
     padding: 24px;
     margin-bottom: 24px;
@@ -409,7 +409,7 @@ if (!$nutrition_plan) {
 }
 
 .daily-overview-card h3 i {
-    color: var(--neon);
+    color: var(--primary);
     margin-right: 10px;
 }
 
@@ -437,7 +437,7 @@ if (!$nutrition_plan) {
 }
 
 .macro-circle.calories {
-    border-color: var(--neon);
+    border-color: var(--primary);
     background: rgba(255, 77, 0, 0.1);
 }
 
@@ -493,7 +493,7 @@ if (!$nutrition_plan) {
 }
 
 .meal-item:hover {
-    border-color: var(--neon);
+    border-color: var(--primary);
 }
 
 .meal-item.completed {
@@ -540,7 +540,7 @@ if (!$nutrition_plan) {
 }
 
 .meal-content h4 i {
-    color: var(--neon);
+    color: var(--primary);
     margin-right: 8px;
 }
 
@@ -582,13 +582,13 @@ if (!$nutrition_plan) {
 }
 
 .tip-card:hover {
-    border-color: var(--neon);
+    border-color: var(--primary);
     transform: translateY(-3px);
 }
 
 .tip-card i {
     font-size: 36px;
-    color: var(--neon);
+    color: var(--primary);
     display: block;
     margin-bottom: 12px;
 }
