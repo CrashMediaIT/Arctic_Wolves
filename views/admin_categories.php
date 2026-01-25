@@ -1,26 +1,51 @@
 <!-- Admin Categories Management View -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-tags"></i> Category Management
-    </h1>
-    <p class="page-description">Manage system categories and classifications</p>
+<div class="page-header categories-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-tags"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Category Management</h1>
+            <p class="page-description">Organize and manage system categories, skills, and classifications</p>
+        </div>
+    </div>
+    <div class="page-header-stats">
+        <div class="header-stat">
+            <span class="stat-value" id="total-skills-count">-</span>
+            <span class="stat-label">Skills</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value" id="total-drills-count">-</span>
+            <span class="stat-label">Drill Types</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value" id="total-positions-count">-</span>
+            <span class="stat-label">Positions</span>
+        </div>
+    </div>
 </div>
 
 <div class="categories-content">
-    <!-- Category Tabs -->
-    <div class="category-tabs">
-        <button class="tab-btn active" data-tab="skills" data-action="switch-tab">
-            <i class="fas fa-star"></i> Skills
-        </button>
-        <button class="tab-btn" data-tab="drills" data-action="switch-tab">
-            <i class="fas fa-hockey-puck"></i> Drill Types
-        </button>
-        <button class="tab-btn" data-tab="positions" data-action="switch-tab">
-            <i class="fas fa-user-tag"></i> Positions
-        </button>
-        <button class="tab-btn" data-tab="equipment" data-action="switch-tab">
-            <i class="fas fa-tools"></i> Equipment
-        </button>
+    <!-- Category Tabs - Modern Tab Navigation -->
+    <div class="category-tabs-wrapper">
+        <div class="category-tabs">
+            <button class="tab-btn active" data-tab="skills" data-action="switch-tab">
+                <span class="tab-icon"><i class="fas fa-star"></i></span>
+                <span class="tab-text">Skills</span>
+            </button>
+            <button class="tab-btn" data-tab="drills" data-action="switch-tab">
+                <span class="tab-icon"><i class="fas fa-hockey-puck"></i></span>
+                <span class="tab-text">Drill Types</span>
+            </button>
+            <button class="tab-btn" data-tab="positions" data-action="switch-tab">
+                <span class="tab-icon"><i class="fas fa-user-tag"></i></span>
+                <span class="tab-text">Positions</span>
+            </button>
+            <button class="tab-btn" data-tab="equipment" data-action="switch-tab">
+                <span class="tab-icon"><i class="fas fa-tools"></i></span>
+                <span class="tab-text">Equipment</span>
+            </button>
+        </div>
     </div>
 
     <!-- Skills Tab -->
@@ -254,66 +279,315 @@
 </div>
 
 <style>
+/* Categories Page Enhanced Styles */
+.categories-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+
+.page-header-text h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+
+.page-header-text p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.page-header-stats {
+    display: flex;
+    gap: 24px;
+}
+
+.header-stat {
+    text-align: center;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 90px;
+}
+
+.header-stat .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-light);
+}
+
+.header-stat .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Category Tabs Wrapper */
+.category-tabs-wrapper {
+    margin-bottom: 24px;
+}
+
 .category-tabs {
     display: flex;
+    gap: 8px;
+    padding: 6px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.category-tabs .tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 10px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.category-tabs .tab-btn:hover {
+    background: rgba(107, 70, 193, 0.1);
+    color: var(--text-primary);
+}
+
+.category-tabs .tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+}
+
+.category-tabs .tab-btn .tab-icon {
+    font-size: 16px;
 }
 
 .categories-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
 }
 
 .category-item {
     display: flex;
-    align-items: center;
-    gap: 20px;
+    align-items: flex-start;
+    gap: 16px;
     padding: 20px;
-    background: var(--bg-main);
+    background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    transition: all 0.3s;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.category-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--primary);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .category-item:hover {
-    border-color: var(--neon);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.category-item:hover::before {
+    opacity: 1;
 }
 
 .category-icon {
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, var(--neon), var(--accent));
-    border-radius: 10px;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 20px;
     color: #fff;
     flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.25);
 }
 
 .category-info {
     flex: 1;
+    min-width: 0;
 }
 
 .category-info h4 {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
-    color: var(--text-white);
-    margin-bottom: 5px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.category-info h4 span {
+    font-weight: 400;
+    font-size: 13px;
 }
 
 .category-info p {
-    font-size: 14px;
-    color: var(--text-dim);
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0 0 8px 0;
+}
+
+.category-info small {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(107, 70, 193, 0.1);
+    color: var(--primary-light);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .category-actions {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.category-actions .btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.category-actions .btn-icon:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.category-actions .btn-icon[title="Delete"]:hover {
+    background: var(--error);
+    border-color: var(--error);
+}
+
+/* Content Card Enhancements */
+.content-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.content-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: linear-gradient(180deg, rgba(107, 70, 193, 0.08) 0%, transparent 100%);
+    border-bottom: 1px solid var(--border);
+}
+
+.content-card .card-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+}
+
+.content-card .card-header h3 i {
+    color: var(--primary-light);
+}
+
+.content-card .card-body {
+    padding: 24px;
+}
+
+/* Empty State Enhancement */
+.placeholder-text {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .categories-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .page-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+    }
+    
+    .page-header-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .category-tabs {
+        flex-direction: column;
+    }
+    
+    .categories-list {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 
@@ -521,6 +795,9 @@
 <script>
 // Handle edit and delete actions for all category types
 document.addEventListener('DOMContentLoaded', function() {
+    // Update stats counts in the header
+    updateStatsCounts();
+    
     // Handle edit buttons for all category types
     document.querySelectorAll('[data-action="edit"]').forEach(button => {
         button.addEventListener('click', function() {
@@ -631,6 +908,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+function updateStatsCounts() {
+    // Count items in each tab
+    const skillsCount = document.querySelectorAll('#skills-tab .category-item').length;
+    const drillsCount = document.querySelectorAll('#drills-tab .category-item').length;
+    const positionsCount = document.querySelectorAll('#positions-tab .category-item').length;
+    
+    // Update the header stats
+    const skillsEl = document.getElementById('total-skills-count');
+    const drillsEl = document.getElementById('total-drills-count');
+    const positionsEl = document.getElementById('total-positions-count');
+    
+    if (skillsEl) skillsEl.textContent = skillsCount;
+    if (drillsEl) drillsEl.textContent = drillsCount;
+    if (positionsEl) positionsEl.textContent = positionsCount;
+}
 
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);

@@ -163,37 +163,83 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
         </div>
         <div class="card-body">
             <form id="business-card-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">First Name *</label>
-                        <input type="text" name="first_name" id="bc_first_name" class="form-input" required
-                               value="<?php echo $selected_user ? htmlspecialchars($selected_user['first_name']) : ''; ?>">
+                <!-- Contact Information Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title"><i class="fas fa-user"></i> Contact Information</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">First Name *</label>
+                            <input type="text" name="first_name" id="bc_first_name" class="form-input" required
+                                   value="<?php echo $selected_user ? htmlspecialchars($selected_user['first_name']) : ''; ?>">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Last Name *</label>
+                            <input type="text" name="last_name" id="bc_last_name" class="form-input" required
+                                   value="<?php echo $selected_user ? htmlspecialchars($selected_user['last_name']) : ''; ?>">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Job Title</label>
+                            <input type="text" name="job_title" id="bc_job_title" class="form-input" 
+                                   placeholder="e.g., Head Coach, Assistant Coach"
+                                   value="<?php echo $selected_user ? ucfirst(str_replace('_', ' ', $selected_user['role'])) : ''; ?>">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone Number *</label>
+                            <input type="tel" name="phone" id="bc_phone" class="form-input" required
+                                   placeholder="(555) 123-4567"
+                                   value="<?php echo $selected_user ? htmlspecialchars($selected_user['phone'] ?? '') : ''; ?>">
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Last Name *</label>
-                        <input type="text" name="last_name" id="bc_last_name" class="form-input" required
-                               value="<?php echo $selected_user ? htmlspecialchars($selected_user['last_name']) : ''; ?>">
+                        <label class="form-label">Email Address *</label>
+                        <input type="email" name="email" id="bc_email" class="form-input" required
+                               value="<?php echo $selected_user ? htmlspecialchars($selected_user['email']) : ''; ?>">
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Job Title</label>
-                        <input type="text" name="job_title" id="bc_job_title" class="form-input" 
-                               placeholder="e.g., Head Coach, Assistant Coach"
-                               value="<?php echo $selected_user ? ucfirst(str_replace('_', ' ', $selected_user['role'])) : ''; ?>">
+                
+                <!-- Background Images Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title"><i class="fas fa-image"></i> Card Background Images</h4>
+                    <div class="background-upload-grid">
+                        <!-- Front Background -->
+                        <div class="bg-upload-card">
+                            <div class="bg-upload-preview" id="front-bg-preview">
+                                <i class="fas fa-image"></i>
+                                <span>Front Side Background</span>
+                            </div>
+                            <div class="bg-upload-actions">
+                                <input type="file" id="front-bg-input" accept="image/*" style="display: none;" onchange="previewBackground('front', this)">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('front-bg-input').click()">
+                                    <i class="fas fa-upload"></i> Upload Front
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="removeBackground('front')" id="remove-front-bg" style="display: none;">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Back Background -->
+                        <div class="bg-upload-card">
+                            <div class="bg-upload-preview" id="back-bg-preview">
+                                <i class="fas fa-image"></i>
+                                <span>Back Side Background</span>
+                            </div>
+                            <div class="bg-upload-actions">
+                                <input type="file" id="back-bg-input" accept="image/*" style="display: none;" onchange="previewBackground('back', this)">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('back-bg-input').click()">
+                                    <i class="fas fa-upload"></i> Upload Back
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="removeBackground('back')" id="remove-back-bg" style="display: none;">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Phone Number *</label>
-                        <input type="tel" name="phone" id="bc_phone" class="form-input" required
-                               placeholder="(555) 123-4567"
-                               value="<?php echo $selected_user ? htmlspecialchars($selected_user['phone'] ?? '') : ''; ?>">
-                    </div>
+                    <p class="form-help"><i class="fas fa-info-circle"></i> Recommended size: 1050x600 pixels (3.5" x 2" at 300 DPI). Supports PNG, JPG, WebP.</p>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Email Address *</label>
-                    <input type="email" name="email" id="bc_email" class="form-input" required
-                           value="<?php echo $selected_user ? htmlspecialchars($selected_user['email']) : ''; ?>">
-                </div>
+                
                 <div class="form-actions">
                     <button type="button" class="btn btn-primary" onclick="updatePreview()">
                         <i class="fas fa-eye"></i> Update Preview
@@ -211,9 +257,23 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                 <button class="btn btn-secondary" onclick="flipCard()">
                     <i class="fas fa-sync-alt"></i> Flip Card
                 </button>
-                <button class="btn btn-primary" onclick="printBusinessCard()">
-                    <i class="fas fa-print"></i> Print Card
-                </button>
+                <div class="export-dropdown">
+                    <button class="btn btn-primary dropdown-toggle" onclick="toggleExportMenu()">
+                        <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu" id="export-menu">
+                        <button class="dropdown-item" onclick="exportCardSide('front')">
+                            <i class="fas fa-arrow-right"></i> Export Front Side (PNG)
+                        </button>
+                        <button class="dropdown-item" onclick="exportCardSide('back')">
+                            <i class="fas fa-arrow-left"></i> Export Back Side (PNG)
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" onclick="printBusinessCard()">
+                            <i class="fas fa-print"></i> Print Both Sides
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="card-body">
@@ -221,6 +281,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                 <div class="business-card-wrapper" id="business-card-wrapper">
                     <!-- Front of Card -->
                     <div class="business-card front" id="card-front">
+                        <div class="card-bg-overlay" id="front-overlay"></div>
                         <div class="card-content">
                             <div class="card-logo">
                                 <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves Logo">
@@ -247,6 +308,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                     
                     <!-- Back of Card -->
                     <div class="business-card back" id="card-back">
+                        <div class="card-bg-overlay" id="back-overlay"></div>
                         <div class="card-content back-content">
                             <div class="back-logo">
                                 <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves Logo">
@@ -261,11 +323,14 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
             </div>
             
             <div class="preview-instructions">
-                <p><i class="fas fa-info-circle"></i> Click "Flip Card" to see the back, or "Print Card" to generate a printable version.</p>
+                <p><i class="fas fa-info-circle"></i> Click "Flip Card" to see the back. Use "Export" to download individual sides as PNG images or print both sides together.</p>
             </div>
         </div>
     </div>
 </div>
+
+<!-- html2canvas Library for PNG Export -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <!-- QR Code Library -->
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -506,6 +571,110 @@ function showNotification(message, type) {
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
+
+// Background image storage
+let frontBackgroundImage = null;
+let backBackgroundImage = null;
+
+// Preview background image
+function previewBackground(side, input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+        showNotification('Please select a valid image file (PNG, JPG, WebP)', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const imageData = e.target.result;
+        
+        if (side === 'front') {
+            frontBackgroundImage = imageData;
+            document.getElementById('front-bg-preview').innerHTML = `<img src="${imageData}" alt="Front Background">`;
+            document.getElementById('front-overlay').style.backgroundImage = `url(${imageData})`;
+            document.getElementById('remove-front-bg').style.display = 'inline-flex';
+        } else {
+            backBackgroundImage = imageData;
+            document.getElementById('back-bg-preview').innerHTML = `<img src="${imageData}" alt="Back Background">`;
+            document.getElementById('back-overlay').style.backgroundImage = `url(${imageData})`;
+            document.getElementById('remove-back-bg').style.display = 'inline-flex';
+        }
+        
+        showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} background uploaded!`, 'success');
+    };
+    reader.readAsDataURL(file);
+}
+
+// Remove background image
+function removeBackground(side) {
+    if (side === 'front') {
+        frontBackgroundImage = null;
+        document.getElementById('front-bg-preview').innerHTML = '<i class="fas fa-image"></i><span>Front Side Background</span>';
+        document.getElementById('front-overlay').style.backgroundImage = 'none';
+        document.getElementById('front-bg-input').value = '';
+        document.getElementById('remove-front-bg').style.display = 'none';
+    } else {
+        backBackgroundImage = null;
+        document.getElementById('back-bg-preview').innerHTML = '<i class="fas fa-image"></i><span>Back Side Background</span>';
+        document.getElementById('back-overlay').style.backgroundImage = 'none';
+        document.getElementById('back-bg-input').value = '';
+        document.getElementById('remove-back-bg').style.display = 'none';
+    }
+    
+    showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} background removed!`, 'success');
+}
+
+// Toggle export dropdown menu
+function toggleExportMenu() {
+    const menu = document.getElementById('export-menu');
+    menu.classList.toggle('show');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.querySelector('.export-dropdown');
+    const menu = document.getElementById('export-menu');
+    if (menu && dropdown && !dropdown.contains(e.target)) {
+        menu.classList.remove('show');
+    }
+});
+
+// Export individual card side as PNG
+function exportCardSide(side) {
+    const cardElement = side === 'front' ? document.getElementById('card-front') : document.getElementById('card-back');
+    const firstName = document.getElementById('bc_first_name').value || 'User';
+    const lastName = document.getElementById('bc_last_name').value || 'Card';
+    
+    // Close dropdown
+    document.getElementById('export-menu').classList.remove('show');
+    
+    // Show loading notification
+    showNotification('Generating PNG...', 'info');
+    
+    // Use html2canvas to capture the card
+    html2canvas(cardElement, {
+        scale: 3, // Higher scale for better quality (equivalent to 300 DPI)
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        logging: false
+    }).then(canvas => {
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `${firstName}_${lastName}_BusinessCard_${side}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} side exported as PNG!`, 'success');
+    }).catch(err => {
+        console.error('Export error:', err);
+        showNotification('Export failed. Please try again.', 'error');
+    });
+}
 </script>
 
 <style>
@@ -514,6 +683,211 @@ function showNotification(message, type) {
     display: flex;
     flex-direction: column;
     gap: 24px;
+}
+
+/* Form Section Title */
+.form-section {
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.form-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary, #fff);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-section-title i {
+    color: var(--primary-light, #8B5CF6);
+}
+
+/* Background Upload Grid */
+.background-upload-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.bg-upload-card {
+    background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+
+.bg-upload-preview {
+    width: 100%;
+    height: 120px;
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.1) 0%, transparent 100%);
+    border: 2px dashed var(--border, #2D2D3F);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.bg-upload-preview i {
+    font-size: 32px;
+    color: var(--text-muted, #6B6B7B);
+}
+
+.bg-upload-preview span {
+    font-size: 12px;
+    color: var(--text-muted, #6B6B7B);
+}
+
+.bg-upload-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.bg-upload-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.form-help {
+    font-size: 12px;
+    color: var(--text-muted, #6B6B7B);
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-help i {
+    color: var(--primary-light, #8B5CF6);
+}
+
+/* Export Dropdown */
+.export-dropdown {
+    position: relative;
+}
+
+.dropdown-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dropdown-toggle i:last-child {
+    font-size: 10px;
+    transition: transform 0.3s ease;
+}
+
+.export-dropdown .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 12px;
+    min-width: 220px;
+    padding: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.export-dropdown .dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-secondary, #A8A8B8);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.dropdown-item:hover {
+    background: rgba(107, 70, 193, 0.1);
+    color: var(--text-primary, #fff);
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+    color: var(--primary-light, #8B5CF6);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border, #2D2D3F);
+    margin: 8px 0;
+}
+
+/* Card Background Overlay */
+.card-bg-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: inherit;
+    z-index: 0;
+}
+
+.business-card .card-content {
+    position: relative;
+    z-index: 1;
+}
+
+/* Notification Info Type */
+.notification-info {
+    border-color: var(--primary, #6B46C1);
+}
+
+.notification-info i {
+    color: var(--primary, #6B46C1);
+}
+
+.notification-error {
+    border-color: var(--error, #EF4444);
+}
+
+.notification-error i {
+    color: var(--error, #EF4444);
 }
 
 /* Filter Form */
@@ -871,6 +1245,10 @@ function showNotification(message, type) {
         grid-template-columns: 1fr;
     }
     
+    .background-upload-grid {
+        grid-template-columns: 1fr;
+    }
+    
     .users-grid {
         grid-template-columns: 1fr;
     }
@@ -887,6 +1265,12 @@ function showNotification(message, type) {
     .card-actions {
         width: 100%;
         justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+    
+    .export-dropdown .dropdown-menu {
+        right: auto;
+        left: 0;
     }
 }
 </style>
