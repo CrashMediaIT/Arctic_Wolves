@@ -599,9 +599,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=audit_log" class="nav-link <?= $page=='audit_log'?'active':'' ?>">
                 <i class="fa-solid fa-list-check icon"></i> Audit Log
             </a>
-            <a href="?page=cron_jobs" class="nav-link <?= $page=='cron_jobs'?'active':'' ?>">
-                <i class="fa-solid fa-clock icon"></i> Cron Jobs
-            </a>
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>">
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools
             </a>
