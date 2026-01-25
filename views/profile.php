@@ -366,6 +366,42 @@ function switchTab(tabName) {
     document.getElementById(tabName + '-tab').classList.add('active');
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
 }
+
+// Handle notification preference toggles
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-action="toggle-pref"]').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const prefName = this.name;
+            const prefValue = this.checked ? 1 : 0;
+            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+            
+            // Send AJAX request to save preference
+            fetch('process_profile_update.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=update_preference&preference=${prefName}&value=${prefValue}&csrf_token=${encodeURIComponent(csrfToken)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Optionally show a toast notification
+                    console.log('Preference saved:', prefName, prefValue);
+                } else {
+                    // Revert the toggle if save failed
+                    this.checked = !this.checked;
+                    alert('Failed to save preference: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error saving preference:', error);
+                // Revert the toggle on error
+                this.checked = !this.checked;
+            });
+        });
+    });
+});
 </script>
 
 <style>

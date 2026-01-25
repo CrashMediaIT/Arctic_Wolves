@@ -142,6 +142,7 @@ try {
             break;
             
         case 'run':
+        case 'run_now':
             $id = (int)($_POST['id'] ?? $_POST['job_id'] ?? 0);
             
             if ($id <= 0) throw new Exception('Invalid job ID');

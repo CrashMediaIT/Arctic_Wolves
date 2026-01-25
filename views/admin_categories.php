@@ -55,8 +55,21 @@
                             <?php endif; ?>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $skill['id'] ?>" data-type="skill" data-modal="edit-skill-modal"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $skill['id'] ?>" data-type="skill" data-name="<?= htmlspecialchars($skill['name']) ?>" data-action-url="process_admin_action.php"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" 
+                                    data-action="edit" 
+                                    data-id="<?= $skill['id'] ?>" 
+                                    data-type="skill" 
+                                    data-name="<?= htmlspecialchars($skill['name']) ?>"
+                                    data-description="<?= htmlspecialchars($skill['description'] ?? '') ?>">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon" title="Delete" 
+                                    data-action="delete" 
+                                    data-id="<?= $skill['id'] ?>" 
+                                    data-type="skill" 
+                                    data-name="<?= htmlspecialchars($skill['name']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                     <?php 
@@ -95,8 +108,21 @@
                             <p><?= htmlspecialchars($type['description'] ?: 'No description') ?></p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $type['id'] ?>" data-type="drill_type" data-modal="edit-drill-type-modal"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $type['id'] ?>" data-type="drill_type" data-name="<?= htmlspecialchars($type['name']) ?>" data-action-url="process_admin_action.php"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" 
+                                    data-action="edit" 
+                                    data-id="<?= $type['id'] ?>" 
+                                    data-type="drill_type" 
+                                    data-name="<?= htmlspecialchars($type['name']) ?>"
+                                    data-description="<?= htmlspecialchars($type['description'] ?? '') ?>">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon" title="Delete" 
+                                    data-action="delete" 
+                                    data-id="<?= $type['id'] ?>" 
+                                    data-type="drill_type" 
+                                    data-name="<?= htmlspecialchars($type['name']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                     <?php 
@@ -198,8 +224,21 @@
                             <p><?= htmlspecialchars($item['notes'] ?: 'No description') ?></p>
                         </div>
                         <div class="category-actions">
-                            <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $item['id'] ?>" data-type="equipment" data-modal="edit-equipment-modal"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon" title="Delete" data-action="delete" data-id="<?= $item['id'] ?>" data-type="equipment" data-name="<?= htmlspecialchars($item['name']) ?>" data-action-url="process_admin_action.php"><i class="fas fa-trash"></i></button>
+                            <button class="btn-icon" title="Edit" 
+                                    data-action="edit" 
+                                    data-id="<?= $item['id'] ?>" 
+                                    data-type="equipment" 
+                                    data-name="<?= htmlspecialchars($item['name']) ?>"
+                                    data-description="<?= htmlspecialchars($item['notes'] ?? '') ?>">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon" title="Delete" 
+                                    data-action="delete" 
+                                    data-id="<?= $item['id'] ?>" 
+                                    data-type="equipment" 
+                                    data-name="<?= htmlspecialchars($item['name']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                     <?php 
@@ -482,68 +521,227 @@
 <script>
 // Handle edit and delete actions for all category types
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle edit buttons
+    // Handle edit buttons for all category types
     document.querySelectorAll('[data-action="edit"]').forEach(button => {
         button.addEventListener('click', function() {
             const id = this.getAttribute('data-id');
             const type = this.getAttribute('data-type');
+            const name = this.getAttribute('data-name') || '';
+            const description = this.getAttribute('data-description') || '';
             
             if (type === 'position') {
-                // Get position data from data attributes
-                const name = this.getAttribute('data-name');
                 const abbreviation = this.getAttribute('data-abbreviation') || '';
-                const description = this.getAttribute('data-description') || '';
                 const positionType = this.getAttribute('data-position-type') || '';
                 
-                // Populate edit modal
                 document.getElementById('edit-position-id').value = id;
                 document.getElementById('edit-position-name').value = name;
                 document.getElementById('edit-position-abbreviation').value = abbreviation;
                 document.getElementById('edit-position-description').value = description;
                 document.getElementById('edit-position-type').value = positionType;
                 
-                // Show modal
-                document.getElementById('edit-position-modal').style.display = 'block';
+                document.getElementById('edit-position-modal').classList.add('active');
+            } else if (type === 'skill') {
+                document.getElementById('edit-skill-id').value = id;
+                document.getElementById('edit-skill-name').value = name;
+                document.getElementById('edit-skill-description').value = description;
+                
+                document.getElementById('edit-skill-modal').classList.add('active');
+            } else if (type === 'drill_type') {
+                document.getElementById('edit-drill-type-id').value = id;
+                document.getElementById('edit-drill-type-name').value = name;
+                document.getElementById('edit-drill-type-description').value = description;
+                
+                document.getElementById('edit-drill-type-modal').classList.add('active');
+            } else if (type === 'equipment') {
+                document.getElementById('edit-equipment-id').value = id;
+                document.getElementById('edit-equipment-name').value = name;
+                document.getElementById('edit-equipment-description').value = description;
+                
+                document.getElementById('edit-equipment-modal').classList.add('active');
             }
         });
     });
     
-    // Handle delete buttons
+    // Handle delete buttons with CSRF token
     document.querySelectorAll('[data-action="delete"]').forEach(button => {
         button.addEventListener('click', function() {
             const id = this.getAttribute('data-id');
             const type = this.getAttribute('data-type');
             const name = this.getAttribute('data-name');
             
-            if (type === 'position') {
-                if (confirm(`Are you sure you want to delete the position "${name}"?`)) {
-                    // Get CSRF token from hidden input in the page
-                    const csrfInput = document.querySelector('input[name="csrf_token"]');
-                    const csrfToken = csrfInput ? csrfInput.value : '';
-                    
-                    // Send delete request
-                    fetch('process_admin_action.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `action=delete_position&id=${id}&csrf_token=${csrfToken}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            location.reload();
-                        } else {
-                            alert('Error: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('An error occurred while deleting the position.');
-                    });
+            if (confirm(`Are you sure you want to delete "${name}"?`)) {
+                const csrfInput = document.querySelector('input[name="csrf_token"]');
+                const csrfToken = csrfInput ? csrfInput.value : '';
+                
+                let actionName = 'delete';
+                let actionType = type;
+                
+                if (type === 'position') {
+                    actionName = 'delete_position';
                 }
+                
+                fetch('process_admin_action.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `action=${actionName}&id=${id}&type=${actionType}&csrf_token=${csrfToken}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (data.message || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Try redirect-based deletion as fallback
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'process_admin_action.php';
+                    
+                    form.innerHTML = `
+                        <input type="hidden" name="action" value="${actionName}">
+                        <input type="hidden" name="id" value="${id}">
+                        <input type="hidden" name="type" value="${actionType}">
+                        <input type="hidden" name="csrf_token" value="${csrfToken}">
+                    `;
+                    
+                    document.body.appendChild(form);
+                    form.submit();
+                });
             }
         });
     });
+    
+    // Tab switching
+    document.querySelectorAll('[data-action="switch-tab"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            
+            // Remove active from all tab buttons and contents
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active to clicked button and corresponding content
+            this.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        });
+    });
 });
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
 </script>
+
+<!-- Edit Skill Modal -->
+<div id="edit-skill-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Skill</h2>
+            <button class="modal-close" onclick="closeModal('edit-skill-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="type" value="skill">
+            <input type="hidden" name="id" id="edit-skill-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Skill Name *</label>
+                    <input type="text" name="name" id="edit-skill-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-skill-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-skill-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Skill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Drill Type Modal -->
+<div id="edit-drill-type-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Drill Type</h2>
+            <button class="modal-close" onclick="closeModal('edit-drill-type-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="type" value="drill_type">
+            <input type="hidden" name="id" id="edit-drill-type-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Drill Type Name *</label>
+                    <input type="text" name="name" id="edit-drill-type-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-drill-type-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-drill-type-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Drill Type</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Equipment Modal -->
+<div id="edit-equipment-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Equipment</h2>
+            <button class="modal-close" onclick="closeModal('edit-equipment-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="type" value="equipment">
+            <input type="hidden" name="id" id="edit-equipment-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Equipment Name *</label>
+                    <input type="text" name="name" id="edit-equipment-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-equipment-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Equipment</button>
+            </div>
+        </form>
+    </div>
+</div>
