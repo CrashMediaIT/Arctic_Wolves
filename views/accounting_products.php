@@ -3,20 +3,58 @@
     <h1 class="page-title">
         <i class="fas fa-box-open"></i> Products & Pricing
     </h1>
-    <p class="page-description">Manage sessions, packages, and discounts</p>
+    <p class="page-description">Manage sessions, packages, and discount codes</p>
 </div>
 
 <div class="products-content">
+    <!-- Product Stats -->
+    <div class="product-stats">
+        <div class="product-stat-card sessions">
+            <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">3</span>
+                <span class="stat-label">Session Types</span>
+            </div>
+        </div>
+        <div class="product-stat-card packages">
+            <div class="stat-icon"><i class="fas fa-box"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">2</span>
+                <span class="stat-label">Active Packages</span>
+            </div>
+        </div>
+        <div class="product-stat-card discounts">
+            <div class="stat-icon"><i class="fas fa-tags"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">2</span>
+                <span class="stat-label">Discount Codes</span>
+            </div>
+        </div>
+        <div class="product-stat-card revenue">
+            <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">$848</span>
+                <span class="stat-label">Avg Package Price</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Product Tabs -->
     <div class="product-tabs">
         <button class="tab-btn active" data-tab="sessions" data-action="switch-tab">
-            <i class="fas fa-calendar-day"></i> Sessions
+            <i class="fas fa-calendar-day"></i> 
+            <span>Sessions</span>
+            <small>3 types</small>
         </button>
         <button class="tab-btn" data-tab="packages" data-action="switch-tab">
-            <i class="fas fa-box"></i> Packages
+            <i class="fas fa-box"></i> 
+            <span>Packages</span>
+            <small>2 active</small>
         </button>
         <button class="tab-btn" data-tab="discounts" data-action="switch-tab">
-            <i class="fas fa-tags"></i> Discounts
+            <i class="fas fa-tags"></i> 
+            <span>Discounts</span>
+            <small>2 codes</small>
         </button>
     </div>
 
@@ -29,51 +67,57 @@
             </div>
             <div class="card-body">
                 <div class="products-grid">
-                    <div class="product-card">
+                    <div class="product-card session-card">
+                        <div class="product-type-badge individual"><i class="fas fa-user"></i></div>
                         <div class="product-header">
                             <h4>Individual Training</h4>
                             <span class="product-status active">Active</span>
                         </div>
-                        <div class="product-price">$75.00</div>
+                        <div class="product-price">$75<small>/session</small></div>
                         <div class="product-details">
                             <p><i class="fas fa-clock"></i> 60 minutes</p>
-                            <p><i class="fas fa-user"></i> 1-on-1</p>
+                            <p><i class="fas fa-user"></i> 1-on-1 training</p>
+                            <p><i class="fas fa-chart-line"></i> Personalized focus</p>
                         </div>
                         <div class="product-actions">
                             <button class="btn-secondary btn-small" data-action="edit" data-id="1" data-type="session" data-modal="edit-session-type-modal"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="1" data-type="session"><i class="fas fa-toggle-on"></i> Disable</button>
+                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="1" data-type="session"><i class="fas fa-toggle-on"></i></button>
                         </div>
                     </div>
 
-                    <div class="product-card">
+                    <div class="product-card session-card">
+                        <div class="product-type-badge group"><i class="fas fa-users"></i></div>
                         <div class="product-header">
                             <h4>Group Training</h4>
                             <span class="product-status active">Active</span>
                         </div>
-                        <div class="product-price">$45.00</div>
+                        <div class="product-price">$45<small>/session</small></div>
                         <div class="product-details">
                             <p><i class="fas fa-clock"></i> 90 minutes</p>
                             <p><i class="fas fa-users"></i> 4-8 players</p>
+                            <p><i class="fas fa-trophy"></i> Team dynamics</p>
                         </div>
                         <div class="product-actions">
                             <button class="btn-secondary btn-small" data-action="edit" data-id="2" data-type="session" data-modal="edit-session-type-modal"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="2" data-type="session"><i class="fas fa-toggle-on"></i> Disable</button>
+                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="2" data-type="session"><i class="fas fa-toggle-on"></i></button>
                         </div>
                     </div>
 
-                    <div class="product-card">
+                    <div class="product-card session-card">
+                        <div class="product-type-badge skills"><i class="fas fa-hockey-puck"></i></div>
                         <div class="product-header">
                             <h4>Skills Development</h4>
                             <span class="product-status active">Active</span>
                         </div>
-                        <div class="product-price">$60.00</div>
+                        <div class="product-price">$60<small>/session</small></div>
                         <div class="product-details">
                             <p><i class="fas fa-clock"></i> 60 minutes</p>
                             <p><i class="fas fa-user"></i> 1-on-1</p>
+                            <p><i class="fas fa-bullseye"></i> Skill-specific</p>
                         </div>
                         <div class="product-actions">
                             <button class="btn-secondary btn-small" data-action="edit" data-id="3" data-type="session" data-modal="edit-session-type-modal"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="3" data-type="session"><i class="fas fa-toggle-on"></i> Disable</button>
+                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="3" data-type="session"><i class="fas fa-toggle-on"></i></button>
                         </div>
                     </div>
                 </div>
@@ -189,54 +233,185 @@
 </div>
 
 <style>
+/* Product Stats */
+.product-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.product-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    transition: all 0.3s ease;
+}
+
+.product-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.product-stat-card .stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.product-stat-card.sessions .stat-icon { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.product-stat-card.packages .stat-icon { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
+.product-stat-card.discounts .stat-icon { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.product-stat-card.revenue .stat-icon { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+.product-stat-card .stat-info { flex: 1; }
+
+.product-stat-card .stat-value {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text-white);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.product-stat-card .stat-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+/* Enhanced Tabs */
 .product-tabs {
     display: flex;
-    gap: 10px;
-    margin-bottom: 24px;
+    gap: 12px;
+    margin-bottom: 28px;
+    background: var(--bg-card);
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 16px 32px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex: 1;
+    color: var(--text-dim);
+}
+
+.tab-btn i {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.tab-btn span {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-white);
+}
+
+.tab-btn small {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.tab-btn:hover {
+    background: rgba(107, 70, 193, 0.1);
+    color: var(--primary);
+}
+
+.tab-btn.active {
+    background: var(--bg-main);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.tab-btn.active i {
+    color: var(--primary);
 }
 
 .products-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
 }
 
 .product-card {
     background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
+    border-radius: 16px;
+    padding: 28px;
     position: relative;
     transition: all 0.3s;
 }
 
 .product-card:hover {
-    border-color: var(--neon);
-    transform: translateY(-3px);
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
 }
 
 .product-card.featured {
-    border: 2px solid var(--neon);
+    border: 2px solid var(--primary);
 }
+
+/* Product type badge */
+.product-type-badge {
+    position: absolute;
+    top: -12px;
+    left: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #fff;
+}
+
+.product-type-badge.individual { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+.product-type-badge.group { background: linear-gradient(135deg, #10b981, #059669); }
+.product-type-badge.skills { background: linear-gradient(135deg, #8B5CF6, #6B46C1); }
 
 .product-badge {
     position: absolute;
-    top: 15px;
-    right: 15px;
-    background: linear-gradient(135deg, var(--neon), var(--accent));
+    top: 16px;
+    right: 16px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: #fff;
-    padding: 5px 12px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 800;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .product-header {
     display: flex;
     justify-content: space-between;
     align-items: start;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    margin-top: 8px;
 }
 
 .product-header h4 {
@@ -246,28 +421,37 @@
 }
 
 .product-status {
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .product-status.active {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(16, 185, 129, 0.15);
     color: #10b981;
 }
 
 .product-price {
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 900;
-    color: var(--neon);
+    color: var(--primary);
     margin-bottom: 20px;
+    line-height: 1;
+}
+
+.product-price small {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-left: 4px;
 }
 
 .product-details {
     margin-bottom: 20px;
-    padding-top: 15px;
+    padding-top: 16px;
     border-top: 1px solid var(--border);
 }
 
@@ -278,16 +462,42 @@
 }
 
 .product-details i {
-    color: var(--neon);
-    margin-right: 8px;
+    color: var(--primary);
+    margin-right: 10px;
     width: 20px;
 }
 
 .product-actions {
     display: flex;
     gap: 10px;
-    padding-top: 15px;
+    padding-top: 18px;
     border-top: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+    .product-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .product-tabs {
+        flex-direction: column;
+    }
+    
+    .tab-btn {
+        flex-direction: row;
+        justify-content: center;
+        gap: 12px;
+    }
+    
+    .products-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .product-stats {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 
