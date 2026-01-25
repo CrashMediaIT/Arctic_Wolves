@@ -8,6 +8,24 @@ $recentImportsQuery = "SELECT d.*, u.first_name, u.last_name
     LIMIT 5";
 $recentImports = $pdo->query($recentImportsQuery);
 
+// Handle error and status messages
+$error = $_GET['error'] ?? null;
+$status = $_GET['status'] ?? null;
+
+$error_messages = [
+    'url_required' => 'Please enter a valid IHS drill URL.',
+    'invalid_url' => 'The URL format is invalid. Please enter a valid URL.',
+    'already_imported' => 'This drill has already been imported to your library.',
+    'import_failed' => 'Import failed. Please try again or contact support.',
+    'title_required' => 'Drill name is required for import.',
+    'permission_denied' => 'You do not have permission to import drills.',
+    'untrusted_domain' => 'Only URLs from approved hockey drill websites are allowed (icehockeysystems.com, hockeyshare.com, hockeycoachingabcs.com).'
+];
+
+$status_messages = [
+    'drill_imported' => 'Drill successfully imported to your library!'
+];
+
 // Sample IHS-style drills library (in production, this would come from an external API)
 $sampleDrills = [
     [
@@ -68,6 +86,20 @@ $sampleDrills = [
     <p class="page-description">Import drills from Ice Hockey Systems database</p>
 </div>
 
+<?php if ($error && isset($error_messages[$error])): ?>
+<div class="alert alert-error">
+    <i class="fas fa-exclamation-circle"></i>
+    <?= htmlspecialchars($error_messages[$error]) ?>
+</div>
+<?php endif; ?>
+
+<?php if ($status && isset($status_messages[$status])): ?>
+<div class="alert alert-success">
+    <i class="fas fa-check-circle"></i>
+    <?= htmlspecialchars($status_messages[$status]) ?>
+</div>
+<?php endif; ?>
+
 <div class="import-content">
     <!-- IHS Connection Status -->
     <div class="connection-status-card">
@@ -79,6 +111,28 @@ $sampleDrills = [
             <p>Access to sample hockey drills for import</p>
         </div>
         <button class="btn-secondary" onclick="refreshDrillList()"><i class="fas fa-sync"></i> Refresh</button>
+    </div>
+
+    <!-- Import from URL Section -->
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fas fa-link"></i> Import from URL</h3>
+        </div>
+        <div class="card-body">
+            <p class="import-url-description">Paste a drill URL from a supported hockey drill website to import it directly into your library.</p>
+            <form method="POST" action="process_drills.php" class="import-url-form" id="urlImportForm">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="import_from_url">
+                <div class="url-input-row">
+                    <div class="url-input-group">
+                        <i class="fas fa-link"></i>
+                        <input type="url" name="ihs_url" class="form-input" id="ihsUrlInput" placeholder="https://www.icehockeysystems.com/drills/..." required>
+                    </div>
+                    <button type="submit" class="btn-primary"><i class="fas fa-download"></i> Import from URL</button>
+                </div>
+                <p class="url-help-text"><i class="fas fa-info-circle"></i> Supported sites: icehockeysystems.com, hockeyshare.com, hockeycoachingabcs.com</p>
+            </form>
+        </div>
     </div>
 
     <!-- Search and Filter Box -->
@@ -266,6 +320,30 @@ function showNotification(message, type = 'info') {
 </script>
 
 <style>
+/* Alert Styles */
+.alert {
+    padding: 14px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
 .connection-status-card {
     background: var(--bg-card);
     border: 1px solid #10b981;
@@ -555,5 +633,65 @@ function showNotification(message, type = 'info') {
 .filter-field .form-select:focus {
     outline: none;
     border-color: var(--primary);
+}
+
+/* URL Import Section Styles */
+.import-url-description {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.import-url-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.url-input-row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.url-input-group {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.url-input-group i {
+    position: absolute;
+    left: 14px;
+    color: var(--primary);
+    font-size: 16px;
+}
+
+.url-input-group .form-input {
+    padding-left: 42px;
+    width: 100%;
+}
+
+.url-help-text {
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.url-help-text i {
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .url-input-row {
+        flex-direction: column;
+    }
+    
+    .url-input-row .btn-primary {
+        width: 100%;
+    }
 }
 </style>

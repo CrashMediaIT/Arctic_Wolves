@@ -261,6 +261,129 @@ if ($action === 'import_ihs') {
     }
 }
 
+// =========================================================
+// IMPORT FROM URL (Ice Hockey Systems URL)
+// =========================================================
+if ($action === 'import_from_url') {
+    requirePermission($pdo, $user_id, $user_role, 'create_drills');
+    
+    $ihs_url = trim($_POST['ihs_url'] ?? '');
+    
+    if (empty($ihs_url)) {
+        header("Location: dashboard.php?page=import_drill&error=url_required");
+        exit();
+    }
+    
+    // Validate URL format
+    if (!filter_var($ihs_url, FILTER_VALIDATE_URL)) {
+        header("Location: dashboard.php?page=import_drill&error=invalid_url");
+        exit();
+    }
+    
+    // Validate that URL is from trusted hockey drill sources
+    $url_parts = parse_url($ihs_url);
+    $host = strtolower($url_parts['host'] ?? '');
+    
+    // List of allowed domains for drill imports
+    $allowed_domains = [
+        'icehockeysystems.com',
+        'www.icehockeysystems.com',
+        'hockeyshare.com',
+        'www.hockeyshare.com',
+        'hockeycoachingabcs.com',
+        'www.hockeycoachingabcs.com'
+    ];
+    
+    if (!in_array($host, $allowed_domains)) {
+        header("Location: dashboard.php?page=import_drill&error=untrusted_domain");
+        exit();
+    }
+    
+    try {
+        $path = $url_parts['path'] ?? '';
+        
+        // Extract drill ID from URL path (e.g., /drills/drill-name-123 or /drill/123)
+        $drill_id = null;
+        if (preg_match('/\/drills?\/([a-zA-Z0-9\-_]+)/', $path, $matches)) {
+            $drill_id = $matches[1];
+        }
+        
+        if (!$drill_id) {
+            $drill_id = 'url-' . md5($ihs_url);
+        }
+        
+        // Generate drill name from URL path
+        $drill_name = ucwords(str_replace(['-', '_'], ' ', basename($path)));
+        if (empty($drill_name) || $drill_name === '/' || strlen($drill_name) < 3) {
+            // Count existing imported drills to create a unique name
+            $count_stmt = $pdo->query("SELECT COUNT(*) FROM drills WHERE ihs_source_url IS NOT NULL");
+            $import_count = $count_stmt->fetchColumn() + 1;
+            $drill_name = 'Imported Drill #' . $import_count;
+        }
+        
+        // Create description with source URL
+        $description = "Imported from IHS Hockey.\n\n**Source:** " . $ihs_url;
+        
+        // Try to determine category from URL path
+        $category_name = 'General';
+        $category_keywords = [
+            'skating' => 'Skating',
+            'shooting' => 'Shooting',
+            'passing' => 'Passing',
+            'stickhandling' => 'Stickhandling',
+            'defensive' => 'Defensive',
+            'offensive' => 'Offensive',
+            'goalie' => 'Goalie',
+            'conditioning' => 'Conditioning',
+            'team' => 'Team Play'
+        ];
+        
+        $lower_url = strtolower($ihs_url);
+        foreach ($category_keywords as $keyword => $cat_name) {
+            if (strpos($lower_url, $keyword) !== false) {
+                $category_name = $cat_name;
+                break;
+            }
+        }
+        
+        // Look up or create the category
+        $category_id = null;
+        $stmt = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+        $stmt->execute([$category_name]);
+        $cat = $stmt->fetch();
+        if ($cat) {
+            $category_id = $cat['id'];
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO drill_categories (name) VALUES (?)");
+            $stmt->execute([$category_name]);
+            $category_id = $pdo->lastInsertId();
+        }
+        
+        // Check if this URL has already been imported
+        $stmt = $pdo->prepare("SELECT id FROM drills WHERE ihs_source_url = ?");
+        $stmt->execute([$ihs_url]);
+        if ($stmt->fetch()) {
+            header("Location: dashboard.php?page=import_drill&error=already_imported");
+            exit();
+        }
+        
+        // Insert the drill
+        $stmt = $pdo->prepare("
+            INSERT INTO drills (title, description, category_id, ihs_source_url, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$drill_name, $description, $category_id, $ihs_url, $user_id]);
+        
+        header("Location: dashboard.php?page=drill_library&status=drill_imported");
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("URL Import Error: " . $e->getMessage());
+        header("Location: dashboard.php?page=import_drill&error=import_failed");
+        exit();
+    }
+}
+
 // Fallback
 header("Location: dashboard.php?page=drills");
 exit();

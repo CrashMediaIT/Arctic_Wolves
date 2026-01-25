@@ -313,3 +313,116 @@ function validateFileUpload($file, $allowed_types = [], $max_size = 10485760) {
         'tmp_name' => $file['tmp_name']
     ];
 }
+
+/**
+ * Check if user has a specific permission
+ * @param PDO $pdo Database connection
+ * @param int $user_id User ID
+ * @param string $user_role User role
+ * @param string $permission Permission key to check
+ * @return bool True if user has permission
+ */
+function hasPermission($pdo, $user_id, $user_role, $permission) {
+    // Admin has all permissions
+    if ($user_role === 'admin') {
+        return true;
+    }
+    
+    // Define default permissions based on roles
+    $role_permissions = [
+        'coach' => [
+            'create_drills',
+            'delete_drills',
+            'create_practice_plans',
+            'delete_practice_plans',
+            'share_practice_plans',
+            'import_from_ihs',
+            'manage_athletes',
+            'view_athlete_progress',
+            'manage_drill_categories',
+            'manage_sessions'
+        ],
+        'health_coach' => [
+            'create_drills',
+            'delete_drills',
+            'create_practice_plans',
+            'delete_practice_plans',
+            'share_practice_plans',
+            'import_from_ihs',
+            'manage_athletes',
+            'view_athlete_progress',
+            'manage_drill_categories',
+            'manage_sessions'
+        ],
+        'team_coach' => [
+            'view_team_roster',
+            'view_athlete_progress'
+        ],
+        'athlete' => [
+            'view_own_progress',
+            'view_drills'
+        ],
+        'parent' => [
+            'view_child_progress'
+        ]
+    ];
+    
+    // Check role-based permissions first
+    if (isset($role_permissions[$user_role]) && in_array($permission, $role_permissions[$user_role])) {
+        return true;
+    }
+    
+    // Check database for custom permissions (if tables exist)
+    try {
+        // Check user-specific permissions
+        $stmt = $pdo->prepare("
+            SELECT 1 FROM user_permissions up
+            INNER JOIN permissions p ON up.permission_id = p.id
+            WHERE up.user_id = ? AND p.permission_name = ? AND up.is_granted = 1
+        ");
+        $stmt->execute([$user_id, $permission]);
+        if ($stmt->fetch()) {
+            return true;
+        }
+        
+        // Check role permissions
+        $stmt = $pdo->prepare("
+            SELECT 1 FROM role_permissions rp
+            INNER JOIN permissions p ON rp.permission_id = p.id
+            WHERE rp.role = ? AND p.permission_name = ?
+        ");
+        $stmt->execute([$user_role, $permission]);
+        if ($stmt->fetch()) {
+            return true;
+        }
+    } catch (PDOException $e) {
+        // If permission tables don't exist, fall back to role-based permissions
+        error_log("Permission check database error: " . $e->getMessage());
+    }
+    
+    return false;
+}
+
+/**
+ * Require permission or deny access
+ * @param PDO $pdo Database connection
+ * @param int $user_id User ID
+ * @param string $user_role User role
+ * @param string $permission Permission key required
+ * @param bool $json Whether to return JSON response
+ */
+function requirePermission($pdo, $user_id, $user_role, $permission, $json = false) {
+    if (!hasPermission($pdo, $user_id, $user_role, $permission)) {
+        if ($json) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            die(json_encode([
+                'success' => false,
+                'error' => 'Access denied. You do not have permission to perform this action.'
+            ]));
+        } else {
+            header("Location: dashboard.php?error=permission_denied");
+            exit();
+        }
+    }
+}
