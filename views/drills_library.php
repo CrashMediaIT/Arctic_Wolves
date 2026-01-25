@@ -104,7 +104,7 @@ try {
             <?php endforeach; ?>
         <?php else: ?>
             <div class="empty-state">
-                <i class="fas fa-clipboard-list fa-3x"></i>
+                <i class="fas fa-clipboard-list empty-state-icon"></i>
                 <h3>No Drills Yet</h3>
                 <p>Start building your drill library by creating or importing drills.</p>
                 <button class="btn btn-primary" data-action="view" data-page="create_drill">
@@ -290,7 +290,12 @@ try {
 .empty-state i {
     color: var(--primary);
     margin-bottom: 20px;
-    opacity: 0.3;
+    opacity: 0.5;
+}
+
+.empty-state .empty-state-icon {
+    font-size: 64px;
+    display: block;
 }
 
 .empty-state h3 {

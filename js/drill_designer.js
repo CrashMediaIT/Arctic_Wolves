@@ -188,30 +188,74 @@ class DrillDesigner {
         const w = this.canvas.width;
         const h = this.canvas.height;
         const ctx = this.ctx;
+        const iceView = this.iceView || 'full';
         
-        // Background - ice
+        // Clear and draw ice background
         ctx.fillStyle = '#e8f4f8';
         ctx.fillRect(0, 0, w, h);
         
-        // Grid
-        ctx.strokeStyle = '#d0e8f0';
+        // Draw subtle ice texture grid
+        ctx.strokeStyle = 'rgba(0, 51, 160, 0.08)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < w; x += 20) {
+        const gridSize = 30;
+        for (let x = 0; x < w; x += gridSize) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, h);
             ctx.stroke();
         }
-        for (let y = 0; y < h; y += 20) {
+        for (let y = 0; y < h; y += gridSize) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(w, y);
             ctx.stroke();
         }
         
+        // Draw center logo (Arctic Wolves - very low opacity)
+        ctx.save();
+        ctx.globalAlpha = 0.08;
+        ctx.fillStyle = '#7000a4';
+        ctx.font = 'bold 48px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('ARCTIC WOLVES', w/2, h/2 - 15);
+        ctx.font = '24px Inter, sans-serif';
+        ctx.fillText('HOCKEY', w/2, h/2 + 25);
+        ctx.restore();
+        
+        // Draw based on ice view
+        switch(iceView) {
+            case 'half-top':
+                this.drawHalfIce(ctx, w, h, 'top');
+                break;
+            case 'half-bottom':
+                this.drawHalfIce(ctx, w, h, 'bottom');
+                break;
+            case 'left-zone':
+                this.drawZone(ctx, w, h, 'left');
+                break;
+            case 'right-zone':
+                this.drawZone(ctx, w, h, 'right');
+                break;
+            case 'center':
+                this.drawCenterIce(ctx, w, h);
+                break;
+            default:
+                this.drawFullIce(ctx, w, h);
+        }
+        
+        // Draw rink boards (rounded rectangle)
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 4;
+        const cornerRadius = Math.min(w, h) * 0.1;
+        this.roundRect(ctx, 2, 2, w - 4, h - 4, cornerRadius);
+        ctx.stroke();
+    }
+    
+    drawFullIce(ctx, w, h) {
         // Center line (red)
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.moveTo(w/2, 0);
         ctx.lineTo(w/2, h);
@@ -231,23 +275,173 @@ class DrillDesigner {
         ctx.stroke();
         
         // Center circle
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(w/2, h/2, 60, 0, 2 * Math.PI);
+        ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
         ctx.stroke();
         
-        // Faceoff circles
+        // Center dot
+        ctx.fillStyle = '#0033a0';
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Faceoff circles with dots
+        const faceoffRadius = Math.min(w, h) * 0.1;
         const circles = [
-            { x: w * 0.25, y: h * 0.3 },
-            { x: w * 0.25, y: h * 0.7 },
-            { x: w * 0.75, y: h * 0.3 },
-            { x: w * 0.75, y: h * 0.7 }
+            { x: w * 0.15, y: h * 0.3 },
+            { x: w * 0.15, y: h * 0.7 },
+            { x: w * 0.85, y: h * 0.3 },
+            { x: w * 0.85, y: h * 0.7 }
         ];
         
         circles.forEach(circle => {
+            // Faceoff circle
+            ctx.strokeStyle = '#c41e3a';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(circle.x, circle.y, 40, 0, 2 * Math.PI);
+            ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
             ctx.stroke();
+            
+            // Faceoff dot
+            ctx.fillStyle = '#c41e3a';
+            ctx.beginPath();
+            ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
+            ctx.fill();
         });
+        
+        // Goal creases (simplified trapezoid)
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        // Left goal crease
+        ctx.beginPath();
+        ctx.moveTo(w * 0.02, h * 0.35);
+        ctx.lineTo(w * 0.08, h * 0.4);
+        ctx.lineTo(w * 0.08, h * 0.6);
+        ctx.lineTo(w * 0.02, h * 0.65);
+        ctx.stroke();
+        
+        // Right goal crease
+        ctx.beginPath();
+        ctx.moveTo(w * 0.98, h * 0.35);
+        ctx.lineTo(w * 0.92, h * 0.4);
+        ctx.lineTo(w * 0.92, h * 0.6);
+        ctx.lineTo(w * 0.98, h * 0.65);
+        ctx.stroke();
+    }
+    
+    drawHalfIce(ctx, w, h, side) {
+        // Blue line
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 3;
+        if (side === 'top') {
+            ctx.beginPath();
+            ctx.moveTo(0, h * 0.8);
+            ctx.lineTo(w, h * 0.8);
+            ctx.stroke();
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(0, h * 0.2);
+            ctx.lineTo(w, h * 0.2);
+            ctx.stroke();
+        }
+        
+        // Faceoff circles
+        const faceoffRadius = Math.min(w, h) * 0.12;
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        ctx.arc(w * 0.3, h * 0.5, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.arc(w * 0.7, h * 0.5, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // Goal crease
+        const goalY = side === 'top' ? h * 0.1 : h * 0.9;
+        ctx.beginPath();
+        ctx.arc(w * 0.5, goalY, 40, side === 'top' ? 0 : Math.PI, side === 'top' ? Math.PI : 0);
+        ctx.stroke();
+    }
+    
+    drawZone(ctx, w, h, side) {
+        // Blue line
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 3;
+        const lineX = side === 'left' ? w * 0.7 : w * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(lineX, 0);
+        ctx.lineTo(lineX, h);
+        ctx.stroke();
+        
+        // Faceoff circles
+        const centerX = side === 'left' ? w * 0.35 : w * 0.65;
+        const faceoffRadius = Math.min(w, h) * 0.12;
+        
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, h * 0.35, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.arc(centerX, h * 0.65, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // Goal crease
+        const goalX = side === 'left' ? w * 0.05 : w * 0.95;
+        ctx.beginPath();
+        ctx.moveTo(goalX, h * 0.35);
+        ctx.lineTo(goalX + (side === 'left' ? 30 : -30), h * 0.4);
+        ctx.lineTo(goalX + (side === 'left' ? 30 : -30), h * 0.6);
+        ctx.lineTo(goalX, h * 0.65);
+        ctx.stroke();
+    }
+    
+    drawCenterIce(ctx, w, h) {
+        // Center line (red)
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(w/2, 0);
+        ctx.lineTo(w/2, h);
+        ctx.stroke();
+        
+        // Center circle
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 2;
+        const circleRadius = Math.min(w, h) * 0.25;
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // Center dot
+        ctx.fillStyle = '#0033a0';
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, 6, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
+    roundRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+    
+    setIceView(view) {
+        this.iceView = view;
+        this.redraw();
     }
     
     redraw() {
@@ -406,10 +600,36 @@ function initDrillDesigner() {
     canvas.id = 'drill-canvas';
     canvas.width = canvasContainer.offsetWidth;
     canvas.height = canvasContainer.offsetHeight;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
     canvasContainer.appendChild(canvas);
     
     // Initialize designer
     window.drillDesigner = new DrillDesigner('drill-canvas');
+    
+    // Handle ice view selector
+    const iceViewSelect = document.getElementById('iceViewSelect');
+    if (iceViewSelect) {
+        iceViewSelect.addEventListener('change', function(e) {
+            if (window.drillDesigner) {
+                window.drillDesigner.setIceView(e.target.value);
+            }
+        });
+    }
+    
+    // Handle window resize for responsive canvas
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            if (window.drillDesigner && window.drillDesigner.canvas) {
+                const container = window.drillDesigner.canvas.parentElement;
+                window.drillDesigner.canvas.width = container.offsetWidth;
+                window.drillDesigner.canvas.height = container.offsetHeight;
+                window.drillDesigner.redraw();
+            }
+        }, 250);
+    });
     
     // Hook into form submission to save diagram data
     const drillForm = document.querySelector('.drill-form');

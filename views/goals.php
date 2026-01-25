@@ -336,11 +336,14 @@ sort($all_tags);
     .empty-state i {
         font-size: 64px;
         margin-bottom: 20px;
-        opacity: 0.3;
+        opacity: 0.5;
+        color: var(--primary);
+        display: block;
     }
     .empty-state h3 {
         font-size: 20px;
         margin-bottom: 10px;
+        color: #fff;
     }
     
     /* Modal Styles */
