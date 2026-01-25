@@ -6,16 +6,16 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
 
 <div class="page-header">
     <h1><i class="fa-solid fa-video"></i> Video</h1>
-    <p>Review your drill videos and upload new footage for coach analysis</p>
+    <p>Watch session videos and recordings from your training</p>
 </div>
 
 <div class="video-nav-container">
     <div class="tab-navigation" data-component="TabNavigation">
         <a href="?page=drill_review" class="tab-link <?= $tab === 'drill_review' ? 'active' : '' ?>" data-tab="drill_review">
-            <i class="fa-solid fa-film"></i> Drill Review
+            <i class="fa-solid fa-film"></i> My Videos
         </a>
         <a href="?page=coaches_reviews" class="tab-link <?= $tab === 'coaches_reviews' ? 'active' : '' ?>" data-tab="coaches_reviews">
-            <i class="fa-solid fa-comments"></i> Coaches Reviews
+            <i class="fa-solid fa-comments"></i> Coach Uploads
         </a>
     </div>
     <?php if($isAnyCoach): ?>
