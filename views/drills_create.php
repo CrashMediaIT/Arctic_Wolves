@@ -386,6 +386,28 @@
 </style>
 
 <script>
+// Notification helper function
+function showNotification(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'notification-toast';
+    alertDiv.innerHTML = '<i class="fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle') + '"></i> ' + message;
+    alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; min-width: 300px; padding: 15px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; animation: slideIn 0.3s ease;';
+    
+    if (type === 'error') {
+        alertDiv.style.background = 'rgba(239, 68, 68, 0.9)';
+        alertDiv.style.color = '#fff';
+    } else if (type === 'success') {
+        alertDiv.style.background = 'rgba(16, 185, 129, 0.9)';
+        alertDiv.style.color = '#fff';
+    } else {
+        alertDiv.style.background = 'rgba(59, 130, 246, 0.9)';
+        alertDiv.style.color = '#fff';
+    }
+    
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 4000);
+}
+
 // Drill form submission handler
 function submitDrillForm() {
     // Get diagram data if drill designer is available
@@ -412,7 +434,7 @@ function saveDrillDraft() {
     }
     
     localStorage.setItem('drill_draft', JSON.stringify(draftData));
-    alert('Draft saved! Your progress has been saved locally.');
+    showNotification('Draft saved! Your progress has been saved locally.', 'success');
 }
 
 // Load draft on page load

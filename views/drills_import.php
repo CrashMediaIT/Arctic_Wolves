@@ -234,12 +234,34 @@ function filterIHSDrills() {
 
 function previewDrill(drillId) {
     // Find the drill item and show more details
-    alert('Preview functionality coming soon. For now, review the drill information and click Import to add it to your library.');
+    showNotification('Preview: Review the drill information displayed, then click Import to add it to your library.', 'info');
 }
 
 function refreshDrillList() {
     // In a real implementation, this would fetch new drills from an API
     location.reload();
+}
+
+// Notification helper function
+function showNotification(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'notification-toast';
+    alertDiv.innerHTML = '<i class="fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle') + '"></i> ' + message;
+    alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; min-width: 300px; padding: 15px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; animation: slideIn 0.3s ease;';
+    
+    if (type === 'error') {
+        alertDiv.style.background = 'rgba(239, 68, 68, 0.9)';
+        alertDiv.style.color = '#fff';
+    } else if (type === 'success') {
+        alertDiv.style.background = 'rgba(16, 185, 129, 0.9)';
+        alertDiv.style.color = '#fff';
+    } else {
+        alertDiv.style.background = 'rgba(59, 130, 246, 0.9)';
+        alertDiv.style.color = '#fff';
+    }
+    
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 4000);
 }
 </script>
 

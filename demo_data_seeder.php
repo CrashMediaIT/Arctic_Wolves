@@ -408,8 +408,18 @@ class DemoDataSeeder {
         $has_created_by = in_array('created_by', $existing_columns);
         $has_coach_id = in_array('coach_id', $existing_columns);
         
+        // Whitelist of allowed column names for security
+        $allowed_title_cols = ['title', 'name'];
+        $allowed_coach_cols = ['created_by', 'coach_id'];
+        
         $title_col = $has_title ? 'title' : ($has_name ? 'name' : 'title');
         $coach_col = $has_created_by ? 'created_by' : ($has_coach_id ? 'coach_id' : 'created_by');
+        
+        // Validate column names are in whitelist
+        if (!in_array($title_col, $allowed_title_cols) || !in_array($coach_col, $allowed_coach_cols)) {
+            echo "  ⚠ Invalid column names detected, skipping drills\n";
+            return;
+        }
         
         // More comprehensive demo drills data
         $drills = [
