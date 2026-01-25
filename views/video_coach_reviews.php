@@ -576,7 +576,7 @@ $videos = $video_stmt->fetchAll();
     opacity: 1;
 }
 
-.video-list-item:hover .video-thumbnail-small > i:not(.play-overlay i) {
+.video-list-item:hover .video-thumbnail-small > .fa-video {
     opacity: 0.3;
 }
 
