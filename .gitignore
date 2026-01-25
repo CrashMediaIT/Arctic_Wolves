@@ -42,3 +42,4 @@ arctic_wolves.env
 # OS generated files
 .DS_Store
 Thumbs.db
+.permissions_setup_done
