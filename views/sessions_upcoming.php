@@ -873,8 +873,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 
-                // Show info message for demo sessions
-                alert('This is a demo session. Book a real session to manage cancellations.');
+                // Show info message for demo sessions using toast notification
+                if (typeof window.showToast === 'function') {
+                    window.showToast('This is a demo session. Book a real session to manage cancellations.', 'info');
+                } else {
+                    alert('This is a demo session. Book a real session to manage cancellations.');
+                }
                 return false;
             }
         }, true); // Use capture phase to run before app.js
