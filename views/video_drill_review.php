@@ -1,371 +1,731 @@
 <?php
-// Get filter parameters
-$filter_status = $_GET['filter_status'] ?? 'all';
-$filter_drill_type = $_GET['filter_drill'] ?? 'all';
-$search = $_GET['search'] ?? '';
+/**
+ * Athlete Drill Video Library
+ * Two views:
+ * 1. Browse drills by skill type with filtering (drill name, coach)
+ * 2. View session videos in list or calendar view
+ */
 
-// Build query for videos
-$video_query = "
+// Get active view (default: drills)
+$active_view = $_GET['view'] ?? 'drills';
+
+// Get filter parameters for drills view
+$filter_skill_type = $_GET['skill_type'] ?? 'all';
+$filter_coach = $_GET['coach'] ?? 'all';
+$search_drill = $_GET['search_drill'] ?? '';
+
+// Get filter parameters for sessions view  
+$session_view_mode = $_GET['session_mode'] ?? 'list';
+$filter_month = $_GET['month'] ?? date('Y-m');
+
+// Fetch all drill categories (skill types)
+$skill_types_stmt = $pdo->prepare("SELECT id, name FROM drill_categories ORDER BY name");
+$skill_types_stmt->execute();
+$skill_types = $skill_types_stmt->fetchAll();
+
+// Fetch coaches who have uploaded videos for this athlete
+$coaches_stmt = $pdo->prepare("
+    SELECT DISTINCT u.id, CONCAT(u.first_name, ' ', u.last_name) as coach_name
+    FROM users u
+    INNER JOIN videos v ON v.coach_id = u.id
+    WHERE v.athlete_id = ?
+    ORDER BY coach_name
+");
+$coaches_stmt->execute([$user_id]);
+$coaches = $coaches_stmt->fetchAll();
+
+// ========================================
+// VIEW 1: Drills by Skill Type
+// ========================================
+$drills_query = "
     SELECT v.*, 
            CONCAT(u.first_name, ' ', u.last_name) as coach_name,
            s.session_date,
+           s.title as session_title,
            st.name as session_type_name,
-           d.title as drill_name
+           d.title as drill_name,
+           dc.id as category_id,
+           dc.name as skill_type
     FROM videos v
     LEFT JOIN users u ON v.coach_id = u.id
     LEFT JOIN sessions s ON v.session_id = s.id
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN drills d ON v.drill_id = d.id
+    LEFT JOIN drill_categories dc ON d.category_id = dc.id
     WHERE v.athlete_id = ?
 ";
 
-$params = [$user_id];
+$drills_params = [$user_id];
 
-// Apply filters
-if ($filter_status !== 'all') {
-    $video_query .= " AND v.status = ?";
-    $params[] = $filter_status;
+if ($filter_skill_type !== 'all') {
+    $drills_query .= " AND dc.id = ?";
+    $drills_params[] = $filter_skill_type;
 }
 
-if ($filter_drill_type !== 'all') {
-    $video_query .= " AND d.category_id = ?";
-    $params[] = $filter_drill_type;
+if ($filter_coach !== 'all') {
+    $drills_query .= " AND v.coach_id = ?";
+    $drills_params[] = $filter_coach;
 }
 
-if (!empty($search)) {
-    $video_query .= " AND (v.title LIKE ? OR v.description LIKE ? OR d.title LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR DATE_FORMAT(v.upload_date, '%Y-%m-%d') LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
+if (!empty($search_drill)) {
+    $drills_query .= " AND (v.title LIKE ? OR d.title LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)";
+    $drills_params[] = "%$search_drill%";
+    $drills_params[] = "%$search_drill%";
+    $drills_params[] = "%$search_drill%";
 }
 
-$video_query .= " ORDER BY v.upload_date DESC";
+$drills_query .= " ORDER BY dc.name, v.upload_date DESC";
 
-$video_stmt = $pdo->prepare($video_query);
-$video_stmt->execute($params);
-$videos = $video_stmt->fetchAll();
+$drills_stmt = $pdo->prepare($drills_query);
+$drills_stmt->execute($drills_params);
+$drill_videos = $drills_stmt->fetchAll();
 
-// Get drill categories for filter
-$drill_categories_stmt = $pdo->prepare("SELECT id, name FROM drill_categories ORDER BY name");
-$drill_categories_stmt->execute();
-$drill_categories = $drill_categories_stmt->fetchAll();
+// Group videos by skill type
+$videos_by_skill = [];
+foreach ($drill_videos as $video) {
+    $skill = $video['skill_type'] ?? 'Uncategorized';
+    if (!isset($videos_by_skill[$skill])) {
+        $videos_by_skill[$skill] = [];
+    }
+    $videos_by_skill[$skill][] = $video;
+}
 
-// Demo data for videos if none exist
-if (count($videos) === 0) {
+// ========================================
+// VIEW 2: Session Videos (List/Calendar)
+// ========================================
+$sessions_query = "
+    SELECT DISTINCT s.id, s.title, s.session_date, s.duration_minutes,
+           CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+           st.name as session_type_name,
+           COUNT(v.id) as video_count
+    FROM sessions s
+    INNER JOIN session_attendance sa ON sa.session_id = s.id
+    LEFT JOIN users u ON s.coach_id = u.id
+    LEFT JOIN session_types st ON s.session_type_id = st.id
+    LEFT JOIN videos v ON v.session_id = s.id AND v.athlete_id = ?
+    WHERE sa.user_id = ? AND sa.attendance_status = 'present'
+";
+
+$session_params = [$user_id, $user_id];
+
+// Filter by month for calendar view
+if ($session_view_mode === 'calendar' && !empty($filter_month)) {
+    $sessions_query .= " AND DATE_FORMAT(s.session_date, '%Y-%m') = ?";
+    $session_params[] = $filter_month;
+}
+
+$sessions_query .= " GROUP BY s.id ORDER BY s.session_date DESC";
+
+$sessions_stmt = $pdo->prepare($sessions_query);
+$sessions_stmt->execute($session_params);
+$attended_sessions = $sessions_stmt->fetchAll();
+
+// Build calendar data if in calendar mode
+$calendar_data = [];
+if ($session_view_mode === 'calendar') {
+    foreach ($attended_sessions as $session) {
+        $date = date('Y-m-d', strtotime($session['session_date']));
+        if (!isset($calendar_data[$date])) {
+            $calendar_data[$date] = [];
+        }
+        $calendar_data[$date][] = $session;
+    }
+}
+
+// Demo data if no real data exists
+$is_demo_data = false;
+if (count($drill_videos) === 0 && count($attended_sessions) === 0) {
+    $is_demo_data = true;
     $today = new DateTime();
-    $videos = [
+    
+    // Demo drill videos
+    $drill_videos = [
         [
             'id' => 'demo-1',
             'drill_name' => 'Crossover Skating Drill',
-            'created_at' => (clone $today)->modify('-2 days')->format('Y-m-d H:i:s'),
-            'status' => 'reviewed',
+            'skill_type' => 'Skating',
+            'upload_date' => (clone $today)->modify('-2 days')->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Smith',
-            'rating' => 4,
             'duration' => '2:35',
-            'thumbnail_url' => ''
+            'thumbnail_url' => '',
+            'video_url' => ''
         ],
         [
             'id' => 'demo-2',
             'drill_name' => 'Wrist Shot Practice',
-            'created_at' => (clone $today)->modify('-5 days')->format('Y-m-d H:i:s'),
-            'status' => 'reviewed',
+            'skill_type' => 'Shooting',
+            'upload_date' => (clone $today)->modify('-5 days')->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Johnson',
-            'rating' => 5,
             'duration' => '3:20',
-            'thumbnail_url' => ''
+            'thumbnail_url' => '',
+            'video_url' => ''
         ],
         [
             'id' => 'demo-3',
             'drill_name' => 'Edge Work Fundamentals',
-            'created_at' => (clone $today)->modify('-1 day')->format('Y-m-d H:i:s'),
-            'status' => 'pending_review',
+            'skill_type' => 'Skating',
+            'upload_date' => (clone $today)->modify('-1 day')->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Williams',
-            'rating' => 0,
             'duration' => '1:45',
-            'thumbnail_url' => ''
+            'thumbnail_url' => '',
+            'video_url' => ''
         ],
         [
             'id' => 'demo-4',
             'drill_name' => 'Backward Skating Technique',
-            'created_at' => $today->format('Y-m-d H:i:s'),
-            'status' => 'pending_review',
+            'skill_type' => 'Skating',
+            'upload_date' => $today->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Smith',
-            'rating' => 0,
             'duration' => '2:10',
-            'thumbnail_url' => ''
+            'thumbnail_url' => '',
+            'video_url' => ''
+        ],
+        [
+            'id' => 'demo-5',
+            'drill_name' => 'Puck Handling Course',
+            'skill_type' => 'Stickhandling',
+            'upload_date' => (clone $today)->modify('-3 days')->format('Y-m-d H:i:s'),
+            'coach_name' => 'Coach Johnson',
+            'duration' => '4:15',
+            'thumbnail_url' => '',
+            'video_url' => ''
         ]
     ];
-    $is_demo_video = true;
-} else {
-    $is_demo_video = false;
+    
+    // Group demo videos
+    $videos_by_skill = [];
+    foreach ($drill_videos as $video) {
+        $skill = $video['skill_type'];
+        if (!isset($videos_by_skill[$skill])) {
+            $videos_by_skill[$skill] = [];
+        }
+        $videos_by_skill[$skill][] = $video;
+    }
+    
+    // Demo attended sessions
+    $attended_sessions = [
+        [
+            'id' => 'demo-s1',
+            'title' => 'Skills Training Session',
+            'session_date' => (clone $today)->modify('-2 days')->format('Y-m-d H:i:s'),
+            'duration_minutes' => 60,
+            'coach_name' => 'Coach Smith',
+            'session_type_name' => 'Skills Training',
+            'video_count' => 2
+        ],
+        [
+            'id' => 'demo-s2',
+            'title' => 'Shooting Clinic',
+            'session_date' => (clone $today)->modify('-5 days')->format('Y-m-d H:i:s'),
+            'duration_minutes' => 90,
+            'coach_name' => 'Coach Johnson',
+            'session_type_name' => 'Clinic',
+            'video_count' => 1
+        ],
+        [
+            'id' => 'demo-s3',
+            'title' => 'Power Skating',
+            'session_date' => (clone $today)->modify('-1 week')->format('Y-m-d H:i:s'),
+            'duration_minutes' => 60,
+            'coach_name' => 'Coach Williams',
+            'session_type_name' => 'Power Skating',
+            'video_count' => 3
+        ]
+    ];
 }
 ?>
 
-<!-- Player Drill Video Review View -->
+<!-- Athlete Video Library -->
 <div class="page-header">
     <h1 class="page-title">
-        <i class="fas fa-video"></i> Drill Video Reviews
+        <i class="fas fa-video"></i> My Session Videos
     </h1>
-    <p class="page-description">View and review your drill performance videos</p>
+    <p class="page-description">Watch videos captured from your training sessions</p>
 </div>
 
-<?php if (isset($is_demo_video) && $is_demo_video): ?>
+<?php if ($is_demo_data): ?>
 <div class="demo-data-notice">
     <i class="fas fa-info-circle"></i>
-    <span>Showing demo videos. Your coach will upload real videos after your sessions.</span>
+    <span>Showing demo videos. Your actual session videos will appear here once recorded.</span>
 </div>
 <?php endif; ?>
 
+<!-- View Toggle Tabs -->
+<div class="view-toggle-container">
+    <div class="view-toggle">
+        <a href="?page=drill_review&view=drills" class="view-toggle-btn <?= $active_view === 'drills' ? 'active' : '' ?>">
+            <i class="fas fa-th-large"></i> Browse by Skill Type
+        </a>
+        <a href="?page=drill_review&view=sessions" class="view-toggle-btn <?= $active_view === 'sessions' ? 'active' : '' ?>">
+            <i class="fas fa-calendar-alt"></i> My Sessions
+        </a>
+    </div>
+</div>
+
+<?php if ($active_view === 'drills'): ?>
+<!-- ========================================
+     VIEW 1: DRILLS BY SKILL TYPE
+     ======================================== -->
 <div class="video-content">
     <!-- Filter Bar -->
     <div class="filter-bar filter-box">
-        <form method="GET" action="" class="filter-group">
+        <form method="GET" action="" class="filter-form">
             <input type="hidden" name="page" value="drill_review">
-            <select name="filter_status" class="form-input-small" data-action="auto-submit">
-                <option value="all" <?= $filter_status === 'all' ? 'selected' : '' ?>>All Videos</option>
-                <option value="pending_review" <?= $filter_status === 'pending_review' ? 'selected' : '' ?>>Pending Review</option>
-                <option value="reviewed" <?= $filter_status === 'reviewed' ? 'selected' : '' ?>>Reviewed</option>
-                <option value="archived" <?= $filter_status === 'archived' ? 'selected' : '' ?>>Archived</option>
-            </select>
-            <select name="filter_drill" class="form-input-small" data-action="auto-submit">
-                <option value="all">All Drill Types</option>
-                <?php foreach ($drill_categories as $category): ?>
-                    <option value="<?= $category['id'] ?>" <?= $filter_drill_type == $category['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($category['name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <input type="text" name="search" class="form-input-small" placeholder="Search videos..." value="<?= htmlspecialchars($search) ?>" data-action="search-debounce">
-            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Search</button>
+            <input type="hidden" name="view" value="drills">
+            
+            <div class="filter-group">
+                <label class="filter-label">Skill Type</label>
+                <select name="skill_type" class="form-input-small" onchange="this.form.submit()">
+                    <option value="all">All Skill Types</option>
+                    <?php foreach ($skill_types as $type): ?>
+                        <option value="<?= $type['id'] ?>" <?= $filter_skill_type == $type['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($type['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Coach</label>
+                <select name="coach" class="form-input-small" onchange="this.form.submit()">
+                    <option value="all">All Coaches</option>
+                    <?php foreach ($coaches as $coach): ?>
+                        <option value="<?= $coach['id'] ?>" <?= $filter_coach == $coach['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($coach['coach_name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div class="filter-group search-group">
+                <label class="filter-label">Search</label>
+                <div class="search-input-wrapper">
+                    <input type="text" name="search_drill" class="form-input-small" 
+                           placeholder="Search drill name or coach..." 
+                           value="<?= htmlspecialchars($search_drill) ?>">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
         </form>
     </div>
 
-    <!-- Video Grid -->
-    <div class="video-sections">
-        <!-- Pending Reviews Section -->
-        <?php 
-        $pending_videos = array_filter($videos, function($v) { 
-            return $v['status'] === 'pending_review'; 
-        });
-        $reviewed_videos = array_filter($videos, function($v) { 
-            return $v['status'] === 'reviewed'; 
-        });
-        ?>
-        
-        <?php if (count($pending_videos) > 0): ?>
-        <div class="video-section">
-            <h3 class="section-header">
-                <i class="fas fa-clock"></i> Pending Review (<?= count($pending_videos) ?>)
-            </h3>
-            <div class="video-grid">
-                <?php foreach ($pending_videos as $video): ?>
-                <div class="video-card" data-component="VideoCard" data-video-id="<?= $video['id'] ?>">
-                    <div class="video-thumbnail">
-                        <?php if (!empty($video['thumbnail_url'])): ?>
-                            <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Video thumbnail">
-                        <?php else: ?>
-                            <div class="video-placeholder">
-                                <i class="fas fa-play-circle"></i>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (!empty($video['duration'])): ?>
-                            <span class="video-duration"><?= htmlspecialchars($video['duration']) ?></span>
-                        <?php endif; ?>
-                        <span class="video-status pending">
-                            <i class="fas fa-clock"></i>
-                        </span>
-                    </div>
-                    <div class="video-info">
-                        <h4 class="video-title"><?= htmlspecialchars($video['drill_name']) ?></h4>
-                        <div class="video-meta">
-                            <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
-                            <?php if (!empty($video['coach_name'])): ?>
-                                <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="video-actions">
-                        <button class="btn-primary btn-full" data-action="view-video" data-video-id="<?= $video['id'] ?>">
-                            <i class="fas fa-play"></i> Watch & Review
-                        </button>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-        
-        <!-- Reviewed Videos Section -->
-        <?php if (count($reviewed_videos) > 0): ?>
-        <div class="video-section">
-            <h3 class="section-header">
-                <i class="fas fa-check-circle"></i> Reviewed (<?= count($reviewed_videos) ?>)
-            </h3>
-            <div class="video-grid">
-                <?php foreach ($reviewed_videos as $video): ?>
-                <div class="video-card" data-component="VideoCard" data-video-id="<?= $video['id'] ?>">
-                    <div class="video-thumbnail">
-                        <?php if (!empty($video['thumbnail_url'])): ?>
-                            <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Video thumbnail">
-                        <?php else: ?>
-                            <div class="video-placeholder">
-                                <i class="fas fa-play-circle"></i>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (!empty($video['duration'])): ?>
-                            <span class="video-duration"><?= htmlspecialchars($video['duration']) ?></span>
-                        <?php endif; ?>
-                        <span class="video-status reviewed">
-                            <i class="fas fa-check-circle"></i>
-                        </span>
-                    </div>
-                    <div class="video-info">
-                        <h4 class="video-title"><?= htmlspecialchars($video['drill_name']) ?></h4>
-                        <div class="video-meta">
-                            <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['created_at'])) ?></span>
-                            <?php if (!empty($video['coach_name'])): ?>
-                                <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
-                            <?php endif; ?>
-                        </div>
-                        <?php if ($video['rating'] > 0): ?>
-                            <div class="video-rating">
-                                <span class="rating-label">Rating:</span>
-                                <div class="stars">
-                                    <?php for ($i = 1; $i <= 5; $i++): ?>
-                                        <i class="<?= $i <= $video['rating'] ? 'fas' : 'far' ?> fa-star"></i>
-                                    <?php endfor; ?>
+    <!-- Drill Videos by Skill Type -->
+    <div class="skill-sections">
+        <?php if (count($videos_by_skill) > 0): ?>
+            <?php foreach ($videos_by_skill as $skill_name => $videos): ?>
+            <div class="skill-section">
+                <h3 class="skill-header">
+                    <i class="fas fa-layer-group"></i> 
+                    <?= htmlspecialchars($skill_name) ?>
+                    <span class="skill-count">(<?= count($videos) ?> videos)</span>
+                </h3>
+                <div class="video-grid">
+                    <?php foreach ($videos as $video): ?>
+                    <div class="video-card" data-component="VideoCard" data-video-id="<?= htmlspecialchars($video['id']) ?>">
+                        <div class="video-thumbnail">
+                            <?php if (!empty($video['thumbnail_url'])): ?>
+                                <img src="<?= htmlspecialchars($video['thumbnail_url']) ?>" alt="Video thumbnail">
+                            <?php else: ?>
+                                <div class="video-placeholder">
+                                    <i class="fas fa-play-circle"></i>
                                 </div>
+                            <?php endif; ?>
+                            <?php if (!empty($video['duration'])): ?>
+                                <span class="video-duration"><?= htmlspecialchars($video['duration']) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="video-info">
+                            <h4 class="video-title"><?= htmlspecialchars($video['drill_name'] ?? $video['title'] ?? 'Untitled') ?></h4>
+                            <div class="video-meta">
+                                <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
+                                <?php if (!empty($video['coach_name'])): ?>
+                                    <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
+                                <?php endif; ?>
                             </div>
-                        <?php endif; ?>
+                        </div>
+                        <div class="video-actions">
+                            <button class="btn-primary btn-full" data-action="play-video" 
+                                    data-video-id="<?= htmlspecialchars($video['id']) ?>"
+                                    data-video-url="<?= htmlspecialchars($video['video_url'] ?? '') ?>">
+                                <i class="fas fa-play"></i> Watch Video
+                            </button>
+                        </div>
                     </div>
-                    <div class="video-actions">
-                        <button class="btn-secondary btn-full" data-action="view-video" data-video-id="<?= $video['id'] ?>">
-                            <i class="fas fa-eye"></i> View Review
-                        </button>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
             </div>
-        </div>
-        <?php endif; ?>
-        
-        <?php if (count($videos) === 0): ?>
+            <?php endforeach; ?>
+        <?php else: ?>
             <div class="placeholder-container">
                 <i class="fas fa-video placeholder-icon"></i>
-                <p class="placeholder-text">No drill videos available yet. Your coach will upload videos after your sessions.</p>
+                <p class="placeholder-text">No drill videos found matching your filters.</p>
+                <?php if ($filter_skill_type !== 'all' || $filter_coach !== 'all' || !empty($search_drill)): ?>
+                    <a href="?page=drill_review&view=drills" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </a>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
     </div>
 </div>
 
-<!-- Video Modal (Hidden by default) -->
-<div class="video-modal" id="videoModal" style="display: none;">
-    <div class="modal-overlay"></div>
-    <div class="modal-content">
+<?php else: ?>
+<!-- ========================================
+     VIEW 2: SESSION VIDEOS
+     ======================================== -->
+<div class="video-content">
+    <!-- View Mode Toggle -->
+    <div class="session-view-controls">
+        <div class="view-mode-toggle">
+            <a href="?page=drill_review&view=sessions&session_mode=list" 
+               class="mode-btn <?= $session_view_mode === 'list' ? 'active' : '' ?>">
+                <i class="fas fa-list"></i> List View
+            </a>
+            <a href="?page=drill_review&view=sessions&session_mode=calendar" 
+               class="mode-btn <?= $session_view_mode === 'calendar' ? 'active' : '' ?>">
+                <i class="fas fa-calendar"></i> Calendar View
+            </a>
+        </div>
+        
+        <?php if ($session_view_mode === 'calendar'): ?>
+        <div class="month-navigation">
+            <?php 
+            $current_month = new DateTime($filter_month . '-01');
+            $prev_month = (clone $current_month)->modify('-1 month')->format('Y-m');
+            $next_month = (clone $current_month)->modify('+1 month')->format('Y-m');
+            ?>
+            <a href="?page=drill_review&view=sessions&session_mode=calendar&month=<?= $prev_month ?>" class="month-nav-btn">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            <span class="current-month"><?= $current_month->format('F Y') ?></span>
+            <a href="?page=drill_review&view=sessions&session_mode=calendar&month=<?= $next_month ?>" class="month-nav-btn">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <?php if ($session_view_mode === 'list'): ?>
+    <!-- List View -->
+    <div class="sessions-list">
+        <?php if (count($attended_sessions) > 0): ?>
+            <?php foreach ($attended_sessions as $session): ?>
+            <div class="session-card" data-session-id="<?= htmlspecialchars($session['id']) ?>">
+                <div class="session-date-badge">
+                    <span class="date-day"><?= date('d', strtotime($session['session_date'])) ?></span>
+                    <span class="date-month"><?= date('M', strtotime($session['session_date'])) ?></span>
+                    <span class="date-year"><?= date('Y', strtotime($session['session_date'])) ?></span>
+                </div>
+                <div class="session-info">
+                    <h4 class="session-title"><?= htmlspecialchars($session['title']) ?></h4>
+                    <div class="session-meta">
+                        <?php if (!empty($session['session_type_name'])): ?>
+                            <span class="session-type"><i class="fas fa-tag"></i> <?= htmlspecialchars($session['session_type_name']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($session['coach_name'])): ?>
+                            <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($session['coach_name']) ?></span>
+                        <?php endif; ?>
+                        <span><i class="fas fa-clock"></i> <?= $session['duration_minutes'] ?> min</span>
+                    </div>
+                </div>
+                <div class="session-videos-count">
+                    <span class="video-count-badge">
+                        <i class="fas fa-video"></i>
+                        <?= $session['video_count'] ?> video<?= $session['video_count'] != 1 ? 's' : '' ?>
+                    </span>
+                </div>
+                <div class="session-actions">
+                    <button class="btn btn-primary btn-sm" data-action="view-session-videos" 
+                            data-session-id="<?= htmlspecialchars($session['id']) ?>">
+                        <i class="fas fa-play"></i> View Videos
+                    </button>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="placeholder-container">
+                <i class="fas fa-calendar-times placeholder-icon"></i>
+                <p class="placeholder-text">No attended sessions with recorded videos yet.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <?php else: ?>
+    <!-- Calendar View -->
+    <div class="calendar-container">
+        <?php
+        $month_start = new DateTime($filter_month . '-01');
+        $month_end = (clone $month_start)->modify('last day of this month');
+        $start_dow = (int)$month_start->format('w'); // 0 = Sunday
+        $days_in_month = (int)$month_end->format('d');
+        ?>
+        
+        <div class="calendar-header">
+            <div class="calendar-day-name">Sun</div>
+            <div class="calendar-day-name">Mon</div>
+            <div class="calendar-day-name">Tue</div>
+            <div class="calendar-day-name">Wed</div>
+            <div class="calendar-day-name">Thu</div>
+            <div class="calendar-day-name">Fri</div>
+            <div class="calendar-day-name">Sat</div>
+        </div>
+        
+        <div class="calendar-grid">
+            <?php
+            // Empty cells before month start
+            for ($i = 0; $i < $start_dow; $i++): ?>
+                <div class="calendar-day empty"></div>
+            <?php endfor;
+            
+            // Days of the month
+            for ($day = 1; $day <= $days_in_month; $day++):
+                $current_date = $filter_month . '-' . str_pad($day, 2, '0', STR_PAD_LEFT);
+                $has_sessions = isset($calendar_data[$current_date]);
+                $is_today = $current_date === date('Y-m-d');
+            ?>
+                <div class="calendar-day <?= $has_sessions ? 'has-sessions' : '' ?> <?= $is_today ? 'today' : '' ?>">
+                    <span class="day-number"><?= $day ?></span>
+                    <?php if ($has_sessions): ?>
+                        <div class="day-sessions">
+                            <?php foreach ($calendar_data[$current_date] as $session): ?>
+                                <div class="calendar-session" title="<?= htmlspecialchars($session['title']) ?>">
+                                    <span class="session-dot"></span>
+                                    <?= htmlspecialchars(substr($session['title'], 0, 15)) ?>
+                                    <?= strlen($session['title']) > 15 ? '...' : '' ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endfor;
+            
+            // Empty cells after month end
+            $remaining = (7 - (($start_dow + $days_in_month) % 7)) % 7;
+            for ($i = 0; $i < $remaining; $i++): ?>
+                <div class="calendar-day empty"></div>
+            <?php endfor; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
+
+<!-- Video Player Modal -->
+<div class="video-modal" id="videoPlayerModal" style="display: none;">
+    <div class="modal-overlay" data-action="close-modal"></div>
+    <div class="modal-content video-player-modal">
         <div class="modal-header">
-            <h3><i class="fas fa-video"></i> Video Review</h3>
-            <button class="modal-close"><i class="fas fa-times"></i></button>
+            <h3 id="videoModalTitle"><i class="fas fa-play-circle"></i> Video Player</h3>
+            <button class="modal-close" data-action="close-modal"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
             <div class="video-player-container">
-                <div class="video-player-placeholder">
+                <video id="videoPlayer" controls class="video-player">
+                    <source src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <div class="video-player-placeholder" id="videoPlaceholder">
                     <i class="fas fa-play-circle"></i>
-                    <p>Video Player</p>
+                    <p>Select a video to play</p>
                 </div>
             </div>
-            <div class="video-review-section">
-                <h4>Coach's Review</h4>
-                <div class="coach-comments">
-                    <p class="placeholder-text">Coach comments will appear here.</p>
-                </div>
+            <div class="video-details-section" id="videoDetails">
+                <h4 id="videoDetailTitle">Video Details</h4>
+                <div class="video-detail-meta" id="videoDetailMeta"></div>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-/* Filter Box Styling */
+/* =========================================================
+   ATHLETE VIDEO LIBRARY - Modern Design
+   ========================================================= */
+
+/* View Toggle */
+.view-toggle-container {
+    margin-bottom: 24px;
+}
+
+.view-toggle {
+    display: inline-flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.view-toggle-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.25s ease;
+}
+
+.view-toggle-btn:hover {
+    color: var(--text-white);
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--primary), var(--accent, #8B5CF6));
+    color: white;
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+}
+
+/* Filter Bar */
 .filter-box {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
-.filter-box .filter-group {
+.filter-form {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    align-items: flex-end;
+    gap: 20px;
     flex-wrap: wrap;
 }
 
-.filter-box .btn-sm {
-    height: 40px;
-}
-
-.filter-box .btn-sm i {
-    color: #fff;
-}
-
-.video-sections {
+.filter-group {
     display: flex;
     flex-direction: column;
-    gap: 30px;
+    gap: 6px;
 }
 
-.video-section {
-    background: var(--bg-card);
+.filter-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+}
+
+.form-input-small {
+    min-width: 160px;
+    height: 42px;
+    background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 20px;
+    color: var(--text-white);
+    font-size: 14px;
+    padding: 0 12px;
+    transition: all 0.25s ease;
 }
 
-.section-header {
+.form-input-small:hover {
+    border-color: var(--primary);
+}
+
+.form-input-small:focus {
+    border-color: var(--accent, #8B5CF6);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+    outline: none;
+}
+
+.search-group {
+    flex: 1;
+    min-width: 250px;
+}
+
+.search-input-wrapper {
+    display: flex;
+    gap: 8px;
+}
+
+.search-input-wrapper .form-input-small {
+    flex: 1;
+}
+
+.btn-sm {
+    height: 42px;
+    padding: 0 16px;
+}
+
+/* Skill Sections */
+.skill-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.skill-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.skill-header {
     font-size: 18px;
     font-weight: 700;
     color: var(--text-white);
     margin-bottom: 20px;
-    padding-bottom: 15px;
+    padding-bottom: 16px;
     border-bottom: 2px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
-.section-header i {
-    color: var(--neon);
+.skill-header i {
+    color: var(--primary);
 }
 
+.skill-count {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-left: auto;
+}
+
+/* Video Grid */
 .video-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
-    margin-top: 20px;
 }
 
 .video-card {
-    background: var(--bg-card);
+    background: linear-gradient(135deg, var(--bg-main) 0%, rgba(22, 22, 31, 0.8) 100%);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
 }
 
 .video-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(255, 77, 0, 0.1);
-    border-color: var(--neon);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(107, 70, 193, 0.15);
+    border-color: var(--primary);
 }
 
 .video-thumbnail {
     position: relative;
     width: 100%;
-    padding-top: 56.25%; /* 16:9 aspect ratio */
+    padding-top: 56.25%;
     background: var(--bg-main);
     overflow: hidden;
+}
+
+.video-thumbnail img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .video-placeholder {
@@ -377,45 +737,31 @@ if (count($videos) === 0) {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.1), rgba(139, 92, 246, 0.05));
 }
 
 .video-placeholder i {
     font-size: 48px;
-    color: var(--neon);
-    opacity: 0.5;
+    color: var(--primary);
+    opacity: 0.4;
+    transition: all 0.3s ease;
+}
+
+.video-card:hover .video-placeholder i {
+    opacity: 0.7;
+    transform: scale(1.1);
 }
 
 .video-duration {
     position: absolute;
     bottom: 10px;
     right: 10px;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     color: #fff;
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 12px;
     font-weight: 700;
-}
-
-.video-status {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.video-status.reviewed {
-    background: #10b981;
-    color: #fff;
-}
-
-.video-status.pending {
-    background: var(--accent);
-    color: #fff;
 }
 
 .video-info {
@@ -423,48 +769,30 @@ if (count($videos) === 0) {
 }
 
 .video-title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--text-white);
     margin-bottom: 10px;
+    line-height: 1.4;
 }
 
 .video-meta {
     display: flex;
-    gap: 15px;
-    margin-bottom: 10px;
     flex-wrap: wrap;
+    gap: 12px;
 }
 
 .video-meta span {
     font-size: 12px;
     color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .video-meta i {
-    color: var(--neon);
-    margin-right: 5px;
-}
-
-.video-rating {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.rating-label {
-    font-size: 12px;
-    color: var(--text-dim);
-}
-
-.stars {
-    display: flex;
-    gap: 3px;
-}
-
-.stars i {
-    color: var(--accent);
-    font-size: 14px;
+    color: var(--primary);
+    font-size: 11px;
 }
 
 .video-actions {
@@ -472,6 +800,403 @@ if (count($videos) === 0) {
     border-top: 1px solid var(--border);
 }
 
+.btn-full {
+    width: 100%;
+    justify-content: center;
+}
+
+/* Session View Controls */
+.session-view-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.view-mode-toggle {
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.mode-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.mode-btn:hover {
+    color: var(--text-white);
+}
+
+.mode-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.month-navigation {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.month-nav-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.month-nav-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.current-month {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    min-width: 150px;
+    text-align: center;
+}
+
+/* Session List */
+.sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.session-card {
+    display: grid;
+    grid-template-columns: 80px 1fr auto auto;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.session-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 8px 30px rgba(107, 70, 193, 0.15);
+}
+
+.session-date-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary), var(--accent, #8B5CF6));
+    border-radius: 12px;
+    padding: 12px 8px;
+    color: white;
+    text-align: center;
+}
+
+.date-day {
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.date-month {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.date-year {
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.session-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.session-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 8px;
+}
+
+.session-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.session-meta span {
+    font-size: 13px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.session-meta i {
+    color: var(--primary);
+    font-size: 12px;
+}
+
+.session-type {
+    background: rgba(107, 70, 193, 0.15);
+    padding: 4px 10px;
+    border-radius: 20px;
+    color: var(--primary-light, #8B5CF6) !important;
+}
+
+.video-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.video-count-badge i {
+    color: #10B981;
+}
+
+/* Calendar View */
+.calendar-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    overflow: hidden;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.calendar-day-name {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    padding: 12px 0;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.calendar-day {
+    min-height: 100px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    position: relative;
+}
+
+.calendar-day.empty {
+    background: transparent;
+    border-color: transparent;
+}
+
+.calendar-day.today {
+    border-color: var(--primary);
+    background: rgba(107, 70, 193, 0.05);
+}
+
+.calendar-day.has-sessions {
+    background: rgba(16, 185, 129, 0.05);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.day-number {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-dim);
+}
+
+.calendar-day.today .day-number {
+    color: var(--primary);
+}
+
+.calendar-day.has-sessions .day-number {
+    color: #10B981;
+}
+
+.day-sessions {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.calendar-session {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 4px 6px;
+    background: rgba(107, 70, 193, 0.15);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendar-session:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.session-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.calendar-session:hover .session-dot {
+    background: white;
+}
+
+/* Video Player Modal */
+.video-player-modal {
+    max-width: 1000px;
+}
+
+.video-player-container {
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.video-player {
+    width: 100%;
+    max-height: 500px;
+    display: block;
+}
+
+.video-player-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-main);
+    min-height: 300px;
+}
+
+.video-player-placeholder i {
+    font-size: 64px;
+    color: var(--primary);
+    opacity: 0.3;
+    margin-bottom: 16px;
+}
+
+.video-player-placeholder p {
+    color: var(--text-dim);
+    font-size: 14px;
+}
+
+.video-details-section {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--bg-main);
+    border-radius: 8px;
+}
+
+.video-details-section h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-white);
+}
+
+/* Placeholder */
+.placeholder-container {
+    text-align: center;
+    padding: 60px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+}
+
+.placeholder-icon {
+    font-size: 64px;
+    color: var(--primary);
+    opacity: 0.25;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.placeholder-text {
+    font-size: 15px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Demo Notice */
+.demo-data-notice {
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary-light, #8B5CF6);
+    font-size: 14px;
+}
+
+.demo-data-notice i {
+    font-size: 16px;
+}
+
+/* Modal Styles */
 .video-modal {
     position: fixed;
     top: 0;
@@ -479,6 +1204,9 @@ if (count($videos) === 0) {
     width: 100%;
     height: 100%;
     z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-overlay {
@@ -493,30 +1221,35 @@ if (count($videos) === 0) {
 .modal-content {
     position: relative;
     width: 90%;
-    max-width: 1200px;
-    margin: 50px auto;
+    max-width: 900px;
+    max-height: 90vh;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 16px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header {
-    padding: 20px;
+    padding: 20px 24px;
     border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .modal-header h3 {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .modal-header h3 i {
-    color: var(--neon);
-    margin-right: 10px;
+    color: var(--primary);
 }
 
 .modal-close {
@@ -525,80 +1258,171 @@ if (count($videos) === 0) {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-white);
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-close:hover {
-    background: var(--neon);
-    border-color: var(--neon);
+    background: var(--primary);
+    border-color: var(--primary);
 }
 
 .modal-body {
-    padding: 20px;
+    padding: 24px;
+    overflow-y: auto;
 }
 
-.video-player-container {
-    margin-bottom: 20px;
+/* Responsive */
+@media (max-width: 992px) {
+    .session-card {
+        grid-template-columns: 70px 1fr;
+        grid-template-rows: auto auto;
+    }
+    
+    .session-videos-count,
+    .session-actions {
+        grid-column: 2;
+    }
+    
+    .calendar-day {
+        min-height: 80px;
+    }
 }
 
-.video-player-placeholder {
-    width: 100%;
-    padding-top: 56.25%;
-    background: var(--bg-main);
-    position: relative;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.video-player-placeholder i {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 64px;
-    color: var(--neon);
-    opacity: 0.3;
-}
-
-.video-review-section h4 {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-.coach-comments {
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-}
-
-.placeholder-icon {
-    font-size: 64px;
-    color: var(--neon);
-    opacity: 0.3;
-    display: block;
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-/* Demo Data Notice */
-.demo-data-notice {
-    background: rgba(107, 70, 193, 0.1);
-    border: 1px solid rgba(107, 70, 193, 0.3);
-    border-radius: 8px;
-    padding: 12px 20px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--primary-light);
-    font-size: 14px;
-}
-
-.demo-data-notice i {
-    font-size: 16px;
+@media (max-width: 768px) {
+    .filter-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .form-input-small {
+        width: 100%;
+    }
+    
+    .session-card {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+    
+    .session-date-badge {
+        flex-direction: row;
+        gap: 8px;
+        justify-content: center;
+    }
+    
+    .session-meta {
+        justify-content: center;
+    }
+    
+    .session-actions {
+        justify-content: center;
+    }
+    
+    .view-toggle {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .view-toggle-btn {
+        justify-content: center;
+    }
+    
+    .calendar-day {
+        min-height: 60px;
+        padding: 4px;
+    }
+    
+    .day-sessions {
+        display: none;
+    }
+    
+    .calendar-day.has-sessions::after {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 6px;
+        height: 6px;
+        background: #10B981;
+        border-radius: 50%;
+    }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Video player modal handling
+    const modal = document.getElementById('videoPlayerModal');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoPlaceholder = document.getElementById('videoPlaceholder');
+    const videoTitle = document.getElementById('videoModalTitle');
+    const videoDetails = document.getElementById('videoDetails');
+    
+    // Play video buttons
+    document.querySelectorAll('[data-action="play-video"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const videoUrl = this.dataset.videoUrl;
+            const title = this.closest('.video-card').querySelector('.video-title')?.textContent || 'Video';
+            
+            if (modal) {
+                modal.style.display = 'flex';
+                videoTitle.innerHTML = '<i class="fas fa-play-circle"></i> ' + title;
+                
+                if (videoUrl) {
+                    videoPlayer.querySelector('source').src = videoUrl;
+                    videoPlayer.load();
+                    videoPlayer.style.display = 'block';
+                    if (videoPlaceholder) videoPlaceholder.style.display = 'none';
+                } else {
+                    videoPlayer.style.display = 'none';
+                    if (videoPlaceholder) {
+                        videoPlaceholder.style.display = 'flex';
+                        videoPlaceholder.querySelector('p').textContent = 'Demo video - actual video will be available once recorded';
+                    }
+                }
+            }
+        });
+    });
+    
+    // Close modal
+    document.querySelectorAll('[data-action="close-modal"]').forEach(el => {
+        el.addEventListener('click', function() {
+            if (modal) {
+                modal.style.display = 'none';
+                if (videoPlayer) {
+                    videoPlayer.pause();
+                    videoPlayer.currentTime = 0;
+                }
+            }
+        });
+    });
+    
+    // Close on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal && modal.style.display !== 'none') {
+            modal.style.display = 'none';
+            if (videoPlayer) {
+                videoPlayer.pause();
+            }
+        }
+    });
+    
+    // View session videos
+    document.querySelectorAll('[data-action="view-session-videos"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sessionId = this.dataset.sessionId;
+            // In a real implementation, this would open a modal or navigate to session videos
+            alert('View videos for session ' + sessionId + '\n\nThis would show all videos from this session.');
+        });
+    });
+});
+</script>

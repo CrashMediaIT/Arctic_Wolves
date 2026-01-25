@@ -1,7 +1,7 @@
 # Arctic Wolves - Comprehensive Maintenance Process
 
-**Version:** 1.3  
-**Last Updated:** January 23, 2026  
+**Version:** 1.4  
+**Last Updated:** January 25, 2026  
 **Purpose:** Standardized maintenance and repair process for the Arctic Wolves platform
 
 ## Overview
@@ -9,17 +9,18 @@ This document provides a standardized process for maintaining, updating, and rep
 
 ## Table of Contents
 1. [**MANDATORY FIRST STEP: Reference Documents Review**](#mandatory-first-step-reference-documents-review)
-2. [Initial Assessment](#initial-assessment)
-3. [Branding Review](#branding-review)
-4. [Style Guide Compliance](#style-guide-compliance)
-5. [Navigation Verification](#navigation-verification)
-6. [Database Schema Validation](#database-schema-validation)
-7. [Functionality Testing](#functionality-testing)
-8. [UI/UX Quality Assurance](#uiux-quality-assurance)
-9. [Performance Verification](#performance-verification)
-10. [Documentation Update](#documentation-update)
-11. [**MANDATORY LAST STEP: Reference Documents Update**](#mandatory-last-step-reference-documents-update)
-12. [Deployment Checklist](#deployment-checklist)
+2. [**Major Work Governance**](#major-work-governance)
+3. [Initial Assessment](#initial-assessment)
+4. [Branding Review](#branding-review)
+5. [Style Guide Compliance](#style-guide-compliance)
+6. [Navigation Verification](#navigation-verification)
+7. [Database Schema Validation](#database-schema-validation)
+8. [Functionality Testing](#functionality-testing)
+9. [UI/UX Quality Assurance](#uiux-quality-assurance)
+10. [Performance Verification](#performance-verification)
+11. [Documentation Update](#documentation-update)
+12. [**MANDATORY LAST STEP: Reference Documents Update**](#mandatory-last-step-reference-documents-update)
+13. [Deployment Checklist](#deployment-checklist)
 
 ---
 
@@ -72,6 +73,50 @@ Before proceeding to Initial Assessment, verify:
 - [ ] If working with navigation: I have reviewed NAVIGATION_MAP.md
 
 **⚠️ DO NOT PROCEED** until you have completed this step.
+
+---
+
+## Major Work Governance
+
+### When Major Work is Permitted
+
+Major work (substantial UI overhauls, architectural changes, feature rewrites) is permitted when:
+
+1. **All dependencies are up to date**
+   - [ ] Check `package.json` for outdated npm packages
+   - [ ] Verify PHP dependencies are current
+   - [ ] Review database schema is current with `database_schema.sql`
+
+2. **Setup/Database import is validated**
+   - [ ] The `setup.php` wizard completes successfully
+   - [ ] Database import runs without errors
+   - [ ] All tables and relationships are intact
+
+3. **Approval criteria met**
+   - [ ] Clear requirements documented
+   - [ ] Impact analysis completed
+   - [ ] Rollback plan defined
+   - [ ] Testing strategy outlined
+
+### Major Work Checklist
+
+Before starting major work:
+- [ ] Dependencies audit completed (`npm audit`, `composer audit` if applicable)
+- [ ] Database backup taken
+- [ ] Full setup.php test run completed
+- [ ] All existing tests passing
+- [ ] Stakeholder sign-off received
+
+### Definition of Major Work
+
+Major work includes:
+- Complete UI overhauls of existing features
+- Database schema migrations affecting multiple tables
+- Changes affecting more than 5 view files
+- Architectural refactoring
+- New feature modules requiring new database tables
+
+**Note:** Minor fixes, bug repairs, and small enhancements do NOT require this governance process.
 
 ---
 
