@@ -113,6 +113,7 @@ $allowed_pages = [
     'admin_discounts'         => 'views/admin_discounts.php',
     'admin_session_types'     => 'views/admin_session_types.php',
     'admin_email_reports'     => 'views/email_logs.php',
+    'business_cards'          => 'views/admin_business_cards.php',
     
     // Athlete/Coach Views
     'athlete_evaluations'     => 'views/athlete_evaluations.php',
@@ -603,6 +604,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>">
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools
+            </a>
+            <a href="?page=business_cards" class="nav-link <?= $page=='business_cards'?'active':'' ?>">
+                <i class="fa-solid fa-id-card icon"></i> Business Cards
             </a>
         </nav>
     </div>
