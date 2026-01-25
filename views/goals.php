@@ -1182,4 +1182,12 @@ document.querySelectorAll('.modal').forEach(modal => {
         }
     });
 });
+
+// Auto-open create goal modal if action=create is in URL
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'create') {
+        openCreateGoalModal();
+    }
+});
 </script>

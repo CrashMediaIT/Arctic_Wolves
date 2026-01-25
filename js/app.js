@@ -485,7 +485,12 @@
                 
                 // Handle view-session action specifically
                 if (action === 'view-session' && sessionId) {
-                    window.location.href = `?page=session_detail&id=${sessionId}`;
+                    // Only navigate if sessionId is numeric (real session, not demo)
+                    // Demo sessions (e.g., "demo-1") are handled by local page handlers
+                    if (/^\d+$/.test(sessionId)) {
+                        window.location.href = `?page=session_detail&id=${sessionId}`;
+                    }
+                    // For non-numeric IDs (demo sessions), do nothing - let local handlers manage
                     return;
                 }
                 

@@ -819,38 +819,69 @@ if (count($sessions) === 0) {
 <script>
 // Handle demo session view buttons
 document.addEventListener('DOMContentLoaded', function() {
-    // Add click handlers to all view-session buttons
+    // Add click handlers to all view-session buttons (capture phase for priority)
     document.querySelectorAll('[data-action="view-session"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             const sessionId = this.getAttribute('data-session-id');
             const sessionCard = this.closest('.session-card');
             
-            // Check if this is demo data
-            if (sessionCard && sessionCard.getAttribute('data-is-demo') === 'true') {
+            // Check if this is demo data (either by data-is-demo attribute or by ID format)
+            const isDemo = (sessionCard && sessionCard.getAttribute('data-is-demo') === 'true') || 
+                          (sessionId && String(sessionId).startsWith('demo-'));
+            
+            if (isDemo) {
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
                 
                 // Populate modal with demo session data
                 document.getElementById('modalSessionTitle').innerHTML = 
-                    sessionCard.getAttribute('data-session-title') + 
+                    (sessionCard?.getAttribute('data-session-title') || 'Demo Session') + 
                     '<span class="demo-badge">Demo</span>';
                 document.getElementById('modalSessionDateTime').textContent = 
-                    sessionCard.getAttribute('data-session-datetime') + ' - ' + 
-                    sessionCard.getAttribute('data-session-end-time');
+                    (sessionCard?.getAttribute('data-session-datetime') || 'Demo Date') + 
+                    (sessionCard?.getAttribute('data-session-end-time') ? ' - ' + sessionCard.getAttribute('data-session-end-time') : '');
                 document.getElementById('modalSessionDuration').textContent = 
-                    sessionCard.getAttribute('data-session-duration') + ' minutes';
+                    (sessionCard?.getAttribute('data-session-duration') || '60') + ' minutes';
                 document.getElementById('modalSessionCoach').textContent = 
-                    sessionCard.getAttribute('data-session-coach');
+                    sessionCard?.getAttribute('data-session-coach') || 'Demo Coach';
                 document.getElementById('modalSessionLocation').textContent = 
-                    sessionCard.getAttribute('data-session-location') || 'Not specified';
+                    sessionCard?.getAttribute('data-session-location') || 'Not specified';
                 document.getElementById('modalSessionDescription').textContent = 
-                    sessionCard.getAttribute('data-session-description') || 'No description available';
+                    sessionCard?.getAttribute('data-session-description') || 'No description available';
                 
                 // Show modal
                 document.getElementById('sessionDetailModal').classList.add('active');
+                return false;
             }
             // For non-demo data, let the default app.js handler take over
-        });
+        }, true); // Use capture phase to run before app.js
+    });
+    
+    // Add click handlers for cancel-session buttons on demo sessions
+    document.querySelectorAll('[data-action="cancel-session"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            const sessionId = this.getAttribute('data-session-id');
+            const sessionCard = this.closest('.session-card');
+            
+            // Check if this is demo data
+            const isDemo = (sessionCard && sessionCard.getAttribute('data-is-demo') === 'true') || 
+                          (sessionId && String(sessionId).startsWith('demo-'));
+            
+            if (isDemo) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                // Show info message for demo sessions using toast notification
+                if (typeof window.showToast === 'function') {
+                    window.showToast('This is a demo session. Book a real session to manage cancellations.', 'info');
+                } else {
+                    alert('This is a demo session. Book a real session to manage cancellations.');
+                }
+                return false;
+            }
+        }, true); // Use capture phase to run before app.js
     });
     
     // Close modal when clicking overlay
