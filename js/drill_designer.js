@@ -75,7 +75,42 @@ class DrillDesigner {
             'Add Cone': 'cone',
             'Draw Line': 'line',
             'Add Arrow': 'arrow',
-            'Clear All': 'clear'
+            'Clear All': 'clear',
+            'Forward (F)': 'forward',
+            'Forward 1 (F1)': 'f1',
+            'Forward 2 (F2)': 'f2',
+            'Forward 3 (F3)': 'f3',
+            'Defense (D)': 'defense',
+            'Defense 1 (D1)': 'd1',
+            'Defense 2 (D2)': 'd2',
+            'Coach': 'coach',
+            'Goalie (G)': 'goalie',
+            'Center (C)': 'center',
+            'Left Wing (LW)': 'lw',
+            'Right Wing (RW)': 'rw',
+            'Left Defense (LD)': 'ld',
+            'Right Defense (RD)': 'rd',
+            'Single Puck': 'puck',
+            'Puck Group': 'pucks',
+            'Cone': 'cone',
+            'Net': 'net',
+            'Mini Net': 'mininet',
+            'Tire': 'tire',
+            'Stick': 'stick',
+            'Draw Dashed Line': 'dashed',
+            'Arrow': 'arrow',
+            'Add Text': 'text',
+            'Number 0': 'num0',
+            'Number 1': 'num1',
+            'Number 2': 'num2',
+            'Number 3': 'num3',
+            'Number 4': 'num4',
+            'Number 5': 'num5',
+            'Number 6': 'num6',
+            'Number 7': 'num7',
+            'Number 8': 'num8',
+            'Number 9': 'num9',
+            'Fullscreen': 'fullscreen'
         };
         
         if (toolName === 'Clear All') {
@@ -83,7 +118,25 @@ class DrillDesigner {
             return;
         }
         
+        if (toolName === 'Fullscreen') {
+            this.toggleFullscreen();
+            return;
+        }
+        
         this.currentTool = toolMap[toolName] || 'select';
+    }
+    
+    toggleFullscreen() {
+        const container = this.canvas.parentElement;
+        if (container) {
+            container.classList.toggle('fullscreen');
+            // Resize canvas for fullscreen
+            setTimeout(() => {
+                this.canvas.width = container.offsetWidth;
+                this.canvas.height = container.offsetHeight;
+                this.redraw();
+            }, 100);
+        }
     }
     
     handleMouseDown(e) {
@@ -97,7 +150,7 @@ class DrillDesigner {
                 this.isDragging = true;
                 this.dragStartPos = { x, y };
             }
-        } else if (this.currentTool === 'line' || this.currentTool === 'arrow') {
+        } else if (this.currentTool === 'line' || this.currentTool === 'arrow' || this.currentTool === 'dashed') {
             this.dragStartPos = { x, y };
         }
     }
@@ -129,7 +182,7 @@ class DrillDesigner {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        if (this.currentTool === 'line' || this.currentTool === 'arrow') {
+        if (this.currentTool === 'line' || this.currentTool === 'arrow' || this.currentTool === 'dashed') {
             if (this.dragStartPos) {
                 this.objects.push({
                     type: this.currentTool,
@@ -146,7 +199,9 @@ class DrillDesigner {
     }
     
     handleClick(e) {
-        if (this.currentTool === 'select' || this.currentTool === 'line' || this.currentTool === 'arrow') {
+        // Tools that shouldn't add objects on click
+        const ignoreTools = ['select', 'line', 'arrow', 'dashed'];
+        if (ignoreTools.includes(this.currentTool)) {
             return;
         }
         
@@ -154,12 +209,83 @@ class DrillDesigner {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        if (this.currentTool === 'player') {
+        // Handle text tool with prompt
+        if (this.currentTool === 'text') {
+            const text = prompt('Enter text:');
+            if (text) {
+                this.objects.push({
+                    type: 'text',
+                    x: x,
+                    y: y,
+                    text: text,
+                    color: '#000'
+                });
+                this.redraw();
+                this.saveState();
+            }
+            return;
+        }
+        
+        // Player position tools
+        const playerPositions = {
+            'forward': { label: 'F', color: '#00bfff' },
+            'f1': { label: 'F1', color: '#00bfff' },
+            'f2': { label: 'F2', color: '#00bfff' },
+            'f3': { label: 'F3', color: '#00bfff' },
+            'defense': { label: 'D', color: '#0066cc' },
+            'd1': { label: 'D1', color: '#0066cc' },
+            'd2': { label: 'D2', color: '#0066cc' },
+            'goalie': { label: 'G', color: '#cc0000' },
+            'coach': { label: 'C', color: '#333', isCoach: true },
+            'center': { label: 'C', color: '#ff6600' },
+            'lw': { label: 'LW', color: '#ff6600' },
+            'rw': { label: 'RW', color: '#ff6600' },
+            'ld': { label: 'LD', color: '#0066cc' },
+            'rd': { label: 'RD', color: '#0066cc' }
+        };
+        
+        if (playerPositions[this.currentTool]) {
+            const pos = playerPositions[this.currentTool];
             this.objects.push({
                 type: 'player',
                 x: x,
                 y: y,
-                color: '#00bfff'
+                color: pos.color,
+                label: pos.label,
+                isCoach: pos.isCoach || false
+            });
+            this.redraw();
+            this.saveState();
+            return;
+        }
+        
+        // Number tools
+        const numberMatch = this.currentTool.match(/^num(\d)$/);
+        if (numberMatch) {
+            this.objects.push({
+                type: 'number',
+                x: x,
+                y: y,
+                value: numberMatch[1],
+                color: '#000'
+            });
+            this.redraw();
+            this.saveState();
+            return;
+        }
+        
+        // Equipment tools
+        if (this.currentTool === 'puck') {
+            this.objects.push({
+                type: 'puck',
+                x: x,
+                y: y
+            });
+        } else if (this.currentTool === 'pucks') {
+            this.objects.push({
+                type: 'pucks',
+                x: x,
+                y: y
             });
         } else if (this.currentTool === 'cone') {
             this.objects.push({
@@ -167,6 +293,40 @@ class DrillDesigner {
                 x: x,
                 y: y,
                 color: '#ff6b00'
+            });
+        } else if (this.currentTool === 'net') {
+            this.objects.push({
+                type: 'net',
+                x: x,
+                y: y,
+                rotation: 0
+            });
+        } else if (this.currentTool === 'mininet') {
+            this.objects.push({
+                type: 'mininet',
+                x: x,
+                y: y,
+                rotation: 0
+            });
+        } else if (this.currentTool === 'tire') {
+            this.objects.push({
+                type: 'tire',
+                x: x,
+                y: y
+            });
+        } else if (this.currentTool === 'stick') {
+            this.objects.push({
+                type: 'stick',
+                x: x,
+                y: y,
+                rotation: 0
+            });
+        } else if (this.currentTool === 'player') {
+            this.objects.push({
+                type: 'player',
+                x: x,
+                y: y,
+                color: '#00bfff'
             });
         }
         
@@ -177,10 +337,12 @@ class DrillDesigner {
     findObjectAt(x, y) {
         for (let i = this.objects.length - 1; i >= 0; i--) {
             const obj = this.objects[i];
-            if (obj.type === 'player' || obj.type === 'cone') {
+            // Check if the object is close to the click position
+            const hitRadius = 20;
+            if (obj.x !== undefined && obj.y !== undefined) {
                 const dx = x - obj.x;
                 const dy = y - obj.y;
-                if (Math.sqrt(dx * dx + dy * dy) < 15) {
+                if (Math.sqrt(dx * dx + dy * dy) < hitRadius) {
                     return obj;
                 }
             }
@@ -507,13 +669,31 @@ class DrillDesigner {
         
         this.objects.forEach(obj => {
             if (obj.type === 'player') {
-                this.drawPlayer(obj.x, obj.y, obj.color);
+                this.drawPlayer(obj.x, obj.y, obj.color, obj.label, obj.isCoach);
             } else if (obj.type === 'cone') {
                 this.drawCone(obj.x, obj.y, obj.color);
             } else if (obj.type === 'line') {
                 this.drawLine(obj.x1, obj.y1, obj.x2, obj.y2, '#333');
+            } else if (obj.type === 'dashed') {
+                this.drawDashedLine(obj.x1, obj.y1, obj.x2, obj.y2, '#333');
             } else if (obj.type === 'arrow') {
                 this.drawArrow(obj.x1, obj.y1, obj.x2, obj.y2, '#333');
+            } else if (obj.type === 'puck') {
+                this.drawPuck(obj.x, obj.y);
+            } else if (obj.type === 'pucks') {
+                this.drawPuckGroup(obj.x, obj.y);
+            } else if (obj.type === 'net') {
+                this.drawNet(obj.x, obj.y, obj.rotation);
+            } else if (obj.type === 'mininet') {
+                this.drawMiniNet(obj.x, obj.y, obj.rotation);
+            } else if (obj.type === 'tire') {
+                this.drawTire(obj.x, obj.y);
+            } else if (obj.type === 'stick') {
+                this.drawStick(obj.x, obj.y, obj.rotation);
+            } else if (obj.type === 'text') {
+                this.drawText(obj.x, obj.y, obj.text, obj.color);
+            } else if (obj.type === 'number') {
+                this.drawNumber(obj.x, obj.y, obj.value, obj.color);
             }
         });
         
@@ -521,19 +701,47 @@ class DrillDesigner {
             this.ctx.strokeStyle = '#00ff00';
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
-            this.ctx.arc(this.selectedObject.x, this.selectedObject.y, 18, 0, 2 * Math.PI);
+            this.ctx.arc(this.selectedObject.x, this.selectedObject.y, 22, 0, 2 * Math.PI);
             this.ctx.stroke();
         }
     }
     
-    drawPlayer(x, y, color) {
-        this.ctx.fillStyle = color;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 12, 0, 2 * Math.PI);
-        this.ctx.fill();
-        this.ctx.strokeStyle = '#fff';
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
+    drawPlayer(x, y, color, label, isCoach) {
+        const ctx = this.ctx;
+        
+        if (isCoach) {
+            // Draw coach as rectangle
+            ctx.fillStyle = color;
+            ctx.fillRect(x - 10, y - 12, 20, 24);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - 10, y - 12, 20, 24);
+            
+            // Draw C label
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('C', x, y);
+        } else {
+            // Draw player circle
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 14, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw label if present
+            if (label) {
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, x, y);
+            }
+        }
     }
     
     drawCone(x, y, color) {
@@ -558,6 +766,17 @@ class DrillDesigner {
         this.ctx.stroke();
     }
     
+    drawDashedLine(x1, y1, x2, y2, color) {
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([8, 5]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(x1, y1);
+        this.ctx.lineTo(x2, y2);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+    }
+    
     drawArrow(x1, y1, x2, y2, color) {
         const headlen = 15;
         const angle = Math.atan2(y2 - y1, x2 - x1);
@@ -579,6 +798,152 @@ class DrillDesigner {
         this.ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
         this.ctx.closePath();
         this.ctx.fill();
+    }
+    
+    drawPuck(x, y) {
+        const ctx = this.ctx;
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
+    drawPuckGroup(x, y) {
+        const ctx = this.ctx;
+        ctx.fillStyle = '#000';
+        // Draw cluster of pucks
+        const positions = [
+            { dx: 0, dy: -8 },
+            { dx: -7, dy: 4 },
+            { dx: 7, dy: 4 }
+        ];
+        positions.forEach(pos => {
+            ctx.beginPath();
+            ctx.arc(x + pos.dx, y + pos.dy, 6, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+    }
+    
+    drawNet(x, y, rotation) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rotation || 0) * Math.PI / 180);
+        
+        // Net frame
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 3;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        
+        // Net shape
+        ctx.beginPath();
+        ctx.moveTo(-20, -15);
+        ctx.lineTo(-25, 15);
+        ctx.lineTo(25, 15);
+        ctx.lineTo(20, -15);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Net mesh
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 1;
+        for (let i = -15; i <= 15; i += 5) {
+            ctx.beginPath();
+            ctx.moveTo(i - 2, -13);
+            ctx.lineTo(i, 13);
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+    }
+    
+    drawMiniNet(x, y, rotation) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rotation || 0) * Math.PI / 180);
+        
+        // Mini net frame
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        
+        ctx.beginPath();
+        ctx.moveTo(-12, -10);
+        ctx.lineTo(-15, 10);
+        ctx.lineTo(15, 10);
+        ctx.lineTo(12, -10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+    
+    drawTire(x, y) {
+        const ctx = this.ctx;
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 6;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.beginPath();
+        ctx.arc(x, y, 12, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+    }
+    
+    drawStick(x, y, rotation) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rotation || 0) * Math.PI / 180);
+        
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 4;
+        
+        // Shaft
+        ctx.beginPath();
+        ctx.moveTo(0, -20);
+        ctx.lineTo(0, 15);
+        ctx.stroke();
+        
+        // Blade
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 15);
+        ctx.lineTo(12, 18);
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+    
+    drawText(x, y, text, color) {
+        const ctx = this.ctx;
+        ctx.fillStyle = color || '#000';
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, y);
+    }
+    
+    drawNumber(x, y, value, color) {
+        const ctx = this.ctx;
+        
+        // Background circle
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(x, y, 14, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = color || '#000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Number
+        ctx.fillStyle = color || '#000';
+        ctx.font = 'bold 16px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(value, x, y);
     }
     
     saveState() {
