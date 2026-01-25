@@ -290,70 +290,23 @@ $videos = $video_stmt->fetchAll();
 </div>
 
 <style>
-.tabs-container {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-}
+/* =========================================================
+   COACH VIDEO REVIEWS - Consolidated Design
+   ========================================================= */
 
-.tabs-nav {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.tab-btn {
-    padding: 12px 24px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.tab-btn:hover {
-    color: var(--text-white);
-    border-color: var(--neon);
-    background: rgba(107, 70, 193, 0.1);
-}
-
-.tab-btn.active {
-    background: linear-gradient(135deg, var(--neon), var(--accent));
-    color: white;
-    border-color: var(--neon);
-}
-
-.tab-btn i {
-    font-size: 14px;
-}
-
-.tabs-filters {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
+/* Tab content visibility */
 .tab-content {
     display: none;
 }
 
 .tab-content.active {
     display: block;
+    animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .action-bar {
@@ -647,6 +600,17 @@ $videos = $video_stmt->fetchAll();
     background: linear-gradient(135deg, var(--primary), var(--primary-light, #8B5CF6));
     color: white;
     box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+}
+
+.tabs-filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.tabs-filters .form-input-small {
+    min-width: 150px;
 }
 
 /* Improved video list styling */

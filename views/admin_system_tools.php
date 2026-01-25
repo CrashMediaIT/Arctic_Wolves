@@ -662,14 +662,38 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* =========================================================
+   SYSTEM TOOLS - Enhanced Design
+   ========================================================= */
+
 /* Tab Navigation Styles */
+.system-tools-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
 .tab-navigation {
     display: flex;
     gap: 4px;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
     border-bottom: 2px solid var(--border);
     overflow-x: auto;
     padding-bottom: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+}
+
+.tab-navigation::-webkit-scrollbar {
+    height: 4px;
+}
+
+.tab-navigation::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tab-navigation::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
 }
 
 .tab-link {
@@ -747,6 +771,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .tab-content.active {
     display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Enhanced Card Styles for System Tools */
+.tab-content .card {
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.tab-content .card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.05) 0%, transparent 100%);
+}
+
+.tab-content .card-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tab-content .card-header h3 i {
+    color: var(--primary);
+}
+
+.tab-content .card-body {
+    padding: 24px;
 }
 
 /* Mileage Rates Styles */
@@ -850,6 +917,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .setting-item .form-input {
     max-width: 300px;
+}
+
+/* Form Actions styling */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+}
+
+.form-actions .btn {
+    min-width: 140px;
 }
 
 .theme-colors {
@@ -1016,9 +1097,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .toggle-switch {
     position: relative;
-    width: 60px;
-    height: 30px;
+    width: 56px;
+    height: 28px;
     display: inline-block;
+    flex-shrink: 0;
 }
 
 .toggle-switch input {
@@ -1035,8 +1117,8 @@ document.addEventListener('DOMContentLoaded', function() {
     right: 0;
     bottom: 0;
     background: var(--border);
-    transition: 0.4s;
-    border-radius: 30px;
+    transition: all 0.3s ease;
+    border-radius: 28px;
 }
 
 .toggle-slider:before {
@@ -1044,19 +1126,24 @@ document.addEventListener('DOMContentLoaded', function() {
     content: "";
     height: 22px;
     width: 22px;
-    left: 4px;
-    bottom: 4px;
+    left: 3px;
+    bottom: 3px;
     background: #fff;
-    transition: 0.4s;
+    transition: all 0.3s ease;
     border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-switch input:checked + .toggle-slider {
-    background: var(--neon);
+    background: linear-gradient(135deg, var(--primary), var(--primary-light, #8B5CF6));
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(30px);
+    transform: translateX(28px);
+}
+
+.toggle-switch:hover .toggle-slider {
+    box-shadow: 0 0 8px rgba(107, 70, 193, 0.3);
 }
 
 .theme-colors {
@@ -1095,28 +1182,61 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .db-tool-card {
-    background: var(--bg-main);
+    background: linear-gradient(135deg, var(--bg-main) 0%, rgba(107, 70, 193, 0.03) 100%);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
+    border-radius: 12px;
+    padding: 28px;
     text-align: center;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.db-tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light, #8B5CF6));
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .db-tool-card:hover {
-    border-color: var(--neon);
-    transform: translateY(-3px);
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(107, 70, 193, 0.15);
 }
 
-.db-tool-card i {
+.db-tool-card:hover::before {
+    opacity: 1;
+}
+
+.db-tool-card > i {
     font-size: 48px;
-    color: var(--neon);
+    color: var(--primary);
     display: block;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    transition: transform 0.3s ease;
 }
 
-.db-tool-card.warning i {
+.db-tool-card:hover > i {
+    transform: scale(1.1);
+}
+
+.db-tool-card.warning > i {
     color: #ef4444;
+}
+
+.db-tool-card.warning::before {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.db-tool-card.warning:hover {
+    border-color: #ef4444;
+    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.15);
 }
 
 .db-tool-card h4 {
@@ -1130,6 +1250,7 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 14px;
     color: var(--text-dim);
     margin-bottom: 20px;
+    line-height: 1.5;
 }
 
 /* Production Mode Styles */

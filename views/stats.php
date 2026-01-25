@@ -124,7 +124,7 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-bullseye"></i> Goals Tracker</h3>
-            <a href="?page=goals" class="btn btn-primary">
+            <a href="?page=goals&action=create" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Add Goal
             </a>
         </div>
@@ -165,7 +165,7 @@ try {
                 <div class="empty-state">
                     <i class="fas fa-bullseye empty-icon"></i>
                     <p class="placeholder-text">No active goals. Start tracking your progress!</p>
-                    <a href="?page=goals" class="btn btn-primary">
+                    <a href="?page=goals&action=create" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Create Your First Goal
                     </a>
                 </div>
