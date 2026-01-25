@@ -162,27 +162,49 @@ if (count($sessions) === 0) {
 <?php endif; ?>
 
 <div class="sessions-content">
-    <!-- Filter Bar -->
-    <div class="filter-bar">
-        <form method="GET" action="" class="filter-group">
-            <input type="hidden" name="page" value="upcoming_sessions">
-            <input type="hidden" name="view" value="<?= htmlspecialchars($view_mode) ?>">
-            <label>Filter by:</label>
-            <select name="filter_period" class="form-input-small" data-action="auto-submit">
-                <option value="all" <?= $filter_period === 'all' ? 'selected' : '' ?>>All Sessions</option>
-                <option value="week" <?= $filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
-                <option value="next_week" <?= $filter_period === 'next_week' ? 'selected' : '' ?>>Next Week</option>
-                <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
-            </select>
-            <select name="filter_coach" class="form-input-small" data-action="auto-submit">
-                <option value="all">All Coaches</option>
-                <?php foreach ($coaches as $coach): ?>
-                    <option value="<?= $coach['id'] ?>" <?= $filter_coach == $coach['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </form>
+    <!-- Filter Box - Enhanced UI/UX -->
+    <div class="filter-box">
+        <div class="filter-box-header">
+            <i class="fas fa-filter"></i> Filter Sessions
+        </div>
+        <div class="filter-box-content">
+            <form method="GET" action="" class="filter-row">
+                <input type="hidden" name="page" value="upcoming_sessions">
+                <input type="hidden" name="view" value="<?= htmlspecialchars($view_mode) ?>">
+                <div class="filter-field">
+                    <label>Time Period</label>
+                    <select name="filter_period" class="form-select" id="filter-period">
+                        <option value="all" <?= $filter_period === 'all' ? 'selected' : '' ?>>All Sessions</option>
+                        <option value="week" <?= $filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
+                        <option value="next_week" <?= $filter_period === 'next_week' ? 'selected' : '' ?>>Next Week</option>
+                        <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Coach</label>
+                    <select name="filter_coach" class="form-select" id="filter-coach">
+                        <option value="all">All Coaches</option>
+                        <?php foreach ($coaches as $coach): ?>
+                            <option value="<?= $coach['id'] ?>" <?= $filter_coach == $coach['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field filter-actions">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                    <a href="?page=upcoming_sessions&view=<?= htmlspecialchars($view_mode) ?>" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="results-info">
+            <span><?= count($sessions) ?> session<?= count($sessions) !== 1 ? 's' : '' ?> found</span>
+        </div>
         <div class="view-controls">
             <div class="view-toggle">
                 <a href="?page=upcoming_sessions&view=list&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>" 
@@ -194,9 +216,10 @@ if (count($sessions) === 0) {
                     <i class="fas fa-calendar"></i>
                 </a>
             </div>
-            <a href="?page=booking" class="btn-primary"><i class="fas fa-plus"></i> Book Session</a>
+            <a href="?page=booking" class="btn btn-primary"><i class="fas fa-plus"></i> Book Session</a>
         </div>
     </div>
+
 
     <!-- Sessions List/Calendar View -->
     <?php if ($view_mode === 'calendar'): ?>
@@ -290,17 +313,95 @@ if (count($sessions) === 0) {
 </div>
 
 <style>
-.filter-bar {
+/* Filter Box Styles */
+.filter-box {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.filter-box-header {
+    background: var(--bg-main);
+    padding: 14px 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-box-header i {
+    color: var(--primary);
+}
+
+.filter-box-content {
     padding: 20px;
-    margin-bottom: 20px;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    align-items: end;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-field .form-select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-white);
+    font-size: 14px;
+}
+
+.filter-field .form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.filter-actions {
+    display: flex;
+    flex-direction: row !important;
+    gap: 8px !important;
+    align-items: flex-end;
+}
+
+.filter-actions label {
+    display: none;
+}
+
+/* Action Bar Styles */
+.action-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
+    margin-bottom: 24px;
     flex-wrap: wrap;
-    gap: 15px;
+}
+
+.results-info {
+    color: var(--text-dim);
+    font-size: 14px;
 }
 
 .view-controls {
@@ -620,31 +721,58 @@ if (count($sessions) === 0) {
         font-size: 9px;
         padding: 2px 4px;
     }
+    
+    .filter-row {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .view-controls {
+        justify-content: space-between;
+    }
 }
 
-/* Ensure btn-primary is properly styled */
-.view-controls .btn-primary {
+/* Button Styles */
+.btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 45px;
-    padding: 0 24px;
-    background: var(--primary);
-    color: #fff;
-    border: none;
+    height: 42px;
+    padding: 0 20px;
     border-radius: 8px;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     text-decoration: none;
     cursor: pointer;
     transition: all 0.3s ease;
+    border: none;
 }
 
-.view-controls .btn-primary:hover {
-    background: var(--button-hover, #7C3AED);
+.btn-primary {
+    background: var(--primary, #6B46C1);
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover, #7C3AED);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(107, 70, 193, 0.4);
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-white);
+}
+
+.btn-secondary:hover {
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
 /* Demo Data Notice */

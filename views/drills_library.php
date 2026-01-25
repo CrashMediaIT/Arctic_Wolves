@@ -45,7 +45,8 @@ if (count($drills) === 0) {
             'last_name' => 'Smith',
             'created_at' => (clone $today)->modify('-3 days')->format('Y-m-d H:i:s'),
             'custom_image' => '',
-            'ihs_source_url' => ''
+            'ihs_source_url' => '',
+            'created_by' => null
         ],
         [
             'id' => 'demo-2',
@@ -57,7 +58,8 @@ if (count($drills) === 0) {
             'last_name' => 'Johnson',
             'created_at' => (clone $today)->modify('-5 days')->format('Y-m-d H:i:s'),
             'custom_image' => '',
-            'ihs_source_url' => ''
+            'ihs_source_url' => '',
+            'created_by' => null
         ],
         [
             'id' => 'demo-3',
@@ -69,7 +71,8 @@ if (count($drills) === 0) {
             'last_name' => 'Williams',
             'created_at' => (clone $today)->modify('-7 days')->format('Y-m-d H:i:s'),
             'custom_image' => '',
-            'ihs_source_url' => ''
+            'ihs_source_url' => '',
+            'created_by' => null
         ],
         [
             'id' => 'demo-4',
@@ -81,7 +84,8 @@ if (count($drills) === 0) {
             'last_name' => 'Smith',
             'created_at' => (clone $today)->modify('-10 days')->format('Y-m-d H:i:s'),
             'custom_image' => '',
-            'ihs_source_url' => ''
+            'ihs_source_url' => '',
+            'created_by' => null
         ],
         [
             'id' => 'demo-5',
@@ -93,7 +97,8 @@ if (count($drills) === 0) {
             'last_name' => 'Johnson',
             'created_at' => (clone $today)->modify('-2 days')->format('Y-m-d H:i:s'),
             'custom_image' => '',
-            'ihs_source_url' => ''
+            'ihs_source_url' => '',
+            'created_by' => null
         ],
         [
             'id' => 'demo-6',
@@ -105,7 +110,8 @@ if (count($drills) === 0) {
             'last_name' => 'Williams',
             'created_at' => (clone $today)->modify('-8 days')->format('Y-m-d H:i:s'),
             'custom_image' => '',
-            'ihs_source_url' => ''
+            'ihs_source_url' => '',
+            'created_by' => null
         ]
     ];
     $is_demo_drills = true;
@@ -228,7 +234,7 @@ if (count($drills) === 0) {
                         <button class="btn-icon" data-action="add-to-plan" data-id="<?php echo $drill['id']; ?>" title="Add to Practice">
                             <i class="fas fa-plus"></i>
                         </button>
-                        <?php if ($drill['created_by'] == $user_id || in_array($user_role, ['admin', 'coach'])): ?>
+                        <?php if (($drill['created_by'] ?? null) == $user_id || in_array($user_role, ['admin', 'coach'])): ?>
                             <button class="btn-icon" data-action="edit" data-id="<?php echo $drill['id']; ?>" data-modal="edit-drill-modal" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
