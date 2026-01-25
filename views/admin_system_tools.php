@@ -18,43 +18,55 @@ try {
 }
 ?>
 
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-cog"></i> System Tools
-    </h1>
-    <p class="page-description">System settings, theme, and database tools</p>
+<div class="system-tools-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-cog"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">System Tools</h1>
+            <p class="page-description">Configure system settings, integrations, database, and maintenance</p>
+        </div>
+    </div>
 </div>
 
 <div class="system-tools-content">
-    <!-- System Tools Tabs - Proper tab navigation -->
-    <div class="tab-navigation" data-component="TabNavigation">
-        <a href="?page=system_tools&tab=settings" class="tab-link <?php echo $activeTab === 'settings' ? 'active' : ''; ?>" data-tab="settings">
-            <i class="fas fa-sliders-h"></i> Settings
-        </a>
-        <a href="?page=system_tools&tab=mileage" class="tab-link <?php echo $activeTab === 'mileage' ? 'active' : ''; ?>" data-tab="mileage">
-            <i class="fas fa-car"></i> Mileage Rates
-        </a>
-        <a href="?page=system_tools&tab=smtp" class="tab-link <?php echo $activeTab === 'smtp' ? 'active' : ''; ?>" data-tab="smtp">
-            <i class="fas fa-envelope"></i> SMTP
-        </a>
-        <a href="?page=system_tools&tab=nextcloud" class="tab-link <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>" data-tab="nextcloud">
-            <i class="fas fa-cloud"></i> Nextcloud
-        </a>
-        <a href="?page=system_tools&tab=theme" class="tab-link <?php echo $activeTab === 'theme' ? 'active' : ''; ?>" data-tab="theme">
-            <i class="fas fa-palette"></i> Theme
-        </a>
-        <a href="?page=system_tools&tab=database" class="tab-link <?php echo $activeTab === 'database' ? 'active' : ''; ?>" data-tab="database">
-            <i class="fas fa-database"></i> Database
-        </a>
-        <a href="?page=system_tools&tab=cron" class="tab-link <?php echo $activeTab === 'cron' ? 'active' : ''; ?>" data-tab="cron">
-            <i class="fas fa-clock"></i> Cron Jobs
-        </a>
-        <a href="?page=system_tools&tab=production" class="tab-link <?php echo $activeTab === 'production' ? 'active' : ''; ?>" data-tab="production">
-            <i class="fas fa-rocket"></i> Production Mode
-        </a>
-        <a href="system_health_validator.php" class="tab-link">
-            <i class="fas fa-heartbeat"></i> Health Check
-        </a>
+    <!-- System Tools Tabs - Modern Navigation -->
+    <div class="system-tools-tabs-wrapper">
+        <div class="system-tools-tabs">
+            <a href="?page=system_tools&tab=settings" class="tools-tab-link <?php echo $activeTab === 'settings' ? 'active' : ''; ?>">
+                <i class="fas fa-sliders-h"></i>
+                <span>Settings</span>
+            </a>
+            <a href="?page=system_tools&tab=mileage" class="tools-tab-link <?php echo $activeTab === 'mileage' ? 'active' : ''; ?>">
+                <i class="fas fa-car"></i>
+                <span>Mileage</span>
+            </a>
+            <a href="?page=system_tools&tab=smtp" class="tools-tab-link <?php echo $activeTab === 'smtp' ? 'active' : ''; ?>">
+                <i class="fas fa-envelope"></i>
+                <span>SMTP</span>
+            </a>
+            <a href="?page=system_tools&tab=nextcloud" class="tools-tab-link <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>">
+                <i class="fas fa-cloud"></i>
+                <span>Nextcloud</span>
+            </a>
+            <a href="?page=system_tools&tab=theme" class="tools-tab-link <?php echo $activeTab === 'theme' ? 'active' : ''; ?>">
+                <i class="fas fa-palette"></i>
+                <span>Theme</span>
+            </a>
+            <a href="?page=system_tools&tab=database" class="tools-tab-link <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
+                <i class="fas fa-database"></i>
+                <span>Database</span>
+            </a>
+            <a href="?page=system_tools&tab=production" class="tools-tab-link <?php echo $activeTab === 'production' ? 'active' : ''; ?>">
+                <i class="fas fa-rocket"></i>
+                <span>Production</span>
+            </a>
+            <a href="system_health_validator.php" class="tools-tab-link">
+                <i class="fas fa-heartbeat"></i>
+                <span>Health</span>
+            </a>
+        </div>
     </div>
 
     <!-- Settings Tab -->
@@ -663,71 +675,118 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <style>
 /* =========================================================
-   SYSTEM TOOLS - Enhanced Design
+   SYSTEM TOOLS - Enhanced Modern Design
    ========================================================= */
 
-/* Tab Navigation Styles */
+/* Page Header Styles */
+.system-tools-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+
+.page-header-text h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+
+.page-header-text p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Modern System Tools Tabs */
+.system-tools-tabs-wrapper {
+    margin-bottom: 28px;
+}
+
+.system-tools-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.system-tools-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.tools-tab-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.tools-tab-link:hover {
+    background: rgba(107, 70, 193, 0.1);
+    color: var(--text-primary);
+}
+
+.tools-tab-link.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+}
+
+.tools-tab-link i {
+    font-size: 16px;
+}
+
+/* Tab Navigation Styles (legacy) */
 .system-tools-content {
     max-width: 1200px;
     margin: 0 auto;
 }
 
 .tab-navigation {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 28px;
-    border-bottom: 2px solid var(--border);
-    overflow-x: auto;
-    padding-bottom: 0;
-    scrollbar-width: thin;
-    scrollbar-color: var(--primary) transparent;
-}
-
-.tab-navigation::-webkit-scrollbar {
-    height: 4px;
-}
-
-.tab-navigation::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.tab-navigation::-webkit-scrollbar-thumb {
-    background: var(--primary);
-    border-radius: 4px;
+    display: none;
 }
 
 .tab-link {
-    padding: 14px 20px;
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--text-dim);
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: -2px;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.tab-link:hover {
-    color: var(--text-white);
-    background: rgba(107, 70, 193, 0.1);
-}
-
-.tab-link.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-    background: rgba(107, 70, 193, 0.05);
-}
-
-.tab-link i {
-    font-size: 16px;
+    display: none;
 }
 
 /* Legacy .tabs and .tab-btn styles for backward compatibility */
@@ -783,7 +842,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .tab-content .card {
     background: var(--bg-card, #16161F);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 16px;
     margin-bottom: 24px;
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -795,7 +854,7 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, rgba(107, 70, 193, 0.05) 0%, transparent 100%);
+    background: linear-gradient(180deg, rgba(107, 70, 193, 0.08) 0%, transparent 100%);
 }
 
 .tab-content .card-header h3 {
@@ -805,15 +864,63 @@ document.addEventListener('DOMContentLoaded', function() {
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .tab-content .card-header h3 i {
-    color: var(--primary);
+    color: var(--primary-light);
 }
 
 .tab-content .card-body {
-    padding: 24px;
+    padding: 28px;
+}
+
+/* Settings List Enhancement */
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.05) 0%, transparent 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    gap: 20px;
+}
+
+.setting-item:hover {
+    border-color: var(--primary);
+    transform: translateX(4px);
+}
+
+.setting-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.setting-info h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.setting-info p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.setting-item .form-input,
+.setting-item .form-select {
+    max-width: 280px;
+    min-width: 200px;
 }
 
 /* Mileage Rates Styles */
@@ -823,8 +930,14 @@ document.addEventListener('DOMContentLoaded', function() {
     gap: 8px;
     background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 4px 12px;
+    border-radius: 10px;
+    padding: 6px 14px;
+    transition: all 0.3s ease;
+}
+
+.rate-input-group:hover,
+.rate-input-group:focus-within {
+    border-color: var(--primary);
 }
 
 .rate-input-group .form-input {
@@ -834,6 +947,7 @@ document.addEventListener('DOMContentLoaded', function() {
     text-align: center;
     font-size: 18px;
     font-weight: 700;
+    color: var(--primary-light);
 }
 
 .rate-input-group .form-input:focus {
@@ -1071,6 +1185,30 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 @media (max-width: 768px) {
+    .system-tools-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .page-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .system-tools-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .tools-tab-link span {
+        display: none;
+    }
+    
+    .tools-tab-link {
+        padding: 14px;
+    }
+    
     .tabs {
         overflow-x: auto;
     }
