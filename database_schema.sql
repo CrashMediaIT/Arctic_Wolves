@@ -470,17 +470,27 @@ CREATE TABLE IF NOT EXISTS `performance_stats` (
 CREATE TABLE IF NOT EXISTS `goals` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `athlete_id` INT NOT NULL,
-    `goal_title` VARCHAR(255) NOT NULL,
+    `created_by` INT DEFAULT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `goal_title` VARCHAR(255) DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
     `goal_description` TEXT DEFAULT NULL,
+    `category` VARCHAR(100) DEFAULT NULL,
+    `tags` VARCHAR(500) DEFAULT NULL,
     `target_value` DECIMAL(10,2) DEFAULT NULL,
     `current_value` DECIMAL(10,2) DEFAULT NULL,
     `target_date` DATE DEFAULT NULL,
-    `status` ENUM('active', 'completed', 'abandoned') DEFAULT 'active',
+    `completion_percentage` DECIMAL(5,2) DEFAULT 0.00,
+    `status` ENUM('active', 'completed', 'abandoned', 'archived') DEFAULT 'active',
+    `completed_at` TIMESTAMP NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_athlete` (`athlete_id`),
-    INDEX `idx_status` (`status`)
+    INDEX `idx_status` (`status`),
+    INDEX `idx_created_by` (`created_by`),
+    INDEX `idx_category` (`category`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage tracking
@@ -1066,46 +1076,62 @@ CREATE TABLE IF NOT EXISTS `goal_eval_steps` (
 CREATE TABLE IF NOT EXISTS `goal_history` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `goal_id` INT NOT NULL,
-    `field_changed` VARCHAR(100) NOT NULL,
+    `action` VARCHAR(100) NOT NULL,
+    `user_id` INT NOT NULL,
+    `changes` JSON DEFAULT NULL,
+    `field_changed` VARCHAR(100) DEFAULT NULL,
     `old_value` TEXT DEFAULT NULL,
     `new_value` TEXT DEFAULT NULL,
-    `changed_by` INT NOT NULL,
+    `changed_by` INT DEFAULT NULL,
     `change_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`goal_id`) REFERENCES `goals`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`changed_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_goal` (`goal_id`),
-    INDEX `idx_date` (`change_date`)
+    INDEX `idx_date` (`change_date`),
+    INDEX `idx_action` (`action`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Goal progress tracking
 CREATE TABLE IF NOT EXISTS `goal_progress` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `goal_id` INT NOT NULL,
-    `progress_date` DATE NOT NULL,
+    `user_id` INT DEFAULT NULL,
+    `progress_date` DATE DEFAULT NULL,
     `progress_value` DECIMAL(10,2) DEFAULT NULL,
     `progress_percentage` DECIMAL(5,2) DEFAULT NULL,
+    `progress_note` TEXT DEFAULT NULL,
     `notes` TEXT DEFAULT NULL,
     `recorded_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`goal_id`) REFERENCES `goals`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`recorded_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_goal` (`goal_id`),
-    INDEX `idx_date` (`progress_date`)
+    INDEX `idx_date` (`progress_date`),
+    INDEX `idx_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Goal steps (milestones)
 CREATE TABLE IF NOT EXISTS `goal_steps` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `goal_id` INT NOT NULL,
-    `step_number` INT NOT NULL,
-    `step_description` TEXT NOT NULL,
+    `step_order` INT NOT NULL DEFAULT 1,
+    `step_number` INT DEFAULT NULL,
+    `title` VARCHAR(255) DEFAULT NULL,
+    `step_description` TEXT DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
     `target_date` DATE DEFAULT NULL,
     `is_completed` TINYINT(1) DEFAULT 0,
     `completed_date` DATE DEFAULT NULL,
+    `completed_at` TIMESTAMP NULL,
+    `completed_by` INT DEFAULT NULL,
     `notes` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`goal_id`) REFERENCES `goals`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`completed_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_goal` (`goal_id`),
+    INDEX `idx_step_order` (`step_order`),
     INDEX `idx_step_num` (`step_number`),
     INDEX `idx_completed` (`is_completed`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

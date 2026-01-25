@@ -723,19 +723,20 @@ class DemoDataSeeder {
         }
         
         $athlete_id = $this->demo_ids['users']['athlete'][0];
+        $coach_id = !empty($this->demo_ids['users']['coach']) ? $this->demo_ids['users']['coach'][0] : null;
         
         $goals = [
-            ['Improve skating speed', 'Increase top skating speed by 10%', date('Y-m-d', strtotime('+60 days'))],
-            ['Master wrist shot', 'Perfect wrist shot accuracy to 80%', date('Y-m-d', strtotime('+90 days'))],
-            ['Build endurance', 'Complete 3 periods without fatigue', date('Y-m-d', strtotime('+120 days'))],
+            ['Improve skating speed', 'Increase top skating speed by 10%', date('Y-m-d', strtotime('+60 days')), 'Skating', 'speed,skating'],
+            ['Master wrist shot', 'Perfect wrist shot accuracy to 80%', date('Y-m-d', strtotime('+90 days')), 'Shooting', 'shooting,accuracy'],
+            ['Build endurance', 'Complete 3 periods without fatigue', date('Y-m-d', strtotime('+120 days')), 'Fitness', 'endurance,conditioning'],
         ];
         
         foreach ($goals as $goal) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO goals (user_id, title, description, target_date, status, is_demo, created_at)
-                VALUES (?, ?, ?, ?, 'active', 1, NOW())
+                INSERT INTO goals (athlete_id, created_by, title, description, target_date, category, tags, status, completion_percentage, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW())
             ");
-            $stmt->execute(array_merge([$athlete_id], $goal));
+            $stmt->execute([$athlete_id, $coach_id, $goal[0], $goal[1], $goal[2], $goal[3], $goal[4]]);
             $this->demo_ids['goals'][] = $this->pdo->lastInsertId();
         }
         
