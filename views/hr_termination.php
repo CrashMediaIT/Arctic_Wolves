@@ -14,7 +14,7 @@ $terminationStatsQuery = "SELECT
     COUNT(*) as total_terminations,
     COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
     COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-    COUNT(CASE WHEN termination_date > CURDATE() THEN 1 END) as upcoming
+    COUNT(CASE WHEN termination_date > CURDATE() AND status IN ('pending', 'scheduled') THEN 1 END) as upcoming
     FROM employee_terminations";
 try {
     $statsResult = $pdo->query($terminationStatsQuery);

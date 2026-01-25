@@ -520,18 +520,3 @@ function updateFileLabel(labelId, input) {
     }
 }
 </script>
-    color: var(--neon);
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    padding: 0;
-}
-
-.btn-link:hover {
-    text-decoration: underline;
-}
-
-.btn-link i {
-    margin-right: 5px;
-}
-</style>

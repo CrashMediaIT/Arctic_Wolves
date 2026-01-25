@@ -1281,22 +1281,31 @@ class DemoDataSeeder {
             return;
         }
         
+        // [invoice_number, subtotal, tax, total, status, days_ago]
         $invoices = [
             ['INV-DEMO-001', 225.00, 29.25, 254.25, 'paid', -45],
             ['INV-DEMO-002', 400.00, 52.00, 452.00, 'paid', -30],
             ['INV-DEMO-003', 750.00, 97.50, 847.50, 'paid', -15],
             ['INV-DEMO-004', 150.00, 19.50, 169.50, 'sent', -7],
-            ['INV-DEMO-005', 300.00, 39.00, 339.00, 'pending', -3],
+            ['INV-DEMO-005', 300.00, 39.00, 339.00, 'sent', -3],
             ['INV-DEMO-006', 175.00, 22.75, 197.75, 'overdue', -45],
             ['INV-DEMO-007', 450.00, 58.50, 508.50, 'sent', -5],
             ['INV-DEMO-008', 125.00, 16.25, 141.25, 'draft', 0],
         ];
         
+        // Valid status values for mapping
+        $validStatuses = ['paid', 'sent', 'overdue', 'draft'];
+        
         foreach ($invoices as $index => $invoice) {
             $user_id = $user_ids[$index % count($user_ids)];
-            $invoice_date = date('Y-m-d', strtotime("{$invoice[4]} days"));
-            $due_date = date('Y-m-d', strtotime("{$invoice[4]} days + 30 days"));
-            $paid_date = $invoice[3] === 'paid' ? date('Y-m-d', strtotime("{$invoice[4]} days + 7 days")) : null;
+            $days_ago = $invoice[5];
+            $status = $invoice[4];
+            $invoice_date = date('Y-m-d', strtotime("$days_ago days"));
+            $due_date = date('Y-m-d', strtotime("$days_ago days + 30 days"));
+            $paid_date = ($status === 'paid') ? date('Y-m-d', strtotime("$days_ago days + 7 days")) : null;
+            
+            // Ensure status is valid
+            $final_status = in_array($status, $validStatuses) ? $status : 'sent';
             
             $stmt = $this->pdo->prepare("
                 INSERT INTO invoices (invoice_number, user_id, invoice_date, due_date, subtotal, tax_amount, total_amount, status, paid_date, is_demo, created_at)
@@ -1310,7 +1319,7 @@ class DemoDataSeeder {
                 $invoice[1],
                 $invoice[2],
                 $invoice[3],
-                $invoice[4] === 'paid' ? 'paid' : ($invoice[4] === 'overdue' ? 'overdue' : ($invoice[4] === 'sent' ? 'sent' : ($invoice[4] === 'draft' ? 'draft' : 'sent'))),
+                $final_status,
                 $paid_date
             ]);
             $this->demo_ids['invoices'][] = $this->pdo->lastInsertId();
