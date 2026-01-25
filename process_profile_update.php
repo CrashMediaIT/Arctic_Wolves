@@ -267,6 +267,39 @@ if ($action == 'remove_photo') {
     }
 }
 
+// =========================================================
+// ACTION 10: UPDATE NOTIFICATION PREFERENCE (AJAX)
+// =========================================================
+if ($action == 'update_preference') {
+    header('Content-Type: application/json');
+    
+    $preference = $_POST['preference'] ?? '';
+    $value = intval($_POST['value'] ?? 0);
+    
+    // Validate preference name
+    $allowed_prefs = ['email_notifications', 'session_reminders', 'goal_updates', 'marketing_emails'];
+    if (!in_array($preference, $allowed_prefs)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid preference']);
+        exit();
+    }
+    
+    try {
+        // Check if user_preferences table exists, create record if needed
+        $stmt = $pdo->prepare("
+            INSERT INTO user_preferences (user_id, preference_key, preference_value) 
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE preference_value = ?
+        ");
+        $stmt->execute([$current_user_id, $preference, $value, $value]);
+        
+        echo json_encode(['success' => true, 'message' => 'Preference saved']);
+    } catch (PDOException $e) {
+        error_log("Preference update error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error']);
+    }
+    exit();
+}
+
 // Fallback
 header("Location: dashboard.php");
 exit();
