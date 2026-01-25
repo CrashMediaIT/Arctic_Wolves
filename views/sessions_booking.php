@@ -213,6 +213,7 @@ if (count($available_sessions) === 0) {
                 </div>
                 
                 <form class="booking-form" method="POST" action="process_booking.php" data-form="session-booking">
+                    <?= csrfTokenInput() ?>
                     <input type="hidden" name="action" value="book_private_session">
                     
                     <div class="form-row">

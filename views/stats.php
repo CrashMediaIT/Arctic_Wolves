@@ -44,11 +44,14 @@ try {
     
     // Get active goals
     $stmt = $pdo->prepare("
-        SELECT g.id, g.goal_title, g.goal_description, g.target_value, 
+        SELECT g.id, 
+               COALESCE(g.goal_title, g.title) as goal_title, 
+               COALESCE(g.goal_description, g.description) as goal_description, 
+               g.target_value, 
                g.current_value, g.target_date, g.status,
                CASE 
                    WHEN g.target_value > 0 THEN ROUND((g.current_value / g.target_value) * 100, 0)
-                   ELSE 0
+                   ELSE ROUND(COALESCE(g.completion_percentage, 0), 0)
                END as progress_percentage
         FROM goals g
         WHERE g.athlete_id = ?

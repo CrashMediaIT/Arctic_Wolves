@@ -212,6 +212,7 @@ $videos = $video_stmt->fetchAll();
             <h3><i class="fas fa-cloud-upload-alt"></i> Upload Review Video</h3>
             
             <form class="upload-form" method="POST" action="process_video.php" enctype="multipart/form-data" data-form="video-upload">
+                <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="upload_video">
                 <?php if ($user['role'] !== 'coach'): ?>
                     <div class="error">Unauthorized: Only coaches can upload videos</div>

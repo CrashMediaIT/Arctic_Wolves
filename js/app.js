@@ -381,6 +381,54 @@
                     }
                 }
                 
+                // Handle record-payment action
+                if (action === 'record-payment') {
+                    if (page) {
+                        window.location.href = `?page=${page}`;
+                        return;
+                    }
+                }
+                
+                // Handle generate-report action
+                if (action === 'generate-report') {
+                    if (page) {
+                        window.location.href = `?page=${page}`;
+                        return;
+                    }
+                }
+                
+                // Handle issue-credit action
+                if (action === 'issue-credit') {
+                    if (page) {
+                        window.location.href = `?page=${page}`;
+                        return;
+                    }
+                }
+                
+                // Handle view-products action
+                if (action === 'view-products') {
+                    if (page) {
+                        window.location.href = `?page=${page}`;
+                        return;
+                    }
+                }
+                
+                // Handle view-all action
+                if (action === 'view-all') {
+                    if (page) {
+                        window.location.href = `?page=${page}`;
+                        return;
+                    }
+                }
+                
+                // Handle view action (generic navigation)
+                if (action === 'view') {
+                    if (page) {
+                        window.location.href = `?page=${page}`;
+                        return;
+                    }
+                }
+                
                 // Handle run action (cron jobs, etc.)
                 if (action === 'run' && itemId) {
                     if (confirm('Run this job now?')) {

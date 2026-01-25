@@ -138,7 +138,7 @@ try {
                                 </td>
                                 <td><?= date('M j, Y', strtotime($invoice['invoice_date'])) ?></td>
                                 <td><?= date('M j, Y', strtotime($invoice['due_date'])) ?></td>
-                                <td><strong>$<?= number_format($invoice['amount'], 2) ?></strong></td>
+                                <td><strong>$<?= number_format($invoice['total_amount'] ?? 0, 2) ?></strong></td>
                                 <td><span class="status-badge <?= $statusClass ?>"><?= ucfirst($invoice['status']) ?></span></td>
                                 <td>
                                     <div class="table-actions">

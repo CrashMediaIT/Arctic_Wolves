@@ -691,3 +691,267 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<!-- Edit Drill Modal -->
+<div id="edit-drill-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Drill</h2>
+            <button class="modal-close" onclick="closeModal('edit-drill-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_drills.php" id="editDrillForm">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="save_drill">
+            <input type="hidden" name="drill_id" id="editDrillId">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Drill Name *</label>
+                    <input type="text" name="title" id="editDrillTitle" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category" id="editDrillCategory" class="form-input">
+                        <option value="">Select Category</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?php echo htmlspecialchars($cat['name']); ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                        <?php endforeach; ?>
+                        <option value="Skating">Skating</option>
+                        <option value="Shooting">Shooting</option>
+                        <option value="Passing">Passing</option>
+                        <option value="Stickhandling">Stickhandling</option>
+                        <option value="Team Play">Team Play</option>
+                        <option value="Goalie">Goalie</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="editDrillDescription" class="form-textarea" rows="4" placeholder="Describe the drill..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Video URL (optional)</label>
+                    <input type="url" name="video_url" id="editDrillVideoUrl" class="form-input" placeholder="https://...">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-drill-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Drill Modal -->
+<div id="view-drill-modal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-hockey-puck"></i> <span id="viewDrillTitle">Drill Details</span></h2>
+            <button class="modal-close" onclick="closeModal('view-drill-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="viewDrillContent">
+                <div class="drill-detail-section">
+                    <h4>Category</h4>
+                    <p id="viewDrillCategory">-</p>
+                </div>
+                <div class="drill-detail-section">
+                    <h4>Description</h4>
+                    <p id="viewDrillDescription">-</p>
+                </div>
+                <div class="drill-detail-section" id="viewDrillVideoSection" style="display: none;">
+                    <h4>Video</h4>
+                    <a href="#" id="viewDrillVideoLink" target="_blank" class="btn btn-secondary"><i class="fas fa-play"></i> Watch Video</a>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('view-drill-modal')"><i class="fas fa-times"></i> Close</button>
+            <button type="button" class="btn btn-primary" onclick="editDrillFromView()"><i class="fas fa-edit"></i> Edit Drill</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// View drill details
+let currentViewDrillId = null;
+let drillsData = <?php echo json_encode($drills); ?>;
+
+// Local modal functions (fallback if global ones not loaded)
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+}
+
+function viewDrill(drillId) {
+    const drill = drillsData.find(d => d.id == drillId);
+    if (!drill) return;
+    
+    currentViewDrillId = drillId;
+    document.getElementById('viewDrillTitle').textContent = drill.title || 'Drill Details';
+    document.getElementById('viewDrillCategory').textContent = drill.category_name || 'General';
+    document.getElementById('viewDrillDescription').textContent = drill.description || 'No description available.';
+    
+    const videoSection = document.getElementById('viewDrillVideoSection');
+    const videoLink = document.getElementById('viewDrillVideoLink');
+    if (drill.video_url) {
+        videoSection.style.display = 'block';
+        videoLink.href = drill.video_url;
+    } else {
+        videoSection.style.display = 'none';
+    }
+    
+    openModal('view-drill-modal');
+}
+
+function editDrillFromView() {
+    if (currentViewDrillId) {
+        closeModal('view-drill-modal');
+        loadDrillForEdit(currentViewDrillId);
+    }
+}
+
+function loadDrillForEdit(drillId) {
+    const drill = drillsData.find(d => d.id == drillId);
+    if (!drill) return;
+    
+    document.getElementById('editDrillId').value = drill.id;
+    document.getElementById('editDrillTitle').value = drill.title || '';
+    document.getElementById('editDrillCategory').value = drill.category_name || '';
+    document.getElementById('editDrillDescription').value = drill.description || '';
+    document.getElementById('editDrillVideoUrl').value = drill.video_url || '';
+    
+    openModal('edit-drill-modal');
+}
+
+// Handle view and edit button clicks
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-action="view"]').forEach(btn => {
+        const drillId = btn.getAttribute('data-id');
+        if (drillId) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                viewDrill(drillId);
+            });
+        }
+    });
+    
+    document.querySelectorAll('[data-action="edit"]').forEach(btn => {
+        const drillId = btn.getAttribute('data-id');
+        if (drillId) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadDrillForEdit(drillId);
+            });
+        }
+    });
+});
+</script>
+
+<style>
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-title i {
+    color: var(--primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--text-white);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-main);
+}
+
+.drill-detail-section {
+    margin-bottom: 20px;
+}
+
+.drill-detail-section h4 {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.drill-detail-section p {
+    font-size: 14px;
+    color: var(--text-white);
+    line-height: 1.6;
+}
+</style>
