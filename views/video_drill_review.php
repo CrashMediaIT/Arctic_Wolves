@@ -41,7 +41,6 @@ $drills_query = "
     SELECT v.*, 
            CONCAT(u.first_name, ' ', u.last_name) as coach_name,
            s.session_date,
-           s.title as session_title,
            st.name as session_type_name,
            d.title as drill_name,
            dc.id as category_id,
@@ -147,8 +146,8 @@ if (count($drill_videos) === 0 && count($attended_sessions) === 0) {
             'upload_date' => (clone $today)->modify('-2 days')->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Smith',
             'duration' => '2:35',
-            'thumbnail_url' => '',
-            'video_url' => ''
+            'thumbnail_url' => null,
+            'video_url' => null
         ],
         [
             'id' => 'demo-2',
@@ -157,8 +156,8 @@ if (count($drill_videos) === 0 && count($attended_sessions) === 0) {
             'upload_date' => (clone $today)->modify('-5 days')->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Johnson',
             'duration' => '3:20',
-            'thumbnail_url' => '',
-            'video_url' => ''
+            'thumbnail_url' => null,
+            'video_url' => null
         ],
         [
             'id' => 'demo-3',
@@ -167,8 +166,8 @@ if (count($drill_videos) === 0 && count($attended_sessions) === 0) {
             'upload_date' => (clone $today)->modify('-1 day')->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Williams',
             'duration' => '1:45',
-            'thumbnail_url' => '',
-            'video_url' => ''
+            'thumbnail_url' => null,
+            'video_url' => null
         ],
         [
             'id' => 'demo-4',
@@ -177,8 +176,8 @@ if (count($drill_videos) === 0 && count($attended_sessions) === 0) {
             'upload_date' => $today->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Smith',
             'duration' => '2:10',
-            'thumbnail_url' => '',
-            'video_url' => ''
+            'thumbnail_url' => null,
+            'video_url' => null
         ],
         [
             'id' => 'demo-5',
@@ -187,8 +186,8 @@ if (count($drill_videos) === 0 && count($attended_sessions) === 0) {
             'upload_date' => (clone $today)->modify('-3 days')->format('Y-m-d H:i:s'),
             'coach_name' => 'Coach Johnson',
             'duration' => '4:15',
-            'thumbnail_url' => '',
-            'video_url' => ''
+            'thumbnail_url' => null,
+            'video_url' => null
         ]
     ];
     
@@ -337,7 +336,7 @@ if (count($drill_videos) === 0 && count($attended_sessions) === 0) {
                             <?php endif; ?>
                         </div>
                         <div class="video-info">
-                            <h4 class="video-title"><?= htmlspecialchars($video['drill_name'] ?? $video['title'] ?? 'Untitled') ?></h4>
+                            <h4 class="video-title"><?= htmlspecialchars($video['drill_name'] ?? 'Untitled') ?></h4>
                             <div class="video-meta">
                                 <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
                                 <?php if (!empty($video['coach_name'])): ?>
