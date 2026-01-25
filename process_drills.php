@@ -280,10 +280,26 @@ if ($action === 'import_from_url') {
         exit();
     }
     
+    // Validate that URL is from trusted hockey drill sources
+    $url_parts = parse_url($ihs_url);
+    $host = strtolower($url_parts['host'] ?? '');
+    
+    // List of allowed domains for drill imports
+    $allowed_domains = [
+        'icehockeysystems.com',
+        'www.icehockeysystems.com',
+        'hockeyshare.com',
+        'www.hockeyshare.com',
+        'hockeycoachingabcs.com',
+        'www.hockeycoachingabcs.com'
+    ];
+    
+    if (!in_array($host, $allowed_domains)) {
+        header("Location: dashboard.php?page=import_drill&error=untrusted_domain");
+        exit();
+    }
+    
     try {
-        // Parse the URL to extract drill information
-        // Support various IHS URL formats
-        $url_parts = parse_url($ihs_url);
         $path = $url_parts['path'] ?? '';
         
         // Extract drill ID from URL path (e.g., /drills/drill-name-123 or /drill/123)
@@ -296,10 +312,13 @@ if ($action === 'import_from_url') {
             $drill_id = 'url-' . md5($ihs_url);
         }
         
-        // Generate drill name from URL
+        // Generate drill name from URL path
         $drill_name = ucwords(str_replace(['-', '_'], ' ', basename($path)));
-        if (empty($drill_name) || $drill_name === '/') {
-            $drill_name = 'Imported Drill ' . date('Y-m-d H:i:s');
+        if (empty($drill_name) || $drill_name === '/' || strlen($drill_name) < 3) {
+            // Count existing imported drills to create a unique name
+            $count_stmt = $pdo->query("SELECT COUNT(*) FROM drills WHERE ihs_source_url IS NOT NULL");
+            $import_count = $count_stmt->fetchColumn() + 1;
+            $drill_name = 'Imported Drill #' . $import_count;
         }
         
         // Create description with source URL

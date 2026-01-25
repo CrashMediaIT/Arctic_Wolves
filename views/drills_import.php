@@ -18,7 +18,8 @@ $error_messages = [
     'already_imported' => 'This drill has already been imported to your library.',
     'import_failed' => 'Import failed. Please try again or contact support.',
     'title_required' => 'Drill name is required for import.',
-    'permission_denied' => 'You do not have permission to import drills.'
+    'permission_denied' => 'You do not have permission to import drills.',
+    'untrusted_domain' => 'Only URLs from approved hockey drill websites are allowed (icehockeysystems.com, hockeyshare.com, hockeycoachingabcs.com).'
 ];
 
 $status_messages = [
@@ -118,7 +119,7 @@ $sampleDrills = [
             <h3><i class="fas fa-link"></i> Import from URL</h3>
         </div>
         <div class="card-body">
-            <p class="import-url-description">Paste an IHS Hockey drill URL to import it directly into your library.</p>
+            <p class="import-url-description">Paste a drill URL from a supported hockey drill website to import it directly into your library.</p>
             <form method="POST" action="process_drills.php" class="import-url-form" id="urlImportForm">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="import_from_url">
@@ -129,7 +130,7 @@ $sampleDrills = [
                     </div>
                     <button type="submit" class="btn-primary"><i class="fas fa-download"></i> Import from URL</button>
                 </div>
-                <p class="url-help-text"><i class="fas fa-info-circle"></i> Supported formats: icehockeysystems.com drill URLs</p>
+                <p class="url-help-text"><i class="fas fa-info-circle"></i> Supported sites: icehockeysystems.com, hockeyshare.com, hockeycoachingabcs.com</p>
             </form>
         </div>
     </div>
