@@ -454,7 +454,7 @@ function updateRevenueChart(days) {
 
 .quick-actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 16px;
 }
 
@@ -462,8 +462,8 @@ function updateRevenueChart(days) {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 24px 16px;
+    gap: 8px;
+    padding: 20px 12px;
     background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -472,6 +472,8 @@ function updateRevenueChart(days) {
     color: var(--text-white);
     font-family: 'Inter', sans-serif;
     text-align: center;
+    min-height: 130px;
+    overflow: hidden;
 }
 
 .quick-action-btn:hover {
@@ -482,13 +484,14 @@ function updateRevenueChart(days) {
 }
 
 .quick-action-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 20px;
+    flex-shrink: 0;
 }
 
 .quick-action-icon.invoice { background: rgba(107, 70, 193, 0.15); color: #8B5CF6; }
@@ -499,15 +502,18 @@ function updateRevenueChart(days) {
 .quick-action-icon.products { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
 
 .quick-action-btn span {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--text-white);
+    line-height: 1.2;
+    word-wrap: break-word;
 }
 
 .quick-action-btn small {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-dim);
     font-weight: 500;
+    line-height: 1.2;
 }
 
 /* Transactions */
