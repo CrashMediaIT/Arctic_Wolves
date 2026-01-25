@@ -56,9 +56,9 @@ if ($action === 'save_drill' || $action === 'create') {
         if ($cat) {
             $category_id = $cat['id'];
         } else {
-            // Create new category
-            $stmt = $pdo->prepare("INSERT INTO drill_categories (name, created_by) VALUES (?, ?)");
-            $stmt->execute([$category_name, $user_id]);
+            // Create new category (drill_categories table has: id, name, description, created_at)
+            $stmt = $pdo->prepare("INSERT INTO drill_categories (name) VALUES (?)");
+            $stmt->execute([$category_name]);
             $category_id = $pdo->lastInsertId();
         }
     }
@@ -164,8 +164,9 @@ if ($action === 'create_category') {
     }
     
     try {
-        $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description, created_by) VALUES (?, ?, ?)");
-        $stmt->execute([$name, $description, $user_id]);
+        // drill_categories table has: id, name, description, created_at (no created_by column)
+        $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description) VALUES (?, ?)");
+        $stmt->execute([$name, $description]);
         header("Location: dashboard.php?page=drills&status=category_created");
         exit();
     } catch (PDOException $e) {
@@ -224,9 +225,9 @@ if ($action === 'import_ihs') {
             if ($cat) {
                 $category_id = $cat['id'];
             } else {
-                // Create new category
-                $stmt = $pdo->prepare("INSERT INTO drill_categories (name, created_by) VALUES (?, ?)");
-                $stmt->execute([$category_name, $user_id]);
+                // Create new category (drill_categories table has: id, name, description, created_at)
+                $stmt = $pdo->prepare("INSERT INTO drill_categories (name) VALUES (?)");
+                $stmt->execute([$category_name]);
                 $category_id = $pdo->lastInsertId();
             }
         }

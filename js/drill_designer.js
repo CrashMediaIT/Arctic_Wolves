@@ -566,23 +566,53 @@ class DrillDesigner {
             ctx.stroke();
         }
         
-        // Faceoff circles
+        // Faceoff circles with hash marks
         const faceoffRadius = Math.min(w, h) * 0.12;
+        const faceoffY = side === 'top' ? h * 0.4 : h * 0.6;
+        
+        // Left faceoff circle
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
-        
         ctx.beginPath();
-        ctx.arc(w * 0.3, h * 0.5, faceoffRadius, 0, 2 * Math.PI);
+        ctx.arc(w * 0.3, faceoffY, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = '#c41e3a';
+        ctx.beginPath();
+        ctx.arc(w * 0.3, faceoffY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        this.drawHashMarks(ctx, w * 0.3, faceoffY, faceoffRadius);
+        
+        // Right faceoff circle  
+        ctx.beginPath();
+        ctx.arc(w * 0.7, faceoffY, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(w * 0.7, faceoffY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        this.drawHashMarks(ctx, w * 0.7, faceoffY, faceoffRadius);
+        
+        // Goal crease - proper semicircle
+        const creaseRadius = Math.min(w, h) * 0.1;
+        const goalY = side === 'top' ? h * 0.05 : h * 0.95;
+        
+        ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (side === 'top') {
+            ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
+        } else {
+            ctx.arc(w * 0.5, goalY, creaseRadius, Math.PI, 0);
+        }
+        ctx.fill();
         ctx.stroke();
         
+        // Goal line
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(w * 0.7, h * 0.5, faceoffRadius, 0, 2 * Math.PI);
-        ctx.stroke();
-        
-        // Goal crease
-        const goalY = side === 'top' ? h * 0.1 : h * 0.9;
-        ctx.beginPath();
-        ctx.arc(w * 0.5, goalY, 40, side === 'top' ? 0 : Math.PI, side === 'top' ? Math.PI : 0);
+        ctx.moveTo(w * 0.35, goalY);
+        ctx.lineTo(w * 0.65, goalY);
         ctx.stroke();
     }
     
@@ -590,32 +620,58 @@ class DrillDesigner {
         // Blue line
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 3;
-        const lineX = side === 'left' ? w * 0.7 : w * 0.3;
+        const lineX = side === 'left' ? w * 0.75 : w * 0.25;
         ctx.beginPath();
         ctx.moveTo(lineX, 0);
         ctx.lineTo(lineX, h);
         ctx.stroke();
         
-        // Faceoff circles
+        // Faceoff circles with hash marks
         const centerX = side === 'left' ? w * 0.35 : w * 0.65;
         const faceoffRadius = Math.min(w, h) * 0.12;
         
+        // Top faceoff circle
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(centerX, h * 0.35, faceoffRadius, 0, 2 * Math.PI);
+        ctx.arc(centerX, h * 0.3, faceoffRadius, 0, 2 * Math.PI);
         ctx.stroke();
-        
+        ctx.fillStyle = '#c41e3a';
         ctx.beginPath();
-        ctx.arc(centerX, h * 0.65, faceoffRadius, 0, 2 * Math.PI);
+        ctx.arc(centerX, h * 0.3, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        this.drawHashMarks(ctx, centerX, h * 0.3, faceoffRadius);
+        
+        // Bottom faceoff circle
+        ctx.beginPath();
+        ctx.arc(centerX, h * 0.7, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(centerX, h * 0.7, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        this.drawHashMarks(ctx, centerX, h * 0.7, faceoffRadius);
+        
+        // Goal crease - proper semicircle
+        const creaseRadius = Math.min(w, h) * 0.1;
+        const goalX = side === 'left' ? w * 0.05 : w * 0.95;
+        
+        ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (side === 'left') {
+            ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+        } else {
+            ctx.arc(goalX, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+        }
+        ctx.fill();
         ctx.stroke();
         
-        // Goal crease
-        const goalX = side === 'left' ? w * 0.05 : w * 0.95;
+        // Goal line
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(goalX, h * 0.35);
-        ctx.lineTo(goalX + (side === 'left' ? 30 : -30), h * 0.4);
-        ctx.lineTo(goalX + (side === 'left' ? 30 : -30), h * 0.6);
         ctx.lineTo(goalX, h * 0.65);
         ctx.stroke();
     }

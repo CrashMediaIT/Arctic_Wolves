@@ -237,8 +237,19 @@ if (count($sessions) === 0) {
             <?php foreach ($sessions as $session): 
                 $session_datetime = strtotime($session['session_date']);
                 $session_end_time = $session_datetime + ($session['duration_minutes'] ?? 60) * 60;
+                $is_demo = strpos($session['id'], 'demo-') === 0;
             ?>
-            <div class="session-card" data-component="SessionCard" data-session-id="<?= $session['id'] ?>">
+            <div class="session-card" data-component="SessionCard" data-session-id="<?= $session['id'] ?>"
+                 <?php if ($is_demo): ?>
+                 data-is-demo="true"
+                 data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>"
+                 data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $session_datetime) ?>"
+                 data-session-end-time="<?= date('g:i A', $session_end_time) ?>"
+                 data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>"
+                 data-session-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>"
+                 data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>"
+                 data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>"
+                 <?php endif; ?>>
                 <div class="session-date">
                     <div class="date-box">
                         <span class="date-day"><?= date('d', $session_datetime) ?></span>
@@ -653,7 +664,211 @@ if (count($sessions) === 0) {
 .demo-data-notice i {
     font-size: 16px;
 }
+
+/* Session Detail Modal */
+.session-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.session-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.session-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    transform: scale(0.9) translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.session-modal-overlay.active .session-modal {
+    transform: scale(1) translateY(0);
+}
+
+.session-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.session-modal-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin: 0;
+}
+
+.session-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    transition: color 0.3s;
+}
+
+.session-modal-close:hover {
+    color: var(--text-white);
+}
+
+.session-modal-body {
+    padding: 24px;
+}
+
+.session-modal-detail {
+    margin-bottom: 16px;
+}
+
+.session-modal-detail label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.session-modal-detail span {
+    display: block;
+    font-size: 15px;
+    color: var(--text-white);
+}
+
+.session-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.demo-badge {
+    background: linear-gradient(135deg, var(--neon), var(--accent));
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-left: 12px;
+}
 </style>
+
+<!-- Session Detail Modal for Demo Data -->
+<div class="session-modal-overlay" id="sessionDetailModal">
+    <div class="session-modal">
+        <div class="session-modal-header">
+            <h2 id="modalSessionTitle">Session Details</h2>
+            <button class="session-modal-close" onclick="closeSessionModal()">&times;</button>
+        </div>
+        <div class="session-modal-body">
+            <div class="session-modal-detail">
+                <label>Date & Time</label>
+                <span id="modalSessionDateTime">-</span>
+            </div>
+            <div class="session-modal-detail">
+                <label>Duration</label>
+                <span id="modalSessionDuration">-</span>
+            </div>
+            <div class="session-modal-detail">
+                <label>Coach</label>
+                <span id="modalSessionCoach">-</span>
+            </div>
+            <div class="session-modal-detail">
+                <label>Location</label>
+                <span id="modalSessionLocation">-</span>
+            </div>
+            <div class="session-modal-detail">
+                <label>Description</label>
+                <span id="modalSessionDescription">-</span>
+            </div>
+        </div>
+        <div class="session-modal-footer">
+            <button class="btn-secondary" onclick="closeSessionModal()">Close</button>
+        </div>
+    </div>
+</div>
 
 <!-- Include calendar JavaScript -->
 <script src="js/calendar.js"></script>
+
+<script>
+// Handle demo session view buttons
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click handlers to all view-session buttons
+    document.querySelectorAll('[data-action="view-session"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            const sessionId = this.getAttribute('data-session-id');
+            const sessionCard = this.closest('.session-card');
+            
+            // Check if this is demo data
+            if (sessionCard && sessionCard.getAttribute('data-is-demo') === 'true') {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Populate modal with demo session data
+                document.getElementById('modalSessionTitle').innerHTML = 
+                    sessionCard.getAttribute('data-session-title') + 
+                    '<span class="demo-badge">Demo</span>';
+                document.getElementById('modalSessionDateTime').textContent = 
+                    sessionCard.getAttribute('data-session-datetime') + ' - ' + 
+                    sessionCard.getAttribute('data-session-end-time');
+                document.getElementById('modalSessionDuration').textContent = 
+                    sessionCard.getAttribute('data-session-duration') + ' minutes';
+                document.getElementById('modalSessionCoach').textContent = 
+                    sessionCard.getAttribute('data-session-coach');
+                document.getElementById('modalSessionLocation').textContent = 
+                    sessionCard.getAttribute('data-session-location') || 'Not specified';
+                document.getElementById('modalSessionDescription').textContent = 
+                    sessionCard.getAttribute('data-session-description') || 'No description available';
+                
+                // Show modal
+                document.getElementById('sessionDetailModal').classList.add('active');
+            }
+            // For non-demo data, let the default app.js handler take over
+        });
+    });
+    
+    // Close modal when clicking overlay
+    document.getElementById('sessionDetailModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeSessionModal();
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('sessionDetailModal').classList.contains('active')) {
+            closeSessionModal();
+        }
+    });
+});
+
+function closeSessionModal() {
+    document.getElementById('sessionDetailModal').classList.remove('active');
+}
+</script>

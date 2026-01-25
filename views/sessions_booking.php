@@ -25,7 +25,7 @@ $available_sessions_query = "
     SELECT s.*, 
            CONCAT(c.first_name, ' ', c.last_name) as coach_name,
            st.name as session_type_name,
-           st.price as session_price,
+           COALESCE(s.price, st.default_price, 0) as session_price,
            l.name as location_name,
            COUNT(DISTINCT b.id) as registered_count,
            s.max_participants

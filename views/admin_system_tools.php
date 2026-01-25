@@ -34,6 +34,12 @@ try {
         <a href="?page=system_tools&tab=mileage" class="tab-link <?php echo $activeTab === 'mileage' ? 'active' : ''; ?>" data-tab="mileage">
             <i class="fas fa-car"></i> Mileage Rates
         </a>
+        <a href="?page=system_tools&tab=smtp" class="tab-link <?php echo $activeTab === 'smtp' ? 'active' : ''; ?>" data-tab="smtp">
+            <i class="fas fa-envelope"></i> SMTP
+        </a>
+        <a href="?page=system_tools&tab=nextcloud" class="tab-link <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>" data-tab="nextcloud">
+            <i class="fas fa-cloud"></i> Nextcloud
+        </a>
         <a href="?page=system_tools&tab=theme" class="tab-link <?php echo $activeTab === 'theme' ? 'active' : ''; ?>" data-tab="theme">
             <i class="fas fa-palette"></i> Theme
         </a>
@@ -166,6 +172,209 @@ try {
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary" data-action="save">
                             <i class="fas fa-save"></i> Save Mileage Rates
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SMTP Settings Tab -->
+    <div class="tab-content <?php echo $activeTab === 'smtp' ? 'active' : ''; ?>" id="smtp-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-envelope"></i> SMTP Email Settings</h3>
+            </div>
+            <div class="card-body">
+                <form id="smtp-form" method="POST" action="process_settings.php" data-form-type="smtp">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_smtp">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>SMTP Host</h4>
+                                <p>Mail server hostname (e.g., smtp.gmail.com)</p>
+                            </div>
+                            <input type="text" name="smtp_host" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['smtp_host'] ?? ''); ?>"
+                                   placeholder="smtp.example.com">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>SMTP Port</h4>
+                                <p>Port number (typically 587 for TLS, 465 for SSL)</p>
+                            </div>
+                            <input type="number" name="smtp_port" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['smtp_port'] ?? '587'); ?>"
+                                   placeholder="587">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>SMTP Username</h4>
+                                <p>Email account username or address</p>
+                            </div>
+                            <input type="text" name="smtp_username" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['smtp_username'] ?? ''); ?>"
+                                   placeholder="user@example.com">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>SMTP Password</h4>
+                                <p>Email account password or app password</p>
+                            </div>
+                            <input type="password" name="smtp_password" class="form-input" 
+                                   value="<?php echo !empty($settings['smtp_password']) ? '********' : ''; ?>"
+                                   placeholder="Enter password">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Encryption</h4>
+                                <p>Connection security protocol</p>
+                            </div>
+                            <select name="smtp_encryption" class="form-input">
+                                <option value="tls" <?php echo ($settings['smtp_encryption'] ?? 'tls') === 'tls' ? 'selected' : ''; ?>>TLS</option>
+                                <option value="ssl" <?php echo ($settings['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : ''; ?>>SSL</option>
+                                <option value="none" <?php echo ($settings['smtp_encryption'] ?? '') === 'none' ? 'selected' : ''; ?>>None</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>From Name</h4>
+                                <p>Sender name displayed in emails</p>
+                            </div>
+                            <input type="text" name="smtp_from_name" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['smtp_from_name'] ?? 'Arctic Wolves'); ?>"
+                                   placeholder="Arctic Wolves">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>From Email</h4>
+                                <p>Sender email address</p>
+                            </div>
+                            <input type="email" name="smtp_from_email" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['smtp_from_email'] ?? ''); ?>"
+                                   placeholder="noreply@example.com">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="testSmtpConnection()">
+                            <i class="fas fa-vial"></i> Test Connection
+                        </button>
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save SMTP Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nextcloud Integration Tab -->
+    <div class="tab-content <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>" id="nextcloud-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-cloud"></i> Nextcloud Integration</h3>
+            </div>
+            <div class="card-body">
+                <div class="integration-status <?php echo !empty($settings['nextcloud_url']) ? 'connected' : 'disconnected'; ?>">
+                    <div class="status-icon">
+                        <i class="fas <?php echo !empty($settings['nextcloud_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                    </div>
+                    <div class="status-info">
+                        <h4><?php echo !empty($settings['nextcloud_url']) ? 'Connected to Nextcloud' : 'Not Connected'; ?></h4>
+                        <p><?php echo !empty($settings['nextcloud_url']) ? htmlspecialchars($settings['nextcloud_url']) : 'Configure Nextcloud settings to enable file sync'; ?></p>
+                    </div>
+                </div>
+                
+                <form id="nextcloud-form" method="POST" action="process_settings.php" data-form-type="nextcloud">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_nextcloud">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Nextcloud URL</h4>
+                                <p>Your Nextcloud server address</p>
+                            </div>
+                            <input type="url" name="nextcloud_url" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['nextcloud_url'] ?? ''); ?>"
+                                   placeholder="https://cloud.example.com">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Username</h4>
+                                <p>Nextcloud account username</p>
+                            </div>
+                            <input type="text" name="nextcloud_username" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['nextcloud_username'] ?? ''); ?>"
+                                   placeholder="admin">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>App Password</h4>
+                                <p>App-specific password (recommended over main password)</p>
+                            </div>
+                            <input type="password" name="nextcloud_password" class="form-input" 
+                                   value="<?php echo !empty($settings['nextcloud_password']) ? '********' : ''; ?>"
+                                   placeholder="Enter app password">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Sync Folder</h4>
+                                <p>Folder path for uploaded files</p>
+                            </div>
+                            <input type="text" name="nextcloud_folder" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['nextcloud_folder'] ?? '/Arctic_Wolves'); ?>"
+                                   placeholder="/Arctic_Wolves">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Enable Auto-Sync</h4>
+                                <p>Automatically sync backups and uploads</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="nextcloud_auto_sync" 
+                                       <?php echo !empty($settings['nextcloud_auto_sync']) ? 'checked' : ''; ?>
+                                       data-action="toggle-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="sync-options">
+                        <h4><i class="fas fa-folder-open"></i> Sync Options</h4>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sync_backups" 
+                                       <?php echo ($settings['sync_backups'] ?? true) ? 'checked' : ''; ?>>
+                                <span>Database Backups</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sync_videos" 
+                                       <?php echo ($settings['sync_videos'] ?? true) ? 'checked' : ''; ?>>
+                                <span>Video Uploads</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sync_receipts" 
+                                       <?php echo ($settings['sync_receipts'] ?? true) ? 'checked' : ''; ?>>
+                                <span>Receipt Scans</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sync_documents" 
+                                       <?php echo ($settings['sync_documents'] ?? true) ? 'checked' : ''; ?>>
+                                <span>Documents</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="testNextcloudConnection()">
+                            <i class="fas fa-vial"></i> Test Connection
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="syncNow()">
+                            <i class="fas fa-sync"></i> Sync Now
+                        </button>
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Settings
                         </button>
                     </div>
                 </form>
@@ -1086,4 +1295,248 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 13px;
     color: var(--text-dim);
 }
+
+/* Integration Status Styles */
+.integration-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+}
+
+.integration-status.connected {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.integration-status.disconnected {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.integration-status .status-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.integration-status.connected .status-icon {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.integration-status.disconnected .status-icon {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.integration-status .status-info h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 4px;
+}
+
+.integration-status .status-info p {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin: 0;
+}
+
+/* Sync Options */
+.sync-options {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 24px;
+    margin-bottom: 24px;
+}
+
+.sync-options h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sync-options h4 i {
+    color: var(--primary);
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.checkbox-item:hover {
+    border-color: var(--primary);
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.checkbox-item span {
+    font-size: 14px;
+    color: var(--text-white);
+}
+
+.checkbox-item:has(input:checked) {
+    border-color: var(--primary);
+    background: rgba(107, 70, 193, 0.1);
+}
+
+/* Mileage rate input group */
+.rate-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 200px;
+}
+
+.rate-input-group .currency-symbol {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-white);
+}
+
+.rate-input-group .form-input {
+    flex: 1;
+    text-align: right;
+    max-width: 100px;
+}
+
+.rate-input-group .rate-unit {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-weight: 500;
+}
 </style>
+
+<script>
+// SMTP Connection Test
+function testSmtpConnection() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    btn.disabled = true;
+    
+    const formData = new FormData(document.getElementById('smtp-form'));
+    formData.append('action', 'test_smtp');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        
+        if (data.success) {
+            alert('✓ SMTP Connection Successful!\n\nTest email sent successfully.');
+        } else {
+            alert('✗ SMTP Connection Failed\n\n' + (data.message || 'Could not connect to SMTP server'));
+        }
+    })
+    .catch(error => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Error testing SMTP connection');
+        console.error('Error:', error);
+    });
+}
+
+// Nextcloud Connection Test
+function testNextcloudConnection() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    btn.disabled = true;
+    
+    const formData = new FormData(document.getElementById('nextcloud-form'));
+    formData.append('action', 'test_nextcloud');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        
+        if (data.success) {
+            alert('✓ Nextcloud Connection Successful!\n\nConnected to: ' + data.server_name);
+        } else {
+            alert('✗ Nextcloud Connection Failed\n\n' + (data.message || 'Could not connect to Nextcloud server'));
+        }
+    })
+    .catch(error => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Error testing Nextcloud connection');
+        console.error('Error:', error);
+    });
+}
+
+// Sync Now
+function syncNow() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    btn.disabled = true;
+    
+    const formData = new FormData(document.getElementById('nextcloud-form'));
+    formData.append('action', 'sync_nextcloud');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        
+        if (data.success) {
+            alert('✓ Sync Completed!\n\n' + (data.message || 'Files synced successfully'));
+        } else {
+            alert('✗ Sync Failed\n\n' + (data.message || 'Could not sync files'));
+        }
+    })
+    .catch(error => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Error syncing files');
+        console.error('Error:', error);
+    });
+}
+</script>
