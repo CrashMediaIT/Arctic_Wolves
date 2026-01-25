@@ -526,6 +526,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=roster" class="nav-link <?= $page=='roster'?'active':'' ?>">
                 <i class="fa-solid fa-users-gear icon"></i> Roster
             </a>
+            <a href="?page=coach_evaluations" class="nav-link <?= $page=='coach_evaluations'?'active':'' ?>">
+                <i class="fa-solid fa-clipboard-check icon"></i> Evaluations
+            </a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>">
                 <i class="fa-solid fa-plane icon"></i> Travel
             </a>

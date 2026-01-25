@@ -9,16 +9,20 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
     <p>Review your drill videos and upload new footage for coach analysis</p>
 </div>
 
-<div class="tab-navigation" data-component="TabNavigation">
-    <a href="?page=drill_review" class="tab-link <?= $tab === 'drill_review' ? 'active' : '' ?>" data-tab="drill_review">
-        <i class="fa-solid fa-film"></i> Drill Review
+<div class="video-nav-container">
+    <div class="tab-navigation" data-component="TabNavigation">
+        <a href="?page=drill_review" class="tab-link <?= $tab === 'drill_review' ? 'active' : '' ?>" data-tab="drill_review">
+            <i class="fa-solid fa-film"></i> Drill Review
+        </a>
+        <a href="?page=coaches_reviews" class="tab-link <?= $tab === 'coaches_reviews' ? 'active' : '' ?>" data-tab="coaches_reviews">
+            <i class="fa-solid fa-comments"></i> Coaches Reviews
+        </a>
+    </div>
+    <?php if($isAnyCoach): ?>
+    <a href="?page=coaches_reviews" class="btn btn-primary btn-upload-nav">
+        <i class="fa-solid fa-upload"></i> Upload Video
     </a>
-    <a href="?page=coaches_reviews" class="tab-link <?= $tab === 'coaches_reviews' ? 'active' : '' ?>" data-tab="coaches_reviews">
-        <i class="fa-solid fa-comments"></i> Coaches Reviews
-        <?php if($isAnyCoach): ?>
-        <span style="margin-left: 8px; font-size: 10px; background: var(--primary); padding: 2px 8px; border-radius: 4px;">[Upload]</span>
-        <?php endif; ?>
-    </a>
+    <?php endif; ?>
 </div>
 
 <div class="page-tab-content">
@@ -30,3 +34,29 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
     }
     ?>
 </div>
+
+<style>
+.video-nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+}
+
+.video-nav-container .tab-navigation {
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.btn-upload-nav {
+    margin-bottom: 12px;
+}
+
+.btn-upload-nav i {
+    color: #fff;
+}
+</style>

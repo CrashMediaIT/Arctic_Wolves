@@ -129,84 +129,56 @@ if ($current_program && $current_program['total_workouts'] > 0) {
         <div class="card-header">
             <h3><i class="fas fa-calendar-week"></i> This Week's Schedule</h3>
             <div class="calendar-nav">
-                <button class="btn-icon"><i class="fas fa-chevron-left"></i></button>
-                <span class="current-week">Week of Jan 15, 2024</span>
-                <button class="btn-icon"><i class="fas fa-chevron-right"></i></button>
+                <button class="btn-icon" data-action="prev-week"><i class="fas fa-chevron-left"></i></button>
+                <span class="current-week"><?= date('F j, Y', strtotime('monday this week')) ?></span>
+                <button class="btn-icon" data-action="next-week"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
         <div class="card-body">
             <div class="workout-schedule">
-                <div class="schedule-day completed">
+                <?php
+                // Demo schedule data - one week starting from Monday
+                $demo_schedule = [
+                    ['day' => 'MON', 'date' => date('j', strtotime('monday this week')), 'workout' => 'Upper Body Strength', 'status' => 'completed', 'icon' => 'check-circle', 'exercises' => ['Bench Press 3x10', 'Shoulder Press 3x8', 'Lat Pulldown 3x12', 'Bicep Curls 3x15']],
+                    ['day' => 'TUE', 'date' => date('j', strtotime('tuesday this week')), 'workout' => 'Cardio & Core', 'status' => 'completed', 'icon' => 'check-circle', 'exercises' => ['Running 20 min', 'Plank 3x60s', 'Russian Twists 3x20', 'Mountain Climbers 3x15']],
+                    ['day' => 'WED', 'date' => date('j', strtotime('wednesday this week')), 'workout' => 'Lower Body Power', 'status' => 'active', 'icon' => 'play-circle', 'exercises' => ['Squats 4x8', 'Deadlifts 3x6', 'Lunges 3x12', 'Calf Raises 3x15']],
+                    ['day' => 'THU', 'date' => date('j', strtotime('thursday this week')), 'workout' => 'Active Recovery', 'status' => 'upcoming', 'icon' => 'circle', 'exercises' => ['Yoga 30 min', 'Light Stretching', 'Foam Rolling', 'Walking 20 min']],
+                    ['day' => 'FRI', 'date' => date('j', strtotime('friday this week')), 'workout' => 'Full Body Circuit', 'status' => 'upcoming', 'icon' => 'circle', 'exercises' => ['Burpees 3x10', 'Push-ups 3x15', 'Kettlebell Swings 3x12', 'Box Jumps 3x10']],
+                    ['day' => 'SAT', 'date' => date('j', strtotime('saturday this week')), 'workout' => 'Rest Day', 'status' => 'rest', 'icon' => 'bed', 'exercises' => []],
+                    ['day' => 'SUN', 'date' => date('j', strtotime('sunday this week')), 'workout' => 'Rest Day', 'status' => 'rest', 'icon' => 'bed', 'exercises' => []],
+                ];
+                
+                foreach ($demo_schedule as $day_data): 
+                    $status_class = $day_data['status'] === 'completed' ? 'completed' : ($day_data['status'] === 'active' ? 'active' : ($day_data['status'] === 'rest' ? 'rest' : ''));
+                ?>
+                <div class="schedule-day clickable <?= $status_class ?>" 
+                     data-day="<?= $day_data['day'] ?>" 
+                     data-workout="<?= htmlspecialchars($day_data['workout']) ?>"
+                     data-exercises='<?= htmlspecialchars(json_encode($day_data['exercises'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>'
+                     onclick="showDayDetails(this)">
                     <div class="day-header">
-                        <span class="day-name">MON</span>
-                        <span class="day-date">15</span>
+                        <span class="day-name"><?= $day_data['day'] ?></span>
+                        <span class="day-date"><?= $day_data['date'] ?></span>
                     </div>
                     <div class="day-workout">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Upper Body Strength</span>
+                        <i class="fas fa-<?= $day_data['icon'] ?>"></i>
+                        <span><?= $day_data['workout'] ?></span>
                     </div>
                 </div>
-                <div class="schedule-day completed">
-                    <div class="day-header">
-                        <span class="day-name">TUE</span>
-                        <span class="day-date">16</span>
-                    </div>
-                    <div class="day-workout">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Cardio & Core</span>
-                    </div>
-                </div>
-                <div class="schedule-day active">
-                    <div class="day-header">
-                        <span class="day-name">WED</span>
-                        <span class="day-date">17</span>
-                    </div>
-                    <div class="day-workout">
-                        <i class="fas fa-play-circle"></i>
-                        <span>Lower Body Power</span>
-                    </div>
-                </div>
-                <div class="schedule-day">
-                    <div class="day-header">
-                        <span class="day-name">THU</span>
-                        <span class="day-date">18</span>
-                    </div>
-                    <div class="day-workout">
-                        <i class="fas fa-circle"></i>
-                        <span>Active Recovery</span>
-                    </div>
-                </div>
-                <div class="schedule-day">
-                    <div class="day-header">
-                        <span class="day-name">FRI</span>
-                        <span class="day-date">19</span>
-                    </div>
-                    <div class="day-workout">
-                        <i class="fas fa-circle"></i>
-                        <span>Full Body Circuit</span>
-                    </div>
-                </div>
-                <div class="schedule-day rest">
-                    <div class="day-header">
-                        <span class="day-name">SAT</span>
-                        <span class="day-date">20</span>
-                    </div>
-                    <div class="day-workout">
-                        <i class="fas fa-bed"></i>
-                        <span>Rest Day</span>
-                    </div>
-                </div>
-                <div class="schedule-day rest">
-                    <div class="day-header">
-                        <span class="day-name">SUN</span>
-                        <span class="day-date">21</span>
-                    </div>
-                    <div class="day-workout">
-                        <i class="fas fa-bed"></i>
-                        <span>Rest Day</span>
-                    </div>
-                </div>
+                <?php endforeach; ?>
             </div>
+        </div>
+    </div>
+
+    <!-- Day Details Modal -->
+    <div class="day-details-panel" id="dayDetailsPanel" style="display: none;">
+        <div class="day-details-header">
+            <h4 id="dayDetailTitle">Day Details</h4>
+            <button class="btn-icon" onclick="closeDayDetails()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="day-details-body">
+            <h5>Exercises for Today:</h5>
+            <ul id="dayDetailExercises" class="exercise-list"></ul>
         </div>
     </div>
 
@@ -214,6 +186,9 @@ if ($current_program && $current_program['total_workouts'] > 0) {
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-book"></i> Exercise Library</h3>
+        </div>
+        <!-- Filters Box -->
+        <div class="exercise-filters-box">
             <form method="GET" action="" class="filter-group">
                 <input type="hidden" name="page" value="strength_conditioning">
                 <select name="category" class="form-input-small" onchange="this.form.submit()">
@@ -225,7 +200,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                     <?php endforeach; ?>
                 </select>
                 <input type="text" name="search_exercise" class="form-input-small" placeholder="Search exercises..." value="<?= htmlspecialchars($search_exercise) ?>">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                <button type="submit" class="btn btn-primary btn-with-icon"><i class="fas fa-search"></i> Search</button>
             </form>
         </div>
         <div class="card-body">
@@ -238,7 +213,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                         </div>
                         <h4><?= htmlspecialchars($exercise['name']) ?></h4>
                         <p class="exercise-category"><?= htmlspecialchars($exercise['category']) ?></p>
-                        <button class="btn-secondary btn-small" data-action="view-demo" data-exercise-id="<?= $exercise['id'] ?>"><i class="fas fa-play"></i> View Demo</button>
+                        <button class="btn-secondary btn-small btn-with-icon" data-action="view-demo" data-exercise-id="<?= $exercise['id'] ?>"><i class="fas fa-play"></i> View Demo</button>
                     </div>
                     <?php endforeach; ?>
                 <?php else: ?>
@@ -580,4 +555,132 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 .calendar-nav .btn-icon i {
     font-size: 14px;
 }
+
+/* Exercise Library Filters Box */
+.exercise-filters-box {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 0 20px 20px 20px;
+}
+
+.exercise-filters-box .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Button with icon styling */
+.btn-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-with-icon i {
+    color: inherit;
+}
+
+.btn-primary.btn-with-icon i {
+    color: #fff;
+}
+
+.btn-secondary.btn-with-icon i {
+    color: var(--text-white);
+}
+
+/* Clickable schedule days */
+.schedule-day.clickable {
+    cursor: pointer;
+}
+
+.schedule-day.clickable:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Day Details Panel */
+.day-details-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.day-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.day-details-header h4 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-white);
+}
+
+.day-details-body h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+}
+
+.exercise-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.exercise-list li {
+    padding: 10px 12px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.exercise-list li::before {
+    content: '•';
+    color: var(--primary);
+    font-size: 18px;
+}
 </style>
+
+<script>
+function showDayDetails(element) {
+    const day = element.dataset.day;
+    const workout = element.dataset.workout;
+    const exercises = JSON.parse(element.dataset.exercises || '[]');
+    
+    const panel = document.getElementById('dayDetailsPanel');
+    const title = document.getElementById('dayDetailTitle');
+    const exerciseList = document.getElementById('dayDetailExercises');
+    
+    title.textContent = day + ' - ' + workout;
+    
+    if (exercises.length > 0) {
+        exerciseList.innerHTML = exercises.map(ex => `<li>${ex}</li>`).join('');
+    } else {
+        exerciseList.innerHTML = '<li>Rest day - no exercises scheduled</li>';
+    }
+    
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeDayDetails() {
+    document.getElementById('dayDetailsPanel').style.display = 'none';
+}
+</script>

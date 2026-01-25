@@ -369,4 +369,20 @@ try {
 .empty-state .btn {
     margin-top: 8px;
 }
+
+/* Ensure button icons are visible */
+.btn i, .btn-primary i, .btn-secondary i {
+    color: inherit;
+    font-size: 14px;
+}
+
+.card-header .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-header .btn i {
+    color: #fff;
+}
 </style>

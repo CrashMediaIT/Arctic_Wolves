@@ -63,7 +63,7 @@ $drill_categories = $drill_categories_stmt->fetchAll();
 
 <div class="video-content">
     <!-- Filter Bar -->
-    <div class="filter-bar">
+    <div class="filter-bar filter-box">
         <form method="GET" action="" class="filter-group">
             <input type="hidden" name="page" value="drill_review">
             <select name="filter_status" class="form-input-small" data-action="auto-submit">
@@ -81,6 +81,7 @@ $drill_categories = $drill_categories_stmt->fetchAll();
                 <?php endforeach; ?>
             </select>
             <input type="text" name="search" class="form-input-small" placeholder="Search videos..." value="<?= htmlspecialchars($search) ?>" data-action="search-debounce">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Search</button>
         </form>
     </div>
 
@@ -228,6 +229,30 @@ $drill_categories = $drill_categories_stmt->fetchAll();
 </div>
 
 <style>
+/* Filter Box Styling */
+.filter-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.filter-box .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-box .btn-sm {
+    height: 40px;
+}
+
+.filter-box .btn-sm i {
+    color: #fff;
+}
+
 .video-sections {
     display: flex;
     flex-direction: column;

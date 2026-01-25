@@ -86,6 +86,64 @@ $coaches = $coaches_stmt->fetchAll();
 
 // Get current view mode
 $view_mode = $_GET['view'] ?? 'list';
+
+// Demo data for sessions if no real data exists
+if (count($sessions) === 0) {
+    // Use DateTime for reliable date handling
+    $today = new DateTime();
+    
+    $demo_sessions = [
+        [
+            'id' => 'demo-1',
+            'session_type_name' => 'Skating Skills',
+            'session_date' => (clone $today)->modify('+1 day')->setTime(10, 0)->format('Y-m-d H:i:s'),
+            'duration_minutes' => 60,
+            'coach_name' => 'Coach Smith',
+            'location_name' => 'Main Arena',
+            'description' => 'Focus on edge work and crossovers'
+        ],
+        [
+            'id' => 'demo-2',
+            'session_type_name' => 'Power Skating',
+            'session_date' => (clone $today)->modify('+2 days')->setTime(14, 0)->format('Y-m-d H:i:s'),
+            'duration_minutes' => 90,
+            'coach_name' => 'Coach Johnson',
+            'location_name' => 'Training Center',
+            'description' => 'Building speed and acceleration'
+        ],
+        [
+            'id' => 'demo-3',
+            'session_type_name' => 'Stick Handling',
+            'session_date' => (clone $today)->modify('+3 days')->setTime(9, 0)->format('Y-m-d H:i:s'),
+            'duration_minutes' => 60,
+            'coach_name' => 'Coach Williams',
+            'location_name' => 'Practice Rink',
+            'description' => 'Puck control and deking techniques'
+        ],
+        [
+            'id' => 'demo-4',
+            'session_type_name' => 'Shooting Practice',
+            'session_date' => (clone $today)->modify('+5 days')->setTime(16, 0)->format('Y-m-d H:i:s'),
+            'duration_minutes' => 75,
+            'coach_name' => 'Coach Smith',
+            'location_name' => 'Main Arena',
+            'description' => 'Wrist shots and slap shots'
+        ],
+        [
+            'id' => 'demo-5',
+            'session_type_name' => 'Game Simulation',
+            'session_date' => (clone $today)->modify('+7 days')->setTime(11, 0)->format('Y-m-d H:i:s'),
+            'duration_minutes' => 120,
+            'coach_name' => 'Coach Johnson',
+            'location_name' => 'Main Arena',
+            'description' => 'Full ice scrimmage with tactical focus'
+        ]
+    ];
+    $sessions = $demo_sessions;
+    $is_demo_data = true;
+} else {
+    $is_demo_data = false;
+}
 ?>
 
 <!-- Upcoming Sessions View -->
@@ -95,6 +153,13 @@ $view_mode = $_GET['view'] ?? 'list';
     </h1>
     <p class="page-description">Your scheduled training sessions</p>
 </div>
+
+<?php if ($is_demo_data): ?>
+<div class="demo-data-notice">
+    <i class="fas fa-info-circle"></i>
+    <span>Showing demo data. Book sessions to see your real schedule.</span>
+</div>
+<?php endif; ?>
 
 <div class="sessions-content">
     <!-- Filter Bar -->
@@ -569,6 +634,24 @@ $view_mode = $_GET['view'] ?? 'list';
     background: var(--button-hover, #7C3AED);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(107, 70, 193, 0.4);
+}
+
+/* Demo Data Notice */
+.demo-data-notice {
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary-light);
+    font-size: 14px;
+}
+
+.demo-data-notice i {
+    font-size: 16px;
 }
 </style>
 
