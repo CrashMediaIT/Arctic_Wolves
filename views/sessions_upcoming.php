@@ -165,7 +165,7 @@ if (count($sessions) === 0) {
     <!-- Filter Bar -->
     <div class="filter-bar">
         <form method="GET" action="" class="filter-group">
-            <input type="hidden" name="page" value="sessions_upcoming">
+            <input type="hidden" name="page" value="upcoming_sessions">
             <input type="hidden" name="view" value="<?= htmlspecialchars($view_mode) ?>">
             <label>Filter by:</label>
             <select name="filter_period" class="form-input-small" data-action="auto-submit">
@@ -185,16 +185,16 @@ if (count($sessions) === 0) {
         </form>
         <div class="view-controls">
             <div class="view-toggle">
-                <a href="?page=sessions_upcoming&view=list&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>" 
+                <a href="?page=upcoming_sessions&view=list&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>" 
                    class="view-btn <?= $view_mode === 'list' ? 'active' : '' ?>" title="List View">
                     <i class="fas fa-list"></i>
                 </a>
-                <a href="?page=sessions_upcoming&view=calendar&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>" 
+                <a href="?page=upcoming_sessions&view=calendar&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>" 
                    class="view-btn <?= $view_mode === 'calendar' ? 'active' : '' ?>" title="Calendar View">
                     <i class="fas fa-calendar"></i>
                 </a>
             </div>
-            <a href="?page=sessions_booking" class="btn-primary"><i class="fas fa-plus"></i> Book Session</a>
+            <a href="?page=booking" class="btn-primary"><i class="fas fa-plus"></i> Book Session</a>
         </div>
     </div>
 
