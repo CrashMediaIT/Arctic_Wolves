@@ -437,6 +437,59 @@
 .close-modal:hover {
     color: var(--text-white);
 }
+
+/* Form Actions Bar */
+.form-actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 24px;
+}
+
+.action-group {
+    display: flex;
+    gap: 12px;
+}
+
+/* Content Card */
+.content-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.content-card .card-header {
+    background: var(--bg-main);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.content-card .card-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.content-card .card-header h3 i {
+    color: var(--primary);
+}
+
+.content-card .card-body {
+    padding: 20px;
+}
 </style>
 
 <script>
