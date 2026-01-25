@@ -43,6 +43,13 @@ This directory maintains the same structure as the application root:
 ### Backup Files
 - `database_schema.sql.backup` - Backup of database schema
 
+### Redundant View Files (2 files in `/unused/views/`)
+Archived on January 25, 2026 during architecture cleanup:
+- `accounting.php` - Duplicate of `accounting_dashboard.php` (not referenced in routing)
+- `billing_dashboard.php` - Orphaned file superseded by `accounting_billing.php`
+
+See `/ARCHITECTURE_CLEANUP_SUMMARY.md` for detailed analysis and justification.
+
 ## Notes
 
 - All files in this directory are **NOT** actively used by the application
@@ -54,4 +61,4 @@ This directory maintains the same structure as the application root:
 
 For the current active application structure, see `/QA/STRUCTURE.md`
 
-**Last Updated:** January 22, 2026
+**Last Updated:** January 25, 2026
