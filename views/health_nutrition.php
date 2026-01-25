@@ -13,16 +13,16 @@ $nutrition_stmt = $pdo->prepare($nutrition_query);
 $nutrition_stmt->execute([$user_id]);
 $nutrition_plan = $nutrition_stmt->fetch();
 
-// Initialize daily totals
+// Initialize daily totals - will be set properly below based on plan existence
 $daily_totals = [
-    'calories' => $nutrition_plan ? 1850 : 0,
-    'protein' => $nutrition_plan ? 95 : 0,
-    'carbs' => $nutrition_plan ? 210 : 0,
-    'fats' => $nutrition_plan ? 45 : 0,
-    'calories_goal' => $nutrition_plan['target_calories'] ?? 2500,
-    'protein_goal' => $nutrition_plan['target_protein_g'] ?? 180,
-    'carbs_goal' => $nutrition_plan['target_carbs_g'] ?? 300,
-    'fats_goal' => $nutrition_plan['target_fat_g'] ?? 70
+    'calories' => 0,
+    'protein' => 0,
+    'carbs' => 0,
+    'fats' => 0,
+    'calories_goal' => 2500,
+    'protein_goal' => 180,
+    'carbs_goal' => 300,
+    'fats_goal' => 70
 ];
 
 // Get nutrition plan meals if plan exists
@@ -37,6 +37,12 @@ if ($nutrition_plan) {
     $meals_stmt = $pdo->prepare($meals_query);
     $meals_stmt->execute([$nutrition_plan['id']]);
     $meals = $meals_stmt->fetchAll();
+    
+    // Update daily totals with plan targets
+    $daily_totals['calories_goal'] = $nutrition_plan['target_calories'] ?? 2500;
+    $daily_totals['protein_goal'] = $nutrition_plan['target_protein_g'] ?? 180;
+    $daily_totals['carbs_goal'] = $nutrition_plan['target_carbs_g'] ?? 300;
+    $daily_totals['fats_goal'] = $nutrition_plan['target_fat_g'] ?? 70;
 }
 
 // Demo nutrition data if no real plan exists
