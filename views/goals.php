@@ -39,6 +39,10 @@ $athlete_info = $athlete_stmt->fetch();
 $filter_status = $_GET['status'] ?? 'active';
 $filter_category = $_GET['category'] ?? '';
 $filter_tag = $_GET['tag'] ?? '';
+$group_by = $_GET['group_by'] ?? '';
+
+// Get success message (renamed from 'status' to avoid conflict with filter)
+$msg = $_GET['msg'] ?? '';
 
 // Build query for goals
 $goals_query = "
@@ -77,7 +81,7 @@ if (!empty($filter_tag)) {
     $params[] = $filter_tag;
 }
 
-$goals_query .= " ORDER BY g.created_at DESC";
+$goals_query .= " ORDER BY " . ($group_by === 'category' ? "g.category ASC, " : "") . "g.created_at DESC";
 
 $goals_stmt = $pdo->prepare($goals_query);
 $goals_stmt->execute($params);
@@ -187,6 +191,29 @@ sort($all_tags);
         color: #fff;
         font-size: 14px;
         min-width: 150px;
+    }
+    .category-group {
+        margin-bottom: 32px;
+    }
+    .category-header {
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .category-header i {
+        color: var(--primary);
+    }
+    .category-count {
+        font-size: 14px;
+        font-weight: 400;
+        color: #94a3b8;
+        margin-left: auto;
     }
     .goals-grid {
         display: grid;
@@ -699,6 +726,21 @@ sort($all_tags);
         </div>
     </div>
 
+    <?php if ($msg): ?>
+        <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #10b981; padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-check-circle"></i>
+            <?php
+            switch ($msg) {
+                case 'created': echo 'Goal created successfully!'; break;
+                case 'updated': echo 'Goal updated successfully!'; break;
+                case 'archived': echo 'Goal archived successfully!'; break;
+                case 'progress_added': echo 'Progress note added successfully!'; break;
+                default: echo 'Action completed successfully!';
+            }
+            ?>
+        </div>
+    <?php endif; ?>
+
     <div class="filters-bar">
         <div class="filter-group">
             <label class="filter-label">Status</label>
@@ -737,74 +779,171 @@ sort($all_tags);
                 </select>
             </div>
         <?php endif; ?>
+        <div class="filter-group">
+            <label class="filter-label">Group By</label>
+            <select class="filter-select" onchange="updateFilter('group_by', this.value)">
+                <option value="" <?php echo $group_by === '' ? 'selected' : ''; ?>>None</option>
+                <option value="category" <?php echo $group_by === 'category' ? 'selected' : ''; ?>>Category</option>
+            </select>
+        </div>
     </div>
 
     <?php if (count($goals) > 0): ?>
-        <div class="goals-grid">
-            <?php foreach ($goals as $goal): 
-                $progress_pct = $goal['completion_percentage'] ?? 0;
-                $is_completed = $goal['status'] === 'completed';
+        <?php if ($group_by === 'category'): ?>
+            <?php
+            // Group goals by category
+            $grouped_goals = [];
+            foreach ($goals as $goal) {
+                $cat = $goal['category'] ?: 'Uncategorized';
+                if (!isset($grouped_goals[$cat])) {
+                    $grouped_goals[$cat] = [];
+                }
+                $grouped_goals[$cat][] = $goal;
+            }
+            // Sort categories alphabetically with Uncategorized at end
+            uksort($grouped_goals, function($a, $b) {
+                if ($a === 'Uncategorized') return 1;
+                if ($b === 'Uncategorized') return -1;
+                return strcasecmp($a, $b);
+            });
             ?>
-                <div class="goal-card <?php echo $is_completed ? 'completed' : ''; ?>">
-                    <?php if ($goal['category']): ?>
-                        <span class="goal-category"><?php echo htmlspecialchars($goal['category']); ?></span>
-                    <?php endif; ?>
-                    
-                    <h3 class="goal-title"><?php echo htmlspecialchars($goal['title']); ?></h3>
-                    
-                    <?php if ($goal['description']): ?>
-                        <p class="goal-description"><?php echo nl2br(htmlspecialchars($goal['description'])); ?></p>
-                    <?php endif; ?>
-                    
-                    <?php if ($goal['tags']): ?>
-                        <div class="goal-tags">
-                            <?php foreach (explode(',', $goal['tags']) as $tag): ?>
-                                <span class="goal-tag"><?php echo htmlspecialchars(trim($tag)); ?></span>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                    
-                    <div class="goal-progress">
-                        <div class="progress-label">
-                            <span>Progress</span>
-                            <span><strong><?php echo round($progress_pct); ?>%</strong></span>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: <?php echo $progress_pct; ?>%"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="goal-meta">
-                        <span>
-                            <i class="fas fa-list-check"></i> 
-                            <?php echo $goal['completed_steps']; ?> / <?php echo $goal['total_steps']; ?> steps
-                        </span>
-                        <?php if ($goal['target_date']): ?>
-                            <span>
-                                <i class="fas fa-calendar"></i> 
-                                <?php echo date('M d, Y', strtotime($goal['target_date'])); ?>
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <div class="goal-actions">
-                        <button class="btn-goal-action btn-view" onclick="viewGoalDetail(<?php echo $goal['id']; ?>)">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <?php if ($isCoach): ?>
-                            <button class="btn-goal-action btn-edit" onclick="editGoal(<?php echo $goal['id']; ?>)">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <?php if (!$is_completed): ?>
-                                <button class="btn-goal-action btn-complete" onclick="completeGoal(<?php echo $goal['id']; ?>)">
-                                    <i class="fas fa-check"></i> Complete
-                                </button>
-                            <?php endif; ?>
-                        <?php endif; ?>
+            <?php foreach ($grouped_goals as $category_name => $category_goals): ?>
+                <div class="category-group">
+                    <h2 class="category-header">
+                        <i class="fas fa-folder"></i>
+                        <?php echo htmlspecialchars($category_name); ?>
+                        <span class="category-count"><?php echo count($category_goals); ?> goal<?php echo count($category_goals) !== 1 ? 's' : ''; ?></span>
+                    </h2>
+                    <div class="goals-grid">
+                        <?php foreach ($category_goals as $goal): 
+                            $progress_pct = $goal['completion_percentage'] ?? 0;
+                            $is_completed = $goal['status'] === 'completed';
+                        ?>
+                            <div class="goal-card <?php echo $is_completed ? 'completed' : ''; ?>">
+                                <h3 class="goal-title"><?php echo htmlspecialchars($goal['title']); ?></h3>
+                                
+                                <?php if ($goal['description']): ?>
+                                    <p class="goal-description"><?php echo nl2br(htmlspecialchars($goal['description'])); ?></p>
+                                <?php endif; ?>
+                                
+                                <?php if ($goal['tags']): ?>
+                                    <div class="goal-tags">
+                                        <?php foreach (explode(',', $goal['tags']) as $tag): ?>
+                                            <span class="goal-tag"><?php echo htmlspecialchars(trim($tag)); ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <div class="goal-progress">
+                                    <div class="progress-label">
+                                        <span>Progress</span>
+                                        <span><strong><?php echo round($progress_pct); ?>%</strong></span>
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar" style="width: <?php echo $progress_pct; ?>%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="goal-meta">
+                                    <span>
+                                        <i class="fas fa-list-check"></i> 
+                                        <?php echo $goal['completed_steps']; ?> / <?php echo $goal['total_steps']; ?> steps
+                                    </span>
+                                    <?php if ($goal['target_date']): ?>
+                                        <span>
+                                            <i class="fas fa-calendar"></i> 
+                                            <?php echo date('M d, Y', strtotime($goal['target_date'])); ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="goal-actions">
+                                    <button class="btn-goal-action btn-view" onclick="viewGoalDetail(<?php echo $goal['id']; ?>)">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <?php if ($isCoach): ?>
+                                        <button class="btn-goal-action btn-edit" onclick="editGoal(<?php echo $goal['id']; ?>)">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <?php if (!$is_completed): ?>
+                                            <button class="btn-goal-action btn-complete" onclick="completeGoal(<?php echo $goal['id']; ?>)">
+                                                <i class="fas fa-check"></i> Complete
+                                            </button>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             <?php endforeach; ?>
-        </div>
+        <?php else: ?>
+            <div class="goals-grid">
+                <?php foreach ($goals as $goal): 
+                    $progress_pct = $goal['completion_percentage'] ?? 0;
+                    $is_completed = $goal['status'] === 'completed';
+                ?>
+                    <div class="goal-card <?php echo $is_completed ? 'completed' : ''; ?>">
+                        <?php if ($goal['category']): ?>
+                            <span class="goal-category"><?php echo htmlspecialchars($goal['category']); ?></span>
+                        <?php endif; ?>
+                        
+                        <h3 class="goal-title"><?php echo htmlspecialchars($goal['title']); ?></h3>
+                        
+                        <?php if ($goal['description']): ?>
+                            <p class="goal-description"><?php echo nl2br(htmlspecialchars($goal['description'])); ?></p>
+                        <?php endif; ?>
+                        
+                        <?php if ($goal['tags']): ?>
+                            <div class="goal-tags">
+                                <?php foreach (explode(',', $goal['tags']) as $tag): ?>
+                                    <span class="goal-tag"><?php echo htmlspecialchars(trim($tag)); ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <div class="goal-progress">
+                            <div class="progress-label">
+                                <span>Progress</span>
+                                <span><strong><?php echo round($progress_pct); ?>%</strong></span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: <?php echo $progress_pct; ?>%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="goal-meta">
+                            <span>
+                                <i class="fas fa-list-check"></i> 
+                                <?php echo $goal['completed_steps']; ?> / <?php echo $goal['total_steps']; ?> steps
+                            </span>
+                            <?php if ($goal['target_date']): ?>
+                                <span>
+                                    <i class="fas fa-calendar"></i> 
+                                    <?php echo date('M d, Y', strtotime($goal['target_date'])); ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div class="goal-actions">
+                            <button class="btn-goal-action btn-view" onclick="viewGoalDetail(<?php echo $goal['id']; ?>)">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <?php if ($isCoach): ?>
+                                <button class="btn-goal-action btn-edit" onclick="editGoal(<?php echo $goal['id']; ?>)">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <?php if (!$is_completed): ?>
+                                    <button class="btn-goal-action btn-complete" onclick="completeGoal(<?php echo $goal['id']; ?>)">
+                                        <i class="fas fa-check"></i> Complete
+                                    </button>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     <?php else: ?>
         <div class="empty-state">
             <i class="fas fa-bullseye"></i>

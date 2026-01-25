@@ -236,7 +236,7 @@ try {
             ]);
             
             $pdo->commit();
-            header("Location: dashboard.php?page=goals&athlete_id=$athlete_id&status=created");
+            header("Location: dashboard.php?page=goals&athlete_id=$athlete_id&msg=created");
             exit();
             
         case 'update_goal':
@@ -339,7 +339,7 @@ try {
             ]);
             
             $pdo->commit();
-            header("Location: dashboard.php?page=goals&athlete_id={$old_goal['athlete_id']}&status=updated");
+            header("Location: dashboard.php?page=goals&athlete_id={$old_goal['athlete_id']}&msg=updated");
             exit();
             
         case 'delete_goal':
@@ -366,7 +366,7 @@ try {
             logGoalHistory($pdo, $goal_id, 'archived', $user_id);
             
             $pdo->commit();
-            header("Location: dashboard.php?page=goals&status=archived");
+            header("Location: dashboard.php?page=goals&msg=archived");
             exit();
             
         case 'add_step':
@@ -540,7 +540,7 @@ try {
             $goal->execute([$goal_id]);
             $athlete_id = $goal->fetchColumn();
             
-            header("Location: dashboard.php?page=goals&athlete_id=$athlete_id&status=progress_added");
+            header("Location: dashboard.php?page=goals&athlete_id=$athlete_id&msg=progress_added");
             exit();
             
         case 'complete_goal':
