@@ -168,6 +168,36 @@ try {
             header('Location: dashboard.php?page=admin_settings&success=1');
             exit;
             
+        case 'update_settings':
+            // Handle general settings from system tools page
+            $site_title = trim($_POST['site_title'] ?? 'Arctic Wolves');
+            $site_email = trim($_POST['site_email'] ?? '');
+            $session_duration = intval($_POST['session_duration'] ?? 60);
+            $notifications_enabled = isset($_POST['notifications_enabled']) ? '1' : '0';
+            $maintenance_mode = isset($_POST['maintenance_mode']) ? '1' : '0';
+            
+            updateSetting($pdo, 'site_title', $site_title);
+            updateSetting($pdo, 'site_email', $site_email);
+            updateSetting($pdo, 'session_duration', $session_duration);
+            updateSetting($pdo, 'notifications_enabled', $notifications_enabled);
+            updateSetting($pdo, 'maintenance_mode', $maintenance_mode);
+            
+            header('Location: dashboard.php?page=system_tools&success=1');
+            exit;
+            
+        case 'update_theme':
+            // Handle theme settings from system tools page
+            $primary_color = trim($_POST['primary_color'] ?? '#6B46C1');
+            $accent_color = trim($_POST['accent_color'] ?? '#8B5CF6');
+            $bg_color = trim($_POST['bg_color'] ?? '#06080b');
+            
+            updateSetting($pdo, 'primary_color', $primary_color);
+            updateSetting($pdo, 'accent_color', $accent_color);
+            updateSetting($pdo, 'background_color', $bg_color);
+            
+            header('Location: dashboard.php?page=system_tools&tab=theme&success=1');
+            exit;
+            
         case 'update_google_maps':
             $api_key = trim($_POST['google_maps_api_key']);
             updateSetting($pdo, 'google_maps_api_key', $api_key);
