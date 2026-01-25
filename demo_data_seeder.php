@@ -394,31 +394,66 @@ class DemoDataSeeder {
     private function seedDrills() {
         echo "Seeding Drills...\n";
         
-        if (empty($this->demo_ids['drill_categories'])) {
-            echo "  ⚠ Skipping drills - no categories available\n";
-            return;
-        }
-        
         $coach_id = $this->demo_ids['users']['coach'][0] ?? 1;
         
+        // Check which columns exist in drills table
+        $columns_stmt = $this->pdo->query("SHOW COLUMNS FROM drills");
+        $existing_columns = [];
+        while ($col = $columns_stmt->fetch(PDO::FETCH_ASSOC)) {
+            $existing_columns[] = $col['Field'];
+        }
+        
+        $has_title = in_array('title', $existing_columns);
+        $has_name = in_array('name', $existing_columns);
+        $has_created_by = in_array('created_by', $existing_columns);
+        $has_coach_id = in_array('coach_id', $existing_columns);
+        
+        $title_col = $has_title ? 'title' : ($has_name ? 'name' : 'title');
+        $coach_col = $has_created_by ? 'created_by' : ($has_coach_id ? 'coach_id' : 'created_by');
+        
+        // More comprehensive demo drills data
         $drills = [
-            ['Demo Figure 8 Skating', 'Basic skating drill in figure 8 pattern', 10, 'beginner'],
-            ['Demo Wrist Shot Practice', 'Practice wrist shots from slot', 15, 'intermediate'],
-            ['Demo 3-on-2 Rush', 'Offensive rush drill', 20, 'advanced'],
+            // Skating drills
+            ['Demo Figure 8 Skating', 'Basic skating drill in figure 8 pattern. Players work on edge control, crossovers, and transitioning between forward and backward skating. Duration: 10-15 minutes.'],
+            ['Demo Power Skating Drill', 'High-intensity skating drill focusing on explosive starts, stops, and tight turns. Excellent for conditioning and agility.'],
+            ['Demo Edge Work Circuit', 'Circuit training for inside and outside edge control. Includes slaloms, tight turns, and glide exercises.'],
+            
+            // Shooting drills
+            ['Demo Wrist Shot Practice', 'Practice wrist shots from the slot. Focus on quick release and accuracy. Set up targets in corners of the net.'],
+            ['Demo One-Timer Drill', 'Partners practice one-timers with emphasis on timing, positioning, and shot placement. Great for power play scenarios.'],
+            ['Demo Slap Shot Fundamentals', 'Basic slap shot technique drill. Focus on weight transfer, stick flex, and follow-through.'],
+            
+            // Passing drills
+            ['Demo 3-Man Weave', 'Classic passing drill with three players weaving down the ice, focusing on timing and tape-to-tape passes.'],
+            ['Demo Breakout Passing', 'Defensive zone breakout patterns with various passing options. Includes D-to-D, rim, and up-the-middle options.'],
+            ['Demo Cross-Ice Passing', 'Two groups face each other across the neutral zone practicing long accurate passes under pressure.'],
+            
+            // Team play drills
+            ['Demo 3-on-2 Rush', 'Offensive rush drill with 3 forwards against 2 defensemen. Focus on quick puck movement and creating scoring chances.'],
+            ['Demo 2-on-1 Break', 'Classic odd-man rush drill emphasizing shot/pass decision making and defensive positioning.'],
+            ['Demo Defensive Zone Coverage', 'Full team drill practicing defensive zone positioning, stick placement, and clearing rebounds.'],
         ];
         
         foreach ($drills as $drill) {
-            $category_id = $this->demo_ids['drill_categories'][array_rand($this->demo_ids['drill_categories'])];
-            
-            $stmt = $this->pdo->prepare("
-                INSERT INTO drills (name, description, duration_minutes, difficulty, category_id, coach_id, is_demo, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, 1, NOW())
-            ");
-            $stmt->execute(array_merge($drill, [$category_id, $coach_id]));
-            $this->demo_ids['drills'][] = $this->pdo->lastInsertId();
+            try {
+                // Get a random category if available
+                $category_id = null;
+                if (!empty($this->demo_ids['drill_categories'])) {
+                    $category_id = $this->demo_ids['drill_categories'][array_rand($this->demo_ids['drill_categories'])];
+                }
+                
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO drills ($title_col, description, category_id, $coach_col, is_demo, created_at)
+                    VALUES (?, ?, ?, ?, 1, NOW())
+                ");
+                $stmt->execute([$drill[0], $drill[1], $category_id, $coach_id]);
+                $this->demo_ids['drills'][] = $this->pdo->lastInsertId();
+            } catch (PDOException $e) {
+                echo "  ⚠ Error creating drill '{$drill[0]}': " . $e->getMessage() . "\n";
+            }
         }
         
-        echo "  ✓ Created " . count($drills) . " demo drills\n";
+        echo "  ✓ Created " . count($this->demo_ids['drills']) . " demo drills\n";
     }
     
     /**
@@ -427,31 +462,109 @@ class DemoDataSeeder {
     private function seedPracticePlans() {
         echo "Seeding Practice Plans...\n";
         
-        if (empty($this->demo_ids['practice_plan_categories'])) {
-            echo "  ⚠ Skipping practice plans - no categories available\n";
-            return;
-        }
-        
         $coach_id = $this->demo_ids['users']['coach'][0] ?? 1;
         
+        // Check which columns exist in practice_plans table
+        $columns_stmt = $this->pdo->query("SHOW COLUMNS FROM practice_plans");
+        $existing_columns = [];
+        while ($col = $columns_stmt->fetch(PDO::FETCH_ASSOC)) {
+            $existing_columns[] = $col['Field'];
+        }
+        
+        // Determine if we have extended columns
+        $has_title = in_array('title', $existing_columns);
+        $has_name = in_array('name', $existing_columns);
+        $has_total_duration = in_array('total_duration', $existing_columns);
+        $has_age_group = in_array('age_group', $existing_columns);
+        $has_focus_area = in_array('focus_area', $existing_columns);
+        $has_category_id = in_array('category_id', $existing_columns);
+        
+        $title_col = $has_title ? 'title' : ($has_name ? 'name' : 'title');
+        
+        // Demo practice plans data
         $plans = [
-            ['Demo Basic Skills Session', 'Introduction to basic skating and stick handling', 60],
-            ['Demo Advanced Shooting', 'Advanced shooting techniques and drills', 90],
-            ['Demo Team Tactics', 'Offensive and defensive team strategies', 120],
+            ['Demo Basic Skills Session', 'Introduction to basic skating and stick handling. Perfect for beginners and young players.', 60, 'U10', 'Skills Development'],
+            ['Demo Advanced Shooting', 'Advanced shooting techniques and drills for competitive players.', 90, 'U14', 'Shooting'],
+            ['Demo Team Tactics', 'Offensive and defensive team strategies and positioning.', 120, 'U16', 'Team Play'],
+            ['Demo Power Play Practice', 'Full power play practice with multiple zone entries and shooting options.', 75, 'U14', 'Special Teams'],
+            ['Demo Penalty Kill Drill', 'Defensive zone penalty kill formations and clears.', 60, 'U16', 'Special Teams'],
+            ['Demo Goalie Training Session', 'Comprehensive goalie training including angles, rebounds, and lateral movement.', 90, 'All Ages', 'Goaltending'],
         ];
         
         foreach ($plans as $plan) {
-            $category_id = $this->demo_ids['practice_plan_categories'][array_rand($this->demo_ids['practice_plan_categories'])];
-            
-            $stmt = $this->pdo->prepare("
-                INSERT INTO practice_plans (name, description, duration_minutes, category_id, coach_id, is_demo, created_at)
-                VALUES (?, ?, ?, ?, ?, 1, NOW())
-            ");
-            $stmt->execute(array_merge($plan, [$category_id, $coach_id]));
-            $this->demo_ids['practice_plans'][] = $this->pdo->lastInsertId();
+            try {
+                // Build dynamic insert based on available columns
+                $columns = [$title_col, 'description', 'created_by', 'is_demo'];
+                $values = [$plan[0], $plan[1], $coach_id, 1];
+                
+                if ($has_total_duration) {
+                    $columns[] = 'total_duration';
+                    $values[] = $plan[2];
+                }
+                
+                if ($has_age_group) {
+                    $columns[] = 'age_group';
+                    $values[] = $plan[3];
+                }
+                
+                if ($has_focus_area) {
+                    $columns[] = 'focus_area';
+                    $values[] = $plan[4];
+                }
+                
+                if ($has_category_id && !empty($this->demo_ids['practice_plan_categories'])) {
+                    $columns[] = 'category_id';
+                    $values[] = $this->demo_ids['practice_plan_categories'][array_rand($this->demo_ids['practice_plan_categories'])];
+                }
+                
+                $columns[] = 'created_at';
+                $values[] = date('Y-m-d H:i:s');
+                
+                $placeholders = str_repeat('?,', count($columns) - 1) . '?';
+                $columns_str = implode(', ', $columns);
+                
+                $stmt = $this->pdo->prepare("INSERT INTO practice_plans ($columns_str) VALUES ($placeholders)");
+                $stmt->execute($values);
+                $plan_id = $this->pdo->lastInsertId();
+                $this->demo_ids['practice_plans'][] = $plan_id;
+                
+                // Add drills to the practice plan
+                if (!empty($this->demo_ids['drills'])) {
+                    $num_drills = min(rand(2, 4), count($this->demo_ids['drills']));
+                    $selected_drills = array_rand($this->demo_ids['drills'], $num_drills);
+                    if (!is_array($selected_drills)) {
+                        $selected_drills = [$selected_drills];
+                    }
+                    
+                    $order = 0;
+                    foreach ($selected_drills as $drill_index) {
+                        $drill_id = $this->demo_ids['drills'][$drill_index];
+                        $duration = rand(10, 20);
+                        
+                        // Check practice_plan_drills columns
+                        $ppd_cols = $this->pdo->query("SHOW COLUMNS FROM practice_plan_drills")->fetchAll(PDO::FETCH_COLUMN);
+                        $has_plan_id = in_array('plan_id', $ppd_cols);
+                        $has_practice_plan_id = in_array('practice_plan_id', $ppd_cols);
+                        $has_order_index = in_array('order_index', $ppd_cols);
+                        $has_drill_order = in_array('drill_order', $ppd_cols);
+                        
+                        $plan_col = $has_plan_id ? 'plan_id' : 'practice_plan_id';
+                        $order_col = $has_order_index ? 'order_index' : ($has_drill_order ? 'drill_order' : 'order_index');
+                        
+                        $stmt = $this->pdo->prepare("
+                            INSERT INTO practice_plan_drills ($plan_col, drill_id, $order_col, duration_minutes)
+                            VALUES (?, ?, ?, ?)
+                        ");
+                        $stmt->execute([$plan_id, $drill_id, $order, $duration]);
+                        $order++;
+                    }
+                }
+            } catch (PDOException $e) {
+                echo "  ⚠ Error creating practice plan '{$plan[0]}': " . $e->getMessage() . "\n";
+            }
         }
         
-        echo "  ✓ Created " . count($plans) . " demo practice plans\n";
+        echo "  ✓ Created " . count($this->demo_ids['practice_plans']) . " demo practice plans\n";
     }
     
     /**
