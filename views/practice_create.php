@@ -128,10 +128,12 @@
                 <?php
                 $drillsStmt = $pdo->query("SELECT d.*, dc.name as category_name FROM drills d LEFT JOIN drill_categories dc ON d.category_id = dc.id ORDER BY d.title");
                 while ($drill = $drillsStmt->fetch()) {
-                    echo '<div class="drill-selector-item" data-id="' . $drill['id'] . '" data-title="' . htmlspecialchars($drill['title']) . '" onclick="selectDrill(' . $drill['id'] . ', \'' . htmlspecialchars(addslashes($drill['title'])) . '\', \'' . htmlspecialchars($drill['category_name'] ?? '') . '\')">';
+                    $title = htmlspecialchars($drill['title'], ENT_QUOTES, 'UTF-8');
+                    $category = htmlspecialchars($drill['category_name'] ?? '', ENT_QUOTES, 'UTF-8');
+                    echo '<div class="drill-selector-item" data-drill-id="' . intval($drill['id']) . '" data-title="' . $title . '" data-category="' . $category . '">';
                     echo '<div class="drill-selector-info">';
-                    echo '<strong>' . htmlspecialchars($drill['title']) . '</strong>';
-                    if ($drill['category_name']) echo '<span class="drill-category">' . htmlspecialchars($drill['category_name']) . '</span>';
+                    echo '<strong>' . $title . '</strong>';
+                    if ($drill['category_name']) echo '<span class="drill-category">' . $category . '</span>';
                     echo '</div>';
                     echo '<button type="button" class="btn-icon"><i class="fas fa-plus"></i></button>';
                     echo '</div>';
@@ -405,6 +407,29 @@
 </style>
 
 <script>
+// Notification helper function
+function showNotification(message, type = 'info') {
+    const alertClass = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'notification-toast ' + alertClass;
+    alertDiv.innerHTML = '<i class="fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle') + '"></i> ' + message;
+    alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; min-width: 300px; padding: 15px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; animation: slideIn 0.3s ease;';
+    
+    if (type === 'error') {
+        alertDiv.style.background = 'rgba(239, 68, 68, 0.9)';
+        alertDiv.style.color = '#fff';
+    } else if (type === 'success') {
+        alertDiv.style.background = 'rgba(16, 185, 129, 0.9)';
+        alertDiv.style.color = '#fff';
+    } else {
+        alertDiv.style.background = 'rgba(59, 130, 246, 0.9)';
+        alertDiv.style.color = '#fff';
+    }
+    
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 4000);
+}
+
 // Practice plan drill management
 let practiceDrills = [];
 let draggedItem = null;
@@ -421,15 +446,26 @@ function filterDrillSelector() {
     const search = document.getElementById('drillSelectorSearch').value.toLowerCase();
     const items = document.querySelectorAll('.drill-selector-item');
     items.forEach(item => {
-        const title = item.dataset.title.toLowerCase();
+        const title = (item.dataset.title || '').toLowerCase();
         item.style.display = title.includes(search) ? 'flex' : 'none';
     });
 }
 
+// Use event delegation for drill selection
+document.addEventListener('click', function(e) {
+    const drillItem = e.target.closest('.drill-selector-item');
+    if (drillItem) {
+        const id = parseInt(drillItem.dataset.drillId, 10);
+        const title = drillItem.dataset.title || '';
+        const category = drillItem.dataset.category || '';
+        selectDrill(id, title, category);
+    }
+});
+
 function selectDrill(id, title, category) {
     // Check if already added
     if (practiceDrills.find(d => d.id === id)) {
-        alert('This drill is already in your plan.');
+        showNotification('This drill is already in your plan.', 'error');
         return;
     }
     
@@ -587,7 +623,7 @@ function saveDraft() {
         timestamp: new Date().toISOString()
     }));
     
-    alert('Draft saved locally. It will be available when you return to this page.');
+    showNotification('Draft saved! Your progress has been saved locally.', 'success');
 }
 
 function printPracticePlan() {
@@ -601,7 +637,7 @@ function submitPracticePlan() {
     // Validate
     const title = document.getElementById('practiceTitle').value;
     if (!title) {
-        alert('Please enter a practice title.');
+        showNotification('Please enter a practice title.', 'error');
         return;
     }
     
