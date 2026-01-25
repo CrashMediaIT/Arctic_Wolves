@@ -79,6 +79,19 @@ $users_query = $pdo->query("
 ");
 $users = $users_query->fetchAll(PDO::FETCH_ASSOC);
 
+// Count by action type
+$insert_count = 0;
+$update_count = 0;
+$delete_count = 0;
+// Estimate from current page (for display purposes)
+foreach ($logs as $log) {
+    switch ($log['action_type']) {
+        case 'INSERT': $insert_count++; break;
+        case 'UPDATE': $update_count++; break;
+        case 'DELETE': $delete_count++; break;
+    }
+}
+
 $csrf_token = generateCsrfToken();
 ?>
 
@@ -87,467 +100,617 @@ $csrf_token = generateCsrfToken();
         --primary: #7000a4;
     }
     
-    .audit-header {
+    .audit-page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid #1e293b;
     }
     
-    .audit-header h1 {
-        font-size: 32px;
-        font-weight: 900;
+    .page-header-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .page-header-icon {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, var(--primary), #5a0080);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(112, 0, 164, 0.3);
+    }
+    
+    .page-header-text h1 {
+        font-size: 28px;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+    }
+    
+    .page-header-text p {
+        font-size: 14px;
+        color: #94a3b8;
         margin: 0;
     }
     
-    .audit-header p {
-        color: #94a3b8;
-        font-size: 14px;
-        margin: 5px 0 0 0;
+    .page-header-stats {
+        display: flex;
+        gap: 16px;
     }
     
-    .filters-container {
+    .header-stat {
+        text-align: center;
+        padding: 12px 18px;
         background: #0d1117;
         border: 1px solid #1e293b;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
+        border-radius: 12px;
+        min-width: 85px;
     }
     
-    .filters-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
+    .header-stat .stat-value {
+        display: block;
+        font-size: 22px;
+        font-weight: 700;
+        color: #a855f7;
+    }
+    
+    .header-stat .stat-label {
+        font-size: 10px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .header-stat.insert .stat-value { color: #10b981; }
+    .header-stat.update .stat-value { color: #3b82f6; }
+    .header-stat.delete .stat-value { color: #ef4444; }
+    
+    .filters-card {
+        background: #0d1117;
+        border: 1px solid #1e293b;
+        border-radius: 14px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+    
+    .filters-form {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+    
+    .filter-group {
+        flex: 1;
+        min-width: 180px;
     }
     
     .filter-group label {
         display: block;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
-        color: #94a3b8;
-        margin-bottom: 5px;
+        color: #64748b;
+        margin-bottom: 8px;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     .filter-select {
         width: 100%;
-        padding: 10px;
+        padding: 12px 16px;
         background: #06080b;
         border: 1px solid #1e293b;
-        border-radius: 6px;
+        border-radius: 10px;
         color: #fff;
-        font-size: 14px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.3s;
     }
     
+    .filter-select:hover,
     .filter-select:focus {
-        outline: none;
         border-color: var(--primary);
+        outline: none;
     }
     
-    .filter-buttons {
+    .filter-actions {
         display: flex;
         gap: 10px;
-        align-items: flex-end;
     }
     
-    .btn-primary {
+    .btn-filter {
+        padding: 12px 24px;
         background: var(--primary);
         color: #fff;
-        padding: 10px 20px;
         border: none;
-        border-radius: 6px;
+        border-radius: 10px;
         font-weight: 700;
         cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s;
+        font-size: 13px;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
     
-    .btn-primary:hover {
+    .btn-filter:hover {
         background: #5a0080;
+        transform: translateY(-2px);
     }
     
-    .btn-secondary {
+    .btn-reset {
+        padding: 12px 24px;
         background: transparent;
-        border: 1px solid #1e293b;
         color: #94a3b8;
-        padding: 10px 20px;
-        border-radius: 6px;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
         font-weight: 600;
         cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s;
+        font-size: 13px;
+        transition: all 0.3s;
     }
     
-    .btn-secondary:hover {
+    .btn-reset:hover {
         border-color: var(--primary);
         color: var(--primary);
     }
     
-    .logs-table-container {
+    .logs-card {
         background: #0d1117;
         border: 1px solid #1e293b;
-        border-radius: 8px;
+        border-radius: 14px;
         overflow: hidden;
+    }
+    
+    .logs-card .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        background: linear-gradient(180deg, rgba(112, 0, 164, 0.08) 0%, transparent 100%);
+        border-bottom: 1px solid #1e293b;
+    }
+    
+    .logs-card .card-header h3 {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .logs-card .card-header h3 i {
+        color: var(--primary);
+    }
+    
+    .logs-count {
+        padding: 6px 14px;
+        background: rgba(168, 85, 247, 0.15);
+        color: #a855f7;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .logs-table-container {
+        overflow-x: auto;
     }
     
     .logs-table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
     }
     
-    .logs-table thead {
-        background: #06080b;
-    }
-    
-    .logs-table th {
-        padding: 16px;
+    .logs-table thead th {
+        padding: 14px 18px;
         text-align: left;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
-        color: #94a3b8;
+        color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        border-bottom: 1px solid #1e293b;
+        background: rgba(112, 0, 164, 0.05);
+        border-bottom: 2px solid #1e293b;
+        white-space: nowrap;
     }
     
-    .logs-table td {
-        padding: 16px;
+    .logs-table tbody td {
+        padding: 16px 18px;
         border-bottom: 1px solid #1e293b;
-        color: #fff;
-        font-size: 14px;
+        font-size: 13px;
+        vertical-align: middle;
+    }
+    
+    .logs-table tbody tr {
+        transition: all 0.2s;
     }
     
     .logs-table tbody tr:hover {
         background: rgba(112, 0, 164, 0.05);
     }
     
-    .badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 4px;
+    .action-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
-    .badge-UPDATE {
+    .action-badge.insert {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    
+    .action-badge.update {
         background: rgba(59, 130, 246, 0.15);
         color: #3b82f6;
-        border: 1px solid #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
     }
     
-    .badge-INSERT {
-        background: rgba(0, 255, 136, 0.15);
-        color: #00ff88;
-        border: 1px solid #00ff88;
-    }
-    
-    .badge-DELETE {
+    .action-badge.delete {
         background: rgba(239, 68, 68, 0.15);
         color: #ef4444;
-        border: 1px solid #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
     }
     
-    .btn-restore {
-        background: var(--primary);
-        color: #fff;
-        padding: 6px 12px;
-        border: none;
-        border-radius: 4px;
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, var(--primary), #5a0080);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    
+    .user-details {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .user-name {
         font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
+        color: #fff;
+        font-size: 13px;
     }
     
-    .btn-restore:hover {
-        background: #5a0080;
+    .user-role-badge {
+        font-size: 10px;
+        color: #64748b;
+        text-transform: capitalize;
     }
     
-    .btn-view {
+    .table-name {
+        padding: 6px 12px;
+        background: #06080b;
+        border-radius: 8px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 12px;
+        color: #a855f7;
+    }
+    
+    .timestamp {
+        color: #64748b;
+        font-size: 12px;
+    }
+    
+    .btn-icon {
         background: transparent;
         border: 1px solid #1e293b;
         color: #94a3b8;
-        padding: 6px 12px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 600;
+        padding: 8px 12px;
+        border-radius: 8px;
         cursor: pointer;
         transition: all 0.2s;
+        font-size: 13px;
     }
     
-    .btn-view:hover {
+    .btn-icon:hover {
         border-color: var(--primary);
         color: var(--primary);
+        background: rgba(112, 0, 164, 0.1);
     }
     
+    .btn-icon.danger:hover {
+        border-color: #ef4444;
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+    
+    /* Pagination Enhanced */
     .pagination {
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 10px;
-        margin-top: 20px;
-        padding: 20px;
+        gap: 8px;
+        padding: 24px;
+        border-top: 1px solid #1e293b;
     }
     
-    .pagination a,
-    .pagination span {
-        padding: 8px 12px;
+    .page-link {
+        padding: 10px 16px;
+        background: transparent;
         border: 1px solid #1e293b;
-        border-radius: 4px;
+        border-radius: 8px;
         color: #94a3b8;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
         text-decoration: none;
-        font-size: 14px;
         transition: all 0.2s;
     }
     
-    .pagination a:hover {
+    .page-link:hover {
         border-color: var(--primary);
         color: var(--primary);
+        background: rgba(112, 0, 164, 0.1);
     }
     
-    .pagination .active {
+    .page-link.active {
         background: var(--primary);
         border-color: var(--primary);
         color: #fff;
     }
     
-    .modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 10000;
-        overflow-y: auto;
-        padding: 20px;
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     
-    .modal.show {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .modal-content {
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
-        width: 100%;
-        max-width: 800px;
-        max-height: 90vh;
-        overflow-y: auto;
-    }
-    
-    .modal-header {
-        padding: 20px 25px;
-        border-bottom: 1px solid #1e293b;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .modal-header h2 {
-        font-size: 20px;
-        font-weight: 700;
-        margin: 0;
-        color: #fff;
-    }
-    
-    .modal-close {
-        background: transparent;
-        border: none;
-        color: #94a3b8;
-        font-size: 24px;
-        cursor: pointer;
-    }
-    
-    .modal-body {
-        padding: 24px;
-    }
-    
-    .json-display {
-        background: #06080b;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
-        padding: 16px;
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
-        color: #00ff88;
-        overflow-x: auto;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+    .page-info {
+        color: #64748b;
+        font-size: 13px;
+        padding: 0 16px;
     }
     
     .empty-state {
         text-align: center;
-        padding: 60px 20px;
+        padding: 80px 24px;
         color: #64748b;
     }
     
     .empty-state i {
         font-size: 64px;
         color: #1e293b;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .empty-state h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+    
+    @media (max-width: 768px) {
+        .audit-page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .page-header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .page-header-stats {
+            width: 100%;
+            justify-content: space-between;
+        }
+        
+        .filters-form {
+            flex-direction: column;
+        }
+        
+        .filter-group {
+            width: 100%;
+        }
+        
+        .filter-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
     }
 </style>
 
-<div class="audit-header">
-    <div>
-        <h1><i class="fas fa-history"></i> Audit Logs</h1>
-        <p>Complete audit trail with restore capabilities</p>
+<div class="audit-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-history"></i>
+        </div>
+        <div class="page-header-text">
+            <h1>Audit Logs</h1>
+            <p>Track all system changes with comprehensive audit trail and restore capabilities</p>
+        </div>
     </div>
-    <button class="btn-primary" onclick="exportAuditLogs()">
-        <i class="fas fa-download"></i> Export
-    </button>
+    <div class="page-header-stats">
+        <div class="header-stat">
+            <span class="stat-value"><?= number_format($total_logs) ?></span>
+            <span class="stat-label">Total Logs</span>
+        </div>
+        <div class="header-stat insert">
+            <span class="stat-value"><?= $insert_count ?></span>
+            <span class="stat-label">Inserts</span>
+        </div>
+        <div class="header-stat update">
+            <span class="stat-value"><?= $update_count ?></span>
+            <span class="stat-label">Updates</span>
+        </div>
+        <div class="header-stat delete">
+            <span class="stat-value"><?= $delete_count ?></span>
+            <span class="stat-label">Deletes</span>
+        </div>
+    </div>
 </div>
 
-<!-- Filters -->
-<div class="filters-container">
-    <form method="GET" action="">
-        <input type="hidden" name="page" value="audit_log">
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label>Table</label>
-                <select name="table" class="filter-select">
-                    <option value="">All Tables</option>
-                    <?php foreach ($tables as $table): ?>
-                        <option value="<?= htmlspecialchars($table) ?>" <?= $filter_table === $table ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($table) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label>Action</label>
-                <select name="action" class="filter-select">
-                    <option value="">All Actions</option>
-                    <option value="INSERT" <?= $filter_action === 'INSERT' ? 'selected' : '' ?>>INSERT</option>
-                    <option value="UPDATE" <?= $filter_action === 'UPDATE' ? 'selected' : '' ?>>UPDATE</option>
-                    <option value="DELETE" <?= $filter_action === 'DELETE' ? 'selected' : '' ?>>DELETE</option>
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label>User</label>
-                <select name="user" class="filter-select">
-                    <option value="">All Users</option>
-                    <?php foreach ($users as $user): ?>
-                        <option value="<?= $user['id'] ?>" <?= $filter_user == $user['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($user['name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div class="filter-buttons">
-                <button type="submit" class="btn-primary">
-                    <i class="fas fa-filter"></i> Filter
-                </button>
-                <a href="?page=admin_audit_logs" class="btn-secondary">
-                    <i class="fas fa-times"></i> Clear
-                </a>
-            </div>
+<!-- Filters Card -->
+<div class="filters-card">
+    <form method="GET" action="" class="filters-form">
+        <input type="hidden" name="page" value="audit_logs">
+        <div class="filter-group">
+            <label>Table</label>
+            <select name="table" class="filter-select">
+                <option value="">All Tables</option>
+                <?php foreach ($tables as $table): ?>
+                    <option value="<?= htmlspecialchars($table) ?>" <?= $filter_table === $table ? 'selected' : '' ?>><?= htmlspecialchars($table) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Action</label>
+            <select name="action" class="filter-select">
+                <option value="">All Actions</option>
+                <option value="INSERT" <?= $filter_action === 'INSERT' ? 'selected' : '' ?>>INSERT</option>
+                <option value="UPDATE" <?= $filter_action === 'UPDATE' ? 'selected' : '' ?>>UPDATE</option>
+                <option value="DELETE" <?= $filter_action === 'DELETE' ? 'selected' : '' ?>>DELETE</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>User</label>
+            <select name="user" class="filter-select">
+                <option value="">All Users</option>
+                <?php foreach ($users as $user): ?>
+                    <option value="<?= $user['id'] ?>" <?= $filter_user == $user['id'] ? 'selected' : '' ?>><?= htmlspecialchars($user['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn-filter"><i class="fas fa-filter"></i> Apply</button>
+            <a href="?page=audit_logs" class="btn-reset">Reset</a>
         </div>
     </form>
 </div>
 
-<?php if (empty($logs)): ?>
-    <div class="logs-table-container">
+<!-- Logs Table -->
+<div class="logs-card">
+    <div class="card-header">
+        <h3><i class="fas fa-list"></i> Log Entries</h3>
+        <span class="logs-count"><?= number_format($total_logs) ?> entries</span>
+    </div>
+    
+    <?php if (count($logs) > 0): ?>
+        <div class="logs-table-container">
+            <table class="logs-table">
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Table</th>
+                        <th>User</th>
+                        <th>Record ID</th>
+                        <th>Date & Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($logs as $log): ?>
+                        <tr>
+                            <td>
+                                <span class="action-badge <?= strtolower($log['action_type']) ?>">
+                                    <i class="fas fa-<?= $log['action_type'] === 'INSERT' ? 'plus' : ($log['action_type'] === 'UPDATE' ? 'edit' : 'trash') ?>"></i>
+                                    <?= $log['action_type'] ?>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="table-name"><?= htmlspecialchars($log['table_name']) ?></span>
+                            </td>
+                            <td>
+                                <div class="user-info">
+                                    <div class="user-avatar">
+                                        <?php 
+                                            $initials = '';
+                                            if ($log['user_name']) {
+                                                $parts = explode(' ', $log['user_name']);
+                                                $initials = strtoupper(substr($parts[0], 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
+                                            } else {
+                                                $initials = 'SY';
+                                            }
+                                            echo $initials;
+                                        ?>
+                                    </div>
+                                    <div class="user-details">
+                                        <span class="user-name"><?= htmlspecialchars($log['user_name'] ?? 'System') ?></span>
+                                        <span class="user-role-badge"><?= htmlspecialchars($log['user_role'] ?? 'system') ?></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><?= htmlspecialchars($log['record_id']) ?></td>
+                            <td class="timestamp"><?= date('M d, Y h:i A', strtotime($log['created_at'])) ?></td>
+                            <td>
+                                <button class="btn-icon" onclick="viewLogDetails(<?= $log['id'] ?>)" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <?php if ($log['action_type'] !== 'INSERT' && !empty($log['old_values'])): ?>
+                                    <button class="btn-icon" onclick="confirmRestore(<?= $log['id'] ?>)" title="Restore">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        
+        <?php if ($total_pages > 1): ?>
+            <div class="pagination">
+                <?php if ($page_num > 1): ?>
+                    <a href="?page=audit_logs&p=1<?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-angles-left"></i></a>
+                    <a href="?page=audit_logs&p=<?= $page_num - 1 ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-chevron-left"></i></a>
+                <?php endif; ?>
+                
+                <span class="page-info">Page <?= $page_num ?> of <?= $total_pages ?></span>
+                
+                <?php if ($page_num < $total_pages): ?>
+                    <a href="?page=audit_logs&p=<?= $page_num + 1 ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-chevron-right"></i></a>
+                    <a href="?page=audit_logs&p=<?= $total_pages ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-angles-right"></i></a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    <?php else: ?>
         <div class="empty-state">
             <i class="fas fa-history"></i>
             <h3>No Audit Logs Found</h3>
-            <p>No logs match your filter criteria</p>
-        </div>
-    </div>
-<?php else: ?>
-    <div class="logs-table-container">
-        <table class="logs-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>User</th>
-                    <th>Action</th>
-                    <th>Table</th>
-                    <th>Record ID</th>
-                    <th>Timestamp</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($logs as $log): ?>
-                    <tr>
-                        <td>#<?= $log['id'] ?></td>
-                        <td>
-                            <?= htmlspecialchars($log['user_name']) ?>
-                            <div style="font-size: 11px; color: #64748b;">
-                                <?= htmlspecialchars($log['user_role']) ?>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="badge badge-<?= htmlspecialchars($log['action_type']) ?>">
-                                <?= htmlspecialchars($log['action_type']) ?>
-                            </span>
-                        </td>
-                        <td><?= htmlspecialchars($log['table_name']) ?></td>
-                        <td>#<?= $log['record_id'] ?></td>
-                        <td style="font-size: 12px; color: #64748b;">
-                            <?= date('M j, Y g:i A', strtotime($log['created_at'])) ?>
-                        </td>
-                        <td>
-                            <button class="btn-view" onclick="viewLog(<?= $log['id'] ?>)">
-                                <i class="fas fa-eye"></i> View
-                            </button>
-                            <?php if ($log['action_type'] === 'UPDATE' || $log['action_type'] === 'DELETE'): ?>
-                                <button class="btn-restore" onclick="restoreData(<?= $log['id'] ?>)">
-                                    <i class="fas fa-undo"></i> Restore
-                                </button>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-    
-    <?php if ($total_pages > 1): ?>
-        <div class="pagination">
-            <?php if ($page_num > 1): ?>
-                <a href="?page=admin_audit_logs&p=<?= $page_num - 1 ?>&table=<?= urlencode($filter_table) ?>&action=<?= urlencode($filter_action) ?>&user=<?= urlencode($filter_user) ?>">
-                    <i class="fas fa-chevron-left"></i> Previous
-                </a>
-            <?php endif; ?>
-            
-            <?php for ($i = max(1, $page_num - 2); $i <= min($total_pages, $page_num + 2); $i++): ?>
-                <?php if ($i === $page_num): ?>
-                    <span class="active"><?= $i ?></span>
-                <?php else: ?>
-                    <a href="?page=admin_audit_logs&p=<?= $i ?>&table=<?= urlencode($filter_table) ?>&action=<?= urlencode($filter_action) ?>&user=<?= urlencode($filter_user) ?>">
-                        <?= $i ?>
-                    </a>
-                <?php endif; ?>
-            <?php endfor; ?>
-            
-            <?php if ($page_num < $total_pages): ?>
-                <a href="?page=admin_audit_logs&p=<?= $page_num + 1 ?>&table=<?= urlencode($filter_table) ?>&action=<?= urlencode($filter_action) ?>&user=<?= urlencode($filter_user) ?>">
-                    Next <i class="fas fa-chevron-right"></i>
-                </a>
-            <?php endif; ?>
+            <p>No logs match your current filters. Try adjusting your search criteria.</p>
         </div>
     <?php endif; ?>
-<?php endif; ?>
+</div>
 
 <!-- View Modal -->
 <div id="viewModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2><i class="fas fa-eye"></i> Audit Log Details</h2>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header" style="background: linear-gradient(180deg, rgba(112, 0, 164, 0.08) 0%, transparent 100%); padding: 24px; border-bottom: 1px solid #1e293b;">
+            <h2 style="margin: 0; font-size: 20px; display: flex; align-items: center; gap: 12px;"><i class="fas fa-eye" style="color: #a855f7;"></i> Audit Log Details</h2>
+            <button class="modal-close" onclick="closeViewModal()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer;">&times;</button>
         </div>
-        <div class="modal-body" id="modalContent">
+        <div class="modal-body" id="modalContent" style="padding: 24px;">
             <!-- Content loaded via JavaScript -->
         </div>
     </div>
@@ -556,41 +719,41 @@ $csrf_token = generateCsrfToken();
 <script>
 const logsData = <?= json_encode($logs) ?>;
 
-function viewLog(logId) {
+function viewLogDetails(logId) {
     const log = logsData.find(l => l.id == logId);
     if (!log) return;
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="margin-bottom: 10px; color: #fff;">Log Information</h3>
-            <table style="width: 100%; font-size: 14px;">
+            <h3 style="margin-bottom: 12px; color: #fff; font-size: 16px;">Log Information</h3>
+            <table style="width: 100%; font-size: 14px; background: #06080b; border-radius: 10px; overflow: hidden;">
                 <tr>
-                    <td style="padding: 8px; color: #94a3b8; width: 150px;">ID:</td>
-                    <td style="padding: 8px; color: #fff;">#${log.id}</td>
+                    <td style="padding: 12px 16px; color: #64748b; width: 140px; border-bottom: 1px solid #1e293b;">ID</td>
+                    <td style="padding: 12px 16px; color: #fff; border-bottom: 1px solid #1e293b;">#${log.id}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px; color: #94a3b8;">User:</td>
-                    <td style="padding: 8px; color: #fff;">${log.user_name} (${log.user_role})</td>
+                    <td style="padding: 12px 16px; color: #64748b; border-bottom: 1px solid #1e293b;">User</td>
+                    <td style="padding: 12px 16px; color: #fff; border-bottom: 1px solid #1e293b;">${log.user_name || 'System'} (${log.user_role || 'system'})</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px; color: #94a3b8;">Action:</td>
-                    <td style="padding: 8px; color: #fff;">${log.action_type}</td>
+                    <td style="padding: 12px 16px; color: #64748b; border-bottom: 1px solid #1e293b;">Action</td>
+                    <td style="padding: 12px 16px; color: #fff; border-bottom: 1px solid #1e293b;">${log.action_type}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px; color: #94a3b8;">Table:</td>
-                    <td style="padding: 8px; color: #fff;">${log.table_name}</td>
+                    <td style="padding: 12px 16px; color: #64748b; border-bottom: 1px solid #1e293b;">Table</td>
+                    <td style="padding: 12px 16px; color: #a855f7; border-bottom: 1px solid #1e293b; font-family: monospace;">${log.table_name}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px; color: #94a3b8;">Record ID:</td>
-                    <td style="padding: 8px; color: #fff;">#${log.record_id}</td>
+                    <td style="padding: 12px 16px; color: #64748b; border-bottom: 1px solid #1e293b;">Record ID</td>
+                    <td style="padding: 12px 16px; color: #fff; border-bottom: 1px solid #1e293b;">#${log.record_id}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px; color: #94a3b8;">IP Address:</td>
-                    <td style="padding: 8px; color: #fff;">${log.ip_address || 'N/A'}</td>
+                    <td style="padding: 12px 16px; color: #64748b; border-bottom: 1px solid #1e293b;">IP Address</td>
+                    <td style="padding: 12px 16px; color: #fff; border-bottom: 1px solid #1e293b;">${log.ip_address || 'N/A'}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px; color: #94a3b8;">Timestamp:</td>
-                    <td style="padding: 8px; color: #fff;">${log.created_at}</td>
+                    <td style="padding: 12px 16px; color: #64748b;">Timestamp</td>
+                    <td style="padding: 12px 16px; color: #fff;">${log.created_at}</td>
                 </tr>
             </table>
         </div>
@@ -599,8 +762,8 @@ function viewLog(logId) {
     if (log.old_values) {
         html += `
             <div style="margin-bottom: 20px;">
-                <h3 style="margin-bottom: 10px; color: #fff;">Old Values</h3>
-                <div class="json-display">${escapeHtml(JSON.stringify(JSON.parse(log.old_values), null, 2))}</div>
+                <h3 style="margin-bottom: 12px; color: #fff; font-size: 16px;">Old Values</h3>
+                <pre style="background: #06080b; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; font-family: monospace; font-size: 12px; color: #ef4444; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(JSON.stringify(JSON.parse(log.old_values), null, 2))}</pre>
             </div>
         `;
     }
@@ -608,20 +771,42 @@ function viewLog(logId) {
     if (log.new_values) {
         html += `
             <div style="margin-bottom: 20px;">
-                <h3 style="margin-bottom: 10px; color: #fff;">New Values</h3>
-                <div class="json-display">${escapeHtml(JSON.stringify(JSON.parse(log.new_values), null, 2))}</div>
+                <h3 style="margin-bottom: 12px; color: #fff; font-size: 16px;">New Values</h3>
+                <pre style="background: #06080b; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; font-family: monospace; font-size: 12px; color: #10b981; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(JSON.stringify(JSON.parse(log.new_values), null, 2))}</pre>
             </div>
         `;
     }
     
     document.getElementById('modalContent').innerHTML = html;
-    document.getElementById('viewModal').classList.add('show');
+    document.getElementById('viewModal').style.display = 'flex';
 }
 
-function restoreData(logId) {
+function confirmRestore(logId) {
     if (!confirm('Are you sure you want to restore this data? This will create a new audit log entry.')) {
         return;
     }
+    
+    // Implement restore logic here
+    alert('Restore functionality - implement with AJAX');
+}
+
+function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Close modal when clicking outside
+document.getElementById('viewModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeViewModal();
+    }
+});
+</script>
     
     const formData = new FormData();
     formData.append('action', 'restore');

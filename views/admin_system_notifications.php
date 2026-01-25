@@ -23,86 +23,176 @@ $notifications_query = $pdo->query("
 ");
 $notifications = $notifications_query->fetchAll(PDO::FETCH_ASSOC);
 
+// Count active notifications
+$active_count = 0;
+foreach ($notifications as $n) {
+    if ($n['is_active']) $active_count++;
+}
+
 $csrf_token = generateCsrfToken();
 ?>
 
 <style>
+    /* System Notifications Enhanced Styles */
     :root {
         --primary: #7000a4;
     }
     
-    .notifications-header {
+    .notifications-page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid #1e293b;
     }
     
-    .notifications-header h1 {
-        font-size: 32px;
-        font-weight: 900;
+    .page-header-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .page-header-icon {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, var(--primary), #5a0080);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(112, 0, 164, 0.3);
+    }
+    
+    .page-header-text h1 {
+        font-size: 28px;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+    }
+    
+    .page-header-text p {
+        font-size: 14px;
+        color: #94a3b8;
         margin: 0;
     }
     
-    .notifications-header p {
-        color: #94a3b8;
-        font-size: 14px;
-        margin: 5px 0 0 0;
+    .page-header-stats {
+        display: flex;
+        gap: 20px;
+    }
+    
+    .header-stat {
+        text-align: center;
+        padding: 12px 20px;
+        background: #0d1117;
+        border: 1px solid #1e293b;
+        border-radius: 12px;
+        min-width: 90px;
+    }
+    
+    .header-stat .stat-value {
+        display: block;
+        font-size: 24px;
+        font-weight: 700;
+        color: #a855f7;
+    }
+    
+    .header-stat .stat-label {
+        font-size: 11px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     .btn-create {
         background: var(--primary);
         color: #fff;
-        padding: 12px 24px;
+        padding: 14px 28px;
         border: none;
-        border-radius: 6px;
+        border-radius: 10px;
         font-weight: 700;
         cursor: pointer;
         font-size: 14px;
-        transition: all 0.2s;
+        transition: all 0.3s;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
+        box-shadow: 0 4px 12px rgba(112, 0, 164, 0.3);
     }
     
     .btn-create:hover {
         background: #5a0080;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(112, 0, 164, 0.4);
     }
     
     .notifications-grid {
         display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
         gap: 20px;
     }
     
     .notification-card {
         background: #0d1117;
         border: 1px solid #1e293b;
-        border-radius: 8px;
-        padding: 20px;
-        transition: all 0.2s;
+        border-radius: 14px;
+        padding: 24px;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .notification-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--primary);
+        opacity: 0;
+        transition: opacity 0.3s;
     }
     
     .notification-card:hover {
         border-color: var(--primary);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+    
+    .notification-card:hover::before {
+        opacity: 1;
     }
     
     .notification-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
     }
     
     .notification-title {
         font-size: 18px;
         font-weight: 700;
         color: #fff;
-        margin: 0 0 5px 0;
+        margin: 0 0 8px 0;
     }
     
     .notification-meta {
         font-size: 12px;
         color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .notification-meta i {
+        color: var(--primary);
     }
     
     .notification-badges {
@@ -112,95 +202,115 @@ $csrf_token = generateCsrfToken();
     }
     
     .badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     .badge-maintenance {
         background: rgba(251, 191, 36, 0.15);
         color: #fbbf24;
-        border: 1px solid #fbbf24;
+        border: 1px solid rgba(251, 191, 36, 0.3);
     }
     
     .badge-update {
         background: rgba(59, 130, 246, 0.15);
         color: #3b82f6;
-        border: 1px solid #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
     }
     
     .badge-alert {
         background: rgba(239, 68, 68, 0.15);
         color: #ef4444;
-        border: 1px solid #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
     }
     
     .badge-active {
         background: rgba(0, 255, 136, 0.15);
         color: #00ff88;
-        border: 1px solid #00ff88;
+        border: 1px solid rgba(0, 255, 136, 0.3);
     }
     
     .badge-inactive {
         background: rgba(156, 163, 175, 0.15);
         color: #9ca3af;
-        border: 1px solid #9ca3af;
+        border: 1px solid rgba(156, 163, 175, 0.3);
     }
     
     .notification-message {
         color: #94a3b8;
         font-size: 14px;
         line-height: 1.6;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
+        padding: 16px;
+        background: #06080b;
+        border-radius: 10px;
+        border-left: 3px solid var(--primary);
     }
     
     .notification-schedule {
         display: flex;
-        gap: 20px;
-        padding: 10px;
+        gap: 16px;
+        padding: 14px;
         background: #06080b;
-        border-radius: 4px;
+        border-radius: 10px;
         font-size: 13px;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
     }
     
     .schedule-item {
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 8px;
         color: #64748b;
+    }
+    
+    .schedule-item i {
+        color: var(--primary);
     }
     
     .notification-actions {
         display: flex;
-        gap: 8px;
+        gap: 10px;
         justify-content: flex-end;
+        padding-top: 16px;
+        border-top: 1px solid #1e293b;
     }
     
     .btn-icon {
         background: transparent;
         border: 1px solid #1e293b;
         color: #94a3b8;
-        padding: 8px 12px;
-        border-radius: 4px;
+        padding: 10px 14px;
+        border-radius: 8px;
         cursor: pointer;
         transition: all 0.2s;
         font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .btn-icon:hover {
         border-color: var(--primary);
         color: var(--primary);
+        background: rgba(112, 0, 164, 0.1);
     }
     
     .btn-icon.danger:hover {
         border-color: #ef4444;
         color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
     }
     
+    /* Modal Enhanced */
     .modal {
         display: none;
         position: fixed;
@@ -208,10 +318,11 @@ $csrf_token = generateCsrfToken();
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.85);
         z-index: 10000;
         overflow-y: auto;
         padding: 20px;
+        backdrop-filter: blur(4px);
     }
     
     .modal.show {
@@ -223,19 +334,21 @@ $csrf_token = generateCsrfToken();
     .modal-content {
         background: #0d1117;
         border: 1px solid #1e293b;
-        border-radius: 8px;
+        border-radius: 16px;
         width: 100%;
         max-width: 600px;
         max-height: 90vh;
         overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     }
     
     .modal-header {
-        padding: 20px 25px;
+        padding: 24px;
         border-bottom: 1px solid #1e293b;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        background: linear-gradient(180deg, rgba(112, 0, 164, 0.08) 0%, transparent 100%);
     }
     
     .modal-header h2 {
@@ -243,6 +356,13 @@ $csrf_token = generateCsrfToken();
         font-weight: 700;
         margin: 0;
         color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .modal-header h2 i {
+        color: var(--primary);
     }
     
     .modal-close {
@@ -251,6 +371,18 @@ $csrf_token = generateCsrfToken();
         color: #94a3b8;
         font-size: 24px;
         cursor: pointer;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
     }
     
     .modal-body {
@@ -258,23 +390,23 @@ $csrf_token = generateCsrfToken();
     }
     
     .modal-footer {
-        padding: 20px 25px;
+        padding: 20px 24px;
         border-top: 1px solid #1e293b;
         display: flex;
         justify-content: flex-end;
-        gap: 10px;
+        gap: 12px;
     }
     
     .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 24px;
     }
     
     .form-label {
         display: block;
-        font-size: 12px;
-        font-weight: 700;
+        font-size: 13px;
+        font-weight: 600;
         color: #94a3b8;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -287,13 +419,14 @@ $csrf_token = generateCsrfToken();
     .form-select,
     .form-textarea {
         width: 100%;
-        padding: 12px;
+        padding: 14px 16px;
         background: #06080b;
         border: 1px solid #1e293b;
-        border-radius: 6px;
+        border-radius: 10px;
         color: #fff;
         font-size: 14px;
         font-family: inherit;
+        transition: all 0.3s;
     }
     
     .form-input:focus,
@@ -301,6 +434,7 @@ $csrf_token = generateCsrfToken();
     .form-textarea:focus {
         outline: none;
         border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(112, 0, 164, 0.2);
     }
     
     .form-textarea {
@@ -311,19 +445,29 @@ $csrf_token = generateCsrfToken();
     .help-text {
         font-size: 12px;
         color: #64748b;
-        margin-top: 5px;
+        margin-top: 8px;
     }
     
     .checkbox-group {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        padding: 14px 16px;
+        background: #06080b;
+        border-radius: 10px;
+        border: 1px solid #1e293b;
+        transition: all 0.3s;
+    }
+    
+    .checkbox-group:hover {
+        border-color: var(--primary);
     }
     
     .checkbox-group input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
         cursor: pointer;
+        accent-color: var(--primary);
     }
     
     .checkbox-group label {
@@ -335,29 +479,33 @@ $csrf_token = generateCsrfToken();
     .btn-primary {
         background: var(--primary);
         color: #fff;
-        padding: 12px 24px;
+        padding: 14px 28px;
         border: none;
-        border-radius: 6px;
+        border-radius: 10px;
         font-weight: 700;
         cursor: pointer;
         font-size: 14px;
-        transition: all 0.2s;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .btn-primary:hover {
         background: #5a0080;
+        transform: translateY(-2px);
     }
     
     .btn-secondary {
         background: transparent;
         border: 1px solid #1e293b;
         color: #94a3b8;
-        padding: 12px 24px;
-        border-radius: 6px;
+        padding: 14px 28px;
+        border-radius: 10px;
         font-weight: 600;
         cursor: pointer;
         font-size: 14px;
-        transition: all 0.2s;
+        transition: all 0.3s;
     }
     
     .btn-secondary:hover {
@@ -367,25 +515,79 @@ $csrf_token = generateCsrfToken();
     
     .empty-state {
         text-align: center;
-        padding: 60px 20px;
+        padding: 80px 24px;
         color: #64748b;
         background: #0d1117;
         border: 1px solid #1e293b;
-        border-radius: 8px;
+        border-radius: 16px;
     }
     
     .empty-state i {
         font-size: 64px;
         color: #1e293b;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .empty-state h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+    
+    .empty-state p {
+        margin-bottom: 24px;
+    }
+    
+    @media (max-width: 768px) {
+        .notifications-page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .page-header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .page-header-stats {
+            width: 100%;
+            justify-content: space-between;
+        }
+        
+        .notifications-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .notification-actions {
+            flex-wrap: wrap;
+        }
     }
 </style>
 
-<div class="notifications-header">
-    <div>
-        <h1><i class="fas fa-bullhorn"></i> System Notifications</h1>
-        <p>Create global maintenance notifications and alerts for all users</p>
+<div class="notifications-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-bullhorn"></i>
+        </div>
+        <div class="page-header-text">
+            <h1>System Notifications</h1>
+            <p>Create and manage global maintenance notifications and alerts for all users</p>
+        </div>
     </div>
+    <div class="page-header-stats">
+        <div class="header-stat">
+            <span class="stat-value"><?= count($notifications) ?></span>
+            <span class="stat-label">Total</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value"><?= $active_count ?></span>
+            <span class="stat-label">Active</span>
+        </div>
+    </div>
+</div>
+
+<div style="margin-bottom: 24px; text-align: right;">
     <button class="btn-create" onclick="openCreateModal()">
         <i class="fas fa-plus"></i> Create Notification
     </button>
