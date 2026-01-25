@@ -240,6 +240,7 @@ function getSetting($settings, $key, $default = '') {
         color: #ef4444;
     }
     
+    /* Alias for alert-error */
     .alert-danger {
         background: rgba(239, 68, 68, 0.1);
         border: 1px solid #ef4444;
@@ -837,6 +838,12 @@ function testReceiptUpload() {
 }
 
 function testGitHubConnection() {
+    const csrfInput = document.querySelector('[name="csrf_token"]');
+    if (!csrfInput) {
+        alert('Error: CSRF token not found');
+        return;
+    }
+    
     fetch('process_settings.php', {
         method: 'POST',
         headers: {
@@ -844,7 +851,7 @@ function testGitHubConnection() {
         },
         body: new URLSearchParams({
             'action': 'test_github',
-            'csrf_token': document.querySelector('[name="csrf_token"]').value
+            'csrf_token': csrfInput.value
         })
     })
     .then(response => response.json())
@@ -862,6 +869,14 @@ function testGitHubConnection() {
 function checkForUpdates() {
     const statusDiv = document.getElementById('update-status');
     const alertDiv = statusDiv.querySelector('.alert');
+    const csrfInput = document.querySelector('[name="csrf_token"]');
+    
+    if (!csrfInput) {
+        alertDiv.className = 'alert alert-danger';
+        alertDiv.innerHTML = '<i class="fas fa-times-circle"></i> Error: CSRF token not found';
+        statusDiv.style.display = 'block';
+        return;
+    }
     
     statusDiv.style.display = 'block';
     alertDiv.className = 'alert alert-info';
@@ -874,7 +889,7 @@ function checkForUpdates() {
         },
         body: new URLSearchParams({
             'action': 'check_updates',
-            'csrf_token': document.querySelector('[name="csrf_token"]').value
+            'csrf_token': csrfInput.value
         })
     })
     .then(response => response.json())
@@ -913,6 +928,14 @@ function applyUpdates() {
     
     const statusDiv = document.getElementById('update-status');
     const alertDiv = statusDiv.querySelector('.alert');
+    const csrfInput = document.querySelector('[name="csrf_token"]');
+    
+    if (!csrfInput) {
+        alertDiv.className = 'alert alert-danger';
+        alertDiv.innerHTML = '<i class="fas fa-times-circle"></i> Error: CSRF token not found';
+        statusDiv.style.display = 'block';
+        return;
+    }
     
     statusDiv.style.display = 'block';
     alertDiv.className = 'alert alert-info';
@@ -925,7 +948,7 @@ function applyUpdates() {
         },
         body: new URLSearchParams({
             'action': 'apply_updates',
-            'csrf_token': document.querySelector('[name="csrf_token"]').value
+            'csrf_token': csrfInput.value
         })
     })
     .then(response => response.json())
@@ -941,7 +964,7 @@ function applyUpdates() {
             alertDiv.innerHTML = message;
             
             // Suggest reload if successful
-            if (data.errors.length === 0) {
+            if (!data.errors || data.errors.length === 0) {
                 setTimeout(() => {
                     if (confirm('Update completed successfully! Reload the page to see changes?')) {
                         location.reload();

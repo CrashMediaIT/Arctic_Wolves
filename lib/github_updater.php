@@ -303,8 +303,9 @@ class GitHubUpdater {
         
         foreach ($iterator as $file) {
             if ($file->isFile()) {
-                $relative_path = str_replace($this->base_path . '/', '', $file->getPathname());
-                $relative_path = str_replace('\\', '/', $relative_path); // Normalize path separators
+                // Normalize path separators for consistency
+                $relative_path = str_replace($this->base_path . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $relative_path = str_replace('\\', '/', $relative_path); // Convert to forward slashes
                 
                 if (!$this->isExcludedPath($relative_path)) {
                     $files[] = $relative_path;
@@ -319,8 +320,12 @@ class GitHubUpdater {
      * Check if a path should be excluded from updates
      */
     private function isExcludedPath($path) {
+        // Normalize path separators
+        $path = str_replace('\\', '/', $path);
+        
         foreach ($this->excluded_paths as $excluded) {
-            if (strpos($path, $excluded) === 0 || strpos($path, $excluded) !== false) {
+            // Exact match or starts with the excluded path
+            if ($path === rtrim($excluded, '/') || strpos($path, $excluded) === 0) {
                 return true;
             }
         }
