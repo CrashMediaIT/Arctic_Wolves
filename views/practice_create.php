@@ -13,36 +13,42 @@
             <h3><i class="fas fa-info-circle"></i> Practice Information</h3>
         </div>
         <div class="card-body">
-            <form class="practice-form" method="POST" action="process_practice_plans.php">
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <form class="practice-form" id="practiceForm" method="POST" action="process_practice_plans.php">
+                <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create">
+                <input type="hidden" name="drills" id="drillsData" value="[]">
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label>Practice Title *</label>
-                        <input type="text" name="practice_title" class="form-input" placeholder="e.g., Power Play Development" required>
+                        <input type="text" name="practice_title" id="practiceTitle" class="form-input" placeholder="e.g., Power Play Development" required>
                     </div>
                     <div class="form-group">
-                        <label>Team *</label>
-                        <select name="team_id" class="form-input" required>
+                        <label>Team</label>
+                        <select name="team_id" class="form-input">
                             <option value="">-- Select Team --</option>
-                            <option>Bantam AA - Blue Devils</option>
-                            <option>Peewee A - Thunder</option>
+                            <?php 
+                            $teamsStmt = $pdo->query("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
+                            while ($team = $teamsStmt->fetch()) {
+                                echo '<option value="' . $team['id'] . '">' . htmlspecialchars($team['name']) . '</option>';
+                            }
+                            ?>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Date *</label>
-                        <input type="date" name="practice_date" class="form-input" required>
+                        <label>Date</label>
+                        <input type="date" name="practice_date" class="form-input" value="<?= date('Y-m-d') ?>">
                     </div>
                     <div class="form-group">
-                        <label>Time *</label>
-                        <input type="time" name="practice_time" class="form-input" required>
+                        <label>Time</label>
+                        <input type="time" name="practice_time" class="form-input" value="18:00">
                     </div>
                     <div class="form-group">
                         <label>Duration (minutes) *</label>
-                        <input type="number" name="duration" class="form-input" placeholder="90" min="1" required>
+                        <input type="number" name="duration" id="totalDuration" class="form-input" placeholder="90" min="1" value="60" required>
                     </div>
                 </div>
 
@@ -60,10 +66,6 @@
                     <label>Notes</label>
                     <textarea name="notes" class="form-textarea" rows="3" placeholder="Any additional notes or reminders..."></textarea>
                 </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Create Practice Plan</button>
-                </div>
             </form>
         </div>
     </div>
@@ -72,77 +74,30 @@
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-list-ol"></i> Practice Drills</h3>
-            <button class="btn-primary" id="addDrillBtn"><i class="fas fa-plus"></i> Add Drill</button>
+            <button class="btn-primary" id="addDrillBtn" onclick="showDrillSelector()"><i class="fas fa-plus"></i> Add Drill</button>
         </div>
         <div class="card-body">
             <!-- Drills Timeline -->
             <div class="drills-timeline" id="drillsTimeline">
-                <!-- Sample Drill Item -->
-                <div class="timeline-drill-item">
-                    <div class="drill-handle">
-                        <i class="fas fa-grip-vertical"></i>
-                    </div>
-                    <div class="drill-timing">
-                        <input type="number" class="time-input" value="5" min="1">
-                        <span>min</span>
-                    </div>
-                    <div class="drill-details">
-                        <select class="form-input">
-                            <option value="">-- Select Drill from Library --</option>
-                            <option selected>Dynamic Warmup</option>
-                            <option>Figure 8 Skating</option>
-                            <option>Shooting Drill</option>
-                        </select>
-                        <textarea class="form-textarea" rows="2" placeholder="Add notes or modifications..."></textarea>
-                    </div>
-                    <div class="drill-actions-inline">
-                        <button class="btn-icon" title="Move Up"><i class="fas fa-arrow-up"></i></button>
-                        <button class="btn-icon" title="Move Down"><i class="fas fa-arrow-down"></i></button>
-                        <button class="btn-icon" title="Remove"><i class="fas fa-trash"></i></button>
-                    </div>
+                <!-- Drills will be added here dynamically -->
+            </div>
+            
+            <div class="timeline-summary" id="timelineSummary" style="display: none;">
+                <div class="summary-item">
+                    <span class="summary-label">Total Drills:</span>
+                    <span class="summary-value" id="totalDrillsCount">0</span>
                 </div>
-
-                <div class="timeline-drill-item">
-                    <div class="drill-handle">
-                        <i class="fas fa-grip-vertical"></i>
-                    </div>
-                    <div class="drill-timing">
-                        <input type="number" class="time-input" value="15" min="1">
-                        <span>min</span>
-                    </div>
-                    <div class="drill-details">
-                        <select class="form-input">
-                            <option value="">-- Select Drill from Library --</option>
-                            <option>Dynamic Warmup</option>
-                            <option selected>Figure 8 Skating</option>
-                            <option>Shooting Drill</option>
-                        </select>
-                        <textarea class="form-textarea" rows="2" placeholder="Add notes or modifications..."></textarea>
-                    </div>
-                    <div class="drill-actions-inline">
-                        <button class="btn-icon" title="Move Up"><i class="fas fa-arrow-up"></i></button>
-                        <button class="btn-icon" title="Move Down"><i class="fas fa-arrow-down"></i></button>
-                        <button class="btn-icon" title="Remove"><i class="fas fa-trash"></i></button>
-                    </div>
+                <div class="summary-item">
+                    <span class="summary-label">Total Time:</span>
+                    <span class="summary-value" id="totalDrillsTime">0 min</span>
                 </div>
-
-                <div class="timeline-summary">
-                    <div class="summary-item">
-                        <span class="summary-label">Total Drills:</span>
-                        <span class="summary-value">2</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Total Time:</span>
-                        <span class="summary-value">20 min</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Remaining:</span>
-                        <span class="summary-value">70 min</span>
-                    </div>
+                <div class="summary-item">
+                    <span class="summary-label">Remaining:</span>
+                    <span class="summary-value" id="remainingTime">60 min</span>
                 </div>
             </div>
 
-            <div class="empty-state" style="display: none;">
+            <div class="empty-state" id="emptyState">
                 <i class="fas fa-clipboard-list placeholder-icon"></i>
                 <p class="placeholder-text">No drills added yet. Click "Add Drill" to start building your practice plan.</p>
             </div>
@@ -151,11 +106,41 @@
 
     <!-- Form Actions -->
     <div class="form-actions-bar">
-        <button class="btn-secondary"><i class="fas fa-times"></i> Cancel</button>
+        <a href="?page=practice_plans" class="btn-secondary"><i class="fas fa-times"></i> Cancel</a>
         <div class="action-group">
-            <button class="btn-secondary"><i class="fas fa-save"></i> Save Draft</button>
-            <button class="btn-secondary"><i class="fas fa-print"></i> Print</button>
-            <button class="btn-primary"><i class="fas fa-check"></i> Create Practice Plan</button>
+            <button class="btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
+            <button class="btn-secondary" onclick="printPracticePlan()"><i class="fas fa-print"></i> Print</button>
+            <button class="btn-primary" onclick="submitPracticePlan()"><i class="fas fa-check"></i> Create Practice Plan</button>
+        </div>
+    </div>
+</div>
+
+<!-- Drill Selector Modal -->
+<div id="drillSelectorModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Select Drill</h2>
+            <button class="close-modal" onclick="closeDrillSelector()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="text" class="form-input" id="drillSelectorSearch" placeholder="Search drills..." onkeyup="filterDrillSelector()">
+            <div class="drill-selector-list" id="drillSelectorList" style="max-height: 400px; overflow-y: auto; margin-top: 15px;">
+                <?php
+                $drillsStmt = $pdo->query("SELECT d.*, dc.name as category_name FROM drills d LEFT JOIN drill_categories dc ON d.category_id = dc.id ORDER BY d.title");
+                while ($drill = $drillsStmt->fetch()) {
+                    echo '<div class="drill-selector-item" data-id="' . $drill['id'] . '" data-title="' . htmlspecialchars($drill['title']) . '" onclick="selectDrill(' . $drill['id'] . ', \'' . htmlspecialchars(addslashes($drill['title'])) . '\', \'' . htmlspecialchars($drill['category_name'] ?? '') . '\')">';
+                    echo '<div class="drill-selector-info">';
+                    echo '<strong>' . htmlspecialchars($drill['title']) . '</strong>';
+                    if ($drill['category_name']) echo '<span class="drill-category">' . htmlspecialchars($drill['category_name']) . '</span>';
+                    echo '</div>';
+                    echo '<button type="button" class="btn-icon"><i class="fas fa-plus"></i></button>';
+                    echo '</div>';
+                }
+                ?>
+                <?php if ($drillsStmt->rowCount() == 0): ?>
+                    <p class="placeholder-text">No drills available. <a href="?page=drill_library">Create some drills first</a>.</p>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>
@@ -180,6 +165,11 @@
 
 .timeline-drill-item:hover {
     border-color: var(--neon);
+}
+
+.timeline-drill-item.dragging {
+    opacity: 0.5;
+    border-color: var(--primary);
 }
 
 .drill-handle {
@@ -233,14 +223,60 @@
     gap: 10px;
 }
 
+.drill-title-display {
+    font-weight: 700;
+    color: var(--text-white);
+    font-size: 15px;
+}
+
+.drill-category-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(107, 70, 193, 0.2);
+    color: var(--primary);
+    font-size: 11px;
+    border-radius: 4px;
+    margin-left: 8px;
+}
+
+.drill-actions-inline {
+    display: flex;
+    gap: 5px;
+}
+
+.drill-actions-inline .btn-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.drill-actions-inline .btn-icon:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.drill-actions-inline .btn-icon.danger:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
 .timeline-summary {
     display: flex;
     justify-content: space-around;
     padding: 24px;
-    background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 157, 0, 0.1));
-    border: 1px solid var(--neon);
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.1), rgba(139, 92, 246, 0.1));
+    border: 1px solid var(--primary);
     border-radius: 8px;
-    margin-top: 10px;
+    margin-top: 15px;
 }
 
 .summary-item {
@@ -260,11 +296,346 @@
     display: block;
     font-size: 24px;
     font-weight: 900;
-    color: var(--neon);
+    color: var(--primary);
 }
 
 .empty-state {
     padding: 60px 20px;
     text-align: center;
 }
+
+.empty-state .placeholder-icon {
+    font-size: 48px;
+    color: var(--text-dim);
+    opacity: 0.3;
+    margin-bottom: 15px;
+}
+
+.empty-state .placeholder-text {
+    color: var(--text-dim);
+    font-size: 14px;
+}
+
+/* Drill Selector Modal */
+.drill-selector-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.drill-selector-item:hover {
+    border-color: var(--primary);
+    background: rgba(107, 70, 193, 0.05);
+}
+
+.drill-selector-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.drill-selector-info strong {
+    color: var(--text-white);
+    font-size: 14px;
+}
+
+.drill-category {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-white);
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.close-modal:hover {
+    color: var(--text-white);
+}
 </style>
+
+<script>
+// Practice plan drill management
+let practiceDrills = [];
+let draggedItem = null;
+
+function showDrillSelector() {
+    document.getElementById('drillSelectorModal').classList.add('active');
+}
+
+function closeDrillSelector() {
+    document.getElementById('drillSelectorModal').classList.remove('active');
+}
+
+function filterDrillSelector() {
+    const search = document.getElementById('drillSelectorSearch').value.toLowerCase();
+    const items = document.querySelectorAll('.drill-selector-item');
+    items.forEach(item => {
+        const title = item.dataset.title.toLowerCase();
+        item.style.display = title.includes(search) ? 'flex' : 'none';
+    });
+}
+
+function selectDrill(id, title, category) {
+    // Check if already added
+    if (practiceDrills.find(d => d.id === id)) {
+        alert('This drill is already in your plan.');
+        return;
+    }
+    
+    practiceDrills.push({
+        id: id,
+        title: title,
+        category: category,
+        duration: 10,
+        notes: ''
+    });
+    
+    updateDrillsDisplay();
+    closeDrillSelector();
+}
+
+function removeDrill(index) {
+    practiceDrills.splice(index, 1);
+    updateDrillsDisplay();
+}
+
+function moveDrillUp(index) {
+    if (index > 0) {
+        const temp = practiceDrills[index];
+        practiceDrills[index] = practiceDrills[index - 1];
+        practiceDrills[index - 1] = temp;
+        updateDrillsDisplay();
+    }
+}
+
+function moveDrillDown(index) {
+    if (index < practiceDrills.length - 1) {
+        const temp = practiceDrills[index];
+        practiceDrills[index] = practiceDrills[index + 1];
+        practiceDrills[index + 1] = temp;
+        updateDrillsDisplay();
+    }
+}
+
+function updateDrillDuration(index, duration) {
+    practiceDrills[index].duration = parseInt(duration) || 0;
+    updateSummary();
+}
+
+function updateDrillNotes(index, notes) {
+    practiceDrills[index].notes = notes;
+}
+
+function updateDrillsDisplay() {
+    const timeline = document.getElementById('drillsTimeline');
+    const emptyState = document.getElementById('emptyState');
+    const summary = document.getElementById('timelineSummary');
+    
+    if (practiceDrills.length === 0) {
+        timeline.innerHTML = '';
+        emptyState.style.display = 'block';
+        summary.style.display = 'none';
+        return;
+    }
+    
+    emptyState.style.display = 'none';
+    summary.style.display = 'flex';
+    
+    timeline.innerHTML = practiceDrills.map((drill, index) => `
+        <div class="timeline-drill-item" draggable="true" data-index="${index}">
+            <div class="drill-handle">
+                <i class="fas fa-grip-vertical"></i>
+            </div>
+            <div class="drill-timing">
+                <input type="number" class="time-input" value="${drill.duration}" min="1" onchange="updateDrillDuration(${index}, this.value)">
+                <span>min</span>
+            </div>
+            <div class="drill-details">
+                <div>
+                    <span class="drill-title-display">${drill.title}</span>
+                    ${drill.category ? `<span class="drill-category-badge">${drill.category}</span>` : ''}
+                </div>
+                <textarea class="form-textarea" rows="2" placeholder="Add notes or modifications..." onchange="updateDrillNotes(${index}, this.value)">${drill.notes}</textarea>
+            </div>
+            <div class="drill-actions-inline">
+                <button type="button" class="btn-icon" title="Move Up" onclick="moveDrillUp(${index})" ${index === 0 ? 'disabled' : ''}><i class="fas fa-arrow-up"></i></button>
+                <button type="button" class="btn-icon" title="Move Down" onclick="moveDrillDown(${index})" ${index === practiceDrills.length - 1 ? 'disabled' : ''}><i class="fas fa-arrow-down"></i></button>
+                <button type="button" class="btn-icon danger" title="Remove" onclick="removeDrill(${index})"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+    
+    // Setup drag and drop
+    setupDragAndDrop();
+    updateSummary();
+}
+
+function setupDragAndDrop() {
+    const items = document.querySelectorAll('.timeline-drill-item[draggable="true"]');
+    
+    items.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('drop', handleDrop);
+    });
+}
+
+function handleDragStart(e) {
+    draggedItem = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    draggedItem = null;
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    if (this !== draggedItem) {
+        const fromIndex = parseInt(draggedItem.dataset.index);
+        const toIndex = parseInt(this.dataset.index);
+        
+        const moved = practiceDrills.splice(fromIndex, 1)[0];
+        practiceDrills.splice(toIndex, 0, moved);
+        
+        updateDrillsDisplay();
+    }
+}
+
+function updateSummary() {
+    const totalDrills = practiceDrills.length;
+    const totalTime = practiceDrills.reduce((sum, d) => sum + d.duration, 0);
+    const totalDuration = parseInt(document.getElementById('totalDuration').value) || 60;
+    const remaining = totalDuration - totalTime;
+    
+    document.getElementById('totalDrillsCount').textContent = totalDrills;
+    document.getElementById('totalDrillsTime').textContent = totalTime + ' min';
+    document.getElementById('remainingTime').textContent = remaining + ' min';
+    document.getElementById('remainingTime').style.color = remaining < 0 ? '#ef4444' : 'var(--primary)';
+}
+
+function saveDraft() {
+    const title = document.getElementById('practiceTitle').value || 'Untitled Practice';
+    const draftData = {
+        title: title,
+        drills: practiceDrills,
+        form: new FormData(document.getElementById('practiceForm'))
+    };
+    
+    localStorage.setItem('practice_plan_draft', JSON.stringify({
+        title: title,
+        drills: practiceDrills,
+        timestamp: new Date().toISOString()
+    }));
+    
+    alert('Draft saved locally. It will be available when you return to this page.');
+}
+
+function printPracticePlan() {
+    window.print();
+}
+
+function submitPracticePlan() {
+    // Update drills data
+    document.getElementById('drillsData').value = JSON.stringify(practiceDrills);
+    
+    // Validate
+    const title = document.getElementById('practiceTitle').value;
+    if (!title) {
+        alert('Please enter a practice title.');
+        return;
+    }
+    
+    // Submit form
+    document.getElementById('practiceForm').submit();
+}
+
+// Load draft on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const draft = localStorage.getItem('practice_plan_draft');
+    if (draft) {
+        const loadDraft = confirm('You have a saved draft. Would you like to load it?');
+        if (loadDraft) {
+            const draftData = JSON.parse(draft);
+            if (draftData.drills) {
+                practiceDrills = draftData.drills;
+                updateDrillsDisplay();
+            }
+            if (draftData.title) {
+                document.getElementById('practiceTitle').value = draftData.title;
+            }
+        }
+    }
+    
+    // Update summary when duration changes
+    document.getElementById('totalDuration').addEventListener('change', updateSummary);
+    
+    // Close modal when clicking outside
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+});
+</script>
