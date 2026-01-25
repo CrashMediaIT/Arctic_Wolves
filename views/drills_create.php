@@ -199,7 +199,7 @@
 
     <!-- Form Actions -->
     <div class="form-actions-bar">
-        <a href="?page=drill_library" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+        <button type="button" class="btn btn-secondary" onclick="cancelDrillCreation()"><i class="fas fa-times"></i> Cancel</button>
         <div class="action-group">
             <button type="button" class="btn btn-secondary" onclick="saveDrillDraft()"><i class="fas fa-save"></i> Save Draft</button>
             <button type="button" class="btn btn-primary" onclick="submitDrillForm()"><i class="fas fa-check"></i> Create Drill</button>
@@ -544,6 +544,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Cancel with confirmation
+function cancelDrillCreation() {
+    // Check if form has any data
+    const form = document.querySelector('.drill-form');
+    const formData = new FormData(form);
+    let hasData = false;
+    
+    for (let [key, value] of formData.entries()) {
+        if (value && value.trim() !== '' && key !== 'diagram_data') {
+            hasData = true;
+            break;
+        }
+    }
+    
+    // Check if designer has objects
+    if (window.drillDesigner && window.drillDesigner.objects && window.drillDesigner.objects.length > 0) {
+        hasData = true;
+    }
+    
+    if (hasData) {
+        const confirmed = confirm('You have unsaved changes. Are you sure you want to leave? Your progress will be lost.');
+        if (!confirmed) {
+            return;
+        }
+    }
+    
+    window.location.href = '?page=drill_library';
+}
 </script>
 
 <!-- Load Drill Designer JavaScript -->

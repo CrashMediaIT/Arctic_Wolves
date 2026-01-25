@@ -337,12 +337,12 @@ class DrillDesigner {
     findObjectAt(x, y) {
         for (let i = this.objects.length - 1; i >= 0; i--) {
             const obj = this.objects[i];
-            // Check if the object is close to the click position
-            const hitRadius = 20;
+            // Check if the object is close to the click position using squared distance for efficiency
+            const hitRadiusSquared = 400; // 20^2
             if (obj.x !== undefined && obj.y !== undefined) {
                 const dx = x - obj.x;
                 const dy = y - obj.y;
-                if (Math.sqrt(dx * dx + dy * dy) < hitRadius) {
+                if (dx * dx + dy * dy < hitRadiusSquared) {
                     return obj;
                 }
             }
@@ -356,7 +356,7 @@ class DrillDesigner {
         const ctx = this.ctx;
         const iceView = this.iceView || 'full';
         
-        // Clear and draw ice background (clean white ice - no grid)
+        // Clear and draw ice background (light blue ice tone)
         ctx.fillStyle = '#f0f7fa';
         ctx.fillRect(0, 0, w, h);
         

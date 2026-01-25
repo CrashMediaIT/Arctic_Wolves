@@ -224,7 +224,7 @@ if (!$nutrition_plan) {
                         <span class="current-day" id="currentDayDisplay"><?= date('l, F j') ?></span>
                         <button class="btn-icon" id="nextDay" onclick="changeDay(1)"><i class="fas fa-chevron-right"></i></button>
                     </div>
-                    <button class="btn-primary" data-action="log-meal" onclick="openLogMealModal()"><i class="fas fa-plus"></i> Log Meal</button>
+                    <button class="btn-primary" onclick="openLogMealModal()"><i class="fas fa-plus"></i> Log Meal</button>
                 </div>
             </div>
             <div class="card-body">
