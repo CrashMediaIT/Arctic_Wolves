@@ -196,6 +196,70 @@ if ($action === 'delete_category') {
     }
 }
 
+// =========================================================
+// IMPORT FROM IHS (Ice Hockey Systems)
+// =========================================================
+if ($action === 'import_ihs') {
+    requirePermission($pdo, $user_id, $user_role, 'create_drills');
+    
+    $ihs_id = trim($_POST['ihs_id'] ?? '');
+    $title = trim($_POST['drill_name'] ?? '');
+    $category_name = trim($_POST['category'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $duration = intval($_POST['duration'] ?? 0);
+    $skill_level = trim($_POST['skill_level'] ?? '');
+    
+    if (empty($title)) {
+        header("Location: dashboard.php?page=import_drill&error=title_required");
+        exit();
+    }
+    
+    try {
+        // Look up or create the category
+        $category_id = null;
+        if (!empty($category_name)) {
+            $stmt = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+            $stmt->execute([$category_name]);
+            $cat = $stmt->fetch();
+            if ($cat) {
+                $category_id = $cat['id'];
+            } else {
+                // Create new category
+                $stmt = $pdo->prepare("INSERT INTO drill_categories (name, created_by) VALUES (?, ?)");
+                $stmt->execute([$category_name, $user_id]);
+                $category_id = $pdo->lastInsertId();
+            }
+        }
+        
+        // Build full description with additional info
+        $full_description = $description;
+        if ($duration > 0) {
+            $full_description .= "\n\n**Duration:** " . $duration . " minutes";
+        }
+        if (!empty($skill_level)) {
+            $full_description .= "\n\n**Skill Level:** " . $skill_level;
+        }
+        
+        // Create IHS source URL reference
+        $ihs_source_url = 'ihs://drill/' . $ihs_id;
+        
+        // Insert the drill
+        $stmt = $pdo->prepare("
+            INSERT INTO drills (title, description, category_id, ihs_source_url, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$title, $full_description, $category_id, $ihs_source_url, $user_id]);
+        
+        header("Location: dashboard.php?page=drill_library&status=drill_imported");
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("IHS Import Error: " . $e->getMessage());
+        header("Location: dashboard.php?page=import_drill&error=import_failed");
+        exit();
+    }
+}
+
 // Fallback
 header("Location: dashboard.php?page=drills");
 exit();

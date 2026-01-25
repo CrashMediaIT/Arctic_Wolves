@@ -26,32 +26,29 @@ try {
 </div>
 
 <div class="system-tools-content">
-    <!-- System Tools Tabs -->
-    <div class="tabs">
-        <button class="tab-btn <?php echo $activeTab === 'settings' ? 'active' : ''; ?>" 
-                data-tab="settings" onclick="switchToolTab('settings')">
+    <!-- System Tools Tabs - Proper tab navigation -->
+    <div class="tab-navigation" data-component="TabNavigation">
+        <a href="?page=system_tools&tab=settings" class="tab-link <?php echo $activeTab === 'settings' ? 'active' : ''; ?>" data-tab="settings">
             <i class="fas fa-sliders-h"></i> Settings
-        </button>
-        <button class="tab-btn <?php echo $activeTab === 'theme' ? 'active' : ''; ?>" 
-                data-tab="theme" onclick="switchToolTab('theme')">
+        </a>
+        <a href="?page=system_tools&tab=mileage" class="tab-link <?php echo $activeTab === 'mileage' ? 'active' : ''; ?>" data-tab="mileage">
+            <i class="fas fa-car"></i> Mileage Rates
+        </a>
+        <a href="?page=system_tools&tab=theme" class="tab-link <?php echo $activeTab === 'theme' ? 'active' : ''; ?>" data-tab="theme">
             <i class="fas fa-palette"></i> Theme
-        </button>
-        <button class="tab-btn <?php echo $activeTab === 'database' ? 'active' : ''; ?>" 
-                data-tab="database" onclick="switchToolTab('database')">
+        </a>
+        <a href="?page=system_tools&tab=database" class="tab-link <?php echo $activeTab === 'database' ? 'active' : ''; ?>" data-tab="database">
             <i class="fas fa-database"></i> Database
-        </button>
-        <button class="tab-btn <?php echo $activeTab === 'cron' ? 'active' : ''; ?>" 
-                data-tab="cron" onclick="switchToolTab('cron')">
+        </a>
+        <a href="?page=system_tools&tab=cron" class="tab-link <?php echo $activeTab === 'cron' ? 'active' : ''; ?>" data-tab="cron">
             <i class="fas fa-clock"></i> Cron Jobs
-        </button>
-        <button class="tab-btn <?php echo $activeTab === 'production' ? 'active' : ''; ?>" 
-                data-tab="production" onclick="switchToolTab('production')">
+        </a>
+        <a href="?page=system_tools&tab=production" class="tab-link <?php echo $activeTab === 'production' ? 'active' : ''; ?>" data-tab="production">
             <i class="fas fa-rocket"></i> Production Mode
-        </button>
-        <button class="tab-btn <?php echo $activeTab === 'validator' ? 'active' : ''; ?>" 
-                data-tab="validator" onclick="window.location.href='system_health_validator.php'">
+        </a>
+        <a href="system_health_validator.php" class="tab-link">
             <i class="fas fa-heartbeat"></i> Health Check
-        </button>
+        </a>
     </div>
 
     <!-- Settings Tab -->
@@ -117,6 +114,58 @@ try {
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary" data-action="save">
                             <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mileage Rates Tab -->
+    <div class="tab-content <?php echo $activeTab === 'mileage' ? 'active' : ''; ?>" id="mileage-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-car"></i> Mileage Reimbursement Rates</h3>
+            </div>
+            <div class="card-body">
+                <form id="mileage-rates-form" method="POST" action="process_settings.php" data-form-type="mileage">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_mileage_rates">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Rate per Kilometer</h4>
+                                <p>Reimbursement rate for travel in kilometers (CAD)</p>
+                            </div>
+                            <div class="rate-input-group">
+                                <span class="currency-symbol">$</span>
+                                <input type="number" name="mileage_rate_per_km" class="form-input" step="0.01" min="0"
+                                       value="<?php echo htmlspecialchars($settings['mileage_rate_per_km'] ?? '0.68'); ?>"
+                                       placeholder="0.68">
+                                <span class="rate-unit">/km</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Rate per Mile</h4>
+                                <p>Reimbursement rate for travel in miles (CAD)</p>
+                            </div>
+                            <div class="rate-input-group">
+                                <span class="currency-symbol">$</span>
+                                <input type="number" name="mileage_rate_per_mile" class="form-input" step="0.01" min="0"
+                                       value="<?php echo htmlspecialchars($settings['mileage_rate_per_mile'] ?? '1.10'); ?>"
+                                       placeholder="1.10">
+                                <span class="rate-unit">/mi</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <p>These rates are used to calculate travel reimbursements for coaches. The standard CRA rate for 2024 is $0.70/km for the first 5,000 km and $0.64/km thereafter.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Mileage Rates
                         </button>
                     </div>
                 </form>
@@ -404,6 +453,51 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* Tab Navigation Styles */
+.tab-navigation {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--border);
+    overflow-x: auto;
+    padding-bottom: 0;
+}
+
+.tab-link {
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-dim);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: -2px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.tab-link:hover {
+    color: var(--text-white);
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.tab-link.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: rgba(107, 70, 193, 0.05);
+}
+
+.tab-link i {
+    font-size: 16px;
+}
+
+/* Legacy .tabs and .tab-btn styles for backward compatibility */
 .tabs {
     display: flex;
     gap: 8px;
@@ -444,6 +538,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .tab-content.active {
     display: block;
+}
+
+/* Mileage Rates Styles */
+.rate-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 12px;
+}
+
+.rate-input-group .form-input {
+    max-width: 100px;
+    background: transparent;
+    border: none;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.rate-input-group .form-input:focus {
+    outline: none;
+}
+
+.currency-symbol {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.rate-unit {
+    color: var(--text-dim);
+    font-size: 14px;
+}
+
+.info-box {
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.info-box i {
+    color: var(--primary);
+    font-size: 20px;
+    margin-top: 2px;
+}
+
+.info-box p {
+    color: var(--text-white);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0;
 }
 
 .settings-list {
