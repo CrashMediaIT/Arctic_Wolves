@@ -673,25 +673,61 @@ class DemoDataSeeder {
     private function seedVideos() {
         echo "Seeding Videos...\n";
         
-        if (empty($this->demo_ids['users']['coach'])) {
-            echo "  ⚠ Skipping videos - no coaches available\n";
+        if (empty($this->demo_ids['users']['coach']) || empty($this->demo_ids['users']['athlete'])) {
+            echo "  ⚠ Skipping videos - no coaches or athletes available\n";
             return;
         }
         
         $coach_id = $this->demo_ids['users']['coach'][0];
+        $athlete_id = $this->demo_ids['users']['athlete'][0];
         
         $videos = [
-            ['Demo Skating Tutorial', 'Basic skating techniques tutorial', 'https://example.com/demo-video1.mp4'],
-            ['Demo Shooting Mechanics', 'Proper shooting form and mechanics', 'https://example.com/demo-video2.mp4'],
-            ['Demo Puck Control', 'Advanced puck control drills', 'https://example.com/demo-video3.mp4'],
+            [
+                'title' => 'Crossover Drill - Skating',
+                'description' => 'Review of basic crossover technique during practice',
+                'video_url' => 'videos/demo_video_skating_001.mp4',
+                'video_type' => 'coach_review',
+                'status' => 'pending_review',
+                'coach_notes' => 'Watch your inside edge on the turns'
+            ],
+            [
+                'title' => 'Wrist Shot Form - Shooting',
+                'description' => 'Analysis of shooting mechanics and follow-through',
+                'video_url' => 'videos/demo_video_shooting_002.mp4',
+                'video_type' => 'coach_review',
+                'status' => 'reviewed',
+                'coach_notes' => 'Great improvement on weight transfer! Keep working on follow-through.',
+                'reviewed_at' => date('Y-m-d H:i:s', strtotime('-2 days'))
+            ],
+            [
+                'title' => 'Zone Entry Practice - Offensive',
+                'description' => 'Drill review for offensive zone entries',
+                'video_url' => 'videos/demo_video_offensive_003.mp4',
+                'video_type' => 'coach_review',
+                'status' => 'pending_review',
+                'coach_notes' => null
+            ],
         ];
         
         foreach ($videos as $video) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO videos (title, description, video_url, coach_id, is_demo, created_at)
-                VALUES (?, ?, ?, ?, 1, NOW())
+                INSERT INTO videos (
+                    athlete_id, coach_id, title, description, video_url,
+                    video_type, status, coach_notes, reviewed_at,
+                    upload_date, is_demo
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
             ");
-            $stmt->execute(array_merge($video, [$coach_id]));
+            $stmt->execute([
+                $athlete_id,
+                $coach_id,
+                $video['title'],
+                $video['description'],
+                $video['video_url'],
+                $video['video_type'],
+                $video['status'],
+                $video['coach_notes'],
+                $video['reviewed_at'] ?? null
+            ]);
             $this->demo_ids['videos'][] = $this->pdo->lastInsertId();
         }
         
