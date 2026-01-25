@@ -1082,11 +1082,12 @@ CREATE TABLE IF NOT EXISTS `goal_history` (
     `field_changed` VARCHAR(100) DEFAULT NULL,
     `old_value` TEXT DEFAULT NULL,
     `new_value` TEXT DEFAULT NULL,
-    `changed_by` INT DEFAULT NULL,
+    `changed_by` INT DEFAULT NULL COMMENT 'Legacy column - use user_id instead',
     `change_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`goal_id`) REFERENCES `goals`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`changed_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_goal` (`goal_id`),
     INDEX `idx_date` (`change_date`),
     INDEX `idx_action` (`action`)
