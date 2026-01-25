@@ -19,7 +19,7 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
         </a>
     </div>
     <?php if($isAnyCoach): ?>
-    <a href="?page=coaches_reviews#upload-tab" class="btn btn-primary btn-upload-nav" onclick="activateUploadTab()">
+    <a href="?page=coaches_reviews" class="btn btn-primary btn-upload-nav">
         <i class="fa-solid fa-upload"></i> Upload Video
     </a>
     <?php endif; ?>
@@ -60,13 +60,3 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
     color: #fff;
 }
 </style>
-
-<script>
-function activateUploadTab() {
-    // Switch to coaches_reviews page and activate upload tab
-    setTimeout(function() {
-        const uploadBtn = document.querySelector('[data-tab="upload"]');
-        if (uploadBtn) uploadBtn.click();
-    }, 100);
-}
-</script>

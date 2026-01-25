@@ -154,7 +154,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                 <div class="schedule-day clickable <?= $status_class ?>" 
                      data-day="<?= $day_data['day'] ?>" 
                      data-workout="<?= htmlspecialchars($day_data['workout']) ?>"
-                     data-exercises='<?= json_encode($day_data['exercises']) ?>'
+                     data-exercises='<?= htmlspecialchars(json_encode($day_data['exercises']), ENT_QUOTES, 'UTF-8') ?>'
                      onclick="showDayDetails(this)">
                     <div class="day-header">
                         <span class="day-name"><?= $day_data['day'] ?></span>

@@ -89,11 +89,14 @@ $view_mode = $_GET['view'] ?? 'list';
 
 // Demo data for sessions if no real data exists
 if (count($sessions) === 0) {
+    // Use DateTime for reliable date handling
+    $today = new DateTime();
+    
     $demo_sessions = [
         [
             'id' => 'demo-1',
             'session_type_name' => 'Skating Skills',
-            'session_date' => date('Y-m-d H:i:s', strtotime('+1 day 10:00')),
+            'session_date' => (clone $today)->modify('+1 day')->setTime(10, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 60,
             'coach_name' => 'Coach Smith',
             'location_name' => 'Main Arena',
@@ -102,7 +105,7 @@ if (count($sessions) === 0) {
         [
             'id' => 'demo-2',
             'session_type_name' => 'Power Skating',
-            'session_date' => date('Y-m-d H:i:s', strtotime('+2 days 14:00')),
+            'session_date' => (clone $today)->modify('+2 days')->setTime(14, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 90,
             'coach_name' => 'Coach Johnson',
             'location_name' => 'Training Center',
@@ -111,7 +114,7 @@ if (count($sessions) === 0) {
         [
             'id' => 'demo-3',
             'session_type_name' => 'Stick Handling',
-            'session_date' => date('Y-m-d H:i:s', strtotime('+3 days 09:00')),
+            'session_date' => (clone $today)->modify('+3 days')->setTime(9, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 60,
             'coach_name' => 'Coach Williams',
             'location_name' => 'Practice Rink',
@@ -120,7 +123,7 @@ if (count($sessions) === 0) {
         [
             'id' => 'demo-4',
             'session_type_name' => 'Shooting Practice',
-            'session_date' => date('Y-m-d H:i:s', strtotime('+5 days 16:00')),
+            'session_date' => (clone $today)->modify('+5 days')->setTime(16, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 75,
             'coach_name' => 'Coach Smith',
             'location_name' => 'Main Arena',
@@ -129,7 +132,7 @@ if (count($sessions) === 0) {
         [
             'id' => 'demo-5',
             'session_type_name' => 'Game Simulation',
-            'session_date' => date('Y-m-d H:i:s', strtotime('+7 days 11:00')),
+            'session_date' => (clone $today)->modify('+7 days')->setTime(11, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 120,
             'coach_name' => 'Coach Johnson',
             'location_name' => 'Main Arena',
