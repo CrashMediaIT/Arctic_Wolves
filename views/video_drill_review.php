@@ -51,6 +51,56 @@ $videos = $video_stmt->fetchAll();
 $drill_categories_stmt = $pdo->prepare("SELECT id, name FROM drill_categories ORDER BY name");
 $drill_categories_stmt->execute();
 $drill_categories = $drill_categories_stmt->fetchAll();
+
+// Demo data for videos if none exist
+if (count($videos) === 0) {
+    $today = new DateTime();
+    $videos = [
+        [
+            'id' => 'demo-1',
+            'drill_name' => 'Crossover Skating Drill',
+            'created_at' => (clone $today)->modify('-2 days')->format('Y-m-d H:i:s'),
+            'status' => 'reviewed',
+            'coach_name' => 'Coach Smith',
+            'rating' => 4,
+            'duration' => '2:35',
+            'thumbnail_url' => ''
+        ],
+        [
+            'id' => 'demo-2',
+            'drill_name' => 'Wrist Shot Practice',
+            'created_at' => (clone $today)->modify('-5 days')->format('Y-m-d H:i:s'),
+            'status' => 'reviewed',
+            'coach_name' => 'Coach Johnson',
+            'rating' => 5,
+            'duration' => '3:20',
+            'thumbnail_url' => ''
+        ],
+        [
+            'id' => 'demo-3',
+            'drill_name' => 'Edge Work Fundamentals',
+            'created_at' => (clone $today)->modify('-1 day')->format('Y-m-d H:i:s'),
+            'status' => 'pending_review',
+            'coach_name' => 'Coach Williams',
+            'rating' => 0,
+            'duration' => '1:45',
+            'thumbnail_url' => ''
+        ],
+        [
+            'id' => 'demo-4',
+            'drill_name' => 'Backward Skating Technique',
+            'created_at' => $today->format('Y-m-d H:i:s'),
+            'status' => 'pending_review',
+            'coach_name' => 'Coach Smith',
+            'rating' => 0,
+            'duration' => '2:10',
+            'thumbnail_url' => ''
+        ]
+    ];
+    $is_demo_video = true;
+} else {
+    $is_demo_video = false;
+}
 ?>
 
 <!-- Player Drill Video Review View -->
@@ -60,6 +110,13 @@ $drill_categories = $drill_categories_stmt->fetchAll();
     </h1>
     <p class="page-description">View and review your drill performance videos</p>
 </div>
+
+<?php if (isset($is_demo_video) && $is_demo_video): ?>
+<div class="demo-data-notice">
+    <i class="fas fa-info-circle"></i>
+    <span>Showing demo videos. Your coach will upload real videos after your sessions.</span>
+</div>
+<?php endif; ?>
 
 <div class="video-content">
     <!-- Filter Bar -->
@@ -525,5 +582,23 @@ $drill_categories = $drill_categories_stmt->fetchAll();
     display: block;
     text-align: center;
     margin-bottom: 20px;
+}
+
+/* Demo Data Notice */
+.demo-data-notice {
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary-light);
+    font-size: 14px;
+}
+
+.demo-data-notice i {
+    font-size: 16px;
 }
 </style>

@@ -251,8 +251,13 @@
      * View session details
      */
     function viewSession(sessionId) {
-        // This would typically open a modal or navigate to session details
-        // For now, we'll use the existing view-session action
+        // Check if it's a demo session
+        if (String(sessionId).startsWith('demo-')) {
+            showSessionModal(sessionId);
+            return;
+        }
+        
+        // For real sessions, try clicking the view button
         const sessionCard = document.querySelector(`[data-session-id="${sessionId}"]`);
         if (sessionCard) {
             const viewBtn = sessionCard.querySelector('[data-action="view-session"]');
@@ -261,6 +266,106 @@
             }
         }
     }
+    
+    /**
+     * Show session details in a modal for demo sessions
+     */
+    function showSessionModal(sessionId) {
+        // Find session data
+        const session = sessionsData.find(s => s.id === sessionId);
+        if (!session) {
+            console.warn('Session not found:', sessionId);
+            return;
+        }
+        
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('sessionDetailModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'sessionDetailModal';
+            modal.className = 'session-modal active';
+            modal.innerHTML = `
+                <div class="modal-overlay" onclick="closeSessionModal()"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-calendar-check"></i> Session Details</h3>
+                        <button class="modal-close" onclick="closeSessionModal()"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="modal-body" id="sessionModalBody">
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeSessionModal()"><i class="fas fa-times"></i> Close</button>
+                    </div>
+                </div>
+            `;
+            // Add modal styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .session-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center; }
+                .session-modal.active { display: flex; }
+                .session-modal .modal-content { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; max-width: 500px; width: 90%; }
+                .session-modal .modal-header { padding: 20px; border-bottom: 1px solid var(--border, #2D2D3F); display: flex; justify-content: space-between; align-items: center; }
+                .session-modal .modal-header h3 { margin: 0; font-size: 18px; color: var(--text-white, #fff); }
+                .session-modal .modal-header i { color: var(--neon, #6B46C1); margin-right: 10px; }
+                .session-modal .modal-close { background: none; border: 1px solid var(--border, #2D2D3F); width: 36px; height: 36px; border-radius: 6px; color: var(--text-white, #fff); cursor: pointer; }
+                .session-modal .modal-close:hover { background: var(--neon, #6B46C1); border-color: var(--neon, #6B46C1); }
+                .session-modal .modal-body { padding: 20px; }
+                .session-modal .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border, #2D2D3F); display: flex; justify-content: flex-end; }
+                .session-detail-grid { display: flex; flex-direction: column; gap: 16px; }
+                .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-main, #0A0A0F); border-radius: 8px; }
+                .detail-label { font-size: 14px; color: var(--text-dim, #9CA3AF); display: flex; align-items: center; gap: 8px; }
+                .detail-label i { color: var(--neon, #6B46C1); }
+                .detail-value { font-size: 14px; font-weight: 600; color: var(--text-white, #fff); }
+                .demo-notice { margin-top: 20px; padding: 12px 16px; background: rgba(107, 70, 193, 0.1); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 8px; font-size: 13px; color: var(--primary-light, #8B5CF6); display: flex; align-items: center; gap: 10px; }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(modal);
+        } else {
+            modal.classList.add('active');
+        }
+        
+        // Update modal content
+        const modalBody = document.getElementById('sessionModalBody');
+        const dateStr = session.date instanceof Date ? 
+            session.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) :
+            'Date TBD';
+            
+        modalBody.innerHTML = `
+            <div class="session-detail-grid">
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-hockey-puck"></i> Session Type</span>
+                    <span class="detail-value">${session.title || 'Training Session'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-calendar"></i> Date</span>
+                    <span class="detail-value">${dateStr}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-clock"></i> Time</span>
+                    <span class="detail-value">${session.time || 'TBD'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-user"></i> Coach</span>
+                    <span class="detail-value">${session.coach || 'TBD'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-map-marker-alt"></i> Location</span>
+                    <span class="detail-value">${session.location || 'Main Arena'}</span>
+                </div>
+            </div>
+            <div class="demo-notice">
+                <i class="fas fa-info-circle"></i> This is demo data. Book real sessions to see actual details.
+            </div>
+        `;
+    }
+    
+    // Make closeSessionModal available globally
+    window.closeSessionModal = function() {
+        const modal = document.getElementById('sessionDetailModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    };
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {

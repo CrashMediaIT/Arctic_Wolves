@@ -64,6 +64,24 @@ $categories_stmt = $pdo->prepare("SELECT DISTINCT category FROM exercise_library
 $categories_stmt->execute();
 $categories = $categories_stmt->fetchAll(PDO::FETCH_COLUMN);
 
+// Add demo exercises if none exist
+if (count($exercises) === 0) {
+    $exercises = [
+        ['id' => 'demo-1', 'name' => 'Squats', 'category' => 'Lower Body', 'description' => 'Stand with feet shoulder-width apart. Lower your body by bending knees and hips until thighs are parallel to ground. Push back up.', 'sets' => 4, 'reps' => 10, 'weight' => '135 lbs', 'video_url' => ''],
+        ['id' => 'demo-2', 'name' => 'Deadlifts', 'category' => 'Lower Body', 'description' => 'Stand with feet hip-width apart, barbell over mid-foot. Bend at hips and knees, grip bar, then drive through heels to stand.', 'sets' => 3, 'reps' => 8, 'weight' => '185 lbs', 'video_url' => ''],
+        ['id' => 'demo-3', 'name' => 'Bench Press', 'category' => 'Upper Body', 'description' => 'Lie on bench, grip bar slightly wider than shoulders. Lower to chest, pause, then press up.', 'sets' => 4, 'reps' => 8, 'weight' => '135 lbs', 'video_url' => ''],
+        ['id' => 'demo-4', 'name' => 'Pull-ups', 'category' => 'Upper Body', 'description' => 'Hang from bar with overhand grip, pull body up until chin is above bar, lower with control.', 'sets' => 3, 'reps' => 10, 'weight' => 'Body Weight', 'video_url' => ''],
+        ['id' => 'demo-5', 'name' => 'Planks', 'category' => 'Core', 'description' => 'Hold push-up position with weight on forearms. Keep body in straight line from head to heels.', 'sets' => 3, 'reps' => '60 seconds', 'weight' => 'Body Weight', 'video_url' => ''],
+        ['id' => 'demo-6', 'name' => 'Lunges', 'category' => 'Lower Body', 'description' => 'Step forward with one leg, lowering hips until both knees are bent at 90 degrees. Push back to start.', 'sets' => 3, 'reps' => 12, 'weight' => '40 lbs', 'video_url' => ''],
+        ['id' => 'demo-7', 'name' => 'Shoulder Press', 'category' => 'Upper Body', 'description' => 'Stand or sit with dumbbells at shoulder height. Press weights overhead until arms are extended.', 'sets' => 3, 'reps' => 10, 'weight' => '30 lbs', 'video_url' => ''],
+        ['id' => 'demo-8', 'name' => 'Russian Twists', 'category' => 'Core', 'description' => 'Sit with knees bent, lean back slightly. Hold weight and rotate torso side to side.', 'sets' => 3, 'reps' => 20, 'weight' => '15 lbs', 'video_url' => '']
+    ];
+    $categories = ['Upper Body', 'Lower Body', 'Core'];
+    $is_demo_exercises = true;
+} else {
+    $is_demo_exercises = false;
+}
+
 // Calculate program progress
 $program_progress = 0;
 if ($current_program && $current_program['total_workouts'] > 0) {
@@ -137,13 +155,38 @@ if ($current_program && $current_program['total_workouts'] > 0) {
         <div class="card-body">
             <div class="workout-schedule">
                 <?php
-                // Demo schedule data - one week starting from Monday
+                // Demo schedule data with detailed exercise info - one week starting from Monday
                 $demo_schedule = [
-                    ['day' => 'MON', 'date' => date('j', strtotime('monday this week')), 'workout' => 'Upper Body Strength', 'status' => 'completed', 'icon' => 'check-circle', 'exercises' => ['Bench Press 3x10', 'Shoulder Press 3x8', 'Lat Pulldown 3x12', 'Bicep Curls 3x15']],
-                    ['day' => 'TUE', 'date' => date('j', strtotime('tuesday this week')), 'workout' => 'Cardio & Core', 'status' => 'completed', 'icon' => 'check-circle', 'exercises' => ['Running 20 min', 'Plank 3x60s', 'Russian Twists 3x20', 'Mountain Climbers 3x15']],
-                    ['day' => 'WED', 'date' => date('j', strtotime('wednesday this week')), 'workout' => 'Lower Body Power', 'status' => 'active', 'icon' => 'play-circle', 'exercises' => ['Squats 4x8', 'Deadlifts 3x6', 'Lunges 3x12', 'Calf Raises 3x15']],
-                    ['day' => 'THU', 'date' => date('j', strtotime('thursday this week')), 'workout' => 'Active Recovery', 'status' => 'upcoming', 'icon' => 'circle', 'exercises' => ['Yoga 30 min', 'Light Stretching', 'Foam Rolling', 'Walking 20 min']],
-                    ['day' => 'FRI', 'date' => date('j', strtotime('friday this week')), 'workout' => 'Full Body Circuit', 'status' => 'upcoming', 'icon' => 'circle', 'exercises' => ['Burpees 3x10', 'Push-ups 3x15', 'Kettlebell Swings 3x12', 'Box Jumps 3x10']],
+                    ['day' => 'MON', 'date' => date('j', strtotime('monday this week')), 'workout' => 'Upper Body Strength', 'status' => 'completed', 'icon' => 'check-circle', 'exercises' => [
+                        ['name' => 'Bench Press', 'sets' => 3, 'reps' => 10, 'weight' => '135 lbs', 'description' => 'Lie on bench, grip bar slightly wider than shoulders. Lower to chest, pause, then press up.'],
+                        ['name' => 'Shoulder Press', 'sets' => 3, 'reps' => 8, 'weight' => '85 lbs', 'description' => 'Stand or sit with dumbbells at shoulder height. Press weights overhead until arms are extended.'],
+                        ['name' => 'Lat Pulldown', 'sets' => 3, 'reps' => 12, 'weight' => '100 lbs', 'description' => 'Sit at pulldown machine, grip bar wide. Pull bar down to chest, squeeze back, then control the return.'],
+                        ['name' => 'Bicep Curls', 'sets' => 3, 'reps' => 15, 'weight' => '25 lbs', 'description' => 'Stand with dumbbells at sides, palms forward. Curl weights toward shoulders, lower with control.']
+                    ]],
+                    ['day' => 'TUE', 'date' => date('j', strtotime('tuesday this week')), 'workout' => 'Cardio & Core', 'status' => 'completed', 'icon' => 'check-circle', 'exercises' => [
+                        ['name' => 'Running', 'sets' => 1, 'reps' => '20 min', 'weight' => 'N/A', 'description' => 'Maintain steady pace at 70-80% max heart rate. Focus on breathing rhythm and form.'],
+                        ['name' => 'Plank', 'sets' => 3, 'reps' => '60 sec', 'weight' => 'Bodyweight', 'description' => 'Hold push-up position with weight on forearms. Keep body in straight line from head to heels.'],
+                        ['name' => 'Russian Twists', 'sets' => 3, 'reps' => 20, 'weight' => '15 lbs', 'description' => 'Sit with knees bent, lean back slightly. Hold weight and rotate torso side to side.'],
+                        ['name' => 'Mountain Climbers', 'sets' => 3, 'reps' => 15, 'weight' => 'Bodyweight', 'description' => 'Start in plank position. Drive knees toward chest alternately at quick pace.']
+                    ]],
+                    ['day' => 'WED', 'date' => date('j', strtotime('wednesday this week')), 'workout' => 'Lower Body Power', 'status' => 'active', 'icon' => 'play-circle', 'exercises' => [
+                        ['name' => 'Squats', 'sets' => 4, 'reps' => 8, 'weight' => '185 lbs', 'description' => 'Stand with feet shoulder-width apart. Lower your body by bending knees and hips until thighs are parallel to ground. Push back up.'],
+                        ['name' => 'Deadlifts', 'sets' => 3, 'reps' => 6, 'weight' => '225 lbs', 'description' => 'Stand with feet hip-width apart, barbell over mid-foot. Bend at hips and knees, grip bar, then drive through heels to stand.'],
+                        ['name' => 'Lunges', 'sets' => 3, 'reps' => 12, 'weight' => '40 lbs', 'description' => 'Step forward with one leg, lowering hips until both knees are bent at 90 degrees. Push back to start.'],
+                        ['name' => 'Calf Raises', 'sets' => 3, 'reps' => 15, 'weight' => '135 lbs', 'description' => 'Stand on edge of step with heels hanging off. Rise up on toes, pause, then lower below platform level.']
+                    ]],
+                    ['day' => 'THU', 'date' => date('j', strtotime('thursday this week')), 'workout' => 'Active Recovery', 'status' => 'upcoming', 'icon' => 'circle', 'exercises' => [
+                        ['name' => 'Yoga', 'sets' => 1, 'reps' => '30 min', 'weight' => 'N/A', 'description' => 'Focus on hip openers, hamstring stretches, and spine mobility. Hold each pose for 30-60 seconds.'],
+                        ['name' => 'Light Stretching', 'sets' => 1, 'reps' => '15 min', 'weight' => 'N/A', 'description' => 'Full body static stretches. Hold each stretch 20-30 seconds without bouncing.'],
+                        ['name' => 'Foam Rolling', 'sets' => 1, 'reps' => '10 min', 'weight' => 'N/A', 'description' => 'Roll out tight muscles including quads, hamstrings, IT band, and back. Spend extra time on tender spots.'],
+                        ['name' => 'Walking', 'sets' => 1, 'reps' => '20 min', 'weight' => 'N/A', 'description' => 'Easy-paced walk to promote blood flow and recovery. Keep heart rate low.']
+                    ]],
+                    ['day' => 'FRI', 'date' => date('j', strtotime('friday this week')), 'workout' => 'Full Body Circuit', 'status' => 'upcoming', 'icon' => 'circle', 'exercises' => [
+                        ['name' => 'Burpees', 'sets' => 3, 'reps' => 10, 'weight' => 'Bodyweight', 'description' => 'From standing, drop to squat, kick feet back to plank, do push-up, jump feet forward, explode up with arms overhead.'],
+                        ['name' => 'Push-ups', 'sets' => 3, 'reps' => 15, 'weight' => 'Bodyweight', 'description' => 'Hands shoulder-width apart, body in straight line. Lower chest to ground, push back up.'],
+                        ['name' => 'Kettlebell Swings', 'sets' => 3, 'reps' => 12, 'weight' => '35 lbs', 'description' => 'Hinge at hips with kettlebell between legs. Thrust hips forward to swing weight to shoulder height.'],
+                        ['name' => 'Box Jumps', 'sets' => 3, 'reps' => 10, 'weight' => 'Bodyweight', 'description' => 'Stand in front of box. Swing arms and jump onto box, landing softly with bent knees. Step down and repeat.']
+                    ]],
                     ['day' => 'SAT', 'date' => date('j', strtotime('saturday this week')), 'workout' => 'Rest Day', 'status' => 'rest', 'icon' => 'bed', 'exercises' => []],
                     ['day' => 'SUN', 'date' => date('j', strtotime('sunday this week')), 'workout' => 'Rest Day', 'status' => 'rest', 'icon' => 'bed', 'exercises' => []],
                 ];
@@ -178,7 +221,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
         </div>
         <div class="day-details-body">
             <h5>Exercises for Today:</h5>
-            <ul id="dayDetailExercises" class="exercise-list"></ul>
+            <div id="dayDetailExercises" class="exercise-detail-list"></div>
         </div>
     </div>
 
@@ -656,6 +699,120 @@ if ($current_program && $current_program['total_workouts'] > 0) {
     color: var(--primary);
     font-size: 18px;
 }
+
+/* Exercise Detail List */
+.exercise-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.exercise-detail-card {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.exercise-detail-card:hover {
+    border-color: var(--neon);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.exercise-detail-card.expanded {
+    border-color: var(--primary);
+}
+
+.exercise-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--bg-card);
+}
+
+.exercise-detail-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.exercise-detail-name i {
+    color: var(--primary);
+}
+
+.exercise-detail-stats {
+    display: flex;
+    gap: 16px;
+}
+
+.exercise-stat {
+    text-align: center;
+    padding: 4px 12px;
+    background: rgba(107, 70, 193, 0.1);
+    border-radius: 6px;
+}
+
+.exercise-stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.exercise-stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.exercise-detail-body {
+    display: none;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.exercise-detail-card.expanded .exercise-detail-body {
+    display: block;
+}
+
+.exercise-instructions {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+.exercise-instructions strong {
+    color: var(--text-white);
+}
+
+.exercise-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--primary);
+}
+
+.rest-day-message {
+    text-align: center;
+    padding: 30px;
+    color: var(--text-dim);
+}
+
+.rest-day-message i {
+    font-size: 48px;
+    color: var(--primary);
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 12px;
+}
 </style>
 
 <script>
@@ -666,18 +823,71 @@ function showDayDetails(element) {
     
     const panel = document.getElementById('dayDetailsPanel');
     const title = document.getElementById('dayDetailTitle');
-    const exerciseList = document.getElementById('dayDetailExercises');
+    const exerciseContainer = document.getElementById('dayDetailExercises');
     
     title.textContent = day + ' - ' + workout;
     
     if (exercises.length > 0) {
-        exerciseList.innerHTML = exercises.map(ex => `<li>${ex}</li>`).join('');
+        exerciseContainer.innerHTML = exercises.map((ex, index) => {
+            // Handle both old format (string) and new format (object)
+            if (typeof ex === 'string') {
+                return `<div class="exercise-detail-card">
+                    <div class="exercise-detail-header">
+                        <span class="exercise-detail-name"><i class="fas fa-dumbbell"></i> ${ex}</span>
+                    </div>
+                </div>`;
+            }
+            
+            return `<div class="exercise-detail-card" onclick="toggleExerciseDetails(this)">
+                <div class="exercise-detail-header">
+                    <span class="exercise-detail-name">
+                        <i class="fas fa-dumbbell"></i> ${ex.name}
+                    </span>
+                    <div class="exercise-detail-stats">
+                        <div class="exercise-stat">
+                            <div class="exercise-stat-value">${ex.sets}</div>
+                            <div class="exercise-stat-label">Sets</div>
+                        </div>
+                        <div class="exercise-stat">
+                            <div class="exercise-stat-value">${ex.reps}</div>
+                            <div class="exercise-stat-label">Reps</div>
+                        </div>
+                        <div class="exercise-stat">
+                            <div class="exercise-stat-value">${ex.weight}</div>
+                            <div class="exercise-stat-label">Weight</div>
+                        </div>
+                    </div>
+                    <span class="exercise-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </span>
+                </div>
+                <div class="exercise-detail-body">
+                    <div class="exercise-instructions">
+                        <strong>How to perform:</strong><br>
+                        ${ex.description}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
     } else {
-        exerciseList.innerHTML = '<li>Rest day - no exercises scheduled</li>';
+        exerciseContainer.innerHTML = `<div class="rest-day-message">
+            <i class="fas fa-bed"></i>
+            <p>Rest day - no exercises scheduled</p>
+            <p style="font-size: 13px;">Take time to recover and let your muscles rebuild.</p>
+        </div>`;
     }
     
     panel.style.display = 'block';
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function toggleExerciseDetails(card) {
+    card.classList.toggle('expanded');
+    const icon = card.querySelector('.exercise-toggle i');
+    if (icon) {
+        icon.classList.toggle('fa-chevron-down');
+        icon.classList.toggle('fa-chevron-up');
+    }
 }
 
 function closeDayDetails() {

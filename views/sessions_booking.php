@@ -687,3 +687,143 @@ if (count($session_types) === 0) {
     font-size: 16px;
 }
 </style>
+
+<script>
+// Booking page functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching functionality
+    const tabBtns = document.querySelectorAll('.booking-tabs .tab-btn');
+    const tabContents = document.querySelectorAll('.booking-content .tab-content');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabId = this.dataset.tab;
+            
+            // Update active button
+            tabBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Update active content
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === tabId + '-tab') {
+                    content.classList.add('active');
+                }
+            });
+        });
+    });
+    
+    // Package purchase functionality
+    document.querySelectorAll('[data-action="purchase-package"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const packageId = this.dataset.packageId;
+            const packageCard = this.closest('.package-card');
+            const packageName = packageCard?.querySelector('.package-title')?.textContent || 'Package';
+            
+            if (packageId.startsWith('demo-')) {
+                showBookingNotification('Demo Mode: This is a demo package. Contact admin to set up real packages for purchase.', 'info');
+            } else {
+                // Redirect to payment
+                window.location.href = `process_purchase_package.php?package_id=${packageId}`;
+            }
+        });
+    });
+    
+    // Session registration functionality
+    document.querySelectorAll('[data-action="register-session"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sessionId = this.dataset.sessionId;
+            const price = this.dataset.price;
+            
+            if (sessionId.startsWith('demo-')) {
+                showBookingNotification('Demo Mode: This is a demo session. Book real sessions when they become available.', 'info');
+            } else {
+                // Submit registration
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'process_booking.php';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="register_session">
+                    <input type="hidden" name="session_id" value="${sessionId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    });
+    
+    // Private session form - price update
+    const sessionTypeSelect = document.querySelector('[data-field="session-type"]');
+    const priceDisplay = document.querySelector('[data-display="session-price"]');
+    
+    if (sessionTypeSelect && priceDisplay) {
+        sessionTypeSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const price = selectedOption.dataset.price || 0;
+            priceDisplay.textContent = '$' + price;
+        });
+    }
+    
+    // Form submission
+    const bookingForm = document.querySelector('[data-form="session-booking"]');
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const sessionTypeId = formData.get('session_type_id');
+            const coachId = formData.get('coach_id');
+            
+            // Check for demo data
+            if (sessionTypeId?.startsWith('demo-') || coachId?.startsWith('demo-')) {
+                showBookingNotification('Demo Mode: Private session booking requires real coaches and session types. Contact admin for setup.', 'info');
+                return;
+            }
+            
+            // Submit the form
+            this.submit();
+        });
+    }
+});
+
+// Notification helper
+function showBookingNotification(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'booking-notification';
+    
+    let icon = 'info-circle';
+    let bgColor = 'rgba(59, 130, 246, 0.9)';
+    
+    if (type === 'error') {
+        icon = 'exclamation-circle';
+        bgColor = 'rgba(239, 68, 68, 0.9)';
+    } else if (type === 'success') {
+        icon = 'check-circle';
+        bgColor = 'rgba(16, 185, 129, 0.9)';
+    }
+    
+    alertDiv.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 300px;
+        max-width: 500px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        background: ${bgColor};
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 5000);
+}
+</script>

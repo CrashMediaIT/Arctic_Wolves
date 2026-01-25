@@ -218,15 +218,25 @@ if (!$nutrition_plan) {
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-utensils"></i> Today's Meal Plan</h3>
-                <button class="btn-primary" data-action="log-meal"><i class="fas fa-plus"></i> Log Meal</button>
+                <div class="meal-header-actions">
+                    <div class="day-selector">
+                        <button class="btn-icon" id="prevDay" onclick="changeDay(-1)"><i class="fas fa-chevron-left"></i></button>
+                        <span class="current-day" id="currentDayDisplay"><?= date('l, F j') ?></span>
+                        <button class="btn-icon" id="nextDay" onclick="changeDay(1)"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <button class="btn-primary" onclick="openLogMealModal()"><i class="fas fa-plus"></i> Log Meal</button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="meals-timeline">
                     <?php if (count($meals) > 0): ?>
                         <?php foreach ($meals as $meal): ?>
                         <div class="meal-item <?= $meal['is_logged'] ? 'completed' : 'pending' ?>" data-component="MealItem" data-meal-id="<?= $meal['id'] ?>">
+                            <div class="meal-checkbox" onclick="toggleMealLogged(this, <?= $meal['id'] ?>)">
+                                <input type="checkbox" id="meal-check-<?= $meal['id'] ?>" <?= $meal['is_logged'] ? 'checked' : '' ?>>
+                                <label for="meal-check-<?= $meal['id'] ?>"></label>
+                            </div>
                             <div class="meal-time">
-                                <i class="fas fa-<?= $meal['is_logged'] ? 'check-circle' : 'circle' ?>"></i>
                                 <span><?= date('g:i A', strtotime($meal['meal_time'])) ?></span>
                             </div>
                             <div class="meal-content">
@@ -246,7 +256,7 @@ if (!$nutrition_plan) {
                                 </div>
                             </div>
                             <?php if (!$meal['is_logged']): ?>
-                                <button class="btn-secondary btn-small" data-action="log-meal" data-meal-id="<?= $meal['id'] ?>">Log</button>
+                                <button class="btn-secondary btn-small" onclick="logSingleMeal(<?= $meal['id'] ?>)"><i class="fas fa-check"></i> Log</button>
                             <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
@@ -613,4 +623,334 @@ if (!$nutrition_plan) {
 .demo-data-notice i {
     font-size: 16px;
 }
+
+/* Meal Header Actions */
+.meal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* Day Selector */
+.day-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.day-selector .btn-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-white);
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-selector .btn-icon:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.current-day {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-white);
+    min-width: 150px;
+    text-align: center;
+}
+
+/* Meal Checkbox */
+.meal-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.meal-checkbox input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    margin: 0;
+}
+
+.meal-checkbox input[type="checkbox"]:checked + label {
+    color: #10b981;
+}
+
+/* Update meal item layout */
+.meal-item {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.3s;
+    align-items: flex-start;
+}
+
+/* Log Meal Modal */
+.log-meal-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.log-meal-modal.active {
+    display: flex;
+}
+
+.log-meal-modal .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.log-meal-modal .modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.log-meal-modal .modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-white);
+}
+
+.log-meal-modal .modal-header h3 i {
+    color: var(--primary);
+    margin-right: 10px;
+}
+
+.log-meal-modal .modal-body {
+    padding: 20px;
+}
+
+.log-meal-modal .modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.log-meal-modal .form-group {
+    margin-bottom: 16px;
+}
+
+.log-meal-modal .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
+.log-meal-modal .form-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-white);
+    font-size: 14px;
+}
+
+.log-meal-modal .form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
 </style>
+
+<!-- Log Meal Modal -->
+<div class="log-meal-modal" id="logMealModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-utensils"></i> Log Meal</h3>
+            <button class="modal-close" onclick="closeLogMealModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="logMealForm">
+                <div class="form-group">
+                    <label>Meal Name *</label>
+                    <input type="text" class="form-input" name="meal_name" placeholder="e.g., Breakfast, Lunch, Snack" required>
+                </div>
+                <div class="form-group">
+                    <label>Foods Eaten</label>
+                    <textarea class="form-input" name="foods" rows="3" placeholder="List the foods you ate..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Calories (estimated)</label>
+                    <input type="number" class="form-input" name="calories" placeholder="e.g., 500">
+                </div>
+                <div class="form-group" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                    <div>
+                        <label>Protein (g)</label>
+                        <input type="number" class="form-input" name="protein" placeholder="0">
+                    </div>
+                    <div>
+                        <label>Carbs (g)</label>
+                        <input type="number" class="form-input" name="carbs" placeholder="0">
+                    </div>
+                    <div>
+                        <label>Fats (g)</label>
+                        <input type="number" class="form-input" name="fats" placeholder="0">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeLogMealModal()"><i class="fas fa-times"></i> Cancel</button>
+            <button class="btn btn-primary" onclick="submitLogMeal()"><i class="fas fa-check"></i> Log Meal</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Current date for day selector
+let currentSelectedDate = new Date();
+
+// Change day function
+function changeDay(delta) {
+    currentSelectedDate.setDate(currentSelectedDate.getDate() + delta);
+    updateDayDisplay();
+    // In demo mode, just show a notification
+    showNutritionNotification('Viewing meal plan for ' + formatDate(currentSelectedDate), 'info');
+}
+
+function formatDate(date) {
+    const options = { weekday: 'long', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+}
+
+function updateDayDisplay() {
+    const display = document.getElementById('currentDayDisplay');
+    if (display) {
+        display.textContent = formatDate(currentSelectedDate);
+    }
+}
+
+// Toggle meal logged status
+function toggleMealLogged(element, mealId) {
+    const checkbox = element.querySelector('input[type="checkbox"]');
+    const mealItem = element.closest('.meal-item');
+    
+    if (checkbox.checked) {
+        checkbox.checked = false;
+        mealItem.classList.remove('completed');
+        mealItem.classList.add('pending');
+        showNutritionNotification('Meal unmarked', 'info');
+    } else {
+        checkbox.checked = true;
+        mealItem.classList.add('completed');
+        mealItem.classList.remove('pending');
+        showNutritionNotification('Meal logged successfully!', 'success');
+    }
+}
+
+// Log single meal
+function logSingleMeal(mealId) {
+    const mealItem = document.querySelector(`[data-meal-id="${mealId}"]`);
+    const checkbox = mealItem?.querySelector('input[type="checkbox"]');
+    
+    if (checkbox) {
+        checkbox.checked = true;
+    }
+    
+    mealItem?.classList.add('completed');
+    mealItem?.classList.remove('pending');
+    
+    // Hide the log button
+    const logBtn = mealItem?.querySelector('.btn-small');
+    if (logBtn) {
+        logBtn.style.display = 'none';
+    }
+    
+    showNutritionNotification('Meal logged successfully!', 'success');
+}
+
+// Log meal modal functions
+function openLogMealModal() {
+    document.getElementById('logMealModal').classList.add('active');
+}
+
+function closeLogMealModal() {
+    document.getElementById('logMealModal').classList.remove('active');
+    document.getElementById('logMealForm').reset();
+}
+
+function submitLogMeal() {
+    const form = document.getElementById('logMealForm');
+    const mealName = form.querySelector('[name="meal_name"]').value;
+    
+    if (!mealName) {
+        showNutritionNotification('Please enter a meal name', 'error');
+        return;
+    }
+    
+    // In demo mode, just show success
+    showNutritionNotification('Meal "' + mealName + '" logged successfully!', 'success');
+    closeLogMealModal();
+}
+
+// Notification helper
+function showNutritionNotification(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'nutrition-notification';
+    
+    let icon = 'info-circle';
+    let bgColor = 'rgba(59, 130, 246, 0.9)';
+    
+    if (type === 'error') {
+        icon = 'exclamation-circle';
+        bgColor = 'rgba(239, 68, 68, 0.9)';
+    } else if (type === 'success') {
+        icon = 'check-circle';
+        bgColor = 'rgba(16, 185, 129, 0.9)';
+    }
+    
+    alertDiv.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 280px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        background: ${bgColor};
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 4000);
+}
+</script>

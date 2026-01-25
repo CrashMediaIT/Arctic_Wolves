@@ -12,21 +12,71 @@
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-drafting-compass"></i> Drill Diagram</h3>
-                <div class="designer-tools">
-                    <button class="tool-btn active" title="Select" data-tool="select"><i class="fas fa-mouse-pointer"></i></button>
-                    <button class="tool-btn" title="Add Player" data-tool="player"><i class="fas fa-user"></i></button>
-                    <button class="tool-btn" title="Add Goalie" data-tool="goalie"><i class="fas fa-user-shield"></i></button>
-                    <button class="tool-btn" title="Add Cone" data-tool="cone"><i class="fas fa-triangle"></i></button>
-                    <button class="tool-btn" title="Add Puck" data-tool="puck"><i class="fas fa-hockey-puck"></i></button>
-                    <button class="tool-btn" title="Draw Line" data-tool="line"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="tool-btn" title="Draw Dashed Line" data-tool="dashed"><i class="fas fa-ellipsis-h"></i></button>
-                    <button class="tool-btn" title="Add Arrow" data-tool="arrow"><i class="fas fa-long-arrow-alt-right"></i></button>
-                    <button class="tool-btn" title="Add Text" data-tool="text"><i class="fas fa-font"></i></button>
-                    <button class="tool-btn" title="Clear All" data-tool="clear"><i class="fas fa-trash"></i></button>
-                    <button class="tool-btn fullscreen-btn" title="Fullscreen" data-tool="fullscreen"><i class="fas fa-expand"></i></button>
-                </div>
             </div>
             <div class="card-body">
+                <!-- Tool Groups -->
+                <div class="designer-toolbar">
+                    <div class="tool-group">
+                        <span class="tool-group-label">Selection</span>
+                        <button class="tool-btn active" title="Select" data-tool="select"><i class="fas fa-mouse-pointer"></i></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Players</span>
+                        <button class="tool-btn" title="Forward (F)" data-tool="forward"><span class="tool-label">F</span></button>
+                        <button class="tool-btn" title="Forward 1 (F1)" data-tool="f1"><span class="tool-label">F1</span></button>
+                        <button class="tool-btn" title="Forward 2 (F2)" data-tool="f2"><span class="tool-label">F2</span></button>
+                        <button class="tool-btn" title="Forward 3 (F3)" data-tool="f3"><span class="tool-label">F3</span></button>
+                        <button class="tool-btn" title="Defense (D)" data-tool="defense"><span class="tool-label">D</span></button>
+                        <button class="tool-btn" title="Defense 1 (D1)" data-tool="d1"><span class="tool-label">D1</span></button>
+                        <button class="tool-btn" title="Defense 2 (D2)" data-tool="d2"><span class="tool-label">D2</span></button>
+                        <button class="tool-btn" title="Coach" data-tool="coach"><i class="fas fa-user-tie"></i></button>
+                        <button class="tool-btn" title="Goalie (G)" data-tool="goalie"><span class="tool-label">G</span></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Positions</span>
+                        <button class="tool-btn" title="Center (C)" data-tool="center"><span class="tool-label">C</span></button>
+                        <button class="tool-btn" title="Left Wing (LW)" data-tool="lw"><span class="tool-label">LW</span></button>
+                        <button class="tool-btn" title="Right Wing (RW)" data-tool="rw"><span class="tool-label">RW</span></button>
+                        <button class="tool-btn" title="Left Defense (LD)" data-tool="ld"><span class="tool-label">LD</span></button>
+                        <button class="tool-btn" title="Right Defense (RD)" data-tool="rd"><span class="tool-label">RD</span></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Equipment</span>
+                        <button class="tool-btn" title="Single Puck" data-tool="puck"><i class="fas fa-hockey-puck"></i></button>
+                        <button class="tool-btn" title="Puck Group" data-tool="pucks"><i class="fas fa-circle"></i><i class="fas fa-circle" style="margin-left: -8px;"></i></button>
+                        <button class="tool-btn" title="Cone" data-tool="cone"><i class="fas fa-play" style="transform: rotate(-90deg);"></i></button>
+                        <button class="tool-btn" title="Net" data-tool="net"><i class="fas fa-border-all"></i></button>
+                        <button class="tool-btn" title="Mini Net" data-tool="mininet"><i class="fas fa-th-large"></i></button>
+                        <button class="tool-btn" title="Tire" data-tool="tire"><i class="fas fa-circle-notch"></i></button>
+                        <button class="tool-btn" title="Stick" data-tool="stick"><i class="fas fa-slash"></i></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Drawing</span>
+                        <button class="tool-btn" title="Draw Line" data-tool="line"><i class="fas fa-minus"></i></button>
+                        <button class="tool-btn" title="Draw Dashed Line" data-tool="dashed"><i class="fas fa-ellipsis-h"></i></button>
+                        <button class="tool-btn" title="Arrow" data-tool="arrow"><i class="fas fa-long-arrow-alt-right"></i></button>
+                        <button class="tool-btn" title="Add Text" data-tool="text"><i class="fas fa-font"></i></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Numbers</span>
+                        <button class="tool-btn" title="Number 0" data-tool="num0"><span class="tool-label">0</span></button>
+                        <button class="tool-btn" title="Number 1" data-tool="num1"><span class="tool-label">1</span></button>
+                        <button class="tool-btn" title="Number 2" data-tool="num2"><span class="tool-label">2</span></button>
+                        <button class="tool-btn" title="Number 3" data-tool="num3"><span class="tool-label">3</span></button>
+                        <button class="tool-btn" title="Number 4" data-tool="num4"><span class="tool-label">4</span></button>
+                        <button class="tool-btn" title="Number 5" data-tool="num5"><span class="tool-label">5</span></button>
+                        <button class="tool-btn" title="Number 6" data-tool="num6"><span class="tool-label">6</span></button>
+                        <button class="tool-btn" title="Number 7" data-tool="num7"><span class="tool-label">7</span></button>
+                        <button class="tool-btn" title="Number 8" data-tool="num8"><span class="tool-label">8</span></button>
+                        <button class="tool-btn" title="Number 9" data-tool="num9"><span class="tool-label">9</span></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Actions</span>
+                        <button class="tool-btn danger-btn" title="Clear All" data-tool="clear"><i class="fas fa-trash"></i></button>
+                        <button class="tool-btn fullscreen-btn" title="Fullscreen" data-tool="fullscreen"><i class="fas fa-expand"></i></button>
+                    </div>
+                </div>
+                
                 <!-- Ice View Selector -->
                 <div class="ice-view-selector">
                     <label>Ice View:</label>
@@ -149,10 +199,10 @@
 
     <!-- Form Actions -->
     <div class="form-actions-bar">
-        <a href="?page=drill_library" class="btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+        <button type="button" class="btn btn-secondary" onclick="cancelDrillCreation()"><i class="fas fa-times"></i> Cancel</button>
         <div class="action-group">
-            <button type="button" class="btn-secondary" onclick="saveDrillDraft()"><i class="fas fa-save"></i> Save Draft</button>
-            <button type="button" class="btn-primary" onclick="submitDrillForm()"><i class="fas fa-check"></i> Create Drill</button>
+            <button type="button" class="btn btn-secondary" onclick="saveDrillDraft()"><i class="fas fa-save"></i> Save Draft</button>
+            <button type="button" class="btn btn-primary" onclick="submitDrillForm()"><i class="fas fa-check"></i> Create Drill</button>
         </div>
     </div>
 </div>
@@ -175,28 +225,78 @@
     margin-bottom: 16px;
 }
 
-.designer-tools {
+/* Designer Toolbar Styles */
+.designer-toolbar {
     display: flex;
-    gap: 5px;
     flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.tool-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.tool-group-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    width: 100%;
+    margin-bottom: 6px;
 }
 
 .tool-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     background: var(--bg-main);
     border: 1px solid var(--border);
-    color: var(--text-dim);
+    color: var(--text-white);
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
 }
 
-.tool-btn:hover,
+.tool-btn:hover {
+    background: rgba(107, 70, 193, 0.2);
+    border-color: var(--primary);
+}
+
 .tool-btn.active {
     background: var(--primary);
     border-color: var(--primary);
     color: #fff;
+}
+
+.tool-btn .tool-label {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.tool-btn.danger-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.tool-btn i {
+    font-size: 14px;
 }
 
 .fullscreen-btn {
@@ -231,11 +331,7 @@
     min-height: 450px;
     max-height: 600px;
     aspect-ratio: 2/1;
-    background: 
-        linear-gradient(to right, rgba(0, 51, 160, 0.1) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0, 51, 160, 0.1) 1px, transparent 1px),
-        linear-gradient(135deg, #e8f4f8 0%, #f0f9ff 100%);
-    background-size: 30px 30px, 30px 30px, 100% 100%;
+    background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
     border: 3px solid #0033a0;
     border-radius: 80px;
     position: relative;
@@ -243,23 +339,9 @@
     overflow: hidden;
 }
 
-/* Ice rink lines overlay - simulates proper hockey rink */
-.ice-rink-canvas::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    /* Center red line */
-    background: 
-        linear-gradient(to right, transparent calc(50% - 2px), #c41e3a calc(50% - 2px), #c41e3a calc(50% + 2px), transparent calc(50% + 2px)),
-        /* Blue lines */
-        linear-gradient(to right, transparent 23%, #0033a0 23%, #0033a0 25%, transparent 25%, transparent 75%, #0033a0 75%, #0033a0 77%, transparent 77%),
-        /* Center circle outline */
-        radial-gradient(circle at 50% 50%, transparent 58px, #0033a0 58px, #0033a0 62px, transparent 62px);
-    pointer-events: none;
-    z-index: 1;
+/* Canvas element inside takes over rendering */
+.ice-rink-canvas canvas {
+    border-radius: 77px;
 }
 
 /* Fullscreen mode */
@@ -462,6 +544,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Cancel with confirmation
+function cancelDrillCreation() {
+    // Check if form has any data
+    const form = document.querySelector('.drill-form');
+    const formData = new FormData(form);
+    let hasData = false;
+    
+    for (let [key, value] of formData.entries()) {
+        if (value && value.trim() !== '' && key !== 'diagram_data') {
+            hasData = true;
+            break;
+        }
+    }
+    
+    // Check if designer has objects
+    if (window.drillDesigner && window.drillDesigner.objects && window.drillDesigner.objects.length > 0) {
+        hasData = true;
+    }
+    
+    if (hasData) {
+        const confirmed = confirm('You have unsaved changes. Are you sure you want to leave? Your progress will be lost.');
+        if (!confirmed) {
+            return;
+        }
+    }
+    
+    window.location.href = '?page=drill_library';
+}
 </script>
 
 <!-- Load Drill Designer JavaScript -->

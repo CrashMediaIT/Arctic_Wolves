@@ -21,6 +21,97 @@ try {
     $categories = [];
     $drills = [];
 }
+
+// Add demo drills if none exist
+if (count($drills) === 0) {
+    $today = new DateTime();
+    $categories = [
+        ['id' => 'demo-1', 'name' => 'Skating'],
+        ['id' => 'demo-2', 'name' => 'Shooting'],
+        ['id' => 'demo-3', 'name' => 'Passing'],
+        ['id' => 'demo-4', 'name' => 'Stickhandling'],
+        ['id' => 'demo-5', 'name' => 'Team Play'],
+        ['id' => 'demo-6', 'name' => 'Goalie']
+    ];
+    
+    $drills = [
+        [
+            'id' => 'demo-1',
+            'title' => 'Crossover Speed Drill',
+            'category_id' => 'demo-1',
+            'category_name' => 'Skating',
+            'description' => 'Develop explosive crossover power and speed through tight turns. Players skate figure-8 patterns with emphasis on knee bend and full extension.',
+            'first_name' => 'Mike',
+            'last_name' => 'Smith',
+            'created_at' => (clone $today)->modify('-3 days')->format('Y-m-d H:i:s'),
+            'custom_image' => '',
+            'ihs_source_url' => ''
+        ],
+        [
+            'id' => 'demo-2',
+            'title' => 'One-Timer Practice',
+            'category_id' => 'demo-2',
+            'category_name' => 'Shooting',
+            'description' => 'Work on timing and accuracy with one-timer shots. Partners pass across the slot for quick release shots on goal.',
+            'first_name' => 'Sarah',
+            'last_name' => 'Johnson',
+            'created_at' => (clone $today)->modify('-5 days')->format('Y-m-d H:i:s'),
+            'custom_image' => '',
+            'ihs_source_url' => ''
+        ],
+        [
+            'id' => 'demo-3',
+            'title' => 'Breakout Pattern Drill',
+            'category_id' => 'demo-3',
+            'category_name' => 'Passing',
+            'description' => 'Practice standard breakout patterns with quick, accurate passes. D-to-D movements and rim plays included.',
+            'first_name' => 'David',
+            'last_name' => 'Williams',
+            'created_at' => (clone $today)->modify('-7 days')->format('Y-m-d H:i:s'),
+            'custom_image' => '',
+            'ihs_source_url' => ''
+        ],
+        [
+            'id' => 'demo-4',
+            'title' => 'Tight Space Dangles',
+            'category_id' => 'demo-4',
+            'category_name' => 'Stickhandling',
+            'description' => 'Improve puck control in confined areas. Cone weaves, toe drags, and deking moves through obstacle course.',
+            'first_name' => 'Mike',
+            'last_name' => 'Smith',
+            'created_at' => (clone $today)->modify('-10 days')->format('Y-m-d H:i:s'),
+            'custom_image' => '',
+            'ihs_source_url' => ''
+        ],
+        [
+            'id' => 'demo-5',
+            'title' => '3-on-2 Rush Drill',
+            'category_id' => 'demo-5',
+            'category_name' => 'Team Play',
+            'description' => 'Full speed odd-man rush scenarios. Develop decision-making and finishing skills in offensive zone entries.',
+            'first_name' => 'Sarah',
+            'last_name' => 'Johnson',
+            'created_at' => (clone $today)->modify('-2 days')->format('Y-m-d H:i:s'),
+            'custom_image' => '',
+            'ihs_source_url' => ''
+        ],
+        [
+            'id' => 'demo-6',
+            'title' => 'Goalie Movement Drill',
+            'category_id' => 'demo-6',
+            'category_name' => 'Goalie',
+            'description' => 'Quick lateral pushes across the crease with shot tracking. Butterfly slides and recovery movements.',
+            'first_name' => 'David',
+            'last_name' => 'Williams',
+            'created_at' => (clone $today)->modify('-8 days')->format('Y-m-d H:i:s'),
+            'custom_image' => '',
+            'ihs_source_url' => ''
+        ]
+    ];
+    $is_demo_drills = true;
+} else {
+    $is_demo_drills = false;
+}
 ?>
 
 <div class="page-header">
@@ -29,6 +120,13 @@ try {
     </h1>
     <p class="page-description">Browse and search hockey drills</p>
 </div>
+
+<?php if (isset($is_demo_drills) && $is_demo_drills): ?>
+<div class="demo-data-notice">
+    <i class="fas fa-info-circle"></i>
+    <span>Showing demo drills. Create or import drills to build your library.</span>
+</div>
+<?php endif; ?>
 
 <div class="drills-content">
     <!-- Search Filter Box - Separated from title bar -->
@@ -449,6 +547,24 @@ try {
 
 .drill-card.hidden {
     display: none !important;
+}
+
+/* Demo Data Notice */
+.demo-data-notice {
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary-light);
+    font-size: 14px;
+}
+
+.demo-data-notice i {
+    font-size: 16px;
 }
 </style>
 
