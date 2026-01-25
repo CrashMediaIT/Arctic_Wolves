@@ -107,6 +107,7 @@ try {
         </div>
         
         <form id="add-goal-form" method="POST" action="process_goals.php">
+            <?= csrfTokenInput() ?>
             <input type="hidden" name="action" value="create">
             
             <div class="form-group">

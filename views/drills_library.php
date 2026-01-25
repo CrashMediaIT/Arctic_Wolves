@@ -780,6 +780,23 @@ document.addEventListener('DOMContentLoaded', function() {
 let currentViewDrillId = null;
 let drillsData = <?php echo json_encode($drills); ?>;
 
+// Local modal functions (fallback if global ones not loaded)
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+}
+
 function viewDrill(drillId) {
     const drill = drillsData.find(d => d.id == drillId);
     if (!drill) return;
