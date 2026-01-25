@@ -119,7 +119,19 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="ice-rink-canvas">
+                    <!-- Ice View Selector -->
+                    <div class="ice-view-selector">
+                        <label>Ice View:</label>
+                        <select class="form-input-small" id="iceViewSelect" data-ice-view>
+                            <option value="full" selected>Full Ice</option>
+                            <option value="half-top">Half Ice (Top)</option>
+                            <option value="half-bottom">Half Ice (Bottom)</option>
+                            <option value="left-zone">Left Zone</option>
+                            <option value="right-zone">Right Zone</option>
+                            <option value="center">Center Ice</option>
+                        </select>
+                    </div>
+                    <div class="ice-rink-canvas" data-ice-view="full">
                         <div class="rink-overlay">
                             <p><i class="fas fa-info-circle"></i> Click the tools above to start designing your drill</p>
                         </div>
@@ -181,23 +193,68 @@
 
 .tool-btn:hover,
 .tool-btn.active {
-    background: var(--neon);
-    border-color: var(--neon);
+    background: var(--primary);
+    border-color: var(--primary);
     color: #fff;
+}
+
+/* Ice View Selector */
+.ice-view-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.ice-view-selector label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin: 0;
+}
+
+.ice-view-selector .form-input-small {
+    min-width: 160px;
 }
 
 .ice-rink-canvas {
     width: 100%;
-    height: 600px;
+    min-height: 500px;
+    max-height: 700px;
+    aspect-ratio: 16/10;
     background: 
-        linear-gradient(to right, var(--border) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--border) 1px, transparent 1px),
+        linear-gradient(to right, rgba(0, 51, 160, 0.1) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 51, 160, 0.1) 1px, transparent 1px),
         linear-gradient(135deg, #e8f4f8 0%, #f0f9ff 100%);
-    background-size: 20px 20px, 20px 20px, 100% 100%;
-    border: 2px solid var(--border);
-    border-radius: 8px;
+    background-size: 30px 30px, 30px 30px, 100% 100%;
+    border: 3px solid #0033a0;
+    border-radius: 80px;
     position: relative;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+/* Ice rink lines overlay - simulates proper hockey rink */
+.ice-rink-canvas::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Center red line */
+    background: 
+        linear-gradient(to right, transparent calc(50% - 2px), #c41e3a calc(50% - 2px), #c41e3a calc(50% + 2px), transparent calc(50% + 2px)),
+        /* Blue lines */
+        linear-gradient(to right, transparent 23%, #0033a0 23%, #0033a0 25%, transparent 25%, transparent 75%, #0033a0 75%, #0033a0 77%, transparent 77%),
+        /* Center circle outline */
+        radial-gradient(circle at 50% 50%, transparent 58px, #0033a0 58px, #0033a0 62px, transparent 62px);
+    pointer-events: none;
+    z-index: 1;
 }
 
 .rink-overlay {

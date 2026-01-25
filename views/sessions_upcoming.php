@@ -545,6 +545,31 @@ $view_mode = $_GET['view'] ?? 'list';
         padding: 2px 4px;
     }
 }
+
+/* Ensure btn-primary is properly styled */
+.view-controls .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 45px;
+    padding: 0 24px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.view-controls .btn-primary:hover {
+    background: var(--button-hover, #7C3AED);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.4);
+}
 </style>
 
 <!-- Include calendar JavaScript -->

@@ -225,7 +225,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                     <?php endforeach; ?>
                 </select>
                 <input type="text" name="search_exercise" class="form-input-small" placeholder="Search exercises..." value="<?= htmlspecialchars($search_exercise) ?>">
-                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i></button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
             </form>
         </div>
         <div class="card-body">
@@ -555,5 +555,29 @@ if ($current_program && $current_program['total_workouts'] > 0) {
     height: 35px;
     padding: 0 15px;
     font-size: 12px;
+}
+
+.calendar-nav .btn-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.calendar-nav .btn-icon:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.calendar-nav .btn-icon i {
+    font-size: 14px;
 }
 </style>

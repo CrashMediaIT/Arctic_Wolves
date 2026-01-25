@@ -258,4 +258,28 @@ try {
     gap: 10px;
     flex-wrap: wrap;
 }
+
+/* Placeholder/Empty State Styles */
+.placeholder-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 60px 24px;
+    text-align: center;
+}
+
+.placeholder-icon {
+    font-size: 64px;
+    color: var(--primary);
+    opacity: 0.5;
+    display: block;
+    margin-bottom: 20px;
+}
+
+.placeholder-text {
+    font-size: 16px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
 </style>

@@ -353,7 +353,7 @@ try {
 }
 
 .empty-state .empty-icon {
-    font-size: 48px;
+    font-size: 64px;
     color: var(--primary);
     opacity: 0.5;
     margin-bottom: 16px;
