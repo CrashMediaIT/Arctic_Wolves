@@ -261,6 +261,110 @@ if ($action === 'import_ihs') {
     }
 }
 
+// =========================================================
+// IMPORT FROM URL (Ice Hockey Systems URL)
+// =========================================================
+if ($action === 'import_from_url') {
+    requirePermission($pdo, $user_id, $user_role, 'create_drills');
+    
+    $ihs_url = trim($_POST['ihs_url'] ?? '');
+    
+    if (empty($ihs_url)) {
+        header("Location: dashboard.php?page=import_drill&error=url_required");
+        exit();
+    }
+    
+    // Validate URL format
+    if (!filter_var($ihs_url, FILTER_VALIDATE_URL)) {
+        header("Location: dashboard.php?page=import_drill&error=invalid_url");
+        exit();
+    }
+    
+    try {
+        // Parse the URL to extract drill information
+        // Support various IHS URL formats
+        $url_parts = parse_url($ihs_url);
+        $path = $url_parts['path'] ?? '';
+        
+        // Extract drill ID from URL path (e.g., /drills/drill-name-123 or /drill/123)
+        $drill_id = null;
+        if (preg_match('/\/drills?\/([a-zA-Z0-9\-_]+)/', $path, $matches)) {
+            $drill_id = $matches[1];
+        }
+        
+        if (!$drill_id) {
+            $drill_id = 'url-' . md5($ihs_url);
+        }
+        
+        // Generate drill name from URL
+        $drill_name = ucwords(str_replace(['-', '_'], ' ', basename($path)));
+        if (empty($drill_name) || $drill_name === '/') {
+            $drill_name = 'Imported Drill ' . date('Y-m-d H:i:s');
+        }
+        
+        // Create description with source URL
+        $description = "Imported from IHS Hockey.\n\n**Source:** " . $ihs_url;
+        
+        // Try to determine category from URL path
+        $category_name = 'General';
+        $category_keywords = [
+            'skating' => 'Skating',
+            'shooting' => 'Shooting',
+            'passing' => 'Passing',
+            'stickhandling' => 'Stickhandling',
+            'defensive' => 'Defensive',
+            'offensive' => 'Offensive',
+            'goalie' => 'Goalie',
+            'conditioning' => 'Conditioning',
+            'team' => 'Team Play'
+        ];
+        
+        $lower_url = strtolower($ihs_url);
+        foreach ($category_keywords as $keyword => $cat_name) {
+            if (strpos($lower_url, $keyword) !== false) {
+                $category_name = $cat_name;
+                break;
+            }
+        }
+        
+        // Look up or create the category
+        $category_id = null;
+        $stmt = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+        $stmt->execute([$category_name]);
+        $cat = $stmt->fetch();
+        if ($cat) {
+            $category_id = $cat['id'];
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO drill_categories (name) VALUES (?)");
+            $stmt->execute([$category_name]);
+            $category_id = $pdo->lastInsertId();
+        }
+        
+        // Check if this URL has already been imported
+        $stmt = $pdo->prepare("SELECT id FROM drills WHERE ihs_source_url = ?");
+        $stmt->execute([$ihs_url]);
+        if ($stmt->fetch()) {
+            header("Location: dashboard.php?page=import_drill&error=already_imported");
+            exit();
+        }
+        
+        // Insert the drill
+        $stmt = $pdo->prepare("
+            INSERT INTO drills (title, description, category_id, ihs_source_url, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$drill_name, $description, $category_id, $ihs_url, $user_id]);
+        
+        header("Location: dashboard.php?page=drill_library&status=drill_imported");
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("URL Import Error: " . $e->getMessage());
+        header("Location: dashboard.php?page=import_drill&error=import_failed");
+        exit();
+    }
+}
+
 // Fallback
 header("Location: dashboard.php?page=drills");
 exit();
