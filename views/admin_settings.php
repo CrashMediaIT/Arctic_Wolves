@@ -26,9 +26,7 @@ function getSetting($settings, $key, $default = '') {
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
+    /* Admin Settings - Uses application theme colors from shared_styles.css */
     
     .settings-header {
         margin-bottom: 24px;
@@ -41,14 +39,14 @@ function getSetting($settings, $key, $default = '') {
     }
     
     .settings-header p {
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         font-size: 14px;
     }
     
     .tabs {
         display: flex;
         gap: 8px;
-        border-bottom: 2px solid #1e293b;
+        border-bottom: 2px solid var(--border, #2D2D3F);
         margin-bottom: 24px;
         overflow-x: auto;
     }
@@ -57,7 +55,7 @@ function getSetting($settings, $key, $default = '') {
         padding: 12px 20px;
         background: transparent;
         border: none;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
@@ -68,12 +66,12 @@ function getSetting($settings, $key, $default = '') {
     
     .tab:hover {
         color: #fff;
-        background: rgba(112, 0, 164, 0.1);
+        background: rgba(107, 70, 193, 0.1);
     }
     
     .tab.active {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
+        color: var(--primary, #6B46C1);
+        border-bottom-color: var(--primary, #6B46C1);
     }
     
     .tab-content {
@@ -85,8 +83,8 @@ function getSetting($settings, $key, $default = '') {
     }
     
     .settings-card {
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         padding: 24px;
         margin-bottom: 24px;
@@ -95,7 +93,7 @@ function getSetting($settings, $key, $default = '') {
     .card-header {
         margin-bottom: 20px;
         padding-bottom: 15px;
-        border-bottom: 1px solid #1e293b;
+        border-bottom: 1px solid var(--border, #2D2D3F);
     }
     
     .card-title {
@@ -107,7 +105,7 @@ function getSetting($settings, $key, $default = '') {
     
     .card-description {
         font-size: 13px;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
     }
     
     .form-grid {
@@ -124,7 +122,7 @@ function getSetting($settings, $key, $default = '') {
         display: block;
         font-size: 12px;
         font-weight: 700;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         margin-bottom: 8px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -135,8 +133,8 @@ function getSetting($settings, $key, $default = '') {
     .form-textarea {
         width: 100%;
         padding: 12px;
-        background: #06080b;
-        border: 1px solid #1e293b;
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 6px;
         color: #fff;
         font-size: 14px;
@@ -146,7 +144,7 @@ function getSetting($settings, $key, $default = '') {
     .form-select:focus,
     .form-textarea:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
     }
     
     .form-textarea {
@@ -156,13 +154,13 @@ function getSetting($settings, $key, $default = '') {
     
     .help-text {
         font-size: 12px;
-        color: #64748b;
+        color: var(--text-muted, #6B6B7B);
         margin-top: 5px;
         line-height: 1.4;
     }
     
     .help-text i {
-        color: var(--primary);
+        color: var(--primary, #6B46C1);
     }
     
     .checkbox-group {
@@ -185,7 +183,7 @@ function getSetting($settings, $key, $default = '') {
     }
     
     .btn-primary {
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
         padding: 12px 24px;
         border: none;
@@ -197,14 +195,14 @@ function getSetting($settings, $key, $default = '') {
     }
     
     .btn-primary:hover {
-        background: #5a0080;
+        background: var(--primary-hover, #7C3AED);
         transform: translateY(-2px);
     }
     
     .btn-secondary {
         background: transparent;
-        border: 1px solid #1e293b;
-        color: #94a3b8;
+        border: 1px solid var(--border, #2D2D3F);
+        color: var(--text-secondary, #A8A8B8);
         padding: 12px 24px;
         border-radius: 6px;
         font-weight: 600;
@@ -215,8 +213,8 @@ function getSetting($settings, $key, $default = '') {
     }
     
     .btn-secondary:hover {
-        border-color: var(--primary);
-        color: var(--primary);
+        border-color: var(--primary, #6B46C1);
+        color: var(--primary, #6B46C1);
     }
     
     .alert {
@@ -229,27 +227,27 @@ function getSetting($settings, $key, $default = '') {
     }
     
     .alert-success {
-        background: rgba(0, 255, 136, 0.1);
-        border: 1px solid #00ff88;
-        color: #00ff88;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid var(--success, #10B981);
+        color: var(--success, #10B981);
     }
     
     .alert-error {
         background: rgba(239, 68, 68, 0.1);
-        border: 1px solid #ef4444;
-        color: #ef4444;
+        border: 1px solid var(--error, #EF4444);
+        color: var(--error, #EF4444);
     }
     
     /* Alias for alert-error */
     .alert-danger {
         background: rgba(239, 68, 68, 0.1);
-        border: 1px solid #ef4444;
-        color: #ef4444;
+        border: 1px solid var(--error, #EF4444);
+        color: var(--error, #EF4444);
     }
     
     .alert-warning {
-        background: rgba(251, 191, 36, 0.1);
-        border: 1px solid #fbbf24;
+        background: rgba(245, 158, 11, 0.1);
+        border: 1px solid var(--warning, #F59E0B);
         color: #fbbf24;
     }
     
