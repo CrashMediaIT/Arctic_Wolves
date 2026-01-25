@@ -194,30 +194,13 @@ class DrillDesigner {
         const ctx = this.ctx;
         const iceView = this.iceView || 'full';
         
-        // Clear and draw ice background
-        ctx.fillStyle = '#e8f4f8';
+        // Clear and draw ice background (clean white ice - no grid)
+        ctx.fillStyle = '#f0f7fa';
         ctx.fillRect(0, 0, w, h);
         
-        // Draw subtle ice texture grid
-        ctx.strokeStyle = 'rgba(0, 51, 160, 0.08)';
-        ctx.lineWidth = 1;
-        const gridSize = 30;
-        for (let x = 0; x < w; x += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, h);
-            ctx.stroke();
-        }
-        for (let y = 0; y < h; y += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(w, y);
-            ctx.stroke();
-        }
-        
-        // Draw center logo (configurable branding - very low opacity)
+        // Draw center logo (Arctic Wolves branding - 12% opacity as requested)
         ctx.save();
-        ctx.globalAlpha = 0.08;
+        ctx.globalAlpha = 0.12;
         ctx.fillStyle = '#7000a4';
         ctx.font = 'bold 48px Inter, sans-serif';
         ctx.textAlign = 'center';
@@ -313,26 +296,96 @@ class DrillDesigner {
             ctx.beginPath();
             ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
             ctx.fill();
+            
+            // Draw hash marks around faceoff circles
+            this.drawHashMarks(ctx, circle.x, circle.y, faceoffRadius);
         });
         
-        // Goal creases (simplified trapezoid)
+        // Goal creases (proper semicircle shape)
+        const creaseRadius = Math.min(w, h) * 0.08;
+        
+        // Left goal crease - semicircle
+        ctx.fillStyle = 'rgba(135, 206, 235, 0.4)'; // Light blue fill
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
-        // Left goal crease
         ctx.beginPath();
-        ctx.moveTo(w * 0.02, h * 0.35);
-        ctx.lineTo(w * 0.08, h * 0.4);
-        ctx.lineTo(w * 0.08, h * 0.6);
-        ctx.lineTo(w * 0.02, h * 0.65);
+        ctx.arc(w * 0.03, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+        ctx.fill();
         ctx.stroke();
         
-        // Right goal crease
+        // Left goal line
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * 0.98, h * 0.35);
-        ctx.lineTo(w * 0.92, h * 0.4);
-        ctx.lineTo(w * 0.92, h * 0.6);
-        ctx.lineTo(w * 0.98, h * 0.65);
+        ctx.moveTo(w * 0.03, h * 0.35);
+        ctx.lineTo(w * 0.03, h * 0.65);
         ctx.stroke();
+        
+        // Right goal crease - semicircle  
+        ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(w * 0.97, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Right goal line
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.97, h * 0.35);
+        ctx.lineTo(w * 0.97, h * 0.65);
+        ctx.stroke();
+        
+        // Draw neutral zone faceoff dots with hash marks
+        const neutralDots = [
+            { x: w * 0.25 + 30, y: h * 0.3 },
+            { x: w * 0.25 + 30, y: h * 0.7 },
+            { x: w * 0.75 - 30, y: h * 0.3 },
+            { x: w * 0.75 - 30, y: h * 0.7 }
+        ];
+        
+        ctx.fillStyle = '#c41e3a';
+        neutralDots.forEach(dot => {
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, 4, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+    }
+    
+    // Helper function to draw hash marks around faceoff circles
+    drawHashMarks(ctx, cx, cy, radius) {
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        
+        // Draw L-shaped hash marks at 4 positions around the circle
+        const positions = [
+            { angle: -Math.PI/4, dx: -1, dy: -1 },
+            { angle: Math.PI/4, dx: 1, dy: -1 },
+            { angle: 3*Math.PI/4, dx: 1, dy: 1 },
+            { angle: -3*Math.PI/4, dx: -1, dy: 1 }
+        ];
+        
+        const hashLength = 15;
+        const offset = radius + 5;
+        
+        positions.forEach(pos => {
+            const x = cx + Math.cos(pos.angle) * offset;
+            const y = cy + Math.sin(pos.angle) * offset;
+            
+            // Horizontal part
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + pos.dx * hashLength, y);
+            ctx.stroke();
+            
+            // Vertical part  
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + pos.dy * hashLength);
+            ctx.stroke();
+        });
     }
     
     drawHalfIce(ctx, w, h, side) {
