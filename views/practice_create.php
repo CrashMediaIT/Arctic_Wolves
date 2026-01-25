@@ -126,21 +126,54 @@
             <input type="text" class="form-input" id="drillSelectorSearch" placeholder="Search drills..." onkeyup="filterDrillSelector()">
             <div class="drill-selector-list" id="drillSelectorList" style="max-height: 400px; overflow-y: auto; margin-top: 15px;">
                 <?php
-                $drillsStmt = $pdo->query("SELECT d.*, dc.name as category_name FROM drills d LEFT JOIN drill_categories dc ON d.category_id = dc.id ORDER BY d.title");
-                while ($drill = $drillsStmt->fetch()) {
+                try {
+                    $drillsStmt = $pdo->query("SELECT d.*, dc.name as category_name FROM drills d LEFT JOIN drill_categories dc ON d.category_id = dc.id ORDER BY d.title");
+                    $drillsForSelector = $drillsStmt->fetchAll();
+                } catch (PDOException $e) {
+                    error_log("Practice create drills fetch error: " . $e->getMessage());
+                    $drillsForSelector = [];
+                }
+                
+                // Add demo drills if none exist
+                if (count($drillsForSelector) === 0) {
+                    $drillsForSelector = [
+                        ['id' => 'demo-1', 'title' => 'Crossover Speed Drill', 'category_name' => 'Skating'],
+                        ['id' => 'demo-2', 'title' => 'One-Timer Practice', 'category_name' => 'Shooting'],
+                        ['id' => 'demo-3', 'title' => 'Breakout Pattern Drill', 'category_name' => 'Passing'],
+                        ['id' => 'demo-4', 'title' => 'Tight Space Dangles', 'category_name' => 'Stickhandling'],
+                        ['id' => 'demo-5', 'title' => '3-on-2 Rush Drill', 'category_name' => 'Team Play'],
+                        ['id' => 'demo-6', 'title' => 'Goalie Movement Drill', 'category_name' => 'Goalie'],
+                        ['id' => 'demo-7', 'title' => 'Power Play Setup', 'category_name' => 'Offensive'],
+                        ['id' => 'demo-8', 'title' => 'Penalty Kill Box', 'category_name' => 'Defensive'],
+                        ['id' => 'demo-9', 'title' => 'Transition Drill', 'category_name' => 'Conditioning'],
+                        ['id' => 'demo-10', 'title' => 'Battle Drills', 'category_name' => 'Compete']
+                    ];
+                    $isDemoDrills = true;
+                } else {
+                    $isDemoDrills = false;
+                }
+                
+                foreach ($drillsForSelector as $drill) {
                     $title = htmlspecialchars($drill['title'], ENT_QUOTES, 'UTF-8');
                     $category = htmlspecialchars($drill['category_name'] ?? '', ENT_QUOTES, 'UTF-8');
-                    echo '<div class="drill-selector-item" data-drill-id="' . intval($drill['id']) . '" data-title="' . $title . '" data-category="' . $category . '">';
+                    $drillId = is_numeric($drill['id']) ? intval($drill['id']) : htmlspecialchars($drill['id'], ENT_QUOTES, 'UTF-8');
+                    echo '<div class="drill-selector-item" data-drill-id="' . $drillId . '" data-title="' . $title . '" data-category="' . $category . '">';
                     echo '<div class="drill-selector-info">';
                     echo '<strong>' . $title . '</strong>';
-                    if ($drill['category_name']) echo '<span class="drill-category">' . $category . '</span>';
+                    if (!empty($drill['category_name'])) echo '<span class="drill-category">' . $category . '</span>';
                     echo '</div>';
                     echo '<button type="button" class="btn-icon"><i class="fas fa-plus"></i></button>';
                     echo '</div>';
                 }
                 ?>
-                <?php if ($drillsStmt->rowCount() == 0): ?>
+                <?php if (count($drillsForSelector) == 0): ?>
                     <p class="placeholder-text">No drills available. <a href="?page=drill_library">Create some drills first</a>.</p>
+                <?php endif; ?>
+                <?php if (isset($isDemoDrills) && $isDemoDrills): ?>
+                    <div class="demo-notice" style="padding: 12px; background: rgba(107, 70, 193, 0.1); border-radius: 6px; margin-top: 12px; font-size: 12px; color: var(--text-dim);">
+                        <i class="fas fa-info-circle" style="color: var(--primary);"></i>
+                        Showing demo drills. <a href="?page=create_drill" style="color: var(--primary);">Create custom drills</a> for your library.
+                    </div>
                 <?php endif; ?>
             </div>
         </div>

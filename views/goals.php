@@ -102,9 +102,7 @@ sort($all_tags);
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
+    /* Goals page styles - using site-wide CSS variables */
     .goals-container {
         padding: 20px;
         max-width: 1400px;
@@ -130,9 +128,9 @@ sort($all_tags);
     }
     .athlete-selector {
         padding: 10px 16px;
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
+        background: var(--bg, #0d1117);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 8px;
         color: #fff;
         font-size: 14px;
         font-weight: 600;
@@ -140,13 +138,13 @@ sort($all_tags);
         transition: all 0.2s;
     }
     .athlete-selector:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
     }
     .btn-create-goal {
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
         padding: 12px 24px;
-        border-radius: 6px;
+        border-radius: 8px;
         text-decoration: none;
         font-weight: 700;
         font-size: 14px;
@@ -158,13 +156,14 @@ sort($all_tags);
         gap: 8px;
     }
     .btn-create-goal:hover {
-        background: #5a008a;
+        background: var(--primary-hover, #7C3AED);
         transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(107, 70, 193, 0.4);
     }
     .filters-bar {
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
+        background: var(--card-bg, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 12px;
         padding: 20px;
         margin-bottom: 24px;
         display: flex;
@@ -179,18 +178,28 @@ sort($all_tags);
     }
     .filter-label {
         font-size: 12px;
-        color: #94a3b8;
+        color: var(--text, #A8A8B8);
         text-transform: uppercase;
         font-weight: 700;
+        letter-spacing: 0.5px;
     }
     .filter-select {
-        padding: 8px 12px;
-        background: #06080b;
-        border: 1px solid #1e293b;
-        border-radius: 4px;
+        padding: 10px 14px;
+        background: var(--bg, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 8px;
         color: #fff;
         font-size: 14px;
         min-width: 150px;
+        transition: all 0.2s;
+    }
+    .filter-select:hover {
+        border-color: var(--primary, #6B46C1);
+    }
+    .filter-select:focus {
+        outline: none;
+        border-color: var(--primary, #6B46C1);
+        box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
     }
     .category-group {
         margin-bottom: 32px;
@@ -201,18 +210,18 @@ sort($all_tags);
         color: #fff;
         margin-bottom: 16px;
         padding-bottom: 12px;
-        border-bottom: 2px solid var(--primary);
+        border-bottom: 2px solid var(--primary, #6B46C1);
         display: flex;
         align-items: center;
         gap: 12px;
     }
     .category-header i {
-        color: var(--primary);
+        color: var(--primary, #6B46C1);
     }
     .category-count {
         font-size: 14px;
         font-weight: 400;
-        color: #94a3b8;
+        color: var(--text, #A8A8B8);
         margin-left: auto;
     }
     .goals-grid {
@@ -222,18 +231,18 @@ sort($all_tags);
         margin-bottom: 24px;
     }
     .goal-card {
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
+        background: var(--card-bg, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 12px;
         padding: 20px;
         transition: all 0.2s;
         position: relative;
         overflow: hidden;
     }
     .goal-card:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(112, 0, 164, 0.2);
+        box-shadow: 0 4px 12px rgba(107, 70, 193, 0.2);
     }
     .goal-card.completed {
         opacity: 0.8;
@@ -254,17 +263,17 @@ sort($all_tags);
     .goal-category {
         display: inline-block;
         padding: 4px 10px;
-        background: rgba(112, 0, 164, 0.2);
-        border: 1px solid var(--primary);
-        border-radius: 4px;
+        background: rgba(107, 70, 193, 0.2);
+        border: 1px solid var(--primary, #6B46C1);
+        border-radius: 6px;
         font-size: 11px;
-        color: var(--primary);
+        color: var(--primary-light, #8B5CF6);
         font-weight: 700;
         text-transform: uppercase;
         margin-bottom: 8px;
     }
     .goal-description {
-        color: #94a3b8;
+        color: var(--text, #A8A8B8);
         font-size: 14px;
         line-height: 1.6;
         margin-bottom: 12px;
@@ -277,11 +286,11 @@ sort($all_tags);
     }
     .goal-tag {
         padding: 3px 8px;
-        background: rgba(148, 163, 184, 0.1);
-        border: 1px solid #1e293b;
-        border-radius: 3px;
+        background: rgba(107, 70, 193, 0.1);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 4px;
         font-size: 11px;
-        color: #94a3b8;
+        color: var(--text, #A8A8B8);
     }
     .goal-progress {
         margin: 12px 0;
@@ -291,18 +300,18 @@ sort($all_tags);
         justify-content: space-between;
         margin-bottom: 6px;
         font-size: 12px;
-        color: #94a3b8;
+        color: var(--text, #A8A8B8);
     }
     .progress-bar-container {
         width: 100%;
         height: 8px;
-        background: #1e293b;
+        background: var(--bg-secondary, #13131A);
         border-radius: 4px;
         overflow: hidden;
     }
     .progress-bar {
         height: 100%;
-        background: linear-gradient(90deg, var(--primary) 0%, #a855f7 100%);
+        background: linear-gradient(90deg, var(--primary, #6B46C1) 0%, #8B5CF6 100%);
         transition: width 0.3s ease;
     }
     .goal-meta {
@@ -311,9 +320,9 @@ sort($all_tags);
         align-items: center;
         margin-top: 12px;
         padding-top: 15px;
-        border-top: 1px solid #1e293b;
+        border-top: 1px solid var(--border, #2D2D3F);
         font-size: 12px;
-        color: #64748b;
+        color: var(--text-muted, #6B6B7B);
     }
     .goal-actions {
         display: flex;
@@ -323,7 +332,7 @@ sort($all_tags);
     .btn-goal-action {
         flex: 1;
         padding: 8px 12px;
-        border-radius: 4px;
+        border-radius: 6px;
         font-size: 12px;
         font-weight: 600;
         text-align: center;
@@ -335,18 +344,18 @@ sort($all_tags);
     }
     .btn-view {
         background: transparent;
-        border: 1px solid var(--primary);
-        color: var(--primary);
+        border: 1px solid var(--primary, #6B46C1);
+        color: var(--primary-light, #8B5CF6);
     }
     .btn-view:hover {
-        background: rgba(112, 0, 164, 0.1);
+        background: rgba(107, 70, 193, 0.1);
     }
     .btn-edit {
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
     }
     .btn-edit:hover {
-        background: #5a008a;
+        background: var(--primary-hover, #7C3AED);
     }
     .btn-complete {
         background: #10b981;
@@ -390,9 +399,9 @@ sort($all_tags);
         display: flex;
     }
     .modal-content {
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
+        background: var(--card-bg, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 12px;
         width: 90%;
         max-width: 800px;
         max-height: 90vh;
@@ -401,7 +410,7 @@ sort($all_tags);
     }
     .modal-header {
         padding: 20px 24px;
-        border-bottom: 1px solid #1e293b;
+        border-bottom: 1px solid var(--border, #2D2D3F);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -414,7 +423,7 @@ sort($all_tags);
     .modal-close {
         background: transparent;
         border: none;
-        color: #94a3b8;
+        color: var(--text, #A8A8B8);
         font-size: 24px;
         cursor: pointer;
         padding: 0;
@@ -423,7 +432,7 @@ sort($all_tags);
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 4px;
+        border-radius: 6px;
         transition: all 0.2s;
     }
     .modal-close:hover {
@@ -445,17 +454,19 @@ sort($all_tags);
     }
     .form-input, .form-textarea, .form-select {
         width: 100%;
-        padding: 10px 14px;
-        background: #06080b;
-        border: 1px solid #1e293b;
-        border-radius: 4px;
+        padding: 12px 16px;
+        background: var(--bg, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 8px;
         color: #fff;
         font-size: 14px;
         font-family: inherit;
+        transition: all 0.2s;
     }
     .form-input:focus, .form-textarea:focus, .form-select:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
+        box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
     }
     .form-textarea {
         resize: vertical;
@@ -464,7 +475,7 @@ sort($all_tags);
     .steps-section {
         margin-top: 24px;
         padding-top: 20px;
-        border-top: 1px solid #1e293b;
+        border-top: 1px solid var(--border, #2D2D3F);
     }
     .steps-header {
         display: flex;
@@ -479,17 +490,17 @@ sort($all_tags);
     }
     .btn-add-step {
         background: transparent;
-        border: 1px solid var(--primary);
-        color: var(--primary);
+        border: 1px solid var(--primary, #6B46C1);
+        color: var(--primary-light, #8B5CF6);
         padding: 6px 12px;
-        border-radius: 4px;
+        border-radius: 6px;
         font-size: 12px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
     }
     .btn-add-step:hover {
-        background: rgba(112, 0, 164, 0.1);
+        background: rgba(107, 70, 193, 0.1);
     }
     .steps-list {
         display: flex;
@@ -497,9 +508,9 @@ sort($all_tags);
         gap: 10px;
     }
     .step-item {
-        background: #06080b;
-        border: 1px solid #1e293b;
-        border-radius: 4px;
+        background: var(--bg, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 8px;
         padding: 12px;
         display: flex;
         align-items: start;
@@ -507,7 +518,7 @@ sort($all_tags);
     }
     .step-handle {
         cursor: move;
-        color: #64748b;
+        color: var(--text-muted, #6B6B7B);
         padding: 4px;
     }
     .step-content {
@@ -534,36 +545,37 @@ sort($all_tags);
     }
     .modal-footer {
         padding: 20px 24px;
-        border-top: 1px solid #1e293b;
+        border-top: 1px solid var(--border, #2D2D3F);
         display: flex;
         justify-content: flex-end;
         gap: 12px;
     }
     .btn-cancel {
         background: transparent;
-        border: 1px solid #1e293b;
-        color: #94a3b8;
+        border: 1px solid var(--border, #2D2D3F);
+        color: var(--text, #A8A8B8);
         padding: 10px 20px;
-        border-radius: 4px;
+        border-radius: 8px;
         font-weight: 600;
         cursor: pointer;
     }
     .btn-cancel:hover {
-        border-color: #64748b;
+        border-color: var(--text-muted, #6B6B7B);
         color: #fff;
     }
     .btn-submit {
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         border: none;
         color: #fff;
         padding: 10px 24px;
-        border-radius: 4px;
+        border-radius: 8px;
         font-weight: 700;
         cursor: pointer;
         transition: all 0.2s;
     }
     .btn-submit:hover {
-        background: #5a008a;
+        background: var(--primary-hover, #7C3AED);
+        box-shadow: 0 4px 12px rgba(107, 70, 193, 0.4);
     }
     
     /* Goal Detail Modal */
@@ -584,9 +596,9 @@ sort($all_tags);
         margin: 20px 0;
     }
     .step-detail-item {
-        background: #06080b;
-        border: 1px solid #1e293b;
-        border-radius: 4px;
+        background: var(--bg, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: 8px;
         padding: 16px;
         margin-bottom: 10px;
         display: flex;
@@ -614,7 +626,7 @@ sort($all_tags);
     }
     .step-detail-description {
         font-size: 13px;
-        color: #94a3b8;
+        color: var(--text, #A8A8B8);
     }
     .step-completed-info {
         font-size: 11px;
@@ -624,7 +636,7 @@ sort($all_tags);
     .progress-history {
         margin-top: 24px;
         padding-top: 20px;
-        border-top: 1px solid #1e293b;
+        border-top: 1px solid var(--border, #2D2D3F);
     }
     .progress-history-title {
         font-size: 16px;
