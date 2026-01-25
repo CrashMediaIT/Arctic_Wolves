@@ -1,5 +1,14 @@
 <!-- Admin Business Card Generator View -->
 <?php
+// Permission check - only admins can access this page
+if (!isset($isAdmin) || !$isAdmin) {
+    echo '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Access denied. Admin privileges required.</div>';
+    return;
+}
+
+// Company website URL for QR code - can be configured via settings
+$company_website = 'https://arcticwolves.ca';
+
 // Fetch users from database for selection
 try {
     // Get filter values
@@ -310,7 +319,7 @@ function generateQRCode() {
     qrcodeContainer.innerHTML = ''; // Clear previous QR code
     
     qrcode = new QRCode(qrcodeContainer, {
-        text: 'https://arcticwolves.ca',
+        text: '<?php echo htmlspecialchars($company_website, ENT_QUOTES, 'UTF-8'); ?>',
         width: 80,
         height: 80,
         colorDark: '#1a1a2e',
