@@ -20,6 +20,10 @@ class DrillDesigner {
         this.history = [];
         this.historyIndex = -1;
         
+        // Configurable branding
+        this.brandingText = 'ARCTIC WOLVES';
+        this.brandingSubtext = 'HOCKEY';
+        
         this.init();
     }
     
@@ -211,16 +215,16 @@ class DrillDesigner {
             ctx.stroke();
         }
         
-        // Draw center logo (Arctic Wolves - very low opacity)
+        // Draw center logo (configurable branding - very low opacity)
         ctx.save();
         ctx.globalAlpha = 0.08;
         ctx.fillStyle = '#7000a4';
         ctx.font = 'bold 48px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('ARCTIC WOLVES', w/2, h/2 - 15);
+        ctx.fillText(this.brandingText, w/2, h/2 - 15);
         ctx.font = '24px Inter, sans-serif';
-        ctx.fillText('HOCKEY', w/2, h/2 + 25);
+        ctx.fillText(this.brandingSubtext, w/2, h/2 + 25);
         ctx.restore();
         
         // Draw based on ice view
@@ -617,19 +621,22 @@ function initDrillDesigner() {
         });
     }
     
-    // Handle window resize for responsive canvas
-    let resizeTimeout;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(function() {
-            if (window.drillDesigner && window.drillDesigner.canvas) {
-                const container = window.drillDesigner.canvas.parentElement;
-                window.drillDesigner.canvas.width = container.offsetWidth;
-                window.drillDesigner.canvas.height = container.offsetHeight;
-                window.drillDesigner.redraw();
-            }
-        }, 250);
-    });
+    // Handle window resize for responsive canvas (prevent duplicate listeners)
+    if (!window.drillDesignerResizeHandler) {
+        let resizeTimeout;
+        window.drillDesignerResizeHandler = function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                if (window.drillDesigner && window.drillDesigner.canvas) {
+                    const container = window.drillDesigner.canvas.parentElement;
+                    window.drillDesigner.canvas.width = container.offsetWidth;
+                    window.drillDesigner.canvas.height = container.offsetHeight;
+                    window.drillDesigner.redraw();
+                }
+            }, 250);
+        };
+        window.addEventListener('resize', window.drillDesignerResizeHandler);
+    }
     
     // Hook into form submission to save diagram data
     const drillForm = document.querySelector('.drill-form');
