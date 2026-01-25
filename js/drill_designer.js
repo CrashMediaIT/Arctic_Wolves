@@ -355,7 +355,9 @@ class DrillDesigner {
     }
     
     clearAll() {
-        if (confirm('Are you sure you want to clear the entire drill diagram?')) {
+        // Use a more user-friendly confirmation
+        const shouldClear = window.confirm('Are you sure you want to clear the entire drill diagram? This action cannot be undone.');
+        if (shouldClear) {
             this.objects = [];
             this.selectedObject = null;
             this.redraw();
@@ -432,12 +434,14 @@ function initDrillDesigner() {
 }
 
 function updateCanvasControls() {
-    // Update button actions
-    const undoBtn = document.querySelector('.canvas-controls .btn-secondary:nth-child(1)');
-    const redoBtn = document.querySelector('.canvas-controls .btn-secondary:nth-child(2)');
-    const exportBtn = document.querySelector('.canvas-controls .btn-secondary:nth-child(3)');
+    // Update button actions with more specific selectors
+    const canvasControls = document.querySelector('.canvas-controls');
+    if (!canvasControls) return;
     
-    if (undoBtn) undoBtn.setAttribute('data-action', 'undo-drill');
-    if (redoBtn) redoBtn.setAttribute('data-action', 'redo-drill');
-    if (exportBtn) exportBtn.setAttribute('data-action', 'export-drill');
+    const buttons = canvasControls.querySelectorAll('.btn-secondary');
+    if (buttons.length >= 3) {
+        buttons[0].setAttribute('data-action', 'undo-drill');
+        buttons[1].setAttribute('data-action', 'redo-drill');
+        buttons[2].setAttribute('data-action', 'export-drill');
+    }
 }

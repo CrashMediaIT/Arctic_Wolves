@@ -69,7 +69,9 @@ if ($action === 'save_drill' || $action === 'create') {
     }
     
     try {
-        // Combine additional fields into description if needed
+        // NOTE: The drills table schema only has title, description, category_id, diagram_data, video_url
+        // Additional fields (duration, skill_level, equipment, etc.) are combined into description
+        // to avoid schema changes while preserving the information
         $full_description = $description;
         if (!empty($instructions)) {
             $full_description .= "\n\n**Instructions:**\n" . $instructions;

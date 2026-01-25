@@ -122,12 +122,13 @@ function handleVideoUpload() {
     
     $video_url = 'videos/' . $unique_filename;
     $title = $drill_name . ' - ' . $drill_type;
+    $description = 'Session Date: ' . $session_date . ' | Drill Type: ' . $drill_type;
     
     $stmt->execute([
         $athlete_id,
         $user_id,
         $title,
-        $comments,
+        $description,
         $video_url,
         $comments
     ]);
