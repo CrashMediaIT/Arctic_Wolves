@@ -792,17 +792,24 @@ function submitPracticePlan() {
 document.addEventListener('DOMContentLoaded', function() {
     // Load existing drills if editing
     <?php if ($is_editing && !empty($edit_drills)): ?>
-    var existingDrills = <?= json_encode(array_map(function($d) {
+    var existingDrills = <?= json_encode(array_values(array_filter(array_map(function($d) {
+        // Only include drills that have valid data
+        if (empty($d['drill_id']) || empty($d['title'])) {
+            return null;
+        }
         return [
-            'id' => $d['drill_id'],
-            'title' => $d['title'] ?? 'Drill',
+            'id' => intval($d['drill_id']),
+            'title' => $d['title'],
             'category' => $d['category_name'] ?? '',
-            'duration' => $d['duration_minutes'] ?? 10,
+            'duration' => intval($d['duration_minutes'] ?? 10),
             'notes' => $d['notes'] ?? ''
         ];
-    }, $edit_drills)) ?>;
-    practiceDrills = existingDrills;
-    updateDrillsDisplay();
+    }, $edit_drills)))) ?>;
+    console.log('Loading existing drills for editing:', existingDrills);
+    if (existingDrills && existingDrills.length > 0) {
+        practiceDrills = existingDrills;
+        updateDrillsDisplay();
+    }
     // Clear draft when editing existing plan
     localStorage.removeItem('practice_plan_draft');
     <?php else: ?>

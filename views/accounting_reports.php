@@ -299,6 +299,8 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    
     const dateRangeSelect = document.getElementById('dateRangeSelect');
     const customDateRange = document.getElementById('customDateRange');
     
@@ -311,6 +313,94 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Show notification helper
+    function showNotification(message, type) {
+        var existing = document.querySelector('.notification-widget');
+        if (existing) existing.remove();
+        
+        var div = document.createElement('div');
+        div.className = 'notification-widget';
+        div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+        if (type === 'success') {
+            div.style.background = 'rgba(16, 185, 129, 0.95)';
+            div.style.color = '#fff';
+        } else {
+            div.style.background = 'rgba(239, 68, 68, 0.95)';
+            div.style.color = '#fff';
+        }
+        var safeMsg = document.createElement('span');
+        safeMsg.textContent = message;
+        div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ';
+        div.appendChild(safeMsg);
+        var closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+        closeBtn.onclick = function() { div.remove(); };
+        div.appendChild(closeBtn);
+        document.body.appendChild(div);
+        setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+    }
+    
+    // Handle quick report form submissions
+    document.querySelectorAll('form[action="process_reports.php"]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(form);
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var originalText = submitBtn ? submitBtn.innerHTML : '';
+            
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                submitBtn.disabled = true;
+            }
+            
+            // Add default date range for quick reports
+            if (!formData.get('date_range') && !formData.get('date_from')) {
+                formData.append('date_from', '<?= date("Y-m-01") ?>');
+                formData.append('date_to', '<?= date("Y-m-d") ?>');
+            }
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                // If the response is a redirect, the report was generated
+                if (response.redirected) {
+                    showNotification('Report generated successfully! The page will reload to show your report.', 'success');
+                    setTimeout(function() { window.location.href = response.url; }, 2000);
+                    return null;
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (data === null) return;
+                
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+                
+                if (data.success) {
+                    showNotification(data.message || 'Report generated successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to generate report'), 'error');
+                }
+            })
+            .catch(function(err) {
+                console.error('Error:', err);
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+                showNotification('An error occurred while generating the report', 'error');
+            });
+        });
+    });
 });
 </script>
 

@@ -984,7 +984,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     showNotification(data.message || 'Operation completed successfully!', 'success');
                     if (modal) closeModal(modal.id);
-                    setTimeout(function() { location.reload(); }, 1500);
+                    
+                    // Determine which tab to stay on based on the modal ID
+                    var currentTab = 'sessions';
+                    if (modal && modal.id.includes('package')) {
+                        currentTab = 'packages';
+                    } else if (modal && modal.id.includes('discount')) {
+                        currentTab = 'discounts';
+                    } else if (modal && modal.id.includes('session')) {
+                        currentTab = 'sessions';
+                    }
+                    
+                    // Reload with tab parameter to stay on the same tab
+                    setTimeout(function() { 
+                        window.location.href = 'dashboard.php?page=products&tab=' + currentTab + '&status=success';
+                    }, 1500);
                 } else {
                     showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
                 }
