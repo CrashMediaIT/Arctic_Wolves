@@ -328,11 +328,93 @@ try {
             fclose($output);
             exit;
             
+        case 'create':
+            // Create a new credit or refund entry
+            checkCsrfToken();
+            
+            $target_user_id = intval($_POST['user_id']);
+            $type = $_POST['type'] ?? 'credit'; // 'credit' or 'refund'
+            $amount = floatval($_POST['amount']);
+            $reason = trim($_POST['reason']);
+            $booking_id = !empty($_POST['booking_id']) ? intval($_POST['booking_id']) : null;
+            $auto_approve = isset($_POST['auto_approve']) && $_POST['auto_approve'] == '1';
+            
+            if ($target_user_id <= 0 || $amount <= 0 || empty($reason)) {
+                throw new Exception('Please fill in all required fields');
+            }
+            
+            // Verify user exists
+            $user_check = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+            $user_check->execute([$target_user_id]);
+            if (!$user_check->fetch()) {
+                throw new Exception('Invalid user selected');
+            }
+            
+            // Generate reference number using cryptographically secure random
+            $reference_number = strtoupper($type[0]) . 'R-' . date('Ymd') . '-' . str_pad(random_int(1, 9999), 4, '0', STR_PAD_LEFT);
+            
+            // Check if reference exists, regenerate if needed
+            $ref_check = $pdo->prepare("SELECT id FROM credits_refunds WHERE reference_number = ?");
+            $ref_check->execute([$reference_number]);
+            while ($ref_check->fetch()) {
+                $reference_number = strtoupper($type[0]) . 'R-' . date('Ymd') . '-' . str_pad(random_int(1, 9999), 4, '0', STR_PAD_LEFT);
+                $ref_check->execute([$reference_number]);
+            }
+            
+            // Determine initial status
+            $status = $auto_approve ? 'completed' : 'pending';
+            
+            // Insert the credit/refund record
+            $stmt = $pdo->prepare("
+                INSERT INTO credits_refunds (user_id, transaction_type, amount, reason, booking_id, reference_number, status, processed_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([
+                $target_user_id,
+                $type,
+                $amount,
+                $reason,
+                $booking_id,
+                $reference_number,
+                $status,
+                $user_id
+            ]);
+            
+            // If auto-approved and it's a credit, add to user's credit balance
+            if ($auto_approve && $type === 'credit') {
+                // Get credit expiry setting
+                $expiry_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'credit_expiry_days'");
+                $expiry_days = intval($expiry_stmt->fetchColumn() ?: 365);
+                $expiry_date = date('Y-m-d', strtotime("+$expiry_days days"));
+                
+                // Insert into user_credits
+                $credit_stmt = $pdo->prepare("
+                    INSERT INTO user_credits (user_id, credit_amount, credit_source, remaining_amount, expiry_date, notes, created_at)
+                    VALUES (?, ?, 'manual', ?, ?, ?, NOW())
+                ");
+                $credit_stmt->execute([
+                    $target_user_id,
+                    $amount,
+                    $amount,
+                    $expiry_date,
+                    "Manual credit: $reason"
+                ]);
+            }
+            
+            // Redirect back to credits page with success message
+            header("Location: dashboard.php?page=accounting_credits&status=success");
+            exit;
+            
         default:
             throw new Exception('Invalid action');
     }
     
 } catch (Exception $e) {
+    // Check if this is a form submission (not AJAX)
+    if (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') === false && isset($_POST['action']) && $_POST['action'] === 'create') {
+        header("Location: dashboard.php?page=accounting_credits&status=error&message=" . urlencode($e->getMessage()));
+        exit;
+    }
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

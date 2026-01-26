@@ -35,6 +35,10 @@
     color: white;
 }
 
+.btn-primary i, button[type="submit"]:not(.btn-secondary):not(.btn-danger) i {
+    color: inherit;
+}
+
 .btn-primary:hover {
     background: #7C3AED;
     transform: translateY(-1px);

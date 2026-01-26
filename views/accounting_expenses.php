@@ -197,7 +197,11 @@ if ($expenseStats['last_month'] > 0) {
                                 </td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $expense['id'] ?>">
+                                        <button class="btn-icon" title="Edit" data-action="edit" data-modal="edit-expense-modal" data-id="<?= $expense['id'] ?>"
+                                                data-category="<?= htmlspecialchars($expense['category'] ?? '') ?>"
+                                                data-description="<?= htmlspecialchars($expense['description'] ?? '') ?>"
+                                                data-amount="<?= $expense['amount'] ?>"
+                                                data-date="<?= $expense['expense_date'] ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <form method="POST" action="process_expenses.php" style="display: inline;">
@@ -519,4 +523,83 @@ function updateFileLabel(labelId, input) {
         label.style.color = '';
     }
 }
+
+// Handle edit expense button clicks
+document.querySelectorAll('[data-action="edit"][data-modal="edit-expense-modal"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var id = this.getAttribute('data-id');
+        var category = this.getAttribute('data-category');
+        var description = this.getAttribute('data-description');
+        var amount = this.getAttribute('data-amount');
+        var date = this.getAttribute('data-date');
+        
+        document.getElementById('edit-expense-id').value = id;
+        document.getElementById('edit-expense-category').value = category;
+        document.getElementById('edit-expense-description').value = description;
+        document.getElementById('edit-expense-amount').value = amount;
+        document.getElementById('edit-expense-date').value = date;
+        
+        document.getElementById('edit-expense-modal').classList.add('active');
+    });
+});
+
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
 </script>
+
+<!-- Edit Expense Modal -->
+<div id="edit-expense-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Expense</h2>
+            <button class="modal-close" onclick="closeModal('edit-expense-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_expenses.php" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="expense_id" id="edit-expense-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-calendar"></i> Date *</label>
+                    <input type="date" name="expense_date" id="edit-expense-date" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-folder"></i> Category *</label>
+                    <select name="category" id="edit-expense-category" class="form-input" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="ice_time">Ice Time Rental</option>
+                        <option value="equipment">Equipment</option>
+                        <option value="travel">Travel</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="marketing">Marketing</option>
+                        <option value="insurance">Insurance</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-dollar-sign"></i> Amount *</label>
+                    <input type="number" name="amount" id="edit-expense-amount" class="form-input" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-align-left"></i> Description</label>
+                    <input type="text" name="description" id="edit-expense-description" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-paperclip"></i> Replace Receipt (optional)</label>
+                    <input type="file" name="receipt_file" class="form-input" accept="image/*,application/pdf">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-expense-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Expense</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -294,6 +294,42 @@ if ($action == 'create_user') {
     exit();
 }
 
+if ($action == 'update_user') {
+    $user_id_to_update = intval($_POST['user_id']);
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone'] ?? '');
+    $role = $_POST['role'];
+    $password = trim($_POST['password'] ?? '');
+
+    try {
+        // Check if password is being updated
+        if (!empty($password)) {
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, password = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $hashed_password, $user_id_to_update]);
+        } else {
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $user_id_to_update]);
+        }
+        
+        header("Location: dashboard.php?page=all_users&status=success");
+    } catch (PDOException $e) {
+        error_log("Update user error: " . $e->getMessage());
+        header("Location: dashboard.php?page=all_users&status=error");
+    }
+    exit();
+}
+
 // =========================================================
 // MODULE 8.5: USER STATUS TOGGLING
 // =========================================================
@@ -462,10 +498,10 @@ if ($action == 'create_skill') {
             trim($_POST['description'] ?? '')
         ]);
         
-        header("Location: dashboard.php?page=admin_categories&status=skill_added");
+        header("Location: dashboard.php?page=categories&status=skill_added");
     } catch (PDOException $e) {
         error_log("Create skill error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&status=error");
     }
     exit();
 }
@@ -479,10 +515,10 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'skill') {
             intval($_POST['id'])
         ]);
         
-        header("Location: dashboard.php?page=admin_categories&status=skill_updated");
+        header("Location: dashboard.php?page=categories&status=skill_updated");
     } catch (PDOException $e) {
         error_log("Edit skill error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&status=error");
     }
     exit();
 }
@@ -492,10 +528,10 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'skill') {
         $stmt = $pdo->prepare("DELETE FROM eval_skills WHERE id = ?");
         $stmt->execute([intval($_POST['id'])]);
         
-        header("Location: dashboard.php?page=admin_categories&status=skill_deleted");
+        header("Location: dashboard.php?page=categories&status=skill_deleted");
     } catch (PDOException $e) {
         error_log("Delete skill error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&status=error");
     }
     exit();
 }
@@ -509,10 +545,10 @@ if ($action == 'create_drill_type') {
             trim($_POST['description'] ?? '')
         ]);
         
-        header("Location: dashboard.php?page=admin_categories&status=drill_type_added");
+        header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_added");
     } catch (PDOException $e) {
         error_log("Create drill type error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&tab=drills&status=error");
     }
     exit();
 }
@@ -526,10 +562,10 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'drill_type'
             intval($_POST['id'])
         ]);
         
-        header("Location: dashboard.php?page=admin_categories&status=drill_type_updated");
+        header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_updated");
     } catch (PDOException $e) {
         error_log("Edit drill type error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&tab=drills&status=error");
     }
     exit();
 }
@@ -539,10 +575,10 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
         $stmt = $pdo->prepare("DELETE FROM drill_categories WHERE id = ?");
         $stmt->execute([intval($_POST['id'])]);
         
-        header("Location: dashboard.php?page=admin_categories&status=drill_type_deleted");
+        header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_deleted");
     } catch (PDOException $e) {
         error_log("Delete drill type error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&tab=drills&status=error");
     }
     exit();
 }
@@ -561,7 +597,7 @@ if ($action == 'create_position') {
     }
     
     if (empty($name)) {
-        header("Location: dashboard.php?page=admin_categories&status=error&message=position_name_required");
+        header("Location: dashboard.php?page=categories&tab=positions&status=error&message=position_name_required");
         exit();
     }
     
@@ -569,10 +605,10 @@ if ($action == 'create_position') {
         $stmt = $pdo->prepare("INSERT INTO player_positions (name, abbreviation, description, position_type) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $abbreviation, $description, $position_type]);
         
-        header("Location: dashboard.php?page=admin_categories&status=success&message=position_created");
+        header("Location: dashboard.php?page=categories&tab=positions&status=success&message=position_created");
     } catch (PDOException $e) {
         error_log("Error creating position: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error&message=position_creation_failed");
+        header("Location: dashboard.php?page=categories&tab=positions&status=error&message=position_creation_failed");
     }
     exit();
 }
@@ -590,7 +626,7 @@ if ($action == 'update_position') {
     }
     
     if (empty($name) || empty($id)) {
-        header("Location: dashboard.php?page=admin_categories&status=error&message=invalid_data");
+        header("Location: dashboard.php?page=categories&tab=positions&status=error&message=invalid_data");
         exit();
     }
     
@@ -598,10 +634,10 @@ if ($action == 'update_position') {
         $stmt = $pdo->prepare("UPDATE player_positions SET name = ?, abbreviation = ?, description = ?, position_type = ? WHERE id = ?");
         $stmt->execute([$name, $abbreviation, $description, $position_type, $id]);
         
-        header("Location: dashboard.php?page=admin_categories&status=success&message=position_updated");
+        header("Location: dashboard.php?page=categories&tab=positions&status=success&message=position_updated");
     } catch (PDOException $e) {
         error_log("Error updating position: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error&message=position_update_failed");
+        header("Location: dashboard.php?page=categories&tab=positions&status=error&message=position_update_failed");
     }
     exit();
 }
@@ -641,10 +677,10 @@ if ($action == 'create_equipment') {
             trim($_POST['description'] ?? '')
         ]);
         
-        header("Location: dashboard.php?page=admin_categories&status=equipment_added");
+        header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_added");
     } catch (PDOException $e) {
         error_log("Create equipment error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     }
     exit();
 }
@@ -658,10 +694,10 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'equipment')
             intval($_POST['id'])
         ]);
         
-        header("Location: dashboard.php?page=admin_categories&status=equipment_updated");
+        header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_updated");
     } catch (PDOException $e) {
         error_log("Edit equipment error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     }
     exit();
 }
@@ -671,10 +707,10 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'equipment
         $stmt = $pdo->prepare("DELETE FROM equipment WHERE id = ?");
         $stmt->execute([intval($_POST['id'])]);
         
-        header("Location: dashboard.php?page=admin_categories&status=equipment_deleted");
+        header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_deleted");
     } catch (PDOException $e) {
         error_log("Delete equipment error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_categories&status=error");
+        header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     }
     exit();
 }
