@@ -16,25 +16,30 @@ $stripeRecentCharges = [];
 if ($stripeConfigured) {
     try {
         // Load Stripe library
+        $stripeLibLoaded = false;
         if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
             require_once __DIR__ . '/../vendor/autoload.php';
+            $stripeLibLoaded = true;
         } elseif (file_exists(__DIR__ . '/../stripe-php/init.php')) {
             require_once __DIR__ . '/../stripe-php/init.php';
+            $stripeLibLoaded = true;
         }
         
-        \Stripe\Stripe::setApiKey($stripeSettings['stripe_secret_key']);
-        
-        // Get Stripe balance
-        $stripeBalance = \Stripe\Balance::retrieve();
-        
-        // Get recent successful charges from Stripe
-        $charges = \Stripe\Charge::all([
-            'limit' => 10,
-            'created' => [
-                'gte' => strtotime('-30 days')
-            ]
-        ]);
-        $stripeRecentCharges = $charges->data;
+        if ($stripeLibLoaded) {
+            \Stripe\Stripe::setApiKey($stripeSettings['stripe_secret_key']);
+            
+            // Get Stripe balance
+            $stripeBalance = \Stripe\Balance::retrieve();
+            
+            // Get recent successful charges from Stripe
+            $charges = \Stripe\Charge::all([
+                'limit' => 10,
+                'created' => [
+                    'gte' => strtotime('-30 days')
+                ]
+            ]);
+            $stripeRecentCharges = $charges->data;
+        }
         
     } catch (Exception $e) {
         error_log("Stripe API error: " . $e->getMessage());
@@ -131,8 +136,11 @@ try {
     <div class="stripe-status-info">
         <?php if ($stripeConfigured): ?>
             <strong>Stripe Payment Processing Active</strong>
-            <?php if ($stripeBalance): ?>
-                <span>Available Balance: <?= strtoupper($stripeBalance->available[0]->currency ?? $currency) ?> $<?= number_format(($stripeBalance->available[0]->amount ?? 0) / 100, 2) ?> | Pending: $<?= number_format(($stripeBalance->pending[0]->amount ?? 0) / 100, 2) ?></span>
+            <?php if ($stripeBalance && !empty($stripeBalance->available)): 
+                $availableBalance = $stripeBalance->available[0] ?? null;
+                $pendingBalance = $stripeBalance->pending[0] ?? null;
+            ?>
+                <span>Available Balance: <?= strtoupper($availableBalance->currency ?? $currency) ?> $<?= number_format(($availableBalance->amount ?? 0) / 100, 2) ?> | Pending: $<?= number_format(($pendingBalance->amount ?? 0) / 100, 2) ?></span>
             <?php else: ?>
                 <span>Currency: <?= htmlspecialchars($currency) ?> | Tax: <?= htmlspecialchars($taxName) ?> (<?= number_format($taxRate, 2) ?>%)</span>
             <?php endif; ?>
@@ -154,7 +162,10 @@ try {
 
 <div class="accounting-content">
     <!-- Stripe Balance Card (if configured) -->
-    <?php if ($stripeConfigured && $stripeBalance): ?>
+    <?php if ($stripeConfigured && $stripeBalance && !empty($stripeBalance->available)): 
+        $availableBalance = $stripeBalance->available[0] ?? null;
+        $pendingBalance = $stripeBalance->pending[0] ?? null;
+    ?>
     <div class="stripe-balance-section">
         <div class="stripe-balance-card">
             <div class="stripe-balance-header">
@@ -164,13 +175,13 @@ try {
             <div class="stripe-balance-grid">
                 <div class="balance-item available">
                     <span class="balance-label">Available</span>
-                    <span class="balance-value">$<?= number_format(($stripeBalance->available[0]->amount ?? 0) / 100, 2) ?></span>
-                    <span class="balance-currency"><?= strtoupper($stripeBalance->available[0]->currency ?? $currency) ?></span>
+                    <span class="balance-value">$<?= number_format(($availableBalance->amount ?? 0) / 100, 2) ?></span>
+                    <span class="balance-currency"><?= strtoupper($availableBalance->currency ?? $currency) ?></span>
                 </div>
                 <div class="balance-item pending">
                     <span class="balance-label">Pending</span>
-                    <span class="balance-value">$<?= number_format(($stripeBalance->pending[0]->amount ?? 0) / 100, 2) ?></span>
-                    <span class="balance-currency"><?= strtoupper($stripeBalance->pending[0]->currency ?? $currency) ?></span>
+                    <span class="balance-value">$<?= number_format(($pendingBalance->amount ?? 0) / 100, 2) ?></span>
+                    <span class="balance-currency"><?= strtoupper($pendingBalance->currency ?? $currency) ?></span>
                 </div>
             </div>
             <a href="https://dashboard.stripe.com/balance/overview" target="_blank" class="stripe-dashboard-link">

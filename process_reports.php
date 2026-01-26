@@ -247,10 +247,17 @@ function getStripeTransactionsData($parameters) {
     
     try {
         // Load Stripe library
+        $stripeLibLoaded = false;
         if (file_exists(__DIR__ . '/vendor/autoload.php')) {
             require_once __DIR__ . '/vendor/autoload.php';
+            $stripeLibLoaded = true;
         } elseif (file_exists(__DIR__ . '/stripe-php/init.php')) {
             require_once __DIR__ . '/stripe-php/init.php';
+            $stripeLibLoaded = true;
+        }
+        
+        if (!$stripeLibLoaded) {
+            throw new Exception('Stripe library not found');
         }
         
         \Stripe\Stripe::setApiKey($stripeSettings['stripe_secret_key']);
@@ -265,17 +272,23 @@ function getStripeTransactionsData($parameters) {
         ]);
         
         foreach ($charges->data as $charge) {
+            // Safely access nested properties
+            $billingEmail = isset($charge->billing_details) && isset($charge->billing_details->email) 
+                ? $charge->billing_details->email : null;
+            $paymentMethodType = isset($charge->payment_method_details) && isset($charge->payment_method_details->type) 
+                ? $charge->payment_method_details->type : 'card';
+            
             $transactions[] = [
                 'id' => $charge->id,
                 'amount' => $charge->amount / 100,
                 'currency' => strtoupper($charge->currency),
                 'status' => $charge->status,
                 'description' => $charge->description ?? 'N/A',
-                'customer_email' => $charge->receipt_email ?? $charge->billing_details->email ?? 'N/A',
+                'customer_email' => $charge->receipt_email ?? $billingEmail ?? 'N/A',
                 'created' => date('Y-m-d H:i:s', $charge->created),
-                'payment_method' => $charge->payment_method_details->type ?? 'card',
+                'payment_method' => $paymentMethodType,
                 'refunded' => $charge->refunded ? 'Yes' : 'No',
-                'receipt_url' => $charge->receipt_url
+                'receipt_url' => $charge->receipt_url ?? null
             ];
         }
         
