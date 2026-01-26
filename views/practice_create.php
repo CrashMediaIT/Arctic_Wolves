@@ -37,7 +37,7 @@
                                 }
                                 // If no teams found, show demo options
                                 if ($teamsCount === 0) {
-                                    echo '<option value="" disabled>No teams available - contact admin</option>';
+                                    echo '<option value="" disabled>No teams available - contact administrator</option>';
                                 }
                             } catch (PDOException $e) {
                                 // Fallback if is_active column doesn't exist

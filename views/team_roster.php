@@ -70,6 +70,7 @@ try {
 $players = [];
 if ($team) {
     try {
+        // Build base query for roster
         $roster_query = "
             SELECT u.id, u.first_name, u.last_name, u.email,
                    tr.jersey_number, tr.position,
@@ -81,27 +82,33 @@ if ($team) {
                    COALESCE(s.wins, 0) as wins
             FROM team_roster tr
             INNER JOIN users u ON tr.athlete_id = u.id
-            LEFT JOIN player_stats s ON s.player_id = u.id" . ($current_season_id ? " AND s.season_id = ?" : "") . "
-            WHERE tr.team_id = ?
+            LEFT JOIN player_stats s ON s.player_id = u.id
         ";
-
-        $params = [];
+        
+        // Add season condition if available
+        $where_conditions = ["tr.team_id = ?"];
+        $params = [$team['id']];
+        
         if ($current_season_id) {
+            $roster_query .= " AND s.season_id = ?";
             $params[] = $current_season_id;
         }
-        $params[] = $team['id'];
-
+        
+        // Apply position filter
         if ($filter_position !== 'all') {
-            $roster_query .= " AND tr.position = ?";
+            $where_conditions[] = "tr.position = ?";
             $params[] = $filter_position;
         }
-
+        
+        // Apply search filter
         if (!empty($search)) {
-            $roster_query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ?)";
+            $where_conditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ?)";
             $params[] = "%$search%";
             $params[] = "%$search%";
         }
-
+        
+        // Construct final query
+        $roster_query .= " WHERE " . implode(" AND ", $where_conditions);
         $roster_query .= " ORDER BY tr.jersey_number";
 
         $roster_stmt = $pdo->prepare($roster_query);
@@ -176,7 +183,7 @@ if ($team) {
             </div>
             <div class="team-stats">
                 <span><i class="fas fa-users"></i> <?= $team['player_count'] ?> Players</span>
-                <span><i class="fas fa-calendar"></i> <?= htmlspecialchars($team['season'] ?? '2024-2025 Season') ?></span>
+                <span><i class="fas fa-calendar"></i> <?= htmlspecialchars($team['season'] ?? date('Y') . '-' . (date('Y') + 1) . ' Season') ?></span>
                 <?php if (!empty($team['division'])): ?>
                     <span><i class="fas fa-trophy"></i> <?= htmlspecialchars($team['division']) ?></span>
                 <?php endif; ?>
@@ -190,7 +197,7 @@ if ($team) {
         <form method="GET" action="" class="filter-group">
             <input type="hidden" name="page" value="team_roster">
             <input type="hidden" name="team_id" value="<?= $team['id'] ?>">
-            <select name="position" class="form-input-small" data-action="auto-submit" onchange="this.form.submit()">
+            <select name="position" class="form-input-small" onchange="this.form.submit()">
                 <option value="all">All Positions</option>
                 <option value="Forward" <?= $filter_position === 'Forward' ? 'selected' : '' ?>>Forward</option>
                 <option value="Defense" <?= $filter_position === 'Defense' ? 'selected' : '' ?>>Defense</option>
