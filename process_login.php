@@ -31,11 +31,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $user = $stmt->fetch();
 
         if ($user) {
-            // Check if account is verified
+            // Check if account is verified/enabled
             if (isset($user['is_verified']) && $user['is_verified'] === 0) {
-                $_SESSION['login_error'] = "Account pending verification. Please check your email for the verification code.";
-                $_SESSION['show_verify_link'] = true;
-                ErrorLogger::security("Login attempt for unverified account", ['email' => $email]);
+                $_SESSION['login_error'] = "Your account has been disabled. Please contact an administrator for assistance.";
+                ErrorLogger::security("Login attempt for disabled account", ['email' => $email]);
                 header("Location: login.php");
                 exit();
             }
