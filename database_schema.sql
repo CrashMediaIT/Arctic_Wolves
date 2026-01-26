@@ -1177,26 +1177,40 @@ CREATE TABLE IF NOT EXISTS `mileage_logs` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `trip_date` DATE NOT NULL,
-    `start_location` VARCHAR(255) NOT NULL,
-    `end_location` VARCHAR(255) NOT NULL,
-    `distance_km` DECIMAL(10,2) NOT NULL,
+    `athlete_id` INT DEFAULT NULL,
+    `session_id` INT DEFAULT NULL,
+    `start_location` VARCHAR(255) DEFAULT NULL,
+    `end_location` VARCHAR(255) DEFAULT NULL,
+    `total_distance_km` DECIMAL(10,2) NOT NULL DEFAULT 0,
+    `total_distance_miles` DECIMAL(10,2) NOT NULL DEFAULT 0,
+    `distance_km` DECIMAL(10,2) DEFAULT NULL,
     `purpose` VARCHAR(255) DEFAULT NULL,
     `vehicle_type` VARCHAR(100) DEFAULT NULL,
     `odometer_start` INT DEFAULT NULL,
     `odometer_end` INT DEFAULT NULL,
+    `reimbursement_rate` DECIMAL(10,4) DEFAULT 0.68,
+    `reimbursement_amount` DECIMAL(10,2) DEFAULT 0.00,
+    `is_reimbursed` TINYINT(1) DEFAULT 0,
     `notes` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
-    INDEX `idx_date` (`trip_date`)
+    INDEX `idx_date` (`trip_date`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_session` (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage stops (multi-stop trip tracking)
 CREATE TABLE IF NOT EXISTS `mileage_stops` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `mileage_log_id` INT NOT NULL,
-    `stop_number` INT NOT NULL,
-    `location` VARCHAR(255) NOT NULL,
+    `stop_order` INT NOT NULL DEFAULT 0,
+    `stop_number` INT DEFAULT NULL,
+    `location_name` VARCHAR(255) DEFAULT NULL,
+    `address` VARCHAR(255) NOT NULL,
+    `location` VARCHAR(255) DEFAULT NULL,
     `arrival_time` TIME DEFAULT NULL,
     `departure_time` TIME DEFAULT NULL,
     `purpose` VARCHAR(255) DEFAULT NULL,
@@ -1204,6 +1218,7 @@ CREATE TABLE IF NOT EXISTS `mileage_stops` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`mileage_log_id`) REFERENCES `mileage_logs`(`id`) ON DELETE CASCADE,
     INDEX `idx_log` (`mileage_log_id`),
+    INDEX `idx_stop_order` (`stop_order`),
     INDEX `idx_stop_num` (`stop_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

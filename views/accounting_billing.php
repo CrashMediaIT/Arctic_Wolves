@@ -142,9 +142,9 @@ try {
                                 <td><span class="status-badge <?= $statusClass ?>"><?= ucfirst($invoice['status']) ?></span></td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn-icon" title="View"><i class="fas fa-eye"></i></button>
-                                        <button class="btn-icon" title="Download"><i class="fas fa-download"></i></button>
-                                        <button class="btn-icon" title="Email"><i class="fas fa-envelope"></i></button>
+                                        <button class="btn-icon" title="View" data-action="view-invoice" data-invoice-id="<?= $invoice['id'] ?>"><i class="fas fa-eye"></i></button>
+                                        <button class="btn-icon" title="Download" data-action="download-invoice" data-invoice-id="<?= $invoice['id'] ?>"><i class="fas fa-download"></i></button>
+                                        <button class="btn-icon" title="Email" data-action="email-invoice" data-invoice-id="<?= $invoice['id'] ?>"><i class="fas fa-envelope"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -618,6 +618,49 @@ document.addEventListener('DOMContentLoaded', function() {
     const lineItems = document.querySelectorAll('.line-item input[name="item_price[]"], .line-item input[name="item_quantity[]"]');
     lineItems.forEach(input => {
         input.addEventListener('input', calculateInvoiceTotal);
+    });
+    
+    // Invoice action button handlers
+    document.querySelectorAll('[data-action="view-invoice"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const invoiceId = this.getAttribute('data-invoice-id');
+            window.location.href = '?page=accounting_billing&view_invoice=' + invoiceId;
+        });
+    });
+    
+    document.querySelectorAll('[data-action="download-invoice"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const invoiceId = this.getAttribute('data-invoice-id');
+            window.open('process_admin_action.php?action=download_invoice&invoice_id=' + invoiceId, '_blank');
+        });
+    });
+    
+    document.querySelectorAll('[data-action="email-invoice"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const invoiceId = this.getAttribute('data-invoice-id');
+            if (confirm('Send invoice email to the client?')) {
+                fetch('process_admin_action.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=email_invoice&invoice_id=' + invoiceId + '&csrf_token=' + encodeURIComponent(document.querySelector('[name="csrf_token"]')?.value || '')
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Invoice email sent successfully!');
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to send email'));
+                    }
+                })
+                .catch(error => {
+                    alert('Error sending invoice email');
+                    console.error(error);
+                });
+            }
+        });
     });
 });
 </script>
