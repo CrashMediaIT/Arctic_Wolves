@@ -42,17 +42,35 @@ try {
             $athlete_id = intval($_POST['athlete_id'] ?? 0);
             $session_id = intval($_POST['session_id'] ?? 0);
             $purpose = trim($_POST['purpose']);
-            $waypoints = json_decode($_POST['waypoints'], true);
-            $distance_km = floatval($_POST['distance_km']);
-            $distance_miles = floatval($_POST['distance_miles']);
+            
+            // Handle both JSON waypoints and simple form submission
+            if (isset($_POST['waypoints']) && !empty($_POST['waypoints'])) {
+                $waypoints = json_decode($_POST['waypoints'], true);
+            } else {
+                // Create waypoints from simple form fields
+                $from_location = trim($_POST['from_location'] ?? '');
+                $to_location = trim($_POST['to_location'] ?? '');
+                $waypoints = [
+                    ['name' => 'Start', 'address' => $from_location],
+                    ['name' => 'End', 'address' => $to_location]
+                ];
+            }
+            
+            // Handle distance - can come as distance_km or distance_miles
+            $distance_miles = floatval($_POST['distance_miles'] ?? 0);
+            $distance_km = floatval($_POST['distance_km'] ?? ($distance_miles * 1.60934));
+            
+            if ($distance_miles > 0 && floatval($_POST['distance_km'] ?? 0) == 0) {
+                $distance_km = $distance_miles * 1.60934;
+            }
             
             // Get mileage rate from settings
-            $rate_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_per_mile')");
+            $rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_per_mile')");
             $rates = $rate_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             $rate_per_km = floatval($rates['mileage_rate_per_km'] ?? 0.68);
             $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
             
-            $reimbursement_amount = $distance_km * $rate_per_km;
+            $reimbursement_amount = $distance_miles * $rate_per_mile;
             
             // Insert mileage log
             $stmt = $pdo->prepare("
@@ -63,27 +81,36 @@ try {
             ");
             $stmt->execute([
                 $user_id, $trip_date, $athlete_id ?: null, $session_id ?: null, $purpose,
-                $distance_km, $distance_miles, $rate_per_km, $reimbursement_amount
+                $distance_km, $distance_miles, $rate_per_mile, $reimbursement_amount
             ]);
             
             $mileage_log_id = $pdo->lastInsertId();
             
             // Insert waypoints
-            $stop_stmt = $pdo->prepare("
-                INSERT INTO mileage_stops (mileage_log_id, stop_order, location_name, address)
-                VALUES (?, ?, ?, ?)
-            ");
-            
-            foreach ($waypoints as $index => $waypoint) {
-                $stop_stmt->execute([
-                    $mileage_log_id,
-                    $index,
-                    $waypoint['name'] ?? '',
-                    $waypoint['address']
-                ]);
+            if ($waypoints && is_array($waypoints)) {
+                $stop_stmt = $pdo->prepare("
+                    INSERT INTO mileage_stops (mileage_log_id, stop_order, location_name, address)
+                    VALUES (?, ?, ?, ?)
+                ");
+                
+                foreach ($waypoints as $index => $waypoint) {
+                    $stop_stmt->execute([
+                        $mileage_log_id,
+                        $index,
+                        $waypoint['name'] ?? '',
+                        $waypoint['address'] ?? ''
+                    ]);
+                }
             }
             
-            echo json_encode(['success' => true, 'message' => 'Mileage log created successfully', 'id' => $mileage_log_id]);
+            // Check if this is an AJAX request or regular form submission
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                echo json_encode(['success' => true, 'message' => 'Mileage log created successfully', 'id' => $mileage_log_id]);
+            } else {
+                // Regular form submission - redirect back with success message
+                header("Location: dashboard.php?page=mileage&status=success&message=Mileage+entry+added+successfully");
+                exit();
+            }
             break;
             
         case 'update':

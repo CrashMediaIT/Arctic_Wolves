@@ -152,10 +152,25 @@ if ($action == 'create_invoice') {
             }
         }
         
-        header("Location: dashboard.php?page=accounting_billing&status=invoice_created&invoice_id=$invoice_id");
+        // Check if AJAX request
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Invoice created successfully', 'invoice_id' => $invoice_id, 'invoice_number' => $invoice_number]);
+            exit();
+        }
+        
+        header("Location: dashboard.php?page=billing_dashboard&status=invoice_created&invoice_id=$invoice_id");
     } catch (PDOException $e) {
         error_log("Invoice creation error: " . $e->getMessage());
-        header("Location: dashboard.php?page=accounting_billing&error=invoice_creation_failed");
+        
+        // Check if AJAX request
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create invoice']);
+            exit();
+        }
+        
+        header("Location: dashboard.php?page=billing_dashboard&error=invoice_creation_failed");
     }
     exit();
 }

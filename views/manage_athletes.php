@@ -6,16 +6,31 @@
 
 require_once __DIR__ . '/../security.php';
 
-// Get all managed athletes
-$athletes_stmt = $pdo->prepare("
-    SELECT u.*, ma.relationship, ma.can_book, ma.can_view_stats, ma.id as managed_id
-    FROM managed_athletes ma
-    INNER JOIN users u ON ma.athlete_id = u.id
-    WHERE ma.parent_id = ?
-    ORDER BY u.first_name, u.last_name
-");
-$athletes_stmt->execute([$user_id]);
-$athletes = $athletes_stmt->fetchAll();
+// Get all managed athletes - use parent_athlete_relationships for parents, managed_athletes for coaches
+$athletes = [];
+if ($user_role === 'parent') {
+    // For parents, use parent_athlete_relationships table
+    $athletes_stmt = $pdo->prepare("
+        SELECT u.*, par.relationship_type as relationship, par.id as managed_id
+        FROM parent_athlete_relationships par
+        INNER JOIN users u ON par.athlete_id = u.id
+        WHERE par.parent_id = ?
+        ORDER BY u.first_name, u.last_name
+    ");
+    $athletes_stmt->execute([$user_id]);
+    $athletes = $athletes_stmt->fetchAll();
+} else {
+    // For coaches/admins, use managed_athletes table
+    $athletes_stmt = $pdo->prepare("
+        SELECT u.*, ma.status, ma.notes, ma.id as managed_id, 'coach' as relationship
+        FROM managed_athletes ma
+        INNER JOIN users u ON ma.athlete_id = u.id
+        WHERE ma.coach_id = ? AND ma.status = 'active'
+        ORDER BY u.first_name, u.last_name
+    ");
+    $athletes_stmt->execute([$user_id]);
+    $athletes = $athletes_stmt->fetchAll();
+}
 
 // Get success/error messages
 $success = isset($_GET['success']) ? $_GET['success'] : '';
