@@ -626,3 +626,50 @@ function updateRevenueChart(days) {
     }
 }
 </style>
+
+<script>
+// Handle quick action button clicks
+document.querySelectorAll('.quick-action-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var action = this.getAttribute('data-action');
+        var page = this.getAttribute('data-page');
+        
+        if (page) {
+            var url = 'dashboard.php?page=' + page;
+            
+            // Add action-specific parameters
+            switch(action) {
+                case 'create-invoice':
+                    url += '&action=create';
+                    break;
+                case 'record-payment':
+                    url += '&action=record';
+                    break;
+                case 'add-expense':
+                    url += '&action=add';
+                    break;
+                case 'generate-report':
+                    url += '&action=generate';
+                    break;
+                case 'issue-credit':
+                    url += '&action=issue';
+                    break;
+            }
+            
+            window.location.href = url;
+        }
+    });
+});
+
+// Handle view-all button clicks
+document.querySelectorAll('[data-action="view-all"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var page = this.getAttribute('data-page');
+        if (page) {
+            window.location.href = 'dashboard.php?page=' + page;
+        }
+    });
+});
+</script>

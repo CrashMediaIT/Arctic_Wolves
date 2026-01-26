@@ -22,17 +22,19 @@ if (!in_array($user_role, ['coach', 'coach_plus', 'admin', 'team_coach'])) {
 $stmt = $pdo->prepare("
     SELECT 
         id,
+        report_name,
         report_type,
-        frequency,
-        format,
-        email_recipients,
+        schedule_frequency as frequency,
+        schedule_day,
+        schedule_time,
+        recipients as email_recipients,
         parameters,
         last_run,
         next_run,
         is_active,
         created_at
     FROM report_schedules
-    WHERE user_id = ?
+    WHERE created_by = ?
     ORDER BY next_run ASC, created_at DESC
 ");
 $stmt->execute([$user_id]);
