@@ -163,7 +163,7 @@ if ($action == 'update_profile') {
 }
 
 // =========================================================
-// ACTION 7: UPDATE PLAYER INFO (Height, Weight, Handedness, Catching Hand, Jersey Number)
+// ACTION 7: UPDATE PLAYER INFO (Height, Weight, Handedness, Catching Hand, Jersey Number, Team, League)
 // =========================================================
 if ($action == 'update_player_info') {
     $height = $_POST['height'] ?? null;
@@ -171,6 +171,8 @@ if ($action == 'update_player_info') {
     $handedness = $_POST['handedness'] ?? null;
     $catching_hand = $_POST['catching_hand'] ?? null;
     $jersey_number = $_POST['jersey_number'] ?? null;
+    $team = trim($_POST['team'] ?? '');
+    $league = trim($_POST['league'] ?? '');
     
     try {
         // Check if athlete_stats record exists for this user
@@ -182,17 +184,17 @@ if ($action == 'update_player_info') {
             // Update existing record
             $stmt = $pdo->prepare("
                 UPDATE athlete_stats 
-                SET height = ?, weight = ?, handedness = ?, catching_hand = ?, jersey_number = ?
+                SET height = ?, weight = ?, handedness = ?, catching_hand = ?, jersey_number = ?, team = ?, league = ?
                 WHERE user_id = ?
             ");
-            $stmt->execute([$height, $weight, $handedness, $catching_hand, $jersey_number, $current_user_id]);
+            $stmt->execute([$height, $weight, $handedness, $catching_hand, $jersey_number, $team, $league, $current_user_id]);
         } else {
             // Create new record
             $stmt = $pdo->prepare("
-                INSERT INTO athlete_stats (user_id, height, weight, handedness, catching_hand, jersey_number)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO athlete_stats (user_id, height, weight, handedness, catching_hand, jersey_number, team, league)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$current_user_id, $height, $weight, $handedness, $catching_hand, $jersey_number]);
+            $stmt->execute([$current_user_id, $height, $weight, $handedness, $catching_hand, $jersey_number, $team, $league]);
         }
         
         header("Location: dashboard.php?page=profile&tab=player&msg=player_info_updated");
