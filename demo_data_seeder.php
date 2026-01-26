@@ -96,6 +96,8 @@ class DemoDataSeeder {
         $this->seedEmployeeTerminations();
         $this->seedInvoices();
         $this->seedPayments();
+        $this->seedMileageRecords();
+        $this->seedScheduledReports();
         
         echo "\n=== Demo Data Seeding Complete! ===\n";
         echo "Total demo records created: " . $this->getTotalDemoRecords() . "\n\n";
@@ -1433,6 +1435,181 @@ class DemoDataSeeder {
         }
         
         echo "  ✓ Created " . count($payments) . " demo payments\n";
+    }
+    
+    /**
+     * Seed mileage records for travel tracking
+     */
+    private function seedMileageRecords() {
+        echo "Seeding Mileage Records...\n";
+        
+        $coach_ids = $this->demo_ids['users']['coach'] ?? [];
+        $athlete_ids = $this->demo_ids['users']['athlete'] ?? [];
+        $session_ids = $this->demo_ids['sessions'] ?? [];
+        $location_ids = $this->demo_ids['locations'] ?? [];
+        
+        if (empty($coach_ids)) {
+            echo "  ⚠ Skipping mileage - no coaches available\n";
+            return;
+        }
+        
+        // Check if mileage table exists
+        try {
+            $this->pdo->query("SELECT 1 FROM mileage_records LIMIT 1");
+        } catch (PDOException $e) {
+            // Table doesn't exist, try to create it
+            try {
+                $this->pdo->exec("
+                    CREATE TABLE IF NOT EXISTS mileage_records (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id INT NOT NULL,
+                        athlete_id INT NULL,
+                        session_id INT NULL,
+                        trip_date DATE NOT NULL,
+                        start_location VARCHAR(255) NOT NULL,
+                        end_location VARCHAR(255) NOT NULL,
+                        distance_km DECIMAL(10,2) NOT NULL,
+                        distance_miles DECIMAL(10,2) NOT NULL,
+                        purpose VARCHAR(255),
+                        notes TEXT,
+                        reimbursement_rate DECIMAL(5,2),
+                        total_reimbursement DECIMAL(10,2),
+                        is_demo TINYINT(1) DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX (user_id),
+                        INDEX (trip_date)
+                    )
+                ");
+            } catch (PDOException $e2) {
+                echo "  ⚠ Could not create mileage_records table: " . $e2->getMessage() . "\n";
+                return;
+            }
+        }
+        
+        $mileage_records = [
+            ['Home', 'Arctic Arena', 25.5, 15.8, 'Training session', -1],
+            ['Home', 'Sports Complex', 18.2, 11.3, 'Private lesson', -3],
+            ['Arctic Arena', 'Away Game Facility', 85.0, 52.8, 'Away game travel', -5],
+            ['Home', 'Arctic Arena', 25.5, 15.8, 'Team practice', -7],
+            ['Home', 'Sports Complex', 18.2, 11.3, 'Evaluation session', -10],
+            ['Arctic Arena', 'Team Headquarters', 12.0, 7.5, 'Coaches meeting', -12],
+            ['Home', 'Arctic Arena', 25.5, 15.8, 'Weekend tournament', -14],
+            ['Home', 'Regional Ice Center', 42.0, 26.1, 'Regional competition', -20],
+        ];
+        
+        $rate_per_km = 0.68;
+        
+        foreach ($mileage_records as $index => $record) {
+            $coach_id = $coach_ids[$index % count($coach_ids)];
+            $athlete_id = !empty($athlete_ids) ? $athlete_ids[$index % count($athlete_ids)] : null;
+            $session_id = !empty($session_ids) ? $session_ids[$index % count($session_ids)] : null;
+            $trip_date = date('Y-m-d', strtotime("{$record[5]} days"));
+            $reimbursement = $record[2] * $rate_per_km;
+            
+            $stmt = $this->pdo->prepare("
+                INSERT INTO mileage_records 
+                (user_id, athlete_id, session_id, trip_date, start_location, end_location, 
+                 distance_km, distance_miles, purpose, reimbursement_rate, total_reimbursement, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())
+            ");
+            $stmt->execute([
+                $coach_id,
+                $athlete_id,
+                $session_id,
+                $trip_date,
+                $record[0],
+                $record[1],
+                $record[2],
+                $record[3],
+                $record[4],
+                $rate_per_km,
+                $reimbursement
+            ]);
+            $this->demo_ids['mileage'][] = $this->pdo->lastInsertId();
+        }
+        
+        echo "  ✓ Created " . count($mileage_records) . " demo mileage records\n";
+    }
+    
+    /**
+     * Seed scheduled reports for reporting dashboard
+     */
+    private function seedScheduledReports() {
+        echo "Seeding Scheduled Reports...\n";
+        
+        $admin_ids = $this->demo_ids['users']['admin'] ?? [];
+        $coach_ids = $this->demo_ids['users']['coach'] ?? [];
+        
+        if (empty($admin_ids) && empty($coach_ids)) {
+            echo "  ⚠ Skipping scheduled reports - no users available\n";
+            return;
+        }
+        
+        // Check if scheduled_reports table exists
+        try {
+            $this->pdo->query("SELECT 1 FROM scheduled_reports LIMIT 1");
+        } catch (PDOException $e) {
+            // Table doesn't exist, try to create it
+            try {
+                $this->pdo->exec("
+                    CREATE TABLE IF NOT EXISTS scheduled_reports (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        report_type VARCHAR(100) NOT NULL,
+                        schedule_frequency ENUM('daily', 'weekly', 'monthly', 'quarterly') NOT NULL,
+                        recipients TEXT,
+                        filters TEXT,
+                        format ENUM('pdf', 'csv', 'excel') DEFAULT 'pdf',
+                        is_active TINYINT(1) DEFAULT 1,
+                        last_run DATETIME NULL,
+                        next_run DATETIME NULL,
+                        created_by INT NOT NULL,
+                        is_demo TINYINT(1) DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX (report_type),
+                        INDEX (is_active)
+                    )
+                ");
+            } catch (PDOException $e2) {
+                echo "  ⚠ Could not create scheduled_reports table: " . $e2->getMessage() . "\n";
+                return;
+            }
+        }
+        
+        $user_ids = array_merge($admin_ids, $coach_ids);
+        
+        $reports = [
+            ['Weekly Revenue Summary', 'revenue', 'weekly', 'admin@arcticwolves.com', '{"date_range":"last_7_days"}', 'pdf'],
+            ['Monthly Athlete Progress', 'athlete_progress', 'monthly', 'coach@arcticwolves.com', '{"include_goals":true}', 'pdf'],
+            ['Quarterly Financial Report', 'financial', 'quarterly', 'admin@arcticwolves.com', '{"include_expenses":true}', 'excel'],
+            ['Daily Session Bookings', 'bookings', 'daily', 'admin@arcticwolves.com', '{"status":"confirmed"}', 'csv'],
+            ['Weekly Coach Activity', 'coach_activity', 'weekly', 'admin@arcticwolves.com', '{}', 'pdf'],
+        ];
+        
+        foreach ($reports as $index => $report) {
+            $user_id = $user_ids[$index % count($user_ids)];
+            $next_run = date('Y-m-d 08:00:00', strtotime('+' . ($index + 1) . ' days'));
+            
+            $stmt = $this->pdo->prepare("
+                INSERT INTO scheduled_reports 
+                (name, report_type, schedule_frequency, recipients, filters, format, is_active, next_run, created_by, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 1, NOW())
+            ");
+            $stmt->execute([
+                $report[0],
+                $report[1],
+                $report[2],
+                $report[3],
+                $report[4],
+                $report[5],
+                $next_run,
+                $user_id
+            ]);
+            $this->demo_ids['scheduled_reports'][] = $this->pdo->lastInsertId();
+        }
+        
+        echo "  ✓ Created " . count($reports) . " demo scheduled reports\n";
     }
     
     /**

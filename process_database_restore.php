@@ -17,15 +17,15 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
 }
 
 $user_id = $_SESSION['user_id'];
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+$action = $_POST['action'] ?? '';
 
 try {
-    // Validate CSRF token
-    if (!isset($_POST['csrf_token']) && !isset($_GET['csrf_token'])) {
+    // Validate CSRF token - only accept from POST for security
+    if (!isset($_POST['csrf_token'])) {
         throw new Exception('CSRF token required');
     }
     
-    $csrf_token = $_POST['csrf_token'] ?? $_GET['csrf_token'];
+    $csrf_token = $_POST['csrf_token'];
     if (!validateCSRFToken($csrf_token)) {
         throw new Exception('Invalid CSRF token');
     }

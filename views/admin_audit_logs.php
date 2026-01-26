@@ -786,28 +786,6 @@ function confirmRestore(logId) {
         return;
     }
     
-    // Implement restore logic here
-    alert('Restore functionality - implement with AJAX');
-}
-
-function closeViewModal() {
-    document.getElementById('viewModal').style.display = 'none';
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Close modal when clicking outside
-document.getElementById('viewModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeViewModal();
-    }
-});
-</script>
-    
     const formData = new FormData();
     formData.append('action', 'restore');
     formData.append('log_id', logId);
@@ -831,8 +809,8 @@ document.getElementById('viewModal').addEventListener('click', function(e) {
     });
 }
 
-function closeModal() {
-    document.getElementById('viewModal').classList.remove('show');
+function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
 }
 
 function escapeHtml(text) {
@@ -841,16 +819,16 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Close modal when clicking outside
-document.getElementById('viewModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeModal();
-    }
-});
-
 function exportAuditLogs() {
     const currentUrl = new URL(window.location.href);
     const exportUrl = 'process_audit_logs_export.php?' + currentUrl.searchParams.toString();
     window.location.href = exportUrl;
 }
+
+// Close modal when clicking outside
+document.getElementById('viewModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeViewModal();
+    }
+});
 </script>
