@@ -961,27 +961,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(response => {
-                // Check if redirect occurred (form submission returns redirect)
-                if (response.redirected) {
-                    showNotification('Created successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 1000);
-                    return null;
-                }
+                // Get content type to determine how to parse
+                var contentType = response.headers.get('content-type');
+                
                 // Check for successful response
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    // Try to parse error message from JSON response
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json().then(function(data) {
+                            throw new Error(data.message || data.error || 'Request failed');
+                        });
+                    }
+                    throw new Error('Request failed with status: ' + response.status);
                 }
-                return response.json();
+                
+                // If JSON response, parse it
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                }
+                
+                // If we got a redirect or HTML response, the server didn't return JSON
+                // This means the AJAX handler wasn't triggered properly
+                throw new Error('Server did not return JSON response. Form may not have been processed correctly.');
             })
             .then(data => {
-                if (data === null) return;
-                
                 if (submitBtn) {
                     submitBtn.innerHTML = originalBtnText;
                     submitBtn.disabled = false;
                 }
                 
-                if (data.success) {
+                if (data && data.success) {
                     showNotification(data.message || 'Operation completed successfully!', 'success');
                     if (modal) closeModal(modal.id);
                     
@@ -1000,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.href = 'dashboard.php?page=products&tab=' + currentTab + '&status=success';
                     }, 1500);
                 } else {
-                    showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
+                    showNotification('Error: ' + (data && data.message ? data.message : 'Operation failed'), 'error');
                 }
             })
             .catch(function(error) {
@@ -1009,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     submitBtn.innerHTML = originalBtnText;
                     submitBtn.disabled = false;
                 }
-                showNotification('An error occurred. Please try again.', 'error');
+                showNotification(error.message || 'An error occurred. Please try again.', 'error');
             });
         });
     });
