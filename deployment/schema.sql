@@ -432,17 +432,27 @@ CREATE TABLE IF NOT EXISTS `performance_stats` (
 CREATE TABLE IF NOT EXISTS `goals` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `athlete_id` INT NOT NULL,
-    `goal_title` VARCHAR(255) NOT NULL,
+    `created_by` INT DEFAULT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `goal_title` VARCHAR(255) DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
     `goal_description` TEXT DEFAULT NULL,
+    `category` VARCHAR(100) DEFAULT NULL,
+    `tags` VARCHAR(500) DEFAULT NULL,
     `target_value` DECIMAL(10,2) DEFAULT NULL,
     `current_value` DECIMAL(10,2) DEFAULT NULL,
     `target_date` DATE DEFAULT NULL,
-    `status` ENUM('active', 'completed', 'abandoned') DEFAULT 'active',
+    `completion_percentage` DECIMAL(5,2) DEFAULT 0.00,
+    `status` ENUM('active', 'completed', 'abandoned', 'archived') DEFAULT 'active',
+    `completed_at` TIMESTAMP NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_athlete` (`athlete_id`),
-    INDEX `idx_status` (`status`)
+    INDEX `idx_status` (`status`),
+    INDEX `idx_created_by` (`created_by`),
+    INDEX `idx_category` (`category`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage tracking
