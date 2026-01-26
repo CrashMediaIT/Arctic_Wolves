@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var planId = this.getAttribute('data-plan-id');
             
             if (confirm('Are you sure you want to delete this practice plan? This action cannot be undone.')) {
-                var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= $_SESSION["csrf_token"] ?? "" ?>';
+                var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
                 
                 fetch('process_practice_plans.php', {
                     method: 'POST',

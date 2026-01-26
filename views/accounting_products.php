@@ -740,7 +740,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             var itemId = this.getAttribute('data-id');
             var itemType = this.getAttribute('data-type');
-            var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= $_SESSION["csrf_token"] ?? "" ?>';
+            var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
             
             if (confirm('Are you sure you want to toggle the status of this ' + itemType + '?')) {
                 fetch('process_admin_action.php', {
