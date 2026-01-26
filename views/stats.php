@@ -7,9 +7,18 @@
 </div>
 
 <?php
-// Fetch real stats data
+// Fetch real stats data - Each query in its own try/catch to prevent one failure from affecting others
+
+// Initialize defaults
+$goalsStats = ['total_goals' => 0, 'completed_goals' => 0];
+$streakData = ['streak_days' => 0];
+$skillsData = ['skills_mastered' => 0];
+$activeGoals = [];
+$perfStats = [];
+$skillProgress = [];
+
+// Get goals stats
 try {
-    // Get goals stats
     $stmt = $pdo->prepare("
         SELECT 
             COUNT(*) as total_goals,
@@ -19,20 +28,28 @@ try {
     ");
     $stmt->execute([$user_id]);
     $goalsStats = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    // Get training streak (consecutive days with sessions)
+} catch (PDOException $e) {
+    error_log("Stats - goals stats error: " . $e->getMessage());
+}
+
+// Get training streak (consecutive days with sessions)
+try {
     $stmt = $pdo->prepare("
-        SELECT COUNT(DISTINCT DATE(s.date)) as streak_days
+        SELECT COUNT(DISTINCT DATE(s.session_date)) as streak_days
         FROM sessions s
         INNER JOIN bookings b ON s.id = b.session_id
         WHERE b.user_id = ? 
-        AND s.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        AND s.session_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         AND s.status = 'completed'
     ");
     $stmt->execute([$user_id]);
     $streakData = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    // Get skills mastered (completed evaluations with high scores)
+} catch (PDOException $e) {
+    error_log("Stats - streak data error: " . $e->getMessage());
+}
+
+// Get skills mastered (completed evaluations with high scores)
+try {
     $stmt = $pdo->prepare("
         SELECT COUNT(DISTINCT skill_id) as skills_mastered
         FROM evaluation_scores
@@ -41,8 +58,12 @@ try {
     ");
     $stmt->execute([$user_id]);
     $skillsData = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    // Get active goals
+} catch (PDOException $e) {
+    error_log("Stats - skills data error: " . $e->getMessage());
+}
+
+// Get active goals
+try {
     $stmt = $pdo->prepare("
         SELECT g.id, 
                COALESCE(g.goal_title, g.title) as goal_title, 
@@ -61,39 +82,60 @@ try {
     ");
     $stmt->execute([$user_id]);
     $activeGoals = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Get recent performance stats
+} catch (PDOException $e) {
+    error_log("Stats - active goals error: " . $e->getMessage());
+}
+
+// Get recent performance stats
+try {
     $stmt = $pdo->prepare("
-        SELECT *
-        FROM performance_stats
-        WHERE athlete_id = ?
-        ORDER BY stat_date DESC
+        SELECT ps.id, ps.stat_date, ps.stat_type as metric_name, 
+               ps.stat_value as value, ps.stat_unit as unit, ps.notes
+        FROM performance_stats ps
+        WHERE ps.athlete_id = ?
+        ORDER BY ps.stat_date DESC
         LIMIT 10
     ");
     $stmt->execute([$user_id]);
     $perfStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Stats - performance stats error: " . $e->getMessage());
+}
+
+// Get recent evaluations - Use eval_skills table if evaluation_framework tables don't exist
+try {
+    // First check if evaluation_framework tables exist
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'evaluation_framework_skills'")->fetch();
     
-    // Get recent evaluations
-    $stmt = $pdo->prepare("
-        SELECT es.*, efs.name as skill_name, efc.name as category_name
-        FROM evaluation_scores es
-        LEFT JOIN evaluation_framework_skills efs ON es.skill_id = efs.id
-        LEFT JOIN evaluation_framework_categories efc ON efs.category_id = efc.id
-        WHERE es.athlete_id = ?
-        ORDER BY es.evaluation_date DESC
-        LIMIT 10
-    ");
+    if ($tableCheck) {
+        // Use evaluation framework tables
+        $stmt = $pdo->prepare("
+            SELECT es.*, efs.name as skill_name, efc.name as category_name
+            FROM evaluation_scores es
+            LEFT JOIN evaluation_framework_skills efs ON es.skill_id = efs.id
+            LEFT JOIN evaluation_framework_categories efc ON efs.category_id = efc.id
+            WHERE es.athlete_id = ?
+            ORDER BY es.evaluation_date DESC
+            LIMIT 10
+        ");
+    } else {
+        // Fallback: Use eval_skills and eval_categories tables
+        $stmt = $pdo->prepare("
+            SELECT es.*, 
+                   COALESCE(sk.name, sk.skill_name, 'Skill') as skill_name, 
+                   COALESCE(cat.name, cat.category_name, 'General') as category_name
+            FROM evaluation_scores es
+            LEFT JOIN eval_skills sk ON es.skill_id = sk.id
+            LEFT JOIN eval_categories cat ON sk.category_id = cat.id
+            WHERE es.athlete_id = ?
+            ORDER BY es.evaluation_date DESC
+            LIMIT 10
+        ");
+    }
     $stmt->execute([$user_id]);
     $skillProgress = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
 } catch (PDOException $e) {
-    error_log("Stats data fetch error: " . $e->getMessage());
-    $goalsStats = ['total_goals' => 0, 'completed_goals' => 0];
-    $streakData = ['streak_days' => 0];
-    $skillsData = ['skills_mastered' => 0];
-    $activeGoals = [];
-    $perfStats = [];
-    $skillProgress = [];
+    error_log("Stats - skill progress error: " . $e->getMessage());
 }
 ?>
 
