@@ -101,14 +101,22 @@ try {
                 'warning_color' => $_POST['warning_color'] ?? '#f59e0b'
             ];
             
+            $invalid_colors = [];
             foreach ($colors as $name => $value) {
                 // Validate hex color
                 if (preg_match('/^#[a-fA-F0-9]{6}$/', $value)) {
                     updateThemeSetting($pdo, $name, $value);
+                } else {
+                    $invalid_colors[] = $name;
                 }
             }
             
-            header('Location: dashboard.php?page=admin_theme_settings&tab=colors&success=1');
+            $redirect = 'dashboard.php?page=admin_theme_settings&tab=colors&success=1';
+            if (!empty($invalid_colors)) {
+                error_log("Invalid color values for: " . implode(', ', $invalid_colors));
+                $redirect .= '&warning=' . urlencode('Some color values were invalid and were not saved.');
+            }
+            header('Location: ' . $redirect);
             exit;
             
         case 'update_branding':
