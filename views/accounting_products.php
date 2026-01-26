@@ -967,6 +967,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(function() { location.reload(); }, 1000);
                     return null;
                 }
+                // Check for successful response
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
                 return response.json();
             })
             .then(data => {
@@ -987,9 +991,11 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(function(error) {
                 console.error('Error:', error);
-                // If it was a redirect (standard form submission), assume success
-                showNotification('Created successfully!', 'success');
-                setTimeout(function() { location.reload(); }, 1000);
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+                showNotification('An error occurred. Please try again.', 'error');
             });
         });
     });

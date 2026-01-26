@@ -38,14 +38,25 @@ if ($action == 'create_session_type') {
     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
     
     try {
+        // Validate inputs
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $price = floatval($_POST['price'] ?? 0);
+        $duration = intval($_POST['duration'] ?? 60);
+        
+        if (empty($name) || strlen($name) > 100) {
+            throw new Exception('Session name is required and must be under 100 characters');
+        }
+        if ($price < 0) {
+            throw new Exception('Price must be a positive value');
+        }
+        if ($duration < 15 || $duration > 480) {
+            throw new Exception('Duration must be between 15 and 480 minutes');
+        }
+        
         // Full session type creation with pricing and details
         $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
-        $stmt->execute([
-            trim($_POST['name']), 
-            trim($_POST['description'] ?? ''),
-            floatval($_POST['price'] ?? 0),
-            intval($_POST['duration'] ?? 60)
-        ]);
+        $stmt->execute([$name, $description, $price, $duration]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -53,11 +64,11 @@ if ($action == 'create_session_type') {
             exit();
         }
         header("Location: dashboard.php?page=accounting_products&tab=sessions&status=added");
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         error_log("Create session type error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Failed to create session type']);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
             exit();
         }
         header("Location: dashboard.php?page=accounting_products&tab=sessions&status=error");
@@ -736,9 +747,15 @@ if ($action == 'reset_user_password') {
         $confirm_password = $_POST['confirm_password'] ?? '';
         $force_change = isset($_POST['force_change']) ? 1 : 0;
         
-        // Validate
+        // Validate password length
         if (empty($new_password) || strlen($new_password) < 8) {
             echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters']);
+            exit();
+        }
+        
+        // Validate password complexity - require at least one uppercase, one lowercase, one number
+        if (!preg_match('/[A-Z]/', $new_password) || !preg_match('/[a-z]/', $new_password) || !preg_match('/[0-9]/', $new_password)) {
+            echo json_encode(['success' => false, 'message' => 'Password must contain at least one uppercase letter, one lowercase letter, and one number']);
             exit();
         }
         

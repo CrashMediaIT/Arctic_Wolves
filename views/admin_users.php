@@ -871,7 +871,7 @@ function closeModal(modalId) {
 </div>
 
 <script>
-// Handle edit user button clicks
+// Handle edit user button clicks - populate modal fields
 document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -890,118 +890,6 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         document.getElementById('edit-user-role').value = role;
         
         document.getElementById('edit-user-modal').classList.add('active');
-    });
-});
-
-// Handle permissions button clicks - navigate to user permissions page
-document.querySelectorAll('[data-action="permissions"]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var userId = this.getAttribute('data-id');
-        if (userId) {
-            window.location.href = 'dashboard.php?page=user_permissions&user_id=' + userId;
-        }
-    });
-});
-
-// Handle toggle-status button clicks
-document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var userId = this.getAttribute('data-id');
-        var isActive = this.classList.contains('danger');
-        var action = isActive ? 'disable_user' : 'enable_user';
-        
-        if (!confirm('Are you sure you want to ' + (isActive ? 'disable' : 'enable') + ' this user?')) {
-            return;
-        }
-        
-        var form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'process_admin_action.php';
-        
-        var csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrf_token';
-        var csrfElement = document.querySelector('input[name="csrf_token"]');
-        csrfInput.value = csrfElement ? csrfElement.value : '';
-        form.appendChild(csrfInput);
-        
-        var actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'toggle_user_status';
-        form.appendChild(actionInput);
-        
-        var userIdInput = document.createElement('input');
-        userIdInput.type = 'hidden';
-        userIdInput.name = 'id';
-        userIdInput.value = userId;
-        form.appendChild(userIdInput);
-        
-        // Use AJAX instead of form submission
-        var csrfToken = csrfElement ? csrfElement.value : '';
-        
-        fetch('process_admin_action.php', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: 'action=toggle_user_status&id=' + encodeURIComponent(userId) + '&csrf_token=' + encodeURIComponent(csrfToken)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showUserNotification(data.message || 'User status updated!', 'success');
-                setTimeout(function() { location.reload(); }, 1000);
-            } else {
-                showUserNotification('Error: ' + (data.message || 'Failed to update status'), 'error');
-            }
-        })
-        .catch(function(error) {
-            console.error('Error:', error);
-            showUserNotification('An error occurred. Please try again.', 'error');
-        });
-    });
-});
-
-// Show notification helper for users page
-function showUserNotification(message, type) {
-    var existing = document.querySelector('.notification-widget');
-    if (existing) existing.remove();
-    
-    var div = document.createElement('div');
-    div.className = 'notification-widget';
-    div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px;';
-    if (type === 'success') {
-        div.style.background = 'rgba(16, 185, 129, 0.95)';
-        div.style.color = '#fff';
-    } else {
-        div.style.background = 'rgba(239, 68, 68, 0.95)';
-        div.style.color = '#fff';
-    }
-    div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
-    document.body.appendChild(div);
-    setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
-}
-
-// Handle reset-password button clicks
-document.querySelectorAll('[data-action="reset-password"]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var userId = this.getAttribute('data-id');
-        var userName = this.getAttribute('data-name') || 'this user';
-        
-        var modal = document.getElementById('reset-password-modal');
-        if (modal) {
-            modal.querySelector('input[name="user_id"]').value = userId;
-            modal.querySelector('.reset-user-name').textContent = userName;
-            modal.classList.add('active');
-        }
     });
 });
 </script>
