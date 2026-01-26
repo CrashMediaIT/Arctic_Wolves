@@ -748,6 +748,7 @@ $csrf_token = generateCsrfToken();
 
 <script>
 const notificationsData = <?= json_encode($notifications) ?>;
+const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
 
 function openCreateModal() {
     document.getElementById('modalTitle').textContent = 'Create System Notification';
@@ -755,7 +756,7 @@ function openCreateModal() {
     document.getElementById('notificationForm').reset();
     document.getElementById('notificationId').value = '';
     document.getElementById('notifIsActive').checked = true;
-    document.querySelector('input[name="csrf_token"]').value = '<?= generateCSRFToken() ?>';
+    document.querySelector('input[name="csrf_token"]').value = csrfToken;
     document.getElementById('notificationModal').classList.add('show');
 }
 
@@ -780,7 +781,7 @@ function editNotification(id) {
     }
     
     document.getElementById('notifIsActive').checked = notif.is_active == 1;
-    document.querySelector('input[name="csrf_token"]').value = '<?= generateCSRFToken() ?>';
+    document.querySelector('input[name="csrf_token"]').value = csrfToken;
     
     document.getElementById('notificationModal').classList.add('show');
 }
@@ -842,7 +843,7 @@ function toggleActive(id) {
     const formData = new FormData();
     formData.append('action', 'toggle_active');
     formData.append('id', id);
-    formData.append('csrf_token', '<?= generateCSRFToken() ?>');
+    formData.append('csrf_token', csrfToken);
     
     fetch('process_system_notifications.php', {
         method: 'POST',
