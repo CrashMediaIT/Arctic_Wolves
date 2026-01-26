@@ -85,13 +85,14 @@ try {
             $url = trim($_POST['nextcloud_url']);
             $username = trim($_POST['nextcloud_username']);
             $password = trim($_POST['nextcloud_password']);
-            $folder = trim($_POST['nextcloud_receipt_folder']);
-            $webdav_path = trim($_POST['nextcloud_webdav_path']);
+            $folder = trim($_POST['nextcloud_receipt_folder'] ?? $_POST['nextcloud_folder'] ?? '');
+            $webdav_path = trim($_POST['nextcloud_webdav_path'] ?? '');
             $ocr_enabled = isset($_POST['nextcloud_ocr_enabled']) ? '1' : '0';
+            $auto_sync = isset($_POST['nextcloud_auto_sync']) ? '1' : '0';
             
             updateSetting($pdo, 'nextcloud_url', $url);
             updateSetting($pdo, 'nextcloud_username', $username);
-            if (!empty($password)) {
+            if (!empty($password) && $password !== '********') {
                 // Encrypt password before storing
                 $encrypted_password = encryptPassword($password);
                 updateSetting($pdo, 'nextcloud_password', $encrypted_password);
@@ -99,8 +100,15 @@ try {
             updateSetting($pdo, 'nextcloud_receipt_folder', $folder);
             updateSetting($pdo, 'nextcloud_webdav_path', $webdav_path);
             updateSetting($pdo, 'nextcloud_ocr_enabled', $ocr_enabled);
+            updateSetting($pdo, 'nextcloud_auto_sync', $auto_sync);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            // Redirect back to the appropriate page
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=nextcloud&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
             exit;
             
         case 'test_nextcloud':

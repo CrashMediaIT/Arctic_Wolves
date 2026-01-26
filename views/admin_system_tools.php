@@ -383,6 +383,7 @@ try {
                 <form id="nextcloud-form" method="POST" action="process_settings.php" data-form-type="nextcloud">
                     <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="update_nextcloud">
+                    <input type="hidden" name="redirect_page" value="system_tools">
                     <div class="settings-list">
                         <div class="setting-item">
                             <div class="setting-info">
