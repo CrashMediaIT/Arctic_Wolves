@@ -67,7 +67,7 @@ function handleVideoUpload() {
     // Only coaches, health coaches, and admins can upload review videos
     $allowed_roles = ['coach', 'health_coach', 'admin'];
     if (!in_array($user_role, $allowed_roles)) {
-        throw new Exception('Only coaches can upload review videos');
+        throw new Exception('You do not have permission to upload review videos');
     }
     
     // Validate required fields
@@ -241,7 +241,7 @@ function handleVideoReview() {
     // Only coaches, health coaches, and admins can review videos
     $allowed_roles = ['coach', 'health_coach', 'admin'];
     if (!in_array($user_role, $allowed_roles)) {
-        throw new Exception('Only coaches can review videos');
+        throw new Exception('You do not have permission to review videos');
     }
     
     $video_id = filter_input(INPUT_POST, 'video_id', FILTER_VALIDATE_INT);
