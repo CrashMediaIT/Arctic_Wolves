@@ -760,4 +760,56 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         document.getElementById('edit-user-modal').classList.add('active');
     });
 });
+
+// Handle permissions button clicks - navigate to user permissions page
+document.querySelectorAll('[data-action="permissions"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var userId = this.getAttribute('data-id');
+        if (userId) {
+            window.location.href = 'dashboard.php?page=user_permissions&user_id=' + userId;
+        }
+    });
+});
+
+// Handle toggle-status button clicks
+document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var userId = this.getAttribute('data-id');
+        var isActive = this.classList.contains('danger');
+        var action = isActive ? 'disable_user' : 'enable_user';
+        
+        if (!confirm('Are you sure you want to ' + (isActive ? 'disable' : 'enable') + ' this user?')) {
+            return;
+        }
+        
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'process_admin_action.php';
+        
+        var csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
+        form.appendChild(csrfInput);
+        
+        var actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = action;
+        form.appendChild(actionInput);
+        
+        var userIdInput = document.createElement('input');
+        userIdInput.type = 'hidden';
+        userIdInput.name = 'user_id';
+        userIdInput.value = userId;
+        form.appendChild(userIdInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    });
+});
 </script>
