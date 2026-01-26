@@ -1,5 +1,47 @@
 <!-- Accounting Dashboard View -->
 <?php
+// Load Stripe configuration
+$stripeSettingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_publishable_key', 'stripe_secret_key', 'currency', 'tax_rate', 'tax_name')";
+$stripeSettings = $pdo->query($stripeSettingsQuery)->fetchAll(PDO::FETCH_KEY_PAIR);
+$stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty($stripeSettings['stripe_secret_key']);
+$currency = $stripeSettings['currency'] ?? 'CAD';
+$taxRate = floatval($stripeSettings['tax_rate'] ?? 13.00);
+$taxName = $stripeSettings['tax_name'] ?? 'HST';
+
+// Initialize Stripe balance data
+$stripeBalance = null;
+$stripeRecentCharges = [];
+
+// If Stripe is configured, try to fetch balance and recent charges
+if ($stripeConfigured) {
+    try {
+        // Load Stripe library
+        if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+            require_once __DIR__ . '/../vendor/autoload.php';
+        } elseif (file_exists(__DIR__ . '/../stripe-php/init.php')) {
+            require_once __DIR__ . '/../stripe-php/init.php';
+        }
+        
+        \Stripe\Stripe::setApiKey($stripeSettings['stripe_secret_key']);
+        
+        // Get Stripe balance
+        $stripeBalance = \Stripe\Balance::retrieve();
+        
+        // Get recent successful charges from Stripe
+        $charges = \Stripe\Charge::all([
+            'limit' => 10,
+            'created' => [
+                'gte' => strtotime('-30 days')
+            ]
+        ]);
+        $stripeRecentCharges = $charges->data;
+        
+    } catch (Exception $e) {
+        error_log("Stripe API error: " . $e->getMessage());
+        // Continue with local data if Stripe fails
+    }
+}
+
 // Fetch financial data from database
 try {
     // Get total revenue (payments received) - try both status column names for compatibility
@@ -81,7 +123,63 @@ try {
     <p class="page-description">Financial overview and key metrics for your organization</p>
 </div>
 
+<!-- Stripe Integration Status -->
+<div class="stripe-status-bar <?= $stripeConfigured ? 'configured' : 'not-configured' ?>">
+    <div class="stripe-status-icon">
+        <i class="fab fa-stripe-s"></i>
+    </div>
+    <div class="stripe-status-info">
+        <?php if ($stripeConfigured): ?>
+            <strong>Stripe Payment Processing Active</strong>
+            <?php if ($stripeBalance): ?>
+                <span>Available Balance: <?= strtoupper($stripeBalance->available[0]->currency ?? $currency) ?> $<?= number_format(($stripeBalance->available[0]->amount ?? 0) / 100, 2) ?> | Pending: $<?= number_format(($stripeBalance->pending[0]->amount ?? 0) / 100, 2) ?></span>
+            <?php else: ?>
+                <span>Currency: <?= htmlspecialchars($currency) ?> | Tax: <?= htmlspecialchars($taxName) ?> (<?= number_format($taxRate, 2) ?>%)</span>
+            <?php endif; ?>
+        <?php else: ?>
+            <strong>Stripe Not Configured</strong>
+            <span>Configure Stripe in <a href="?page=system_tools&tab=payments">System Tools → Payments</a> to enable online payments and real-time balance tracking</span>
+        <?php endif; ?>
+    </div>
+    <?php if ($stripeConfigured): ?>
+    <div class="stripe-status-badge active">
+        <i class="fas fa-check-circle"></i> Active
+    </div>
+    <?php else: ?>
+    <div class="stripe-status-badge inactive">
+        <i class="fas fa-times-circle"></i> Inactive
+    </div>
+    <?php endif; ?>
+</div>
+
 <div class="accounting-content">
+    <!-- Stripe Balance Card (if configured) -->
+    <?php if ($stripeConfigured && $stripeBalance): ?>
+    <div class="stripe-balance-section">
+        <div class="stripe-balance-card">
+            <div class="stripe-balance-header">
+                <i class="fab fa-stripe"></i>
+                <h3>Stripe Balance</h3>
+            </div>
+            <div class="stripe-balance-grid">
+                <div class="balance-item available">
+                    <span class="balance-label">Available</span>
+                    <span class="balance-value">$<?= number_format(($stripeBalance->available[0]->amount ?? 0) / 100, 2) ?></span>
+                    <span class="balance-currency"><?= strtoupper($stripeBalance->available[0]->currency ?? $currency) ?></span>
+                </div>
+                <div class="balance-item pending">
+                    <span class="balance-label">Pending</span>
+                    <span class="balance-value">$<?= number_format(($stripeBalance->pending[0]->amount ?? 0) / 100, 2) ?></span>
+                    <span class="balance-currency"><?= strtoupper($stripeBalance->pending[0]->currency ?? $currency) ?></span>
+                </div>
+            </div>
+            <a href="https://dashboard.stripe.com/balance/overview" target="_blank" class="stripe-dashboard-link">
+                <i class="fas fa-external-link-alt"></i> View in Stripe Dashboard
+            </a>
+        </div>
+    </div>
+    <?php endif; ?>
+    
     <!-- Financial Summary Cards -->
     <div class="financial-summary">
         <div class="finance-card revenue-card">
@@ -350,6 +448,193 @@ function updateRevenueChart(days) {
 </script>
 
 <style>
+/* Stripe Status Bar */
+.stripe-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 1px solid;
+}
+
+.stripe-status-bar.configured {
+    background: rgba(99, 91, 255, 0.1);
+    border-color: rgba(99, 91, 255, 0.3);
+}
+
+.stripe-status-bar.not-configured {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.stripe-status-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.stripe-status-bar.configured .stripe-status-icon {
+    background: rgba(99, 91, 255, 0.2);
+    color: #635BFF;
+}
+
+.stripe-status-bar.not-configured .stripe-status-icon {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.stripe-status-info {
+    flex: 1;
+}
+
+.stripe-status-info strong {
+    display: block;
+    font-size: 14px;
+    color: var(--text-white);
+    margin-bottom: 4px;
+}
+
+.stripe-status-info span {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.stripe-status-info a {
+    color: #8B5CF6;
+    text-decoration: none;
+}
+
+.stripe-status-info a:hover {
+    text-decoration: underline;
+}
+
+.stripe-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.stripe-status-badge.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.stripe-status-badge.inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+/* Stripe Balance Section */
+.stripe-balance-section {
+    margin-bottom: 24px;
+}
+
+.stripe-balance-card {
+    background: linear-gradient(135deg, rgba(99, 91, 255, 0.15), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(99, 91, 255, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.stripe-balance-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stripe-balance-header i {
+    font-size: 28px;
+    color: #635BFF;
+}
+
+.stripe-balance-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin: 0;
+}
+
+.stripe-balance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 16px;
+}
+
+.balance-item {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.balance-item.available {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.balance-item.pending {
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.balance-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.balance-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-white);
+    margin-bottom: 4px;
+}
+
+.balance-item.available .balance-value {
+    color: #10b981;
+}
+
+.balance-item.pending .balance-value {
+    color: #f59e0b;
+}
+
+.balance-currency {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.stripe-dashboard-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #635BFF;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.stripe-dashboard-link:hover {
+    color: #8B5CF6;
+    text-decoration: underline;
+}
+
 .accounting-content {
     max-width: 1400px;
     margin: 0 auto;

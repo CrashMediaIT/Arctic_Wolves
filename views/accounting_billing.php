@@ -1,4 +1,12 @@
 <?php
+// Load Stripe configuration from settings
+$stripeSettingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_publishable_key', 'stripe_secret_key', 'currency', 'tax_rate', 'tax_name')";
+$stripeSettings = $pdo->query($stripeSettingsQuery)->fetchAll(PDO::FETCH_KEY_PAIR);
+$stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty($stripeSettings['stripe_secret_key']);
+$currency = $stripeSettings['currency'] ?? 'CAD';
+$taxRate = floatval($stripeSettings['tax_rate'] ?? 13.00);
+$taxName = $stripeSettings['tax_name'] ?? 'HST';
+
 // Fetch invoices
 $invoicesQuery = "SELECT i.*, u.first_name, u.last_name, u.email
     FROM invoices i
@@ -36,6 +44,31 @@ try {
         <i class="fas fa-file-invoice-dollar"></i> Billing & Invoices
     </h1>
     <p class="page-description">Manage invoices, track payments, and monitor billing status</p>
+</div>
+
+<!-- Stripe Integration Status -->
+<div class="stripe-status-bar <?= $stripeConfigured ? 'configured' : 'not-configured' ?>">
+    <div class="stripe-status-icon">
+        <i class="fab fa-stripe-s"></i>
+    </div>
+    <div class="stripe-status-info">
+        <?php if ($stripeConfigured): ?>
+            <strong>Stripe Payment Processing Active</strong>
+            <span>Currency: <?= htmlspecialchars($currency) ?> | Tax: <?= htmlspecialchars($taxName) ?> (<?= number_format($taxRate, 2) ?>%)</span>
+        <?php else: ?>
+            <strong>Stripe Not Configured</strong>
+            <span>Configure Stripe in <a href="?page=system_tools&tab=payments">System Tools → Payments</a> to enable online payments</span>
+        <?php endif; ?>
+    </div>
+    <?php if ($stripeConfigured): ?>
+    <div class="stripe-status-badge active">
+        <i class="fas fa-check-circle"></i> Active
+    </div>
+    <?php else: ?>
+    <div class="stripe-status-badge inactive">
+        <i class="fas fa-times-circle"></i> Inactive
+    </div>
+    <?php endif; ?>
 </div>
 
 <div class="billing-content">
@@ -146,6 +179,9 @@ try {
                                         <button class="btn-icon" title="View" data-action="view-invoice" data-invoice-id="<?= $invoice['id'] ?>"><i class="fas fa-eye"></i></button>
                                         <button class="btn-icon" title="Download" data-action="download-invoice" data-invoice-id="<?= $invoice['id'] ?>"><i class="fas fa-download"></i></button>
                                         <button class="btn-icon" title="Email" data-action="email-invoice" data-invoice-id="<?= $invoice['id'] ?>"><i class="fas fa-envelope"></i></button>
+                                        <?php if ($stripeConfigured && $invoice['status'] !== 'paid'): ?>
+                                        <button class="btn-icon stripe-pay" title="Send Stripe Payment Link" data-action="stripe-payment-link" data-invoice-id="<?= $invoice['id'] ?>" data-amount="<?= $invoice['total_amount'] ?>" data-email="<?= htmlspecialchars($invoice['email']) ?>"><i class="fab fa-stripe-s"></i></button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -193,6 +229,103 @@ try {
 </div>
 
 <style>
+/* Stripe Status Bar */
+.stripe-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 1px solid;
+}
+
+.stripe-status-bar.configured {
+    background: rgba(99, 91, 255, 0.1);
+    border-color: rgba(99, 91, 255, 0.3);
+}
+
+.stripe-status-bar.not-configured {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.stripe-status-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.stripe-status-bar.configured .stripe-status-icon {
+    background: rgba(99, 91, 255, 0.2);
+    color: #635BFF;
+}
+
+.stripe-status-bar.not-configured .stripe-status-icon {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.stripe-status-info {
+    flex: 1;
+}
+
+.stripe-status-info strong {
+    display: block;
+    font-size: 14px;
+    color: var(--text-white);
+    margin-bottom: 4px;
+}
+
+.stripe-status-info span {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.stripe-status-info a {
+    color: #8B5CF6;
+    text-decoration: none;
+}
+
+.stripe-status-info a:hover {
+    text-decoration: underline;
+}
+
+.stripe-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.stripe-status-badge.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.stripe-status-badge.inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+/* Stripe Pay Button */
+.btn-icon.stripe-pay {
+    color: #635BFF;
+}
+
+.btn-icon.stripe-pay:hover {
+    background: rgba(99, 91, 255, 0.15);
+    color: #7C3AED;
+}
+
 /* Billing Statistics Cards */
 .billing-stats {
     display: grid;
