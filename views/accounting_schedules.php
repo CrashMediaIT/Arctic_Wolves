@@ -698,8 +698,8 @@
 </div>
 
 <?php
-// Encode schedules data for JavaScript
-$schedulesJson = json_encode($activeSchedules);
+// Encode schedules data for JavaScript with XSS protection
+$schedulesJson = json_encode($activeSchedules, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>
 
 <script>

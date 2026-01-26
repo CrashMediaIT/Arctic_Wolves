@@ -626,7 +626,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-action="export-mileage"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
-            window.location.href = 'process_mileage.php?action=export_csv&start_date=<?= date("Y-m-01") ?>&end_date=<?= date("Y-m-t") ?>';
+            var startDate = '<?= htmlspecialchars(date("Y-m-01"), ENT_QUOTES) ?>';
+            var endDate = '<?= htmlspecialchars(date("Y-m-t"), ENT_QUOTES) ?>';
+            window.location.href = 'process_mileage.php?action=export_csv&start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
         });
     });
 });
