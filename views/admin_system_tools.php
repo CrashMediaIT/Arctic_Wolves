@@ -2,16 +2,34 @@
 <?php
 $activeTab = $_GET['tab'] ?? 'settings';
 
-// Fetch system settings from database (if stored there)
+// Fetch system settings from database
 try {
-    // You could have a settings table, for now using defaults
-    $settings = [
+    $settings_query = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+    $settings = [];
+    while ($row = $settings_query->fetch(PDO::FETCH_ASSOC)) {
+        $settings[$row['setting_key']] = $row['setting_value'];
+    }
+    
+    // Set defaults for missing settings
+    $defaults = [
         'site_title' => 'Arctic Wolves',
         'site_email' => 'info@arcticwolves.ca',
         'session_duration' => 60,
-        'notifications_enabled' => true,
-        'maintenance_mode' => false
+        'notifications_enabled' => '1',
+        'maintenance_mode' => '0',
+        'mileage_rate_per_km' => '0.68',
+        'mileage_rate_per_mile' => '1.10',
+        'mileage_unit' => 'km',
+        'smtp_port' => '587',
+        'smtp_encryption' => 'tls',
+        'smtp_from_name' => 'Arctic Wolves'
     ];
+    
+    foreach ($defaults as $key => $value) {
+        if (!isset($settings[$key])) {
+            $settings[$key] = $value;
+        }
+    }
 } catch (PDOException $e) {
     error_log("Settings fetch error: " . $e->getMessage());
     $settings = [];
@@ -68,6 +86,23 @@ try {
             </a>
         </div>
     </div>
+
+    <!-- Success/Error Messages -->
+    <?php if (isset($_GET['success'])): ?>
+    <div class="alert alert-success" style="margin-bottom: 24px;">
+        <i class="fas fa-check-circle"></i>
+        <span>Settings saved successfully!</span>
+        <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>
+    </div>
+    <?php endif; ?>
+    
+    <?php if (isset($_GET['error'])): ?>
+    <div class="alert alert-error" style="margin-bottom: 24px;">
+        <i class="fas fa-exclamation-circle"></i>
+        <span><?php echo htmlspecialchars($_GET['error']); ?></span>
+        <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>
+    </div>
+    <?php endif; ?>
 
     <!-- Settings Tab -->
     <div class="tab-content <?php echo $activeTab === 'settings' ? 'active' : ''; ?>" id="settings-tab">
@@ -152,6 +187,16 @@ try {
                     <div class="settings-list">
                         <div class="setting-item">
                             <div class="setting-info">
+                                <h4>Default Mileage Unit</h4>
+                                <p>Select the default unit for displaying distances in travel logs</p>
+                            </div>
+                            <select name="mileage_unit" class="form-input" style="width: auto; min-width: 200px;">
+                                <option value="km" <?php echo ($settings['mileage_unit'] ?? 'km') === 'km' ? 'selected' : ''; ?>>Kilometers (km)</option>
+                                <option value="miles" <?php echo ($settings['mileage_unit'] ?? 'km') === 'miles' ? 'selected' : ''; ?>>Miles (mi)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
                                 <h4>Rate per Kilometer</h4>
                                 <p>Reimbursement rate for travel in kilometers (CAD)</p>
                             </div>
@@ -183,7 +228,43 @@ try {
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary" data-action="save">
-                            <i class="fas fa-save"></i> Save Mileage Rates
+                            <i class="fas fa-save"></i> Save Mileage Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Google Maps API Configuration -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-map-marker-alt"></i> Google Maps API</h3>
+            </div>
+            <div class="card-body">
+                <form id="google-maps-form" method="POST" action="process_settings.php" data-form-type="google-maps">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_google_maps">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Google Maps API Key</h4>
+                                <p>Used for location autocomplete and distance calculations in travel logs</p>
+                            </div>
+                            <input type="text" name="google_maps_api_key" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['google_maps_api_key'] ?? ''); ?>"
+                                   placeholder="Enter your Google Maps API key" style="min-width: 300px;">
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <p>To obtain a Google Maps API key, visit the <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" style="color: #8B5CF6;">Google Cloud Console</a>. Enable the Maps JavaScript API and Places API for location autocomplete and distance calculations.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="testGoogleMapsAPI()">
+                            <i class="fas fa-vial"></i> Test API Key
+                        </button>
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save API Key
                         </button>
                     </div>
                 </form>
@@ -201,6 +282,7 @@ try {
                 <form id="smtp-form" method="POST" action="process_settings.php" data-form-type="smtp">
                     <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="update_smtp">
+                    <input type="hidden" name="redirect_page" value="system_tools">
                     <div class="settings-list">
                         <div class="setting-item">
                             <div class="setting-info">
@@ -225,8 +307,8 @@ try {
                                 <h4>SMTP Username</h4>
                                 <p>Email account username or address</p>
                             </div>
-                            <input type="text" name="smtp_username" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['smtp_username'] ?? ''); ?>"
+                            <input type="text" name="smtp_user" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['smtp_user'] ?? ''); ?>"
                                    placeholder="user@example.com">
                         </div>
                         <div class="setting-item">
@@ -234,8 +316,8 @@ try {
                                 <h4>SMTP Password</h4>
                                 <p>Email account password or app password</p>
                             </div>
-                            <input type="password" name="smtp_password" class="form-input" 
-                                   value="<?php echo !empty($settings['smtp_password']) ? '********' : ''; ?>"
+                            <input type="password" name="smtp_pass" class="form-input" 
+                                   value="<?php echo !empty($settings['smtp_pass']) ? '********' : ''; ?>"
                                    placeholder="Enter password">
                         </div>
                         <div class="setting-item">
@@ -671,12 +753,116 @@ document.addEventListener('DOMContentLoaded', function() {
         loadDemoDataCount();
     }
 });
+
+// Test SMTP Connection
+function testSmtpConnection() {
+    const testEmail = prompt('Enter an email address to send a test email to:');
+    if (!testEmail) return;
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=test_smtp&test_email=${encodeURIComponent(testEmail)}&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            alert('✓ Test email sent successfully!\n\nCheck your inbox for the test email.');
+        } else {
+            alert('✗ Failed to send test email:\n\n' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: Failed to test SMTP connection');
+        console.error('Error:', error);
+    });
+}
+
+// Test Google Maps API Key
+function testGoogleMapsAPI() {
+    const apiKeyInput = document.querySelector('input[name="google_maps_api_key"]');
+    const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+    
+    if (!apiKey) {
+        alert('Please enter a Google Maps API key first.');
+        return;
+    }
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    // Test by loading a simple geocode request
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/geocode/json?address=test&key=${encodeURIComponent(apiKey)}`;
+    
+    // Use a fetch request instead
+    fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=Toronto,Canada&key=${encodeURIComponent(apiKey)}`)
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.status === 'OK' || data.status === 'ZERO_RESULTS') {
+            alert('✓ Google Maps API key is valid!\n\nThe API key is working correctly.');
+        } else if (data.status === 'REQUEST_DENIED') {
+            alert('✗ API Key Invalid or Restricted\n\n' + (data.error_message || 'Please check your API key and ensure the Geocoding API is enabled.'));
+        } else {
+            alert('✗ API Test Result: ' + data.status + '\n\n' + (data.error_message || 'Please check your API key configuration.'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('✗ Failed to test Google Maps API\n\nPlease check your network connection and API key.');
+        console.error('Error:', error);
+    });
+}
 </script>
 
 <style>
 /* =========================================================
    SYSTEM TOOLS - Enhanced Modern Design
    ========================================================= */
+
+/* Alert Styles */
+.alert {
+    padding: 16px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid #10b981;
+    color: #10b981;
+}
+
+.alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid #ef4444;
+    color: #ef4444;
+}
 
 /* Page Header Styles */
 .system-tools-page-header {

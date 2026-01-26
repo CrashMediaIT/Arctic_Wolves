@@ -57,7 +57,13 @@ try {
             updateSetting($pdo, 'smtp_from_email', $smtp_from_email);
             updateSetting($pdo, 'smtp_from_name', $smtp_from_name);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            // Redirect back to the appropriate page
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=smtp&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
             exit;
             
         case 'test_smtp':
@@ -202,17 +208,24 @@ try {
             $api_key = trim($_POST['google_maps_api_key']);
             updateSetting($pdo, 'google_maps_api_key', $api_key);
             
-            header('Location: dashboard.php?page=settings&success=1');
+            header('Location: dashboard.php?page=system_tools&tab=mileage&success=1');
             exit;
             
         case 'update_mileage_rates':
             $rate_km = floatval($_POST['mileage_rate_per_km']);
             $rate_mile = floatval($_POST['mileage_rate_per_mile']);
+            $mileage_unit = trim($_POST['mileage_unit'] ?? 'km');
+            
+            // Validate mileage unit
+            if (!in_array($mileage_unit, ['km', 'miles'])) {
+                $mileage_unit = 'km';
+            }
             
             updateSetting($pdo, 'mileage_rate_per_km', $rate_km);
             updateSetting($pdo, 'mileage_rate_per_mile', $rate_mile);
+            updateSetting($pdo, 'mileage_unit', $mileage_unit);
             
-            header('Location: dashboard.php?page=settings&success=1');
+            header('Location: dashboard.php?page=system_tools&tab=mileage&success=1');
             exit;
             
         case 'update_github_settings':

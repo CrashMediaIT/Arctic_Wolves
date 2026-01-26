@@ -12,6 +12,10 @@ if ($user_role !== 'admin') {
     exit;
 }
 
+// Get Google Maps API key from system settings
+$api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+$google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+
 // Get all locations
 $locations = $pdo->query("
     SELECT l.*, 
@@ -330,7 +334,7 @@ $locations = $pdo->query("
 
 <script>
 // Google Places API Configuration
-const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE'; // Replace with actual API key
+const GOOGLE_API_KEY = '<?php echo htmlspecialchars($google_maps_api_key, ENT_QUOTES); ?>';
 let placesService = null;
 
 function initPlacesSearch() {
