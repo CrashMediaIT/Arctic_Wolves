@@ -4,20 +4,19 @@ require_once 'db_config.php';
 require_once 'security.php';
 
 // Apply security headers
-applySecurityHeaders();
+setSecurityHeaders();
 
 // Check if user is logged in and has admin permissions
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
     header("Location: login.php");
     exit;
 }
 
-requirePermission($pdo, $_SESSION['user_id'], $_SESSION['role'], 'admin.manage_settings');
+requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'admin.manage_settings');
 
-// Verify CSRF token
-if (!isset($_POST['csrf_token']) || !verifyCSRFToken($_POST['csrf_token'])) {
-    header("Location: dashboard.php?page=admin_plan_categories&error=" . urlencode("Invalid security token"));
-    exit;
+// Verify CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
 }
 
 $action = $_POST['action'] ?? '';

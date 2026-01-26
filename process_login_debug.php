@@ -6,10 +6,24 @@ error_reporting(E_ALL);
 
 session_start();
 require 'db_config.php';
+require 'security.php';
+
+// Generate CSRF token for this session
+generateCSRFToken();
 
 echo "<h2>Login Debugger</h2>";
 
+// Warning message
+echo "<div style='background: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin: 10px 0;'>";
+echo "<strong>⚠️ Warning:</strong> This is a debug tool. Disable in production.";
+echo "</div>";
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+        die("<span style='color:red'>Error: Invalid CSRF token. Please refresh and try again.</span>");
+    }
+    
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
