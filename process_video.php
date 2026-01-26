@@ -4,25 +4,28 @@
  * Handles video upload, update, and deletion operations
  */
 
+session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once 'csrf_protection.php';
 require_once 'lib/file_upload_validator.php';
 
-// Validate session and user
-validateSession();
-$user_id = $_SESSION['user_id'] ?? null;
-$user_role = $_SESSION['role'] ?? null;
+// Set security headers
+setSecurityHeaders();
 
-if (!$user_id) {
+// Check if user is logged in
+if (!isset($_SESSION['logged_in']) || !isset($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Unauthorized access']);
     exit;
 }
 
+$user_id = $_SESSION['user_id'];
+$user_role = $_SESSION['user_role'] ?? 'athlete';
+
 // Validate CSRF token for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    validateCSRFToken();
+    checkCsrfToken();
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -61,9 +64,10 @@ try {
 function handleVideoUpload() {
     global $pdo, $user_id, $user_role;
     
-    // Only coaches can upload review videos
-    if ($user_role !== 'coach') {
-        throw new Exception('Only coaches can upload review videos');
+    // Only coaches, health coaches, and admins can upload review videos
+    $allowed_roles = ['coach', 'health_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('You do not have permission to upload review videos');
     }
     
     // Validate required fields
@@ -234,8 +238,10 @@ function handleVideoDelete() {
 function handleVideoReview() {
     global $pdo, $user_id, $user_role;
     
-    if ($user_role !== 'coach') {
-        throw new Exception('Only coaches can review videos');
+    // Only coaches, health coaches, and admins can review videos
+    $allowed_roles = ['coach', 'health_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('You do not have permission to review videos');
     }
     
     $video_id = filter_input(INPUT_POST, 'video_id', FILTER_VALIDATE_INT);
