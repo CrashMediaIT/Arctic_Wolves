@@ -136,7 +136,7 @@ try {
 <!-- System Notifications Banner -->
 <div class="system-notifications-widget">
     <?php foreach ($systemNotifications as $sysNotif): ?>
-        <div class="system-alert system-alert-<?php echo htmlspecialchars($sysNotif['notification_type']); ?>">
+        <div class="system-alert system-alert-<?php echo htmlspecialchars($sysNotif['notification_type']); ?>" id="system-alert-<?php echo (int)$sysNotif['id']; ?>">
             <div class="system-alert-icon">
                 <?php 
                 $icon = 'info-circle';
@@ -146,7 +146,7 @@ try {
                     case 'maintenance': $icon = 'tools'; break;
                 }
                 ?>
-                <i class="fas fa-<?php echo $icon; ?>"></i>
+                <i class="fas fa-<?php echo $icon; ?>" aria-hidden="true"></i>
             </div>
             <div class="system-alert-content">
                 <strong><?php echo htmlspecialchars($sysNotif['title']); ?></strong>
@@ -155,12 +155,46 @@ try {
                     <small>Until <?php echo date('M j, Y g:i A', strtotime($sysNotif['end_date'])); ?></small>
                 <?php endif; ?>
             </div>
-            <button class="system-alert-dismiss" onclick="this.parentElement.style.display='none'" title="Dismiss">
-                <i class="fas fa-times"></i>
+            <button class="system-alert-dismiss" 
+                    aria-label="Dismiss notification: <?php echo htmlspecialchars($sysNotif['title']); ?>"
+                    data-notification-id="<?php echo (int)$sysNotif['id']; ?>">
+                <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
     <?php endforeach; ?>
 </div>
+
+<script>
+// System notification dismiss handler
+document.querySelectorAll('.system-alert-dismiss').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var alert = this.closest('.system-alert');
+        var notifId = this.getAttribute('data-notification-id');
+        if (alert) {
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateX(100%)';
+            setTimeout(function() { alert.style.display = 'none'; }, 300);
+            // Store dismissed notification in sessionStorage to persist during session
+            if (notifId) {
+                var dismissed = JSON.parse(sessionStorage.getItem('dismissedNotifications') || '[]');
+                if (!dismissed.includes(notifId)) {
+                    dismissed.push(notifId);
+                    sessionStorage.setItem('dismissedNotifications', JSON.stringify(dismissed));
+                }
+            }
+        }
+    });
+});
+
+// Hide already dismissed notifications on page load
+document.addEventListener('DOMContentLoaded', function() {
+    var dismissed = JSON.parse(sessionStorage.getItem('dismissedNotifications') || '[]');
+    dismissed.forEach(function(id) {
+        var alert = document.getElementById('system-alert-' + id);
+        if (alert) alert.style.display = 'none';
+    });
+});
+</script>
 
 <style>
 /* System Notifications Widget */
@@ -180,6 +214,7 @@ try {
     border-left: 4px solid;
     position: relative;
     animation: slideIn 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .system-alert-info {

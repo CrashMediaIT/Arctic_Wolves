@@ -876,7 +876,7 @@ try {
 
 <script>
 // Store categories and skills data for client-side lookup
-var categoriesData = <?php echo json_encode(array_values($categories)); ?>;
+var categoriesData = <?php echo json_encode(array_values($categories), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 var skillsData = <?php 
     $allSkills = [];
     foreach ($skillsByCategory as $catId => $skills) {
@@ -885,7 +885,7 @@ var skillsData = <?php
             $allSkills[] = $skill;
         }
     }
-    echo json_encode($allSkills);
+    echo json_encode($allSkills, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>;
 
 document.addEventListener('DOMContentLoaded', function() {
