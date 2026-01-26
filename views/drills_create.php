@@ -1,9 +1,28 @@
-<!-- Create Drill View -->
+<!-- Create/Edit Drill View -->
+<?php
+$editDrillId = $_GET['edit'] ?? null;
+$editingDrill = null;
+$isEditMode = false;
+
+if ($editDrillId) {
+    // Fetch drill data for editing
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM drills WHERE id = ?");
+        $stmt->execute([$editDrillId]);
+        $editingDrill = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($editingDrill) {
+            $isEditMode = true;
+        }
+    } catch (PDOException $e) {
+        error_log("Error fetching drill for edit: " . $e->getMessage());
+    }
+}
+?>
 <div class="page-header">
     <h1 class="page-title">
-        <i class="fas fa-plus-circle"></i> Create New Drill
+        <i class="fas fa-<?php echo $isEditMode ? 'edit' : 'plus-circle'; ?>"></i> <?php echo $isEditMode ? 'Edit Drill' : 'Create New Drill'; ?>
     </h1>
-    <p class="page-description">Design a custom drill with the interactive tool</p>
+    <p class="page-description"><?php echo $isEditMode ? 'Modify the drill using the interactive designer' : 'Design a custom drill with the interactive tool'; ?></p>
 </div>
 
 <div class="create-drill-content">
@@ -112,26 +131,28 @@
             <div class="card-body">
                 <form class="drill-form" method="POST" action="process_drills.php">
                     <?= csrfTokenInput() ?>
-                    <input type="hidden" name="action" value="create">
-                    <input type="hidden" name="diagram_data" id="diagram_data" value="">
+                    <input type="hidden" name="action" value="<?php echo $isEditMode ? 'update' : 'create'; ?>">
+                    <?php if ($isEditMode): ?>
+                    <input type="hidden" name="drill_id" value="<?php echo htmlspecialchars($editingDrill['id']); ?>">
+                    <?php endif; ?>
+                    <input type="hidden" name="diagram_data" id="diagram_data" value="<?php echo htmlspecialchars($editingDrill['diagram_data'] ?? ''); ?>">
                     
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Drill Name *</label>
-                            <input type="text" name="drill_name" class="form-input" placeholder="Enter drill name" required>
+                            <input type="text" name="drill_name" class="form-input" placeholder="Enter drill name" required value="<?php echo htmlspecialchars($editingDrill['title'] ?? ''); ?>">
                         </div>
 
                         <div class="form-group">
                             <label>Category *</label>
                             <select name="category" class="form-input" required>
                                 <option value="">-- Select Category --</option>
-                                <option>Skating</option>
-                                <option>Shooting</option>
-                                <option>Passing</option>
-                                <option>Stickhandling</option>
-                                <option>Defensive</option>
-                                <option>Offensive</option>
-                                <option>Conditioning</option>
+                                <?php 
+                                $cats = ['Skating', 'Shooting', 'Passing', 'Stickhandling', 'Defensive', 'Offensive', 'Conditioning'];
+                                $currentCat = $editingDrill['category'] ?? '';
+                                foreach ($cats as $cat): ?>
+                                <option <?php echo ($currentCat === $cat) ? 'selected' : ''; ?>><?php echo $cat; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
 
@@ -139,55 +160,59 @@
                             <label>Skill Level *</label>
                             <select name="skill_level" class="form-input" required>
                                 <option value="">-- Select Level --</option>
-                                <option>Beginner</option>
-                                <option>Intermediate</option>
-                                <option>Advanced</option>
+                                <?php
+                                $levels = ['Beginner', 'Intermediate', 'Advanced'];
+                                $currentLevel = $editingDrill['skill_level'] ?? '';
+                                foreach ($levels as $level): ?>
+                                <option <?php echo ($currentLevel === $level) ? 'selected' : ''; ?>><?php echo $level; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
 
                         <div class="form-group">
                             <label>Duration (minutes)</label>
-                            <input type="number" name="duration" class="form-input" placeholder="10" min="1">
+                            <input type="number" name="duration" class="form-input" placeholder="10" min="1" value="<?php echo htmlspecialchars($editingDrill['duration'] ?? ''); ?>">
                         </div>
 
                         <div class="form-group">
                             <label>Number of Players</label>
-                            <input type="text" name="num_players" class="form-input" placeholder="e.g., 6-18">
+                            <input type="text" name="num_players" class="form-input" placeholder="e.g., 6-18" value="<?php echo htmlspecialchars($editingDrill['num_players'] ?? ''); ?>">
                         </div>
 
                         <div class="form-group">
                             <label>Tags (comma separated)</label>
-                            <input type="text" name="tags" class="form-input" placeholder="e.g., warmup, power play, breakout">
+                            <input type="text" name="tags" class="form-input" placeholder="e.g., warmup, power play, breakout" value="<?php echo htmlspecialchars($editingDrill['tags'] ?? ''); ?>">
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label>Description *</label>
-                        <textarea name="description" class="form-textarea" rows="3" placeholder="Describe the drill objectives and key points..." required></textarea>
+                        <textarea name="description" class="form-textarea" rows="3" placeholder="Describe the drill objectives and key points..." required><?php echo htmlspecialchars($editingDrill['description'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="form-group">
                         <label>Instructions</label>
-                        <textarea name="instructions" class="form-textarea" rows="4" placeholder="Step-by-step instructions for executing the drill..."></textarea>
+                        <textarea name="instructions" class="form-textarea" rows="4" placeholder="Step-by-step instructions for executing the drill..."><?php echo htmlspecialchars($editingDrill['instructions'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="form-group">
                         <label>Equipment Needed</label>
+                        <?php $equipment = explode(',', $editingDrill['equipment'] ?? ''); ?>
                         <div class="equipment-tags">
                             <label class="checkbox-tag">
-                                <input type="checkbox" name="equipment[]" value="pucks">
+                                <input type="checkbox" name="equipment[]" value="pucks" <?php echo in_array('pucks', $equipment) ? 'checked' : ''; ?>>
                                 <span><i class="fas fa-hockey-puck"></i> Pucks</span>
                             </label>
                             <label class="checkbox-tag">
-                                <input type="checkbox" name="equipment[]" value="cones">
+                                <input type="checkbox" name="equipment[]" value="cones" <?php echo in_array('cones', $equipment) ? 'checked' : ''; ?>>
                                 <span><i class="fas fa-traffic-cone"></i> Cones</span>
                             </label>
                             <label class="checkbox-tag">
-                                <input type="checkbox" name="equipment[]" value="nets">
+                                <input type="checkbox" name="equipment[]" value="nets" <?php echo in_array('nets', $equipment) ? 'checked' : ''; ?>>
                                 <span><i class="fas fa-bullseye"></i> Nets</span>
                             </label>
                             <label class="checkbox-tag">
-                                <input type="checkbox" name="equipment[]" value="sticks">
+                                <input type="checkbox" name="equipment[]" value="sticks" <?php echo in_array('sticks', $equipment) ? 'checked' : ''; ?>>
                                 <span><i class="fas fa-hockey-stick"></i> Extra Sticks</span>
                             </label>
                         </div>
@@ -201,8 +226,10 @@
     <div class="form-actions-bar">
         <button type="button" class="btn btn-secondary" onclick="cancelDrillCreation()"><i class="fas fa-times"></i> Cancel</button>
         <div class="action-group">
+            <?php if (!$isEditMode): ?>
             <button type="button" class="btn btn-secondary" onclick="saveDrillDraft()"><i class="fas fa-save"></i> Save Draft</button>
-            <button type="button" class="btn btn-primary" onclick="submitDrillForm()"><i class="fas fa-check"></i> Create Drill</button>
+            <?php endif; ?>
+            <button type="button" class="btn btn-primary" onclick="submitDrillForm()"><i class="fas fa-check"></i> <?php echo $isEditMode ? 'Update Drill' : 'Create Drill'; ?></button>
         </div>
     </div>
 </div>
@@ -521,6 +548,60 @@ function saveDrillDraft() {
 
 // Load draft on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're in edit mode by looking at URL params or sessionStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    
+    // Helper function to load diagram data into designer
+    function loadDiagramIntoDesigner(diagramDataStr) {
+        if (diagramDataStr && window.drillDesigner) {
+            try {
+                window.drillDesigner.loadDiagramData(diagramDataStr);
+                return true;
+            } catch (e) {
+                console.log('Failed to load diagram data:', e);
+                return false;
+            }
+        }
+        return false;
+    }
+    
+    // If in edit mode, load diagram data after designer initializes
+    if (editId) {
+        // Wait for drill designer to initialize
+        const waitForDesigner = setInterval(function() {
+            if (window.drillDesigner) {
+                clearInterval(waitForDesigner);
+                
+                // First try to load from hidden input (PHP-rendered data)
+                const diagramDataInput = document.getElementById('diagram_data');
+                if (diagramDataInput && diagramDataInput.value) {
+                    loadDiagramIntoDesigner(diagramDataInput.value);
+                }
+                
+                // Also check sessionStorage for drill data passed from library
+                const editDrill = sessionStorage.getItem('editDrill');
+                if (editDrill) {
+                    try {
+                        const drillData = JSON.parse(editDrill);
+                        if (drillData.diagram_data) {
+                            loadDiagramIntoDesigner(drillData.diagram_data);
+                        }
+                        sessionStorage.removeItem('editDrill');
+                    } catch (e) {
+                        console.log('Failed to parse drill from sessionStorage');
+                    }
+                }
+            }
+        }, 100);
+        
+        // Safety timeout to stop checking after 5 seconds
+        setTimeout(function() { clearInterval(waitForDesigner); }, 5000);
+        
+        return; // Skip draft loading when in edit mode
+    }
+    
+    // Load draft if not in edit mode
     const draft = localStorage.getItem('drill_draft');
     if (draft) {
         const loadDraft = confirm('You have a saved draft. Would you like to load it?');

@@ -362,12 +362,17 @@ try {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 8px;
-    color: var(--text-secondary);
+    color: #9ca3af;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+}
+
+.category-actions .btn-icon i {
+    font-size: 14px;
+    color: inherit;
 }
 
 .category-actions .btn-icon:hover {
@@ -465,12 +470,17 @@ try {
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 6px;
-    color: var(--text-secondary);
+    color: #9ca3af;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+}
+
+.criteria-actions .btn-icon i {
+    font-size: 13px;
+    color: inherit;
 }
 
 .criteria-actions .btn-icon:hover {
