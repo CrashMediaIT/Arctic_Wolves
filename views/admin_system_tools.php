@@ -699,7 +699,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .page-header-icon {
     width: 56px;
     height: 56px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    background: linear-gradient(135deg, var(--primary), #8B5CF6);
     border-radius: 16px;
     display: flex;
     align-items: center;
@@ -714,11 +714,12 @@ document.addEventListener('DOMContentLoaded', function() {
     font-weight: 800;
     margin: 0 0 4px 0;
     letter-spacing: -0.5px;
+    color: var(--text-white);
 }
 
 .page-header-text p {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: #9ca3af;
     margin: 0;
 }
 
@@ -751,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
     background: transparent;
     border: none;
     border-radius: 10px;
-    color: var(--text-secondary);
+    color: #9ca3af;
     font-family: 'Inter', sans-serif;
     font-size: 14px;
     font-weight: 600;
@@ -762,7 +763,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .tools-tab-link:hover {
     background: rgba(107, 70, 193, 0.1);
-    color: var(--text-primary);
+    color: var(--text-white);
 }
 
 .tools-tab-link.active {
@@ -868,7 +869,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .tab-content .card-header h3 i {
-    color: var(--primary-light);
+    color: #8B5CF6;
 }
 
 .tab-content .card-body {
@@ -907,13 +908,13 @@ document.addEventListener('DOMContentLoaded', function() {
 .setting-info h4 {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-white);
     margin: 0 0 4px 0;
 }
 
 .setting-info p {
     font-size: 13px;
-    color: var(--text-muted);
+    color: var(--text-dim);
     margin: 0;
 }
 
@@ -947,7 +948,7 @@ document.addEventListener('DOMContentLoaded', function() {
     text-align: center;
     font-size: 18px;
     font-weight: 700;
-    color: var(--primary-light);
+    color: #8B5CF6;
 }
 
 .rate-input-group .form-input:focus {

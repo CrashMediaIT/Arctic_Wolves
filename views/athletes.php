@@ -86,241 +86,411 @@ $age_groups = $age_groups_stmt->fetchAll();
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
-    .page-header {
+    /* =========================================================
+       ATHLETES PAGE - Modern Enhanced Design
+       ========================================================= */
+    
+    /* Page Header Enhancement */
+    .athletes-page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--border, #2d2d3f);
     }
-    .page-title {
+    
+    .page-header-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .page-header-icon {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, #6B46C1, #7C3AED);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+    }
+    
+    .page-header-text h1 {
         font-size: 28px;
-        font-weight: 900;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
         color: #fff;
     }
+    
+    .page-header-text p {
+        font-size: 14px;
+        color: #9ca3af;
+        margin: 0;
+    }
+    
     .btn-create {
-        background: var(--primary);
+        background: #6B46C1;
         color: #fff;
         padding: 12px 24px;
-        border-radius: 6px;
+        border-radius: 8px;
         text-decoration: none;
         font-weight: 700;
         font-size: 14px;
-        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
     }
+    
     .btn-create:hover {
-        background: #e64500;
+        background: #7C3AED;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(107, 70, 193, 0.4);
     }
+    
+    /* Stats Summary Enhancement */
     .stats-summary {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
-        margin-bottom: 24px;
+        margin-bottom: 28px;
     }
+    
     .summary-card {
-        background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
-        border-radius: 8px;
-        padding: 20px;
+        background: linear-gradient(135deg, #6B46C1 0%, #4a0070 100%);
+        border-radius: 12px;
+        padding: 24px;
         color: #fff;
+        box-shadow: 0 8px 24px rgba(107, 70, 193, 0.2);
+        transition: all 0.3s ease;
     }
+    
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(107, 70, 193, 0.3);
+    }
+    
     .summary-value {
-        font-size: 32px;
+        font-size: 36px;
         font-weight: 900;
-        margin-bottom: 5px;
+        margin-bottom: 6px;
+        letter-spacing: -1px;
     }
+    
     .summary-label {
         font-size: 13px;
         opacity: 0.9;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
+    
+    /* Athletes Grid Enhancement */
     .athletes-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 24px;
     }
+    
     .athlete-card {
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
+        background: #16161f;
+        border: 1px solid #2d2d3f;
+        border-radius: 12px;
         padding: 24px;
-        transition: all 0.2s;
+        transition: all 0.3s ease;
     }
+    
     .athlete-card:hover {
-        border-color: var(--primary);
-        transform: translateY(-2px);
+        border-color: #6B46C1;
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(107, 70, 193, 0.2);
     }
+    
     .athlete-header {
         display: flex;
         gap: 20px;
         margin-bottom: 20px;
     }
+    
     .athlete-avatar {
-        width: 80px;
-        height: 80px;
-        background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
+        width: 72px;
+        height: 72px;
+        background: linear-gradient(135deg, #6B46C1 0%, #4a0070 100%);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #fff;
-        font-size: 32px;
+        font-size: 26px;
         font-weight: 900;
         flex-shrink: 0;
+        box-shadow: 0 4px 16px rgba(107, 70, 193, 0.3);
     }
+    
     .athlete-info {
         flex: 1;
     }
+    
     .athlete-name {
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 700;
         color: #fff;
         margin-bottom: 8px;
     }
+    
     .athlete-meta {
         font-size: 13px;
-        color: #64748b;
-        margin-bottom: 5px;
+        color: #9ca3af;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
+    
+    .athlete-meta i {
+        color: #6B46C1;
+        width: 16px;
+        text-align: center;
+    }
+    
+    /* Stats Box Enhancement */
     .athlete-stats {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 15px;
+        gap: 12px;
         margin: 20px 0;
     }
+    
     .stat-box {
-        background: #06080b;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
-        padding: 16px;
+        background: #0d1117;
+        border: 1px solid #2d2d3f;
+        border-radius: 10px;
+        padding: 14px 10px;
         text-align: center;
+        transition: all 0.3s ease;
     }
+    
+    .stat-box:hover {
+        border-color: #6B46C1;
+    }
+    
     .stat-value {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 900;
-        color: var(--primary);
+        color: #6B46C1;
         display: block;
+        margin-bottom: 4px;
     }
+    
     .stat-label {
         font-size: 11px;
-        color: #64748b;
+        color: #9ca3af;
         text-transform: uppercase;
         font-weight: 700;
-        margin-top: 5px;
+        letter-spacing: 0.5px;
     }
+    
+    /* Action Buttons Enhancement */
     .athlete-actions {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
     }
+    
     .btn-action {
-        padding: 10px;
-        background: var(--primary);
+        padding: 11px 14px;
+        background: #6B46C1;
         color: #fff;
         text-align: center;
-        border-radius: 6px;
+        border-radius: 8px;
         text-decoration: none;
         font-weight: 600;
         font-size: 13px;
-        transition: all 0.2s;
+        transition: all 0.3s ease;
         border: none;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
     }
+    
     .btn-action:hover {
-        background: #e64500;
+        background: #7C3AED;
+        transform: translateY(-1px);
     }
+    
     .btn-action.secondary {
         background: transparent;
-        border: 1px solid var(--primary);
-        color: var(--primary);
+        border: 1px solid #2d2d3f;
+        color: #e0e0e0;
     }
+    
     .btn-action.secondary:hover {
-        background: var(--primary);
-        color: #fff;
+        background: rgba(107, 70, 193, 0.1);
+        border-color: #6B46C1;
+        color: #6B46C1;
     }
+    
+    /* Empty State Enhancement */
     .empty-state {
         text-align: center;
         padding: 60px 20px;
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
+        background: #16161f;
+        border: 1px solid #2d2d3f;
+        border-radius: 12px;
     }
+    
     .empty-state i {
         font-size: 64px;
-        color: #64748b;
-        opacity: 0.3;
+        color: #6B46C1;
+        opacity: 0.4;
         margin-bottom: 20px;
+        display: block;
     }
+    
+    .empty-state h2 {
+        font-size: 22px;
+        color: #fff;
+        margin-bottom: 10px;
+    }
+    
+    .empty-state p {
+        color: #9ca3af;
+        font-size: 14px;
+    }
+    
+    /* Filter Bar Enhancement */
     .filter-bar {
-        background: #0a0f14;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
+        background: #16161f;
+        border: 1px solid #2d2d3f;
+        border-radius: 12px;
         padding: 20px;
-        margin-bottom: 24px;
+        margin-bottom: 28px;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
+        gap: 16px;
         align-items: end;
     }
+    
     .filter-group {
         display: flex;
         flex-direction: column;
         gap: 8px;
     }
+    
     .filter-label {
         font-size: 11px;
         font-weight: 700;
-        color: #94a3b8;
+        color: #9ca3af;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
+    
     .filter-control {
-        padding: 10px 12px;
-        background: #06080b;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
+        padding: 12px 14px;
+        background: #0d1117;
+        border: 1px solid #2d2d3f;
+        border-radius: 8px;
         color: #fff;
         font-size: 14px;
+        transition: all 0.3s ease;
     }
+    
     .filter-control:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: #6B46C1;
+        box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
     }
+    
+    .filter-control::placeholder {
+        color: #6b6b7b;
+    }
+    
     .btn-filter {
-        padding: 10px 20px;
-        background: var(--primary);
+        padding: 12px 20px;
+        background: #6B46C1;
         color: #fff;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         font-weight: 700;
         font-size: 13px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
+    
     .btn-filter:hover {
-        background: #5a0085;
+        background: #7C3AED;
     }
+    
     .btn-clear {
-        padding: 10px 20px;
+        padding: 12px 20px;
         background: transparent;
-        color: #94a3b8;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
+        color: #9ca3af;
+        border: 1px solid #2d2d3f;
+        border-radius: 8px;
         font-weight: 700;
         font-size: 13px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
+    
     .btn-clear:hover {
-        border-color: var(--primary);
-        color: var(--primary);
+        border-color: #6B46C1;
+        color: #6B46C1;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .athletes-page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .page-header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .athletes-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .filter-bar {
+            grid-template-columns: 1fr;
+        }
+        
+        .athlete-actions {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-users"></i> My Athletes
-    </h1>
+<div class="athletes-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="page-header-text">
+            <h1>My Athletes</h1>
+            <p>Manage and track your coached athletes</p>
+        </div>
+    </div>
     <?php if ($user_role === 'admin'): ?>
         <a href="?page=manage_athletes&action=create" class="btn-create">
             <i class="fas fa-user-plus"></i> Add Athlete
