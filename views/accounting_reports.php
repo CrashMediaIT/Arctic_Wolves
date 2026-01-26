@@ -39,6 +39,7 @@
                         <select name="report_type" class="form-input" required>
                             <option value="">-- Select Report Type --</option>
                             <option value="revenue_summary">Revenue Summary</option>
+                            <option value="stripe_transactions">Stripe Transactions</option>
                             <option value="expense_report">Expense Report</option>
                             <option value="profit_loss">Profit & Loss</option>
                             <option value="tax_summary">Tax Summary</option>

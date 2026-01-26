@@ -57,7 +57,13 @@ try {
             updateSetting($pdo, 'smtp_from_email', $smtp_from_email);
             updateSetting($pdo, 'smtp_from_name', $smtp_from_name);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            // Redirect back to the appropriate page
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=smtp&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
             exit;
             
         case 'test_smtp':
@@ -79,12 +85,14 @@ try {
             $url = trim($_POST['nextcloud_url']);
             $username = trim($_POST['nextcloud_username']);
             $password = trim($_POST['nextcloud_password']);
-            $folder = trim($_POST['nextcloud_receipt_folder']);
-            $webdav_path = trim($_POST['nextcloud_webdav_path']);
+            $folder = trim($_POST['nextcloud_receipt_folder'] ?? $_POST['nextcloud_folder'] ?? '');
+            $webdav_path = trim($_POST['nextcloud_webdav_path'] ?? '');
             $ocr_enabled = isset($_POST['nextcloud_ocr_enabled']) ? '1' : '0';
+            $auto_sync = isset($_POST['nextcloud_auto_sync']) ? '1' : '0';
             
             updateSetting($pdo, 'nextcloud_url', $url);
             updateSetting($pdo, 'nextcloud_username', $username);
+            // Only update password if a new one is provided
             if (!empty($password)) {
                 // Encrypt password before storing
                 $encrypted_password = encryptPassword($password);
@@ -93,8 +101,15 @@ try {
             updateSetting($pdo, 'nextcloud_receipt_folder', $folder);
             updateSetting($pdo, 'nextcloud_webdav_path', $webdav_path);
             updateSetting($pdo, 'nextcloud_ocr_enabled', $ocr_enabled);
+            updateSetting($pdo, 'nextcloud_auto_sync', $auto_sync);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            // Redirect back to the appropriate page
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=nextcloud&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
             exit;
             
         case 'test_nextcloud':
@@ -140,14 +155,23 @@ try {
             
             // Update Stripe settings
             updateSetting($pdo, 'stripe_publishable_key', $stripe_publishable_key);
-            updateSetting($pdo, 'stripe_secret_key', $stripe_secret_key);
+            // Only update secret key if a new one is provided
+            if (!empty($stripe_secret_key)) {
+                updateSetting($pdo, 'stripe_secret_key', $stripe_secret_key);
+            }
             updateSetting($pdo, 'currency', $currency);
             
             // Update tax settings
             updateSetting($pdo, 'tax_name', $tax_name);
             updateSetting($pdo, 'tax_rate', $tax_rate);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            // Redirect back to the appropriate page
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=payments&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
             exit;
             
         case 'update_security':
@@ -202,17 +226,24 @@ try {
             $api_key = trim($_POST['google_maps_api_key']);
             updateSetting($pdo, 'google_maps_api_key', $api_key);
             
-            header('Location: dashboard.php?page=settings&success=1');
+            header('Location: dashboard.php?page=system_tools&tab=mileage&success=1');
             exit;
             
         case 'update_mileage_rates':
             $rate_km = floatval($_POST['mileage_rate_per_km']);
             $rate_mile = floatval($_POST['mileage_rate_per_mile']);
+            $mileage_unit = trim($_POST['mileage_unit'] ?? 'km');
+            
+            // Validate mileage unit
+            if (!in_array($mileage_unit, ['km', 'miles'])) {
+                $mileage_unit = 'km';
+            }
             
             updateSetting($pdo, 'mileage_rate_per_km', $rate_km);
             updateSetting($pdo, 'mileage_rate_per_mile', $rate_mile);
+            updateSetting($pdo, 'mileage_unit', $mileage_unit);
             
-            header('Location: dashboard.php?page=settings&success=1');
+            header('Location: dashboard.php?page=system_tools&tab=mileage&success=1');
             exit;
             
         case 'update_github_settings':

@@ -186,6 +186,10 @@ function fetchReportData($report_type, $parameters) {
             $data = getRevenueData($parameters);
             break;
             
+        case 'stripe_transactions':
+            $data = getStripeTransactionsData($parameters);
+            break;
+            
         case 'expense_report':
             $data = getExpenseData($parameters);
             break;
@@ -220,6 +224,104 @@ function fetchReportData($report_type, $parameters) {
     }
     
     return $data;
+}
+
+// Stripe Transactions Report
+function getStripeTransactionsData($parameters) {
+    global $pdo;
+    $date_from = $parameters['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
+    $date_to = $parameters['date_to'] ?? date('Y-m-d');
+    
+    $transactions = [];
+    
+    // Load Stripe settings
+    $stripeSettings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_secret_key', 'currency')")->fetchAll(PDO::FETCH_KEY_PAIR);
+    
+    if (empty($stripeSettings['stripe_secret_key'])) {
+        return [
+            'error' => 'Stripe not configured',
+            'message' => 'Please configure Stripe in System Tools → Payments to generate this report.',
+            'local_payments' => getLocalPaymentsWithStripeInfo($date_from, $date_to)
+        ];
+    }
+    
+    try {
+        // Load Stripe library
+        $stripeLibLoaded = false;
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+            require_once __DIR__ . '/vendor/autoload.php';
+            $stripeLibLoaded = true;
+        } elseif (file_exists(__DIR__ . '/stripe-php/init.php')) {
+            require_once __DIR__ . '/stripe-php/init.php';
+            $stripeLibLoaded = true;
+        }
+        
+        if (!$stripeLibLoaded) {
+            throw new Exception('Stripe library not found');
+        }
+        
+        \Stripe\Stripe::setApiKey($stripeSettings['stripe_secret_key']);
+        
+        // Fetch charges from Stripe
+        $charges = \Stripe\Charge::all([
+            'created' => [
+                'gte' => strtotime($date_from),
+                'lte' => strtotime($date_to . ' 23:59:59')
+            ],
+            'limit' => 100
+        ]);
+        
+        foreach ($charges->data as $charge) {
+            // Safely access nested properties
+            $billingEmail = isset($charge->billing_details) && isset($charge->billing_details->email) 
+                ? $charge->billing_details->email : null;
+            $paymentMethodType = isset($charge->payment_method_details) && isset($charge->payment_method_details->type) 
+                ? $charge->payment_method_details->type : 'card';
+            
+            $transactions[] = [
+                'id' => $charge->id,
+                'amount' => $charge->amount / 100,
+                'currency' => strtoupper($charge->currency),
+                'status' => $charge->status,
+                'description' => $charge->description ?? 'N/A',
+                'customer_email' => $charge->receipt_email ?? $billingEmail ?? 'N/A',
+                'created' => date('Y-m-d H:i:s', $charge->created),
+                'payment_method' => $paymentMethodType,
+                'refunded' => $charge->refunded ? 'Yes' : 'No',
+                'receipt_url' => $charge->receipt_url ?? null
+            ];
+        }
+        
+        return [
+            'stripe_transactions' => $transactions,
+            'total_count' => count($transactions),
+            'period' => $date_from . ' to ' . $date_to,
+            'total_amount' => array_sum(array_column($transactions, 'amount')),
+            'currency' => $stripeSettings['currency'] ?? 'CAD'
+        ];
+        
+    } catch (Exception $e) {
+        error_log("Stripe report error: " . $e->getMessage());
+        return [
+            'error' => 'Stripe API Error',
+            'message' => $e->getMessage(),
+            'local_payments' => getLocalPaymentsWithStripeInfo($date_from, $date_to)
+        ];
+    }
+}
+
+function getLocalPaymentsWithStripeInfo($date_from, $date_to) {
+    global $pdo;
+    $stmt = $pdo->prepare("
+        SELECT p.*, u.first_name, u.last_name, u.email
+        FROM payments p
+        LEFT JOIN users u ON p.user_id = u.id
+        WHERE p.payment_date BETWEEN ? AND ?
+        AND p.transaction_id IS NOT NULL
+        ORDER BY p.payment_date DESC
+    ");
+    $stmt->execute([$date_from, $date_to]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Add new accounting report data functions

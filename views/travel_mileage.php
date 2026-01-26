@@ -1,9 +1,10 @@
 <?php
-// Get mileage rates from system settings
-$rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate', 'mileage_rate_per_km', 'mileage_rate_per_mile')");
+// Get mileage rates and unit preference from system settings
+$rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate', 'mileage_rate_per_km', 'mileage_rate_per_mile', 'mileage_unit')");
 $rates = $rate_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $mileage_rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? $rates['mileage_rate'] ?? 0.65);
 $mileage_rate_per_km = floatval($rates['mileage_rate_per_km'] ?? ($mileage_rate_per_mile / 1.60934));
+$mileage_unit = $rates['mileage_unit'] ?? 'km';
 
 // Get filter period
 $filter_period = $_GET['period'] ?? 'month';
@@ -90,7 +91,11 @@ foreach ($mileage_entries as $entry) {
             </div>
             <div class="summary-details">
                 <h4>This Month</h4>
+                <?php if ($mileage_unit === 'miles'): ?>
                 <p class="summary-value"><?= number_format($summary['total_miles'], 1) ?> miles</p>
+                <?php else: ?>
+                <p class="summary-value"><?= number_format($summary['total_km'], 1) ?> km</p>
+                <?php endif; ?>
             </div>
         </div>
         <div class="summary-card" data-component="StatsCard">
@@ -223,7 +228,13 @@ foreach ($mileage_entries as $entry) {
                                     <span class="route-to"><?= htmlspecialchars($entry['to_location'] ?? 'N/A') ?></span>
                                 </div>
                             </td>
-                            <td><?= number_format($entry['total_distance_miles'] ?? 0, 1) ?> mi</td>
+                            <td>
+                                <?php if ($mileage_unit === 'miles'): ?>
+                                <?= number_format($entry['total_distance_miles'] ?? 0, 1) ?> mi
+                                <?php else: ?>
+                                <?= number_format($entry['total_distance_km'] ?? 0, 1) ?> km
+                                <?php endif; ?>
+                            </td>
                             <td>$<?= number_format($entry['calculated_amount'] ?? 0, 2) ?></td>
                             <td>
                                 <span class="status-badge <?= $entry['is_reimbursed'] ? 'reimbursed' : 'pending' ?>">
