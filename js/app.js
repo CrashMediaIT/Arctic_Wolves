@@ -269,6 +269,7 @@
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 const itemId = this.getAttribute('data-id');
+                const itemType = this.getAttribute('data-type') || 'item';
                 const itemName = this.getAttribute('data-name') || 'this item';
                 
                 if (confirm(`Are you sure you want to delete ${itemName}?`)) {
@@ -276,9 +277,35 @@
                     form.method = 'POST';
                     form.action = this.getAttribute('data-action-url') || '';
                     
+                    // Add CSRF token
+                    const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+                    if (csrfToken) {
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = 'csrf_token';
+                        csrfInput.value = csrfToken;
+                        form.appendChild(csrfInput);
+                    }
+                    
+                    // Add action parameter based on type
+                    const actionInput = document.createElement('input');
+                    actionInput.type = 'hidden';
+                    actionInput.name = 'action';
+                    if (itemType === 'schedule') {
+                        actionInput.value = 'schedule_delete';
+                    } else {
+                        actionInput.value = 'delete';
+                    }
+                    form.appendChild(actionInput);
+                    
+                    // Add the item ID with correct parameter name
                     const input = document.createElement('input');
                     input.type = 'hidden';
-                    input.name = 'id';
+                    if (itemType === 'schedule') {
+                        input.name = 'schedule_id';
+                    } else {
+                        input.name = 'id';
+                    }
                     input.value = itemId;
                     form.appendChild(input);
                     

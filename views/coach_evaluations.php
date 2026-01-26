@@ -3,7 +3,7 @@
     <h1 class="page-title">
         <i class="fas fa-clipboard-check"></i> Athlete Evaluations
     </h1>
-    <p class="page-description">Create and manage athlete skill evaluations</p>
+    <p class="page-description">View athlete skill evaluations from the evaluation framework</p>
 </div>
 
 <?php
@@ -38,13 +38,18 @@ try {
     
     $evaluations = [];
     if ($selected_athlete_id) {
+        // Only show evaluations created via the eval framework (have skill_id set)
         $stmt = $pdo->prepare("
-            SELECT ae.*, 
-                   CONCAT(u.first_name, ' ', u.last_name) as evaluator_name
+            SELECT ae.id, ae.athlete_id, ae.evaluator_id, ae.skill_id, ae.rating, 
+                   ae.comments as notes, ae.evaluation_date as eval_date, ae.session_id,
+                   ae.created_at, 'published' as status,
+                   CONCAT(u.first_name, ' ', u.last_name) as evaluator_name,
+                   es.skill_name
             FROM athlete_evaluations ae
             LEFT JOIN users u ON ae.evaluator_id = u.id
-            WHERE ae.athlete_id = ?
-            ORDER BY ae.eval_date DESC
+            LEFT JOIN eval_skills es ON ae.skill_id = es.id
+            WHERE ae.athlete_id = ? AND ae.skill_id IS NOT NULL
+            ORDER BY ae.evaluation_date DESC
         ");
         $stmt->execute([$selected_athlete_id]);
         $evaluations = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -94,9 +99,9 @@ try {
                 </div>
                 <div class="filter-field filter-actions">
                     <label>&nbsp;</label>
-                    <button class="btn btn-primary" data-action="add" data-modal="create-evaluation-modal">
-                        <i class="fas fa-plus"></i> Create Evaluation
-                    </button>
+                    <a href="dashboard.php?page=admin_eval_framework" class="btn btn-secondary">
+                        <i class="fas fa-cog"></i> Go to Eval Framework
+                    </a>
                 </div>
             </div>
         </div>
@@ -133,17 +138,17 @@ try {
         <!-- No Athlete Selected State -->
         <div class="placeholder-container">
             <i class="fas fa-user-check placeholder-icon"></i>
-            <p class="placeholder-text">Select an athlete from the dropdown above to view or create evaluations.</p>
+            <p class="placeholder-text">Select an athlete from the dropdown above to view their evaluations.</p>
         </div>
     <?php elseif (empty($evaluations)): ?>
         <!-- Empty State -->
         <div class="placeholder-container">
             <i class="fas fa-clipboard-check placeholder-icon"></i>
-            <h3>No Evaluations Yet</h3>
-            <p class="placeholder-text">Start evaluating <?= htmlspecialchars($selected_athlete['first_name'] ?? 'this athlete') ?>'s skills to track their development.</p>
-            <button class="btn btn-primary" style="margin-top: 20px;" data-action="add" data-modal="create-evaluation-modal">
-                <i class="fas fa-plus"></i> Create First Evaluation
-            </button>
+            <h3>No Evaluations Found</h3>
+            <p class="placeholder-text">No evaluations have been performed for <?= htmlspecialchars($selected_athlete['first_name'] ?? 'this athlete') ?> yet. Use the Evaluation Framework to create skill evaluations.</p>
+            <a href="dashboard.php?page=admin_eval_framework" class="btn btn-primary" style="margin-top: 20px;">
+                <i class="fas fa-cog"></i> Open Eval Framework
+            </a>
         </div>
     <?php else: ?>
         <!-- Evaluations List -->
@@ -154,7 +159,7 @@ try {
             <div class="card-body">
                 <div class="evaluations-grid">
                     <?php foreach ($evaluations as $eval): 
-                        $status = $eval['status'] ?? 'draft';
+                        $status = $eval['status'] ?? 'published';
                     ?>
                         <div class="evaluation-card <?= $status ?>">
                             <div class="evaluation-header">
@@ -162,12 +167,20 @@ try {
                                     <i class="fas fa-calendar"></i>
                                     <?= date('M j, Y', strtotime($eval['eval_date'])) ?>
                                 </div>
-                                <span class="status-badge status-<?= $status ?>">
-                                    <?= ucfirst($status) ?>
-                                </span>
+                                <?php if (!empty($eval['rating'])): ?>
+                                    <span class="rating-badge">
+                                        <i class="fas fa-star"></i> <?= htmlspecialchars($eval['rating']) ?>/5
+                                    </span>
+                                <?php endif; ?>
                             </div>
                             
                             <div class="evaluation-body">
+                                <?php if (!empty($eval['skill_name'])): ?>
+                                    <div class="skill-info">
+                                        <i class="fas fa-dumbbell"></i> <?= htmlspecialchars($eval['skill_name']) ?>
+                                    </div>
+                                <?php endif; ?>
+                                
                                 <?php if (!empty($eval['evaluator_name'])): ?>
                                     <div class="evaluator-info">
                                         <i class="fas fa-user-tie"></i> <?= htmlspecialchars($eval['evaluator_name']) ?>
@@ -180,23 +193,15 @@ try {
                                     </div>
                                 <?php else: ?>
                                     <div class="evaluation-preview text-muted">
-                                        <em>No notes provided</em>
+                                        <em>No comments provided</em>
                                     </div>
                                 <?php endif; ?>
                             </div>
                             
                             <div class="evaluation-actions">
-                                <button class="btn-sm btn-secondary" data-action="edit" data-id="<?= $eval['id'] ?>" data-modal="edit-evaluation-modal">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
                                 <button class="btn-sm btn-secondary" data-action="view" data-id="<?= $eval['id'] ?>">
-                                    <i class="fas fa-eye"></i> View
+                                    <i class="fas fa-eye"></i> View Details
                                 </button>
-                                <?php if ($status === 'draft'): ?>
-                                    <button class="btn-sm btn-primary" data-action="publish" data-id="<?= $eval['id'] ?>">
-                                        <i class="fas fa-paper-plane"></i> Publish
-                                    </button>
-                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -204,41 +209,6 @@ try {
             </div>
         </div>
     <?php endif; ?>
-</div>
-
-<!-- Create Evaluation Modal -->
-<div id="create-evaluation-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Create Evaluation</h2>
-            <button class="modal-close" onclick="closeModal('create-evaluation-modal')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <form id="create-evaluation-form" method="POST" action="process_evaluations.php">
-            <?= csrfTokenInput() ?>
-            <input type="hidden" name="action" value="create">
-            <input type="hidden" name="athlete_id" value="<?= $selected_athlete_id ?>">
-            
-            <div class="form-group">
-                <label for="eval_date">Evaluation Date *</label>
-                <input type="date" id="eval_date" name="eval_date" class="form-input" value="<?= date('Y-m-d') ?>" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="notes">Notes</label>
-                <textarea id="notes" name="notes" class="form-textarea" rows="6" placeholder="Enter evaluation notes and observations..."></textarea>
-            </div>
-            
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('create-evaluation-modal')">Cancel</button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-check"></i> Create Evaluation
-                </button>
-            </div>
-        </form>
-    </div>
 </div>
 
 <style>
@@ -489,6 +459,38 @@ try {
 .evaluation-actions button {
     flex: 1;
     min-width: 80px;
+}
+
+/* Rating Badge */
+.rating-badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(107, 70, 193, 0.15);
+    color: #8B5CF6;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.rating-badge i {
+    color: #f59e0b;
+}
+
+/* Skill Info */
+.skill-info {
+    font-size: 14px;
+    color: var(--text-white, #fff);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.skill-info i {
+    color: var(--primary, #6B46C1);
 }
 
 /* Status Badge */
