@@ -8,6 +8,17 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 
+// Helper function to check if this is an AJAX request
+function isAjaxRequest() {
+    return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+}
+
+// Set JSON content type for AJAX requests early
+if (isAjaxRequest()) {
+    header('Content-Type: application/json');
+}
+
 setSecurityHeaders();
 
 if (!isset($_SESSION['user_id'])) {
@@ -22,12 +33,6 @@ $user_role = $_SESSION['user_role'] ?? 'athlete';
 if ($user_role !== 'admin') {
     http_response_code(403);
     die(json_encode(['success' => false, 'message' => 'Admin access required']));
-}
-
-// Helper function to check if this is an AJAX request
-function isAjaxRequest() {
-    return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 }
 
 // Helper function to send response (either redirect or JSON)

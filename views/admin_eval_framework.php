@@ -764,6 +764,108 @@ try {
     </div>
 </div>
 
+<!-- Add Skill Modal -->
+<div id="add-skill-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Skill/Criteria</h2>
+            <button class="modal-close" onclick="closeModal('add-skill-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_skill">
+            <input type="hidden" name="category_id" id="add-skill-category-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <input type="text" id="add-skill-category-name" class="form-input" readonly style="opacity: 0.7;">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Skill Name *</label>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Skating Speed">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea name="description" class="form-textarea" rows="3" required placeholder="Describe what this skill measures..."></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-skill-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Skill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div id="edit-category-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Category</h2>
+            <button class="modal-close" onclick="closeModal('edit-category-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_category">
+            <input type="hidden" name="category_id" id="edit-category-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Category Name *</label>
+                    <input type="text" name="name" id="edit-category-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-category-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-category-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Skill Modal -->
+<div id="edit-skill-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Skill</h2>
+            <button class="modal-close" onclick="closeModal('edit-skill-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_skill">
+            <input type="hidden" name="skill_id" id="edit-skill-id">
+            <input type="hidden" name="category_id" id="edit-skill-category-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Skill Name *</label>
+                    <input type="text" name="name" id="edit-skill-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea name="description" id="edit-skill-description" class="form-textarea" rows="3" required></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-skill-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Skill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Include SortableJS library for drag-and-drop -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" 
         integrity="sha256-ipiJrswvAR4VAx/th+6zWsdeYmVae0iJuiR+6OqHJHQ=" 
@@ -773,6 +875,19 @@ try {
 <script src="js/eval_framework.js"></script>
 
 <script>
+// Store categories and skills data for client-side lookup
+var categoriesData = <?php echo json_encode(array_values($categories)); ?>;
+var skillsData = <?php 
+    $allSkills = [];
+    foreach ($skillsByCategory as $catId => $skills) {
+        foreach ($skills as $skill) {
+            $skill['category_id'] = $catId;
+            $allSkills[] = $skill;
+        }
+    }
+    echo json_encode($allSkills);
+?>;
+
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
     
@@ -796,6 +911,36 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
     }
     
+    // AJAX helper for delete operations
+    function ajaxPost(action, data, onSuccess) {
+        var formData = new FormData();
+        formData.append('action', action);
+        formData.append('csrf_token', csrfToken);
+        for (var key in data) {
+            formData.append(key, data[key]);
+        }
+        
+        fetch('process_eval_framework.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showNotification(data.message || 'Operation successful!', 'success');
+                if (onSuccess) onSuccess(data);
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            showNotification('An error occurred. Please try again.', 'error');
+        });
+    }
+    
     // Handle add buttons for modals
     document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
@@ -804,6 +949,86 @@ document.addEventListener('DOMContentLoaded', function() {
             var modal = document.getElementById(modalId);
             if (modal) {
                 modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Handle add-skill buttons
+    document.querySelectorAll('[data-action="add-skill"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var categoryId = this.getAttribute('data-category-id');
+            var category = categoriesData.find(function(c) { return c.id == categoryId; });
+            
+            document.getElementById('add-skill-category-id').value = categoryId;
+            document.getElementById('add-skill-category-name').value = category ? category.name : 'Unknown Category';
+            
+            var modal = document.getElementById('add-skill-modal');
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
+    // Handle edit-category buttons
+    document.querySelectorAll('[data-action="edit-category"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var categoryId = this.getAttribute('data-category-id');
+            var category = categoriesData.find(function(c) { return c.id == categoryId; });
+            
+            if (category) {
+                document.getElementById('edit-category-id').value = category.id;
+                document.getElementById('edit-category-name').value = category.name;
+                document.getElementById('edit-category-description').value = category.description || '';
+            }
+            
+            var modal = document.getElementById('edit-category-modal');
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
+    // Handle delete-category buttons
+    document.querySelectorAll('[data-action="delete-category"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var categoryId = this.getAttribute('data-category-id');
+            var category = categoriesData.find(function(c) { return c.id == categoryId; });
+            var name = category ? category.name : 'this category';
+            
+            if (confirm('Are you sure you want to delete "' + name + '"? This cannot be undone.')) {
+                ajaxPost('delete_category', { category_id: categoryId });
+            }
+        });
+    });
+    
+    // Handle edit-skill buttons
+    document.querySelectorAll('[data-action="edit-skill"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var skillId = this.getAttribute('data-skill-id');
+            var skill = skillsData.find(function(s) { return s.id == skillId; });
+            
+            if (skill) {
+                document.getElementById('edit-skill-id').value = skill.id;
+                document.getElementById('edit-skill-category-id').value = skill.category_id;
+                document.getElementById('edit-skill-name').value = skill.name;
+                document.getElementById('edit-skill-description').value = skill.description || '';
+            }
+            
+            var modal = document.getElementById('edit-skill-modal');
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
+    // Handle delete-skill buttons
+    document.querySelectorAll('[data-action="delete-skill"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var skillId = this.getAttribute('data-skill-id');
+            var skill = skillsData.find(function(s) { return s.id == skillId; });
+            var name = skill ? skill.name : 'this skill';
+            
+            if (confirm('Are you sure you want to delete "' + name + '"? This cannot be undone.')) {
+                ajaxPost('delete_skill', { skill_id: skillId });
             }
         });
     });
