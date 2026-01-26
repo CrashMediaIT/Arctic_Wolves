@@ -350,14 +350,14 @@ try {
                 throw new Exception('Invalid user selected');
             }
             
-            // Generate reference number
-            $reference_number = strtoupper($type[0]) . 'R-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            // Generate reference number using cryptographically secure random
+            $reference_number = strtoupper($type[0]) . 'R-' . date('Ymd') . '-' . str_pad(random_int(1, 9999), 4, '0', STR_PAD_LEFT);
             
             // Check if reference exists, regenerate if needed
             $ref_check = $pdo->prepare("SELECT id FROM credits_refunds WHERE reference_number = ?");
             $ref_check->execute([$reference_number]);
             while ($ref_check->fetch()) {
-                $reference_number = strtoupper($type[0]) . 'R-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                $reference_number = strtoupper($type[0]) . 'R-' . date('Ymd') . '-' . str_pad(random_int(1, 9999), 4, '0', STR_PAD_LEFT);
                 $ref_check->execute([$reference_number]);
             }
             
