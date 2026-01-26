@@ -663,8 +663,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(error => {
-                    alert('Error sending invoice email');
-                    console.error(error);
+                    alert('Error sending invoice email. Please try again or contact support if the issue persists.');
+                    console.error('Invoice email error:', error);
                 });
             }
         });
