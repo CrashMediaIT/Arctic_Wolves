@@ -123,13 +123,25 @@ try {
         </div>
     </div>
 
+    <!-- Success Message Widget -->
+    <?php 
+    $msg = $_GET['msg'] ?? '';
+    if ($msg === 'goal_created'): 
+    ?>
+    <div class="success-message-widget" id="successWidget">
+        <i class="fas fa-check-circle"></i>
+        <span>Goal created successfully!</span>
+        <button type="button" onclick="document.getElementById('successWidget').style.display='none'">&times;</button>
+    </div>
+    <?php endif; ?>
+
     <!-- Goals Tracker -->
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-bullseye"></i> Goals Tracker</h3>
-            <a href="?page=goals&action=create" class="btn btn-primary">
+            <button type="button" class="btn btn-primary" onclick="openGoalModal()">
                 <i class="fas fa-plus"></i> Add Goal
-            </a>
+            </button>
         </div>
         <div class="card-body">
             <?php if (count($activeGoals) > 0): ?>
@@ -168,11 +180,63 @@ try {
                 <div class="empty-state">
                     <i class="fas fa-bullseye empty-icon"></i>
                     <p class="placeholder-text">No active goals. Start tracking your progress!</p>
-                    <a href="?page=goals&action=create" class="btn btn-primary">
+                    <button type="button" class="btn btn-primary" onclick="openGoalModal()">
                         <i class="fas fa-plus"></i> Create Your First Goal
-                    </a>
+                    </button>
                 </div>
             <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Goal Creation Modal -->
+    <div id="goalModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bullseye"></i> Create New Goal</h3>
+                <button type="button" class="modal-close" onclick="closeGoalModal()">&times;</button>
+            </div>
+            <form id="goalForm" method="POST" action="process_stats_goal.php">
+                <?php echo csrfTokenInput(); ?>
+                <input type="hidden" name="action" value="create_goal">
+                <input type="hidden" name="athlete_id" value="<?php echo $user_id; ?>">
+                <input type="hidden" name="return_page" value="stats">
+                
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Goal Title *</label>
+                        <input type="text" name="title" class="form-input" required placeholder="e.g., Improve skating speed">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-textarea" rows="3" placeholder="Describe your goal..."></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select name="category" class="form-input">
+                                <option value="">Select Category</option>
+                                <option value="Skating">Skating</option>
+                                <option value="Shooting">Shooting</option>
+                                <option value="Passing">Passing</option>
+                                <option value="Stickhandling">Stickhandling</option>
+                                <option value="Conditioning">Conditioning</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Target Date</label>
+                            <input type="date" name="target_date" class="form-input">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeGoalModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Create Goal</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -388,4 +452,194 @@ try {
 .card-header .btn i {
     color: #fff;
 }
+
+/* Success Message Widget */
+.success-message-widget {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.25));
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+.success-message-widget i {
+    font-size: 24px;
+    color: #10B981;
+}
+
+.success-message-widget span {
+    flex: 1;
+    font-weight: 600;
+    color: #10B981;
+}
+
+.success-message-widget button {
+    background: none;
+    border: none;
+    color: #10B981;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.success-message-widget button:hover {
+    opacity: 1;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border, #2D2D3F);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.modal-header h3 i {
+    color: var(--primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: #fff;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border, #2D2D3F);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+}
+
+.form-input, .form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 500px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
+
+<script>
+function openGoalModal() {
+    document.getElementById('goalModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeGoalModal() {
+    document.getElementById('goalModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// Close modal on outside click
+document.getElementById('goalModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeGoalModal();
+    }
+});
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeGoalModal();
+    }
+});
+</script>

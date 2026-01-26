@@ -402,8 +402,15 @@
                 
                 // Handle create-invoice action
                 if (action === 'create-invoice') {
+                    // First check if there's a modal on the current page
+                    const modal = document.getElementById('create-invoice-modal');
+                    if (modal) {
+                        openModal('create-invoice-modal');
+                        return;
+                    }
+                    // Otherwise navigate to page
                     if (page) {
-                        window.location.href = `?page=${page}`;
+                        window.location.href = `?page=${page}&action=create`;
                         return;
                     }
                 }
@@ -411,7 +418,7 @@
                 // Handle record-payment action
                 if (action === 'record-payment') {
                     if (page) {
-                        window.location.href = `?page=${page}`;
+                        window.location.href = `?page=${page}&action=payment`;
                         return;
                     }
                 }

@@ -64,8 +64,8 @@ try {
 function handleVideoUpload() {
     global $pdo, $user_id, $user_role;
     
-    // Only coaches, health coaches, and admins can upload review videos
-    $allowed_roles = ['coach', 'health_coach', 'admin'];
+    // Only coaches, health coaches, team coaches, coach_plus and admins can upload review videos
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
     if (!in_array($user_role, $allowed_roles)) {
         throw new Exception('You do not have permission to upload review videos');
     }
@@ -79,7 +79,7 @@ function handleVideoUpload() {
     $rating = filter_input(INPUT_POST, 'rating', FILTER_VALIDATE_INT);
     
     if (!$athlete_id || !$session_date || !$drill_type || !$drill_name) {
-        throw new Exception('Missing required fields');
+        throw new Exception('Missing required fields: athlete, session date, drill type, and drill name are required');
     }
     
     // Validate file upload
@@ -238,8 +238,8 @@ function handleVideoDelete() {
 function handleVideoReview() {
     global $pdo, $user_id, $user_role;
     
-    // Only coaches, health coaches, and admins can review videos
-    $allowed_roles = ['coach', 'health_coach', 'admin'];
+    // Only coaches, health coaches, team coaches, coach_plus and admins can review videos
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
     if (!in_array($user_role, $allowed_roles)) {
         throw new Exception('You do not have permission to review videos');
     }

@@ -456,6 +456,27 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
         
+        /* Primary Button - Explicit Styling for Visibility */
+        .btn-primary {
+            background: var(--primary) !important;
+            color: #fff !important;
+            border: none !important;
+        }
+        .btn-primary:hover {
+            background: var(--primary-hover) !important;
+            box-shadow: 0 4px 12px rgba(107, 70, 193, 0.4);
+        }
+        .btn-primary i {
+            color: #fff !important;
+        }
+        
+        /* Small button variant */
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+            min-height: 36px;
+        }
+        
         /* Content Area */
         .content-area { flex: 1; padding: 40px; overflow-y: auto; }
         
