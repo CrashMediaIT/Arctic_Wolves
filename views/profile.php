@@ -379,7 +379,8 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    // Fix: Use correct selector for profile tab buttons
+    document.querySelectorAll('.profile-tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     

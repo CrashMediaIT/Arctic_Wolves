@@ -295,4 +295,109 @@ try {
     line-height: 1.6;
     margin-bottom: 24px;
 }
+
+.btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle View Practice Plan button
+    document.querySelectorAll('[data-action="view-plan"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var planId = this.getAttribute('data-plan-id');
+            if (planId) {
+                window.location.href = 'dashboard.php?page=practice_plans&view=' + planId;
+            }
+        });
+    });
+    
+    // Handle Edit Practice Plan button
+    document.querySelectorAll('[data-action="edit-plan"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var planId = this.getAttribute('data-plan-id');
+            if (planId) {
+                window.location.href = 'dashboard.php?page=practice_create&edit=' + planId;
+            }
+        });
+    });
+    
+    // Handle Delete Practice Plan button
+    document.querySelectorAll('[data-action="delete-plan"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var planId = this.getAttribute('data-plan-id');
+            
+            if (confirm('Are you sure you want to delete this practice plan? This action cannot be undone.')) {
+                var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+                
+                fetch('process_practice_plans.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'action=delete&plan_id=' + planId + '&csrf_token=' + encodeURIComponent(csrfToken)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove the practice card from the DOM
+                        var card = document.querySelector('.practice-card[data-plan-id="' + planId + '"]');
+                        if (card) {
+                            card.style.transition = 'opacity 0.3s, transform 0.3s';
+                            card.style.opacity = '0';
+                            card.style.transform = 'translateX(-20px)';
+                            setTimeout(function() {
+                                card.remove();
+                            }, 300);
+                        }
+                        // Show success message
+                        showSuccessMessage('Practice plan deleted successfully!');
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to delete practice plan'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the practice plan.');
+                });
+            }
+        });
+    });
+    
+    // Handle Create Practice Plan button
+    document.querySelectorAll('[data-action="view"][data-page="create_practice"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'dashboard.php?page=practice_create';
+        });
+    });
+});
+
+function showSuccessMessage(message) {
+    var alert = document.createElement('div');
+    alert.className = 'success-alert';
+    alert.style.cssText = 'background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; position: fixed; top: 20px; right: 20px; z-index: 10000;';
+    alert.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>' +
+        '<span style="color: #10b981; font-weight: 600;">' + message + '</span>' +
+        '<button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #10b981; cursor: pointer; font-size: 18px;">&times;</button>';
+    document.body.appendChild(alert);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(function() {
+        if (alert.parentElement) {
+            alert.remove();
+        }
+    }, 5000);
+}
+</script>

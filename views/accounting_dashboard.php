@@ -142,42 +142,42 @@ try {
         </div>
         <div class="card-body">
             <div class="quick-actions-grid">
-                <button class="quick-action-btn" data-action="create-invoice" data-page="accounting_billing">
+                <button class="quick-action-btn" data-action="create-invoice" data-page="billing_dashboard">
                     <div class="quick-action-icon invoice">
                         <i class="fas fa-file-invoice-dollar"></i>
                     </div>
                     <span>Create Invoice</span>
                     <small>Bill your clients</small>
                 </button>
-                <button class="quick-action-btn" data-action="record-payment" data-page="accounting_billing">
+                <button class="quick-action-btn" data-action="record-payment" data-page="billing_dashboard">
                     <div class="quick-action-icon payment">
                         <i class="fas fa-money-check"></i>
                     </div>
                     <span>Record Payment</span>
                     <small>Log a transaction</small>
                 </button>
-                <button class="quick-action-btn" data-action="add-expense" data-page="accounting_expenses">
+                <button class="quick-action-btn" data-action="add-expense" data-page="expenses">
                     <div class="quick-action-icon expense">
                         <i class="fas fa-receipt"></i>
                     </div>
                     <span>Add Expense</span>
                     <small>Track spending</small>
                 </button>
-                <button class="quick-action-btn" data-action="generate-report" data-page="accounting_reports">
+                <button class="quick-action-btn" data-action="generate-report" data-page="reports">
                     <div class="quick-action-icon report">
                         <i class="fas fa-chart-bar"></i>
                     </div>
                     <span>Generate Report</span>
                     <small>Financial insights</small>
                 </button>
-                <button class="quick-action-btn" data-action="issue-credit" data-page="accounting_credits">
+                <button class="quick-action-btn" data-action="issue-credit" data-page="credits_refunds">
                     <div class="quick-action-icon credit">
                         <i class="fas fa-undo-alt"></i>
                     </div>
                     <span>Issue Credit</span>
                     <small>Credits & refunds</small>
                 </button>
-                <button class="quick-action-btn" data-action="view-products" data-page="accounting_products">
+                <button class="quick-action-btn" data-action="view-products" data-page="products">
                     <div class="quick-action-icon products">
                         <i class="fas fa-box-open"></i>
                     </div>
@@ -192,7 +192,7 @@ try {
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-history"></i> Recent Transactions</h3>
-            <button class="btn btn-secondary" data-action="view-all" data-page="accounting_billing"><i class="fas fa-list"></i> View All</button>
+            <button class="btn btn-secondary" data-action="view-all" data-page="billing_dashboard"><i class="fas fa-list"></i> View All</button>
         </div>
         <div class="card-body">
             <?php if (count($transactions) > 0): ?>

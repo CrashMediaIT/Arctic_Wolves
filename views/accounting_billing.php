@@ -499,7 +499,12 @@ try {
             <h2 class="modal-title">Create Invoice</h2>
             <button class="modal-close" onclick="closeModal('create-invoice-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <div id="invoice-success-message" class="success-widget" style="display: none;">
+            <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="success-text">Invoice created successfully!</div>
+            <button type="button" class="btn-primary btn-small" onclick="resetInvoiceForm()">Create Another Invoice</button>
+        </div>
+        <form id="create-invoice-form" method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create_invoice">
             
@@ -574,6 +579,28 @@ try {
     </div>
 </div>
 
+<style>
+.success-widget {
+    text-align: center;
+    padding: 30px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid #10b981;
+    border-radius: 12px;
+    margin: 20px;
+}
+.success-widget .success-icon {
+    font-size: 48px;
+    color: #10b981;
+    margin-bottom: 15px;
+}
+.success-widget .success-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: #10b981;
+    margin-bottom: 20px;
+}
+</style>
+
 <script>
 function addLineItem() {
     const container = document.getElementById('line-items');
@@ -613,6 +640,32 @@ function calculateInvoiceTotal() {
     }
 }
 
+function resetInvoiceForm() {
+    const form = document.getElementById('create-invoice-form');
+    const successMsg = document.getElementById('invoice-success-message');
+    
+    // Reset form
+    form.reset();
+    form.style.display = 'block';
+    successMsg.style.display = 'none';
+    
+    // Reset dates to defaults
+    form.querySelector('[name="invoice_date"]').value = new Date().toISOString().split('T')[0];
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+    form.querySelector('[name="due_date"]').value = dueDate.toISOString().split('T')[0];
+    
+    // Reset line items to single item
+    const lineItemsContainer = document.getElementById('line-items');
+    lineItemsContainer.innerHTML = `
+        <div class="line-item" style="display: flex; gap: 12px; margin-bottom: 12px;">
+            <input type="text" name="item_description[]" class="form-input" placeholder="Description" style="flex: 2;">
+            <input type="number" name="item_quantity[]" class="form-input" placeholder="Qty" step="1" min="1" value="1" style="flex: 1;">
+            <input type="number" name="item_price[]" class="form-input" placeholder="Price" step="0.01" min="0" style="flex: 1;">
+        </div>
+    `;
+}
+
 // Add event listeners when modal opens
 document.addEventListener('DOMContentLoaded', function() {
     const lineItems = document.querySelectorAll('.line-item input[name="item_price[]"], .line-item input[name="item_quantity[]"]');
@@ -620,12 +673,56 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('input', calculateInvoiceTotal);
     });
     
+    // Handle invoice form submission via AJAX
+    const invoiceForm = document.getElementById('create-invoice-form');
+    if (invoiceForm) {
+        invoiceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+            submitBtn.disabled = true;
+            
+            fetch('process_admin_action.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                // Check if response is JSON or redirect
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                }
+                // If it was a redirect (success), show success message
+                return { success: true };
+            })
+            .then(data => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                
+                // Show success message in the modal
+                const form = document.getElementById('create-invoice-form');
+                const successMsg = document.getElementById('invoice-success-message');
+                form.style.display = 'none';
+                successMsg.style.display = 'block';
+            })
+            .catch(error => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                console.error('Error:', error);
+                alert('Error creating invoice. Please try again.');
+            });
+        });
+    }
+    
     // Invoice action button handlers
     document.querySelectorAll('[data-action="view-invoice"]').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const invoiceId = this.getAttribute('data-invoice-id');
-            window.location.href = '?page=accounting_billing&view_invoice=' + invoiceId;
+            window.location.href = '?page=billing_dashboard&view_invoice=' + invoiceId;
         });
     });
     
