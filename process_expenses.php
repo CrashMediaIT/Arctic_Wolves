@@ -8,13 +8,14 @@ setSecurityHeaders();
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     http_response_code(403);
-    die('Access denied.');
+    die(json_encode(['success' => false, 'message' => 'Access denied.']));
 }
 
 checkCsrfToken();
 
 $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'];
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 try {
     switch ($action) {
@@ -64,6 +65,11 @@ try {
                 $user_id, $expense_date, $amount, $category, $description, $receipt_url
             ]);
             
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Expense added successfully!']);
+                exit();
+            }
             header("Location: dashboard.php?page=expenses&status=success");
             exit();
             
@@ -126,6 +132,11 @@ try {
                 ]);
             }
             
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Expense updated successfully!']);
+                exit();
+            }
             header("Location: dashboard.php?page=expenses&status=success");
             exit();
             
@@ -150,6 +161,11 @@ try {
             $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
             $stmt->execute([$expense_id]);
             
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Expense deleted successfully!']);
+                exit();
+            }
             header("Location: dashboard.php?page=expenses&status=success");
             exit();
             
@@ -213,6 +229,13 @@ try {
     
 } catch (Exception $e) {
     error_log("Expense processing error: " . $e->getMessage());
+    
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit();
+    }
+    
     $redirect_page = 'accounting_expenses';
     if ($action === 'create_category' || $action === 'update_category' || $action === 'delete_category') {
         $redirect_page = 'expense_categories';

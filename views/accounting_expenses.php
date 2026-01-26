@@ -497,6 +497,36 @@ if ($expenseStats['last_month'] > 0) {
 </style>
 
 <script>
+var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+
+// Show notification helper
+function showNotification(message, type) {
+    var existing = document.querySelector('.notification-widget');
+    if (existing) existing.remove();
+    
+    var div = document.createElement('div');
+    div.className = 'notification-widget';
+    div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+    if (type === 'success') {
+        div.style.background = 'rgba(16, 185, 129, 0.95)';
+        div.style.color = '#fff';
+    } else {
+        div.style.background = 'rgba(239, 68, 68, 0.95)';
+        div.style.color = '#fff';
+    }
+    var safeMsg = document.createElement('span');
+    safeMsg.textContent = message;
+    div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ';
+    div.appendChild(safeMsg);
+    var closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+    closeBtn.onclick = function() { div.remove(); };
+    div.appendChild(closeBtn);
+    document.body.appendChild(div);
+    setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+}
+
 // Drag and drop functionality
 const dropZone = document.getElementById('dropZone');
 const receiptFile = document.getElementById('receiptFile');
@@ -538,6 +568,45 @@ function updateFileLabel(labelId, input) {
     }
 }
 
+// Handle expense form submissions via AJAX
+document.querySelectorAll('.expense-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(form);
+        var submitBtn = form.querySelector('button[type="submit"]');
+        var originalText = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+        submitBtn.disabled = true;
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            if (data.success) {
+                showNotification(data.message || 'Expense added successfully!', 'success');
+                form.reset();
+                updateFileLabel('receiptFileLabel', receiptFile);
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showNotification('Error: ' + (data.message || 'Failed to add expense'), 'error');
+            }
+        })
+        .catch(function() {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            showNotification('An error occurred', 'error');
+        });
+    });
+});
+
 // Handle edit expense button clicks
 document.querySelectorAll('[data-action="edit"][data-modal="edit-expense-modal"]').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
@@ -558,14 +627,71 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-expense-modal"]
     });
 });
 
-// Handle delete buttons with single confirmation
+// Handle edit expense form via AJAX
+var editForm = document.querySelector('#edit-expense-modal form');
+if (editForm) {
+    editForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(editForm);
+        var submitBtn = editForm.querySelector('button[type="submit"]');
+        var originalText = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        submitBtn.disabled = true;
+        
+        fetch(editForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            if (data.success) {
+                showNotification(data.message || 'Expense updated successfully!', 'success');
+                closeModal('edit-expense-modal');
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showNotification('Error: ' + (data.message || 'Failed to update'), 'error');
+            }
+        })
+        .catch(function() {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            showNotification('An error occurred', 'error');
+        });
+    });
+}
+
+// Handle delete via AJAX instead of form submission
 document.querySelectorAll('.delete-expense-form').forEach(function(form) {
     form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
         var btn = form.querySelector('button[data-confirm]');
         var msg = btn ? btn.getAttribute('data-confirm') : 'Are you sure you want to delete this expense?';
-        if (!confirm(msg)) {
-            e.preventDefault();
-        }
+        if (!confirm(msg)) return;
+        
+        var expenseId = form.querySelector('[name="expense_id"]').value;
+        
+        fetch('process_expenses.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+            body: 'action=delete&expense_id=' + encodeURIComponent(expenseId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showNotification(data.message || 'Expense deleted!', 'success');
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
+            }
+        })
+        .catch(function() { showNotification('An error occurred', 'error'); });
     });
 });
 
