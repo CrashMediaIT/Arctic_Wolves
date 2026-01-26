@@ -44,7 +44,7 @@ try {
                    ae.comments as notes, ae.evaluation_date as eval_date, ae.session_id,
                    ae.created_at, 'published' as status,
                    CONCAT(u.first_name, ' ', u.last_name) as evaluator_name,
-                   es.skill_name
+                   es.name as skill_name
             FROM athlete_evaluations ae
             LEFT JOIN users u ON ae.evaluator_id = u.id
             LEFT JOIN eval_skills es ON ae.skill_id = es.id
