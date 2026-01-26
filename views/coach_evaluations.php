@@ -99,9 +99,11 @@ try {
                 </div>
                 <div class="filter-field filter-actions">
                     <label>&nbsp;</label>
+                    <?php if ($user_role === 'admin'): ?>
                     <a href="dashboard.php?page=admin_eval_framework" class="btn btn-secondary">
                         <i class="fas fa-cog"></i> Go to Eval Framework
                     </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -145,10 +147,12 @@ try {
         <div class="placeholder-container">
             <i class="fas fa-clipboard-check placeholder-icon"></i>
             <h3>No Evaluations Found</h3>
-            <p class="placeholder-text">No evaluations have been performed for <?= htmlspecialchars($selected_athlete['first_name'] ?? 'this athlete') ?> yet. Use the Evaluation Framework to create skill evaluations.</p>
+            <p class="placeholder-text">No evaluations have been performed for <?= htmlspecialchars($selected_athlete['first_name'] ?? 'this athlete') ?> yet.</p>
+            <?php if ($user_role === 'admin'): ?>
             <a href="dashboard.php?page=admin_eval_framework" class="btn btn-primary" style="margin-top: 20px;">
                 <i class="fas fa-cog"></i> Open Eval Framework
             </a>
+            <?php endif; ?>
         </div>
     <?php else: ?>
         <!-- Evaluations List -->

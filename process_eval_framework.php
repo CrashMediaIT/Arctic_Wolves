@@ -52,18 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'create_category':
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description'] ?? '');
+                $display_order = intval($_POST['display_order'] ?? 0);
                 
                 if (empty($name)) {
                     throw new Exception('Category name is required');
                 }
                 
-                // Note: display_order and is_active columns don't exist in schema
-                // Removing these references per governance: fix code to match schema
                 $stmt = $pdo->prepare("
-                    INSERT INTO eval_categories (name, description, created_at)
-                    VALUES (?, ?, NOW())
+                    INSERT INTO eval_categories (name, description, display_order, created_at)
+                    VALUES (?, ?, ?, NOW())
                 ");
-                $stmt->execute([$name, $description]);
+                $stmt->execute([$name, $description, $display_order]);
                 
                 sendResponse(true, 'Category created successfully', 'admin_eval_framework', ['category_id' => $pdo->lastInsertId()]);
                 break;
