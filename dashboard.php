@@ -511,6 +511,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=stats" class="nav-link <?= $page=='stats'?'active':'' ?>">
                 <i class="fa-solid fa-chart-line icon"></i> Performance Stats
             </a>
+            <a href="?page=goals" class="nav-link <?= $page=='goals'?'active':'' ?>">
+                <i class="fa-solid fa-bullseye icon"></i> Goals
+            </a>
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>">
                 <i class="fa-solid fa-calendar-check icon"></i> Sessions
             </a>

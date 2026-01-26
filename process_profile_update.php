@@ -91,21 +91,62 @@ if ($action == 'change_password') {
 // ACTION 4: ADD TEAM HISTORY
 // =========================================================
 if ($action == 'add_team') {
-    $name  = trim($_POST['team_name']);
-    $year  = $_POST['season_year'];
-    $type  = $_POST['season_type'];
-    $season_display = $type . " " . $year; 
+    $name  = trim($_POST['team_name'] ?? '');
+    $league = trim($_POST['league'] ?? '');
+    $year  = trim($_POST['season_year'] ?? '');
+    $type  = trim($_POST['season_type'] ?? '');
+    $is_current = isset($_POST['is_current']) && $_POST['is_current'] == '1' ? 1 : 0;
+    
+    // Build season display string, handling empty values properly
+    $season_parts = array_filter([$type, $year], function($v) { return !empty($v); });
+    $season_display = implode(' ', $season_parts);
+
+    if (empty($name)) {
+        header("Location: dashboard.php?page=profile&tab=player&error=team_name_required");
+        exit();
+    }
 
     try {
-        // Reset current flag
-        $pdo->prepare("UPDATE athlete_teams SET is_current = 0 WHERE user_id = ?")->execute([$current_user_id]);
-        // Insert new
-        $stmt = $pdo->prepare("INSERT INTO athlete_teams (user_id, team_name, season_year, season_type, season, is_current) VALUES (?, ?, ?, ?, ?, 1)");
-        $stmt->execute([$current_user_id, $name, $year, $type, $season_display]);
+        // If setting as current, reset other current flags
+        if ($is_current) {
+            $pdo->prepare("UPDATE athlete_teams SET is_current = 0 WHERE user_id = ? OR athlete_id = ?")->execute([$current_user_id, $current_user_id]);
+        }
+        // Insert new team
+        $stmt = $pdo->prepare("INSERT INTO athlete_teams (user_id, athlete_id, team_name, league, season_year, season_type, season, is_current) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$current_user_id, $current_user_id, $name, $league, $year, $type, $season_display, $is_current]);
         
-        header("Location: dashboard.php?page=profile&msg=team_added");
+        header("Location: dashboard.php?page=profile&tab=player&msg=team_added");
         exit();
-    } catch (PDOException $e) { die("Error."); }
+    } catch (PDOException $e) { 
+        error_log("Add team error: " . $e->getMessage());
+        header("Location: dashboard.php?page=profile&tab=player&error=team_add_failed");
+        exit();
+    }
+}
+
+// =========================================================
+// ACTION 4B: REMOVE TEAM FROM HISTORY
+// =========================================================
+if ($action == 'remove_team') {
+    $team_id = intval($_POST['team_id'] ?? 0);
+    
+    if ($team_id <= 0) {
+        header("Location: dashboard.php?page=profile&tab=player&error=invalid_team");
+        exit();
+    }
+
+    try {
+        // Only allow removing own teams
+        $stmt = $pdo->prepare("DELETE FROM athlete_teams WHERE id = ? AND (user_id = ? OR athlete_id = ?)");
+        $stmt->execute([$team_id, $current_user_id, $current_user_id]);
+        
+        header("Location: dashboard.php?page=profile&tab=player&msg=team_removed");
+        exit();
+    } catch (PDOException $e) { 
+        error_log("Remove team error: " . $e->getMessage());
+        header("Location: dashboard.php?page=profile&tab=player&error=team_remove_failed");
+        exit();
+    }
 }
 
 // =========================================================

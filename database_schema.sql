@@ -748,6 +748,7 @@ CREATE TABLE IF NOT EXISTS `athlete_teams` (
     `user_id` INT DEFAULT NULL COMMENT 'Alternative user reference for backward compatibility',
     `team_id` INT DEFAULT NULL,
     `team_name` VARCHAR(255) DEFAULT NULL COMMENT 'Team name string for backward compatibility',
+    `league` VARCHAR(100) DEFAULT NULL COMMENT 'League name (e.g., CSSHL, BCMML)',
     `season` VARCHAR(50) DEFAULT NULL,
     `season_year` VARCHAR(10) DEFAULT NULL COMMENT 'Season year (e.g., 2024)',
     `season_type` VARCHAR(50) DEFAULT NULL COMMENT 'Season type (e.g., Fall, Winter, Spring)',
@@ -2127,7 +2128,8 @@ ADD COLUMN IF NOT EXISTS `user_id` INT DEFAULT NULL COMMENT 'Alternative user re
 ADD COLUMN IF NOT EXISTS `team_name` VARCHAR(255) DEFAULT NULL COMMENT 'Team name string for backward compatibility',
 ADD COLUMN IF NOT EXISTS `season_year` VARCHAR(10) DEFAULT NULL COMMENT 'Season year (e.g., 2024)',
 ADD COLUMN IF NOT EXISTS `season_type` VARCHAR(50) DEFAULT NULL COMMENT 'Season type (e.g., Fall, Winter, Spring)',
-ADD COLUMN IF NOT EXISTS `is_current` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is the current team';
+ADD COLUMN IF NOT EXISTS `is_current` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is the current team',
+ADD COLUMN IF NOT EXISTS `league` VARCHAR(100) DEFAULT NULL COMMENT 'League name (e.g., CSSHL, BCMML)';
 
 -- Create user_preferences table for notification preferences
 CREATE TABLE IF NOT EXISTS `user_preferences` (
