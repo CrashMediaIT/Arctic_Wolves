@@ -1203,6 +1203,10 @@ CREATE TABLE IF NOT EXISTS `mileage_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage stops (multi-stop trip tracking)
+-- Note: Both 'address' and 'location' are kept for backward compatibility:
+--   - 'address' is the primary field used for full address (e.g., "123 Main St, City, State")
+--   - 'location' is a legacy field that may contain short location names
+--   - 'location_name' is the friendly name for display (e.g., "Hockey Arena")
 CREATE TABLE IF NOT EXISTS `mileage_stops` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `mileage_log_id` INT NOT NULL,

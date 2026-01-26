@@ -641,11 +641,18 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const invoiceId = this.getAttribute('data-invoice-id');
+            const csrfToken = document.querySelector('[name="csrf_token"]')?.value;
+            
+            if (!csrfToken) {
+                alert('Security error: CSRF token not found. Please refresh the page.');
+                return;
+            }
+            
             if (confirm('Send invoice email to the client?')) {
                 fetch('process_admin_action.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=email_invoice&invoice_id=' + invoiceId + '&csrf_token=' + encodeURIComponent(document.querySelector('[name="csrf_token"]')?.value || '')
+                    body: 'action=email_invoice&invoice_id=' + invoiceId + '&csrf_token=' + encodeURIComponent(csrfToken)
                 })
                 .then(response => response.json())
                 .then(data => {
