@@ -629,6 +629,28 @@ try {
     </div>
 </div>
 
+<!-- SMTP Test Modal -->
+<div id="smtp-test-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-envelope"></i> Test SMTP Connection</h3>
+            <button type="button" class="modal-close" onclick="closeSmtpTestModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Enter an email address to send a test message:</p>
+            <div class="form-group" style="margin-top: 16px;">
+                <input type="email" id="smtp-test-email" class="form-input" placeholder="email@example.com" style="width: 100%;">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeSmtpTestModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="sendSmtpTestEmail()">
+                <i class="fas fa-paper-plane"></i> Send Test Email
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 function switchToolTab(tabName) {
     const url = new URL(window.location);
@@ -754,15 +776,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Test SMTP Connection
+// SMTP Test Modal Functions
 function testSmtpConnection() {
-    const testEmail = prompt('Enter an email address to send a test email to:');
-    if (!testEmail) return;
+    document.getElementById('smtp-test-modal').classList.add('active');
+    document.getElementById('smtp-test-email').value = '';
+    document.getElementById('smtp-test-email').focus();
+}
+
+function closeSmtpTestModal() {
+    document.getElementById('smtp-test-modal').classList.remove('active');
+}
+
+function sendSmtpTestEmail() {
+    const testEmail = document.getElementById('smtp-test-email').value.trim();
+    if (!testEmail) {
+        alert('Please enter an email address.');
+        return;
+    }
+    
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail)) {
+        alert('Please enter a valid email address.');
+        return;
+    }
     
     const btn = event.target.closest('button');
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     
     // Get CSRF token
     const csrfToken = document.querySelector('input[name="csrf_token"]').value;
@@ -778,6 +819,7 @@ function testSmtpConnection() {
     .then(data => {
         btn.disabled = false;
         btn.innerHTML = originalText;
+        closeSmtpTestModal();
         
         if (data.success) {
             alert('✓ Test email sent successfully!\n\nCheck your inbox for the test email.');
@@ -788,6 +830,7 @@ function testSmtpConnection() {
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
+        closeSmtpTestModal();
         alert('Error: Failed to test SMTP connection');
         console.error('Error:', error);
     });
@@ -808,11 +851,9 @@ function testGoogleMapsAPI() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
     
-    // Test by loading a simple geocode request
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/geocode/json?address=test&key=${encodeURIComponent(apiKey)}`;
-    
-    // Use a fetch request instead
+    // Test by sending a request to Google's Geocoding API
+    // Note: API key will be visible in browser network logs - this is acceptable for testing
+    // In production, restrict the API key by HTTP referrer in Google Cloud Console
     fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=Toronto,Canada&key=${encodeURIComponent(apiKey)}`)
     .then(response => response.json())
     .then(data => {
@@ -840,6 +881,88 @@ function testGoogleMapsAPI() {
 /* =========================================================
    SYSTEM TOOLS - Enhanced Modern Design
    ========================================================= */
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 12px;
+    max-width: 450px;
+    width: 90%;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border, #2D2D3F);
+    background: linear-gradient(180deg, rgba(107, 70, 193, 0.08) 0%, transparent 100%);
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header h3 i {
+    color: #8B5CF6;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #fff;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-body p {
+    color: #9ca3af;
+    font-size: 14px;
+    margin: 0;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border, #2D2D3F);
+}
 
 /* Alert Styles */
 .alert {
