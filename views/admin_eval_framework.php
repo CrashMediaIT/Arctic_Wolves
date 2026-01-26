@@ -771,3 +771,98 @@ try {
 
 <!-- Include Evaluation Framework JavaScript -->
 <script src="js/eval_framework.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    
+    // Show notification helper
+    function showNotification(message, type) {
+        var existing = document.querySelector('.notification-widget');
+        if (existing) existing.remove();
+        
+        var div = document.createElement('div');
+        div.className = 'notification-widget';
+        div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px;';
+        if (type === 'success') {
+            div.style.background = 'rgba(16, 185, 129, 0.95)';
+            div.style.color = '#fff';
+        } else {
+            div.style.background = 'rgba(239, 68, 68, 0.95)';
+            div.style.color = '#fff';
+        }
+        div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
+        document.body.appendChild(div);
+        setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+    }
+    
+    // Handle add buttons for modals
+    document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Convert forms to AJAX submissions with success widget
+    document.querySelectorAll('.modal form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(form);
+            var modal = form.closest('.modal');
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                submitBtn.disabled = true;
+            }
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+                
+                if (data.success) {
+                    showNotification(data.message || 'Created successfully!', 'success');
+                    if (modal) closeModal(modal.id);
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    });
+});
+
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        var form = modal.querySelector('form');
+        if (form) form.reset();
+    }
+}
+</script>

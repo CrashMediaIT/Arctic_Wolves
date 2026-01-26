@@ -31,13 +31,15 @@ checkCsrfToken();
 
 $action = $_POST['action'] ?? '';
 
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 try {
     switch ($action) {
         case 'create':
             $name = trim($_POST['name']);
             $description = trim($_POST['description'] ?? '');
             $price = floatval($_POST['price']);
-            $credits = intval($_POST['credits'] ?? 0);
+            $credits = intval($_POST['credits'] ?? intval($_POST['session_count'] ?? 0));
             $valid_days = !empty($_POST['valid_days']) ? intval($_POST['valid_days']) : (!empty($_POST['validity_days']) ? intval($_POST['validity_days']) : null);
             $age_group = trim($_POST['age_group'] ?? '');
             $skill_level = trim($_POST['skill_level'] ?? '');
@@ -57,6 +59,11 @@ try {
                 $age_group ?: null, $skill_level ?: null, $is_active
             ]);
             
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Package created successfully!']);
+                exit();
+            }
             header("Location: dashboard.php?page=accounting_products&tab=packages&status=success");
             exit();
             
@@ -86,6 +93,11 @@ try {
                 $age_group ?: null, $skill_level ?: null, $is_active, $package_id
             ]);
             
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Package updated successfully!']);
+                exit();
+            }
             header("Location: dashboard.php?page=accounting_products&tab=packages&status=success");
             exit();
             
@@ -104,6 +116,11 @@ try {
             $stmt = $pdo->prepare("DELETE FROM packages WHERE id = ?");
             $stmt->execute([$package_id]);
             
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Package deleted successfully!']);
+                exit();
+            }
             header("Location: dashboard.php?page=accounting_products&tab=packages&status=success&action=delete");
             exit();
             
@@ -143,6 +160,12 @@ try {
     }
     
     error_log("Package processing error: " . $e->getMessage());
+    
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit();
+    }
     header("Location: dashboard.php?page=products&status=error");
     exit();
 }

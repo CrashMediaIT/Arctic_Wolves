@@ -1,5 +1,43 @@
 <!-- Accounting Products View -->
-<?php if (isset($_GET['status']) && $_GET['status'] === 'success'): ?>
+<?php
+// Fetch session types from database
+try {
+    $sessionTypesStmt = $pdo->query("SELECT * FROM session_types ORDER BY name");
+    $sessionTypes = $sessionTypesStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Session types fetch error: " . $e->getMessage());
+    $sessionTypes = [];
+}
+
+// Fetch packages from database
+try {
+    $packagesStmt = $pdo->query("SELECT * FROM packages ORDER BY name");
+    $packages = $packagesStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Packages fetch error: " . $e->getMessage());
+    $packages = [];
+}
+
+// Fetch discount codes from database
+try {
+    $discountsStmt = $pdo->query("SELECT * FROM discount_codes ORDER BY code");
+    $discounts = $discountsStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Discounts fetch error: " . $e->getMessage());
+    $discounts = [];
+}
+
+// Calculate stats
+$sessionCount = count($sessionTypes);
+$packageCount = count(array_filter($packages, function($p) { return !empty($p['is_active']); }));
+$discountCount = count(array_filter($discounts, function($d) { return !empty($d['is_active']); }));
+$avgPackagePrice = $packageCount > 0 ? array_sum(array_column($packages, 'price')) / count($packages) : 0;
+
+// Handle tab from URL
+$activeTab = $_GET['tab'] ?? 'sessions';
+?>
+
+<?php if (isset($_GET['status']) && in_array($_GET['status'], ['success', 'added'])): ?>
 <div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
     <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
     <span style="color: #10b981; font-weight: 600;">Operation completed successfully!</span>
@@ -26,28 +64,28 @@
         <div class="product-stat-card sessions">
             <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
             <div class="stat-info">
-                <span class="stat-value">3</span>
+                <span class="stat-value"><?= $sessionCount ?></span>
                 <span class="stat-label">Session Types</span>
             </div>
         </div>
         <div class="product-stat-card packages">
             <div class="stat-icon"><i class="fas fa-box"></i></div>
             <div class="stat-info">
-                <span class="stat-value">2</span>
+                <span class="stat-value"><?= $packageCount ?></span>
                 <span class="stat-label">Active Packages</span>
             </div>
         </div>
         <div class="product-stat-card discounts">
             <div class="stat-icon"><i class="fas fa-tags"></i></div>
             <div class="stat-info">
-                <span class="stat-value">2</span>
+                <span class="stat-value"><?= $discountCount ?></span>
                 <span class="stat-label">Discount Codes</span>
             </div>
         </div>
         <div class="product-stat-card revenue">
             <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
             <div class="stat-info">
-                <span class="stat-value">$848</span>
+                <span class="stat-value">$<?= number_format($avgPackagePrice, 0) ?></span>
                 <span class="stat-label">Avg Package Price</span>
             </div>
         </div>
@@ -55,25 +93,25 @@
 
     <!-- Product Tabs -->
     <div class="product-tabs">
-        <button class="tab-btn active" data-tab="sessions" data-action="switch-tab">
+        <button class="tab-btn <?= $activeTab === 'sessions' ? 'active' : '' ?>" data-tab="sessions" data-action="switch-tab">
             <i class="fas fa-calendar-day"></i> 
             <span>Sessions</span>
-            <small>3 types</small>
+            <small><?= $sessionCount ?> types</small>
         </button>
-        <button class="tab-btn" data-tab="packages" data-action="switch-tab">
+        <button class="tab-btn <?= $activeTab === 'packages' ? 'active' : '' ?>" data-tab="packages" data-action="switch-tab">
             <i class="fas fa-box"></i> 
             <span>Packages</span>
-            <small>2 active</small>
+            <small><?= $packageCount ?> active</small>
         </button>
-        <button class="tab-btn" data-tab="discounts" data-action="switch-tab">
+        <button class="tab-btn <?= $activeTab === 'discounts' ? 'active' : '' ?>" data-tab="discounts" data-action="switch-tab">
             <i class="fas fa-tags"></i> 
             <span>Discounts</span>
-            <small>2 codes</small>
+            <small><?= $discountCount ?> codes</small>
         </button>
     </div>
 
     <!-- Sessions Tab -->
-    <div class="tab-content active" id="sessions-tab">
+    <div class="tab-content <?= $activeTab === 'sessions' ? 'active' : '' ?>" id="sessions-tab">
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-calendar-day"></i> Session Types</h3>
@@ -81,66 +119,42 @@
             </div>
             <div class="card-body">
                 <div class="products-grid">
-                    <div class="product-card session-card">
-                        <div class="product-type-badge individual"><i class="fas fa-user"></i></div>
-                        <div class="product-header">
-                            <h4>Individual Training</h4>
-                            <span class="product-status active">Active</span>
+                    <?php if (empty($sessionTypes)): ?>
+                        <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
+                            <i class="fas fa-calendar-day" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
+                            <p style="color: var(--text-dim);">No session types yet. Click "Add Session Type" to create one.</p>
                         </div>
-                        <div class="product-price">$75<small>/session</small></div>
-                        <div class="product-details">
-                            <p><i class="fas fa-clock"></i> 60 minutes</p>
-                            <p><i class="fas fa-user"></i> 1-on-1 training</p>
-                            <p><i class="fas fa-chart-line"></i> Personalized focus</p>
+                    <?php else: ?>
+                        <?php foreach ($sessionTypes as $session): 
+                            $isActive = isset($session['is_active']) ? $session['is_active'] : 1;
+                        ?>
+                        <div class="product-card session-card">
+                            <div class="product-type-badge individual"><i class="fas fa-calendar-check"></i></div>
+                            <div class="product-header">
+                                <h4><?= htmlspecialchars($session['name']) ?></h4>
+                                <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
+                            </div>
+                            <div class="product-price">$<?= number_format($session['default_price'] ?? 0, 2) ?><small>/session</small></div>
+                            <div class="product-details">
+                                <p><i class="fas fa-clock"></i> <?= $session['duration_minutes'] ?? 60 ?> minutes</p>
+                                <?php if (!empty($session['description'])): ?>
+                                <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars(substr($session['description'], 0, 50)) ?><?= strlen($session['description']) > 50 ? '...' : '' ?></p>
+                                <?php endif; ?>
+                            </div>
+                            <div class="product-actions">
+                                <button class="btn-action" data-action="edit" data-id="<?= $session['id'] ?>" data-type="session" data-modal="edit-session-type-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn-action <?= $isActive ? '' : 'active' ?>" data-action="toggle-status" data-id="<?= $session['id'] ?>" data-type="session" title="<?= $isActive ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= $isActive ? 'on' : 'off' ?>"></i></button>
+                            </div>
                         </div>
-                        <div class="product-actions">
-                            <button class="btn-secondary btn-small" data-action="edit" data-id="1" data-type="session" data-modal="edit-session-type-modal"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="1" data-type="session"><i class="fas fa-toggle-on"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="product-card session-card">
-                        <div class="product-type-badge group"><i class="fas fa-users"></i></div>
-                        <div class="product-header">
-                            <h4>Group Training</h4>
-                            <span class="product-status active">Active</span>
-                        </div>
-                        <div class="product-price">$45<small>/session</small></div>
-                        <div class="product-details">
-                            <p><i class="fas fa-clock"></i> 90 minutes</p>
-                            <p><i class="fas fa-users"></i> 4-8 players</p>
-                            <p><i class="fas fa-trophy"></i> Team dynamics</p>
-                        </div>
-                        <div class="product-actions">
-                            <button class="btn-secondary btn-small" data-action="edit" data-id="2" data-type="session" data-modal="edit-session-type-modal"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="2" data-type="session"><i class="fas fa-toggle-on"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="product-card session-card">
-                        <div class="product-type-badge skills"><i class="fas fa-hockey-puck"></i></div>
-                        <div class="product-header">
-                            <h4>Skills Development</h4>
-                            <span class="product-status active">Active</span>
-                        </div>
-                        <div class="product-price">$60<small>/session</small></div>
-                        <div class="product-details">
-                            <p><i class="fas fa-clock"></i> 60 minutes</p>
-                            <p><i class="fas fa-user"></i> 1-on-1</p>
-                            <p><i class="fas fa-bullseye"></i> Skill-specific</p>
-                        </div>
-                        <div class="product-actions">
-                            <button class="btn-secondary btn-small" data-action="edit" data-id="3" data-type="session" data-modal="edit-session-type-modal"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="3" data-type="session"><i class="fas fa-toggle-on"></i></button>
-                        </div>
-                    </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Packages Tab -->
-    <div class="tab-content" id="packages-tab">
+    <div class="tab-content <?= $activeTab === 'packages' ? 'active' : '' ?>" id="packages-tab">
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-box"></i> Training Packages</h3>
@@ -148,54 +162,57 @@
             </div>
             <div class="card-body">
                 <div class="products-grid">
-                    <div class="product-card featured">
-                        <div class="product-badge">Popular</div>
-                        <div class="product-header">
-                            <h4>Starter Package</h4>
-                            <span class="product-status active">Active</span>
+                    <?php if (empty($packages)): ?>
+                        <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
+                            <i class="fas fa-box" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
+                            <p style="color: var(--text-dim);">No packages yet. Click "Create Package" to add one.</p>
                         </div>
-                        <div class="product-price">$299.00</div>
-                        <div class="product-details">
-                            <p><i class="fas fa-calendar-check"></i> 5 sessions</p>
-                            <p><i class="fas fa-clock"></i> Valid 3 months</p>
-                            <p><i class="fas fa-tag"></i> Save 20%</p>
+                    <?php else: ?>
+                        <?php foreach ($packages as $package): 
+                            $isActive = !empty($package['is_active']);
+                        ?>
+                        <div class="product-card <?= $isActive ? 'featured' : '' ?>">
+                            <?php if ($isActive): ?><div class="product-badge">Active</div><?php endif; ?>
+                            <div class="product-header">
+                                <h4><?= htmlspecialchars($package['name']) ?></h4>
+                                <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
+                            </div>
+                            <div class="product-price">$<?= number_format($package['price'] ?? 0, 2) ?></div>
+                            <div class="product-details">
+                                <p><i class="fas fa-calendar-check"></i> <?= $package['credits'] ?? 0 ?> sessions</p>
+                                <?php if (!empty($package['valid_days'])): ?>
+                                <p><i class="fas fa-clock"></i> Valid <?= $package['valid_days'] ?> days</p>
+                                <?php endif; ?>
+                                <?php if (!empty($package['description'])): ?>
+                                <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars(substr($package['description'], 0, 40)) ?><?= strlen($package['description']) > 40 ? '...' : '' ?></p>
+                                <?php endif; ?>
+                            </div>
+                            <div class="product-actions">
+                                <button class="btn-action" data-action="edit" data-id="<?= $package['id'] ?>" data-type="package" data-modal="edit-package-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn-action <?= $isActive ? '' : 'active' ?>" data-action="toggle-status" data-id="<?= $package['id'] ?>" data-type="package" title="<?= $isActive ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= $isActive ? 'on' : 'off' ?>"></i></button>
+                            </div>
                         </div>
-                        <div class="product-actions">
-                            <button class="btn-secondary btn-small" data-action="edit" data-id="pkg-1" data-type="package" data-modal="edit-package-modal"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="pkg-1" data-type="package"><i class="fas fa-toggle-on"></i> Disable</button>
-                        </div>
-                    </div>
-
-                    <div class="product-card featured">
-                        <div class="product-badge">Best Value</div>
-                        <div class="product-header">
-                            <h4>Pro Package</h4>
-                            <span class="product-status active">Active</span>
-                        </div>
-                        <div class="product-price">$549.00</div>
-                        <div class="product-details">
-                            <p><i class="fas fa-calendar-check"></i> 10 sessions</p>
-                            <p><i class="fas fa-clock"></i> Valid 6 months</p>
-                            <p><i class="fas fa-tag"></i> Save 27%</p>
-                        </div>
-                        <div class="product-actions">
-                            <button class="btn-secondary btn-small" data-action="edit" data-id="pkg-2" data-type="package" data-modal="edit-package-modal"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="pkg-2" data-type="package"><i class="fas fa-toggle-on"></i> Disable</button>
-                        </div>
-                    </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Discounts Tab -->
-    <div class="tab-content" id="discounts-tab">
+    <div class="tab-content <?= $activeTab === 'discounts' ? 'active' : '' ?>" id="discounts-tab">
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-tags"></i> Discount Codes</h3>
                 <button class="btn btn-primary" data-action="add" data-modal="add-discount-modal"><i class="fas fa-plus"></i> Create Discount</button>
             </div>
             <div class="card-body">
+                <?php if (empty($discounts)): ?>
+                    <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                        <i class="fas fa-tags" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
+                        <p style="color: var(--text-dim);">No discount codes yet. Click "Create Discount" to add one.</p>
+                    </div>
+                <?php else: ?>
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
@@ -210,37 +227,33 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <?php foreach ($discounts as $discount): 
+                                $isActive = !empty($discount['is_active']);
+                                $discountType = $discount['discount_type'] ?? $discount['type'] ?? 'percentage';
+                                $discountValue = $discount['discount_value'] ?? $discount['value'] ?? 0;
+                                $validUntil = $discount['valid_until'] ?? $discount['expiry_date'] ?? null;
+                                $maxUses = $discount['max_uses'] ?? $discount['usage_limit'] ?? null;
+                                $currentUses = $discount['times_used'] ?? $discount['used_count'] ?? 0;
+                            ?>
                             <tr>
-                                <td><strong>WINTER2024</strong></td>
-                                <td>Percentage</td>
-                                <td>15%</td>
-                                <td>Mar 31, 2024</td>
-                                <td>12 / 100</td>
-                                <td><span class="status-badge active">Active</span></td>
+                                <td><strong><?= htmlspecialchars($discount['code']) ?></strong></td>
+                                <td><?= ucfirst($discountType) ?></td>
+                                <td><?= $discountType === 'percentage' ? $discountValue . '%' : '$' . number_format($discountValue, 2) ?></td>
+                                <td><?= $validUntil ? date('M d, Y', strtotime($validUntil)) : 'No expiry' ?></td>
+                                <td><?= $currentUses ?> / <?= $maxUses ?? '∞' ?></td>
+                                <td><span class="status-badge <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span></td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn-icon" title="Edit" data-action="edit" data-id="discount-1" data-type="discount" data-modal="edit-discount-modal"><i class="fas fa-edit"></i></button>
-                                        <button class="btn-icon" title="Delete" data-action="delete" data-id="discount-1" data-type="discount" data-action-url="process_admin_action.php"><i class="fas fa-trash"></i></button>
+                                        <button class="btn-action" data-action="edit" data-id="<?= $discount['id'] ?>" data-type="discount" data-modal="edit-discount-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-action danger" data-action="delete" data-id="<?= $discount['id'] ?>" data-type="discount" title="Delete"><i class="fas fa-trash"></i></button>
                                     </div>
                                 </td>
                             </tr>
-                            <tr>
-                                <td><strong>NEWCLIENT50</strong></td>
-                                <td>Fixed Amount</td>
-                                <td>$50.00</td>
-                                <td>Dec 31, 2024</td>
-                                <td>5 / ∞</td>
-                                <td><span class="status-badge active">Active</span></td>
-                                <td>
-                                    <div class="table-actions">
-                                        <button class="btn-icon" title="Edit" data-action="edit" data-id="discount-2" data-type="discount" data-modal="edit-discount-modal"><i class="fas fa-edit"></i></button>
-                                        <button class="btn-icon" title="Delete" data-action="delete" data-id="discount-2" data-type="discount" data-action-url="process_admin_action.php"><i class="fas fa-trash"></i></button>
-                                    </div>
-                                </td>
-                            </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -448,6 +461,11 @@
     color: #10b981;
 }
 
+.product-status.inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
 .product-price {
     font-size: 36px;
     font-weight: 900;
@@ -486,6 +504,54 @@
     gap: 10px;
     padding-top: 18px;
     border-top: 1px solid var(--border);
+}
+
+/* Consistent action buttons */
+.btn-action {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-action:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.btn-action.danger:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+}
+
+.btn-action.active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.btn-action i {
+    font-size: 14px;
+}
+
+/* Table action buttons */
+.table-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.table-actions .btn-action {
+    width: 32px;
+    height: 32px;
 }
 
 @media (max-width: 768px) {
@@ -714,13 +780,34 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    
+    // Show notification helper
+    function showNotification(message, type) {
+        var existing = document.querySelector('.notification-widget');
+        if (existing) existing.remove();
+        
+        var div = document.createElement('div');
+        div.className = 'notification-widget';
+        div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s ease;';
+        if (type === 'success') {
+            div.style.background = 'rgba(16, 185, 129, 0.95)';
+            div.style.color = '#fff';
+        } else {
+            div.style.background = 'rgba(239, 68, 68, 0.95)';
+            div.style.color = '#fff';
+        }
+        div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
+        document.body.appendChild(div);
+        setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+    }
+    
     // Tab switching functionality
     document.querySelectorAll('.tab-btn[data-action="switch-tab"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             var tabName = this.getAttribute('data-tab');
             
-            // Remove active from all tabs and buttons
             document.querySelectorAll('.tab-content').forEach(function(tab) {
                 tab.classList.remove('active');
             });
@@ -728,39 +815,99 @@ document.addEventListener('DOMContentLoaded', function() {
                 tabBtn.classList.remove('active');
             });
             
-            // Activate selected tab
             document.getElementById(tabName + '-tab').classList.add('active');
             this.classList.add('active');
         });
     });
     
-    // Handle toggle-status buttons
+    // Handle toggle-status buttons - different endpoints for different types
     document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             var itemId = this.getAttribute('data-id');
             var itemType = this.getAttribute('data-type');
-            var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+            var button = this;
             
-            if (confirm('Are you sure you want to toggle the status of this ' + itemType + '?')) {
-                fetch('process_admin_action.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=toggle_' + itemType + '_status&id=' + encodeURIComponent(itemId) + '&csrf_token=' + encodeURIComponent(csrfToken)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error: ' + (data.message || 'Failed to toggle status'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
-                });
+            if (!confirm('Are you sure you want to toggle the status of this ' + itemType + '?')) return;
+            
+            // Determine the correct endpoint
+            var endpoint = 'process_admin_action.php';
+            var action = 'toggle_' + itemType + '_status';
+            
+            if (itemType === 'package') {
+                endpoint = 'process_packages.php';
+                action = 'toggle_status';
             }
+            
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: 'action=' + action + '&id=' + encodeURIComponent(itemId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message || 'Status updated successfully!', 'success');
+                    // Toggle button icon/text
+                    var icon = button.querySelector('i');
+                    if (icon) {
+                        icon.classList.toggle('fa-toggle-on');
+                        icon.classList.toggle('fa-toggle-off');
+                    }
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to toggle status'), 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    });
+    
+    // Handle delete buttons with confirmation
+    document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var itemId = this.getAttribute('data-id');
+            var itemType = this.getAttribute('data-type');
+            
+            if (!confirm('Are you sure you want to delete this ' + itemType + '? This cannot be undone.')) return;
+            
+            var endpoint = 'process_admin_action.php';
+            var bodyData = 'action=delete_' + itemType + '&csrf_token=' + encodeURIComponent(csrfToken);
+            
+            if (itemType === 'discount') {
+                bodyData = 'action=delete_discount&discount_id=' + encodeURIComponent(itemId) + '&csrf_token=' + encodeURIComponent(csrfToken);
+            } else {
+                bodyData += '&id=' + encodeURIComponent(itemId);
+            }
+            
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: bodyData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(itemType.charAt(0).toUpperCase() + itemType.slice(1) + ' deleted successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
         });
     });
     
@@ -773,7 +920,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var modal = document.getElementById(modalId);
             
             if (modal) {
-                // Populate modal with item data (would need AJAX call to get data)
+                // Set item ID in hidden field if exists
+                var idField = modal.querySelector('input[name$="_id"]');
+                if (idField) idField.value = itemId;
                 modal.classList.add('active');
             }
         });
@@ -790,12 +939,75 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Convert forms to AJAX submissions with success widget
+    document.querySelectorAll('.modal form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(form);
+            var modal = form.closest('.modal');
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                submitBtn.disabled = true;
+            }
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => {
+                // Check if redirect occurred (form submission returns redirect)
+                if (response.redirected) {
+                    showNotification('Created successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                    return null;
+                }
+                // Check for successful response
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data === null) return;
+                
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+                
+                if (data.success) {
+                    showNotification(data.message || 'Operation completed successfully!', 'success');
+                    if (modal) closeModal(modal.id);
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    });
 });
 
 function closeModal(modalId) {
     var modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.remove('active');
+        // Reset form if exists
+        var form = modal.querySelector('form');
+        if (form) form.reset();
     }
 }
 </script>

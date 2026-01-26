@@ -558,6 +558,36 @@ td {
 </style>
 
 <script>
+var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?php echo generateCsrfToken(); ?>';
+
+// Show notification helper
+function showNotification(message, type) {
+    var existing = document.querySelector('.notification-widget');
+    if (existing) existing.remove();
+    
+    var div = document.createElement('div');
+    div.className = 'notification-widget';
+    div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+    if (type === 'success') {
+        div.style.background = 'rgba(16, 185, 129, 0.95)';
+        div.style.color = '#fff';
+    } else {
+        div.style.background = 'rgba(239, 68, 68, 0.95)';
+        div.style.color = '#fff';
+    }
+    var safeMsg = document.createElement('span');
+    safeMsg.textContent = message;
+    div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ';
+    div.appendChild(safeMsg);
+    var closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+    closeBtn.onclick = function() { div.remove(); };
+    div.appendChild(closeBtn);
+    document.body.appendChild(div);
+    setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+}
+
 function openPackageModal() {
     document.getElementById('modalTitle').textContent = 'Create Package';
     document.getElementById('formAction').value = 'create';
@@ -590,32 +620,23 @@ function editPackage(pkg) {
 }
 
 function deletePackage(id, name) {
-    if (confirm(`Are you sure you want to delete the package "${name}"?`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'process_packages.php';
-        
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrf_token';
-        csrfInput.value = '<?php echo generateCsrfToken(); ?>';
-        
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'delete';
-        
-        const idInput = document.createElement('input');
-        idInput.type = 'hidden';
-        idInput.name = 'package_id';
-        idInput.value = id;
-        
-        form.appendChild(csrfInput);
-        form.appendChild(actionInput);
-        form.appendChild(idInput);
-        document.body.appendChild(form);
-        form.submit();
-    }
+    if (!confirm('Are you sure you want to delete the package "' + name + '"?')) return;
+    
+    fetch('process_packages.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=delete&package_id=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showNotification(data.message || 'Package deleted!', 'success');
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
+        }
+    })
+    .catch(function() { showNotification('An error occurred', 'error'); });
 }
 
 function togglePackageFields() {
@@ -657,6 +678,43 @@ function manageSessions(packageId) {
 function closeSessionsModal() {
     document.getElementById('sessionsModal').style.display = 'none';
 }
+
+// Handle package form submission via AJAX
+document.getElementById('packageForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var form = this;
+    var formData = new FormData(form);
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var originalText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    submitBtn.disabled = true;
+    
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            showNotification(data.message || 'Package saved successfully!', 'success');
+            closePackageModal();
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to save'), 'error');
+        }
+    })
+    .catch(function() {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        showNotification('An error occurred', 'error');
+    });
+});
 
 window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {

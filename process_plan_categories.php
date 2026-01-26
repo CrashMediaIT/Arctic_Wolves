@@ -38,6 +38,7 @@ $table_map = [
 ];
 
 $table = $table_map[$category_type];
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 try {
     if ($action === 'create') {
@@ -68,6 +69,11 @@ try {
         logSecurityEvent($pdo, $_SESSION['user_id'], 'category_created', 
             "Created {$category_type} plan category: {$name}");
 
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => "Category '{$name}' created successfully!"]);
+            exit;
+        }
         header("Location: dashboard.php?page=admin_plan_categories&success=" . 
             urlencode("Category '{$name}' created successfully"));
         exit;
@@ -97,6 +103,11 @@ try {
         logSecurityEvent($pdo, $_SESSION['user_id'], 'category_deleted', 
             "Deleted {$category_type} plan category: {$category['name']}");
 
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => "Category '{$category['name']}' deleted successfully!"]);
+            exit;
+        }
         header("Location: dashboard.php?page=admin_plan_categories&success=" . 
             urlencode("Category '{$category['name']}' deleted successfully"));
         exit;
@@ -135,6 +146,11 @@ try {
         logSecurityEvent($pdo, $_SESSION['user_id'], 'category_updated', 
             "Updated {$category_type} plan category: {$name}");
 
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => "Category '{$name}' updated successfully!"]);
+            exit;
+        }
         header("Location: dashboard.php?page=admin_plan_categories&success=" . 
             urlencode("Category '{$name}' updated successfully"));
         exit;
@@ -148,6 +164,11 @@ try {
     logSecurityEvent($pdo, $_SESSION['user_id'], 'category_error', 
         "Error managing {$category_type} category: " . $e->getMessage());
 
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
     header("Location: dashboard.php?page=admin_plan_categories&error=" . urlencode($e->getMessage()));
     exit;
 }

@@ -22,9 +22,96 @@ if ($action == 'add_location') {
     $pdo->prepare("INSERT INTO locations (name, city) VALUES (?, ?)")->execute([trim($_POST['name']), trim($_POST['city'])]);
     header("Location: dashboard.php?page=admin_locations&status=added"); exit();
 }
+if ($action == 'create_location') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $name = trim($_POST['name'] ?? '');
+        $city = trim($_POST['city'] ?? '');
+        $google_place_id = trim($_POST['google_place_id'] ?? '');
+        $image_url = trim($_POST['image_url'] ?? '');
+        
+        if (empty($name) || empty($city)) {
+            throw new Exception('Name and city are required');
+        }
+        
+        $stmt = $pdo->prepare("INSERT INTO locations (name, city, google_place_id, image_url) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Location created successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=added");
+    } catch (Exception $e) {
+        error_log("Create location error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=error");
+    }
+    exit();
+}
+if ($action == 'edit_location') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $location_id = intval($_POST['location_id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $city = trim($_POST['city'] ?? '');
+        $google_place_id = trim($_POST['google_place_id'] ?? '');
+        $image_url = trim($_POST['image_url'] ?? '');
+        
+        if ($location_id <= 0 || empty($name) || empty($city)) {
+            throw new Exception('Invalid data provided');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE locations SET name = ?, city = ?, google_place_id = ?, image_url = ? WHERE id = ?");
+        $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null, $location_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Location updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=updated");
+    } catch (Exception $e) {
+        error_log("Edit location error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=error");
+    }
+    exit();
+}
 if ($action == 'delete_location') {
-    $pdo->prepare("DELETE FROM locations WHERE id = ?")->execute([$_POST['id']]);
-    header("Location: dashboard.php?page=admin_locations&status=deleted"); exit();
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    $location_id = intval($_POST['location_id'] ?? $_POST['id'] ?? 0);
+    
+    try {
+        $pdo->prepare("DELETE FROM locations WHERE id = ?")->execute([$location_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Location deleted successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=deleted");
+    } catch (PDOException $e) {
+        error_log("Delete location error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete location']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=error");
+    }
+    exit();
 }
 
 // =========================================================
@@ -35,17 +122,101 @@ if ($action == 'add_type') {
     header("Location: dashboard.php?page=admin_session_types&status=added"); exit();
 }
 if ($action == 'create_session_type') {
-    // Full session type creation with pricing and details
-    // Note: max_participants and is_active from form are ignored as they don't exist in session_types schema
-    // max_participants is a per-session field (in sessions table), not a session type field
-    $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
-    $stmt->execute([
-        trim($_POST['name']), 
-        trim($_POST['description'] ?? ''),
-        floatval($_POST['price'] ?? 0),
-        intval($_POST['duration'] ?? 60)
-    ]);
-    header("Location: dashboard.php?page=accounting_products&tab=sessions&status=added"); exit();
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        // Validate inputs
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $price = floatval($_POST['price'] ?? 0);
+        $duration = intval($_POST['duration'] ?? 60);
+        
+        if (empty($name) || strlen($name) > 100) {
+            throw new Exception('Session name is required and must be under 100 characters');
+        }
+        if ($price < 0) {
+            throw new Exception('Price must be a positive value');
+        }
+        if ($duration < 15 || $duration > 480) {
+            throw new Exception('Duration must be between 15 and 480 minutes');
+        }
+        
+        // Full session type creation with pricing and details
+        $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$name, $description, $price, $duration]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session type created successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=accounting_products&tab=sessions&status=added");
+    } catch (Exception $e) {
+        error_log("Create session type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=accounting_products&tab=sessions&status=error");
+    }
+    exit();
+}
+if ($action == 'edit_session_type') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $type_id = intval($_POST['type_id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        
+        if ($type_id <= 0 || empty($name)) {
+            throw new Exception('Invalid data provided');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE session_types SET name = ?, description = ? WHERE id = ?");
+        $stmt->execute([$name, $description, $type_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session type updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_session_types&status=updated");
+    } catch (Exception $e) {
+        error_log("Edit session type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_session_types&status=error");
+    }
+    exit();
+}
+if ($action == 'delete_session_type') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    $type_id = intval($_POST['type_id'] ?? $_POST['id'] ?? 0);
+    
+    try {
+        $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$type_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session type deleted successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_session_types&status=deleted");
+    } catch (PDOException $e) {
+        error_log("Delete session type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete session type']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_session_types&status=error");
+    }
+    exit();
 }
 if ($action == 'delete_type') {
     $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$_POST['id']]);
@@ -176,6 +347,287 @@ if ($action == 'create_invoice') {
 }
 
 // =========================================================
+// MODULE 5.6: DOWNLOAD INVOICE
+// =========================================================
+if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] == 'download_invoice')) {
+    $invoice_id = intval($_POST['invoice_id'] ?? $_GET['invoice_id'] ?? 0);
+    
+    if ($invoice_id <= 0) {
+        header("Location: dashboard.php?page=billing_dashboard&error=invalid_invoice");
+        exit();
+    }
+    
+    try {
+        // Get invoice details
+        $stmt = $pdo->prepare("
+            SELECT i.*, u.first_name, u.last_name, u.email
+            FROM invoices i
+            LEFT JOIN users u ON i.user_id = u.id
+            WHERE i.id = ?
+        ");
+        $stmt->execute([$invoice_id]);
+        $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$invoice) {
+            header("Location: dashboard.php?page=billing_dashboard&error=invoice_not_found");
+            exit();
+        }
+        
+        // Get line items
+        $items_stmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
+        $items_stmt->execute([$invoice_id]);
+        $items = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Generate HTML invoice
+        $html = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice ' . htmlspecialchars($invoice['invoice_number']) . '</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { border-bottom: 2px solid #7000a4; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #7000a4; margin: 0; font-size: 28px; }
+        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .invoice-info div { flex: 1; }
+        .invoice-info h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: 700; color: #7000a4; }
+        .total-row { font-weight: bold; font-size: 18px; background: #7000a4; color: white; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>INVOICE</h1>
+        <p>Invoice #: ' . htmlspecialchars($invoice['invoice_number']) . '</p>
+    </div>
+    
+    <div class="invoice-info">
+        <div>
+            <h3>Bill To</h3>
+            <p><strong>' . htmlspecialchars($invoice['first_name'] . ' ' . $invoice['last_name']) . '</strong><br>
+            ' . htmlspecialchars($invoice['email']) . '</p>
+        </div>
+        <div style="text-align: right;">
+            <h3>Invoice Details</h3>
+            <p>Date: ' . date('F j, Y', strtotime($invoice['invoice_date'])) . '<br>
+            Due: ' . date('F j, Y', strtotime($invoice['due_date'])) . '<br>
+            Status: ' . ucfirst($invoice['status']) . '</p>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>';
+        
+        if (!empty($items)) {
+            foreach ($items as $item) {
+                $html .= '<tr>
+                    <td>' . htmlspecialchars($item['description']) . '</td>
+                    <td>' . $item['quantity'] . '</td>
+                    <td>$' . number_format($item['unit_price'], 2) . '</td>
+                    <td>$' . number_format($item['total_price'], 2) . '</td>
+                </tr>';
+            }
+        } else {
+            $html .= '<tr>
+                <td>' . htmlspecialchars($invoice['notes'] ?? 'Invoice services') . '</td>
+                <td>1</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+            </tr>';
+        }
+        
+        $html .= '
+            <tr class="total-row">
+                <td colspan="3" style="text-align: right;">TOTAL</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p>Thank you for your business!</p>
+        <p>Arctic Wolves Hockey Training</p>
+    </div>
+</body>
+</html>';
+        
+        // Sanitize invoice number for filename (remove special characters)
+        $safe_invoice_number = preg_replace('/[^A-Za-z0-9\-]/', '_', $invoice['invoice_number']);
+        
+        // Output as downloadable HTML file (can be converted to PDF if library is available)
+        header('Content-Type: text/html');
+        header('Content-Disposition: attachment; filename="Invoice_' . $safe_invoice_number . '.html"');
+        echo $html;
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("Invoice download error: " . $e->getMessage());
+        header("Location: dashboard.php?page=billing_dashboard&error=download_failed");
+        exit();
+    }
+}
+
+// =========================================================
+// MODULE 5.7: VIEW INVOICE
+// =========================================================
+if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == 'view_invoice')) {
+    $invoice_id = intval($_POST['invoice_id'] ?? $_GET['invoice_id'] ?? 0);
+    
+    if ($invoice_id <= 0) {
+        header("Location: dashboard.php?page=billing_dashboard&error=invalid_invoice");
+        exit();
+    }
+    
+    try {
+        // Get invoice details
+        $stmt = $pdo->prepare("
+            SELECT i.*, u.first_name, u.last_name, u.email
+            FROM invoices i
+            LEFT JOIN users u ON i.user_id = u.id
+            WHERE i.id = ?
+        ");
+        $stmt->execute([$invoice_id]);
+        $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$invoice) {
+            header("Location: dashboard.php?page=billing_dashboard&error=invoice_not_found");
+            exit();
+        }
+        
+        // Get line items
+        $items_stmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
+        $items_stmt->execute([$invoice_id]);
+        $items = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Return JSON for AJAX requests
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'invoice' => $invoice,
+                'items' => $items
+            ]);
+            exit();
+        }
+        
+        // Generate inline view HTML
+        $html = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice ' . htmlspecialchars($invoice['invoice_number']) . '</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; background: #f5f5f5; }
+        .invoice-container { background: white; max-width: 800px; margin: 0 auto; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { border-bottom: 2px solid #7000a4; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #7000a4; margin: 0; font-size: 28px; }
+        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .invoice-info div { flex: 1; }
+        .invoice-info h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: 700; color: #7000a4; }
+        .total-row { font-weight: bold; font-size: 18px; background: #7000a4; color: white; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
+        .actions { margin-top: 20px; text-align: center; }
+        .btn { padding: 10px 20px; background: #7000a4; color: white; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; margin: 0 5px; }
+        .btn:hover { background: #5a0080; }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <div class="header">
+            <h1>INVOICE</h1>
+            <p>Invoice #: ' . htmlspecialchars($invoice['invoice_number']) . '</p>
+        </div>
+        
+        <div class="invoice-info">
+            <div>
+                <h3>Bill To</h3>
+                <p><strong>' . htmlspecialchars($invoice['first_name'] . ' ' . $invoice['last_name']) . '</strong><br>
+                ' . htmlspecialchars($invoice['email']) . '</p>
+            </div>
+            <div style="text-align: right;">
+                <h3>Invoice Details</h3>
+                <p>Date: ' . date('F j, Y', strtotime($invoice['invoice_date'])) . '<br>
+                Due: ' . date('F j, Y', strtotime($invoice['due_date'])) . '<br>
+                Status: ' . ucfirst($invoice['status']) . '</p>
+            </div>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>';
+        
+        if (!empty($items)) {
+            foreach ($items as $item) {
+                $html .= '<tr>
+                    <td>' . htmlspecialchars($item['description']) . '</td>
+                    <td>' . $item['quantity'] . '</td>
+                    <td>$' . number_format($item['unit_price'], 2) . '</td>
+                    <td>$' . number_format($item['total_price'], 2) . '</td>
+                </tr>';
+            }
+        } else {
+            $html .= '<tr>
+                <td>' . htmlspecialchars($invoice['notes'] ?? 'Invoice services') . '</td>
+                <td>1</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+            </tr>';
+        }
+        
+        $html .= '
+                <tr class="total-row">
+                    <td colspan="3" style="text-align: right;">TOTAL</td>
+                    <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>Arctic Wolves Hockey Training</p>
+        </div>
+        
+        <div class="actions">
+            <a href="process_admin_action.php?action=download_invoice&invoice_id=' . $invoice_id . '" class="btn">Download</a>
+            <a href="javascript:window.print()" class="btn">Print</a>
+            <a href="dashboard.php?page=billing_dashboard" class="btn" style="background: #666;">Back</a>
+        </div>
+    </div>
+</body>
+</html>';
+        
+        echo $html;
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("Invoice view error: " . $e->getMessage());
+        header("Location: dashboard.php?page=billing_dashboard&error=view_failed");
+        exit();
+    }
+}
+
+// =========================================================
 // MODULE 6: DISCOUNT CODES
 // =========================================================
 if ($action == 'add_discount') {
@@ -194,6 +646,8 @@ if ($action == 'add_discount') {
 }
 
 if ($action == 'create_discount') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     $code = strtoupper(trim($_POST['code']));
     // Map form field 'type' to schema column 'discount_type'
     $discount_type = $_POST['type'] ?? 'percentage';
@@ -209,15 +663,28 @@ if ($action == 'create_discount') {
     try {
         $stmt = $pdo->prepare("INSERT INTO discount_codes (code, discount_type, discount_value, max_uses, valid_from, valid_until, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Discount code created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Create discount error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create discount code']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
 }
 
 if ($action == 'edit_discount') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     $discount_id = intval($_POST['discount_id']);
     $code = strtoupper(trim($_POST['code']));
     $discount_type = $_POST['type'] ?? 'percentage';
@@ -230,9 +697,20 @@ if ($action == 'edit_discount') {
     try {
         $stmt = $pdo->prepare("UPDATE discount_codes SET code = ?, discount_type = ?, discount_value = ?, max_uses = ?, valid_from = ?, valid_until = ?, is_active = ? WHERE id = ?");
         $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active, $discount_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Discount code updated successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Edit discount error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to update discount code']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
@@ -240,20 +718,38 @@ if ($action == 'edit_discount') {
 
 if ($action == 'delete_discount') {
     $discount_id = intval($_POST['discount_id']);
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         // Verify discount exists before deletion
         $stmt = $pdo->prepare("SELECT 1 FROM discount_codes WHERE id = ? LIMIT 1");
         $stmt->execute([$discount_id]);
         if (!$stmt->fetch()) {
             error_log("Delete discount error: Discount ID $discount_id not found");
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Discount not found']);
+                exit();
+            }
             header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
             exit();
         }
         
         $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$discount_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Discount deleted successfully']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Delete discount error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete discount']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
@@ -395,6 +891,61 @@ if ($action == 'toggle_user_status') {
     exit();
 }
 
+// =========================================================
+// MODULE 8.5: RESET USER PASSWORD
+// =========================================================
+if ($action == 'reset_user_password') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_reset = intval($_POST['user_id']);
+        $new_password = $_POST['new_password'] ?? '';
+        $confirm_password = $_POST['confirm_password'] ?? '';
+        $force_change = isset($_POST['force_change']) ? 1 : 0;
+        
+        // Validate password length
+        if (empty($new_password) || strlen($new_password) < 8) {
+            echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters']);
+            exit();
+        }
+        
+        // Validate password complexity - require at least one uppercase, one lowercase, one number
+        if (!preg_match('/[A-Z]/', $new_password) || !preg_match('/[a-z]/', $new_password) || !preg_match('/[0-9]/', $new_password)) {
+            echo json_encode(['success' => false, 'message' => 'Password must contain at least one uppercase letter, one lowercase letter, and one number']);
+            exit();
+        }
+        
+        if ($new_password !== $confirm_password) {
+            echo json_encode(['success' => false, 'message' => 'Passwords do not match']);
+            exit();
+        }
+        
+        // Check user exists
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$user_id_to_reset]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user) {
+            echo json_encode(['success' => false, 'message' => 'User not found']);
+            exit();
+        }
+        
+        // Hash and update password
+        $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
+        $stmt = $pdo->prepare("UPDATE users SET password = ?, force_pass_change = ? WHERE id = ?");
+        $stmt->execute([$hashed_password, $force_change, $user_id_to_reset]);
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => "Password reset successfully for {$user['first_name']} {$user['last_name']}"
+        ]);
+    } catch (PDOException $e) {
+        error_log("Reset user password error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
 if ($action == 'toggle_session_status') {
     header('Content-Type: application/json');
     
@@ -496,10 +1047,10 @@ define('CATEGORY_DEFAULT_QUANTITY', 0);
 
 // === SKILLS MANAGEMENT ===
 if ($action == 'create_skill') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         // Skills are evaluation skills tied to categories
-        // For simplicity, we'll use a default category or create general category
-        // Check if a general/uncategorized category exists
         $stmt = $pdo->prepare("SELECT id FROM eval_categories WHERE name = ? LIMIT 1");
         $stmt->execute([DEFAULT_EVAL_CATEGORY]);
         $category = $stmt->fetch();
@@ -521,9 +1072,19 @@ if ($action == 'create_skill') {
             trim($_POST['description'] ?? '')
         ]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Skill created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&status=skill_added");
     } catch (PDOException $e) {
         error_log("Create skill error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create skill']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&status=error");
     }
     exit();
@@ -561,6 +1122,8 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'skill') {
 
 // === DRILL TYPES MANAGEMENT ===
 if ($action == 'create_drill_type') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description) VALUES (?, ?)");
         $stmt->execute([
@@ -568,9 +1131,19 @@ if ($action == 'create_drill_type') {
             trim($_POST['description'] ?? '')
         ]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Drill type created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_added");
     } catch (PDOException $e) {
         error_log("Create drill type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create drill type']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=drills&status=error");
     }
     exit();
@@ -609,6 +1182,8 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
 // === POSITIONS MANAGEMENT ===
 // Manages player positions (Forward, Defense, Goalie variations)
 if ($action == 'create_position') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     $name = $_POST['name'] ?? '';
     $abbreviation = $_POST['abbreviation'] ?? '';
     $description = $_POST['description'] ?? '';
@@ -620,6 +1195,11 @@ if ($action == 'create_position') {
     }
     
     if (empty($name)) {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Position name is required']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=positions&status=error&message=position_name_required");
         exit();
     }
@@ -628,9 +1208,19 @@ if ($action == 'create_position') {
         $stmt = $pdo->prepare("INSERT INTO player_positions (name, abbreviation, description, position_type) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $abbreviation, $description, $position_type]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Position created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=positions&status=success&message=position_created");
     } catch (PDOException $e) {
         error_log("Error creating position: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create position']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=positions&status=error&message=position_creation_failed");
     }
     exit();
@@ -689,6 +1279,8 @@ if ($action == 'delete_position') {
 // Note: The equipment table is designed for inventory tracking, not category management
 // This might need clarification on whether we want equipment categories or equipment items
 if ($action == 'create_equipment') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         // Using the equipment table for basic equipment type storage
         // Setting default values for inventory fields
@@ -700,9 +1292,19 @@ if ($action == 'create_equipment') {
             trim($_POST['description'] ?? '')
         ]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Equipment created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_added");
     } catch (PDOException $e) {
         error_log("Create equipment error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create equipment']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     }
     exit();

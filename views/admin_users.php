@@ -198,6 +198,9 @@ foreach ($users as $u) {
                                                     title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </button>
+                                            <button class="btn-icon" data-action="reset-password" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['full_name']); ?>" title="Reset Password">
+                                                <i class="fas fa-unlock-alt"></i>
+                                            </button>
                                             <button class="btn-icon" data-action="permissions" data-id="<?php echo $user['id']; ?>" title="Permissions">
                                                 <i class="fas fa-key"></i>
                                             </button>
@@ -225,26 +228,155 @@ foreach ($users as $u) {
 </div>
 
 <script>
-function openAddUserModal() {
-    // Implement modal for adding user
-    alert('Add user modal - implement with form');
-}
-
-// Apply filters
-document.getElementById('roleFilter').addEventListener('change', applyFilters);
-document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.addEventListener('DOMContentLoaded', function() {
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    
+    // Show notification helper
+    function showNotification(message, type) {
+        var existing = document.querySelector('.notification-widget');
+        if (existing) existing.remove();
+        
+        var div = document.createElement('div');
+        div.className = 'notification-widget';
+        div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px;';
+        if (type === 'success') {
+            div.style.background = 'rgba(16, 185, 129, 0.95)';
+            div.style.color = '#fff';
+        } else {
+            div.style.background = 'rgba(239, 68, 68, 0.95)';
+            div.style.color = '#fff';
+        }
+        div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
+        document.body.appendChild(div);
+        setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+    }
+    
+    // Handle toggle-status buttons for users
+    document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var userId = this.getAttribute('data-id');
+            var isCurrentlyActive = this.classList.contains('danger');
+            
+            if (!confirm('Are you sure you want to ' + (isCurrentlyActive ? 'disable' : 'enable') + ' this user?')) return;
+            
+            fetch('process_admin_action.php', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: 'action=toggle_user_status&id=' + encodeURIComponent(userId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message || 'User status updated!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to update status'), 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    });
+    
+    // Handle reset password button
+    document.querySelectorAll('[data-action="reset-password"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var userId = this.getAttribute('data-id');
+            var userName = this.getAttribute('data-name') || 'this user';
+            
+            // Show password reset modal
+            var modal = document.getElementById('reset-password-modal');
+            if (modal) {
+                modal.querySelector('input[name="user_id"]').value = userId;
+                modal.querySelector('.reset-user-name').textContent = userName;
+                modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Handle permissions button
+    document.querySelectorAll('[data-action="permissions"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var userId = this.getAttribute('data-id');
+            window.location.href = '?page=permissions&user_id=' + userId;
+        });
+    });
+    
+    // Handle edit button
+    document.querySelectorAll('[data-action="edit"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var modal = document.getElementById(modalId);
+            
+            if (modal) {
+                // Populate fields from data attributes
+                var firstName = this.getAttribute('data-first-name');
+                var lastName = this.getAttribute('data-last-name');
+                var email = this.getAttribute('data-email');
+                var phone = this.getAttribute('data-phone');
+                var role = this.getAttribute('data-role');
+                var userId = this.getAttribute('data-id');
+                
+                modal.querySelector('input[name="user_id"]').value = userId;
+                modal.querySelector('input[name="first_name"]').value = firstName;
+                modal.querySelector('input[name="last_name"]').value = lastName;
+                modal.querySelector('input[name="email"]').value = email;
+                modal.querySelector('input[name="phone"]').value = phone || '';
+                modal.querySelector('select[name="role"]').value = role;
+                
+                modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Handle add user button
+    document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Apply filters
+    var roleFilter = document.getElementById('roleFilter');
+    var statusFilter = document.getElementById('statusFilter');
+    if (roleFilter) roleFilter.addEventListener('change', applyFilters);
+    if (statusFilter) statusFilter.addEventListener('change', applyFilters);
+});
 
 function applyFilters() {
-    const role = document.getElementById('roleFilter').value;
-    const status = document.getElementById('statusFilter').value;
-    const search = document.getElementById('userSearch').value;
+    var role = document.getElementById('roleFilter').value;
+    var status = document.getElementById('statusFilter').value;
+    var search = document.getElementById('userSearch').value;
     
-    let url = '?page=all_users';
+    var url = '?page=all_users';
     if (role) url += '&role=' + encodeURIComponent(role);
     if (status) url += '&status=' + encodeURIComponent(status);
     if (search) url += '&search=' + encodeURIComponent(search);
     
     window.location.href = url;
+}
+
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        var form = modal.querySelector('form');
+        if (form) form.reset();
+    }
 }
 </script>
 
@@ -739,7 +871,7 @@ function applyFilters() {
 </div>
 
 <script>
-// Handle edit user button clicks
+// Handle edit user button clicks - populate modal fields
 document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -760,57 +892,94 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         document.getElementById('edit-user-modal').classList.add('active');
     });
 });
+</script>
 
-// Handle permissions button clicks - navigate to user permissions page
-document.querySelectorAll('[data-action="permissions"]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var userId = this.getAttribute('data-id');
-        if (userId) {
-            window.location.href = 'dashboard.php?page=user_permissions&user_id=' + userId;
-        }
-    });
-});
+<!-- Reset Password Modal -->
+<div id="reset-password-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Reset Password</h2>
+            <button class="modal-close" onclick="closeModal('reset-password-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php" id="reset-password-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="reset_user_password">
+            <input type="hidden" name="user_id" value="">
+            
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                    Reset password for <strong class="reset-user-name" style="color: var(--text-white);"></strong>
+                </p>
+                
+                <div class="form-group">
+                    <label class="form-label">New Password *</label>
+                    <input type="password" name="new_password" class="form-input" required minlength="8" placeholder="Enter new password">
+                    <small style="color: var(--text-dim);">Minimum 8 characters</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Confirm Password *</label>
+                    <input type="password" name="confirm_password" class="form-input" required minlength="8" placeholder="Confirm new password">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" name="force_change" value="1" checked>
+                        <span>Force user to change password on next login</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('reset-password-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-key"></i> Reset Password</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-// Handle toggle-status button clicks
-document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var userId = this.getAttribute('data-id');
-        var isActive = this.classList.contains('danger');
-        var action = isActive ? 'disable_user' : 'enable_user';
+<script>
+// Handle reset password form submission
+document.getElementById('reset-password-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var newPassword = this.querySelector('input[name="new_password"]').value;
+    var confirmPassword = this.querySelector('input[name="confirm_password"]').value;
+    
+    if (newPassword !== confirmPassword) {
+        showUserNotification('Passwords do not match', 'error');
+        return;
+    }
+    
+    var formData = new FormData(this);
+    var submitBtn = this.querySelector('button[type="submit"]');
+    var originalBtnText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    submitBtn.disabled = true;
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
         
-        if (!confirm('Are you sure you want to ' + (isActive ? 'disable' : 'enable') + ' this user?')) {
-            return;
+        if (data.success) {
+            showUserNotification(data.message || 'Password reset successfully!', 'success');
+            closeModal('reset-password-modal');
+        } else {
+            showUserNotification('Error: ' + (data.message || 'Failed to reset password'), 'error');
         }
-        
-        var form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'process_admin_action.php';
-        
-        var csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrf_token';
-        var csrfElement = document.querySelector('input[name="csrf_token"]');
-        csrfInput.value = csrfElement ? csrfElement.value : '';
-        form.appendChild(csrfInput);
-        
-        var actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = action;
-        form.appendChild(actionInput);
-        
-        var userIdInput = document.createElement('input');
-        userIdInput.type = 'hidden';
-        userIdInput.name = 'user_id';
-        userIdInput.value = userId;
-        form.appendChild(userIdInput);
-        
-        document.body.appendChild(form);
-        form.submit();
+    })
+    .catch(function(error) {
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+        console.error('Error:', error);
+        showUserNotification('An error occurred. Please try again.', 'error');
     });
 });
 </script>

@@ -42,14 +42,17 @@ if ($action === 'create_goal') {
         }
         
         // Insert the goal
+        // Note: Database has both title/goal_title and description/goal_description columns
+        // for backward compatibility. Setting both ensures the goal displays correctly
+        // regardless of which column the view queries use (via COALESCE).
         $stmt = $pdo->prepare("
             INSERT INTO goals (
-                athlete_id, created_by, title, description, category,
+                athlete_id, created_by, title, goal_title, description, goal_description, category,
                 target_date, status, completion_percentage, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())
         ");
         $stmt->execute([
-            $athlete_id, $user_id, $title, $description, $category, $target_date
+            $athlete_id, $user_id, $title, $title, $description, $description, $category, $target_date
         ]);
         
         $goal_id = $pdo->lastInsertId();
