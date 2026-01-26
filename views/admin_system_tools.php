@@ -314,11 +314,10 @@ try {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>SMTP Password</h4>
-                                <p>Email account password or app password</p>
+                                <p>Email account password or app password<?php echo !empty($settings['smtp_pass']) ? ' (currently set)' : ''; ?></p>
                             </div>
                             <input type="password" name="smtp_pass" class="form-input" 
-                                   value="<?php echo !empty($settings['smtp_pass']) ? '********' : ''; ?>"
-                                   placeholder="Enter password">
+                                   placeholder="<?php echo !empty($settings['smtp_pass']) ? 'Leave blank to keep current password' : 'Enter password'; ?>">
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">
@@ -406,11 +405,10 @@ try {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>App Password</h4>
-                                <p>App-specific password (recommended over main password)</p>
+                                <p>App-specific password (recommended over main password)<?php echo !empty($settings['nextcloud_password']) ? ' (currently set)' : ''; ?></p>
                             </div>
                             <input type="password" name="nextcloud_password" class="form-input" 
-                                   value="<?php echo !empty($settings['nextcloud_password']) ? '********' : ''; ?>"
-                                   placeholder="Enter app password">
+                                   placeholder="<?php echo !empty($settings['nextcloud_password']) ? 'Leave blank to keep current password' : 'Enter app password'; ?>">
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">

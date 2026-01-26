@@ -92,7 +92,8 @@ try {
             
             updateSetting($pdo, 'nextcloud_url', $url);
             updateSetting($pdo, 'nextcloud_username', $username);
-            if (!empty($password) && $password !== '********') {
+            // Only update password if a new one is provided
+            if (!empty($password)) {
                 // Encrypt password before storing
                 $encrypted_password = encryptPassword($password);
                 updateSetting($pdo, 'nextcloud_password', $encrypted_password);
