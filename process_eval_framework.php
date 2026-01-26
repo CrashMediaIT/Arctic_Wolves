@@ -24,6 +24,24 @@ if ($user_role !== 'admin') {
     die(json_encode(['success' => false, 'message' => 'Admin access required']));
 }
 
+// Helper function to check if this is an AJAX request
+function isAjaxRequest() {
+    return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+}
+
+// Helper function to send response (either redirect or JSON)
+function sendResponse($success, $message, $redirectPage = 'admin_eval_framework', $data = []) {
+    if (isAjaxRequest()) {
+        header('Content-Type: application/json');
+        echo json_encode(array_merge(['success' => $success, 'message' => $message], $data));
+    } else {
+        $status = $success ? 'success' : 'error';
+        header("Location: dashboard.php?page={$redirectPage}&status={$status}&message=" . urlencode($message));
+    }
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();
     
@@ -47,11 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$name, $description]);
                 
-                echo json_encode([
-                    'success' => true,
-                    'category_id' => $pdo->lastInsertId(),
-                    'message' => 'Category created successfully'
-                ]);
+                sendResponse(true, 'Category created successfully', 'admin_eval_framework', ['category_id' => $pdo->lastInsertId()]);
                 break;
                 
             case 'update_category':
@@ -70,10 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$name, $description, $category_id]);
                 
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Category updated successfully'
-                ]);
+                sendResponse(true, 'Category updated successfully');
                 break;
                 
             case 'delete_category':
@@ -89,10 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("DELETE FROM eval_categories WHERE id = ?");
                 $stmt->execute([$category_id]);
                 
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Category deleted successfully'
-                ]);
+                sendResponse(true, 'Category deleted successfully');
                 break;
                 
             case 'reorder_categories':
@@ -118,10 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([intval($item['display_order']), intval($item['category_id'])]);
                 }
                 
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Category order updated successfully'
-                ]);
+                sendResponse(true, 'Category order updated successfully');
                 break;
                 
             case 'create_skill':
@@ -146,11 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$category_id, $name, $description]);
                 
-                echo json_encode([
-                    'success' => true,
-                    'skill_id' => $pdo->lastInsertId(),
-                    'message' => 'Skill created successfully'
-                ]);
+                sendResponse(true, 'Skill created successfully', 'admin_eval_framework', ['skill_id' => $pdo->lastInsertId()]);
                 break;
                 
             case 'update_skill':
@@ -177,10 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$category_id, $name, $description, $skill_id]);
                 
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Skill updated successfully'
-                ]);
+                sendResponse(true, 'Skill updated successfully');
                 break;
                 
             case 'delete_skill':
@@ -196,10 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("DELETE FROM eval_skills WHERE id = ?");
                 $stmt->execute([$skill_id]);
                 
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Skill deleted successfully'
-                ]);
+                sendResponse(true, 'Skill deleted successfully');
                 break;
                 
             case 'reorder_skills':
@@ -233,10 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([intval($item['display_order']), intval($item['skill_id']), $category_id]);
                 }
                 
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Skill order updated successfully'
-                ]);
+                sendResponse(true, 'Skill order updated successfully');
                 break;
                 
             case 'toggle_active':
@@ -261,10 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Note: eval_scales table may not exist in schema
                 // Return success message indicating feature is pending implementation
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Scale configuration saved. Note: Custom scales require database schema update for full persistence.'
-                ]);
+                sendResponse(true, 'Scale configuration saved. Note: Custom scales require database schema update for full persistence.');
                 break;
                 
             case 'edit_scale':
@@ -285,10 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Note: eval_scales table may not exist in schema
                 // Return success message indicating feature is pending implementation
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Scale updated. Note: Custom scales require database schema update for full persistence.'
-                ]);
+                sendResponse(true, 'Scale updated. Note: Custom scales require database schema update for full persistence.');
                 break;
                 
             default:
@@ -296,11 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
     } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => $e->getMessage()
-        ]);
+        sendResponse(false, $e->getMessage());
     }
     
 } else {

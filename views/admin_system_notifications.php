@@ -791,6 +791,22 @@ function closeModal() {
     document.getElementById('notificationModal').classList.remove('show');
 }
 
+// Toast notification helper
+function showToast(message, type) {
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.textContent = message;
+    toast.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 16px 24px; background: ' + 
+        (type === 'success' ? '#10B981' : type === 'error' ? '#EF4444' : '#6B46C1') + 
+        '; color: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000; font-family: Inter, sans-serif; font-size: 14px;';
+    document.body.appendChild(toast);
+    setTimeout(function() {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 3000);
+}
+
 function submitForm(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
@@ -802,14 +818,14 @@ function submitForm(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
-            window.location.reload();
+            showToast(data.message || 'Notification saved successfully', 'success');
+            setTimeout(function() { window.location.reload(); }, 1500);
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     });
 }
 
@@ -828,9 +844,10 @@ function toggleActive(id) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            window.location.reload();
+            showToast('Status updated', 'success');
+            setTimeout(function() { window.location.reload(); }, 1500);
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + (data.message || 'Update failed'), 'error');
         }
     });
 }
@@ -850,9 +867,10 @@ function deleteNotification(id, title) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            window.location.reload();
+            showToast('Notification deleted', 'success');
+            setTimeout(function() { window.location.reload(); }, 1500);
         } else {
-            alert('Error: ' + data.message);
+            showToast('Error: ' + (data.message || 'Delete failed'), 'error');
         }
     });
 }

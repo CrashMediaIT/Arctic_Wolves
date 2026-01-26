@@ -189,14 +189,20 @@ foreach ($users as $u) {
                                     </td>
                                     <td>
                                         <div class="table-actions">
-                                            <button class="btn-icon" data-action="edit" data-id="<?php echo $user['id']; ?>" title="Edit">
+                                            <button class="btn-icon" data-action="edit" data-id="<?php echo $user['id']; ?>" data-modal="edit-user-modal" 
+                                                    data-email="<?php echo htmlspecialchars($user['email']); ?>"
+                                                    data-first-name="<?php echo htmlspecialchars($user['first_name']); ?>"
+                                                    data-last-name="<?php echo htmlspecialchars($user['last_name']); ?>"
+                                                    data-phone="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>"
+                                                    data-role="<?php echo htmlspecialchars($user['role']); ?>"
+                                                    title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <button class="btn-icon" data-action="permissions" data-id="<?php echo $user['id']; ?>" title="Permissions">
                                                 <i class="fas fa-key"></i>
                                             </button>
                                             <?php if ($user['id'] != $user_id): ?>
-                                                <button class="btn-icon <?php echo $user['is_verified'] ? 'danger' : 'success'; ?>" data-action="toggle-status" data-id="<?php echo $user['id']; ?>" title="<?php echo $user['is_verified'] ? 'Disable' : 'Enable'; ?>">
+                                                <button class="btn-icon <?php echo $user['is_verified'] ? 'danger' : 'success'; ?>" data-action="toggle-status" data-id="<?php echo $user['id']; ?>" data-type="user" title="<?php echo $user['is_verified'] ? 'Disable' : 'Enable'; ?>">
                                                     <i class="fas fa-<?php echo $user['is_verified'] ? 'ban' : 'check'; ?>"></i>
                                                 </button>
                                             <?php endif; ?>
@@ -670,3 +676,88 @@ function applyFilters() {
         </form>
     </div>
 </div>
+
+<!-- Edit User Modal -->
+<div id="edit-user-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit User</h2>
+            <button class="modal-close" onclick="closeModal('edit-user-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_user">
+            <input type="hidden" name="user_id" id="edit-user-id">
+            
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" name="first_name" id="edit-user-first-name" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" name="last_name" id="edit-user-last-name" class="form-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" id="edit-user-email" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" name="phone" id="edit-user-phone" class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Role *</label>
+                    <select name="role" id="edit-user-role" class="form-input" required>
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="coach">Coach</option>
+                        <option value="athlete">Athlete</option>
+                        <option value="parent">Parent</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">New Password (leave blank to keep current)</label>
+                    <input type="password" name="password" class="form-input" placeholder="Enter new password if changing">
+                    <small style="color: var(--text-dim);">Leave empty to keep current password</small>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-user-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Handle edit user button clicks
+document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var id = this.getAttribute('data-id');
+        var email = this.getAttribute('data-email');
+        var firstName = this.getAttribute('data-first-name');
+        var lastName = this.getAttribute('data-last-name');
+        var phone = this.getAttribute('data-phone');
+        var role = this.getAttribute('data-role');
+        
+        document.getElementById('edit-user-id').value = id;
+        document.getElementById('edit-user-email').value = email;
+        document.getElementById('edit-user-first-name').value = firstName;
+        document.getElementById('edit-user-last-name').value = lastName;
+        document.getElementById('edit-user-phone').value = phone || '';
+        document.getElementById('edit-user-role').value = role;
+        
+        document.getElementById('edit-user-modal').classList.add('active');
+    });
+});
+</script>

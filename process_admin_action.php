@@ -294,6 +294,42 @@ if ($action == 'create_user') {
     exit();
 }
 
+if ($action == 'update_user') {
+    $user_id_to_update = intval($_POST['user_id']);
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone'] ?? '');
+    $role = $_POST['role'];
+    $password = trim($_POST['password'] ?? '');
+
+    try {
+        // Check if password is being updated
+        if (!empty($password)) {
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, password = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $hashed_password, $user_id_to_update]);
+        } else {
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $user_id_to_update]);
+        }
+        
+        header("Location: dashboard.php?page=all_users&status=success");
+    } catch (PDOException $e) {
+        error_log("Update user error: " . $e->getMessage());
+        header("Location: dashboard.php?page=all_users&status=error");
+    }
+    exit();
+}
+
 // =========================================================
 // MODULE 8.5: USER STATUS TOGGLING
 // =========================================================
