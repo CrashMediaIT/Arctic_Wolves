@@ -291,9 +291,12 @@ if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] 
 </body>
 </html>';
         
+        // Sanitize invoice number for filename (remove special characters)
+        $safe_invoice_number = preg_replace('/[^A-Za-z0-9\-]/', '_', $invoice['invoice_number']);
+        
         // Output as downloadable HTML file (can be converted to PDF if library is available)
         header('Content-Type: text/html');
-        header('Content-Disposition: attachment; filename="Invoice_' . $invoice['invoice_number'] . '.html"');
+        header('Content-Disposition: attachment; filename="Invoice_' . $safe_invoice_number . '.html"');
         echo $html;
         exit();
         

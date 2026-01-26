@@ -209,8 +209,14 @@ function fetchReportData($report_type, $parameters) {
             break;
             
         default:
-            // Generate empty report with message
-            $data = ['message' => 'Report type: ' . $report_type, 'generated_at' => date('Y-m-d H:i:s')];
+            // Log unknown report type for debugging
+            error_log("Unknown report type requested: " . htmlspecialchars($report_type));
+            // Generate placeholder report with message
+            $data = [
+                'message' => 'Report generated for type: ' . htmlspecialchars($report_type), 
+                'generated_at' => date('Y-m-d H:i:s'),
+                'note' => 'This report type may not have specific data handlers configured.'
+            ];
     }
     
     return $data;
