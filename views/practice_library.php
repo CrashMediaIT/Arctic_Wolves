@@ -125,6 +125,22 @@ try {
     </div>
 </div>
 
+<!-- Practice Plan View Modal -->
+<div id="practice-view-modal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-clipboard-list"></i> <span id="view-plan-title">Practice Plan</span></h2>
+            <div class="modal-actions">
+                <button class="btn-secondary btn-sm" onclick="printPracticePlan()"><i class="fas fa-print"></i> Print</button>
+                <button class="modal-close" onclick="closePlanViewModal()">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body" id="practice-view-content">
+            <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading practice plan...</div>
+        </div>
+    </div>
+</div>
+
 <style>
 .practice-list {
     display: flex;
@@ -306,17 +322,273 @@ try {
     background: rgba(239, 68, 68, 0.2);
     border-color: #ef4444;
 }
+
+/* Practice View Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content.modal-large {
+    max-width: 900px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-main);
+}
+
+.modal-header .modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin: 0;
+}
+
+.modal-header .modal-title i {
+    color: var(--neon);
+    margin-right: 10px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: var(--text-white);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-dim);
+}
+
+.loading-spinner i {
+    font-size: 32px;
+    margin-bottom: 10px;
+    display: block;
+    color: var(--neon);
+}
+
+/* Practice Plan View Styles */
+.plan-view-header {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--border);
+}
+
+.plan-view-header h2 {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-white);
+    margin-bottom: 8px;
+}
+
+.plan-view-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.plan-view-meta span i {
+    color: var(--neon);
+    margin-right: 5px;
+}
+
+.plan-view-description {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    color: var(--text-white);
+    line-height: 1.6;
+}
+
+.drills-list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.drill-view-item {
+    display: flex;
+    gap: 20px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    align-items: flex-start;
+}
+
+.drill-rink-image {
+    width: 150px;
+    height: 100px;
+    background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%);
+    border: 2px solid #3d7a4d;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.drill-rink-image::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+}
+
+.drill-rink-image::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 100%;
+    background: rgba(255,255,255,0.2);
+}
+
+.drill-rink-image i {
+    font-size: 24px;
+    color: rgba(255,255,255,0.5);
+    z-index: 1;
+}
+
+.drill-view-details {
+    flex: 1;
+}
+
+.drill-view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.drill-view-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+}
+
+.drill-duration-badge {
+    background: rgba(255, 77, 0, 0.15);
+    color: var(--neon);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.drill-view-description {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+.drill-category-tag {
+    display: inline-block;
+    background: rgba(107, 70, 193, 0.15);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+/* Print styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #practice-view-modal,
+    #practice-view-modal * {
+        visibility: visible;
+    }
+    #practice-view-modal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+    }
+    .modal-close, .modal-actions button {
+        display: none !important;
+    }
+    .drill-rink-image {
+        background: #e0e0e0 !important;
+        border-color: #999 !important;
+    }
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle View Practice Plan button
+    // Handle View Practice Plan button - opens printable view modal
     document.querySelectorAll('[data-action="view-plan"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             var planId = this.getAttribute('data-plan-id');
             if (planId) {
-                window.location.href = 'dashboard.php?page=practice_plans&view=' + planId;
+                openPlanViewModal(planId);
             }
         });
     });
@@ -344,7 +616,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 fetch('process_practice_plans.php', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: 'action=delete&plan_id=' + planId + '&csrf_token=' + encodeURIComponent(csrfToken)
                 })
@@ -400,4 +673,123 @@ function showSuccessMessage(message) {
         }
     }, 5000);
 }
+
+function openPlanViewModal(planId) {
+    var modal = document.getElementById('practice-view-modal');
+    var content = document.getElementById('practice-view-content');
+    
+    modal.classList.add('active');
+    content.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading practice plan...</div>';
+    
+    // Fetch practice plan details via AJAX
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    
+    fetch('process_practice_plans.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: 'action=get_plan&plan_id=' + planId + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.plan) {
+            displayPracticePlan(data.plan, data.drills || []);
+        } else {
+            content.innerHTML = '<div class="error-message" style="color: #ef4444; text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>Failed to load practice plan</div>';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        content.innerHTML = '<div class="error-message" style="color: #ef4444; text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>An error occurred while loading the practice plan</div>';
+    });
+}
+
+function displayPracticePlan(plan, drills) {
+    var content = document.getElementById('practice-view-content');
+    var titleEl = document.getElementById('view-plan-title');
+    
+    titleEl.textContent = plan.name || 'Practice Plan';
+    
+    var totalDuration = drills.reduce(function(sum, d) { return sum + (parseInt(d.duration_minutes) || 0); }, 0);
+    
+    var html = '<div class="plan-view-header">';
+    html += '<h2>' + escapeHtml(plan.name) + '</h2>';
+    html += '<div class="plan-view-meta">';
+    html += '<span><i class="fas fa-user"></i> ' + escapeHtml(plan.creator_name || 'Unknown') + '</span>';
+    html += '<span><i class="fas fa-list"></i> ' + drills.length + ' drills</span>';
+    html += '<span><i class="fas fa-clock"></i> ' + totalDuration + ' minutes</span>';
+    html += '<span><i class="fas fa-calendar"></i> ' + formatDate(plan.created_at) + '</span>';
+    html += '</div></div>';
+    
+    if (plan.description) {
+        html += '<div class="plan-view-description">' + escapeHtml(plan.description) + '</div>';
+    }
+    
+    html += '<h3 style="font-size: 16px; font-weight: 700; color: var(--text-white); margin-bottom: 16px;"><i class="fas fa-hockey-puck" style="color: var(--neon); margin-right: 8px;"></i>Drills</h3>';
+    
+    if (drills.length > 0) {
+        html += '<div class="drills-list-view">';
+        drills.forEach(function(drill, index) {
+            html += '<div class="drill-view-item">';
+            html += '<div class="drill-rink-image">';
+            if (drill.diagram_data || drill.custom_image) {
+                html += '<i class="fas fa-image"></i>';
+            } else {
+                html += '<i class="fas fa-hockey-puck"></i>';
+            }
+            html += '</div>';
+            html += '<div class="drill-view-details">';
+            html += '<div class="drill-view-header">';
+            html += '<span class="drill-view-title">' + (index + 1) + '. ' + escapeHtml(drill.title || 'Drill') + '</span>';
+            html += '<span class="drill-duration-badge">' + (drill.duration_minutes || 10) + ' min</span>';
+            html += '</div>';
+            if (drill.description) {
+                html += '<div class="drill-view-description">' + escapeHtml(drill.description) + '</div>';
+            }
+            if (drill.notes) {
+                html += '<div class="drill-view-description" style="margin-top: 8px; font-style: italic;"><strong>Notes:</strong> ' + escapeHtml(drill.notes) + '</div>';
+            }
+            if (drill.category_name) {
+                html += '<span class="drill-category-tag">' + escapeHtml(drill.category_name) + '</span>';
+            }
+            html += '</div></div>';
+        });
+        html += '</div>';
+    } else {
+        html += '<div style="text-align: center; padding: 40px; color: var(--text-dim);"><i class="fas fa-info-circle"></i> No drills added to this practice plan</div>';
+    }
+    
+    content.innerHTML = html;
+}
+
+function closePlanViewModal() {
+    var modal = document.getElementById('practice-view-modal');
+    modal.classList.remove('active');
+}
+
+function printPracticePlan() {
+    window.print();
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return 'Unknown';
+    var d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+// Close modal when clicking outside
+document.getElementById('practice-view-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closePlanViewModal();
+    }
+});
 </script>

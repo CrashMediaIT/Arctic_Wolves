@@ -1,9 +1,44 @@
-<!-- Create Practice Plan View -->
+<!-- Create/Edit Practice Plan View -->
+<?php
+// Check if editing an existing plan
+$edit_plan_id = isset($_GET['edit']) ? intval($_GET['edit']) : 0;
+$edit_plan = null;
+$edit_drills = [];
+
+if ($edit_plan_id > 0) {
+    try {
+        // Get the practice plan
+        $stmt = $pdo->prepare("SELECT * FROM practice_plans WHERE id = ?");
+        $stmt->execute([$edit_plan_id]);
+        $edit_plan = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($edit_plan) {
+            // Get the drills for this plan
+            $drill_stmt = $pdo->prepare("
+                SELECT ppd.*, d.title, d.description, dc.name as category_name
+                FROM practice_plan_drills ppd
+                LEFT JOIN drills d ON ppd.drill_id = d.id
+                LEFT JOIN drill_categories dc ON d.category_id = dc.id
+                WHERE ppd.practice_plan_id = ?
+                ORDER BY ppd.drill_order ASC
+            ");
+            $drill_stmt->execute([$edit_plan_id]);
+            $edit_drills = $drill_stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } catch (PDOException $e) {
+        error_log("Edit plan load error: " . $e->getMessage());
+    }
+}
+
+$is_editing = $edit_plan !== null;
+$page_title = $is_editing ? 'Edit Practice Plan' : 'Create Practice Plan';
+$action_value = $is_editing ? 'update' : 'create';
+?>
 <div class="page-header">
     <h1 class="page-title">
-        <i class="fas fa-clipboard-list"></i> Create Practice Plan
+        <i class="fas fa-clipboard-list"></i> <?= $page_title ?>
     </h1>
-    <p class="page-description">Build a comprehensive practice plan for your team</p>
+    <p class="page-description"><?= $is_editing ? 'Modify your practice plan' : 'Build a comprehensive practice plan for your team' ?></p>
 </div>
 
 <div class="create-practice-content">
@@ -15,19 +50,22 @@
         <div class="card-body">
             <form class="practice-form" id="practiceForm" method="POST" action="process_practice_plans.php">
                 <?= csrfTokenInput() ?>
-                <input type="hidden" name="action" value="create">
+                <input type="hidden" name="action" value="<?= $action_value ?>">
                 <input type="hidden" name="drills" id="drillsData" value="[]">
+                <?php if ($is_editing): ?>
+                <input type="hidden" name="plan_id" value="<?= $edit_plan_id ?>">
+                <?php endif; ?>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Practice Title *</label>
-                        <input type="text" name="practice_title" id="practiceTitle" class="form-input" placeholder="e.g., Power Play Development" required>
+                        <input type="text" name="practice_title" id="practiceTitle" class="form-input" placeholder="e.g., Power Play Development" required value="<?= $is_editing ? htmlspecialchars($edit_plan['name'] ?? '') : '' ?>">
                     </div>
                     <div class="form-group">
                         <label>Team</label>
                         <select name="team_id" class="form-input">
                             <option value="">-- Select Team --</option>
-                            <?php 
+                            <?php
                             try {
                                 $teamsStmt = $pdo->query("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
                                 $teamsCount = 0;
@@ -78,7 +116,7 @@
 
                 <div class="form-group">
                     <label>Practice Goals</label>
-                    <textarea name="practice_goals" class="form-textarea" rows="3" placeholder="What are the key objectives for this practice?"></textarea>
+                    <textarea name="practice_goals" class="form-textarea" rows="3" placeholder="What are the key objectives for this practice?"><?= $is_editing ? htmlspecialchars($edit_plan['description'] ?? '') : '' ?></textarea>
                 </div>
 
                 <div class="form-group">
@@ -752,6 +790,22 @@ function submitPracticePlan() {
 
 // Load draft on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Load existing drills if editing
+    <?php if ($is_editing && !empty($edit_drills)): ?>
+    var existingDrills = <?= json_encode(array_map(function($d) {
+        return [
+            'id' => $d['drill_id'],
+            'title' => $d['title'] ?? 'Drill',
+            'category' => $d['category_name'] ?? '',
+            'duration' => $d['duration_minutes'] ?? 10,
+            'notes' => $d['notes'] ?? ''
+        ];
+    }, $edit_drills)) ?>;
+    practiceDrills = existingDrills;
+    updateDrillsDisplay();
+    // Clear draft when editing existing plan
+    localStorage.removeItem('practice_plan_draft');
+    <?php else: ?>
     const draft = localStorage.getItem('practice_plan_draft');
     if (draft) {
         const loadDraft = confirm('You have a saved draft. Would you like to load it?');
@@ -766,6 +820,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+    <?php endif; ?>
     
     // Update summary when duration changes
     document.getElementById('totalDuration').addEventListener('change', updateSummary);

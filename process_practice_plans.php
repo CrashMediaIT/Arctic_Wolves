@@ -90,17 +90,70 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update') {
         
         $pdo->commit();
         
-        // Redirect based on action - create goes back to practice_create, update/save_plan goes to practice_plans
+        // Redirect based on action - create goes back to practice_create, update/save_plan goes to practice_library
         if ($action === 'create') {
             header("Location: dashboard.php?page=practice_create&status=plan_created&plan_id=$plan_id");
         } else {
-            header("Location: dashboard.php?page=practice_plans&status=plan_saved");
+            header("Location: dashboard.php?page=practice_library&status=plan_saved");
         }
         exit();
         
     } catch (PDOException $e) {
         $pdo->rollBack();
-        header("Location: dashboard.php?page=practice_plans&error=save_failed");
+        header("Location: dashboard.php?page=practice_library&error=save_failed");
+        exit();
+    }
+}
+
+// =========================================================
+// GET PRACTICE PLAN (for viewing)
+// =========================================================
+if ($action === 'get_plan') {
+    $plan_id = intval($_POST['plan_id']);
+    
+    try {
+        // Get the practice plan
+        $stmt = $pdo->prepare("
+            SELECT pp.*, 
+                   CONCAT(u.first_name, ' ', u.last_name) as creator_name
+            FROM practice_plans pp
+            LEFT JOIN users u ON pp.created_by = u.id
+            WHERE pp.id = ?
+        ");
+        $stmt->execute([$plan_id]);
+        $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$plan) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Practice plan not found']);
+            exit();
+        }
+        
+        // Get the drills for this plan
+        $drill_stmt = $pdo->prepare("
+            SELECT ppd.*, d.title, d.description, d.diagram_data, d.custom_image,
+                   dc.name as category_name
+            FROM practice_plan_drills ppd
+            LEFT JOIN drills d ON ppd.drill_id = d.id
+            LEFT JOIN drill_categories dc ON d.category_id = dc.id
+            WHERE ppd.practice_plan_id = ?
+            ORDER BY ppd.drill_order ASC
+        ");
+        $drill_stmt->execute([$plan_id]);
+        $drills = $drill_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'plan' => $plan,
+            'drills' => $drills
+        ]);
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("Get practice plan error: " . $e->getMessage());
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Failed to load practice plan']);
         exit();
     }
 }
