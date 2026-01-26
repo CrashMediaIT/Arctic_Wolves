@@ -86,8 +86,7 @@ function handleVideoUpload() {
     $file = $_FILES['video_file'];
     
     // Use FileUploadValidator for security validation
-    $validator = new FileUploadValidator();
-    $validation = $validator->validateVideoUpload($file);
+    $validation = FileUploadValidator::validateVideo($file);
     
     if (!$validation['valid']) {
         throw new Exception($validation['error']);
@@ -113,10 +112,10 @@ function handleVideoUpload() {
     $stmt = $pdo->prepare("
         INSERT INTO videos (
             athlete_id, coach_id, title, description, video_url,
-            video_type, status, coach_notes, upload_date
+            video_type, status, coach_notes, drill_name, drill_type, rating, upload_date
         ) VALUES (
             ?, ?, ?, ?, ?,
-            'coach_review', 'pending_review', ?, NOW()
+            'coach_review', 'pending_review', ?, ?, ?, ?, NOW()
         )
     ");
     
@@ -130,7 +129,10 @@ function handleVideoUpload() {
         $title,
         $description,
         $video_url,
-        $comments
+        $comments,
+        $drill_name,
+        $drill_type,
+        $rating
     ]);
     
     $video_id = $pdo->lastInsertId();
