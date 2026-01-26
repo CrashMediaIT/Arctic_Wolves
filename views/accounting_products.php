@@ -1,4 +1,18 @@
 <!-- Accounting Products View -->
+<?php if (isset($_GET['status']) && $_GET['status'] === 'success'): ?>
+<div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+    <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
+    <span style="color: #10b981; font-weight: 600;">Operation completed successfully!</span>
+    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #10b981; cursor: pointer; font-size: 18px;">&times;</button>
+</div>
+<?php endif; ?>
+<?php if (isset($_GET['status']) && $_GET['status'] === 'error'): ?>
+<div class="error-alert" style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+    <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 20px;"></i>
+    <span style="color: #ef4444; font-weight: 600;"><?= htmlspecialchars($_GET['message'] ?? 'An error occurred') ?></span>
+    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;">&times;</button>
+</div>
+<?php endif; ?>
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-box-open"></i> Products & Pricing
@@ -147,8 +161,8 @@
                             <p><i class="fas fa-tag"></i> Save 20%</p>
                         </div>
                         <div class="product-actions">
-                            <button class="btn-secondary btn-small"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small"><i class="fas fa-toggle-on"></i> Disable</button>
+                            <button class="btn-secondary btn-small" data-action="edit" data-id="pkg-1" data-type="package" data-modal="edit-package-modal"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="pkg-1" data-type="package"><i class="fas fa-toggle-on"></i> Disable</button>
                         </div>
                     </div>
 
@@ -165,8 +179,8 @@
                             <p><i class="fas fa-tag"></i> Save 27%</p>
                         </div>
                         <div class="product-actions">
-                            <button class="btn-secondary btn-small"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-secondary btn-small"><i class="fas fa-toggle-on"></i> Disable</button>
+                            <button class="btn-secondary btn-small" data-action="edit" data-id="pkg-2" data-type="package" data-modal="edit-package-modal"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn-secondary btn-small" data-action="toggle-status" data-id="pkg-2" data-type="package"><i class="fas fa-toggle-on"></i> Disable</button>
                         </div>
                     </div>
                 </div>
@@ -696,3 +710,92 @@
         </form>
     </div>
 </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching functionality
+    document.querySelectorAll('.tab-btn[data-action="switch-tab"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var tabName = this.getAttribute('data-tab');
+            
+            // Remove active from all tabs and buttons
+            document.querySelectorAll('.tab-content').forEach(function(tab) {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(function(tabBtn) {
+                tabBtn.classList.remove('active');
+            });
+            
+            // Activate selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            this.classList.add('active');
+        });
+    });
+    
+    // Handle toggle-status buttons
+    document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var itemId = this.getAttribute('data-id');
+            var itemType = this.getAttribute('data-type');
+            var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= $_SESSION["csrf_token"] ?? "" ?>';
+            
+            if (confirm('Are you sure you want to toggle the status of this ' + itemType + '?')) {
+                fetch('process_admin_action.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=toggle_' + itemType + '_status&id=' + encodeURIComponent(itemId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to toggle status'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+        });
+    });
+    
+    // Handle edit buttons for modals
+    document.querySelectorAll('[data-action="edit"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var itemId = this.getAttribute('data-id');
+            var modal = document.getElementById(modalId);
+            
+            if (modal) {
+                // Populate modal with item data (would need AJAX call to get data)
+                modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Handle add buttons for modals
+    document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+            }
+        });
+    });
+});
+
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+</script>
