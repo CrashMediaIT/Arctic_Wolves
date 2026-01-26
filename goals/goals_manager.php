@@ -19,7 +19,7 @@ class GoalsManager {
         try {
             $stmt = $this->pdo->prepare("
                 INSERT INTO goals (
-                    athlete_id, goal_title, goal_description, goal_type,
+                    athlete_id, title, description, category,
                     target_value, current_value, target_date, status, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NOW())
             ");
@@ -28,7 +28,7 @@ class GoalsManager {
                 $athlete_id,
                 $data['title'],
                 $data['description'] ?? '',
-                $data['type'] ?? 'general',
+                $data['category'] ?? 'general',
                 $data['target_value'] ?? 100,
                 $data['current_value'] ?? 0,
                 $data['target_date'] ?? null

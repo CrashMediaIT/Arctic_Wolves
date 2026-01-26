@@ -20,13 +20,45 @@ try {
         $stmt->execute([$user_id]);
         $athleteData = $stmt->fetch(PDO::FETCH_ASSOC);
     }
+    
+    // Get user preferences for notifications
+    $userPreferences = [];
+    try {
+        $prefStmt = $pdo->prepare("
+            SELECT preference_key, preference_value 
+            FROM user_preferences 
+            WHERE user_id = ?
+        ");
+        $prefStmt->execute([$user_id]);
+        while ($row = $prefStmt->fetch(PDO::FETCH_ASSOC)) {
+            $userPreferences[$row['preference_key']] = $row['preference_value'];
+        }
+    } catch (PDOException $prefError) {
+        // Table may not exist yet - use defaults
+        error_log("Failed to load user preferences from database: " . $prefError->getMessage());
+    }
 } catch (PDOException $e) {
     error_log("Profile data fetch error: " . $e->getMessage());
     $userData = [];
     $athleteData = null;
+    $userPreferences = [];
 }
 
 $activeTab = $_GET['tab'] ?? 'personal';
+
+// Helper function to check if preference is enabled (defaults: email_notifications=true, session_reminders=true, goal_updates=true, marketing_emails=false)
+function isPreferenceEnabled($preferences, $key) {
+    $defaults = [
+        'email_notifications' => 1,
+        'session_reminders' => 1,
+        'goal_updates' => 1,
+        'marketing_emails' => 0
+    ];
+    if (isset($preferences[$key])) {
+        return (int)$preferences[$key] === 1;
+    }
+    return isset($defaults[$key]) ? (bool)$defaults[$key] : false;
+}
 ?>
 
 <div class="profile-page-header">
@@ -325,7 +357,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                             <p>Receive email updates for important activities</p>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="email_notifications" checked data-action="toggle-pref">
+                            <input type="checkbox" name="email_notifications" <?php echo isPreferenceEnabled($userPreferences, 'email_notifications') ? 'checked' : ''; ?> data-action="toggle-pref">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -336,7 +368,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                             <p>Get reminders before scheduled sessions</p>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="session_reminders" checked data-action="toggle-pref">
+                            <input type="checkbox" name="session_reminders" <?php echo isPreferenceEnabled($userPreferences, 'session_reminders') ? 'checked' : ''; ?> data-action="toggle-pref">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -347,7 +379,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                             <p>Notifications when you achieve milestones</p>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="goal_updates" checked data-action="toggle-pref">
+                            <input type="checkbox" name="goal_updates" <?php echo isPreferenceEnabled($userPreferences, 'goal_updates') ? 'checked' : ''; ?> data-action="toggle-pref">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -358,7 +390,7 @@ $activeTab = $_GET['tab'] ?? 'personal';
                             <p>Receive updates about new features and promotions</p>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="marketing_emails" data-action="toggle-pref">
+                            <input type="checkbox" name="marketing_emails" <?php echo isPreferenceEnabled($userPreferences, 'marketing_emails') ? 'checked' : ''; ?> data-action="toggle-pref">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>

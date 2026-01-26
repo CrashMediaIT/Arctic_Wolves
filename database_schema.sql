@@ -725,6 +725,13 @@ CREATE TABLE IF NOT EXISTS `athlete_stats` (
     `saves` INT DEFAULT 0,
     `save_percentage` DECIMAL(5,3) DEFAULT 0.000,
     `plus_minus` INT DEFAULT 0,
+    `height` INT DEFAULT NULL COMMENT 'Height in inches',
+    `weight` INT DEFAULT NULL COMMENT 'Weight in pounds',
+    `handedness` ENUM('left', 'right') DEFAULT NULL COMMENT 'Shoots left or right',
+    `catching_hand` ENUM('left', 'right') DEFAULT NULL COMMENT 'Goalie catching hand',
+    `jersey_number` INT DEFAULT NULL COMMENT 'Jersey number',
+    `team` VARCHAR(255) DEFAULT NULL COMMENT 'Current team name',
+    `league` VARCHAR(255) DEFAULT NULL COMMENT 'League name',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
@@ -737,20 +744,28 @@ CREATE TABLE IF NOT EXISTS `athlete_stats` (
 -- Athlete team memberships (historical)
 CREATE TABLE IF NOT EXISTS `athlete_teams` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `athlete_id` INT NOT NULL,
-    `team_id` INT NOT NULL,
+    `athlete_id` INT DEFAULT NULL,
+    `user_id` INT DEFAULT NULL COMMENT 'Alternative user reference for backward compatibility',
+    `team_id` INT DEFAULT NULL,
+    `team_name` VARCHAR(255) DEFAULT NULL COMMENT 'Team name string for backward compatibility',
     `season` VARCHAR(50) DEFAULT NULL,
+    `season_year` VARCHAR(10) DEFAULT NULL COMMENT 'Season year (e.g., 2024)',
+    `season_type` VARCHAR(50) DEFAULT NULL COMMENT 'Season type (e.g., Fall, Winter, Spring)',
     `jersey_number` INT DEFAULT NULL,
     `position` VARCHAR(50) DEFAULT NULL,
     `start_date` DATE DEFAULT NULL,
     `end_date` DATE DEFAULT NULL,
     `status` ENUM('active', 'inactive', 'archived') DEFAULT 'active',
+    `is_current` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is the current team',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
     INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_user` (`user_id`),
     INDEX `idx_team` (`team_id`),
-    INDEX `idx_season` (`season`)
+    INDEX `idx_season` (`season`),
+    INDEX `idx_current` (`is_current`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Audit logs (alternative/extended audit table)
@@ -2097,4 +2112,33 @@ ADD COLUMN IF NOT EXISTS `height` INT DEFAULT NULL COMMENT 'Height in inches',
 ADD COLUMN IF NOT EXISTS `weight` INT DEFAULT NULL COMMENT 'Weight in pounds',
 ADD COLUMN IF NOT EXISTS `handedness` ENUM('left', 'right') DEFAULT NULL COMMENT 'Shoots left or right',
 ADD COLUMN IF NOT EXISTS `catching_hand` ENUM('left', 'right') DEFAULT NULL COMMENT 'Goalie catching hand',
-ADD COLUMN IF NOT EXISTS `jersey_number` INT DEFAULT NULL COMMENT 'Jersey number';
+ADD COLUMN IF NOT EXISTS `jersey_number` INT DEFAULT NULL COMMENT 'Jersey number',
+ADD COLUMN IF NOT EXISTS `team` VARCHAR(255) DEFAULT NULL COMMENT 'Current team name',
+ADD COLUMN IF NOT EXISTS `league` VARCHAR(255) DEFAULT NULL COMMENT 'League name';
+
+-- =========================================================
+-- SCHEMA UPDATES - Added Jan 26 2026
+-- Missing tables and columns for profile, goals, and preferences
+-- =========================================================
+
+-- Add missing columns to athlete_teams table for profile team history
+ALTER TABLE `athlete_teams` 
+ADD COLUMN IF NOT EXISTS `user_id` INT DEFAULT NULL COMMENT 'Alternative user reference for backward compatibility',
+ADD COLUMN IF NOT EXISTS `team_name` VARCHAR(255) DEFAULT NULL COMMENT 'Team name string for backward compatibility',
+ADD COLUMN IF NOT EXISTS `season_year` VARCHAR(10) DEFAULT NULL COMMENT 'Season year (e.g., 2024)',
+ADD COLUMN IF NOT EXISTS `season_type` VARCHAR(50) DEFAULT NULL COMMENT 'Season type (e.g., Fall, Winter, Spring)',
+ADD COLUMN IF NOT EXISTS `is_current` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is the current team';
+
+-- Create user_preferences table for notification preferences
+CREATE TABLE IF NOT EXISTS `user_preferences` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `preference_key` VARCHAR(100) NOT NULL,
+    `preference_value` VARCHAR(500) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_user_preference` (`user_id`, `preference_key`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_key` (`preference_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
