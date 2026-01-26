@@ -81,6 +81,7 @@ $allowed_pages = [
     
     'travel'                  => 'views/travel.php',
     'mileage'                 => 'views/travel.php',
+    'mileage_tracker'         => 'views/mileage_tracker.php',
     
     // Accounting and Reports (Admin)
     'accounting_dashboard'    => 'views/accounting_dashboard.php',
@@ -90,6 +91,7 @@ $allowed_pages = [
     'credits_refunds'         => 'views/accounting_credits.php',
     'expenses'                => 'views/accounting_expenses.php',
     'products'                => 'views/accounting_products.php',
+    'accounts_payable'        => 'views/accounts_payable.php',
     
     // HR (Admin)
     'termination'             => 'views/hr_termination.php',
@@ -100,7 +102,7 @@ $allowed_pages = [
     'admin_age_skill'         => 'views/admin_age_skill.php',
     'eval_framework'          => 'views/admin_eval_framework.php',
     'system_notification'     => 'views/admin_system_notifications.php',
-    'audit_log'               => 'views/admin_audit_log.php',
+    'audit_log'               => 'views/admin_audit_logs.php',
     'cron_jobs'               => 'views/admin_cron_jobs.php',
     'system_tools'            => 'views/admin_system_tools.php',
     'admin_settings'          => 'views/admin_settings.php',
@@ -115,6 +117,13 @@ $allowed_pages = [
     'admin_session_types'     => 'views/admin_session_types.php',
     'admin_email_reports'     => 'views/email_logs.php',
     'business_cards'          => 'views/admin_business_cards.php',
+    'admin_packages'          => 'views/admin_packages.php',
+    'admin_plan_categories'   => 'views/admin_plan_categories.php',
+    'admin_coach_termination' => 'views/admin_coach_termination.php',
+    'admin_feature_import'    => 'views/admin_feature_import.php',
+    'admin_theme_settings'    => 'views/admin_theme_settings.php',
+    'ihs_import'              => 'views/ihs_import.php',
+    'session_templates'       => 'views/library_sessions.php',
     
     // Athlete/Coach Views
     'athlete_evaluations'     => 'views/athlete_evaluations.php',
@@ -134,16 +143,23 @@ $allowed_pages = [
     // Reports
     'reports_athlete'         => 'views/reports_athlete.php',
     'reports_income'          => 'views/reports_income.php',
+    'scheduled_reports'       => 'views/scheduled_reports.php',
     
     // Sessions
     'create_session'          => 'views/create_session.php',
     'session_history'         => 'views/session_history.php',
     'session_detail'          => 'views/session_detail.php',
     
+    // Packages and Payments
+    'packages'                => 'views/packages.php',
+    'payment_history'         => 'views/payment_history.php',
+    'refunds'                 => 'views/refunds.php',
+    
     // Other
     'workouts'                => 'views/workouts.php',
     'testing'                 => 'views/testing.php',
     'parent_home'             => 'views/parent_home.php',
+    'athlete_detail'          => 'views/athlete_detail.php',
     
     // Profile and Settings
     'profile'                 => 'views/profile.php',
