@@ -891,10 +891,10 @@ define('CATEGORY_DEFAULT_QUANTITY', 0);
 
 // === SKILLS MANAGEMENT ===
 if ($action == 'create_skill') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         // Skills are evaluation skills tied to categories
-        // For simplicity, we'll use a default category or create general category
-        // Check if a general/uncategorized category exists
         $stmt = $pdo->prepare("SELECT id FROM eval_categories WHERE name = ? LIMIT 1");
         $stmt->execute([DEFAULT_EVAL_CATEGORY]);
         $category = $stmt->fetch();
@@ -916,9 +916,19 @@ if ($action == 'create_skill') {
             trim($_POST['description'] ?? '')
         ]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Skill created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&status=skill_added");
     } catch (PDOException $e) {
         error_log("Create skill error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create skill']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&status=error");
     }
     exit();
@@ -956,6 +966,8 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'skill') {
 
 // === DRILL TYPES MANAGEMENT ===
 if ($action == 'create_drill_type') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description) VALUES (?, ?)");
         $stmt->execute([
@@ -963,9 +975,19 @@ if ($action == 'create_drill_type') {
             trim($_POST['description'] ?? '')
         ]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Drill type created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_added");
     } catch (PDOException $e) {
         error_log("Create drill type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create drill type']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=drills&status=error");
     }
     exit();
@@ -1004,6 +1026,8 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
 // === POSITIONS MANAGEMENT ===
 // Manages player positions (Forward, Defense, Goalie variations)
 if ($action == 'create_position') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     $name = $_POST['name'] ?? '';
     $abbreviation = $_POST['abbreviation'] ?? '';
     $description = $_POST['description'] ?? '';
@@ -1015,6 +1039,11 @@ if ($action == 'create_position') {
     }
     
     if (empty($name)) {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Position name is required']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=positions&status=error&message=position_name_required");
         exit();
     }
@@ -1023,9 +1052,19 @@ if ($action == 'create_position') {
         $stmt = $pdo->prepare("INSERT INTO player_positions (name, abbreviation, description, position_type) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $abbreviation, $description, $position_type]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Position created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=positions&status=success&message=position_created");
     } catch (PDOException $e) {
         error_log("Error creating position: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create position']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=positions&status=error&message=position_creation_failed");
     }
     exit();
@@ -1084,6 +1123,8 @@ if ($action == 'delete_position') {
 // Note: The equipment table is designed for inventory tracking, not category management
 // This might need clarification on whether we want equipment categories or equipment items
 if ($action == 'create_equipment') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         // Using the equipment table for basic equipment type storage
         // Setting default values for inventory fields
@@ -1095,9 +1136,19 @@ if ($action == 'create_equipment') {
             trim($_POST['description'] ?? '')
         ]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Equipment created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_added");
     } catch (PDOException $e) {
         error_log("Create equipment error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create equipment']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     }
     exit();

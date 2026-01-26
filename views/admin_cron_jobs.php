@@ -1,4 +1,46 @@
+<?php
+/**
+ * Admin Cron Jobs View
+ * Manage scheduled tasks and automated jobs
+ */
+
+// Fetch cron jobs from database
+try {
+    $cronJobsStmt = $pdo->query("SELECT * FROM cron_jobs ORDER BY job_name");
+    $cronJobs = $cronJobsStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Cron jobs fetch error: " . $e->getMessage());
+    $cronJobs = [];
+}
+
+// Fetch execution history (if table exists)
+try {
+    $historyStmt = $pdo->query("SELECT * FROM cron_job_history ORDER BY started_at DESC LIMIT 20");
+    $executionHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Table may not exist yet
+    $executionHistory = [];
+}
+
+// Calculate stats
+$activeJobs = count(array_filter($cronJobs, function($j) { return !empty($j['is_active']); }));
+$inactiveJobs = count($cronJobs) - $activeJobs;
+?>
 <!-- Admin Cron Jobs View -->
+<?php if (isset($_GET['status']) && in_array($_GET['status'], ['success', 'added'])): ?>
+<div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+    <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
+    <span style="color: #10b981; font-weight: 600;">Operation completed successfully!</span>
+    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #10b981; cursor: pointer; font-size: 18px;">&times;</button>
+</div>
+<?php endif; ?>
+<?php if (isset($_GET['status']) && $_GET['status'] === 'error'): ?>
+<div class="error-alert" style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+    <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 20px;"></i>
+    <span style="color: #ef4444; font-weight: 600;"><?= htmlspecialchars($_GET['message'] ?? 'An error occurred') ?></span>
+    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;">&times;</button>
+</div>
+<?php endif; ?>
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-clock"></i> Cron Job Management
@@ -10,70 +52,52 @@
     <!-- Active Cron Jobs -->
     <div class="content-card">
         <div class="card-header">
-            <h3><i class="fas fa-tasks"></i> Active Cron Jobs</h3>
+            <h3><i class="fas fa-tasks"></i> Cron Jobs (<?= $activeJobs ?> active, <?= $inactiveJobs ?> inactive)</h3>
             <button class="btn-primary" data-action="add" data-modal="add-cron-job-modal"><i class="fas fa-plus"></i> Add Cron Job</button>
         </div>
         <div class="card-body">
+            <?php if (empty($cronJobs)): ?>
+                <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-clock" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
+                    <p style="color: var(--text-dim);">No cron jobs configured. Click "Add Cron Job" to create one.</p>
+                </div>
+            <?php else: ?>
             <div class="cron-list">
-                <div class="cron-item">
-                    <div class="cron-status running">
-                        <i class="fas fa-circle"></i>
+                <?php foreach ($cronJobs as $job): 
+                    $isActive = !empty($job['is_active']);
+                    $lastRun = $job['last_run_at'] ? date('M d, g:i A', strtotime($job['last_run_at'])) : 'Never';
+                    $nextRun = $job['next_run_at'] ? date('M d, g:i A', strtotime($job['next_run_at'])) : 'Not scheduled';
+                ?>
+                <div class="cron-item <?= $isActive ? '' : 'paused' ?>">
+                    <div class="cron-status <?= $isActive ? 'running' : 'paused' ?>">
+                        <i class="fas fa-<?= $isActive ? 'circle' : 'pause-circle' ?>"></i>
                     </div>
                     <div class="cron-details">
-                        <h4>Send Session Reminders</h4>
+                        <h4><?= htmlspecialchars($job['job_name']) ?></h4>
                         <div class="cron-meta">
-                            <span><i class="fas fa-calendar"></i> Daily at 8:00 AM</span>
-                            <span><i class="fas fa-check"></i> Last run: 2 hours ago</span>
-                            <span><i class="fas fa-clock"></i> Next run: Tomorrow 8:00 AM</span>
+                            <span><i class="fas fa-calendar"></i> <?= htmlspecialchars($job['schedule']) ?></span>
+                            <span><i class="fas fa-<?= $isActive ? 'check' : 'times' ?>"></i> <?= $isActive ? 'Last run: ' . $lastRun : 'Disabled' ?></span>
+                            <?php if ($isActive && $job['next_run_at']): ?>
+                            <span><i class="fas fa-clock"></i> Next run: <?= $nextRun ?></span>
+                            <?php endif; ?>
                         </div>
-                        <p class="cron-description">Sends reminder emails to athletes 24 hours before sessions</p>
+                        <p class="cron-description"><?= htmlspecialchars($job['job_description'] ?? '') ?></p>
                     </div>
                     <div class="cron-actions">
-                        <button class="btn-icon" title="Run Now" data-action="run" data-id="1"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" title="Edit" data-action="edit" data-id="1" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Disable" data-action="toggle" data-id="1"><i class="fas fa-pause"></i></button>
+                        <?php if ($isActive): ?>
+                        <button class="btn-icon" title="Run Now" data-action="run" data-id="<?= $job['id'] ?>"><i class="fas fa-play"></i></button>
+                        <?php endif; ?>
+                        <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $job['id'] ?>" data-modal="edit-cron-job-modal" 
+                                data-name="<?= htmlspecialchars($job['job_name'], ENT_QUOTES) ?>"
+                                data-description="<?= htmlspecialchars($job['job_description'] ?? '', ENT_QUOTES) ?>"
+                                data-schedule="<?= htmlspecialchars($job['schedule'], ENT_QUOTES) ?>"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" title="<?= $isActive ? 'Disable' : 'Enable' ?>" data-action="toggle" data-id="<?= $job['id'] ?>"><i class="fas fa-<?= $isActive ? 'pause' : 'play' ?>"></i></button>
+                        <button class="btn-icon danger" title="Delete" data-action="delete" data-id="<?= $job['id'] ?>"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-
-                <div class="cron-item">
-                    <div class="cron-status running">
-                        <i class="fas fa-circle"></i>
-                    </div>
-                    <div class="cron-details">
-                        <h4>Database Backup</h4>
-                        <div class="cron-meta">
-                            <span><i class="fas fa-calendar"></i> Daily at 2:00 AM</span>
-                            <span><i class="fas fa-check"></i> Last run: 14 hours ago</span>
-                            <span><i class="fas fa-clock"></i> Next run: Today 2:00 AM</span>
-                        </div>
-                        <p class="cron-description">Creates daily database backups</p>
-                    </div>
-                    <div class="cron-actions">
-                        <button class="btn-icon" title="Run Now" data-action="run" data-id="2"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" title="Edit" data-action="edit" data-id="2" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Disable" data-action="toggle" data-id="2"><i class="fas fa-pause"></i></button>
-                    </div>
-                </div>
-
-                <div class="cron-item paused">
-                    <div class="cron-status paused">
-                        <i class="fas fa-pause-circle"></i>
-                    </div>
-                    <div class="cron-details">
-                        <h4>Clean Temp Files</h4>
-                        <div class="cron-meta">
-                            <span><i class="fas fa-calendar"></i> Weekly on Sunday at 3:00 AM</span>
-                            <span><i class="fas fa-times"></i> Disabled</span>
-                        </div>
-                        <p class="cron-description">Removes temporary files older than 7 days</p>
-                    </div>
-                    <div class="cron-actions">
-                        <button class="btn-icon" title="Enable" data-action="toggle" data-id="3"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" title="Edit" data-action="edit" data-id="3" data-modal="edit-cron-job-modal"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" title="Delete" data-action="delete" data-id="3" data-action-url="process_cron_jobs.php"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
+                <?php endforeach; ?>
             </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -83,6 +107,12 @@
             <h3><i class="fas fa-history"></i> Execution History</h3>
         </div>
         <div class="card-body">
+            <?php if (empty($executionHistory)): ?>
+                <div class="empty-state" style="text-align: center; padding: 40px 20px;">
+                    <i class="fas fa-history" style="font-size: 32px; color: var(--text-dim); margin-bottom: 12px;"></i>
+                    <p style="color: var(--text-dim);">No execution history yet.</p>
+                </div>
+            <?php else: ?>
             <div class="table-container">
                 <table class="data-table">
                     <thead>
@@ -96,25 +126,25 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <?php foreach ($executionHistory as $history): 
+                            $duration = $history['completed_at'] && $history['started_at'] 
+                                ? strtotime($history['completed_at']) - strtotime($history['started_at']) 
+                                : 0;
+                            $durationStr = $duration > 60 ? floor($duration/60) . 'm ' . ($duration % 60) . 's' : $duration . 's';
+                        ?>
                         <tr>
-                            <td>Send Session Reminders</td>
-                            <td>Jan 15, 8:00 AM</td>
-                            <td>Jan 15, 8:02 AM</td>
-                            <td>2m 15s</td>
-                            <td><span class="status-badge success">Success</span></td>
-                            <td><button class="btn-link"><i class="fas fa-eye"></i> View</button></td>
+                            <td><?= htmlspecialchars($history['job_name'] ?? 'Unknown') ?></td>
+                            <td><?= $history['started_at'] ? date('M d, g:i A', strtotime($history['started_at'])) : '-' ?></td>
+                            <td><?= $history['completed_at'] ? date('M d, g:i A', strtotime($history['completed_at'])) : '-' ?></td>
+                            <td><?= $durationStr ?></td>
+                            <td><span class="status-badge <?= ($history['status'] ?? '') === 'success' ? 'success' : 'error' ?>"><?= ucfirst($history['status'] ?? 'Unknown') ?></span></td>
+                            <td><button class="btn-link" title="View Output"><i class="fas fa-eye"></i> View</button></td>
                         </tr>
-                        <tr>
-                            <td>Database Backup</td>
-                            <td>Jan 15, 2:00 AM</td>
-                            <td>Jan 15, 2:05 AM</td>
-                            <td>5m 32s</td>
-                            <td><span class="status-badge success">Success</span></td>
-                            <td><button class="btn-link"><i class="fas fa-eye"></i> View</button></td>
-                        </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -327,103 +357,199 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const scheduleSelect = document.querySelector('select[name="schedule"]');
-    const customGroup = document.getElementById('custom-schedule-group');
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= $_SESSION['csrf_token'] ?? '' ?>';
     
-    if (scheduleSelect) {
-        scheduleSelect.addEventListener('change', function() {
-            if (this.value === 'custom') {
+    // Show notification helper
+    function showNotification(message, type) {
+        var existing = document.querySelector('.notification-widget');
+        if (existing) existing.remove();
+        
+        var div = document.createElement('div');
+        div.className = 'notification-widget';
+        div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px;';
+        if (type === 'success') {
+            div.style.background = 'rgba(16, 185, 129, 0.95)';
+            div.style.color = '#fff';
+        } else {
+            div.style.background = 'rgba(239, 68, 68, 0.95)';
+            div.style.color = '#fff';
+        }
+        div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
+        document.body.appendChild(div);
+        setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+    }
+    
+    // Custom schedule toggle
+    var scheduleSelects = document.querySelectorAll('select[name="schedule"]');
+    var customGroup = document.getElementById('custom-schedule-group');
+    
+    scheduleSelects.forEach(function(select) {
+        select.addEventListener('change', function() {
+            if (customGroup && this.value === 'custom') {
                 customGroup.style.display = 'block';
-            } else {
+            } else if (customGroup) {
                 customGroup.style.display = 'none';
             }
         });
-    }
+    });
+    
+    // Handle add buttons for modals
+    document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Handle edit buttons for modals with data population
+    document.querySelectorAll('[data-action="edit"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var modal = document.getElementById(modalId);
+            
+            if (modal) {
+                var idField = modal.querySelector('input[name="job_id"]');
+                var nameField = modal.querySelector('input[name="name"]');
+                var descField = modal.querySelector('textarea[name="description"]');
+                
+                if (idField) idField.value = this.getAttribute('data-id');
+                if (nameField) nameField.value = this.getAttribute('data-name') || '';
+                if (descField) descField.value = this.getAttribute('data-description') || '';
+                
+                modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Handle run/toggle/delete buttons via AJAX
+    document.querySelectorAll('[data-action="run"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var jobId = this.getAttribute('data-id');
+            if (!confirm('Run this cron job now?')) return;
+            
+            fetch('process_cron_jobs.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'action=run&job_id=' + encodeURIComponent(jobId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message || 'Cron job executed successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to run cron job'), 'error');
+                }
+            })
+            .catch(function() { showNotification('An error occurred', 'error'); });
+        });
+    });
+    
+    document.querySelectorAll('[data-action="toggle"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var jobId = this.getAttribute('data-id');
+            
+            fetch('process_cron_jobs.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'action=toggle&job_id=' + encodeURIComponent(jobId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message || 'Status toggled successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to toggle status'), 'error');
+                }
+            })
+            .catch(function() { showNotification('An error occurred', 'error'); });
+        });
+    });
+    
+    document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var jobId = this.getAttribute('data-id');
+            if (!confirm('Are you sure you want to delete this cron job?')) return;
+            
+            fetch('process_cron_jobs.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'action=delete&job_id=' + encodeURIComponent(jobId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message || 'Cron job deleted!', 'success');
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
+                }
+            })
+            .catch(function() { showNotification('An error occurred', 'error'); });
+        });
+    });
+    
+    // Convert modal forms to AJAX submissions
+    document.querySelectorAll('.modal form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(form);
+            var modal = form.closest('.modal');
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                submitBtn.disabled = true;
+            }
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+                
+                if (data.success) {
+                    showNotification(data.message || 'Cron job saved successfully!', 'success');
+                    if (modal) closeModal(modal.id);
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
+                }
+            })
+            .catch(function() {
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
+                showNotification('An error occurred', 'error');
+            });
+        });
+    });
 });
 
-// Helper function to get CSRF token
-function getCsrfToken() {
-    return '<?= $_SESSION['csrf_token'] ?? '' ?>';
-}
-
-function runCronJob(jobId) {
-    if (!confirm('Run this cron job now?')) {
-        return;
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        var form = modal.querySelector('form');
+        if (form) form.reset();
     }
-    
-    const formData = new FormData();
-    formData.append('action', 'run');
-    formData.append('job_id', jobId);
-    formData.append('csrf_token', getCsrfToken());
-    
-    fetch('process_cron_jobs.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Cron job executed successfully');
-            location.reload();
-        } else {
-            alert('Error: ' + (data.message || 'Failed to run cron job'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while running the cron job');
-    });
-}
-
-function toggleCronJob(jobId) {
-    const formData = new FormData();
-    formData.append('action', 'toggle');
-    formData.append('job_id', jobId);
-    formData.append('csrf_token', getCsrfToken());
-    
-    fetch('process_cron_jobs.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + (data.message || 'Failed to toggle cron job'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while toggling the cron job');
-    });
-}
-
-function deleteCronJob(jobId) {
-    if (!confirm('Are you sure you want to delete this cron job?')) {
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('action', 'delete');
-    formData.append('job_id', jobId);
-    formData.append('csrf_token', getCsrfToken());
-    
-    fetch('process_cron_jobs.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + (data.message || 'Failed to delete cron job'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while deleting the cron job');
-    });
 }
 </script>
