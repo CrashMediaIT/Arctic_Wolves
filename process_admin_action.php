@@ -724,6 +724,55 @@ if ($action == 'toggle_user_status') {
     exit();
 }
 
+// =========================================================
+// MODULE 8.5: RESET USER PASSWORD
+// =========================================================
+if ($action == 'reset_user_password') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_reset = intval($_POST['user_id']);
+        $new_password = $_POST['new_password'] ?? '';
+        $confirm_password = $_POST['confirm_password'] ?? '';
+        $force_change = isset($_POST['force_change']) ? 1 : 0;
+        
+        // Validate
+        if (empty($new_password) || strlen($new_password) < 8) {
+            echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters']);
+            exit();
+        }
+        
+        if ($new_password !== $confirm_password) {
+            echo json_encode(['success' => false, 'message' => 'Passwords do not match']);
+            exit();
+        }
+        
+        // Check user exists
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$user_id_to_reset]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user) {
+            echo json_encode(['success' => false, 'message' => 'User not found']);
+            exit();
+        }
+        
+        // Hash and update password
+        $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
+        $stmt = $pdo->prepare("UPDATE users SET password = ?, force_pass_change = ? WHERE id = ?");
+        $stmt->execute([$hashed_password, $force_change, $user_id_to_reset]);
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => "Password reset successfully for {$user['first_name']} {$user['last_name']}"
+        ]);
+    } catch (PDOException $e) {
+        error_log("Reset user password error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
 if ($action == 'toggle_session_status') {
     header('Content-Type: application/json');
     
