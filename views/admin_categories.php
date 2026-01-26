@@ -1,7 +1,7 @@
 <?php
 // Determine which tab should be active based on URL parameter
 $activeTab = $_GET['tab'] ?? 'skills';
-$validTabs = ['skills', 'drills', 'positions', 'equipment'];
+$validTabs = ['skills', 'drills', 'positions'];
 if (!in_array($activeTab, $validTabs)) {
     $activeTab = 'skills';
 }
@@ -48,10 +48,6 @@ if (!in_array($activeTab, $validTabs)) {
             <button class="tab-btn <?= $activeTab === 'positions' ? 'active' : '' ?>" data-tab="positions" data-action="switch-tab">
                 <span class="tab-icon"><i class="fas fa-user-tag"></i></span>
                 <span class="tab-text">Positions</span>
-            </button>
-            <button class="tab-btn <?= $activeTab === 'equipment' ? 'active' : '' ?>" data-tab="equipment" data-action="switch-tab">
-                <span class="tab-icon"><i class="fas fa-tools"></i></span>
-                <span class="tab-text">Equipment</span>
             </button>
         </div>
     </div>
@@ -225,60 +221,6 @@ if (!in_array($activeTab, $validTabs)) {
                     else:
                     ?>
                     <p class="placeholder-text">No positions found. Click "Add Position" to create your first position.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Equipment Tab -->
-    <div class="tab-content <?= $activeTab === 'equipment' ? 'active' : '' ?>" id="equipment-tab">
-        <div class="content-card">
-            <div class="card-header">
-                <h3><i class="fas fa-tools"></i> Equipment Types</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-equipment-modal"><i class="fas fa-plus"></i> Add Equipment</button>
-            </div>
-            <div class="card-body">
-                <div class="categories-list">
-                    <?php
-                    // Fetch equipment categories (marked with equipment_type = 'category')
-                    // Performance optimization suggestion: Consider adding compound index on (equipment_type, created_at) for faster filtering and ordering
-                    $stmt = $pdo->prepare("SELECT id, name, notes FROM equipment WHERE equipment_type = 'category' ORDER BY created_at DESC");
-                    $stmt->execute();
-                    $equipment_items = $stmt->fetchAll();
-                    
-                    if (count($equipment_items) > 0):
-                        foreach ($equipment_items as $item):
-                    ?>
-                    <div class="category-item">
-                        <div class="category-icon"><i class="fas fa-tools"></i></div>
-                        <div class="category-info">
-                            <h4><?= htmlspecialchars($item['name']) ?></h4>
-                            <p><?= htmlspecialchars($item['notes'] ?: 'No description') ?></p>
-                        </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Edit" 
-                                    data-action="edit" 
-                                    data-id="<?= $item['id'] ?>" 
-                                    data-type="equipment" 
-                                    data-name="<?= htmlspecialchars($item['name']) ?>"
-                                    data-description="<?= htmlspecialchars($item['notes'] ?? '') ?>">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-icon" title="Delete" 
-                                    data-action="delete" 
-                                    data-id="<?= $item['id'] ?>" 
-                                    data-type="equipment" 
-                                    data-name="<?= htmlspecialchars($item['name']) ?>">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <?php 
-                        endforeach;
-                    else:
-                    ?>
-                    <p class="placeholder-text">No equipment types found. Click "Add Equipment" to create your first equipment type.</p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -606,7 +548,7 @@ if (!in_array($activeTab, $validTabs)) {
             <h2 class="modal-title">Add Skill Category</h2>
             <button class="modal-close" onclick="closeModal('add-skill-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <form id="add-skill-form" method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create_skill">
             
@@ -642,7 +584,7 @@ if (!in_array($activeTab, $validTabs)) {
             <h2 class="modal-title">Add Drill Type</h2>
             <button class="modal-close" onclick="closeModal('add-drill-type-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <form id="add-drill-type-form" method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create_drill_type">
             
@@ -712,42 +654,6 @@ if (!in_array($activeTab, $validTabs)) {
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('add-position-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Position</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Add Equipment Modal -->
-<div id="add-equipment-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title">Add Equipment</h2>
-            <button class="modal-close" onclick="closeModal('add-equipment-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_admin_action.php">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="create_equipment">
-            
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Equipment Name *</label>
-                    <input type="text" name="name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Icon (Font Awesome class)</label>
-                    <input type="text" name="icon" class="form-input" placeholder="e.g., fa-tools">
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Equipment</button>
             </div>
         </form>
     </div>
@@ -837,12 +743,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('edit-drill-type-description').value = description;
                 
                 document.getElementById('edit-drill-type-modal').classList.add('active');
-            } else if (type === 'equipment') {
-                document.getElementById('edit-equipment-id').value = id;
-                document.getElementById('edit-equipment-name').value = name;
-                document.getElementById('edit-equipment-description').value = description;
-                
-                document.getElementById('edit-equipment-modal').classList.add('active');
             }
         });
     });
@@ -1079,39 +979,6 @@ function openModal(modalId) {
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('edit-drill-type-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Drill Type</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Edit Equipment Modal -->
-<div id="edit-equipment-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title">Edit Equipment</h2>
-            <button class="modal-close" onclick="closeModal('edit-equipment-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_admin_action.php">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" name="type" value="equipment">
-            <input type="hidden" name="id" id="edit-equipment-id">
-            
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Equipment Name *</label>
-                    <input type="text" name="name" id="edit-equipment-name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" id="edit-equipment-description" class="form-textarea" rows="3"></textarea>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Equipment</button>
             </div>
         </form>
     </div>

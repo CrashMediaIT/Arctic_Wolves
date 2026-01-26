@@ -761,73 +761,117 @@ function exportCardSide(side) {
     document.getElementById('export-menu').classList.remove('show');
     
     // Show loading notification
-    showNotification('Generating PNG...', 'info');
+    showNotification('Preparing export...', 'info');
     
     // Get corner style preference
     const cornerStyle = document.getElementById('corner-style-select')?.value || 'round';
     const borderRadius = cornerStyle === 'square' ? '0px' : '12px';
     
-    // Use html2canvas to capture the card
-    html2canvas(cardElement, {
-        scale: 3, // Higher scale for better quality (equivalent to 300 DPI)
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-        logging: false,
-        onclone: function(clonedDoc) {
-            // Get the cloned card element
-            const clonedCard = side === 'front' 
-                ? clonedDoc.getElementById('card-front') 
-                : clonedDoc.getElementById('card-back');
-            
-            if (clonedCard) {
-                // CRITICAL: Remove all 3D transforms to prevent mirroring/flipping issues.
-                // The back card uses rotateY(180deg) for the flip animation, but html2canvas
-                // doesn't properly handle CSS 3D transforms, causing the rendered output to
-                // appear mirrored. By resetting these properties, we ensure the export
-                // matches exactly what the user sees in the preview.
-                clonedCard.style.transform = 'none';
-                clonedCard.style.webkitTransform = 'none';
-                clonedCard.style.backfaceVisibility = 'visible';
-                clonedCard.style.webkitBackfaceVisibility = 'visible';
-                
-                // Make the card visible and positioned correctly for capture
-                clonedCard.style.position = 'relative';
-                
-                // Apply corner style to cloned card
-                clonedCard.style.borderRadius = borderRadius;
-                
-                // Also apply to the background overlay
-                const overlay = clonedCard.querySelector('.card-bg-overlay');
-                if (overlay) {
-                    overlay.style.borderRadius = borderRadius;
-                }
-                
-                // Make sure the logo is visible in the cloned document
-                const logos = clonedCard.querySelectorAll('img');
-                logos.forEach(function(img) {
-                    img.style.visibility = 'visible';
-                    img.style.opacity = '1';
-                });
-                
-                // Ensure text elements are not transformed
-                const textElements = clonedCard.querySelectorAll('h1, h2, p, span');
-                textElements.forEach(function(el) {
-                    el.style.transform = 'none';
-                });
+    // Get all logo images from the card
+    const logoImages = cardElement.querySelectorAll('img');
+    
+    // Pre-fetch and convert logos to base64 to ensure they're included in the export
+    const logoPromises = Array.from(logoImages).map(img => {
+        return new Promise((resolve, reject) => {
+            // If already a data URL, resolve immediately
+            if (img.src.startsWith('data:')) {
+                resolve();
+                return;
             }
-        }
-    }).then(canvas => {
-        // Create download link
-        const link = document.createElement('a');
-        link.download = `${firstName}_${lastName}_BusinessCard_${side}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+            
+            // Create a new image to fetch the external URL
+            const tempImg = new Image();
+            tempImg.crossOrigin = 'anonymous';
+            tempImg.onload = function() {
+                try {
+                    // Convert to base64 using canvas
+                    const canvas = document.createElement('canvas');
+                    canvas.width = tempImg.naturalWidth;
+                    canvas.height = tempImg.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(tempImg, 0, 0);
+                    // Replace the original image src with base64
+                    img.src = canvas.toDataURL('image/png');
+                    resolve();
+                } catch(e) {
+                    console.warn('Could not convert logo to base64:', e);
+                    resolve(); // Continue anyway
+                }
+            };
+            tempImg.onerror = function() {
+                console.warn('Could not load logo for export');
+                resolve(); // Continue anyway
+            };
+            tempImg.src = img.src;
+        });
+    });
+    
+    // Wait for all logos to be converted, then proceed with export
+    Promise.all(logoPromises).then(() => {
+        showNotification('Generating PNG...', 'info');
         
-        showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} side exported as PNG!`, 'success');
-    }).catch(err => {
-        console.error('Export error:', err);
-        showNotification('Export failed. Please try again.', 'error');
+        // Use html2canvas to capture the card
+        html2canvas(cardElement, {
+            scale: 3, // Higher scale for better quality (equivalent to 300 DPI)
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: null,
+            logging: false,
+            onclone: function(clonedDoc) {
+                // Get the cloned card element
+                const clonedCard = side === 'front' 
+                    ? clonedDoc.getElementById('card-front') 
+                    : clonedDoc.getElementById('card-back');
+                
+                if (clonedCard) {
+                    // CRITICAL: Remove all 3D transforms to prevent mirroring/flipping issues.
+                    // The back card uses rotateY(180deg) for the flip animation, but html2canvas
+                    // doesn't properly handle CSS 3D transforms, causing the rendered output to
+                    // appear mirrored. By resetting these properties, we ensure the export
+                    // matches exactly what the user sees in the preview.
+                    clonedCard.style.transform = 'none';
+                    clonedCard.style.webkitTransform = 'none';
+                    clonedCard.style.backfaceVisibility = 'visible';
+                    clonedCard.style.webkitBackfaceVisibility = 'visible';
+                    
+                    // Make the card visible and positioned correctly for capture
+                    clonedCard.style.position = 'relative';
+                    
+                    // Apply corner style to cloned card
+                    clonedCard.style.borderRadius = borderRadius;
+                    
+                    // Also apply to the background overlay
+                    const overlay = clonedCard.querySelector('.card-bg-overlay');
+                    if (overlay) {
+                        overlay.style.borderRadius = borderRadius;
+                    }
+                    
+                    // Make sure the logo is visible in the cloned document
+                    const logos = clonedCard.querySelectorAll('img');
+                    logos.forEach(function(img) {
+                        img.style.visibility = 'visible';
+                        img.style.opacity = '1';
+                    });
+                    
+                    // Ensure text elements are not transformed
+                    const textElements = clonedCard.querySelectorAll('h1, h2, p, span');
+                    textElements.forEach(function(el) {
+                        el.style.transform = 'none';
+                    });
+                }
+            }
+        }).then(canvas => {
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `${firstName}_${lastName}_BusinessCard_${side}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            
+            showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} side exported as PNG!`, 'success');
+        }).catch(err => {
+            console.error('Export error:', err);
+            showNotification('Export failed. Please try again.', 'error');
+        });
     });
 }
 </script>

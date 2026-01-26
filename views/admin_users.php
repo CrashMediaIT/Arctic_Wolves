@@ -199,10 +199,7 @@ foreach ($users as $u) {
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <button class="btn-icon" data-action="reset-password" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['full_name']); ?>" title="Reset Password">
-                                                <i class="fas fa-unlock-alt"></i>
-                                            </button>
-                                            <button class="btn-icon" data-action="permissions" data-id="<?php echo $user['id']; ?>" title="Permissions">
-                                                <i class="fas fa-key"></i>
+                                                <i class="fas fa-lock"></i>
                                             </button>
                                             <?php if ($user['id'] != $user_id): ?>
                                                 <button class="btn-icon <?php echo $user['is_verified'] ? 'danger' : 'success'; ?>" data-action="toggle-status" data-id="<?php echo $user['id']; ?>" data-type="user" title="<?php echo $user['is_verified'] ? 'Disable' : 'Enable'; ?>">
@@ -298,15 +295,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 modal.querySelector('.reset-user-name').textContent = userName;
                 modal.classList.add('active');
             }
-        });
-    });
-    
-    // Handle permissions button
-    document.querySelectorAll('[data-action="permissions"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var userId = this.getAttribute('data-id');
-            window.location.href = '?page=permissions&user_id=' + userId;
         });
     });
     
@@ -947,7 +935,7 @@ document.getElementById('reset-password-form').addEventListener('submit', functi
     var confirmPassword = this.querySelector('input[name="confirm_password"]').value;
     
     if (newPassword !== confirmPassword) {
-        showUserNotification('Passwords do not match', 'error');
+        showNotification('Passwords do not match', 'error');
         return;
     }
     
@@ -969,17 +957,19 @@ document.getElementById('reset-password-form').addEventListener('submit', functi
         submitBtn.disabled = false;
         
         if (data.success) {
-            showUserNotification(data.message || 'Password reset successfully!', 'success');
+            showNotification(data.message || 'Password reset successfully!', 'success');
             closeModal('reset-password-modal');
+            // Reload page after successful password reset to show updated data
+            setTimeout(function() { location.reload(); }, 1500);
         } else {
-            showUserNotification('Error: ' + (data.message || 'Failed to reset password'), 'error');
+            showNotification('Error: ' + (data.message || 'Failed to reset password'), 'error');
         }
     })
     .catch(function(error) {
         submitBtn.innerHTML = originalBtnText;
         submitBtn.disabled = false;
         console.error('Error:', error);
-        showUserNotification('An error occurred. Please try again.', 'error');
+        showNotification('An error occurred. Please try again.', 'error');
     });
 });
 </script>
