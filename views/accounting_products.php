@@ -960,38 +960,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(response => {
+            .then(function(response) {
                 // Get content type to determine how to parse
                 var contentType = response.headers.get('content-type');
+                var isJson = contentType && contentType.includes('application/json');
                 
-                // Check for successful response
+                // Check for non-OK response
                 if (!response.ok) {
                     // Try to parse error message from JSON response
-                    if (contentType && contentType.includes('application/json')) {
+                    if (isJson) {
                         return response.json().then(function(data) {
-                            throw new Error(data.message || data.error || 'Request failed');
+                            var errorMsg = data.message || data.error || 'Request failed with status: ' + response.status;
+                            return { success: false, message: errorMsg };
+                        }).catch(function() {
+                            return { success: false, message: 'Request failed with status: ' + response.status };
                         });
                     }
-                    throw new Error('Request failed with status: ' + response.status);
+                    return { success: false, message: 'Request failed with status: ' + response.status };
                 }
                 
                 // If JSON response, parse it
-                if (contentType && contentType.includes('application/json')) {
-                    return response.json();
+                if (isJson) {
+                    return response.json().catch(function() {
+                        return { success: false, message: 'Invalid JSON response from server' };
+                    });
                 }
                 
-                // If we got a redirect or HTML response, the server didn't return JSON
-                // This means the AJAX handler wasn't triggered properly
-                throw new Error('Server did not return JSON response. Form may not have been processed correctly.');
+                // If we got a non-JSON response (like HTML redirect), treat as error
+                return { success: false, message: 'Unexpected response from server. Please refresh and try again.' };
             })
-            .then(data => {
+            .then(function(data) {
                 if (submitBtn) {
                     submitBtn.innerHTML = originalBtnText;
                     submitBtn.disabled = false;
                 }
                 
+                var message = (data && data.message) ? data.message : 'Operation failed';
+                
                 if (data && data.success) {
-                    showNotification(data.message || 'Operation completed successfully!', 'success');
+                    showNotification(message, 'success');
                     if (modal) closeModal(modal.id);
                     
                     // Determine which tab to stay on based on the modal ID
@@ -1009,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.href = 'dashboard.php?page=products&tab=' + currentTab + '&status=success';
                     }, 1500);
                 } else {
-                    showNotification('Error: ' + (data && data.message ? data.message : 'Operation failed'), 'error');
+                    showNotification('Error: ' + message, 'error');
                 }
             })
             .catch(function(error) {
@@ -1018,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     submitBtn.innerHTML = originalBtnText;
                     submitBtn.disabled = false;
                 }
-                showNotification(error.message || 'An error occurred. Please try again.', 'error');
+                showNotification('An error occurred. Please try again.', 'error');
             });
         });
     });
