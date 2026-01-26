@@ -68,6 +68,10 @@ try {
                 <i class="fas fa-cloud"></i>
                 <span>Nextcloud</span>
             </a>
+            <a href="?page=system_tools&tab=payments" class="tools-tab-link <?php echo $activeTab === 'payments' ? 'active' : ''; ?>">
+                <i class="fas fa-credit-card"></i>
+                <span>Payments</span>
+            </a>
             <a href="?page=system_tools&tab=theme" class="tools-tab-link <?php echo $activeTab === 'theme' ? 'active' : ''; ?>">
                 <i class="fas fa-palette"></i>
                 <span>Theme</span>
@@ -468,6 +472,104 @@ try {
                         </button>
                         <button type="submit" class="btn btn-primary" data-action="save">
                             <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments Tab -->
+    <div class="tab-content <?php echo $activeTab === 'payments' ? 'active' : ''; ?>" id="payments-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-credit-card"></i> Stripe Payment Configuration</h3>
+            </div>
+            <div class="card-body">
+                <form id="payments-form" method="POST" action="process_settings.php" data-form-type="payments">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_payments">
+                    <input type="hidden" name="redirect_page" value="system_tools">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Stripe Publishable Key</h4>
+                                <p>Public key for frontend payment processing (starts with pk_)</p>
+                            </div>
+                            <input type="text" name="stripe_publishable_key" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stripe_publishable_key'] ?? ''); ?>"
+                                   placeholder="pk_test_..." style="min-width: 300px;">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Stripe Secret Key</h4>
+                                <p>Secret key for backend processing (starts with sk_)<?php echo !empty($settings['stripe_secret_key']) ? ' (currently set)' : ''; ?></p>
+                            </div>
+                            <input type="password" name="stripe_secret_key" class="form-input" 
+                                   placeholder="<?php echo !empty($settings['stripe_secret_key']) ? 'Leave blank to keep current key' : 'sk_test_...'; ?>" style="min-width: 300px;">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Currency</h4>
+                                <p>Default currency for all transactions</p>
+                            </div>
+                            <select name="currency" class="form-input" style="width: auto; min-width: 200px;">
+                                <?php
+                                $currencies = ['CAD' => 'Canadian Dollar (CAD)', 'USD' => 'US Dollar (USD)', 'EUR' => 'Euro (EUR)', 'GBP' => 'British Pound (GBP)'];
+                                $current_currency = $settings['currency'] ?? 'CAD';
+                                foreach ($currencies as $code => $name) {
+                                    $selected = ($code === $current_currency) ? 'selected' : '';
+                                    echo "<option value=\"" . htmlspecialchars($code) . "\" $selected>" . htmlspecialchars($name) . "</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <p>To obtain Stripe API keys, visit the <a href="https://dashboard.stripe.com/apikeys" target="_blank" style="color: #8B5CF6;">Stripe Dashboard → API Keys</a>. Use test keys (pk_test_/sk_test_) for development and live keys (pk_live_/sk_live_) for production.</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Tax Settings Card -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-percentage"></i> Tax Settings</h3>
+            </div>
+            <div class="card-body">
+                <form id="tax-form" method="POST" action="process_settings.php" data-form-type="payments">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_payments">
+                    <input type="hidden" name="redirect_page" value="system_tools">
+                    <!-- Include Stripe fields as hidden to prevent clearing them -->
+                    <input type="hidden" name="stripe_publishable_key" value="<?php echo htmlspecialchars($settings['stripe_publishable_key'] ?? ''); ?>">
+                    <input type="hidden" name="stripe_secret_key" value="">
+                    <input type="hidden" name="currency" value="<?php echo htmlspecialchars($settings['currency'] ?? 'CAD'); ?>">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Tax Name</h4>
+                                <p>Label for tax on invoices (e.g., HST, GST, VAT)</p>
+                            </div>
+                            <input type="text" name="tax_name" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['tax_name'] ?? 'HST'); ?>"
+                                   placeholder="HST" style="width: auto; min-width: 150px;">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Tax Rate (%)</h4>
+                                <p>Percentage rate for tax calculations</p>
+                            </div>
+                            <input type="number" name="tax_rate" class="form-input" step="0.01" min="0" max="100"
+                                   value="<?php echo htmlspecialchars($settings['tax_rate'] ?? '13.00'); ?>"
+                                   placeholder="13.00" style="width: auto; min-width: 120px;">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Payment & Tax Settings
                         </button>
                     </div>
                 </form>

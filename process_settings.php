@@ -155,14 +155,23 @@ try {
             
             // Update Stripe settings
             updateSetting($pdo, 'stripe_publishable_key', $stripe_publishable_key);
-            updateSetting($pdo, 'stripe_secret_key', $stripe_secret_key);
+            // Only update secret key if a new one is provided
+            if (!empty($stripe_secret_key)) {
+                updateSetting($pdo, 'stripe_secret_key', $stripe_secret_key);
+            }
             updateSetting($pdo, 'currency', $currency);
             
             // Update tax settings
             updateSetting($pdo, 'tax_name', $tax_name);
             updateSetting($pdo, 'tax_rate', $tax_rate);
             
-            header('Location: dashboard.php?page=admin_settings&success=1');
+            // Redirect back to the appropriate page
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=payments&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
             exit;
             
         case 'update_security':
