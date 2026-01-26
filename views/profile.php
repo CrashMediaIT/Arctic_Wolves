@@ -19,6 +19,35 @@ try {
     $stmt->execute([$user_id]);
     $playerData = $stmt->fetch(PDO::FETCH_ASSOC);
     
+    // Get user's teams from athlete_teams table
+    $userTeams = [];
+    try {
+        // Try to fetch with league column
+        $teamsStmt = $pdo->prepare("
+            SELECT id, team_name, league, season_year, season_type, season, is_current, created_at
+            FROM athlete_teams 
+            WHERE user_id = ? OR athlete_id = ?
+            ORDER BY is_current DESC, created_at DESC
+        ");
+        $teamsStmt->execute([$user_id, $user_id]);
+        $userTeams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $teamsError) {
+        // Try without league column as fallback
+        try {
+            $teamsStmt = $pdo->prepare("
+                SELECT id, team_name, '' as league, season_year, season_type, season, is_current, created_at
+                FROM athlete_teams 
+                WHERE user_id = ? OR athlete_id = ?
+                ORDER BY is_current DESC, created_at DESC
+            ");
+            $teamsStmt->execute([$user_id, $user_id]);
+            $userTeams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $fallbackError) {
+            // Table may not exist or have different schema
+            error_log("Failed to load user teams from database: " . $fallbackError->getMessage());
+        }
+    }
+    
     // Get user preferences for notifications
     $userPreferences = [];
     try {
@@ -40,6 +69,7 @@ try {
     $userData = [];
     $playerData = null;
     $userPreferences = [];
+    $userTeams = [];
 }
 
 $activeTab = $_GET['tab'] ?? 'personal';
@@ -265,19 +295,6 @@ function isPreferenceEnabled($preferences, $key) {
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Current Team</label>
-                            <input type="text" name="team" class="form-input" 
-                                   value="<?php echo htmlspecialchars($playerData['team'] ?? ''); ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>League</label>
-                            <input type="text" name="league" class="form-input" 
-                                   value="<?php echo htmlspecialchars($playerData['league'] ?? ''); ?>">
-                        </div>
-                    </div>
-
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary" data-action="save">
                             <i class="fas fa-save"></i> Save Player Info
@@ -287,6 +304,118 @@ function isPreferenceEnabled($preferences, $key) {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+        
+        <!-- Teams Management Section -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-users"></i> Team History</h3>
+            </div>
+            <div class="card-body">
+                <!-- Existing Teams Table -->
+                <?php if (!empty($userTeams)): ?>
+                <div class="teams-table-container" style="margin-bottom: 24px;">
+                    <table class="teams-table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <th style="padding: 12px; text-align: left; color: var(--text); font-size: 13px;">Team Name</th>
+                                <th style="padding: 12px; text-align: left; color: var(--text); font-size: 13px;">League</th>
+                                <th style="padding: 12px; text-align: left; color: var(--text); font-size: 13px;">Season</th>
+                                <th style="padding: 12px; text-align: center; color: var(--text); font-size: 13px;">Current</th>
+                                <th style="padding: 12px; text-align: center; color: var(--text); font-size: 13px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($userTeams as $team): ?>
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding: 12px; color: #fff;"><?php echo htmlspecialchars($team['team_name'] ?? ''); ?></td>
+                                <td style="padding: 12px; color: var(--text);"><?php echo htmlspecialchars($team['league'] ?? '-'); ?></td>
+                                <td style="padding: 12px; color: var(--text);">
+                                    <?php 
+                                    $season = $team['season'] ?? '';
+                                    if (empty($season) && !empty($team['season_type']) && !empty($team['season_year'])) {
+                                        $season = $team['season_type'] . ' ' . $team['season_year'];
+                                    }
+                                    echo htmlspecialchars($season ?: '-');
+                                    ?>
+                                </td>
+                                <td style="padding: 12px; text-align: center;">
+                                    <?php if ($team['is_current']): ?>
+                                        <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                            <i class="fas fa-check"></i> Current
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-muted); font-size: 12px;">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 12px; text-align: center;">
+                                    <form method="POST" action="process_profile_update.php" style="display: inline;" onsubmit="return confirm('Remove this team from your history?');">
+                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                                        <input type="hidden" name="action" value="remove_team">
+                                        <input type="hidden" name="team_id" value="<?php echo $team['id']; ?>">
+                                        <button type="submit" class="btn btn-sm btn-danger" style="padding: 6px 12px; font-size: 12px;">
+                                            <i class="fas fa-trash"></i> Remove
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div style="text-align: center; padding: 24px; color: var(--text-muted);">
+                    <i class="fas fa-users" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5;"></i>
+                    <p>No teams added yet. Add your first team below.</p>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Add New Team Form -->
+                <div class="add-team-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                    <h4 style="margin-bottom: 16px; color: #fff; font-size: 16px;"><i class="fas fa-plus-circle"></i> Add New Team</h4>
+                    <form method="POST" action="process_profile_update.php" id="add-team-form">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="add_team">
+                        <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                            <div class="form-group">
+                                <label>Team Name *</label>
+                                <input type="text" name="team_name" class="form-input" placeholder="e.g., Arctic Wolves U16" required>
+                            </div>
+                            <div class="form-group">
+                                <label>League</label>
+                                <input type="text" name="league" class="form-input" placeholder="e.g., CSSHL">
+                            </div>
+                        </div>
+                        <div class="form-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;">
+                            <div class="form-group">
+                                <label>Season Type</label>
+                                <select name="season_type" class="form-select">
+                                    <option value="">Select Type</option>
+                                    <option value="Fall">Fall</option>
+                                    <option value="Winter">Winter</option>
+                                    <option value="Spring">Spring</option>
+                                    <option value="Summer">Summer</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Season Year</label>
+                                <input type="text" name="season_year" class="form-input" placeholder="e.g., 2024-2025">
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: flex-end;">
+                                <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" name="is_current" value="1">
+                                    <span>This is my current team</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: 16px;">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Add Team
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -412,6 +541,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const prefName = this.name;
             const prefValue = this.checked ? 1 : 0;
             const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+            const toggleElement = this;
+            const parentItem = this.closest('.preference-item');
+            
+            // Add saving indicator
+            if (parentItem) {
+                parentItem.style.opacity = '0.7';
+            }
             
             // Send AJAX request to save preference
             fetch('process_profile_update.php', {
@@ -423,19 +559,33 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(data => {
+                if (parentItem) {
+                    parentItem.style.opacity = '1';
+                }
                 if (data.success) {
-                    // Optionally show a toast notification
+                    // Show brief success indicator
+                    if (parentItem) {
+                        const originalBorder = parentItem.style.borderColor;
+                        parentItem.style.borderColor = '#10b981';
+                        setTimeout(() => {
+                            parentItem.style.borderColor = originalBorder;
+                        }, 1000);
+                    }
                     console.log('Preference saved:', prefName, prefValue);
                 } else {
                     // Revert the toggle if save failed
-                    this.checked = !this.checked;
+                    toggleElement.checked = !toggleElement.checked;
                     alert('Failed to save preference: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
+                if (parentItem) {
+                    parentItem.style.opacity = '1';
+                }
                 console.error('Error saving preference:', error);
                 // Revert the toggle on error
-                this.checked = !this.checked;
+                toggleElement.checked = !toggleElement.checked;
+                alert('Error saving preference. Please try again.');
             });
         });
     });

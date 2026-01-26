@@ -1335,10 +1335,16 @@ document.querySelectorAll('.modal').forEach(modal => {
 });
 
 // Auto-open create goal modal if action=create is in URL
+// Auto-open goal detail modal if goal_id is in URL
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('action') === 'create') {
         openCreateGoalModal();
+    }
+    // Open goal detail modal if goal_id parameter is provided
+    const goalId = urlParams.get('goal_id');
+    if (goalId) {
+        viewGoalDetail(parseInt(goalId, 10));
     }
 });
 </script>
