@@ -6,10 +6,23 @@ try {
     $search = $_GET['search'] ?? '';
     $filter_team = $_GET['team'] ?? 'all';
     
-    // Get teams for filter
-    $teams_query = "SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name";
-    $teams_stmt = $pdo->query($teams_query);
-    $teams = $teams_stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Get teams for filter with fallback
+    $teams = [];
+    try {
+        $teams_query = "SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name";
+        $teams_stmt = $pdo->query($teams_query);
+        $teams = $teams_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Fallback if is_active column doesn't exist
+        try {
+            $teams_query = "SELECT id, name FROM teams ORDER BY name";
+            $teams_stmt = $pdo->query($teams_query);
+            $teams = $teams_stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e2) {
+            error_log("Teams fetch error: " . $e2->getMessage());
+            $teams = [];
+        }
+    }
     
     // Build practice plans query
     $plans_query = "
