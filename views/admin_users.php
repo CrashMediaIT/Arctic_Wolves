@@ -793,7 +793,8 @@ document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn)
         var csrfInput = document.createElement('input');
         csrfInput.type = 'hidden';
         csrfInput.name = 'csrf_token';
-        csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
+        var csrfElement = document.querySelector('input[name="csrf_token"]');
+        csrfInput.value = csrfElement ? csrfElement.value : '';
         form.appendChild(csrfInput);
         
         var actionInput = document.createElement('input');

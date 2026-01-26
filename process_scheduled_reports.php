@@ -34,8 +34,11 @@ $action = $_POST['action'] ?? '';
 try {
     switch ($action) {
         case 'schedule_create':
-            $report_name = trim($_POST['report_name'] ?? $_POST['report_type'] . ' Report');
-            $report_type = trim($_POST['report_type']);
+            $report_type = trim($_POST['report_type'] ?? '');
+            $report_name = trim($_POST['report_name'] ?? '');
+            if (empty($report_name)) {
+                $report_name = !empty($report_type) ? ucwords(str_replace('_', ' ', $report_type)) . ' Report' : 'Scheduled Report';
+            }
             $frequency = trim($_POST['frequency']);
             $schedule_day = !empty($_POST['schedule_day']) ? intval($_POST['schedule_day']) : null;
             $schedule_time = !empty($_POST['schedule_time']) ? $_POST['schedule_time'] : '08:00:00';
@@ -73,8 +76,11 @@ try {
             
         case 'schedule_update':
             $schedule_id = intval($_POST['schedule_id']);
-            $report_name = trim($_POST['report_name'] ?? $_POST['report_type'] . ' Report');
-            $report_type = trim($_POST['report_type']);
+            $report_type = trim($_POST['report_type'] ?? '');
+            $report_name = trim($_POST['report_name'] ?? '');
+            if (empty($report_name)) {
+                $report_name = !empty($report_type) ? ucwords(str_replace('_', ' ', $report_type)) . ' Report' : 'Scheduled Report';
+            }
             $frequency = trim($_POST['frequency']);
             $schedule_day = !empty($_POST['schedule_day']) ? intval($_POST['schedule_day']) : null;
             $schedule_time = !empty($_POST['schedule_time']) ? $_POST['schedule_time'] : '08:00:00';

@@ -52,17 +52,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'create_category':
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description'] ?? '');
-                $display_order = intval($_POST['display_order'] ?? 0);
                 
                 if (empty($name)) {
                     throw new Exception('Category name is required');
                 }
                 
                 $stmt = $pdo->prepare("
-                    INSERT INTO eval_categories (name, description, display_order, created_at)
-                    VALUES (?, ?, ?, NOW())
+                    INSERT INTO eval_categories (name, description, created_at)
+                    VALUES (?, ?, NOW())
                 ");
-                $stmt->execute([$name, $description, $display_order]);
+                $stmt->execute([$name, $description]);
                 
                 sendResponse(true, 'Category created successfully', 'admin_eval_framework', ['category_id' => $pdo->lastInsertId()]);
                 break;
