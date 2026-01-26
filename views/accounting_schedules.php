@@ -1,19 +1,4 @@
 <!-- Accounting Schedules View -->
-<?php if (isset($_GET['success'])): ?>
-<div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
-    <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
-    <span style="color: #10b981; font-weight: 600;"><?= htmlspecialchars(urldecode($_GET['success'])) ?></span>
-    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #10b981; cursor: pointer; font-size: 18px;">&times;</button>
-</div>
-<?php endif; ?>
-<?php if (isset($_GET['error'])): ?>
-<div class="error-alert" style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
-    <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 20px;"></i>
-    <span style="color: #ef4444; font-weight: 600;"><?= htmlspecialchars(urldecode($_GET['error'])) ?></span>
-    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;">&times;</button>
-</div>
-<?php endif; ?>
-
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-clock"></i> Scheduled Reports

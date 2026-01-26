@@ -631,11 +631,11 @@ function createSchedule() {
     
     // Validate required fields
     if (empty($report_type)) {
-        header('Location: dashboard.php?page=schedules&error=' . urlencode('Report type is required'));
+        header('Location: dashboard.php?page=accounting_schedules&error=' . urlencode('Report type is required'));
         exit;
     }
     if (empty($frequency)) {
-        header('Location: dashboard.php?page=schedules&error=' . urlencode('Frequency is required'));
+        header('Location: dashboard.php?page=accounting_schedules&error=' . urlencode('Frequency is required'));
         exit;
     }
     
@@ -644,7 +644,7 @@ function createSchedule() {
         $emails = array_map('trim', explode(',', $email_recipients));
         foreach ($emails as $email) {
             if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                header('Location: dashboard.php?page=schedules&error=' . urlencode('Invalid email address: ' . htmlspecialchars($email)));
+                header('Location: dashboard.php?page=accounting_schedules&error=' . urlencode('Invalid email address: ' . htmlspecialchars($email)));
                 exit;
             }
         }
@@ -690,7 +690,7 @@ function createSchedule() {
         $report_name
     ]);
     
-    header('Location: dashboard.php?page=schedules&success=Schedule+created+successfully');
+    header('Location: dashboard.php?page=accounting_schedules&success=Schedule+created+successfully');
     exit;
 }
 

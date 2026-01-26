@@ -108,32 +108,17 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update') {
 // =========================================================
 // DELETE PRACTICE PLAN
 // =========================================================
-if ($action === 'delete_plan' || $action === 'delete') {
+if ($action === 'delete_plan') {
     requirePermission($pdo, $user_id, $user_role, 'delete_practice_plans');
     
     $plan_id = intval($_POST['plan_id']);
     
     try {
         $pdo->prepare("DELETE FROM practice_plans WHERE id = ? AND created_by = ?")->execute([$plan_id, $user_id]);
-        
-        // Check if this is an AJAX request
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'message' => 'Practice plan deleted successfully']);
-            exit();
-        }
-        
-        header("Location: dashboard.php?page=practice_library&status=plan_deleted");
+        header("Location: dashboard.php?page=practice_plans&status=plan_deleted");
         exit();
     } catch (PDOException $e) {
-        // Check if this is an AJAX request
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Failed to delete practice plan']);
-            exit();
-        }
-        
-        header("Location: dashboard.php?page=practice_library&error=delete_failed");
+        header("Location: dashboard.php?page=practice_plans&error=delete_failed");
         exit();
     }
 }

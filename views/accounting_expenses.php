@@ -27,20 +27,6 @@ if ($expenseStats['last_month'] > 0) {
 }
 ?>
 <!-- Accounting Expenses View -->
-<?php if (isset($_GET['status']) && $_GET['status'] === 'success'): ?>
-<div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
-    <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
-    <span style="color: #10b981; font-weight: 600;">Operation completed successfully!</span>
-    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #10b981; cursor: pointer; font-size: 18px;">&times;</button>
-</div>
-<?php endif; ?>
-<?php if (isset($_GET['status']) && $_GET['status'] === 'error'): ?>
-<div class="error-alert" style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
-    <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 20px;"></i>
-    <span style="color: #ef4444; font-weight: 600;"><?= htmlspecialchars($_GET['message'] ?? 'An error occurred') ?></span>
-    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;">&times;</button>
-</div>
-<?php endif; ?>
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-receipt"></i> Expense Tracking
@@ -218,11 +204,11 @@ if ($expenseStats['last_month'] > 0) {
                                                 data-date="<?= $expense['expense_date'] ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <form method="POST" action="process_expenses.php" style="display: inline;" class="delete-expense-form">
+                                        <form method="POST" action="process_expenses.php" style="display: inline;">
                                             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="expense_id" value="<?= $expense['id'] ?>">
-                                            <button type="submit" class="btn-icon" title="Delete" data-confirm="Are you sure you want to delete this expense?">
+                                            <button type="submit" class="btn-icon btn-delete" title="Delete" onclick="return confirm('Are you sure you want to delete this expense?')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -555,17 +541,6 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-expense-modal"]
         document.getElementById('edit-expense-date').value = date;
         
         document.getElementById('edit-expense-modal').classList.add('active');
-    });
-});
-
-// Handle delete buttons with single confirmation
-document.querySelectorAll('.delete-expense-form').forEach(function(form) {
-    form.addEventListener('submit', function(e) {
-        var btn = form.querySelector('button[data-confirm]');
-        var msg = btn ? btn.getAttribute('data-confirm') : 'Are you sure you want to delete this expense?';
-        if (!confirm(msg)) {
-            e.preventDefault();
-        }
     });
 });
 

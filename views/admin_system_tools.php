@@ -714,7 +714,7 @@ document.addEventListener('DOMContentLoaded', function() {
     font-weight: 800;
     margin: 0 0 4px 0;
     letter-spacing: -0.5px;
-    color: var(--text-primary);
+    color: var(--text-white);
 }
 
 .page-header-text p {
@@ -752,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
     background: transparent;
     border: none;
     border-radius: 10px;
-    color: var(--text-secondary);
+    color: #9ca3af;
     font-family: 'Inter', sans-serif;
     font-size: 14px;
     font-weight: 600;
@@ -763,7 +763,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .tools-tab-link:hover {
     background: rgba(107, 70, 193, 0.1);
-    color: var(--text-primary);
+    color: var(--text-white);
 }
 
 .tools-tab-link.active {
