@@ -88,6 +88,7 @@ class DemoDataSeeder {
         $this->seedVideos();
         $this->seedExpenses();
         $this->seedNotifications();
+        $this->seedSystemNotifications();
         $this->seedAuditLogs();
         $this->seedWorkoutPlans();
         $this->seedNutritionPlans();
@@ -924,6 +925,58 @@ class DemoDataSeeder {
         }
         
         echo "  ✓ Created " . count($notifications) . " demo notifications\n";
+    }
+    
+    /**
+     * Seed system notifications (admin-created global notifications)
+     */
+    private function seedSystemNotifications() {
+        echo "Seeding System Notifications...\n";
+        
+        if (empty($this->demo_ids['users']['admin'])) {
+            echo "  ⚠ Skipping system notifications - no admin user available\n";
+            return;
+        }
+        
+        $admin_id = $this->demo_ids['users']['admin'][0];
+        
+        $system_notifications = [
+            [
+                'title' => 'Scheduled Maintenance Window',
+                'message' => 'The system will undergo scheduled maintenance on Sunday from 2:00 AM to 4:00 AM EST. During this time, some features may be temporarily unavailable.',
+                'notification_type' => 'maintenance',
+                'is_active' => 1
+            ],
+            [
+                'title' => 'New Video Review Feature',
+                'message' => 'We are excited to announce the launch of our new video review tools! Coaches can now easily annotate and share video feedback with athletes.',
+                'notification_type' => 'info',
+                'is_active' => 1
+            ],
+            [
+                'title' => 'Registration Deadline Reminder',
+                'message' => 'Reminder: Spring session registration closes in 3 days. Make sure to complete your athlete registration before the deadline.',
+                'notification_type' => 'warning',
+                'is_active' => 1
+            ]
+        ];
+        
+        foreach ($system_notifications as $notif) {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO system_notifications (title, message, notification_type, start_date, is_active, created_by)
+                VALUES (?, ?, ?, NOW(), ?, ?)
+            ");
+            $stmt->execute([
+                $notif['title'],
+                $notif['message'],
+                $notif['notification_type'],
+                $notif['is_active'],
+                $admin_id
+            ]);
+            $this->demo_ids['system_notifications'][] = $this->pdo->lastInsertId();
+        }
+        
+        echo "  ✓ Created " . count($system_notifications) . " demo system notifications\n";
     }
     
     /**
