@@ -418,6 +418,115 @@ try {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+    
+    // Show notification helper
+    function showNotification(message, type) {
+        var existing = document.querySelector('.notification-widget');
+        if (existing) existing.remove();
+        
+        var div = document.createElement('div');
+        div.className = 'notification-widget';
+        div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+        if (type === 'success') {
+            div.style.background = 'rgba(16, 185, 129, 0.95)';
+            div.style.color = '#fff';
+        } else {
+            div.style.background = 'rgba(239, 68, 68, 0.95)';
+            div.style.color = '#fff';
+        }
+        var safeMsg = document.createElement('span');
+        safeMsg.textContent = message;
+        div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ';
+        div.appendChild(safeMsg);
+        var closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+        closeBtn.onclick = function() { div.remove(); };
+        div.appendChild(closeBtn);
+        document.body.appendChild(div);
+        setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+    }
+    
+    // Handle modal open buttons
+    document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
+    // Handle approve/reject actions
+    document.querySelectorAll('[data-action="approve"], [data-action="reject"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var action = this.getAttribute('data-action');
+            var id = this.getAttribute('data-id');
+            var confirmMsg = action === 'approve' ? 'Approve this credit/refund?' : 'Reject this credit/refund?';
+            
+            if (!confirm(confirmMsg)) return;
+            
+            fetch('process_refunds.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'action=' + action + '&id=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showNotification(data.message || (action === 'approve' ? 'Approved!' : 'Rejected!'), 'success');
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
+                }
+            })
+            .catch(function() { showNotification('An error occurred', 'error'); });
+        });
+    });
+    
+    // Handle form submission via AJAX
+    var creditForm = document.querySelector('#issue-credit-refund-modal form');
+    if (creditForm) {
+        creditForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var form = this;
+            var formData = new FormData(form);
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var originalText = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            submitBtn.disabled = true;
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                
+                if (data.success) {
+                    showNotification(data.message || 'Credit/Refund issued successfully!', 'success');
+                    closeModal('issue-credit-refund-modal');
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to process'), 'error');
+                }
+            })
+            .catch(function() {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                showNotification('An error occurred', 'error');
+            });
+        });
+    }
+    
+    // User purchase history loading
     const userSelect = document.getElementById('credit-user-select');
     const purchaseHistory = document.getElementById('purchase-history');
     const purchaseList = document.getElementById('purchase-list');
@@ -435,10 +544,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (data.success && data.purchases && data.purchases.length > 0) {
                             let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
                             data.purchases.forEach(purchase => {
-                                html += `<div style="padding: 8px; background: var(--bg-card); border-radius: 4px; border: 1px solid var(--border); font-size: 13px;">
-                                    <strong>${purchase.description}</strong> - $${purchase.amount}
-                                    <span style="color: var(--text-dim); margin-left: 8px;">${purchase.date}</span>
-                                </div>`;
+                                var desc = document.createElement('span');
+                                desc.textContent = purchase.description;
+                                html += '<div style="padding: 8px; background: var(--bg-card); border-radius: 4px; border: 1px solid var(--border); font-size: 13px;">' +
+                                    '<strong>' + desc.innerHTML + '</strong> - $' + purchase.amount +
+                                    '<span style="color: var(--text-dim); margin-left: 8px;">' + purchase.date + '</span>' +
+                                '</div>';
                             });
                             html += '</div>';
                             purchaseList.innerHTML = html;
@@ -456,4 +567,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        var form = modal.querySelector('form');
+        if (form) form.reset();
+    }
+}
 </script>

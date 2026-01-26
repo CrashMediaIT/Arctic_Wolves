@@ -401,9 +401,92 @@ try {
                 ]);
             }
             
+            // Check if this is an AJAX request
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+            
+            if ($isAjax) {
+                echo json_encode(['success' => true, 'message' => ucfirst($type) . ' issued successfully!']);
+                exit;
+            }
+            
             // Redirect back to credits page with success message
             header("Location: dashboard.php?page=accounting_credits&status=success");
             exit;
+        
+        case 'approve':
+            checkCsrfToken();
+            $credit_id = intval($_POST['id']);
+            
+            if ($credit_id <= 0) {
+                throw new Exception('Invalid credit/refund ID');
+            }
+            
+            // Get the credit/refund details
+            $stmt = $pdo->prepare("SELECT * FROM credits_refunds WHERE id = ?");
+            $stmt->execute([$credit_id]);
+            $credit = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$credit) {
+                throw new Exception('Credit/refund not found');
+            }
+            
+            if ($credit['status'] !== 'pending') {
+                throw new Exception('This credit/refund has already been processed');
+            }
+            
+            // Update status to completed
+            $update_stmt = $pdo->prepare("UPDATE credits_refunds SET status = 'completed', processed_at = NOW() WHERE id = ?");
+            $update_stmt->execute([$credit_id]);
+            
+            // If it's a credit, add to user's credit balance
+            if ($credit['transaction_type'] === 'credit') {
+                $expiry_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'credit_expiry_days'");
+                $expiry_days = intval($expiry_stmt->fetchColumn() ?: 365);
+                $expiry_date = date('Y-m-d', strtotime("+$expiry_days days"));
+                
+                $credit_stmt = $pdo->prepare("
+                    INSERT INTO user_credits (user_id, credit_amount, credit_source, remaining_amount, expiry_date, notes, created_at)
+                    VALUES (?, ?, 'approved_request', ?, ?, ?, NOW())
+                ");
+                $credit_stmt->execute([
+                    $credit['user_id'],
+                    $credit['amount'],
+                    $credit['amount'],
+                    $expiry_date,
+                    "Approved credit: " . $credit['reason']
+                ]);
+            }
+            
+            echo json_encode(['success' => true, 'message' => 'Credit/refund approved successfully!']);
+            break;
+        
+        case 'reject':
+            checkCsrfToken();
+            $credit_id = intval($_POST['id']);
+            
+            if ($credit_id <= 0) {
+                throw new Exception('Invalid credit/refund ID');
+            }
+            
+            // Verify the credit/refund exists and is pending
+            $stmt = $pdo->prepare("SELECT id, status FROM credits_refunds WHERE id = ?");
+            $stmt->execute([$credit_id]);
+            $credit = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$credit) {
+                throw new Exception('Credit/refund not found');
+            }
+            
+            if ($credit['status'] !== 'pending') {
+                throw new Exception('This credit/refund has already been processed');
+            }
+            
+            // Update status to rejected
+            $update_stmt = $pdo->prepare("UPDATE credits_refunds SET status = 'rejected', processed_at = NOW() WHERE id = ?");
+            $update_stmt->execute([$credit_id]);
+            
+            echo json_encode(['success' => true, 'message' => 'Credit/refund rejected!']);
+            break;
             
         default:
             throw new Exception('Invalid action');
