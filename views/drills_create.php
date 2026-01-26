@@ -552,32 +552,52 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const editId = urlParams.get('edit');
     
+    // Helper function to load diagram data into designer
+    function loadDiagramIntoDesigner(diagramDataStr) {
+        if (diagramDataStr && window.drillDesigner) {
+            try {
+                window.drillDesigner.loadDiagramData(diagramDataStr);
+                return true;
+            } catch (e) {
+                console.log('Failed to load diagram data:', e);
+                return false;
+            }
+        }
+        return false;
+    }
+    
     // If in edit mode, load diagram data after designer initializes
     if (editId) {
         // Wait for drill designer to initialize
-        setTimeout(function() {
-            const diagramDataInput = document.getElementById('diagram_data');
-            if (diagramDataInput && diagramDataInput.value && window.drillDesigner) {
-                try {
-                    window.drillDesigner.loadDiagramData(diagramDataInput.value);
-                } catch (e) {
-                    console.log('No diagram data to load');
+        const waitForDesigner = setInterval(function() {
+            if (window.drillDesigner) {
+                clearInterval(waitForDesigner);
+                
+                // First try to load from hidden input (PHP-rendered data)
+                const diagramDataInput = document.getElementById('diagram_data');
+                if (diagramDataInput && diagramDataInput.value) {
+                    loadDiagramIntoDesigner(diagramDataInput.value);
                 }
-            }
-            // Also check sessionStorage for drill data passed from library
-            const editDrill = sessionStorage.getItem('editDrill');
-            if (editDrill) {
-                try {
-                    const drillData = JSON.parse(editDrill);
-                    if (drillData.diagram_data && window.drillDesigner) {
-                        window.drillDesigner.loadDiagramData(drillData.diagram_data);
+                
+                // Also check sessionStorage for drill data passed from library
+                const editDrill = sessionStorage.getItem('editDrill');
+                if (editDrill) {
+                    try {
+                        const drillData = JSON.parse(editDrill);
+                        if (drillData.diagram_data) {
+                            loadDiagramIntoDesigner(drillData.diagram_data);
+                        }
+                        sessionStorage.removeItem('editDrill');
+                    } catch (e) {
+                        console.log('Failed to parse drill from sessionStorage');
                     }
-                    sessionStorage.removeItem('editDrill');
-                } catch (e) {
-                    console.log('Failed to load drill from sessionStorage');
                 }
             }
-        }, 500);
+        }, 100);
+        
+        // Safety timeout to stop checking after 5 seconds
+        setTimeout(function() { clearInterval(waitForDesigner); }, 5000);
+        
         return; // Skip draft loading when in edit mode
     }
     

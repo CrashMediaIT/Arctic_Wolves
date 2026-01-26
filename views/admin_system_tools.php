@@ -699,7 +699,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .page-header-icon {
     width: 56px;
     height: 56px;
-    background: linear-gradient(135deg, var(--primary), #8B5CF6);
+    background: linear-gradient(135deg, #6B46C1, #8B5CF6);
     border-radius: 16px;
     display: flex;
     align-items: center;

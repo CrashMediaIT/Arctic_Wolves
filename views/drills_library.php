@@ -965,9 +965,11 @@ function renderDrillThumbnails() {
         
         // Draw diagram objects if available
         if (diagramData && diagramData.length > 0) {
-            // Scale factor for thumbnail
-            const scaleX = w / 800; // Assuming original canvas was 800px
-            const scaleY = h / 400; // Assuming original canvas was 400px
+            // Scale factor for thumbnail - original drill designer canvas is 800x400
+            const DRILL_DESIGNER_WIDTH = 800;
+            const DRILL_DESIGNER_HEIGHT = 400;
+            const scaleX = w / DRILL_DESIGNER_WIDTH;
+            const scaleY = h / DRILL_DESIGNER_HEIGHT;
             
             diagramData.forEach(obj => {
                 const x = (obj.x || 0) * scaleX;
