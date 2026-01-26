@@ -432,27 +432,17 @@ CREATE TABLE IF NOT EXISTS `performance_stats` (
 CREATE TABLE IF NOT EXISTS `goals` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `athlete_id` INT NOT NULL,
-    `created_by` INT DEFAULT NULL,
-    `title` VARCHAR(255) NOT NULL,
-    `goal_title` VARCHAR(255) DEFAULT NULL,
-    `description` TEXT DEFAULT NULL,
+    `goal_title` VARCHAR(255) NOT NULL,
     `goal_description` TEXT DEFAULT NULL,
-    `category` VARCHAR(100) DEFAULT NULL,
-    `tags` VARCHAR(500) DEFAULT NULL,
     `target_value` DECIMAL(10,2) DEFAULT NULL,
     `current_value` DECIMAL(10,2) DEFAULT NULL,
     `target_date` DATE DEFAULT NULL,
-    `completion_percentage` DECIMAL(5,2) DEFAULT 0.00,
-    `status` ENUM('active', 'completed', 'abandoned', 'archived') DEFAULT 'active',
-    `completed_at` TIMESTAMP NULL,
+    `status` ENUM('active', 'completed', 'abandoned') DEFAULT 'active',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_athlete` (`athlete_id`),
-    INDEX `idx_status` (`status`),
-    INDEX `idx_created_by` (`created_by`),
-    INDEX `idx_category` (`category`)
+    INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage tracking
@@ -1069,24 +1059,18 @@ CREATE TABLE IF NOT EXISTS `managed_athletes` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Mileage logs (trip tracking)
+-- Mileage logs (trip tracking with multi-stop support)
 CREATE TABLE IF NOT EXISTS `mileage_logs` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `trip_date` DATE NOT NULL,
     `athlete_id` INT DEFAULT NULL,
     `session_id` INT DEFAULT NULL,
-    `start_location` VARCHAR(255) DEFAULT NULL,
-    `end_location` VARCHAR(255) DEFAULT NULL,
-    `total_distance_km` DECIMAL(10,2) NOT NULL DEFAULT 0,
-    `total_distance_miles` DECIMAL(10,2) NOT NULL DEFAULT 0,
-    `distance_km` DECIMAL(10,2) DEFAULT NULL,
     `purpose` VARCHAR(255) DEFAULT NULL,
-    `vehicle_type` VARCHAR(100) DEFAULT NULL,
-    `odometer_start` INT DEFAULT NULL,
-    `odometer_end` INT DEFAULT NULL,
-    `reimbursement_rate` DECIMAL(10,4) DEFAULT 0.68,
-    `reimbursement_amount` DECIMAL(10,2) DEFAULT 0.00,
+    `total_distance_km` DECIMAL(10,2) DEFAULT 0,
+    `total_distance_miles` DECIMAL(10,2) DEFAULT 0,
+    `reimbursement_rate` DECIMAL(5,2) DEFAULT 0.68,
+    `reimbursement_amount` DECIMAL(10,2) DEFAULT 0,
     `is_reimbursed` TINYINT(1) DEFAULT 0,
     `notes` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1095,23 +1079,16 @@ CREATE TABLE IF NOT EXISTS `mileage_logs` (
     FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_date` (`trip_date`),
-    INDEX `idx_athlete` (`athlete_id`),
-    INDEX `idx_session` (`session_id`)
+    INDEX `idx_athlete` (`athlete_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage stops (multi-stop trip tracking)
--- Note: Both 'address' and 'location' are kept for backward compatibility:
---   - 'address' is the primary field used for full address (e.g., "123 Main St, City, State")
---   - 'location' is a legacy field that may contain short location names
---   - 'location_name' is the friendly name for display (e.g., "Hockey Arena")
 CREATE TABLE IF NOT EXISTS `mileage_stops` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `mileage_log_id` INT NOT NULL,
     `stop_order` INT NOT NULL DEFAULT 0,
-    `stop_number` INT DEFAULT NULL,
     `location_name` VARCHAR(255) DEFAULT NULL,
     `address` VARCHAR(255) NOT NULL,
-    `location` VARCHAR(255) DEFAULT NULL,
     `arrival_time` TIME DEFAULT NULL,
     `departure_time` TIME DEFAULT NULL,
     `purpose` VARCHAR(255) DEFAULT NULL,
@@ -1119,8 +1096,7 @@ CREATE TABLE IF NOT EXISTS `mileage_stops` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`mileage_log_id`) REFERENCES `mileage_logs`(`id`) ON DELETE CASCADE,
     INDEX `idx_log` (`mileage_log_id`),
-    INDEX `idx_stop_order` (`stop_order`),
-    INDEX `idx_stop_num` (`stop_number`)
+    INDEX `idx_stop_order` (`stop_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Nutrition plan categories
