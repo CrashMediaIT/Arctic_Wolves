@@ -4,8 +4,9 @@ session_start();
 require 'db_config.php';
 require 'mailer.php';
 
-// 1. SECURITY: Only Coach or Admin can run this
-if (!isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'coach')) {
+// 1. SECURITY: Only Coach, Coach Plus, or Admin can run this
+$coach_roles = ['coach', 'coach_plus', 'admin'];
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $coach_roles)) {
     header("Location: dashboard.php"); 
     exit();
 }
@@ -46,8 +47,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         $athlete_id = $pdo->lastInsertId();
         
-        // 4. ASSIGN ATHLETE TO COACH (if coach is creating the athlete)
-        if ($user_role === 'coach') {
+        // 4. ASSIGN ATHLETE TO COACH ROSTER (for coach and coach_plus roles)
+        // Note: managed_athletes is for coach rosters, parent_athlete_relationships is for parents
+        if ($user_role === 'coach' || $user_role === 'coach_plus') {
             $assign_stmt = $pdo->prepare("
                 INSERT INTO managed_athletes (coach_id, athlete_id, start_date, status) 
                 VALUES (?, ?, CURDATE(), 'active')
