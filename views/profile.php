@@ -35,7 +35,7 @@ try {
         }
     } catch (PDOException $prefError) {
         // Table may not exist yet - use defaults
-        error_log("User preferences fetch error: " . $prefError->getMessage());
+        error_log("Failed to load user preferences from database: " . $prefError->getMessage());
     }
 } catch (PDOException $e) {
     error_log("Profile data fetch error: " . $e->getMessage());
@@ -46,7 +46,7 @@ try {
 
 $activeTab = $_GET['tab'] ?? 'personal';
 
-// Helper function to check if preference is enabled (default to true for email_notifications, session_reminders, goal_updates)
+// Helper function to check if preference is enabled (defaults: email_notifications=true, session_reminders=true, goal_updates=true, marketing_emails=false)
 function isPreferenceEnabled($preferences, $key) {
     $defaults = [
         'email_notifications' => 1,
