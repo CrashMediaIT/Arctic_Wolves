@@ -1,3 +1,11 @@
+<?php
+// Determine which tab should be active based on URL parameter
+$activeTab = $_GET['tab'] ?? 'skills';
+$validTabs = ['skills', 'drills', 'positions', 'equipment'];
+if (!in_array($activeTab, $validTabs)) {
+    $activeTab = 'skills';
+}
+?>
 <!-- Admin Categories Management View -->
 <div class="page-header categories-page-header">
     <div class="page-header-content">
@@ -29,19 +37,19 @@
     <!-- Category Tabs - Modern Tab Navigation -->
     <div class="category-tabs-wrapper">
         <div class="category-tabs">
-            <button class="tab-btn active" data-tab="skills" data-action="switch-tab">
+            <button class="tab-btn <?= $activeTab === 'skills' ? 'active' : '' ?>" data-tab="skills" data-action="switch-tab">
                 <span class="tab-icon"><i class="fas fa-star"></i></span>
                 <span class="tab-text">Skills</span>
             </button>
-            <button class="tab-btn" data-tab="drills" data-action="switch-tab">
+            <button class="tab-btn <?= $activeTab === 'drills' ? 'active' : '' ?>" data-tab="drills" data-action="switch-tab">
                 <span class="tab-icon"><i class="fas fa-hockey-puck"></i></span>
                 <span class="tab-text">Drill Types</span>
             </button>
-            <button class="tab-btn" data-tab="positions" data-action="switch-tab">
+            <button class="tab-btn <?= $activeTab === 'positions' ? 'active' : '' ?>" data-tab="positions" data-action="switch-tab">
                 <span class="tab-icon"><i class="fas fa-user-tag"></i></span>
                 <span class="tab-text">Positions</span>
             </button>
-            <button class="tab-btn" data-tab="equipment" data-action="switch-tab">
+            <button class="tab-btn <?= $activeTab === 'equipment' ? 'active' : '' ?>" data-tab="equipment" data-action="switch-tab">
                 <span class="tab-icon"><i class="fas fa-tools"></i></span>
                 <span class="tab-text">Equipment</span>
             </button>
@@ -49,7 +57,7 @@
     </div>
 
     <!-- Skills Tab -->
-    <div class="tab-content active" id="skills-tab">
+    <div class="tab-content <?= $activeTab === 'skills' ? 'active' : '' ?>" id="skills-tab">
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-star"></i> Skill Categories</h3>
@@ -109,7 +117,7 @@
     </div>
 
     <!-- Drill Types Tab -->
-    <div class="tab-content" id="drills-tab">
+    <div class="tab-content <?= $activeTab === 'drills' ? 'active' : '' ?>" id="drills-tab">
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-hockey-puck"></i> Drill Type Categories</h3>
@@ -162,7 +170,7 @@
     </div>
 
     <!-- Positions Tab -->
-    <div class="tab-content" id="positions-tab">
+    <div class="tab-content <?= $activeTab === 'positions' ? 'active' : '' ?>" id="positions-tab">
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-user-tag"></i> Player Positions</h3>
@@ -224,7 +232,7 @@
     </div>
 
     <!-- Equipment Tab -->
-    <div class="tab-content" id="equipment-tab">
+    <div class="tab-content <?= $activeTab === 'equipment' ? 'active' : '' ?>" id="equipment-tab">
         <div class="content-card">
             <div class="card-header">
                 <h3><i class="fas fa-tools"></i> Equipment Types</h3>
