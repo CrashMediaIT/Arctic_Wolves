@@ -287,6 +287,36 @@ $session_types = $pdo->query("
 </div>
 
 <script>
+var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+
+// Show notification helper
+function showNotification(message, type) {
+    var existing = document.querySelector('.notification-widget');
+    if (existing) existing.remove();
+    
+    var div = document.createElement('div');
+    div.className = 'notification-widget';
+    div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+    if (type === 'success') {
+        div.style.background = 'rgba(16, 185, 129, 0.95)';
+        div.style.color = '#fff';
+    } else {
+        div.style.background = 'rgba(239, 68, 68, 0.95)';
+        div.style.color = '#fff';
+    }
+    var safeMsg = document.createElement('span');
+    safeMsg.textContent = message;
+    div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ';
+    div.appendChild(safeMsg);
+    var closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+    closeBtn.onclick = function() { div.remove(); };
+    div.appendChild(closeBtn);
+    document.body.appendChild(div);
+    setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+}
+
 function openCreateModal() {
     document.getElementById('modalTitle').textContent = 'Add Session Type';
     document.getElementById('formAction').value = 'create_session_type';
@@ -301,7 +331,7 @@ function openEditModal(id, name, description) {
     document.getElementById('formAction').value = 'edit_session_type';
     document.getElementById('typeId').value = id;
     document.getElementById('typeName').value = name;
-    document.getElementById('typeDescription').value = description;
+    document.getElementById('typeDescription').value = description || '';
     document.getElementById('typeModal').classList.add('active');
 }
 
@@ -310,17 +340,61 @@ function closeModal() {
 }
 
 function deleteType(id) {
-    if (confirm('Are you sure you want to delete this session type?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'process_admin_action.php';
-        form.innerHTML = '<?= csrfTokenInput() ?>' +
-            '<input type="hidden" name="action" value="delete_session_type">' +
-            '<input type="hidden" name="type_id" value="' + id + '">';
-        document.body.appendChild(form);
-        form.submit();
-    }
+    if (!confirm('Are you sure you want to delete this session type?')) return;
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=delete_session_type&type_id=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showNotification(data.message || 'Session type deleted!', 'success');
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
+        }
+    })
+    .catch(function() { showNotification('An error occurred', 'error'); });
 }
+
+// Handle form submission via AJAX
+document.getElementById('typeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var form = this;
+    var formData = new FormData(form);
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var originalText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    submitBtn.disabled = true;
+    
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            showNotification(data.message || 'Session type saved!', 'success');
+            closeModal();
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to save'), 'error');
+        }
+    })
+    .catch(function() {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        showNotification('An error occurred', 'error');
+    });
+});
 
 // Close modal when clicking outside
 document.getElementById('typeModal').addEventListener('click', function(e) {

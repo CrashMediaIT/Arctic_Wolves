@@ -22,9 +22,96 @@ if ($action == 'add_location') {
     $pdo->prepare("INSERT INTO locations (name, city) VALUES (?, ?)")->execute([trim($_POST['name']), trim($_POST['city'])]);
     header("Location: dashboard.php?page=admin_locations&status=added"); exit();
 }
+if ($action == 'create_location') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $name = trim($_POST['name'] ?? '');
+        $city = trim($_POST['city'] ?? '');
+        $google_place_id = trim($_POST['google_place_id'] ?? '');
+        $image_url = trim($_POST['image_url'] ?? '');
+        
+        if (empty($name) || empty($city)) {
+            throw new Exception('Name and city are required');
+        }
+        
+        $stmt = $pdo->prepare("INSERT INTO locations (name, city, google_place_id, image_url) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Location created successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=added");
+    } catch (Exception $e) {
+        error_log("Create location error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=error");
+    }
+    exit();
+}
+if ($action == 'edit_location') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $location_id = intval($_POST['location_id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $city = trim($_POST['city'] ?? '');
+        $google_place_id = trim($_POST['google_place_id'] ?? '');
+        $image_url = trim($_POST['image_url'] ?? '');
+        
+        if ($location_id <= 0 || empty($name) || empty($city)) {
+            throw new Exception('Invalid data provided');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE locations SET name = ?, city = ?, google_place_id = ?, image_url = ? WHERE id = ?");
+        $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null, $location_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Location updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=updated");
+    } catch (Exception $e) {
+        error_log("Edit location error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=error");
+    }
+    exit();
+}
 if ($action == 'delete_location') {
-    $pdo->prepare("DELETE FROM locations WHERE id = ?")->execute([$_POST['id']]);
-    header("Location: dashboard.php?page=admin_locations&status=deleted"); exit();
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    $location_id = intval($_POST['location_id'] ?? $_POST['id'] ?? 0);
+    
+    try {
+        $pdo->prepare("DELETE FROM locations WHERE id = ?")->execute([$location_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Location deleted successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=deleted");
+    } catch (PDOException $e) {
+        error_log("Delete location error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete location']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_locations&status=error");
+    }
+    exit();
 }
 
 // =========================================================
@@ -72,6 +159,62 @@ if ($action == 'create_session_type') {
             exit();
         }
         header("Location: dashboard.php?page=accounting_products&tab=sessions&status=error");
+    }
+    exit();
+}
+if ($action == 'edit_session_type') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $type_id = intval($_POST['type_id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        
+        if ($type_id <= 0 || empty($name)) {
+            throw new Exception('Invalid data provided');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE session_types SET name = ?, description = ? WHERE id = ?");
+        $stmt->execute([$name, $description, $type_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session type updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_session_types&status=updated");
+    } catch (Exception $e) {
+        error_log("Edit session type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_session_types&status=error");
+    }
+    exit();
+}
+if ($action == 'delete_session_type') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    $type_id = intval($_POST['type_id'] ?? $_POST['id'] ?? 0);
+    
+    try {
+        $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$type_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session type deleted successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_session_types&status=deleted");
+    } catch (PDOException $e) {
+        error_log("Delete session type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete session type']);
+            exit();
+        }
+        header("Location: dashboard.php?page=admin_session_types&status=error");
     }
     exit();
 }
@@ -540,6 +683,8 @@ if ($action == 'create_discount') {
 }
 
 if ($action == 'edit_discount') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     $discount_id = intval($_POST['discount_id']);
     $code = strtoupper(trim($_POST['code']));
     $discount_type = $_POST['type'] ?? 'percentage';
@@ -552,9 +697,20 @@ if ($action == 'edit_discount') {
     try {
         $stmt = $pdo->prepare("UPDATE discount_codes SET code = ?, discount_type = ?, discount_value = ?, max_uses = ?, valid_from = ?, valid_until = ?, is_active = ? WHERE id = ?");
         $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active, $discount_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Discount code updated successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Edit discount error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to update discount code']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
