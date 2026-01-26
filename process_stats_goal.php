@@ -1,0 +1,75 @@
+<?php
+/**
+ * Process Stats Goal Creation
+ * Handles goal creation from the stats page and redirects back to stats
+ */
+
+session_start();
+require 'db_config.php';
+require 'security.php';
+
+// Set security headers
+setSecurityHeaders();
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$user_role = $_SESSION['user_role'] ?? 'athlete';
+
+// Validate CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
+}
+
+$action = $_POST['action'] ?? '';
+
+if ($action === 'create_goal') {
+    try {
+        $athlete_id = intval($_POST['athlete_id'] ?? $user_id);
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $category = trim($_POST['category'] ?? '');
+        $target_date = !empty($_POST['target_date']) ? $_POST['target_date'] : null;
+        $return_page = $_POST['return_page'] ?? 'stats';
+        
+        if (empty($title)) {
+            header("Location: dashboard.php?page={$return_page}&error=title_required");
+            exit();
+        }
+        
+        // Insert the goal
+        $stmt = $pdo->prepare("
+            INSERT INTO goals (
+                athlete_id, created_by, title, description, category,
+                target_date, status, completion_percentage, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'active', 0, NOW(), NOW())
+        ");
+        $stmt->execute([
+            $athlete_id, $user_id, $title, $description, $category, $target_date
+        ]);
+        
+        $goal_id = $pdo->lastInsertId();
+        
+        // Log the goal creation
+        if (function_exists('logSecurityEvent')) {
+            logSecurityEvent($pdo, 'goal_created', "Goal ID: $goal_id created from stats page", $user_id);
+        }
+        
+        // Redirect back to stats page with success message
+        header("Location: dashboard.php?page={$return_page}&msg=goal_created");
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("Goal creation error: " . $e->getMessage());
+        header("Location: dashboard.php?page=stats&error=goal_creation_failed");
+        exit();
+    }
+}
+
+// Fallback redirect
+header("Location: dashboard.php?page=stats");
+exit();

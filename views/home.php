@@ -112,7 +112,56 @@ try {
     <?php if ($user_role === 'athlete'): ?>
         <!-- Athlete Dashboard -->
         
-        <!-- Performance Metrics Placeholder Section -->
+        <?php
+        // Fetch additional performance metrics for the athlete
+        try {
+            // Get goals stats
+            $goalsStmt = $pdo->prepare("
+                SELECT 
+                    COUNT(*) as total_goals,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_goals,
+                    SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_goals,
+                    AVG(CASE WHEN status = 'active' AND completion_percentage IS NOT NULL THEN completion_percentage ELSE NULL END) as avg_progress
+                FROM goals 
+                WHERE athlete_id = ?
+            ");
+            $goalsStmt->execute([$user_id]);
+            $goalsMetrics = $goalsStmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Get recent active goals
+            $recentGoalsStmt = $pdo->prepare("
+                SELECT id, COALESCE(title, goal_title) as title, 
+                       COALESCE(completion_percentage, 0) as progress,
+                       target_date, status
+                FROM goals 
+                WHERE athlete_id = ? AND status = 'active'
+                ORDER BY created_at DESC
+                LIMIT 3
+            ");
+            $recentGoalsStmt->execute([$user_id]);
+            $recentGoals = $recentGoalsStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Get skill evaluations summary
+            $skillsStmt = $pdo->prepare("
+                SELECT 
+                    COUNT(DISTINCT skill_id) as total_skills,
+                    AVG(score) as avg_score,
+                    MAX(evaluation_date) as last_evaluation
+                FROM evaluation_scores
+                WHERE athlete_id = ?
+            ");
+            $skillsStmt->execute([$user_id]);
+            $skillsMetrics = $skillsStmt->fetch(PDO::FETCH_ASSOC);
+            
+        } catch (PDOException $e) {
+            error_log("Dashboard metrics error: " . $e->getMessage());
+            $goalsMetrics = ['total_goals' => 0, 'completed_goals' => 0, 'active_goals' => 0, 'avg_progress' => 0];
+            $recentGoals = [];
+            $skillsMetrics = ['total_skills' => 0, 'avg_score' => 0, 'last_evaluation' => null];
+        }
+        ?>
+        
+        <!-- Performance Metrics Section - Active Data -->
         <div class="performance-metrics-section">
             <div class="section-header-bar">
                 <h2 class="section-header"><i class="fas fa-chart-bar"></i> Performance Metrics</h2>
@@ -120,16 +169,76 @@ try {
                     <i class="fas fa-chart-line"></i> View Details
                 </a>
             </div>
-            <div class="metrics-placeholder-card">
-                <div class="placeholder-content">
-                    <i class="fas fa-chart-area placeholder-icon"></i>
-                    <h3>Performance Metrics Coming Soon</h3>
-                    <p>Track your progress with detailed performance analytics, skill assessments, and goal tracking.</p>
-                    <a href="?page=stats" class="btn btn-secondary">
-                        <i class="fas fa-arrow-right"></i> Go to Performance Stats
-                    </a>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon goals">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <div class="metric-info">
+                        <div class="metric-value"><?php echo intval($goalsMetrics['completed_goals']); ?>/<?php echo intval($goalsMetrics['total_goals']); ?></div>
+                        <div class="metric-label">Goals Completed</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon progress">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="metric-info">
+                        <div class="metric-value"><?php echo round($goalsMetrics['avg_progress'] ?? 0); ?>%</div>
+                        <div class="metric-label">Avg. Goal Progress</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon skills">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="metric-info">
+                        <div class="metric-value"><?php echo number_format($skillsMetrics['avg_score'] ?? 0, 1); ?>/5</div>
+                        <div class="metric-label">Avg. Skill Score</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon active">
+                        <i class="fas fa-flag-checkered"></i>
+                    </div>
+                    <div class="metric-info">
+                        <div class="metric-value"><?php echo intval($goalsMetrics['active_goals']); ?></div>
+                        <div class="metric-label">Active Goals</div>
+                    </div>
                 </div>
             </div>
+            
+            <?php if (count($recentGoals) > 0): ?>
+            <div class="recent-goals-widget">
+                <h4><i class="fas fa-list"></i> Recent Goals Progress</h4>
+                <div class="goals-list">
+                    <?php foreach ($recentGoals as $goal): ?>
+                    <div class="goal-item">
+                        <div class="goal-info">
+                            <span class="goal-title"><?php echo htmlspecialchars($goal['title']); ?></span>
+                            <?php if ($goal['target_date']): ?>
+                            <span class="goal-date">Due: <?php echo date('M d', strtotime($goal['target_date'])); ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="goal-progress">
+                            <div class="progress-bar-mini">
+                                <div class="progress-fill-mini" style="width: <?php echo intval($goal['progress']); ?>%"></div>
+                            </div>
+                            <span class="progress-text"><?php echo intval($goal['progress']); ?>%</span>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="no-goals-widget">
+                <p>No active goals yet. <a href="?page=stats">Create your first goal</a> to start tracking!</p>
+            </div>
+            <?php endif; ?>
         </div>
         
         <!-- Performance Stats Overview -->
@@ -874,7 +983,7 @@ try {
     font-weight: 500;
 }
 
-/* Performance Metrics Placeholder Section */
+/* Performance Metrics Section */
 .performance-metrics-section {
     margin-bottom: 30px;
 }
@@ -892,6 +1001,181 @@ try {
     margin-bottom: 0;
 }
 
+/* New Performance Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    border-color: var(--primary);
+}
+
+.metric-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.metric-icon.goals { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+.metric-icon.progress { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.metric-icon.skills { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+.metric-icon.active { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
+
+.metric-info {
+    flex: 1;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text-white);
+    line-height: 1.2;
+}
+
+.metric-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+/* Recent Goals Widget */
+.recent-goals-widget {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.recent-goals-widget h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.recent-goals-widget h4 i {
+    color: var(--primary);
+}
+
+.goals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.goal-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-main);
+    border-radius: 8px;
+    gap: 16px;
+}
+
+.goal-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.goal-title {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.goal-date {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    display: block;
+}
+
+.goal-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.progress-bar-mini {
+    width: 80px;
+    height: 6px;
+    background: var(--bg-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill-mini {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), #8B5CF6);
+    transition: width 0.3s ease;
+}
+
+.goal-progress .progress-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 35px;
+    text-align: right;
+}
+
+.no-goals-widget {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+
+.no-goals-widget p {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin: 0;
+}
+
+.no-goals-widget a {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.no-goals-widget a:hover {
+    text-decoration: underline;
+}
+
+/* Keep placeholder styles for backwards compatibility */
 .metrics-placeholder-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
