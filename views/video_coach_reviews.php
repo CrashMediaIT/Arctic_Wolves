@@ -52,27 +52,30 @@ $video_stmt->execute($params);
 $videos = $video_stmt->fetchAll();
 ?>
 
-<!-- Coach Uploads View -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-video"></i> Coach Uploads
-    </h1>
-    <p class="page-description">Upload and manage athlete review videos</p>
-</div>
-
+<!-- Coaches Reviews View -->
 <div class="coach-video-content">
+    <!-- Section Header with Description -->
+    <div class="section-intro">
+        <h2 class="section-intro-title">
+            <i class="fas fa-comments"></i>Video Reviews
+        </h2>
+        <p class="section-intro-desc">Browse reviewed videos and upload new review videos for athletes</p>
+    </div>
+    
     <!-- Tabs Navigation -->
     <div class="tabs-container">
         <div class="tabs-nav">
             <button class="tab-btn active" data-action="switch-tab" data-tab="pending">
-                <i class="fas fa-clock"></i> Pending
+                <i class="fas fa-clock"></i> <span>Pending Review</span>
             </button>
             <button class="tab-btn" data-action="switch-tab" data-tab="reviewed">
-                <i class="fas fa-check-circle"></i> Reviewed
+                <i class="fas fa-check-circle"></i> <span>Completed</span>
             </button>
+            <?php if ($isAnyCoach): ?>
             <button class="tab-btn" data-action="switch-tab" data-tab="upload">
-                <i class="fas fa-upload"></i> Upload
+                <i class="fas fa-upload"></i> <span>Upload New</span>
             </button>
+            <?php endif; ?>
         </div>
         
         <!-- Filters (shown for pending and reviewed tabs) -->
@@ -208,16 +211,13 @@ $videos = $video_stmt->fetchAll();
 
     <!-- Tab Content: Upload Section -->
     <div class="tab-content" id="upload-tab">
+        <?php if ($isAnyCoach): ?>
         <div class="upload-card">
             <h3><i class="fas fa-cloud-upload-alt"></i> Upload Review Video</h3>
             
             <form class="upload-form" method="POST" action="process_video.php" enctype="multipart/form-data" data-form="video-upload">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="upload_video">
-                <?php if ($user['role'] !== 'coach'): ?>
-                    <div class="error">Unauthorized: Only coaches can upload videos</div>
-                    <?php return; ?>
-                <?php endif; ?>
                 <!-- Note: coach_id will be validated server-side from session -->
                 
                 <div class="form-row">
@@ -289,6 +289,12 @@ $videos = $video_stmt->fetchAll();
                 </div>
             </form>
         </div>
+        <?php else: ?>
+        <div class="placeholder-container">
+            <i class="fas fa-lock placeholder-icon"></i>
+            <p class="placeholder-text">Only coaches can upload review videos.</p>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
