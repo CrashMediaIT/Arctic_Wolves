@@ -516,7 +516,7 @@ function printBusinessCard() {
     
     // Get corner style preference
     const cornerStyle = document.getElementById('corner-style-select')?.value || 'round';
-    const borderRadius = cornerStyle === 'square' ? '0' : '8px';
+    const borderRadius = cornerStyle === 'square' ? '0' : '12px';
     
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -751,7 +751,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Export individual card side as PNG using canvas flattening approach
+// Export individual card side as PNG using html2canvas library
 function exportCardSide(side) {
     const cardElement = side === 'front' ? document.getElementById('card-front') : document.getElementById('card-back');
     const firstName = document.getElementById('bc_first_name').value || 'User';
@@ -767,7 +767,7 @@ function exportCardSide(side) {
     const cornerStyle = document.getElementById('corner-style-select')?.value || 'round';
     const borderRadius = cornerStyle === 'square' ? '0px' : '12px';
     
-    // Use html2canvas to capture the card with proper flattening
+    // Use html2canvas to capture the card
     html2canvas(cardElement, {
         scale: 3, // Higher scale for better quality (equivalent to 300 DPI)
         useCORS: true,
@@ -781,8 +781,11 @@ function exportCardSide(side) {
                 : clonedDoc.getElementById('card-back');
             
             if (clonedCard) {
-                // CRITICAL: Remove all 3D transforms to prevent mirroring/flipping issues
-                // This ensures the card exports exactly as it appears in the preview
+                // CRITICAL: Remove all 3D transforms to prevent mirroring/flipping issues.
+                // The back card uses rotateY(180deg) for the flip animation, but html2canvas
+                // doesn't properly handle CSS 3D transforms, causing the rendered output to
+                // appear mirrored. By resetting these properties, we ensure the export
+                // matches exactly what the user sees in the preview.
                 clonedCard.style.transform = 'none';
                 clonedCard.style.webkitTransform = 'none';
                 clonedCard.style.backfaceVisibility = 'visible';
