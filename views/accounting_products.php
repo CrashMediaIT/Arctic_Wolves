@@ -960,33 +960,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(response => {
-                // Check if redirect occurred (form submission returns redirect)
-                if (response.redirected) {
-                    showNotification('Created successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 1000);
-                    return null;
-                }
-                // Check for successful response
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data === null) return;
+            .then(function(response) {
+                // Get content type to determine how to parse
+                var contentType = response.headers.get('content-type');
+                var isJson = contentType && contentType.includes('application/json');
                 
+                // Check for non-OK response
+                if (!response.ok) {
+                    // Try to parse error message from JSON response
+                    if (isJson) {
+                        return response.json().then(function(data) {
+                            var errorMsg = data.message || data.error || 'Request failed with status: ' + response.status;
+                            return { success: false, message: errorMsg };
+                        }).catch(function() {
+                            return { success: false, message: 'Request failed with status: ' + response.status };
+                        });
+                    }
+                    return { success: false, message: 'Request failed with status: ' + response.status };
+                }
+                
+                // If JSON response, parse it
+                if (isJson) {
+                    return response.json().catch(function() {
+                        return { success: false, message: 'Invalid JSON response from server' };
+                    });
+                }
+                
+                // If we got a non-JSON response (like HTML redirect), treat as error
+                return { success: false, message: 'Unexpected response from server. Please refresh and try again.' };
+            })
+            .then(function(data) {
                 if (submitBtn) {
                     submitBtn.innerHTML = originalBtnText;
                     submitBtn.disabled = false;
                 }
                 
-                if (data.success) {
-                    showNotification(data.message || 'Operation completed successfully!', 'success');
+                var message = (data && data.message) ? data.message : 'Operation failed';
+                
+                if (data && data.success) {
+                    showNotification(message, 'success');
                     if (modal) closeModal(modal.id);
-                    setTimeout(function() { location.reload(); }, 1500);
+                    
+                    // Determine which tab to stay on based on the modal ID
+                    var currentTab = 'sessions';
+                    if (modal && modal.id.includes('package')) {
+                        currentTab = 'packages';
+                    } else if (modal && modal.id.includes('discount')) {
+                        currentTab = 'discounts';
+                    } else if (modal && modal.id.includes('session')) {
+                        currentTab = 'sessions';
+                    }
+                    
+                    // Reload with tab parameter to stay on the same tab
+                    setTimeout(function() { 
+                        window.location.href = 'dashboard.php?page=products&tab=' + currentTab + '&status=success';
+                    }, 1500);
                 } else {
-                    showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
+                    showNotification('Error: ' + message, 'error');
                 }
             })
             .catch(function(error) {

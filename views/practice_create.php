@@ -163,11 +163,11 @@ $action_value = $is_editing ? 'update' : 'create';
 
     <!-- Form Actions -->
     <div class="form-actions-bar">
-        <a href="?page=practice_plans" class="btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+        <a href="?page=practice_library" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
         <div class="action-group">
-            <button class="btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
-            <button class="btn-secondary" onclick="printPracticePlan()"><i class="fas fa-print"></i> Print</button>
-            <button class="btn-primary" onclick="submitPracticePlan()"><i class="fas fa-check"></i> Create Practice Plan</button>
+            <button type="button" class="btn btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
+            <button type="button" class="btn btn-secondary" onclick="printPracticePlan()"><i class="fas fa-print"></i> Print</button>
+            <button type="button" class="btn btn-primary" onclick="submitPracticePlan()"><i class="fas fa-check"></i> <?= $is_editing ? 'Update' : 'Create' ?> Practice Plan</button>
         </div>
     </div>
 </div>
@@ -792,17 +792,24 @@ function submitPracticePlan() {
 document.addEventListener('DOMContentLoaded', function() {
     // Load existing drills if editing
     <?php if ($is_editing && !empty($edit_drills)): ?>
-    var existingDrills = <?= json_encode(array_map(function($d) {
+    var existingDrills = <?= json_encode(array_values(array_filter(array_map(function($d) {
+        // Only include drills that have valid data
+        if (empty($d['drill_id']) || empty($d['title'])) {
+            return null;
+        }
         return [
-            'id' => $d['drill_id'],
-            'title' => $d['title'] ?? 'Drill',
+            'id' => intval($d['drill_id']),
+            'title' => $d['title'],
             'category' => $d['category_name'] ?? '',
-            'duration' => $d['duration_minutes'] ?? 10,
+            'duration' => intval($d['duration_minutes'] ?? 10),
             'notes' => $d['notes'] ?? ''
         ];
-    }, $edit_drills)) ?>;
-    practiceDrills = existingDrills;
-    updateDrillsDisplay();
+    }, $edit_drills)))) ?>;
+    console.log('Loading existing drills for editing:', existingDrills);
+    if (existingDrills && existingDrills.length > 0) {
+        practiceDrills = existingDrills;
+        updateDrillsDisplay();
+    }
     // Clear draft when editing existing plan
     localStorage.removeItem('practice_plan_draft');
     <?php else: ?>

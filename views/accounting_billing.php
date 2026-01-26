@@ -96,6 +96,7 @@ try {
         </div>
         <div class="action-buttons">
             <button class="btn-secondary" data-action="export" data-type="invoices"><i class="fas fa-file-export"></i> Export</button>
+            <button class="btn-secondary" data-action="add" data-modal="record-payment-modal"><i class="fas fa-money-bill-wave"></i> Record Payment</button>
             <button class="btn-primary" data-action="add" data-modal="create-invoice-modal"><i class="fas fa-plus"></i> Create Invoice</button>
         </div>
     </div>
@@ -574,6 +575,76 @@ try {
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('create-invoice-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Invoice</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Record Payment Modal (for cash payments) -->
+<div id="record-payment-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-money-bill-wave"></i> Record Payment</h2>
+            <button class="modal-close" onclick="closeModal('record-payment-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php" id="recordPaymentForm">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="record_payment">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Invoice # *</label>
+                    <select name="invoice_id" class="form-input" required>
+                        <option value="">-- Select Invoice --</option>
+                        <?php
+                        // Re-fetch unpaid invoices for dropdown
+                        $unpaidInvoices = $pdo->query("SELECT i.id, i.invoice_number, i.total_amount, u.first_name, u.last_name FROM invoices i LEFT JOIN users u ON i.user_id = u.id WHERE i.status IN ('sent', 'pending', 'overdue', 'draft') ORDER BY i.invoice_date DESC")->fetchAll();
+                        foreach ($unpaidInvoices as $inv):
+                        ?>
+                            <option value="<?= $inv['id'] ?>"><?= htmlspecialchars($inv['invoice_number']) ?> - <?= htmlspecialchars($inv['first_name'] . ' ' . $inv['last_name']) ?> ($<?= number_format($inv['total_amount'], 2) ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Payment Amount *</label>
+                        <input type="number" name="amount" class="form-input" step="0.01" min="0.01" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Payment Date *</label>
+                        <input type="date" name="payment_date" class="form-input" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Payment Method *</label>
+                    <select name="payment_method" class="form-input" required>
+                        <option value="cash">Cash</option>
+                        <option value="check">Check</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="credit_card">Credit Card</option>
+                        <option value="debit_card">Debit Card</option>
+                        <option value="e_transfer">E-Transfer</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Reference/Transaction ID</label>
+                    <input type="text" name="reference_number" class="form-input" placeholder="e.g., Check number, transaction ID">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-textarea" rows="2" placeholder="Optional payment notes"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('record-payment-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Record Payment</button>
             </div>
         </form>
     </div>

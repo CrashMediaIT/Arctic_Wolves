@@ -22,8 +22,19 @@ try {
         case 'create':
             $category = trim($_POST['category'] ?? '');
             $description = trim($_POST['description'] ?? '');
-            $amount = floatval($_POST['amount']);
-            $expense_date = $_POST['expense_date'];
+            $amount = floatval($_POST['amount'] ?? 0);
+            $expense_date = $_POST['expense_date'] ?? '';
+            
+            // Validate required fields
+            if (empty($category)) {
+                throw new Exception('Category is required');
+            }
+            if (empty($expense_date)) {
+                throw new Exception('Expense date is required');
+            }
+            if ($amount <= 0) {
+                throw new Exception('Amount must be greater than zero');
+            }
             
             // Handle file upload
             $receipt_url = null;

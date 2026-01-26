@@ -844,23 +844,27 @@ function updateSchedule() {
     global $pdo, $user_id;
     
     $schedule_id = $_POST['schedule_id'] ?? 0;
+    $schedule_name = trim(strip_tags($_POST['schedule_name'] ?? ''));
     $report_type = $_POST['report_type'] ?? '';
     $frequency = $_POST['frequency'] ?? '';
     $format = $_POST['format'] ?? 'pdf';
-    $email_recipients = $_POST['email_recipients'] ?? '';
+    $time = $_POST['time'] ?? '09:00';
+    $email_recipients = trim($_POST['email_recipients'] ?? '');
     $parameters = $_POST['parameters'] ?? '';
-    $is_active = isset($_POST['is_active']) ? 1 : 0;
+    $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
     
     // Validate required fields
-    if (empty($schedule_id) || empty($report_type) || empty($frequency) || empty($email_recipients)) {
+    if (empty($schedule_id) || empty($report_type) || empty($frequency)) {
         throw new Exception('Missing required fields');
     }
     
-    // Validate email format
-    $emails = array_map('trim', explode(',', $email_recipients));
-    foreach ($emails as $email) {
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception('Invalid email address: ' . $email);
+    // Validate email format if provided
+    if (!empty($email_recipients)) {
+        $emails = array_map('trim', explode(',', $email_recipients));
+        foreach ($emails as $email) {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception('Invalid email address: ' . $email);
+            }
         }
     }
     
@@ -883,24 +887,36 @@ function updateSchedule() {
         case 'monthly':
             $next_run->modify('+1 month');
             break;
+        case 'quarterly':
+            $next_run->modify('+3 months');
+            break;
+        case 'annually':
+            $next_run->modify('+1 year');
+            break;
         default:
-            throw new Exception('Invalid frequency');
+            $next_run->modify('+1 month'); // Default to monthly
     }
+    
+    // Generate report name if not provided
+    $report_name = !empty($schedule_name) ? $schedule_name : ucwords(str_replace('_', ' ', $report_type)) . ' Report';
     
     $stmt = $pdo->prepare("
         UPDATE report_schedules 
-        SET report_type = ?, parameters = ?, schedule_frequency = ?, 
-            recipients = ?, next_run = ?, is_active = ?
+        SET report_type = ?, report_name = ?, parameters = ?, schedule_frequency = ?, schedule_time = ?,
+            recipients = ?, next_run = ?, is_active = ?, format = ?
         WHERE id = ? AND created_by = ?
     ");
     
     $stmt->execute([
         $report_type,
+        $report_name,
         $parameters,
         $frequency,
+        $time,
         $email_recipients,
         $next_run->format('Y-m-d H:i:s'),
         $is_active,
+        $format,
         $schedule_id,
         $user_id
     ]);

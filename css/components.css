@@ -45,16 +45,18 @@
     box-shadow: 0 4px 12px rgba(107, 70, 193, 0.4);
 }
 
-.btn-secondary {
+.btn-secondary, a.btn-secondary {
     background: #2D2D3F;
     color: #E0E0E0;
     border: 1px solid #3A3A4F;
+    text-decoration: none;
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover, a.btn-secondary:hover {
     background: #3A3A4F;
     border-color: #6B46C1;
     transform: translateY(-1px);
+    color: #E0E0E0;
 }
 
 .btn-success {
