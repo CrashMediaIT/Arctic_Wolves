@@ -578,7 +578,7 @@ function loadDemoDataCount() {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'action=get_demo_count&<?php echo csrfTokenField(); ?>'
+        body: 'action=get_demo_count&csrf_token=<?php echo htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES); ?>'
     })
     .then(response => response.json())
     .then(data => {
@@ -637,7 +637,7 @@ function confirmProductionMode() {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'action=cleanup_demo_data&<?php echo csrfTokenField(); ?>'
+        body: 'action=cleanup_demo_data&csrf_token=<?php echo htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES); ?>'
     })
     .then(response => response.json())
     .then(data => {
