@@ -707,6 +707,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const successMsg = document.getElementById('invoice-success-message');
                 form.style.display = 'none';
                 successMsg.style.display = 'block';
+                
+                // Reload page after a brief delay to show updated invoice list
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             })
             .catch(error => {
                 submitBtn.innerHTML = originalText;
@@ -722,7 +727,8 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const invoiceId = this.getAttribute('data-invoice-id');
-            window.location.href = '?page=billing_dashboard&view_invoice=' + invoiceId;
+            // Open invoice view in new window
+            window.open('process_admin_action.php?action=view_invoice&invoice_id=' + invoiceId, '_blank');
         });
     });
     
@@ -730,7 +736,8 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const invoiceId = this.getAttribute('data-invoice-id');
-            window.open('process_admin_action.php?action=download_invoice&invoice_id=' + invoiceId, '_blank');
+            // Trigger download
+            window.location.href = 'process_admin_action.php?action=download_invoice&invoice_id=' + invoiceId;
         });
     });
     

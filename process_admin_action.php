@@ -176,6 +176,284 @@ if ($action == 'create_invoice') {
 }
 
 // =========================================================
+// MODULE 5.6: DOWNLOAD INVOICE
+// =========================================================
+if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] == 'download_invoice')) {
+    $invoice_id = intval($_POST['invoice_id'] ?? $_GET['invoice_id'] ?? 0);
+    
+    if ($invoice_id <= 0) {
+        header("Location: dashboard.php?page=billing_dashboard&error=invalid_invoice");
+        exit();
+    }
+    
+    try {
+        // Get invoice details
+        $stmt = $pdo->prepare("
+            SELECT i.*, u.first_name, u.last_name, u.email
+            FROM invoices i
+            LEFT JOIN users u ON i.user_id = u.id
+            WHERE i.id = ?
+        ");
+        $stmt->execute([$invoice_id]);
+        $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$invoice) {
+            header("Location: dashboard.php?page=billing_dashboard&error=invoice_not_found");
+            exit();
+        }
+        
+        // Get line items
+        $items_stmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
+        $items_stmt->execute([$invoice_id]);
+        $items = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Generate HTML invoice
+        $html = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice ' . htmlspecialchars($invoice['invoice_number']) . '</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { border-bottom: 2px solid #7000a4; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #7000a4; margin: 0; font-size: 28px; }
+        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .invoice-info div { flex: 1; }
+        .invoice-info h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: 700; color: #7000a4; }
+        .total-row { font-weight: bold; font-size: 18px; background: #7000a4; color: white; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>INVOICE</h1>
+        <p>Invoice #: ' . htmlspecialchars($invoice['invoice_number']) . '</p>
+    </div>
+    
+    <div class="invoice-info">
+        <div>
+            <h3>Bill To</h3>
+            <p><strong>' . htmlspecialchars($invoice['first_name'] . ' ' . $invoice['last_name']) . '</strong><br>
+            ' . htmlspecialchars($invoice['email']) . '</p>
+        </div>
+        <div style="text-align: right;">
+            <h3>Invoice Details</h3>
+            <p>Date: ' . date('F j, Y', strtotime($invoice['invoice_date'])) . '<br>
+            Due: ' . date('F j, Y', strtotime($invoice['due_date'])) . '<br>
+            Status: ' . ucfirst($invoice['status']) . '</p>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>';
+        
+        if (!empty($items)) {
+            foreach ($items as $item) {
+                $html .= '<tr>
+                    <td>' . htmlspecialchars($item['description']) . '</td>
+                    <td>' . $item['quantity'] . '</td>
+                    <td>$' . number_format($item['unit_price'], 2) . '</td>
+                    <td>$' . number_format($item['total_price'], 2) . '</td>
+                </tr>';
+            }
+        } else {
+            $html .= '<tr>
+                <td>' . htmlspecialchars($invoice['notes'] ?? 'Invoice services') . '</td>
+                <td>1</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+            </tr>';
+        }
+        
+        $html .= '
+            <tr class="total-row">
+                <td colspan="3" style="text-align: right;">TOTAL</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p>Thank you for your business!</p>
+        <p>Arctic Wolves Hockey Training</p>
+    </div>
+</body>
+</html>';
+        
+        // Output as downloadable HTML file (can be converted to PDF if library is available)
+        header('Content-Type: text/html');
+        header('Content-Disposition: attachment; filename="Invoice_' . $invoice['invoice_number'] . '.html"');
+        echo $html;
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("Invoice download error: " . $e->getMessage());
+        header("Location: dashboard.php?page=billing_dashboard&error=download_failed");
+        exit();
+    }
+}
+
+// =========================================================
+// MODULE 5.7: VIEW INVOICE
+// =========================================================
+if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == 'view_invoice')) {
+    $invoice_id = intval($_POST['invoice_id'] ?? $_GET['invoice_id'] ?? 0);
+    
+    if ($invoice_id <= 0) {
+        header("Location: dashboard.php?page=billing_dashboard&error=invalid_invoice");
+        exit();
+    }
+    
+    try {
+        // Get invoice details
+        $stmt = $pdo->prepare("
+            SELECT i.*, u.first_name, u.last_name, u.email
+            FROM invoices i
+            LEFT JOIN users u ON i.user_id = u.id
+            WHERE i.id = ?
+        ");
+        $stmt->execute([$invoice_id]);
+        $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$invoice) {
+            header("Location: dashboard.php?page=billing_dashboard&error=invoice_not_found");
+            exit();
+        }
+        
+        // Get line items
+        $items_stmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
+        $items_stmt->execute([$invoice_id]);
+        $items = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Return JSON for AJAX requests
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'invoice' => $invoice,
+                'items' => $items
+            ]);
+            exit();
+        }
+        
+        // Generate inline view HTML
+        $html = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice ' . htmlspecialchars($invoice['invoice_number']) . '</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; background: #f5f5f5; }
+        .invoice-container { background: white; max-width: 800px; margin: 0 auto; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { border-bottom: 2px solid #7000a4; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #7000a4; margin: 0; font-size: 28px; }
+        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .invoice-info div { flex: 1; }
+        .invoice-info h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: 700; color: #7000a4; }
+        .total-row { font-weight: bold; font-size: 18px; background: #7000a4; color: white; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
+        .actions { margin-top: 20px; text-align: center; }
+        .btn { padding: 10px 20px; background: #7000a4; color: white; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; margin: 0 5px; }
+        .btn:hover { background: #5a0080; }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <div class="header">
+            <h1>INVOICE</h1>
+            <p>Invoice #: ' . htmlspecialchars($invoice['invoice_number']) . '</p>
+        </div>
+        
+        <div class="invoice-info">
+            <div>
+                <h3>Bill To</h3>
+                <p><strong>' . htmlspecialchars($invoice['first_name'] . ' ' . $invoice['last_name']) . '</strong><br>
+                ' . htmlspecialchars($invoice['email']) . '</p>
+            </div>
+            <div style="text-align: right;">
+                <h3>Invoice Details</h3>
+                <p>Date: ' . date('F j, Y', strtotime($invoice['invoice_date'])) . '<br>
+                Due: ' . date('F j, Y', strtotime($invoice['due_date'])) . '<br>
+                Status: ' . ucfirst($invoice['status']) . '</p>
+            </div>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>';
+        
+        if (!empty($items)) {
+            foreach ($items as $item) {
+                $html .= '<tr>
+                    <td>' . htmlspecialchars($item['description']) . '</td>
+                    <td>' . $item['quantity'] . '</td>
+                    <td>$' . number_format($item['unit_price'], 2) . '</td>
+                    <td>$' . number_format($item['total_price'], 2) . '</td>
+                </tr>';
+            }
+        } else {
+            $html .= '<tr>
+                <td>' . htmlspecialchars($invoice['notes'] ?? 'Invoice services') . '</td>
+                <td>1</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+                <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+            </tr>';
+        }
+        
+        $html .= '
+                <tr class="total-row">
+                    <td colspan="3" style="text-align: right;">TOTAL</td>
+                    <td>$' . number_format($invoice['total_amount'], 2) . '</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>Arctic Wolves Hockey Training</p>
+        </div>
+        
+        <div class="actions">
+            <a href="process_admin_action.php?action=download_invoice&invoice_id=' . $invoice_id . '" class="btn">Download</a>
+            <a href="javascript:window.print()" class="btn">Print</a>
+            <a href="dashboard.php?page=billing_dashboard" class="btn" style="background: #666;">Back</a>
+        </div>
+    </div>
+</body>
+</html>';
+        
+        echo $html;
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("Invoice view error: " . $e->getMessage());
+        header("Location: dashboard.php?page=billing_dashboard&error=view_failed");
+        exit();
+    }
+}
+
+// =========================================================
 // MODULE 6: DISCOUNT CODES
 // =========================================================
 if ($action == 'add_discount') {
