@@ -1042,13 +1042,15 @@ document.addEventListener('DOMContentLoaded', function() {
             var modal = form.closest('.modal');
             var submitBtn = form.querySelector('button[type="submit"]');
             var originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            // Use getAttribute to get the action URL (not the shadowed property)
+            var actionUrl = form.getAttribute('action') || 'process_eval_framework.php';
             
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
                 submitBtn.disabled = true;
             }
             
-            fetch(form.action, {
+            fetch(actionUrl, {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
