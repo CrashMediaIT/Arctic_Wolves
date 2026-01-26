@@ -47,7 +47,7 @@
         </div>
         <div class="card-body">
             <form class="schedule-form" method="POST" action="process_reports.php">
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="schedule_create">
                 
                 <div class="form-row">

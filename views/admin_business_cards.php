@@ -423,9 +423,18 @@ function updatePreview() {
     
     // Update preview elements
     document.getElementById('preview-name').textContent = fullName;
-    document.getElementById('preview-title').textContent = jobTitle;
+    const titleElement = document.getElementById('preview-title');
+    titleElement.textContent = jobTitle;
     document.getElementById('preview-phone').textContent = phone;
     document.getElementById('preview-email').textContent = email;
+    
+    // Apply dynamic font sizing for job title
+    titleElement.classList.remove('long-title', 'very-long-title');
+    if (jobTitle.length > 30) {
+        titleElement.classList.add('very-long-title');
+    } else if (jobTitle.length > 20) {
+        titleElement.classList.add('long-title');
+    }
     
     // Regenerate QR code
     generateQRCode();
@@ -443,8 +452,8 @@ function generateQRCode() {
         text: '<?php echo htmlspecialchars($company_website, ENT_QUOTES, 'UTF-8'); ?>',
         width: 80,
         height: 80,
-        colorDark: '#1a1a2e',
-        colorLight: '#ffffff',
+        colorDark: '#6B46C1', // Primary purple color
+        colorLight: 'transparent', // Transparent background
         correctLevel: QRCode.CorrectLevel.H
     });
 }
@@ -711,14 +720,44 @@ function exportCardSide(side) {
     // Show loading notification
     showNotification('Generating PNG...', 'info');
     
+    // For back card, we need to temporarily remove the transform to prevent mirroring
+    let originalTransform = null;
+    if (side === 'back') {
+        originalTransform = cardElement.style.transform;
+        cardElement.style.transform = 'none';
+    }
+    
     // Use html2canvas to capture the card
     html2canvas(cardElement, {
         scale: 3, // Higher scale for better quality (equivalent to 300 DPI)
         useCORS: true,
         allowTaint: true,
         backgroundColor: null,
-        logging: false
+        logging: false,
+        onclone: function(clonedDoc) {
+            // Ensure images are properly loaded in the cloned document
+            const clonedCard = side === 'front' 
+                ? clonedDoc.getElementById('card-front') 
+                : clonedDoc.getElementById('card-back');
+            
+            // Remove transform from cloned back card to prevent mirroring
+            if (side === 'back' && clonedCard) {
+                clonedCard.style.transform = 'none';
+            }
+            
+            // Make sure the logo is visible in the cloned document
+            const logos = clonedCard ? clonedCard.querySelectorAll('img') : [];
+            logos.forEach(function(img) {
+                img.style.visibility = 'visible';
+                img.style.opacity = '1';
+            });
+        }
     }).then(canvas => {
+        // Restore original transform for back card
+        if (side === 'back' && originalTransform !== null) {
+            cardElement.style.transform = originalTransform;
+        }
+        
         // Create download link
         const link = document.createElement('a');
         link.download = `${firstName}_${lastName}_BusinessCard_${side}.png`;
@@ -727,6 +766,10 @@ function exportCardSide(side) {
         
         showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} side exported as PNG!`, 'success');
     }).catch(err => {
+        // Restore original transform on error
+        if (side === 'back' && originalTransform !== null) {
+            cardElement.style.transform = originalTransform;
+        }
         console.error('Export error:', err);
         showNotification('Export failed. Please try again.', 'error');
     });
@@ -1141,6 +1184,22 @@ function exportCardSide(side) {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin: 0;
+    /* Dynamic font size for longer titles */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* Dynamic font size for longer job titles */
+.card-title.long-title {
+    font-size: 10px;
+    letter-spacing: 0.3px;
+}
+
+.card-title.very-long-title {
+    font-size: 9px;
+    letter-spacing: 0.2px;
 }
 
 .card-contact-info {
@@ -1170,13 +1229,14 @@ function exportCardSide(side) {
 }
 
 #qrcode {
-    background: #fff;
+    background: transparent;
     padding: 6px;
     border-radius: 6px;
 }
 
 #qrcode img, #qrcode canvas {
     display: block;
+    background: transparent;
 }
 
 /* Back Card Elements */
