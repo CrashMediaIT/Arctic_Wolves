@@ -93,6 +93,11 @@ try {
                 $age_group ?: null, $skill_level ?: null, $is_active, $package_id
             ]);
             
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Package updated successfully!']);
+                exit();
+            }
             header("Location: dashboard.php?page=accounting_products&tab=packages&status=success");
             exit();
             
@@ -111,6 +116,11 @@ try {
             $stmt = $pdo->prepare("DELETE FROM packages WHERE id = ?");
             $stmt->execute([$package_id]);
             
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Package deleted successfully!']);
+                exit();
+            }
             header("Location: dashboard.php?page=accounting_products&tab=packages&status=success&action=delete");
             exit();
             
@@ -150,6 +160,12 @@ try {
     }
     
     error_log("Package processing error: " . $e->getMessage());
+    
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit();
+    }
     header("Location: dashboard.php?page=products&status=error");
     exit();
 }
