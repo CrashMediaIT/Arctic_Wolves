@@ -35,17 +35,34 @@ if ($action == 'add_type') {
     header("Location: dashboard.php?page=admin_session_types&status=added"); exit();
 }
 if ($action == 'create_session_type') {
-    // Full session type creation with pricing and details
-    // Note: max_participants and is_active from form are ignored as they don't exist in session_types schema
-    // max_participants is a per-session field (in sessions table), not a session type field
-    $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
-    $stmt->execute([
-        trim($_POST['name']), 
-        trim($_POST['description'] ?? ''),
-        floatval($_POST['price'] ?? 0),
-        intval($_POST['duration'] ?? 60)
-    ]);
-    header("Location: dashboard.php?page=accounting_products&tab=sessions&status=added"); exit();
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        // Full session type creation with pricing and details
+        $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
+        $stmt->execute([
+            trim($_POST['name']), 
+            trim($_POST['description'] ?? ''),
+            floatval($_POST['price'] ?? 0),
+            intval($_POST['duration'] ?? 60)
+        ]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session type created successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=accounting_products&tab=sessions&status=added");
+    } catch (PDOException $e) {
+        error_log("Create session type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create session type']);
+            exit();
+        }
+        header("Location: dashboard.php?page=accounting_products&tab=sessions&status=error");
+    }
+    exit();
 }
 if ($action == 'delete_type') {
     $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$_POST['id']]);
@@ -475,6 +492,8 @@ if ($action == 'add_discount') {
 }
 
 if ($action == 'create_discount') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     $code = strtoupper(trim($_POST['code']));
     // Map form field 'type' to schema column 'discount_type'
     $discount_type = $_POST['type'] ?? 'percentage';
@@ -490,9 +509,20 @@ if ($action == 'create_discount') {
     try {
         $stmt = $pdo->prepare("INSERT INTO discount_codes (code, discount_type, discount_value, max_uses, valid_from, valid_until, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Discount code created successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Create discount error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create discount code']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
@@ -521,20 +551,38 @@ if ($action == 'edit_discount') {
 
 if ($action == 'delete_discount') {
     $discount_id = intval($_POST['discount_id']);
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         // Verify discount exists before deletion
         $stmt = $pdo->prepare("SELECT 1 FROM discount_codes WHERE id = ? LIMIT 1");
         $stmt->execute([$discount_id]);
         if (!$stmt->fetch()) {
             error_log("Delete discount error: Discount ID $discount_id not found");
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Discount not found']);
+                exit();
+            }
             header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
             exit();
         }
         
         $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$discount_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Discount deleted successfully']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Delete discount error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete discount']);
+            exit();
+        }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
