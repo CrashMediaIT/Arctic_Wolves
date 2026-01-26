@@ -542,17 +542,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     .then(response => response.json())
                     .then(data => {
                         if (data.success && data.purchases && data.purchases.length > 0) {
-                            let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
-                            data.purchases.forEach(purchase => {
-                                var desc = document.createElement('span');
+                            // Clear and build content safely
+                            purchaseList.innerHTML = '';
+                            var container = document.createElement('div');
+                            container.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+                            
+                            data.purchases.forEach(function(purchase) {
+                                var item = document.createElement('div');
+                                item.style.cssText = 'padding: 8px; background: var(--bg-card); border-radius: 4px; border: 1px solid var(--border); font-size: 13px;';
+                                
+                                var desc = document.createElement('strong');
                                 desc.textContent = purchase.description;
-                                html += '<div style="padding: 8px; background: var(--bg-card); border-radius: 4px; border: 1px solid var(--border); font-size: 13px;">' +
-                                    '<strong>' + desc.innerHTML + '</strong> - $' + purchase.amount +
-                                    '<span style="color: var(--text-dim); margin-left: 8px;">' + purchase.date + '</span>' +
-                                '</div>';
+                                item.appendChild(desc);
+                                
+                                var price = document.createTextNode(' - $' + purchase.amount);
+                                item.appendChild(price);
+                                
+                                var dateSpan = document.createElement('span');
+                                dateSpan.style.cssText = 'color: var(--text-dim); margin-left: 8px;';
+                                dateSpan.textContent = purchase.date;
+                                item.appendChild(dateSpan);
+                                
+                                container.appendChild(item);
                             });
-                            html += '</div>';
-                            purchaseList.innerHTML = html;
+                            purchaseList.appendChild(container);
                         } else {
                             purchaseList.innerHTML = '<p style="color: var(--text-dim); font-size: 13px;">No recent purchases found</p>';
                         }
