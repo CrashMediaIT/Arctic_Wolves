@@ -4,9 +4,12 @@
  * Exports audit logs to CSV format
  */
 
+session_start();
+require_once 'db_config.php';
 require_once 'security.php';
 
 // Check if user is admin
+$user_role = $_SESSION['user_role'] ?? '';
 if ($user_role !== 'admin') {
     http_response_code(403);
     exit('Access denied');

@@ -1,11 +1,17 @@
 <?php
 session_start();
 require 'db_config.php';
+require 'security.php';
 
 // 1. Security Check
 if (!isset($_SESSION['logged_in'])) { 
     header("Location: login.php"); 
     exit(); 
+}
+
+// Validate CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
 }
 
 // 2. Determine Target User (Self vs. Coach Override)

@@ -1,6 +1,12 @@
 <?php
 session_start();
 require 'db_config.php';
+require 'security.php';
+
+// Validate CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
+}
 
 $action = $_POST['action'];
 

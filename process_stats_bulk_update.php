@@ -2,10 +2,14 @@
 // process_stats_bulk_update.php
 session_start();
 require_once 'db_config.php';
+require_once 'security.php';
 
 if (!isset($_SESSION['logged_in']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit('Unauthorized');
 }
+
+// Validate CSRF token for POST requests
+checkCsrfToken();
 
 $user_id = $_SESSION['user_id'];
 $team_id = $_POST['team_id'];

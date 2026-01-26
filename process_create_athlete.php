@@ -2,6 +2,7 @@
 // process_create_athlete.php
 session_start();
 require 'db_config.php';
+require 'security.php';
 require 'mailer.php';
 
 // 1. SECURITY: Only Coach, Coach Plus, or Admin can run this
@@ -9,6 +10,11 @@ $coach_roles = ['coach', 'coach_plus', 'admin'];
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $coach_roles)) {
     header("Location: dashboard.php"); 
     exit();
+}
+
+// Validate CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
 }
 
 $coach_id = $_SESSION['user_id'];

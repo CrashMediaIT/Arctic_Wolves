@@ -3,9 +3,9 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 
-// CSRF protection
-if (!isset($_POST['csrf_token']) || !csrfTokenValidate($_POST['csrf_token'])) {
-    die("CSRF token validation failed");
+// CSRF protection - validate token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
 }
 
 // Only admins can manage team coaches

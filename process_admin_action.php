@@ -2,6 +2,7 @@
 // process_admin_action.php
 session_start();
 require 'db_config.php';
+require 'security.php';
 
 // ENABLE DEBUGGING
 ini_set('display_errors', 1); 
@@ -11,6 +12,11 @@ error_reporting(E_ALL);
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'admin') {
     header("Location: dashboard.php"); 
     exit();
+}
+
+// Validate CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
 }
 
 $action = $_POST['action'] ?? '';

@@ -1,10 +1,16 @@
 <?php
 session_start();
 require 'db_config.php';
+require 'security.php';
 
 // Security: Coaches Only
 if (!isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'coach')) {
     header("Location: dashboard.php"); exit();
+}
+
+// Validate CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
 }
 
 $coach_id = $_SESSION['user_id'];
