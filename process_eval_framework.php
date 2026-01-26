@@ -57,8 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Category name is required');
                 }
                 
-                // Note: display_order and is_active columns don't exist in schema
-                // Removing these references per governance: fix code to match schema
                 $stmt = $pdo->prepare("
                     INSERT INTO eval_categories (name, description, created_at)
                     VALUES (?, ?, NOW())

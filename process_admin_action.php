@@ -45,7 +45,7 @@ if ($action == 'create_session_type') {
         floatval($_POST['price'] ?? 0),
         intval($_POST['duration'] ?? 60)
     ]);
-    header("Location: dashboard.php?page=accounting_products&status=added"); exit();
+    header("Location: dashboard.php?page=accounting_products&tab=sessions&status=added"); exit();
 }
 if ($action == 'delete_type') {
     $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$_POST['id']]);
@@ -180,18 +180,24 @@ if ($action == 'add_discount') {
 
 if ($action == 'create_discount') {
     $code = strtoupper(trim($_POST['code']));
-    $type = $_POST['type']; // percent or fixed
-    $value = floatval($_POST['value']);
-    $usage_limit = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : NULL;
-    $expiry_date = !empty($_POST['expiry_date']) ? $_POST['expiry_date'] : NULL;
+    // Map form field 'type' to schema column 'discount_type'
+    $discount_type = $_POST['type'] ?? 'percentage';
+    $discount_value = floatval($_POST['value']);
+    // Map form field 'usage_limit' to schema column 'max_uses'
+    $max_uses = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : NULL;
+    // Map form fields to schema columns
+    $valid_from = !empty($_POST['start_date']) ? $_POST['start_date'] : NULL;
+    $valid_until = !empty($_POST['end_date']) ? $_POST['end_date'] : NULL;
+    $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+    $description = trim($_POST['description'] ?? '');
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO discount_codes (code, type, value, usage_limit, expiry_date) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$code, $type, $value, $usage_limit, $expiry_date]);
-        header("Location: dashboard.php?page=admin_discounts&status=success");
+        $stmt = $pdo->prepare("INSERT INTO discount_codes (code, discount_type, discount_value, max_uses, valid_from, valid_until, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active]);
+        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Create discount error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_discounts&status=error");
+        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
 }
@@ -199,18 +205,20 @@ if ($action == 'create_discount') {
 if ($action == 'edit_discount') {
     $discount_id = intval($_POST['discount_id']);
     $code = strtoupper(trim($_POST['code']));
-    $type = $_POST['type'];
-    $value = floatval($_POST['value']);
-    $usage_limit = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : NULL;
-    $expiry_date = !empty($_POST['expiry_date']) ? $_POST['expiry_date'] : NULL;
+    $discount_type = $_POST['type'] ?? 'percentage';
+    $discount_value = floatval($_POST['value']);
+    $max_uses = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : NULL;
+    $valid_from = !empty($_POST['start_date']) ? $_POST['start_date'] : NULL;
+    $valid_until = !empty($_POST['end_date']) ? $_POST['end_date'] : NULL;
+    $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
 
     try {
-        $stmt = $pdo->prepare("UPDATE discount_codes SET code = ?, type = ?, value = ?, usage_limit = ?, expiry_date = ? WHERE id = ?");
-        $stmt->execute([$code, $type, $value, $usage_limit, $expiry_date, $discount_id]);
-        header("Location: dashboard.php?page=admin_discounts&status=success");
+        $stmt = $pdo->prepare("UPDATE discount_codes SET code = ?, discount_type = ?, discount_value = ?, max_uses = ?, valid_from = ?, valid_until = ?, is_active = ? WHERE id = ?");
+        $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active, $discount_id]);
+        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Edit discount error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_discounts&status=error");
+        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
 }
@@ -223,15 +231,15 @@ if ($action == 'delete_discount') {
         $stmt->execute([$discount_id]);
         if (!$stmt->fetch()) {
             error_log("Delete discount error: Discount ID $discount_id not found");
-            header("Location: dashboard.php?page=admin_discounts&status=error");
+            header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
             exit();
         }
         
         $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$discount_id]);
-        header("Location: dashboard.php?page=admin_discounts&status=success");
+        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Delete discount error: " . $e->getMessage());
-        header("Location: dashboard.php?page=admin_discounts&status=error");
+        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
     }
     exit();
 }

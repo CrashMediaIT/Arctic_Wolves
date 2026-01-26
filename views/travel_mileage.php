@@ -1,9 +1,9 @@
 <?php
-// Get current mileage rate (convert to per km)
-$rate_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'mileage_rate' LIMIT 1");
-$rate_stmt->execute();
-$mileage_rate_per_mile = $rate_stmt->fetchColumn() ?: 0.65;
-$mileage_rate_per_km = $mileage_rate_per_mile / 1.60934; // Convert to per km
+// Get mileage rates from system settings
+$rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate', 'mileage_rate_per_km', 'mileage_rate_per_mile')");
+$rates = $rate_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$mileage_rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? $rates['mileage_rate'] ?? 0.65);
+$mileage_rate_per_km = floatval($rates['mileage_rate_per_km'] ?? ($mileage_rate_per_mile / 1.60934));
 
 // Get filter period
 $filter_period = $_GET['period'] ?? 'month';
@@ -24,18 +24,29 @@ if ($filter_period === 'month') {
     $date_filter = " AND YEAR(m.trip_date) = YEAR(CURDATE())";
 }
 
-// Get mileage entries
+// Get mileage entries with route info from stops
 $mileage_query = "
     SELECT m.*,
-           (m.distance_km * ?) as calculated_amount
+           m.reimbursement_amount as calculated_amount,
+           start_stop.address as from_location,
+           end_stop.address as to_location
     FROM mileage_logs m
+    LEFT JOIN mileage_stops start_stop ON m.id = start_stop.mileage_log_id AND start_stop.stop_order = 0
+    LEFT JOIN (
+        SELECT ms.mileage_log_id, ms.address
+        FROM mileage_stops ms
+        INNER JOIN (
+            SELECT mileage_log_id, MAX(stop_order) as max_order
+            FROM mileage_stops
+            GROUP BY mileage_log_id
+        ) max_stops ON ms.mileage_log_id = max_stops.mileage_log_id AND ms.stop_order = max_stops.max_order
+    ) end_stop ON m.id = end_stop.mileage_log_id
     WHERE m.user_id = ?" . $date_filter . "
     ORDER BY m.trip_date DESC, m.created_at DESC
     LIMIT 100
 ";
 
 $mileage_stmt = $pdo->prepare($mileage_query);
-array_unshift($date_params, $mileage_rate_per_km);
 $mileage_stmt->execute($date_params);
 $mileage_entries = $mileage_stmt->fetchAll();
 
@@ -48,9 +59,9 @@ $summary = [
 ];
 
 foreach ($mileage_entries as $entry) {
-    $summary['total_km'] += $entry['distance_km'];
-    $summary['total_miles'] += $entry['distance_km'] / 1.60934;
-    $summary['total_amount'] += $entry['calculated_amount'];
+    $summary['total_km'] += $entry['total_distance_km'] ?? 0;
+    $summary['total_miles'] += $entry['total_distance_miles'] ?? 0;
+    $summary['total_amount'] += $entry['calculated_amount'] ?? 0;
 }
 ?>
 
@@ -108,7 +119,7 @@ foreach ($mileage_entries as $entry) {
                 <div class="form-row">
                     <div class="form-group">
                         <label>Date *</label>
-                        <input type="date" name="travel_date" class="form-input" required max="<?= date('Y-m-d') ?>">
+                        <input type="date" name="trip_date" class="form-input" required max="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d') ?>">
                     </div>
                     <div class="form-group">
                         <label>Purpose *</label>
@@ -141,7 +152,7 @@ foreach ($mileage_entries as $entry) {
                     </div>
                     <div class="form-group">
                         <label>Rate per Mile</label>
-                        <input type="number" name="rate_per_mile" class="form-input" value="<?= $mileage_rate ?>" step="0.01" min="0" readonly data-field="rate">
+                        <input type="number" name="rate_per_mile" class="form-input" value="<?= $mileage_rate_per_mile ?>" step="0.01" min="0" readonly data-field="rate">
                     </div>
                     <div class="form-group">
                         <label>Total Amount</label>
@@ -195,25 +206,25 @@ foreach ($mileage_entries as $entry) {
                     <tbody>
                         <?php foreach ($mileage_entries as $entry): ?>
                         <tr data-entry-id="<?= $entry['id'] ?>">
-                            <td><?= date('M d, Y', strtotime($entry['travel_date'])) ?></td>
-                            <td><?= htmlspecialchars($entry['purpose']) ?></td>
+                            <td><?= date('M d, Y', strtotime($entry['trip_date'])) ?></td>
+                            <td><?= htmlspecialchars($entry['purpose'] ?? 'N/A') ?></td>
                             <td>
                                 <div class="route-info">
-                                    <span class="route-from"><?= htmlspecialchars($entry['from_location']) ?></span>
+                                    <span class="route-from"><?= htmlspecialchars($entry['from_location'] ?? 'N/A') ?></span>
                                     <i class="fas fa-arrow-right"></i>
-                                    <span class="route-to"><?= htmlspecialchars($entry['to_location']) ?></span>
+                                    <span class="route-to"><?= htmlspecialchars($entry['to_location'] ?? 'N/A') ?></span>
                                 </div>
                             </td>
-                            <td><?= number_format($entry['distance_miles'], 1) ?> mi</td>
-                            <td>$<?= number_format($entry['calculated_amount'], 2) ?></td>
+                            <td><?= number_format($entry['total_distance_miles'] ?? 0, 1) ?> mi</td>
+                            <td>$<?= number_format($entry['calculated_amount'] ?? 0, 2) ?></td>
                             <td>
-                                <span class="status-badge <?= $entry['status'] ?>">
-                                    <?= ucfirst($entry['status']) ?>
+                                <span class="status-badge <?= $entry['is_reimbursed'] ? 'reimbursed' : 'pending' ?>">
+                                    <?= $entry['is_reimbursed'] ? 'Reimbursed' : 'Pending' ?>
                                 </span>
                             </td>
                             <td>
                                 <div class="table-actions">
-                                    <?php if ($entry['status'] === 'pending'): ?>
+                                    <?php if (!$entry['is_reimbursed']): ?>
                                         <button class="btn-icon" title="Edit" data-action="edit-entry" data-entry-id="<?= $entry['id'] ?>"><i class="fas fa-edit"></i></button>
                                         <button class="btn-icon" title="Delete" data-action="delete-entry" data-entry-id="<?= $entry['id'] ?>"><i class="fas fa-trash"></i></button>
                                     <?php else: ?>

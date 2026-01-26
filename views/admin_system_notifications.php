@@ -219,10 +219,16 @@ $csrf_token = generateCsrfToken();
         border: 1px solid rgba(251, 191, 36, 0.3);
     }
     
-    .badge-update {
+    .badge-info {
         background: rgba(59, 130, 246, 0.15);
         color: #3b82f6;
         border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .badge-warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.3);
     }
     
     .badge-alert {
@@ -631,12 +637,12 @@ $csrf_token = generateCsrfToken();
                 <div class="notification-schedule">
                     <div class="schedule-item">
                         <i class="fas fa-clock"></i>
-                        Start: <?= date('M j, Y g:i A', strtotime($notif['start_time'])) ?>
+                        Start: <?= date('M j, Y g:i A', strtotime($notif['start_date'])) ?>
                     </div>
-                    <?php if ($notif['end_time']): ?>
+                    <?php if ($notif['end_date']): ?>
                         <div class="schedule-item">
                             <i class="fas fa-clock"></i>
-                            End: <?= date('M j, Y g:i A', strtotime($notif['end_time'])) ?>
+                            End: <?= date('M j, Y g:i A', strtotime($notif['end_date'])) ?>
                         </div>
                     <?php else: ?>
                         <div class="schedule-item">
@@ -694,9 +700,10 @@ $csrf_token = generateCsrfToken();
                         Type <span class="required">*</span>
                     </label>
                     <select id="notifType" name="notification_type" class="form-select" required>
-                        <option value="maintenance">Maintenance</option>
-                        <option value="update">Update</option>
+                        <option value="info">Info</option>
+                        <option value="warning">Warning</option>
                         <option value="alert">Alert</option>
+                        <option value="maintenance">Maintenance</option>
                     </select>
                 </div>
                 
@@ -764,11 +771,11 @@ function editNotification(id) {
     document.getElementById('notifType').value = notif.notification_type;
     
     // Convert timestamps to datetime-local format
-    const startDate = new Date(notif.start_time);
+    const startDate = new Date(notif.start_date);
     document.getElementById('notifStartTime').value = formatDateTimeLocal(startDate);
     
-    if (notif.end_time) {
-        const endDate = new Date(notif.end_time);
+    if (notif.end_date) {
+        const endDate = new Date(notif.end_date);
         document.getElementById('notifEndTime').value = formatDateTimeLocal(endDate);
     }
     
