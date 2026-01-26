@@ -32,22 +32,11 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update') {
     requirePermission($pdo, $user_id, $user_role, 'create_practice_plans');
     
     $plan_id = !empty($_POST['plan_id']) ? intval($_POST['plan_id']) : null;
-    $title = trim($_POST['title'] ?? $_POST['practice_title'] ?? '');
+    $name = trim($_POST['title'] ?? $_POST['practice_title'] ?? $_POST['name'] ?? '');
     $description = trim($_POST['description'] ?? $_POST['practice_goals'] ?? '');
-    $total_duration = !empty($_POST['total_duration']) ? intval($_POST['total_duration']) : (!empty($_POST['duration']) ? intval($_POST['duration']) : 60);
-    $age_group = trim($_POST['age_group'] ?? '');
-    $focus_area = trim($_POST['focus_area'] ?? '');
-    $is_public = isset($_POST['is_public']) ? 1 : 0;
     $drills = isset($_POST['drills']) ? json_decode($_POST['drills'], true) : [];
     
-    // Handle practice_create.php form fields
-    $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
-    $practice_date = $_POST['practice_date'] ?? null;
-    $practice_time = $_POST['practice_time'] ?? null;
-    $location = trim($_POST['location'] ?? '');
-    $notes = trim($_POST['notes'] ?? '');
-    
-    if (empty($title)) {
+    if (empty($name)) {
         header("Location: dashboard.php?page=practice_plans&error=title_required");
         exit();
     }
@@ -56,57 +45,46 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update') {
         $pdo->beginTransaction();
         
         if ($plan_id) {
-            // Update existing plan
+            // Update existing plan - use columns from schema (name, description, version)
             $stmt = $pdo->prepare("
                 UPDATE practice_plans SET 
-                    title = ?, description = ?, total_duration = ?,
-                    age_group = ?, focus_area = ?, is_public = ?,
+                    name = ?, description = ?, version = version + 1,
                     updated_at = NOW()
                 WHERE id = ? AND created_by = ?
             ");
             $stmt->execute([
-                $title, $description, $total_duration, $age_group, 
-                $focus_area, $is_public, $plan_id, $user_id
+                $name, $description, $plan_id, $user_id
             ]);
             
             // Delete old drills
-            $pdo->prepare("DELETE FROM practice_plan_drills WHERE plan_id = ?")->execute([$plan_id]);
+            $pdo->prepare("DELETE FROM practice_plan_drills WHERE practice_plan_id = ?")->execute([$plan_id]);
         } else {
-            // Insert new plan
-            $share_token = null;
-            if (hasPermission($pdo, $user_id, $user_role, 'share_practice_plans')) {
-                $share_token = generateShareToken();
-            }
-            
-            $category_id = !empty($_POST['category_id']) ? intval($_POST['category_id']) : null;
-            
+            // Insert new plan - use columns from schema (name, description, created_by)
             $stmt = $pdo->prepare("
-                INSERT INTO practice_plans (
-                    title, description, total_duration, age_group, focus_area,
-                    category_id, is_public, share_token, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO practice_plans (name, description, created_by)
+                VALUES (?, ?, ?)
             ");
-            $stmt->execute([
-                $title, $description, $total_duration, $age_group,
-                $focus_area, $category_id, $is_public, $share_token, $user_id
-            ]);
+            $stmt->execute([$name, $description, $user_id]);
             $plan_id = $pdo->lastInsertId();
         }
         
         // Insert drills
         if (!empty($drills) && is_array($drills)) {
             $drill_stmt = $pdo->prepare("
-                INSERT INTO practice_plan_drills (plan_id, drill_id, order_index, duration_minutes, notes)
+                INSERT INTO practice_plan_drills (practice_plan_id, drill_id, drill_order, duration_minutes, notes)
                 VALUES (?, ?, ?, ?, ?)
             ");
             foreach ($drills as $index => $drill) {
-                $drill_stmt->execute([
-                    $plan_id,
-                    $drill['drill_id'],
-                    $index,
-                    $drill['duration'] ?? null,
-                    $drill['notes'] ?? null
-                ]);
+                $drill_id = is_numeric($drill['id'] ?? $drill['drill_id'] ?? 0) ? intval($drill['id'] ?? $drill['drill_id']) : null;
+                if ($drill_id) {
+                    $drill_stmt->execute([
+                        $plan_id,
+                        $drill_id,
+                        $index,
+                        $drill['duration'] ?? null,
+                        $drill['notes'] ?? null
+                    ]);
+                }
             }
         }
         
