@@ -329,7 +329,7 @@ function isPreferenceEnabled($preferences, $key) {
                         <tbody>
                             <?php foreach ($userTeams as $team): ?>
                             <tr style="border-bottom: 1px solid var(--border);">
-                                <td style="padding: 12px; color: #fff;"><?php echo htmlspecialchars($team['team_name'] ?? ''); ?></td>
+                                <td style="padding: 12px; color: var(--text-primary, #fff);"><?php echo htmlspecialchars($team['team_name'] ?? ''); ?></td>
                                 <td style="padding: 12px; color: var(--text);"><?php echo htmlspecialchars($team['league'] ?? '-'); ?></td>
                                 <td style="padding: 12px; color: var(--text);">
                                     <?php 
@@ -350,7 +350,7 @@ function isPreferenceEnabled($preferences, $key) {
                                     <?php endif; ?>
                                 </td>
                                 <td style="padding: 12px; text-align: center;">
-                                    <form method="POST" action="process_profile_update.php" style="display: inline;" onsubmit="return confirm('Remove this team from your history?');">
+                                    <form method="POST" action="process_profile_update.php" style="display: inline;" class="remove-team-form">
                                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                                         <input type="hidden" name="action" value="remove_team">
                                         <input type="hidden" name="team_id" value="<?php echo $team['id']; ?>">
@@ -536,13 +536,34 @@ function switchTab(tabName) {
 
 // Handle notification preference toggles
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-action="toggle-pref"]').forEach(toggle => {
-        toggle.addEventListener('change', function() {
+    // Handle remove team form submissions
+    document.querySelectorAll('.remove-team-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Remove this team from your history?')) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // Handle notification preference toggles
+    const toggles = document.querySelectorAll('[data-action="toggle-pref"]');
+    console.log('Found', toggles.length, 'notification toggles');
+    
+    toggles.forEach(toggle => {
+        // Add click event as well as change event for better compatibility
+        toggle.addEventListener('click', function(e) {
+            console.log('Toggle clicked:', this.name);
+        });
+        
+        toggle.addEventListener('change', function(e) {
+            e.stopPropagation();
             const prefName = this.name;
             const prefValue = this.checked ? 1 : 0;
             const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
             const toggleElement = this;
             const parentItem = this.closest('.preference-item');
+            
+            console.log('Saving preference:', prefName, '=', prefValue);
             
             // Add saving indicator
             if (parentItem) {
@@ -555,10 +576,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `action=update_preference&preference=${prefName}&value=${prefValue}&csrf_token=${encodeURIComponent(csrfToken)}`
+                body: `action=update_preference&preference=${prefName}&value=${prefValue}&csrf_token=${encodeURIComponent(csrfToken || '')}`
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log('Response data:', data);
                 if (parentItem) {
                     parentItem.style.opacity = '1';
                 }
@@ -571,7 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             parentItem.style.borderColor = originalBorder;
                         }, 1000);
                     }
-                    console.log('Preference saved:', prefName, prefValue);
+                    console.log('Preference saved successfully:', prefName, prefValue);
                 } else {
                     // Revert the toggle if save failed
                     toggleElement.checked = !toggleElement.checked;
@@ -909,12 +934,19 @@ document.addEventListener('DOMContentLoaded', function() {
     width: 56px;
     height: 30px;
     flex-shrink: 0;
+    cursor: pointer;
 }
 
 .toggle-switch input {
     opacity: 0;
-    width: 0;
-    height: 0;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+    z-index: 2;
+    margin: 0;
 }
 
 .toggle-slider {
@@ -927,6 +959,7 @@ document.addEventListener('DOMContentLoaded', function() {
     background-color: var(--border);
     transition: 0.3s;
     border-radius: 30px;
+    z-index: 1;
 }
 
 .toggle-slider:before {

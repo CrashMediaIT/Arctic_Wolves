@@ -96,7 +96,10 @@ if ($action == 'add_team') {
     $year  = trim($_POST['season_year'] ?? '');
     $type  = trim($_POST['season_type'] ?? '');
     $is_current = isset($_POST['is_current']) && $_POST['is_current'] == '1' ? 1 : 0;
-    $season_display = trim($type . " " . $year); 
+    
+    // Build season display string, handling empty values properly
+    $season_parts = array_filter([$type, $year], function($v) { return !empty($v); });
+    $season_display = implode(' ', $season_parts);
 
     if (empty($name)) {
         header("Location: dashboard.php?page=profile&tab=player&error=team_name_required");
