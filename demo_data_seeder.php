@@ -178,15 +178,15 @@ class DemoDataSeeder {
         echo "Seeding Teams...\n";
         
         $teams = [
-            ['Demo Wolves U15', 'U15', 2024],
-            ['Demo Wolves U18', 'U18', 2024],
-            ['Demo Elite Squad', 'Elite', 2024],
+            ['Demo Wolves U15', 'U15', '2024-2025'],
+            ['Demo Wolves U18', 'U18', '2024-2025'],
+            ['Demo Elite Squad', 'Elite', '2024-2025'],
         ];
         
         foreach ($teams as $team) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO teams (name, division, season, is_demo)
-                VALUES (?, ?, ?, 1)
+                INSERT INTO teams (name, division, season, is_active, is_demo)
+                VALUES (?, ?, ?, 1, 1)
             ");
             $stmt->execute($team);
             $this->demo_ids['teams'][] = $this->pdo->lastInsertId();

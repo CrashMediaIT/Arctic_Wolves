@@ -52,10 +52,27 @@ CREATE TABLE IF NOT EXISTS `teams` (
     `name` VARCHAR(100) NOT NULL,
     `age_group` VARCHAR(50) DEFAULT NULL,
     `skill_level` VARCHAR(50) DEFAULT NULL,
+    `division` VARCHAR(50) DEFAULT NULL,
     `season` VARCHAR(50) DEFAULT NULL,
+    `coach_id` INT DEFAULT NULL,
+    `assistant_coach_id` INT DEFAULT NULL,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `is_demo` TINYINT(1) DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`assistant_coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_active` (`is_active`),
+    INDEX `idx_coach` (`coach_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert demo teams
+INSERT INTO `teams` (`name`, `division`, `season`, `is_active`, `is_demo`) VALUES
+('Arctic Wolves U14', 'U14', '2024-2025', 1, 1),
+('Arctic Wolves U16', 'U16', '2024-2025', 1, 1),
+('Arctic Wolves U18', 'U18', '2024-2025', 1, 1),
+('Arctic Wolves Elite', 'Elite', '2024-2025', 1, 1)
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 
 -- Team-Coach assignments
 CREATE TABLE IF NOT EXISTS `team_coach_assignments` (

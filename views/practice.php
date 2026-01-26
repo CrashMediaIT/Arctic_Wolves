@@ -13,7 +13,7 @@ if ($tab === 'practice') $tab = 'practice_library'; // Default tab
     <a href="?page=practice_library" class="tab-link <?= $tab === 'practice_library' ? 'active' : '' ?>" data-tab="practice_library">
         <i class="fa-solid fa-book"></i> Library
     </a>
-    <a href="?page=create_practice" class="tab-link <?= $tab === 'create_practice' ? 'active' : '' ?>" data-tab="create_practice">
+    <a href="?page=practice_create" class="tab-link <?= $tab === 'practice_create' ? 'active' : '' ?>" data-tab="practice_create">
         <i class="fa-solid fa-plus-circle"></i> Create a Practice
     </a>
 </div>
@@ -22,8 +22,58 @@ if ($tab === 'practice') $tab = 'practice_library'; // Default tab
     <?php
     if ($tab === 'practice_library') {
         include __DIR__ . '/practice_library.php';
-    } elseif ($tab === 'create_practice') {
+    } elseif ($tab === 'practice_create' || $tab === 'create_practice') {
         include __DIR__ . '/practice_create.php';
     }
     ?>
 </div>
+
+<style>
+.tab-navigation {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px;
+    margin-bottom: 24px;
+}
+
+.tab-link {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.tab-link:hover {
+    color: var(--text-white);
+    background: var(--bg-main);
+}
+
+.tab-link.active {
+    background: linear-gradient(135deg, var(--primary), var(--neon));
+    color: #fff;
+}
+
+.tab-link i {
+    font-size: 16px;
+}
+
+.page-tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>

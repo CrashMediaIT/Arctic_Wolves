@@ -28,9 +28,28 @@
                         <select name="team_id" class="form-input">
                             <option value="">-- Select Team --</option>
                             <?php 
-                            $teamsStmt = $pdo->query("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
-                            while ($team = $teamsStmt->fetch()) {
-                                echo '<option value="' . $team['id'] . '">' . htmlspecialchars($team['name']) . '</option>';
+                            try {
+                                $teamsStmt = $pdo->query("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
+                                $teamsCount = 0;
+                                while ($team = $teamsStmt->fetch()) {
+                                    echo '<option value="' . $team['id'] . '">' . htmlspecialchars($team['name']) . '</option>';
+                                    $teamsCount++;
+                                }
+                                // If no teams found, show demo options
+                                if ($teamsCount === 0) {
+                                    echo '<option value="" disabled>No teams available - contact admin</option>';
+                                }
+                            } catch (PDOException $e) {
+                                // Fallback if is_active column doesn't exist
+                                try {
+                                    $teamsStmt = $pdo->query("SELECT id, name FROM teams ORDER BY name");
+                                    while ($team = $teamsStmt->fetch()) {
+                                        echo '<option value="' . $team['id'] . '">' . htmlspecialchars($team['name']) . '</option>';
+                                    }
+                                } catch (PDOException $e2) {
+                                    error_log("Teams fetch error: " . $e2->getMessage());
+                                    echo '<option value="" disabled>Unable to load teams</option>';
+                                }
                             }
                             ?>
                         </select>

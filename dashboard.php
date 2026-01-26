@@ -75,6 +75,7 @@ $allowed_pages = [
     'practice'                => 'views/practice.php',
     'practice_library'        => 'views/practice.php',
     'create_practice'         => 'views/practice.php',
+    'practice_create'         => 'views/practice.php',
     
     'roster'                  => 'views/coach_roster.php',
     
@@ -521,7 +522,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=drills" class="nav-link <?= in_array($page, ['drills','drill_library','create_drill','import_drill'])?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-list icon"></i> Drills
             </a>
-            <a href="?page=practice" class="nav-link <?= in_array($page, ['practice','practice_library','create_practice'])?'active':'' ?>">
+            <a href="?page=practice" class="nav-link <?= in_array($page, ['practice','practice_library','create_practice','practice_create'])?'active':'' ?>">
                 <i class="fa-solid fa-file-lines icon"></i> Practice Plans
             </a>
             <a href="?page=roster" class="nav-link <?= $page=='roster'?'active':'' ?>">
