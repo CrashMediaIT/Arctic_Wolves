@@ -3,6 +3,7 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/error_logger.php';
+require_once __DIR__ . '/security.php';
 
 // Check database connection
 if (!$db_connected || $pdo === null) {
@@ -13,6 +14,13 @@ if (!$db_connected || $pdo === null) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Validate CSRF token for POST requests
+    if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+        $_SESSION['login_error'] = "Invalid request. Please refresh and try again.";
+        header("Location: login.php");
+        exit();
+    }
+    
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 

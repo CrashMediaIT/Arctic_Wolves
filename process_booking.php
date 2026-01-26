@@ -2,11 +2,17 @@
 // process_booking.php
 session_start();
 require 'db_config.php';
+require 'security.php';
 
 // 1. SECURITY: Ensure user is logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
+}
+
+// Validate CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
 }
 
 // 2. LOAD STRIPE LIBRARY

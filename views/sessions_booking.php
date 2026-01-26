@@ -1512,13 +1512,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sessionId.startsWith('demo-')) {
             showBookingNotification('Demo Mode: This is a demo session. Book real sessions when they become available.', 'info');
         } else {
-            // Submit registration
+            // Submit registration - get CSRF token from existing form
+            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = 'process_booking.php';
             form.innerHTML = `
                 <input type="hidden" name="action" value="register_session">
                 <input type="hidden" name="session_id" value="${sessionId}">
+                <input type="hidden" name="csrf_token" value="${csrfToken}">
             `;
             document.body.appendChild(form);
             form.submit();

@@ -35,41 +35,46 @@ if (isset($_SESSION['show_verify_link']) && $_SESSION['show_verify_link'] === tr
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST['email']);
-    $pass  = $_POST['password'];
-    
-    // Fetch User
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
-    
-    // Verify Password
-    if ($user && password_verify($pass, $user['password'])) {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+        $error = "Invalid request. Please refresh and try again.";
+    } else {
+        $email = trim($_POST['email']);
+        $pass  = $_POST['password'];
         
-        // 1. CHECK VERIFICATION STATUS
-        if ($user['is_verified'] === 0) {
-            $error = "Account pending verification.";
-            $show_verify_link = true; // Trigger the verification button
-        } else {
-            // 2. LOGIN SUCCESS - SET SESSION
-            $_SESSION['logged_in'] = true;
-            $_SESSION['user_id']   = $user['id'];
-            $_SESSION['user_role'] = $user['role'];
-            $_SESSION['user_name'] = $user['first_name'];
-            $_SESSION['user_email'] = $user['email']; // Useful for test emails
+        // Fetch User
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+        
+        // Verify Password
+        if ($user && password_verify($pass, $user['password'])) {
             
-            // 3. CHECK FORCE PASSWORD CHANGE (Coach-created accounts)
-            if (isset($user['force_pass_change']) && $user['force_pass_change'] === 1) {
-                header("Location: force_change_password.php");
+            // 1. CHECK VERIFICATION STATUS
+            if ($user['is_verified'] === 0) {
+                $error = "Account pending verification.";
+                $show_verify_link = true; // Trigger the verification button
+            } else {
+                // 2. LOGIN SUCCESS - SET SESSION
+                $_SESSION['logged_in'] = true;
+                $_SESSION['user_id']   = $user['id'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['user_name'] = $user['first_name'];
+                $_SESSION['user_email'] = $user['email']; // Useful for test emails
+                
+                // 3. CHECK FORCE PASSWORD CHANGE (Coach-created accounts)
+                if (isset($user['force_pass_change']) && $user['force_pass_change'] === 1) {
+                    header("Location: force_change_password.php");
+                    exit();
+                }
+                
+                // 4. REDIRECT TO DASHBOARD
+                header("Location: dashboard.php");
                 exit();
             }
-            
-            // 4. REDIRECT TO DASHBOARD
-            header("Location: dashboard.php");
-            exit();
+        } else {
+            $error = "Invalid email address or password.";
         }
-    } else {
-        $error = "Invalid email address or password.";
     }
 }
 ?>
@@ -239,6 +244,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php endif; ?>
 
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                 
                 <div class="input-box">
                     <label>Email Address</label>

@@ -17,6 +17,11 @@ if (!isset($_SESSION['user_id'])) {
     die(json_encode(['success' => false, 'message' => 'Not authenticated']));
 }
 
+// Validate CSRF token for POST requests (state-changing operations)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrfToken();
+}
+
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 $is_coach = ($user_role === 'coach' || $user_role === 'coach_plus' || $user_role === 'admin');

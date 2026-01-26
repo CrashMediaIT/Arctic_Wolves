@@ -1,5 +1,9 @@
 <?php
 session_start();
+require_once __DIR__ . '/security.php';
+
+// Generate CSRF token
+generateCSRFToken();
 
 // 1. SECURITY: Ensure user is actually logged in
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -60,6 +64,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
         <form action="process_profile_update.php" method="POST">
             <input type="hidden" name="action" value="force_password_reset">
             <input type="hidden" name="user_id" value="<?php echo $_SESSION['user_id']; ?>">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
             
             <div style="text-align: left; margin-bottom: 20px;">
                 <label style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">New Secure Password</label>
