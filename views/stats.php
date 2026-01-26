@@ -104,10 +104,17 @@ try {
 
 // Get recent evaluations - Use eval_skills table if evaluation_framework tables don't exist
 try {
-    // First check if evaluation_framework tables exist
-    $tableCheck = $pdo->query("SHOW TABLES LIKE 'evaluation_framework_skills'")->fetch();
+    // Check if evaluation_framework tables exist using INFORMATION_SCHEMA with prepared statement
+    $tableCheckStmt = $pdo->prepare("
+        SELECT COUNT(*) as table_exists 
+        FROM INFORMATION_SCHEMA.TABLES 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = ?
+    ");
+    $tableCheckStmt->execute(['evaluation_framework_skills']);
+    $tableCheck = $tableCheckStmt->fetch();
     
-    if ($tableCheck) {
+    if ($tableCheck && $tableCheck['table_exists'] > 0) {
         // Use evaluation framework tables
         $stmt = $pdo->prepare("
             SELECT es.*, efs.name as skill_name, efc.name as category_name
