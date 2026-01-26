@@ -6,21 +6,21 @@
 
 require_once __DIR__ . '/../security.php';
 
-// Get all managed athletes - use parent_athlete_relationships for parents, managed_athletes for coaches
+// Get all managed athletes - use managed_athletes table for both parents and coaches
 $athletes = [];
 if ($user_role === 'parent') {
-    // For parents, use parent_athlete_relationships table
+    // For parents, use managed_athletes table (parent_id column)
     $athletes_stmt = $pdo->prepare("
-        SELECT u.*, par.relationship_type as relationship, par.id as managed_id
-        FROM parent_athlete_relationships par
-        INNER JOIN users u ON par.athlete_id = u.id
-        WHERE par.parent_id = ?
+        SELECT u.*, ma.relationship, ma.id as managed_id
+        FROM managed_athletes ma
+        INNER JOIN users u ON ma.athlete_id = u.id
+        WHERE ma.parent_id = ?
         ORDER BY u.first_name, u.last_name
     ");
     $athletes_stmt->execute([$user_id]);
     $athletes = $athletes_stmt->fetchAll();
 } else {
-    // For coaches/admins, use managed_athletes table
+    // For coaches/admins, use managed_athletes table (coach_id column)
     $athletes_stmt = $pdo->prepare("
         SELECT u.*, ma.status, ma.notes, ma.id as managed_id, 'coach' as relationship
         FROM managed_athletes ma
@@ -74,6 +74,9 @@ $error = isset($_GET['error']) ? $_GET['error'] : '';
         display: flex;
         align-items: center;
         gap: 10px;
+    }
+    .card-title i {
+        color: var(--primary);
     }
     .card-description {
         color: #94a3b8;

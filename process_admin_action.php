@@ -628,6 +628,86 @@ if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == '
 }
 
 // =========================================================
+// MODULE 5.8: RECORD PAYMENT (for cash and manual payments)
+// =========================================================
+if ($action == 'record_payment') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $invoice_id = intval($_POST['invoice_id'] ?? 0);
+        $amount = floatval($_POST['amount'] ?? 0);
+        $payment_date = $_POST['payment_date'] ?? date('Y-m-d');
+        $payment_method = trim($_POST['payment_method'] ?? 'cash');
+        $reference_number = trim($_POST['reference_number'] ?? '');
+        $notes = trim($_POST['notes'] ?? '');
+        
+        if ($invoice_id <= 0 || $amount <= 0) {
+            throw new Exception('Invalid invoice ID or payment amount');
+        }
+        
+        // Verify invoice exists and get user_id
+        $invoice_stmt = $pdo->prepare("SELECT user_id, total_amount, status FROM invoices WHERE id = ?");
+        $invoice_stmt->execute([$invoice_id]);
+        $invoice = $invoice_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$invoice) {
+            throw new Exception('Invoice not found');
+        }
+        
+        // Generate transaction ID
+        $transaction_id = 'TXN-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid()), 0, 8));
+        
+        // Insert payment record
+        $stmt = $pdo->prepare("
+            INSERT INTO payments (user_id, invoice_id, amount, payment_method, payment_date, transaction_id, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, 'completed', ?)
+        ");
+        $stmt->execute([
+            $invoice['user_id'],
+            $invoice_id,
+            $amount,
+            $payment_method,
+            $payment_date,
+            $transaction_id,
+            $notes . ($reference_number ? ' Ref: ' . $reference_number : '')
+        ]);
+        
+        // Calculate total paid for this invoice
+        $paid_stmt = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) as total_paid FROM payments WHERE invoice_id = ? AND status = 'completed'");
+        $paid_stmt->execute([$invoice_id]);
+        $total_paid = $paid_stmt->fetchColumn();
+        
+        // Update invoice status if fully paid
+        if ($total_paid >= $invoice['total_amount']) {
+            $pdo->prepare("UPDATE invoices SET status = 'paid' WHERE id = ?")->execute([$invoice_id]);
+        }
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Payment recorded successfully!',
+                'transaction_id' => $transaction_id
+            ]);
+            exit();
+        }
+        
+        header("Location: dashboard.php?page=billing_dashboard&status=payment_recorded");
+    } catch (Exception $e) {
+        error_log("Record payment error: " . $e->getMessage());
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        
+        header("Location: dashboard.php?page=billing_dashboard&error=payment_failed");
+    }
+    exit();
+}
+
+// =========================================================
 // MODULE 6: DISCOUNT CODES
 // =========================================================
 if ($action == 'add_discount') {

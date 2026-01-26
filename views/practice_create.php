@@ -163,11 +163,11 @@ $action_value = $is_editing ? 'update' : 'create';
 
     <!-- Form Actions -->
     <div class="form-actions-bar">
-        <a href="?page=practice_plans" class="btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+        <a href="?page=practice_library" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
         <div class="action-group">
-            <button class="btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
-            <button class="btn-secondary" onclick="printPracticePlan()"><i class="fas fa-print"></i> Print</button>
-            <button class="btn-primary" onclick="submitPracticePlan()"><i class="fas fa-check"></i> Create Practice Plan</button>
+            <button type="button" class="btn btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
+            <button type="button" class="btn btn-secondary" onclick="printPracticePlan()"><i class="fas fa-print"></i> Print</button>
+            <button type="button" class="btn btn-primary" onclick="submitPracticePlan()"><i class="fas fa-check"></i> <?= $is_editing ? 'Update' : 'Create' ?> Practice Plan</button>
         </div>
     </div>
 </div>

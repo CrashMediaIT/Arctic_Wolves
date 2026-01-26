@@ -621,7 +621,91 @@
 }
 </style>
 
+<!-- Edit Schedule Modal -->
+<div id="edit-schedule-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Schedule</h2>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form method="POST" action="process_reports.php" id="editScheduleForm">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="schedule_update">
+            <input type="hidden" name="schedule_id" id="editScheduleId">
+            
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Schedule Name *</label>
+                        <input type="text" name="schedule_name" id="editScheduleName" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Report Type *</label>
+                        <select name="report_type" id="editReportType" class="form-input" required>
+                            <option value="">-- Select Report --</option>
+                            <option value="revenue_summary">Revenue Summary</option>
+                            <option value="expense_report">Expense Report</option>
+                            <option value="profit_loss">Profit & Loss</option>
+                            <option value="client_billing">Client Billing</option>
+                            <option value="session_analytics">Session Analytics</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Frequency *</label>
+                        <select name="frequency" id="editFrequency" class="form-input" required>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="annually">Annually</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Time</label>
+                        <input type="time" name="time" id="editTime" class="form-input" value="09:00">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email Recipients</label>
+                    <input type="text" name="email_recipients" id="editRecipients" class="form-input" placeholder="email1@example.com, email2@example.com">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Output Format</label>
+                    <div class="format-options">
+                        <label class="radio-option format-pdf">
+                            <input type="radio" name="format" id="editFormatPdf" value="pdf">
+                            <span><i class="fas fa-file-pdf"></i> PDF</span>
+                        </label>
+                        <label class="radio-option format-excel">
+                            <input type="radio" name="format" id="editFormatExcel" value="excel">
+                            <span><i class="fas fa-file-excel"></i> Excel</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Schedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<?php
+// Encode schedules data for JavaScript
+$schedulesJson = json_encode($activeSchedules);
+?>
+
 <script>
+// Make schedules data available to JavaScript
+var schedulesData = <?= $schedulesJson ?>;
+
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
     
@@ -712,9 +796,84 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             var scheduleId = this.getAttribute('data-schedule-id');
-            // For now, redirect to schedules page with edit parameter
-            window.location.href = 'dashboard.php?page=schedules&edit=' + scheduleId;
+            
+            // Find schedule data
+            var schedule = schedulesData.find(function(s) { return s.id == scheduleId; });
+            
+            if (schedule) {
+                // Populate modal fields
+                document.getElementById('editScheduleId').value = schedule.id;
+                document.getElementById('editScheduleName').value = schedule.report_name || '';
+                document.getElementById('editReportType').value = schedule.report_type || '';
+                document.getElementById('editFrequency').value = schedule.schedule_frequency || 'weekly';
+                document.getElementById('editTime').value = schedule.schedule_time || '09:00';
+                document.getElementById('editRecipients').value = schedule.recipients || '';
+                
+                // Set format
+                if (schedule.format === 'excel') {
+                    document.getElementById('editFormatExcel').checked = true;
+                } else {
+                    document.getElementById('editFormatPdf').checked = true;
+                }
+                
+                // Show modal
+                document.getElementById('edit-schedule-modal').classList.add('active');
+            } else {
+                showNotification('Schedule not found', 'error');
+            }
         });
+    });
+    
+    // Handle edit form submission via AJAX
+    var editForm = document.getElementById('editScheduleForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(this);
+            var submitBtn = this.querySelector('button[type="submit"]');
+            var originalText = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitBtn.disabled = true;
+            
+            fetch('process_reports.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                
+                if (data.success) {
+                    showNotification(data.message || 'Schedule updated!', 'success');
+                    closeEditModal();
+                    setTimeout(function() { window.location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to update'), 'error');
+                }
+            })
+            .catch(function(error) {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                showNotification('An error occurred', 'error');
+            });
+        });
+    }
+});
+
+function closeEditModal() {
+    document.getElementById('edit-schedule-modal').classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.querySelectorAll('.modal').forEach(function(modal) {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('active');
+        }
     });
 });
 </script>

@@ -361,3 +361,290 @@ foreach ($mileage_entries as $entry) {
     font-size: 10px;
 }
 </style>
+
+<!-- Edit Mileage Modal -->
+<div id="edit-mileage-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Mileage Entry</h2>
+            <button class="modal-close" onclick="closeMileageModal()">&times;</button>
+        </div>
+        <form method="POST" action="process_mileage.php" id="editMileageForm">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="log_id" id="editLogId">
+            
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date *</label>
+                        <input type="date" name="trip_date" id="editTripDate" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Purpose *</label>
+                        <select name="purpose" id="editPurpose" class="form-input" required>
+                            <option value="">-- Select Purpose --</option>
+                            <option>Training Session</option>
+                            <option>Team Practice</option>
+                            <option>Game/Tournament</option>
+                            <option>Meeting</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>From Location *</label>
+                        <input type="text" name="from_location" id="editFromLocation" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>To Location *</label>
+                        <input type="text" name="to_location" id="editToLocation" class="form-input" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Distance (miles) *</label>
+                        <input type="number" name="distance_miles" id="editDistanceMiles" class="form-input" step="0.1" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Distance (km)</label>
+                        <input type="number" name="distance_km" id="editDistanceKm" class="form-input" step="0.1" min="0" readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeMileageModal()"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Entry</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-mileage-modal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Delete Entry</h2>
+            <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ef4444; margin-bottom: 16px;"></i>
+            <p style="color: var(--text-white); margin-bottom: 8px;">Are you sure you want to delete this mileage entry?</p>
+            <p style="color: var(--text-dim); font-size: 13px;">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer" style="justify-content: center;">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()"><i class="fas fa-times"></i> Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    var pendingDeleteId = null;
+    
+    // Show notification helper
+    function showNotification(message, type) {
+        var existing = document.querySelector('.notification-widget');
+        if (existing) existing.remove();
+        
+        var div = document.createElement('div');
+        div.className = 'notification-widget';
+        div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+        if (type === 'success') {
+            div.style.background = 'rgba(16, 185, 129, 0.95)';
+            div.style.color = '#fff';
+        } else {
+            div.style.background = 'rgba(239, 68, 68, 0.95)';
+            div.style.color = '#fff';
+        }
+        var safeMsg = document.createElement('span');
+        safeMsg.textContent = message;
+        div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ';
+        div.appendChild(safeMsg);
+        var closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+        closeBtn.onclick = function() { div.remove(); };
+        div.appendChild(closeBtn);
+        document.body.appendChild(div);
+        setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+    }
+    
+    // Calculate total amount on distance change
+    var distanceField = document.querySelector('[data-field="distance"]');
+    var rateField = document.querySelector('[data-field="rate"]');
+    var totalDisplay = document.querySelector('[data-field="total-display"]');
+    
+    if (distanceField && rateField && totalDisplay) {
+        distanceField.addEventListener('input', function() {
+            var distance = parseFloat(this.value) || 0;
+            var rate = parseFloat(rateField.value) || 0;
+            var total = distance * rate;
+            totalDisplay.value = '$' + total.toFixed(2);
+        });
+    }
+    
+    // Edit entry handlers
+    document.querySelectorAll('[data-action="edit-entry"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var entryId = this.getAttribute('data-entry-id');
+            var row = this.closest('tr');
+            
+            // Extract data from the row
+            var dateCell = row.cells[0].textContent;
+            var purpose = row.cells[1].textContent;
+            var fromLocation = row.querySelector('.route-from')?.textContent || '';
+            var toLocation = row.querySelector('.route-to')?.textContent || '';
+            var distance = row.cells[3].textContent.replace(' mi', '');
+            
+            // Convert date format (M dd, YYYY to YYYY-MM-DD)
+            var date = new Date(dateCell);
+            var formattedDate = date.toISOString().split('T')[0];
+            
+            // Populate modal
+            document.getElementById('editLogId').value = entryId;
+            document.getElementById('editTripDate').value = formattedDate;
+            document.getElementById('editPurpose').value = purpose.trim() !== 'N/A' ? purpose.trim() : '';
+            document.getElementById('editFromLocation').value = fromLocation.trim() !== 'N/A' ? fromLocation.trim() : '';
+            document.getElementById('editToLocation').value = toLocation.trim() !== 'N/A' ? toLocation.trim() : '';
+            document.getElementById('editDistanceMiles').value = parseFloat(distance) || 0;
+            document.getElementById('editDistanceKm').value = (parseFloat(distance) * 1.60934).toFixed(2) || 0;
+            
+            // Show modal
+            document.getElementById('edit-mileage-modal').classList.add('active');
+        });
+    });
+    
+    // Delete entry handlers
+    document.querySelectorAll('[data-action="delete-entry"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            pendingDeleteId = this.getAttribute('data-entry-id');
+            document.getElementById('delete-mileage-modal').classList.add('active');
+        });
+    });
+    
+    // Handle edit form submission via AJAX
+    var editForm = document.getElementById('editMileageForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(this);
+            // Create waypoints from locations
+            var fromLocation = document.getElementById('editFromLocation').value;
+            var toLocation = document.getElementById('editToLocation').value;
+            var waypoints = JSON.stringify([
+                {name: 'Start', address: fromLocation},
+                {name: 'End', address: toLocation}
+            ]);
+            formData.append('waypoints', waypoints);
+            
+            var submitBtn = this.querySelector('button[type="submit"]');
+            var originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitBtn.disabled = true;
+            
+            fetch('process_mileage.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                
+                if (data.success) {
+                    showNotification(data.message || 'Mileage entry updated!', 'success');
+                    closeMileageModal();
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to update'), 'error');
+                }
+            })
+            .catch(function() {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                showNotification('An error occurred', 'error');
+            });
+        });
+    }
+    
+    // Confirm delete function
+    window.confirmDelete = function() {
+        if (!pendingDeleteId) return;
+        
+        var deleteBtn = document.getElementById('confirmDeleteBtn');
+        var originalText = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        deleteBtn.disabled = true;
+        
+        fetch('process_mileage.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'action=delete&log_id=' + encodeURIComponent(pendingDeleteId) + '&csrf_token=' + encodeURIComponent(csrfToken)
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            deleteBtn.innerHTML = originalText;
+            deleteBtn.disabled = false;
+            
+            if (data.success) {
+                showNotification(data.message || 'Entry deleted!', 'success');
+                closeDeleteModal();
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
+            }
+        })
+        .catch(function() {
+            deleteBtn.innerHTML = originalText;
+            deleteBtn.disabled = false;
+            showNotification('An error occurred', 'error');
+        });
+    };
+    
+    // Auto-submit filter
+    document.querySelectorAll('[data-action="auto-submit"]').forEach(function(select) {
+        select.addEventListener('change', function() {
+            this.closest('form').submit();
+        });
+    });
+    
+    // Export mileage
+    document.querySelectorAll('[data-action="export-mileage"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'process_mileage.php?action=export_csv&start_date=<?= date("Y-m-01") ?>&end_date=<?= date("Y-m-t") ?>';
+        });
+    });
+});
+
+function closeMileageModal() {
+    document.getElementById('edit-mileage-modal').classList.remove('active');
+}
+
+function closeDeleteModal() {
+    document.getElementById('delete-mileage-modal').classList.remove('active');
+}
+
+// Close modals when clicking outside
+document.querySelectorAll('.modal').forEach(function(modal) {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('active');
+        }
+    });
+});
+</script>
