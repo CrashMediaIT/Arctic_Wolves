@@ -244,36 +244,54 @@
             <button class="btn-secondary btn-small"><i class="fas fa-trash-alt"></i> Clear History</button>
         </div>
         <div class="card-body">
+            <?php
+            // Fetch recent reports from database
+            try {
+                $reportsStmt = $pdo->prepare("
+                    SELECT r.*, u.first_name, u.last_name
+                    FROM reports r
+                    LEFT JOIN users u ON r.generated_by = u.id
+                    ORDER BY r.created_at DESC
+                    LIMIT 10
+                ");
+                $reportsStmt->execute();
+                $recentReports = $reportsStmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (PDOException $e) {
+                error_log("Reports fetch error: " . $e->getMessage());
+                $recentReports = [];
+            }
+            ?>
             <div class="recent-reports-list">
-                <div class="report-item">
-                    <div class="report-file-icon pdf">
-                        <i class="fas fa-file-pdf"></i>
+                <?php if (!empty($recentReports)): ?>
+                    <?php foreach ($recentReports as $report): 
+                        $fileExt = pathinfo($report['file_path'] ?? '', PATHINFO_EXTENSION);
+                        $iconClass = $fileExt === 'csv' ? 'excel' : ($fileExt === 'html' ? 'pdf' : 'pdf');
+                    ?>
+                    <div class="report-item">
+                        <div class="report-file-icon <?= $iconClass ?>">
+                            <i class="fas fa-file-<?= $fileExt === 'csv' ? 'excel' : 'alt' ?>"></i>
+                        </div>
+                        <div class="report-info">
+                            <h4><?= htmlspecialchars($report['report_name'] ?? 'Report') ?></h4>
+                            <span class="report-meta-text">Generated on <?= date('M j, Y', strtotime($report['created_at'])) ?> by <?= htmlspecialchars(($report['first_name'] ?? '') . ' ' . ($report['last_name'] ?? '')) ?></span>
+                        </div>
+                        <div class="report-actions">
+                            <?php if (!empty($report['file_path']) && file_exists(__DIR__ . '/../' . $report['file_path'])): ?>
+                            <a href="<?= htmlspecialchars($report['file_path']) ?>" download class="btn-icon" title="Download"><i class="fas fa-download"></i></a>
+                            <a href="<?= htmlspecialchars($report['file_path']) ?>" target="_blank" class="btn-icon" title="View"><i class="fas fa-eye"></i></a>
+                            <?php endif; ?>
+                            <form method="POST" action="process_reports.php" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                                <input type="hidden" name="action" value="delete_report">
+                                <input type="hidden" name="report_id" value="<?= $report['id'] ?>">
+                                <button type="submit" class="btn-icon" title="Delete" onclick="return confirm('Delete this report?')"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </div>
                     </div>
-                    <div class="report-info">
-                        <h4>Monthly Revenue Summary - December 2025</h4>
-                        <span class="report-meta-text">Generated on Jan 5, 2026 • 245 KB</span>
-                    </div>
-                    <div class="report-actions">
-                        <button class="btn-icon" data-action="download-report" data-id="1" data-file="reports/monthly_revenue_dec_2023.pdf" title="Download"><i class="fas fa-download"></i></button>
-                        <button class="btn-icon" data-action="view-report" data-id="1" data-file="reports/monthly_revenue_dec_2023.pdf" title="View"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" data-action="delete" data-id="1" data-type="report" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-
-                <div class="report-item">
-                    <div class="report-file-icon excel">
-                        <i class="fas fa-file-excel"></i>
-                    </div>
-                    <div class="report-info">
-                        <h4>Client Billing Summary - Q4 2025</h4>
-                        <span class="report-meta-text">Generated on Dec 28, 2025 • 128 KB</span>
-                    </div>
-                    <div class="report-actions">
-                        <button class="btn-icon" data-action="download-report" data-id="2" data-file="reports/client_billing_q4_2025.xlsx" title="Download"><i class="fas fa-download"></i></button>
-                        <button class="btn-icon" data-action="view-report" data-id="2" data-file="reports/client_billing_q4_2025.xlsx" title="View"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" data-action="delete" data-id="2" data-type="report" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="placeholder-text" style="text-align: center; padding: 40px;">No reports generated yet. Use the Report Generator above to create your first report.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>

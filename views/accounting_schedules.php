@@ -147,75 +147,64 @@
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-calendar-check"></i> Active Schedules</h3>
-            <span class="active-count">3 schedules</span>
+            <?php
+            // Fetch schedules from database
+            try {
+                $schedulesStmt = $pdo->prepare("
+                    SELECT rs.*, u.first_name, u.last_name
+                    FROM report_schedules rs
+                    LEFT JOIN users u ON rs.created_by = u.id
+                    WHERE rs.created_by = ?
+                    ORDER BY rs.is_active DESC, rs.next_run ASC
+                ");
+                $schedulesStmt->execute([$user_id]);
+                $activeSchedules = $schedulesStmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (PDOException $e) {
+                error_log("Schedules fetch error: " . $e->getMessage());
+                $activeSchedules = [];
+            }
+            ?>
+            <span class="active-count"><?= count($activeSchedules) ?> schedules</span>
         </div>
         <div class="card-body">
             <div class="schedules-list">
-                <div class="schedule-item">
-                    <div class="schedule-status active">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="schedule-details">
-                        <h4>Monthly Revenue Summary</h4>
-                        <div class="schedule-meta">
-                            <span><i class="fas fa-calendar-alt"></i> Monthly on 1st</span>
-                            <span><i class="fas fa-clock"></i> 9:00 AM</span>
-                            <span><i class="fas fa-envelope"></i> 3 recipients</span>
+                <?php if (!empty($activeSchedules)): ?>
+                    <?php foreach ($activeSchedules as $schedule): 
+                        $isActive = $schedule['is_active'] == 1;
+                        $recipientCount = !empty($schedule['recipients']) ? count(explode(',', $schedule['recipients'])) : 0;
+                        $nextRun = $schedule['next_run'] ? date('M j, Y \a\t g:i A', strtotime($schedule['next_run'])) : 'Not scheduled';
+                    ?>
+                    <div class="schedule-item <?= !$isActive ? 'paused' : '' ?>">
+                        <div class="schedule-status <?= $isActive ? 'active' : 'paused' ?>">
+                            <i class="fas fa-<?= $isActive ? 'check' : 'pause' ?>-circle"></i>
                         </div>
-                        <div class="schedule-next">
-                            <strong>Next run:</strong> Feb 1, 2024 at 9:00 AM
+                        <div class="schedule-details">
+                            <h4><?= htmlspecialchars($schedule['report_name'] ?? ucwords(str_replace('_', ' ', $schedule['report_type']))) ?></h4>
+                            <div class="schedule-meta">
+                                <span><i class="fas fa-calendar-alt"></i> <?= ucfirst($schedule['schedule_frequency'] ?? 'Weekly') ?></span>
+                                <span><i class="fas fa-clock"></i> <?= $schedule['schedule_time'] ?? '09:00' ?></span>
+                                <?php if ($recipientCount > 0): ?>
+                                <span><i class="fas fa-envelope"></i> <?= $recipientCount ?> recipient<?= $recipientCount > 1 ? 's' : '' ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="schedule-next">
+                                <?php if ($isActive): ?>
+                                <strong>Next run:</strong> <?= $nextRun ?>
+                                <?php else: ?>
+                                <strong>Status:</strong> Paused
+                                <?php endif; ?>
+                            </div>
                         </div>
-                    </div>
-                    <div class="schedule-actions">
-                        <button class="btn-icon" data-action="edit" data-id="1" data-type="schedule" data-modal="edit-schedule-modal" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" data-action="toggle" data-id="1" data-type="schedule" title="Pause"><i class="fas fa-pause"></i></button>
-                        <button class="btn-icon" data-action="delete" data-id="1" data-type="schedule" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-
-                <div class="schedule-item">
-                    <div class="schedule-status active">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="schedule-details">
-                        <h4>Weekly Session Analytics</h4>
-                        <div class="schedule-meta">
-                            <span><i class="fas fa-calendar-alt"></i> Weekly on Monday</span>
-                            <span><i class="fas fa-clock"></i> 8:00 AM</span>
-                            <span><i class="fas fa-envelope"></i> 2 recipients</span>
-                        </div>
-                        <div class="schedule-next">
-                            <strong>Next run:</strong> Jan 22, 2024 at 8:00 AM
+                        <div class="schedule-actions">
+                            <button class="btn-icon schedule-edit-btn" data-schedule-id="<?= $schedule['id'] ?>" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon schedule-toggle-btn" data-schedule-id="<?= $schedule['id'] ?>" data-active="<?= $isActive ? '1' : '0' ?>" title="<?= $isActive ? 'Pause' : 'Resume' ?>"><i class="fas fa-<?= $isActive ? 'pause' : 'play' ?>"></i></button>
+                            <button class="btn-icon schedule-delete-btn" data-schedule-id="<?= $schedule['id'] ?>" title="Delete"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                    <div class="schedule-actions">
-                        <button class="btn-icon" data-action="edit" data-id="2" data-type="schedule" data-modal="edit-schedule-modal" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" data-action="toggle" data-id="2" data-type="schedule" title="Pause"><i class="fas fa-pause"></i></button>
-                        <button class="btn-icon" data-action="delete" data-id="2" data-type="schedule" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-
-                <div class="schedule-item paused">
-                    <div class="schedule-status paused">
-                        <i class="fas fa-pause-circle"></i>
-                    </div>
-                    <div class="schedule-details">
-                        <h4>Quarterly Profit & Loss</h4>
-                        <div class="schedule-meta">
-                            <span><i class="fas fa-calendar-alt"></i> Quarterly</span>
-                            <span><i class="fas fa-clock"></i> 10:00 AM</span>
-                            <span><i class="fas fa-envelope"></i> 5 recipients</span>
-                        </div>
-                        <div class="schedule-next">
-                            <strong>Status:</strong> Paused
-                        </div>
-                    </div>
-                    <div class="schedule-actions">
-                        <button class="btn-icon" data-action="edit" data-id="3" data-type="schedule" data-modal="edit-schedule-modal" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" data-action="toggle" data-id="3" data-type="schedule" title="Resume"><i class="fas fa-play"></i></button>
-                        <button class="btn-icon" data-action="delete" data-id="3" data-type="schedule" data-action-url="process_reports.php" title="Delete"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="placeholder-text" style="text-align: center; padding: 40px;">No scheduled reports yet. Create your first schedule using the form above.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -631,3 +620,101 @@
     }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    
+    // Show notification
+    function showNotification(message, type) {
+        var alertDiv = document.createElement('div');
+        alertDiv.className = type === 'success' ? 'success-alert' : 'error-alert';
+        alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px; border-radius: 8px; display: flex; align-items: center; gap: 12px;';
+        if (type === 'success') {
+            alertDiv.style.background = 'rgba(16, 185, 129, 0.95)';
+            alertDiv.style.color = '#fff';
+        } else {
+            alertDiv.style.background = 'rgba(239, 68, 68, 0.95)';
+            alertDiv.style.color = '#fff';
+        }
+        alertDiv.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message;
+        document.body.appendChild(alertDiv);
+        setTimeout(function() { alertDiv.remove(); }, 3000);
+    }
+    
+    // Toggle schedule (pause/resume)
+    document.querySelectorAll('.schedule-toggle-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var scheduleId = this.getAttribute('data-schedule-id');
+            var isActive = this.getAttribute('data-active') === '1';
+            
+            fetch('process_reports.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: 'action=toggle_schedule&schedule_id=' + scheduleId + '&is_active=' + (isActive ? '0' : '1') + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showNotification('Schedule ' + (isActive ? 'paused' : 'resumed') + ' successfully!', 'success');
+                    setTimeout(function() { window.location.reload(); }, 1000);
+                } else {
+                    showNotification(data.message || 'Failed to update schedule', 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showNotification('An error occurred', 'error');
+            });
+        });
+    });
+    
+    // Delete schedule
+    document.querySelectorAll('.schedule-delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var scheduleId = this.getAttribute('data-schedule-id');
+            
+            if (!confirm('Are you sure you want to delete this schedule?')) {
+                return;
+            }
+            
+            fetch('process_reports.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: 'action=delete_schedule&schedule_id=' + scheduleId + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showNotification('Schedule deleted successfully!', 'success');
+                    setTimeout(function() { window.location.reload(); }, 1000);
+                } else {
+                    showNotification(data.message || 'Failed to delete schedule', 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showNotification('An error occurred', 'error');
+            });
+        });
+    });
+    
+    // Edit schedule - open modal with data
+    document.querySelectorAll('.schedule-edit-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var scheduleId = this.getAttribute('data-schedule-id');
+            // For now, redirect to schedules page with edit parameter
+            window.location.href = 'dashboard.php?page=schedules&edit=' + scheduleId;
+        });
+    });
+});
+</script>
