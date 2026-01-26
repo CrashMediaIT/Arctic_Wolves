@@ -11,15 +11,13 @@ try {
     $stmt->execute([$user_id]);
     $userData = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // Get additional athlete data if athlete
-    $athleteData = null;
-    if ($user_role === 'athlete') {
-        $stmt = $pdo->prepare("
-            SELECT * FROM athlete_stats WHERE user_id = ? ORDER BY season DESC LIMIT 1
-        ");
-        $stmt->execute([$user_id]);
-        $athleteData = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
+    // Get additional player data (available for ALL users, not just athletes)
+    $playerData = null;
+    $stmt = $pdo->prepare("
+        SELECT * FROM athlete_stats WHERE user_id = ? ORDER BY season DESC LIMIT 1
+    ");
+    $stmt->execute([$user_id]);
+    $playerData = $stmt->fetch(PDO::FETCH_ASSOC);
     
     // Get user preferences for notifications
     $userPreferences = [];
@@ -40,7 +38,7 @@ try {
 } catch (PDOException $e) {
     error_log("Profile data fetch error: " . $e->getMessage());
     $userData = [];
-    $athleteData = null;
+    $playerData = null;
     $userPreferences = [];
 }
 
@@ -91,13 +89,11 @@ function isPreferenceEnabled($preferences, $key) {
             <i class="fas fa-id-card"></i>
             <span>Personal Info</span>
         </button>
-        <?php if ($user_role === 'athlete'): ?>
-            <button class="profile-tab-btn <?php echo $activeTab === 'player' ? 'active' : ''; ?>" 
-                    data-tab="player" onclick="switchTab('player')">
-                <i class="fas fa-hockey-puck"></i>
-                <span>Player Info</span>
-            </button>
-        <?php endif; ?>
+        <button class="profile-tab-btn <?php echo $activeTab === 'player' ? 'active' : ''; ?>" 
+                data-tab="player" onclick="switchTab('player')">
+            <i class="fas fa-hockey-puck"></i>
+            <span>Player Info</span>
+        </button>
         <button class="profile-tab-btn <?php echo $activeTab === 'security' ? 'active' : ''; ?>" 
                 data-tab="security" onclick="switchTab('security')">
             <i class="fas fa-lock"></i>
@@ -213,99 +209,87 @@ function isPreferenceEnabled($preferences, $key) {
         </div>
     </div>
 
-    <!-- Player Information Tab (Athletes Only) -->
-    <?php if ($user_role === 'athlete'): ?>
-        <div class="tab-content <?php echo $activeTab === 'player' ? 'active' : ''; ?>" id="player-tab">
-            <div class="card">
-                <div class="card-header">
-                    <h3><i class="fas fa-hockey-puck"></i> Player Information</h3>
-                </div>
-                <div class="card-body">
-                    <form class="player-form" id="player-form" method="POST" action="process_profile_update.php" data-form-type="player">
-                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-                        <input type="hidden" name="action" value="update_player_info">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Height (inches)</label>
-                                <input type="number" name="height" class="form-input" 
-                                       value="<?php echo htmlspecialchars($athleteData['height'] ?? ''); ?>" 
-                                       placeholder="e.g., 72">
-                                <small class="form-hint">Enter height in inches (5'10" = 70 inches)</small>
-                            </div>
-                            <div class="form-group">
-                                <label>Weight (lbs)</label>
-                                <input type="number" name="weight" class="form-input" 
-                                       value="<?php echo htmlspecialchars($athleteData['weight'] ?? ''); ?>" 
-                                       placeholder="e.g., 180">
-                            </div>
+    <!-- Player Information Tab (Available for ALL Users) -->
+    <div class="tab-content <?php echo $activeTab === 'player' ? 'active' : ''; ?>" id="player-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-hockey-puck"></i> Player Information</h3>
+            </div>
+            <div class="card-body">
+                <form class="player-form" id="player-form" method="POST" action="process_profile_update.php" data-form-type="player">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="action" value="update_player_info">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Height (inches)</label>
+                            <input type="number" name="height" class="form-input" 
+                                   value="<?php echo htmlspecialchars($playerData['height'] ?? ''); ?>" 
+                                   placeholder="e.g., 72">
+                            <small class="form-hint">Enter height in inches (5'10" = 70 inches)</small>
                         </div>
+                        <div class="form-group">
+                            <label>Weight (lbs)</label>
+                            <input type="number" name="weight" class="form-input" 
+                                   value="<?php echo htmlspecialchars($playerData['weight'] ?? ''); ?>" 
+                                   placeholder="e.g., 180">
+                        </div>
+                    </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Handedness / Shoots</label>
-                                <select name="handedness" class="form-select">
-                                    <option value="">Select</option>
-                                    <option value="left" <?php echo ($athleteData['handedness'] ?? '') === 'left' ? 'selected' : ''; ?>>Left</option>
-                                    <option value="right" <?php echo ($athleteData['handedness'] ?? '') === 'right' ? 'selected' : ''; ?>>Right</option>
-                                </select>
-                            </div>
-                            <?php if (($userData['position'] ?? '') === 'goalie'): ?>
-                            <div class="form-group">
-                                <label>Catching Hand (Goalie)</label>
-                                <select name="catching_hand" class="form-select">
-                                    <option value="">Select</option>
-                                    <option value="left" <?php echo ($athleteData['catching_hand'] ?? '') === 'left' ? 'selected' : ''; ?>>Left</option>
-                                    <option value="right" <?php echo ($athleteData['catching_hand'] ?? '') === 'right' ? 'selected' : ''; ?>>Right</option>
-                                </select>
-                            </div>
-                            <?php else: ?>
-                            <div class="form-group">
-                                <label>Jersey Number</label>
-                                <input type="number" name="jersey_number" class="form-input" 
-                                       value="<?php echo htmlspecialchars($athleteData['jersey_number'] ?? ''); ?>">
-                            </div>
-                            <?php endif; ?>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Handedness / Shoots</label>
+                            <select name="handedness" class="form-select">
+                                <option value="">Select</option>
+                                <option value="left" <?php echo ($playerData['handedness'] ?? '') === 'left' ? 'selected' : ''; ?>>Left</option>
+                                <option value="right" <?php echo ($playerData['handedness'] ?? '') === 'right' ? 'selected' : ''; ?>>Right</option>
+                            </select>
                         </div>
+                        <div class="form-group">
+                            <label>Catching Hand</label>
+                            <select name="catching_hand" class="form-select">
+                                <option value="">Select</option>
+                                <option value="left" <?php echo ($playerData['catching_hand'] ?? '') === 'left' ? 'selected' : ''; ?>>Left</option>
+                                <option value="right" <?php echo ($playerData['catching_hand'] ?? '') === 'right' ? 'selected' : ''; ?>>Right</option>
+                            </select>
+                        </div>
+                    </div>
 
-                        <?php if (($userData['position'] ?? '') === 'goalie'): ?>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Jersey Number</label>
-                                <input type="number" name="jersey_number" class="form-input" 
-                                       value="<?php echo htmlspecialchars($athleteData['jersey_number'] ?? ''); ?>">
-                            </div>
-                            <div class="form-group">
-                                <!-- Empty to maintain grid layout -->
-                            </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Jersey Number</label>
+                            <input type="number" name="jersey_number" class="form-input" 
+                                   value="<?php echo htmlspecialchars($playerData['jersey_number'] ?? ''); ?>">
                         </div>
-                        <?php endif; ?>
+                        <div class="form-group">
+                            <!-- Empty to maintain grid layout -->
+                        </div>
+                    </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Current Team</label>
-                                <input type="text" name="team" class="form-input" 
-                                       value="<?php echo htmlspecialchars($athleteData['team'] ?? ''); ?>">
-                            </div>
-                            <div class="form-group">
-                                <label>League</label>
-                                <input type="text" name="league" class="form-input" 
-                                       value="<?php echo htmlspecialchars($athleteData['league'] ?? ''); ?>">
-                            </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Current Team</label>
+                            <input type="text" name="team" class="form-input" 
+                                   value="<?php echo htmlspecialchars($playerData['team'] ?? ''); ?>">
                         </div>
+                        <div class="form-group">
+                            <label>League</label>
+                            <input type="text" name="league" class="form-input" 
+                                   value="<?php echo htmlspecialchars($playerData['league'] ?? ''); ?>">
+                        </div>
+                    </div>
 
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary" data-action="save">
-                                <i class="fas fa-save"></i> Save Player Info
-                            </button>
-                            <button type="button" class="btn btn-secondary" data-action="cancel">
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Player Info
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-action="cancel">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
-    <?php endif; ?>
+    </div>
 
     <!-- Security Tab -->
     <div class="tab-content <?php echo $activeTab === 'security' ? 'active' : ''; ?>" id="security-tab">
