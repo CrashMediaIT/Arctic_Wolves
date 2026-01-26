@@ -244,6 +244,20 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                     <p class="form-help"><i class="fas fa-info-circle"></i> Recommended size: 1050x600 pixels (3.5" x 2" at 300 DPI). Supports PNG, JPG, WebP.</p>
                 </div>
                 
+                <!-- Card Style Options Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title"><i class="fas fa-palette"></i> Card Style Options</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Corner Style</label>
+                            <select id="corner-style-select" class="form-select" onchange="updateCornerStyle()">
+                                <option value="round">Rounded Corners</option>
+                                <option value="square">Square Corners</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="form-actions">
                     <button type="button" class="btn btn-primary" onclick="updatePreview()">
                         <i class="fas fa-eye"></i> Update Preview
@@ -458,6 +472,30 @@ function generateQRCode() {
     });
 }
 
+// Update corner style for preview
+function updateCornerStyle() {
+    const cornerStyle = document.getElementById('corner-style-select')?.value || 'round';
+    const borderRadius = cornerStyle === 'square' ? '0px' : '12px';
+    
+    const cardFront = document.getElementById('card-front');
+    const cardBack = document.getElementById('card-back');
+    const frontOverlay = document.getElementById('front-overlay');
+    const backOverlay = document.getElementById('back-overlay');
+    
+    if (cardFront) {
+        cardFront.style.borderRadius = borderRadius;
+    }
+    if (cardBack) {
+        cardBack.style.borderRadius = borderRadius;
+    }
+    if (frontOverlay) {
+        frontOverlay.style.borderRadius = borderRadius;
+    }
+    if (backOverlay) {
+        backOverlay.style.borderRadius = borderRadius;
+    }
+}
+
 // Flip the card
 function flipCard() {
     const wrapper = document.getElementById('business-card-wrapper');
@@ -475,6 +513,10 @@ function printBusinessCard() {
     const printWindow = window.open('', '_blank');
     const cardFront = document.getElementById('card-front').outerHTML;
     const cardBack = document.getElementById('card-back').outerHTML;
+    
+    // Get corner style preference
+    const cornerStyle = document.getElementById('corner-style-select')?.value || 'round';
+    const borderRadius = cornerStyle === 'square' ? '0' : '8px';
     
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -503,7 +545,7 @@ function printBusinessCard() {
                 .business-card {
                     width: 3.5in;
                     height: 2in;
-                    border-radius: 8px;
+                    border-radius: ${borderRadius};
                     overflow: hidden;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                 }
@@ -512,6 +554,7 @@ function printBusinessCard() {
                 }
                 .business-card.back {
                     background: linear-gradient(135deg, #6B46C1 0%, #8B5CF6 100%);
+                    transform: none; /* Remove the rotateY transform for printing */
                 }
                 .card-content {
                     height: 100%;
@@ -708,7 +751,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Export individual card side as PNG
+// Export individual card side as PNG using canvas flattening approach
 function exportCardSide(side) {
     const cardElement = side === 'front' ? document.getElementById('card-front') : document.getElementById('card-back');
     const firstName = document.getElementById('bc_first_name').value || 'User';
@@ -720,14 +763,11 @@ function exportCardSide(side) {
     // Show loading notification
     showNotification('Generating PNG...', 'info');
     
-    // For back card, we need to temporarily remove the transform to prevent mirroring
-    let originalTransform = null;
-    if (side === 'back') {
-        originalTransform = cardElement.style.transform;
-        cardElement.style.transform = 'none';
-    }
+    // Get corner style preference
+    const cornerStyle = document.getElementById('corner-style-select')?.value || 'round';
+    const borderRadius = cornerStyle === 'square' ? '0px' : '12px';
     
-    // Use html2canvas to capture the card
+    // Use html2canvas to capture the card with proper flattening
     html2canvas(cardElement, {
         scale: 3, // Higher scale for better quality (equivalent to 300 DPI)
         useCORS: true,
@@ -735,29 +775,46 @@ function exportCardSide(side) {
         backgroundColor: null,
         logging: false,
         onclone: function(clonedDoc) {
-            // Ensure images are properly loaded in the cloned document
+            // Get the cloned card element
             const clonedCard = side === 'front' 
                 ? clonedDoc.getElementById('card-front') 
                 : clonedDoc.getElementById('card-back');
             
-            // Remove transform from cloned back card to prevent mirroring
-            if (side === 'back' && clonedCard) {
+            if (clonedCard) {
+                // CRITICAL: Remove all 3D transforms to prevent mirroring/flipping issues
+                // This ensures the card exports exactly as it appears in the preview
                 clonedCard.style.transform = 'none';
+                clonedCard.style.webkitTransform = 'none';
+                clonedCard.style.backfaceVisibility = 'visible';
+                clonedCard.style.webkitBackfaceVisibility = 'visible';
+                
+                // Make the card visible and positioned correctly for capture
+                clonedCard.style.position = 'relative';
+                
+                // Apply corner style to cloned card
+                clonedCard.style.borderRadius = borderRadius;
+                
+                // Also apply to the background overlay
+                const overlay = clonedCard.querySelector('.card-bg-overlay');
+                if (overlay) {
+                    overlay.style.borderRadius = borderRadius;
+                }
+                
+                // Make sure the logo is visible in the cloned document
+                const logos = clonedCard.querySelectorAll('img');
+                logos.forEach(function(img) {
+                    img.style.visibility = 'visible';
+                    img.style.opacity = '1';
+                });
+                
+                // Ensure text elements are not transformed
+                const textElements = clonedCard.querySelectorAll('h1, h2, p, span');
+                textElements.forEach(function(el) {
+                    el.style.transform = 'none';
+                });
             }
-            
-            // Make sure the logo is visible in the cloned document
-            const logos = clonedCard ? clonedCard.querySelectorAll('img') : [];
-            logos.forEach(function(img) {
-                img.style.visibility = 'visible';
-                img.style.opacity = '1';
-            });
         }
     }).then(canvas => {
-        // Restore original transform for back card
-        if (side === 'back' && originalTransform !== null) {
-            cardElement.style.transform = originalTransform;
-        }
-        
         // Create download link
         const link = document.createElement('a');
         link.download = `${firstName}_${lastName}_BusinessCard_${side}.png`;
@@ -766,10 +823,6 @@ function exportCardSide(side) {
         
         showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} side exported as PNG!`, 'success');
     }).catch(err => {
-        // Restore original transform on error
-        if (side === 'back' && originalTransform !== null) {
-            cardElement.style.transform = originalTransform;
-        }
         console.error('Export error:', err);
         showNotification('Export failed. Please try again.', 'error');
     });
