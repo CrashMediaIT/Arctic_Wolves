@@ -29,6 +29,9 @@ $tab = $_GET['tab'] ?? 'overview';
         include __DIR__ . '/finance_overview.php';
     } elseif ($tab === 'billing') {
         include __DIR__ . '/finance_billing.php';
+    } else {
+        // Default to overview for invalid tab values
+        include __DIR__ . '/finance_overview.php';
     }
     ?>
 </div>
