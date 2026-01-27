@@ -1,4 +1,9 @@
 <!-- Accounting Reports View -->
+<?php
+// Redirect to new Financial Reports Hub
+header('Location: dashboard.php?page=financial_reports&tab=reports');
+exit;
+?>
 <?php if (isset($_GET['success']) && $_GET['success'] == '1'): ?>
 <div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
     <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
