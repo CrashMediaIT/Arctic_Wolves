@@ -2952,3 +2952,74 @@ VALUES (1, 2026, '2026-01-01');
 -- Add display_order to expense_categories if not exists
 ALTER TABLE `expense_categories`
 ADD COLUMN IF NOT EXISTS `display_order` INT DEFAULT 0 AFTER `is_active`;
+
+-- =====================================================
+-- MERCHANDISE MANAGEMENT - CATEGORIES AND PRODUCTS
+-- For POS system integration
+-- =====================================================
+
+-- Merchandise Categories
+CREATE TABLE IF NOT EXISTS `merchandise_categories` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `image_url` VARCHAR(500) DEFAULT NULL,
+    `display_order` INT DEFAULT 0,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_active` (`is_active`),
+    INDEX `idx_display_order` (`display_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Merchandise Products
+CREATE TABLE IF NOT EXISTS `merchandise_products` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `category_id` INT DEFAULT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `sku` VARCHAR(100) DEFAULT NULL,
+    `price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `cost_price` DECIMAL(10,2) DEFAULT NULL,
+    `image_url` VARCHAR(500) DEFAULT NULL,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `track_inventory` TINYINT(1) DEFAULT 1,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`category_id`) REFERENCES `merchandise_categories`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_category` (`category_id`),
+    INDEX `idx_active` (`is_active`),
+    INDEX `idx_sku` (`sku`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Merchandise Product Sizes (inventory tracking by size)
+CREATE TABLE IF NOT EXISTS `merchandise_product_sizes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `product_id` INT NOT NULL,
+    `size` VARCHAR(50) NOT NULL,
+    `quantity` INT NOT NULL DEFAULT 0,
+    `sku_suffix` VARCHAR(50) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_product_size` (`product_id`, `size`),
+    INDEX `idx_product` (`product_id`),
+    INDEX `idx_size` (`size`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Merchandise Product Images (multiple images per product)
+CREATE TABLE IF NOT EXISTS `merchandise_product_images` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `product_id` INT NOT NULL,
+    `image_url` VARCHAR(500) NOT NULL,
+    `is_primary` TINYINT(1) DEFAULT 0,
+    `display_order` INT DEFAULT 0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
+    INDEX `idx_product` (`product_id`),
+    INDEX `idx_primary` (`is_primary`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
