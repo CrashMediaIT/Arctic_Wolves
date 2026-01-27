@@ -194,8 +194,9 @@ try {
     // Store order ID in session for callback
     $_SESSION['pending_shop_order_id'] = $orderId;
     
-    // Create Stripe checkout session
-    $domain = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
+    // Create Stripe checkout session with secure protocol detection
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $domain = $protocol . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
     
     $checkoutSession = \Stripe\Checkout\Session::create([
         'payment_method_types' => ['card'],

@@ -131,8 +131,10 @@ try {
         LEFT JOIN merchandise_categories pc ON mc.parent_id = pc.id
         WHERE $whereClause
         ORDER BY $orderBy
-        LIMIT $perPage OFFSET $offset
+        LIMIT ? OFFSET ?
     ";
+    $params[] = $perPage;
+    $params[] = $offset;
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);

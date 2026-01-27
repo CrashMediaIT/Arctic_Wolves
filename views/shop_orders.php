@@ -16,6 +16,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     
     $orderId = intval($_POST['order_id'] ?? 0);
     $newStatus = $_POST['new_status'] ?? '';
+    $csrfToken = $_POST['csrf_token'] ?? '';
+    
+    // Verify CSRF token
+    if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $csrfToken)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid security token']);
+        exit();
+    }
     
     $validStatuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
     
@@ -63,15 +70,17 @@ try {
     $totalOrders = $countStmt->fetchColumn();
     $totalPages = ceil($totalOrders / $perPage);
     
-    // Fetch orders
+    // Fetch orders with parameterized LIMIT/OFFSET
     $stmt = $pdo->prepare("
         SELECT so.*, 
                (SELECT COUNT(*) FROM shop_order_items WHERE order_id = so.id) as item_count
         FROM shop_orders so
         WHERE $whereClause
         ORDER BY so.created_at DESC
-        LIMIT $perPage OFFSET $offset
+        LIMIT ? OFFSET ?
     ");
+    $params[] = $perPage;
+    $params[] = $offset;
     $stmt->execute($params);
     $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -309,7 +318,7 @@ function updateOrderStatus(orderId, newStatus) {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'update_status=1&order_id=' + orderId + '&new_status=' + encodeURIComponent(newStatus)
+        body: 'update_status=1&order_id=' + orderId + '&new_status=' + encodeURIComponent(newStatus) + '&csrf_token=' + encodeURIComponent('<?= $_SESSION['csrf_token'] ?? '' ?>')
     })
     .then(response => response.json())
     .then(data => {

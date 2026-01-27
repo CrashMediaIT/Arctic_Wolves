@@ -48,8 +48,10 @@ try {
         LEFT JOIN users u ON pt.staff_id = u.id
         WHERE $whereClause
         ORDER BY pt.created_at DESC
-        LIMIT $perPage OFFSET $offset
+        LIMIT ? OFFSET ?
     ");
+    $params[] = $perPage;
+    $params[] = $offset;
     $stmt->execute($params);
     $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     

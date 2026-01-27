@@ -96,6 +96,7 @@ try {
             ];
             
             // If using terminal reader, use the terminal process
+            $paymentStatus = 'pending';
             if (!empty($terminalReader)) {
                 $paymentIntent = \Stripe\PaymentIntent::create($paymentIntentParams);
                 
@@ -105,9 +106,12 @@ try {
                         $terminalReader,
                         ['payment_intent' => $paymentIntent->id]
                     );
+                    // Terminal processing initiated - wait for webhook for final confirmation
+                    // Mark as pending until webhook confirms payment
+                    $paymentStatus = 'pending';
                 } catch (\Stripe\Exception\ApiErrorException $e) {
-                    // If terminal fails, fall back to manual card entry
-                    // For now, just mark as completed for demo
+                    // Terminal failed - throw error to prevent false completion
+                    throw new Exception('Terminal payment failed: ' . $e->getMessage());
                 }
                 
                 $stripePaymentIntent = $paymentIntent->id;
@@ -126,14 +130,16 @@ try {
                     ]
                 ]);
                 $stripePaymentIntent = $paymentIntent->id;
+                // For non-terminal card payments, mark as completed since it will go through Stripe checkout
+                $paymentStatus = 'completed';
             }
             
-            // Create POS transaction record
+            // Create POS transaction record with appropriate status
             $stmt = $pdo->prepare("
                 INSERT INTO pos_transactions (
                     transaction_number, staff_id, subtotal, tax_amount, total,
                     payment_method, card_amount, status, stripe_payment_intent, terminal_reader_id
-                ) VALUES (?, ?, ?, ?, ?, 'card', ?, 'completed', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, 'card', ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $transactionNumber,
@@ -142,6 +148,7 @@ try {
                 $taxAmount,
                 $total,
                 $total,
+                $paymentStatus,
                 $stripePaymentIntent,
                 $terminalReader ?: null
             ]);

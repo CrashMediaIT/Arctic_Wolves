@@ -5,8 +5,8 @@
  * Integrated with Stripe Terminal (bbpos wisepos e)
  */
 
-// Check access
-if (!$canAccessPOS) {
+// Check access - require authentication in dashboard context
+if (!isset($_SESSION['user_id']) || !$canAccessPOS) {
     echo '<div style="text-align: center; padding: 60px;"><h2>Access Denied</h2><p>You do not have permission to access this page.</p></div>';
     return;
 }
