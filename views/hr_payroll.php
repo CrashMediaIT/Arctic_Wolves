@@ -740,7 +740,7 @@ $provinces = [
     function loadTimeHours() {
         const startDate = document.getElementById('timeHoursStart').value;
         const endDate = document.getElementById('timeHoursEnd').value;
-        const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
+        const csrfToken = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
         fetch('process_time_tracking.php', {
             method: 'POST',
@@ -800,7 +800,7 @@ $provinces = [
         
         const startDate = document.getElementById('timeHoursStart').value;
         const endDate = document.getElementById('timeHoursEnd').value;
-        const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
+        const csrfToken = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
         fetch('process_time_tracking.php', {
             method: 'POST',

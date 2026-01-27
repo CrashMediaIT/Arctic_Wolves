@@ -625,10 +625,18 @@ foreach ($allSchedules as $schedule) {
                     <td><?= isset($schedule['lunch_break_minutes']) ? $schedule['lunch_break_minutes'] . ' min' : '30 min' ?></td>
                     <td><?= htmlspecialchars($schedule['location'] ?? '-') ?></td>
                     <td class="actions">
-                        <button class="btn-secondary btn-sm" onclick="editSchedule(<?= htmlspecialchars(json_encode($schedule)) ?>)">
+                        <button class="btn-secondary btn-sm edit-schedule-btn" 
+                                data-id="<?= $schedule['id'] ?>"
+                                data-staff-id="<?= $schedule['staff_id'] ?>"
+                                data-date="<?= $schedule['schedule_date'] ?>"
+                                data-start="<?= $schedule['start_time'] ?>"
+                                data-end="<?= $schedule['end_time'] ?>"
+                                data-lunch="<?= $schedule['lunch_break_minutes'] ?? 30 ?>"
+                                data-location="<?= htmlspecialchars($schedule['location'] ?? '') ?>"
+                                data-notes="<?= htmlspecialchars($schedule['notes'] ?? '') ?>">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn-danger btn-sm" onclick="deleteSchedule(<?= $schedule['id'] ?>)">
+                        <button class="btn-danger btn-sm delete-schedule-btn" data-id="<?= $schedule['id'] ?>">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -805,9 +813,9 @@ foreach ($allSchedules as $schedule) {
 </div>
 
 <script>
-const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
-const schedulesByDate = <?= json_encode($schedulesByDate) ?>;
-const staffMembers = <?= json_encode($staffMembers) ?>;
+const csrfToken = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+const schedulesByDate = <?= json_encode($schedulesByDate, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+const staffMembers = <?= json_encode($staffMembers, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 let currentDate = new Date();
 let editMode = false;
 
@@ -1010,16 +1018,17 @@ function renderCalendar() {
         if (isToday) classes.push('today');
         if (isPast && !isToday) classes.push('past');
         
-        html += `<div class="${classes.join(' ')}" onclick="${!isPast || isToday ? `openScheduleModal(null, null, '${dateStr}')` : ''}">
+        html += `<div class="${classes.join(' ')}" ${!isPast || isToday ? `data-date="${dateStr}"` : ''}>
             <div class="calendar-day-number">
                 ${day}
-                ${(!isPast || isToday) ? `<button class="add-schedule-btn" onclick="event.stopPropagation(); openScheduleModal(null, null, '${dateStr}')">+</button>` : ''}
+                ${(!isPast || isToday) ? `<button class="add-schedule-btn" data-action="add" data-date="${dateStr}">+</button>` : ''}
             </div>`;
         
         events.forEach(event => {
             const startTime = event.start_time.substring(0, 5);
-            const staffName = event.first_name.substring(0, 1) + '. ' + event.last_name;
-            html += `<div class="calendar-event" onclick="event.stopPropagation(); editSchedule(${JSON.stringify(event).replace(/"/g, '&quot;')})" title="${event.first_name} ${event.last_name}: ${startTime} - ${event.end_time.substring(0, 5)}">
+            const staffName = escapeHtml(event.first_name.substring(0, 1) + '. ' + event.last_name);
+            const fullName = escapeHtml(event.first_name + ' ' + event.last_name);
+            html += `<div class="calendar-event" data-schedule-id="${event.id}" title="${fullName}: ${startTime} - ${event.end_time.substring(0, 5)}">
                 ${startTime} ${staffName}
             </div>`;
         });
@@ -1035,6 +1044,53 @@ function renderCalendar() {
     }
     
     document.getElementById('calendar-grid').innerHTML = html;
+    
+    // Attach event listeners
+    attachCalendarEventListeners();
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Attach event listeners to calendar elements
+function attachCalendarEventListeners() {
+    // Day click handlers
+    document.querySelectorAll('.calendar-day[data-date]').forEach(day => {
+        day.addEventListener('click', function(e) {
+            if (e.target.classList.contains('calendar-event') || e.target.classList.contains('add-schedule-btn')) {
+                return;
+            }
+            openScheduleModal(null, null, this.dataset.date);
+        });
+    });
+    
+    // Add button handlers
+    document.querySelectorAll('.add-schedule-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openScheduleModal(null, null, this.dataset.date);
+        });
+    });
+    
+    // Schedule event handlers
+    document.querySelectorAll('.calendar-event').forEach(event => {
+        event.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const scheduleId = this.dataset.scheduleId;
+            // Find the schedule data from our loaded data
+            for (const date in schedulesByDate) {
+                const found = schedulesByDate[date].find(s => s.id == scheduleId);
+                if (found) {
+                    editSchedule(found);
+                    return;
+                }
+            }
+        });
+    });
 }
 
 function changeMonth(delta) {
@@ -1073,6 +1129,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (calendarGrid) {
         renderCalendar();
     }
+    
+    // Attach event listeners for schedule list buttons
+    document.querySelectorAll('.edit-schedule-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const schedule = {
+                id: this.dataset.id,
+                staff_id: this.dataset.staffId,
+                schedule_date: this.dataset.date,
+                start_time: this.dataset.start,
+                end_time: this.dataset.end,
+                lunch_break_minutes: this.dataset.lunch,
+                location: this.dataset.location,
+                notes: this.dataset.notes
+            };
+            editSchedule(schedule);
+        });
+    });
+    
+    document.querySelectorAll('.delete-schedule-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            deleteSchedule(this.dataset.id);
+        });
+    });
 });
 
 // Close modals on escape key

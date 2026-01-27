@@ -407,6 +407,12 @@ try {
                 break;
             }
             
+            // Validate lunch break minutes is within reasonable bounds
+            if ($lunchBreakMinutes < 0 || $lunchBreakMinutes > 120) {
+                echo json_encode(['success' => false, 'message' => 'Lunch break must be between 0 and 120 minutes']);
+                break;
+            }
+            
             $stmt = $pdo->prepare("
                 INSERT INTO staff_schedules (staff_id, schedule_date, start_time, end_time, lunch_break_minutes, location, notes, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -437,6 +443,12 @@ try {
             
             if (!$scheduleId) {
                 echo json_encode(['success' => false, 'message' => 'Schedule ID required']);
+                break;
+            }
+            
+            // Validate lunch break minutes if provided
+            if ($lunchBreakMinutes !== null && ($lunchBreakMinutes < 0 || $lunchBreakMinutes > 120)) {
+                echo json_encode(['success' => false, 'message' => 'Lunch break must be between 0 and 120 minutes']);
                 break;
             }
             

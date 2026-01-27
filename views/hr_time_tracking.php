@@ -497,7 +497,7 @@ $totalShifts = array_sum(array_column($summaryData, 'shift_count'));
     </div>
     <div class="summary-card">
         <h4>Staff Members</h4>
-        <div class="value"><?= count(array_filter($summaryData, fn($s) => $s['shift_count'] > 0)) ?></div>
+        <div class="value"><?= count(array_filter($summaryData, function($s) { return $s['shift_count'] > 0; })) ?></div>
         <div class="subtext">With shifts in period</div>
     </div>
 </div>
@@ -747,11 +747,11 @@ $totalShifts = array_sum(array_column($summaryData, 'shift_count'));
 <?php endif; ?>
 
 <script>
-const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
+const csrfToken = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
 function applyFilters() {
     const staffId = document.getElementById('staff-filter').value;
-    const currentPeriod = '<?= $selectedPeriod ?>';
+    const currentPeriod = <?= json_encode($selectedPeriod, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     window.location.href = `?page=hr_time_tracking&tab=overview&staff_id=${staffId}&period=${currentPeriod}`;
 }
 
