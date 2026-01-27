@@ -250,6 +250,56 @@ INDEXES:
 - idx_status (payment_status)
 ```
 
+### Audit Logs Table (`audit_logs`)
+```sql
+PRIMARY KEY: id (INT AUTO_INCREMENT)
+
+PURPOSE: History and restore point for all admin tasks.
+Tracks all changes with old/new values for potential restoration.
+
+CORE COLUMNS:
+- action_type (VARCHAR(100) NOT NULL) -- Type: INSERT, UPDATE, DELETE, RESTORE, SYSTEM, ADMIN, LOGIN, etc.
+- action (VARCHAR(100)) -- Detailed action name (e.g., 'user_login', 'session_created')
+- table_name (VARCHAR(100)) -- Table affected
+- record_id (INT) -- ID of affected record
+
+DESCRIPTION COLUMNS:
+- description (TEXT) -- Human-readable description
+- details (TEXT) -- Additional action details
+
+CHANGE TRACKING:
+- changes (TEXT) -- JSON-encoded changes from Auditor class
+- old_values (TEXT) -- JSON-encoded old values (for UPDATE/DELETE)
+- new_values (TEXT) -- JSON-encoded new values (for INSERT/UPDATE)
+
+CONTEXT COLUMNS:
+- ip_address (VARCHAR(45)) -- Client IP address
+- user_agent (TEXT) -- Browser user agent
+- session_id (VARCHAR(100)) -- PHP session ID
+
+FLAGS:
+- is_demo (TINYINT(1) DEFAULT 0) -- Demo data flag
+
+RELATIONSHIP COLUMNS:
+- user_id (INT) -- FK to users.id (ON DELETE SET NULL)
+
+TIMESTAMPS:
+- created_at (TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+
+INDEXES:
+- idx_user (user_id)
+- idx_action (action_type)
+- idx_action_name (action)
+- idx_table (table_name)
+- idx_created (created_at)
+- idx_demo (is_demo)
+
+RESTORE CAPABILITY:
+- For UPDATE actions: old_values contains previous state for restoration
+- For DELETE actions: old_values contains complete record for re-insertion
+- INSERT actions cannot be restored (no old values to restore)
+```
+
 ---
 
 ## 🔗 Foreign Key Relationships

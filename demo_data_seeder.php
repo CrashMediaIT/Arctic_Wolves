@@ -988,19 +988,21 @@ class DemoDataSeeder {
         echo "Seeding Audit Logs...\n";
         
         $coach_id = $this->demo_ids['users']['coach'][0] ?? 1;
+        $is_demo = 1;
         
+        // Demo audit log entries with action_type and action columns
         $logs = [
-            ['user_login', 'Demo coach logged in', '127.0.0.1'],
-            ['session_created', 'Demo training session created', '127.0.0.1'],
-            ['profile_updated', 'Demo profile information updated', '127.0.0.1'],
+            ['LOGIN', 'user_login', 'Demo coach logged in', '127.0.0.1'],
+            ['INSERT', 'session_created', 'Demo training session created', '127.0.0.1'],
+            ['UPDATE', 'profile_updated', 'Demo profile information updated', '127.0.0.1'],
         ];
         
         foreach ($logs as $log) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO audit_logs (user_id, action, details, ip_address, is_demo, created_at)
-                VALUES (?, ?, ?, ?, 1, NOW())
+                INSERT INTO audit_logs (user_id, action_type, action, details, ip_address, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, NOW())
             ");
-            $stmt->execute(array_merge([$coach_id], $log));
+            $stmt->execute(array_merge([$coach_id], $log, [$is_demo]));
             $this->demo_ids['audit_logs'][] = $this->pdo->lastInsertId();
         }
         

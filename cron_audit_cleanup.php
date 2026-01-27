@@ -63,10 +63,10 @@ try {
     
     echo "✓ Successfully deleted $deleted audit log record(s).\n";
     
-    // Log the cleanup action
+    // Log the cleanup action with action_type for consistency
     $stmt = $pdo->prepare("
-        INSERT INTO audit_logs (user_id, action, table_name, record_id, ip_address, created_at)
-        VALUES (0, 'cleanup', 'audit_logs', NULL, 'CRON', NOW())
+        INSERT INTO audit_logs (user_id, action_type, action, table_name, record_id, ip_address, created_at)
+        VALUES (0, 'SYSTEM', 'cleanup', 'audit_logs', NULL, 'CRON', NOW())
     ");
     $stmt->execute();
     
