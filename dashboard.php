@@ -43,6 +43,11 @@ $canAccessPOS  = ($isAdmin || $isFrontDesk);
 
 $page = $_GET['page'] ?? 'home';
 
+// Redirect front desk staff to their special dashboard if on home page
+if ($page === 'home' && $isFrontDesk) {
+    $page = 'front_desk_home';
+}
+
 // FULL ROUTING TABLE - PARENT AND CHILD PAGES
 $allowed_pages = [
     // Main Menu
@@ -105,6 +110,11 @@ $allowed_pages = [
     'pos_terminal'            => 'views/pos_terminal.php',
     'shop_orders'             => 'views/shop_orders.php',
     'pos_transactions'        => 'views/pos_transactions.php',
+    'pos_time_tracking'       => 'views/pos_time_tracking.php',
+    'pos_schedule'            => 'views/pos_schedule.php',
+    'staff_time_history'      => 'views/staff_time_history.php',
+    'front_desk_home'         => 'views/front_desk_home.php',
+    'admin_staff_scheduling'  => 'views/admin_staff_scheduling.php',
     
     // HR (Admin)
     'termination'             => 'views/hr_termination.php',
@@ -647,6 +657,12 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=pos_terminal" class="nav-link <?= $page=='pos_terminal'?'active':'' ?>">
                 <i class="fa-solid fa-cash-register icon"></i> POS Terminal
             </a>
+            <a href="?page=pos_time_tracking" class="nav-link <?= $page=='pos_time_tracking'?'active':'' ?>">
+                <i class="fa-solid fa-clock icon"></i> Time Tracking
+            </a>
+            <a href="?page=pos_schedule" class="nav-link <?= $page=='pos_schedule'?'active':'' ?>">
+                <i class="fa-solid fa-calendar-alt icon"></i> My Schedule
+            </a>
             <a href="?page=shop_orders" class="nav-link <?= $page=='shop_orders'?'active':'' ?>">
                 <i class="fa-solid fa-shopping-bag icon"></i> Shop Orders
             </a>
@@ -662,6 +678,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <div class="nav-group">
         <span class="nav-label">HR</span>
         <nav class="nav-menu">
+            <a href="?page=admin_staff_scheduling" class="nav-link <?= $page=='admin_staff_scheduling'?'active':'' ?>">
+                <i class="fa-solid fa-calendar-check icon"></i> Staff Scheduling
+            </a>
             <a href="?page=payroll" class="nav-link <?= $page=='payroll'?'active':'' ?>">
                 <i class="fa-solid fa-money-check-dollar icon"></i> Payroll
             </a>
