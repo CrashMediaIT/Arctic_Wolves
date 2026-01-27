@@ -76,12 +76,17 @@ function recalculateGoalProgress($pdo, $goal_id) {
  * Helper function to check if user can manage goal
  */
 function canManageGoal($pdo, $goal_id, $user_id, $is_coach) {
-    if (!$is_coach) {
-        return false; // Only coaches can manage goals
+    // Coaches can manage any goal
+    if ($is_coach) {
+        return true;
     }
     
-    // Coaches can manage any goal (could add additional checks here)
-    return true;
+    // Athletes can manage their own goals
+    $stmt = $pdo->prepare("SELECT athlete_id FROM goals WHERE id = ?");
+    $stmt->execute([$goal_id]);
+    $goal = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    return $goal && $goal['athlete_id'] == $user_id;
 }
 
 // Handle GET requests (for AJAX data retrieval)
@@ -182,11 +187,14 @@ try {
     
     switch ($action) {
         case 'create_goal':
-            if (!$is_coach) {
-                throw new Exception('Only coaches can create goals');
+            // Both coaches and athletes can create goals
+            // Coaches can create for any athlete, athletes can only create for themselves
+            $athlete_id = intval($_POST['athlete_id']);
+            
+            if (!$is_coach && $athlete_id != $user_id) {
+                throw new Exception('You can only create goals for yourself');
             }
             
-            $athlete_id = intval($_POST['athlete_id']);
             $title = trim($_POST['title']);
             $description = trim($_POST['description'] ?? '');
             $category = trim($_POST['category'] ?? '');
@@ -236,16 +244,13 @@ try {
             ]);
             
             $pdo->commit();
-            header("Location: dashboard.php?page=goals&athlete_id=$athlete_id&msg=created");
+            header("Location: dashboard.php?page=stats&tab=goals&athlete_id=$athlete_id&msg=created");
             exit();
             
         case 'update_goal':
-            if (!$is_coach) {
-                throw new Exception('Only coaches can update goals');
-            }
-            
             $goal_id = intval($_POST['goal_id']);
             
+            // Use canManageGoal to check permissions (coaches or athlete's own goal)
             if (!canManageGoal($pdo, $goal_id, $user_id, $is_coach)) {
                 throw new Exception('Permission denied');
             }
@@ -339,7 +344,7 @@ try {
             ]);
             
             $pdo->commit();
-            header("Location: dashboard.php?page=goals&athlete_id={$old_goal['athlete_id']}&msg=updated");
+            header("Location: dashboard.php?page=stats&tab=goals&athlete_id={$old_goal['athlete_id']}&msg=updated");
             exit();
             
         case 'delete_goal':
@@ -366,7 +371,7 @@ try {
             logGoalHistory($pdo, $goal_id, 'archived', $user_id);
             
             $pdo->commit();
-            header("Location: dashboard.php?page=goals&msg=archived");
+            header("Location: dashboard.php?page=stats&tab=goals&msg=archived");
             exit();
             
         case 'add_step':
@@ -540,7 +545,7 @@ try {
             $goal->execute([$goal_id]);
             $athlete_id = $goal->fetchColumn();
             
-            header("Location: dashboard.php?page=goals&athlete_id=$athlete_id&msg=progress_added");
+            header("Location: dashboard.php?page=stats&tab=goals&athlete_id=$athlete_id&msg=progress_added");
             exit();
             
         case 'complete_goal':
@@ -590,6 +595,6 @@ try {
     }
     
     // Handle form submissions
-    header("Location: dashboard.php?page=goals&error=" . urlencode($e->getMessage()));
+    header("Location: dashboard.php?page=stats&tab=goals&error=" . urlencode($e->getMessage()));
     exit();
 }

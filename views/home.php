@@ -440,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <?php else: ?>
             <div class="no-goals-widget">
-                <p>No active goals yet. <a href="?page=stats">Create your first goal</a> to start tracking!</p>
+                <p>No active goals yet. <a href="?page=stats&tab=goals">Create your first goal</a> to start tracking!</p>
             </div>
             <?php endif; ?>
         </div>
