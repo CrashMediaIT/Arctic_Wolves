@@ -301,9 +301,12 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                 
                 if (count($workout_history) > 0):
                     foreach ($workout_history as $history):
-                        $completion_percent = ($history['exercises_completed'] / $history['total_exercises']) * 100;
+                        $completion_percent = $history['total_exercises'] > 0 ? ($history['exercises_completed'] / $history['total_exercises']) * 100 : 0;
                 ?>
-                <div class="history-item" onclick="viewHistoryDetails('<?= $history['date'] ?>', '<?= htmlspecialchars($history['name']) ?>')">
+                <div class="history-item" 
+                     data-date="<?= htmlspecialchars($history['date'], ENT_QUOTES, 'UTF-8') ?>"
+                     data-name="<?= htmlspecialchars($history['name'], ENT_QUOTES, 'UTF-8') ?>"
+                     onclick="viewHistoryDetails(this.dataset.date, this.dataset.name)">
                     <div class="history-date">
                         <span class="date-day"><?= date('d', strtotime($history['date'])) ?></span>
                         <span class="date-month"><?= date('M', strtotime($history['date'])) ?></span>
@@ -316,7 +319,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                         </div>
                     </div>
                     <div class="history-status">
-                        <?php if ($completion_percent === 100): ?>
+                        <?php if ($completion_percent === 100.0): ?>
                             <span class="status-badge completed"><i class="fas fa-check"></i> Completed</span>
                         <?php else: ?>
                             <span class="status-badge partial"><i class="fas fa-exclamation"></i> <?= number_format($completion_percent) ?>%</span>
@@ -1212,7 +1215,15 @@ function showWorkoutNotification(message, type = 'info') {
         bgColor = 'rgba(16, 185, 129, 0.9)';
     }
     
-    alertDiv.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+    // Create icon element separately to avoid XSS
+    const iconEl = document.createElement('i');
+    iconEl.className = 'fas fa-' + icon;
+    
+    const textEl = document.createElement('span');
+    textEl.textContent = message;
+    
+    alertDiv.appendChild(iconEl);
+    alertDiv.appendChild(textEl);
     alertDiv.style.cssText = `
         position: fixed;
         top: 20px;

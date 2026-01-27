@@ -336,10 +336,12 @@ if (!$nutrition_plan) {
                 
                 if (count($meal_history) > 0):
                     foreach ($meal_history as $history):
-                        $completion_percent = ($history['meals_completed'] / $history['total_meals']) * 100;
-                        $calorie_percent = ($history['calories_logged'] / $history['target_calories']) * 100;
+                        $completion_percent = $history['total_meals'] > 0 ? ($history['meals_completed'] / $history['total_meals']) * 100 : 0;
+                        $calorie_percent = $history['target_calories'] > 0 ? ($history['calories_logged'] / $history['target_calories']) * 100 : 0;
                 ?>
-                <div class="meal-history-item" onclick="viewMealHistoryDetails('<?= $history['date'] ?>')">
+                <div class="meal-history-item" 
+                     data-date="<?= htmlspecialchars($history['date'], ENT_QUOTES, 'UTF-8') ?>"
+                     onclick="viewMealHistoryDetails(this.dataset.date)">
                     <div class="history-date">
                         <span class="date-day"><?= date('d', strtotime($history['date'])) ?></span>
                         <span class="date-month"><?= date('M', strtotime($history['date'])) ?></span>
@@ -352,7 +354,7 @@ if (!$nutrition_plan) {
                         </div>
                     </div>
                     <div class="history-status">
-                        <?php if ($completion_percent === 100 && $calorie_percent >= 90): ?>
+                        <?php if ($completion_percent >= 100.0 && $calorie_percent >= 90): ?>
                             <span class="status-badge completed"><i class="fas fa-check"></i> On Track</span>
                         <?php elseif ($completion_percent >= 80): ?>
                             <span class="status-badge partial"><i class="fas fa-exclamation"></i> <?= number_format($calorie_percent) ?>%</span>
@@ -1183,7 +1185,15 @@ function showNutritionNotification(message, type = 'info') {
         bgColor = 'rgba(16, 185, 129, 0.9)';
     }
     
-    alertDiv.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+    // Create icon element separately to avoid XSS
+    const iconEl = document.createElement('i');
+    iconEl.className = 'fas fa-' + icon;
+    
+    const textEl = document.createElement('span');
+    textEl.textContent = message;
+    
+    alertDiv.appendChild(iconEl);
+    alertDiv.appendChild(textEl);
     alertDiv.style.cssText = `
         position: fixed;
         top: 20px;

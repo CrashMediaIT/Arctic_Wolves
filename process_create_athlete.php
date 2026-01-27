@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $coach_id = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'];
 
-// Determine if this is from health coach roster
+// Determine if this is from health coach roster - whitelist the valid redirect pages
 $assign_to_health_coach = isset($_POST['assign_to_health_coach']) && $_POST['assign_to_health_coach'] === '1';
 $redirect_page = $assign_to_health_coach ? 'health_coach_roster' : 'roster';
 

@@ -31,6 +31,34 @@ if (!CSRFProtection::verifyToken($_POST['csrf_token'] ?? '')) {
     exit;
 }
 
+/**
+ * Helper function to validate date format
+ */
+function isValidDate($date) {
+    if (empty($date)) return false;
+    $d = DateTime::createFromFormat('Y-m-d', $date);
+    return $d && $d->format('Y-m-d') === $date;
+}
+
+/**
+ * Helper function to check if user can manage this athlete
+ */
+function canManageAthlete($pdo, $user_id, $user_role, $athlete_id) {
+    // Admins can manage any athlete
+    if ($user_role === 'admin') {
+        return true;
+    }
+    
+    // Health coaches can only manage athletes assigned to or created by them
+    $check_stmt = $pdo->prepare("
+        SELECT id FROM users 
+        WHERE id = ? AND role = 'athlete' AND is_active = 1
+        AND (assigned_coach_id = ? OR created_by_coach_id = ?)
+    ");
+    $check_stmt->execute([$athlete_id, $user_id, $user_id]);
+    return $check_stmt->fetch() !== false;
+}
+
 $action = $_POST['action'] ?? '';
 
 if ($action === 'assign_workout') {
@@ -39,8 +67,20 @@ if ($action === 'assign_workout') {
     $start_date = $_POST['start_date'] ?? date('Y-m-d');
     $notes = trim($_POST['notes'] ?? '');
     
+    // Validate inputs
     if ($athlete_id <= 0 || $workout_plan_id <= 0) {
         header('Location: dashboard.php?page=health_coach_roster&error=assignment_failed');
+        exit;
+    }
+    
+    // Validate date format
+    if (!isValidDate($start_date)) {
+        $start_date = date('Y-m-d');
+    }
+    
+    // Authorization check - ensure user can manage this athlete
+    if (!canManageAthlete($pdo, $user_id, $user_role, $athlete_id)) {
+        header('Location: dashboard.php?page=health_coach_roster&error=unauthorized');
         exit;
     }
     
@@ -85,8 +125,20 @@ if ($action === 'assign_workout') {
     $start_date = $_POST['start_date'] ?? date('Y-m-d');
     $notes = trim($_POST['notes'] ?? '');
     
+    // Validate inputs
     if ($athlete_id <= 0 || $nutrition_plan_id <= 0) {
         header('Location: dashboard.php?page=health_coach_roster&error=assignment_failed');
+        exit;
+    }
+    
+    // Validate date format
+    if (!isValidDate($start_date)) {
+        $start_date = date('Y-m-d');
+    }
+    
+    // Authorization check - ensure user can manage this athlete
+    if (!canManageAthlete($pdo, $user_id, $user_role, $athlete_id)) {
+        header('Location: dashboard.php?page=health_coach_roster&error=unauthorized');
         exit;
     }
     

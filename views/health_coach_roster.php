@@ -50,12 +50,16 @@ if (!empty($search)) {
     $params[] = "%$search%";
 }
 
-// Apply age group filter
+// Apply age group filter - validate format first
 if ($filter_age !== 'all') {
-    [$min_age, $max_age] = explode('-', $filter_age);
-    $athletes_query .= " AND TIMESTAMPDIFF(YEAR, u.date_of_birth, CURDATE()) BETWEEN ? AND ?";
-    $params[] = $min_age;
-    $params[] = $max_age;
+    // Validate that filter_age matches expected format (e.g., "6-9", "10-11")
+    if (preg_match('/^(\d+)-(\d+)$/', $filter_age, $matches)) {
+        $min_age = intval($matches[1]);
+        $max_age = intval($matches[2]);
+        $athletes_query .= " AND TIMESTAMPDIFF(YEAR, u.date_of_birth, CURDATE()) BETWEEN ? AND ?";
+        $params[] = $min_age;
+        $params[] = $max_age;
+    }
 }
 
 $athletes_query .= " ORDER BY u.last_name, u.first_name LIMIT 100";
@@ -196,10 +200,16 @@ $athletes = $athletes_stmt->fetchAll();
                             </td>
                             <td>
                                 <div class="table-actions">
-                                    <button class="btn-icon" title="Assign Workout Plan" onclick="openAssignWorkoutModal(<?= $athlete['id'] ?>, '<?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?>')">
+                                    <button class="btn-icon" title="Assign Workout Plan" 
+                                            data-athlete-id="<?= $athlete['id'] ?>"
+                                            data-athlete-name="<?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                            onclick="openAssignWorkoutModal(this.dataset.athleteId, this.dataset.athleteName)">
                                         <i class="fas fa-dumbbell"></i>
                                     </button>
-                                    <button class="btn-icon" title="Assign Nutrition Plan" onclick="openAssignNutritionModal(<?= $athlete['id'] ?>, '<?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?>')">
+                                    <button class="btn-icon" title="Assign Nutrition Plan" 
+                                            data-athlete-id="<?= $athlete['id'] ?>"
+                                            data-athlete-name="<?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                            onclick="openAssignNutritionModal(this.dataset.athleteId, this.dataset.athleteName)">
                                         <i class="fas fa-utensils"></i>
                                     </button>
                                     <a href="?page=athlete_detail&id=<?= $athlete['id'] ?>" class="btn-icon" title="View Profile">
