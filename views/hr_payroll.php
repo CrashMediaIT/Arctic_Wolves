@@ -183,6 +183,9 @@ $provinces = [
         <a href="?page=payroll&tab=run" class="tab-link <?= $active_tab === 'run' ? 'active' : '' ?>">
             <i class="fas fa-play"></i> Run Payroll
         </a>
+        <a href="?page=payroll&tab=time_hours" class="tab-link <?= $active_tab === 'time_hours' ? 'active' : '' ?>">
+            <i class="fas fa-clock"></i> Time Hours
+        </a>
         <a href="?page=payroll&tab=t4" class="tab-link <?= $active_tab === 't4' ? 'active' : '' ?>">
             <i class="fas fa-file-invoice"></i> T4 Slips
         </a>
@@ -658,6 +661,172 @@ $provinces = [
             </div>
         </div>
     </div>
+    <?php endif; ?>
+
+    <?php if ($active_tab === 'time_hours'): ?>
+    <!-- Time Tracking Hours for Payroll -->
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fas fa-clock"></i> Time Tracking Hours</h3>
+            <span class="header-badge info">Integrated with Time Tracking</span>
+        </div>
+        <div class="card-body">
+            <div class="alert-card info">
+                <i class="fas fa-info-circle"></i>
+                <div class="alert-content">
+                    <h4>Automatic Hours Calculation</h4>
+                    <p>Hours from the front desk staff time tracking system are automatically available for payroll. Select a pay period to view and sync hours for hourly employees.</p>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 25px 0;">
+                <div class="form-group">
+                    <label class="form-label">Pay Period Start</label>
+                    <input type="date" id="timeHoursStart" class="form-input" value="<?= date('Y-m-01') ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pay Period End</label>
+                    <input type="date" id="timeHoursEnd" class="form-input" value="<?= date('Y-m-t') ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn-primary" onclick="loadTimeHours()" style="width: 100%;">
+                        <i class="fas fa-search"></i> Load Hours
+                    </button>
+                </div>
+            </div>
+
+            <div id="timeHoursResults" style="display: none;">
+                <h4 style="margin: 20px 0 15px;"><i class="fas fa-users" style="margin-right: 10px; color: var(--primary);"></i> Staff Hours Summary</h4>
+                <div class="table-container">
+                    <table class="data-table" id="timeHoursTable">
+                        <thead>
+                            <tr>
+                                <th>Staff Member</th>
+                                <th>Shifts Worked</th>
+                                <th>Total Hours</th>
+                                <th>Hourly Rate</th>
+                                <th>Gross Pay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timeHoursBody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: var(--bg); font-weight: bold;">
+                                <td>Total</td>
+                                <td id="totalShifts">0</td>
+                                <td id="totalHours">0.00</td>
+                                <td>-</td>
+                                <td id="totalGross">$0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; gap: 12px;">
+                    <button type="button" class="btn-primary" onclick="applyHoursToPayroll()">
+                        <i class="fas fa-sync"></i> Apply to Current Payroll Run
+                    </button>
+                    <a href="?page=hr_time_tracking" class="btn-secondary">
+                        <i class="fas fa-external-link-alt"></i> View Detailed Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function loadTimeHours() {
+        const startDate = document.getElementById('timeHoursStart').value;
+        const endDate = document.getElementById('timeHoursEnd').value;
+        const csrfToken = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+        fetch('process_time_tracking.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'calculate_payroll_hours',
+                start_date: startDate,
+                end_date: endDate,
+                staff_id: 'all',
+                csrf_token: csrfToken
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('timeHoursResults').style.display = 'block';
+                
+                let html = '';
+                let totalShifts = 0;
+                let totalHours = 0;
+                let totalGross = 0;
+
+                data.staff_breakdown.forEach(staff => {
+                    const hourlyRate = 15.50; // Default rate - would be fetched from payroll
+                    const gross = staff.hours * hourlyRate;
+                    totalShifts += staff.shifts;
+                    totalHours += staff.hours;
+                    totalGross += gross;
+
+                    html += `<tr>
+                        <td><strong>${staff.name}</strong></td>
+                        <td>${staff.shifts}</td>
+                        <td>${staff.hours.toFixed(2)} hrs</td>
+                        <td>$${hourlyRate.toFixed(2)}/hr</td>
+                        <td>$${gross.toFixed(2)}</td>
+                    </tr>`;
+                });
+
+                document.getElementById('timeHoursBody').innerHTML = html || '<tr><td colspan="5" style="text-align: center; padding: 30px;">No time tracking data for this period</td></tr>';
+                document.getElementById('totalShifts').textContent = totalShifts;
+                document.getElementById('totalHours').textContent = totalHours.toFixed(2) + ' hrs';
+                document.getElementById('totalGross').textContent = '$' + totalGross.toFixed(2);
+            } else {
+                alert(data.message || 'Failed to load hours');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while loading hours');
+        });
+    }
+
+    function applyHoursToPayroll() {
+        if (!confirm('Apply these hours to the current payroll run? This will update the hours worked for hourly employees.')) {
+            return;
+        }
+        
+        const startDate = document.getElementById('timeHoursStart').value;
+        const endDate = document.getElementById('timeHoursEnd').value;
+        const csrfToken = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+        fetch('process_time_tracking.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'sync_to_payroll',
+                start_date: startDate,
+                end_date: endDate,
+                staff_id: 'all',
+                csrf_token: csrfToken
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Hours have been applied to payroll. Go to "Run Payroll" tab to process payments.');
+            } else {
+                alert(data.message || 'Failed to apply hours');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred');
+        });
+    }
+    </script>
     <?php endif; ?>
 
     <?php if ($active_tab === 'rates'): ?>

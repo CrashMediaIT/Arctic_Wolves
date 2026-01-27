@@ -333,6 +333,7 @@ foreach ($schedules as $schedule) {
             $endTime = new DateTime($schedule['end_time']);
             $duration = $startTime->diff($endTime);
             $durationHours = $duration->h + ($duration->i / 60);
+            $lunchBreak = isset($schedule['lunch_break_minutes']) ? $schedule['lunch_break_minutes'] : 30;
         ?>
             <div class="schedule-item <?= $isToday ? 'today' : '' ?>" 
                  data-date="<?= $schedule['schedule_date'] ?>">
@@ -349,6 +350,12 @@ foreach ($schedules as $schedule) {
                             <?= date('g:i A', strtotime($schedule['start_time'])) ?> - 
                             <?= date('g:i A', strtotime($schedule['end_time'])) ?>
                         </div>
+                        <?php if ($lunchBreak > 0): ?>
+                            <div class="location" style="margin-top: 4px;">
+                                <i class="fas fa-utensils"></i>
+                                <?= $lunchBreak ?> min lunch break
+                            </div>
+                        <?php endif; ?>
                         <?php if ($schedule['location']): ?>
                             <div class="location">
                                 <i class="fas fa-map-marker-alt"></i>

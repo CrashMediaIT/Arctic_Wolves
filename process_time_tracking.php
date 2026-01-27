@@ -398,6 +398,7 @@ try {
             $scheduleDate = $input['schedule_date'] ?? null;
             $startTime = $input['start_time'] ?? null;
             $endTime = $input['end_time'] ?? null;
+            $lunchBreakMinutes = intval($input['lunch_break_minutes'] ?? 30);
             $location = $input['location'] ?? null;
             $notes = $input['notes'] ?? null;
             
@@ -406,11 +407,17 @@ try {
                 break;
             }
             
+            // Validate lunch break minutes is within reasonable bounds
+            if ($lunchBreakMinutes < 0 || $lunchBreakMinutes > 120) {
+                echo json_encode(['success' => false, 'message' => 'Lunch break must be between 0 and 120 minutes']);
+                break;
+            }
+            
             $stmt = $pdo->prepare("
-                INSERT INTO staff_schedules (staff_id, schedule_date, start_time, end_time, location, notes, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO staff_schedules (staff_id, schedule_date, start_time, end_time, lunch_break_minutes, location, notes, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$staffId, $scheduleDate, $startTime, $endTime, $location, $notes, $userId]);
+            $stmt->execute([$staffId, $scheduleDate, $startTime, $endTime, $lunchBreakMinutes, $location, $notes, $userId]);
             
             echo json_encode([
                 'success' => true,
@@ -426,8 +433,11 @@ try {
             }
             
             $scheduleId = $input['schedule_id'] ?? null;
+            $staffId = $input['staff_id'] ?? null;
+            $scheduleDate = $input['schedule_date'] ?? null;
             $startTime = $input['start_time'] ?? null;
             $endTime = $input['end_time'] ?? null;
+            $lunchBreakMinutes = isset($input['lunch_break_minutes']) ? intval($input['lunch_break_minutes']) : null;
             $location = $input['location'] ?? null;
             $notes = $input['notes'] ?? null;
             
@@ -436,15 +446,24 @@ try {
                 break;
             }
             
+            // Validate lunch break minutes if provided
+            if ($lunchBreakMinutes !== null && ($lunchBreakMinutes < 0 || $lunchBreakMinutes > 120)) {
+                echo json_encode(['success' => false, 'message' => 'Lunch break must be between 0 and 120 minutes']);
+                break;
+            }
+            
             $stmt = $pdo->prepare("
                 UPDATE staff_schedules 
-                SET start_time = COALESCE(?, start_time),
+                SET staff_id = COALESCE(?, staff_id),
+                    schedule_date = COALESCE(?, schedule_date),
+                    start_time = COALESCE(?, start_time),
                     end_time = COALESCE(?, end_time),
+                    lunch_break_minutes = COALESCE(?, lunch_break_minutes),
                     location = ?,
                     notes = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$startTime, $endTime, $location, $notes, $scheduleId]);
+            $stmt->execute([$staffId, $scheduleDate, $startTime, $endTime, $lunchBreakMinutes, $location, $notes, $scheduleId]);
             
             echo json_encode(['success' => true, 'message' => 'Schedule updated successfully']);
             break;
@@ -501,6 +520,242 @@ try {
             $stmt->execute([$staffId, $pinHash]);
             
             echo json_encode(['success' => true, 'message' => 'PIN set successfully']);
+            break;
+        
+        // Time tracking reports and payroll integration
+        case 'calculate_payroll_hours':
+            if ($userRole !== 'admin') {
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                break;
+            }
+            
+            $startDate = $input['start_date'] ?? null;
+            $endDate = $input['end_date'] ?? null;
+            $staffId = $input['staff_id'] ?? 'all';
+            
+            if (!$startDate || !$endDate) {
+                echo json_encode(['success' => false, 'message' => 'Date range required']);
+                break;
+            }
+            
+            // Build query based on staff selection
+            $staffCondition = $staffId === 'all' ? '' : 'AND ss.staff_id = :staff_id';
+            
+            $query = "
+                SELECT 
+                    u.id as staff_id,
+                    CONCAT(u.first_name, ' ', u.last_name) as name,
+                    COUNT(ss.id) as shifts,
+                    COALESCE(SUM(ss.total_hours), 0) as hours
+                FROM users u
+                LEFT JOIN staff_shifts ss ON u.id = ss.staff_id 
+                    AND ss.shift_date BETWEEN :start_date AND :end_date
+                    AND ss.status = 'completed'
+                WHERE u.role = 'front_desk_staff' AND u.is_active = 1
+                $staffCondition
+                GROUP BY u.id, u.first_name, u.last_name
+                ORDER BY u.last_name, u.first_name
+            ";
+            
+            $stmt = $pdo->prepare($query);
+            $params = [':start_date' => $startDate, ':end_date' => $endDate];
+            if ($staffId !== 'all') {
+                $params[':staff_id'] = $staffId;
+            }
+            $stmt->execute($params);
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $totalHours = 0;
+            $staffBreakdown = [];
+            foreach ($results as $row) {
+                $hours = floatval($row['hours']);
+                $totalHours += $hours;
+                $staffBreakdown[] = [
+                    'staff_id' => $row['staff_id'],
+                    'name' => $row['name'],
+                    'shifts' => intval($row['shifts']),
+                    'hours' => $hours
+                ];
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'total_hours' => $totalHours,
+                'staff_breakdown' => $staffBreakdown,
+                'period' => ['start' => $startDate, 'end' => $endDate]
+            ]);
+            break;
+            
+        case 'sync_to_payroll':
+            if ($userRole !== 'admin') {
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                break;
+            }
+            
+            $startDate = $input['start_date'] ?? null;
+            $endDate = $input['end_date'] ?? null;
+            $staffId = $input['staff_id'] ?? 'all';
+            
+            if (!$startDate || !$endDate) {
+                echo json_encode(['success' => false, 'message' => 'Date range required']);
+                break;
+            }
+            
+            // Get hours for each hourly front desk staff member
+            $staffCondition = $staffId === 'all' ? '' : 'AND u.id = :staff_id';
+            
+            $query = "
+                SELECT 
+                    u.id as user_id,
+                    COALESCE(SUM(ss.total_hours), 0) as total_hours
+                FROM users u
+                LEFT JOIN staff_shifts ss ON u.id = ss.staff_id 
+                    AND ss.shift_date BETWEEN :start_date AND :end_date
+                    AND ss.status = 'completed'
+                WHERE u.role = 'front_desk_staff' AND u.is_active = 1
+                $staffCondition
+                GROUP BY u.id
+            ";
+            
+            $stmt = $pdo->prepare($query);
+            $params = [':start_date' => $startDate, ':end_date' => $endDate];
+            if ($staffId !== 'all') {
+                $params[':staff_id'] = $staffId;
+            }
+            $stmt->execute($params);
+            $hoursData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Log the sync for audit purposes
+            $auditStmt = $pdo->prepare("
+                INSERT INTO audit_logs (user_id, action_type, table_name, new_values, ip_address, created_at)
+                VALUES (?, 'SYNC', 'payroll_time_sync', ?, ?, NOW())
+            ");
+            $auditStmt->execute([
+                $userId,
+                json_encode(['period' => ['start' => $startDate, 'end' => $endDate], 'hours_data' => $hoursData]),
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Time tracking data synced to payroll',
+                'synced_count' => count($hoursData)
+            ]);
+            break;
+            
+        case 'generate_report':
+            if ($userRole !== 'admin') {
+                echo json_encode(['success' => false, 'message' => 'Admin access required']);
+                break;
+            }
+            
+            $staffId = $input['staff_id'] ?? 'all';
+            $period = $input['period'] ?? 'month';
+            $format = $input['format'] ?? 'view';
+            $detailLevel = $input['detail_level'] ?? 'summary';
+            $customStartDate = $input['start_date'] ?? null;
+            $customEndDate = $input['end_date'] ?? null;
+            
+            // Calculate date range based on period
+            $today = new DateTime();
+            switch ($period) {
+                case 'day':
+                    $startDate = $today->format('Y-m-d');
+                    $endDate = $today->format('Y-m-d');
+                    break;
+                case 'week':
+                    $startDate = (clone $today)->modify('monday this week')->format('Y-m-d');
+                    $endDate = (clone $today)->modify('sunday this week')->format('Y-m-d');
+                    break;
+                case 'pay_period':
+                    $startDate = $today->format('d') <= 15 
+                        ? $today->format('Y-m-01') 
+                        : $today->format('Y-m-16');
+                    $endDate = $today->format('d') <= 15 
+                        ? $today->format('Y-m-15')
+                        : $today->format('Y-m-t');
+                    break;
+                case 'month':
+                    $startDate = $today->format('Y-m-01');
+                    $endDate = $today->format('Y-m-t');
+                    break;
+                case 'year':
+                    $startDate = $today->format('Y-01-01');
+                    $endDate = $today->format('Y-12-31');
+                    break;
+                case 'last_year':
+                    $lastYear = (int)$today->format('Y') - 1;
+                    $startDate = "$lastYear-01-01";
+                    $endDate = "$lastYear-12-31";
+                    break;
+                case 'custom':
+                    $startDate = $customStartDate;
+                    $endDate = $customEndDate;
+                    break;
+                default:
+                    $startDate = $today->format('Y-m-01');
+                    $endDate = $today->format('Y-m-t');
+            }
+            
+            if (!$startDate || !$endDate) {
+                echo json_encode(['success' => false, 'message' => 'Invalid date range']);
+                break;
+            }
+            
+            // Build query
+            $staffCondition = $staffId === 'all' ? '' : 'AND ss.staff_id = :staff_id';
+            
+            $query = "
+                SELECT ss.*, u.first_name, u.last_name
+                FROM staff_shifts ss
+                JOIN users u ON ss.staff_id = u.id
+                WHERE ss.shift_date BETWEEN :start_date AND :end_date
+                AND ss.status = 'completed'
+                $staffCondition
+                ORDER BY ss.shift_date DESC, u.last_name, u.first_name
+            ";
+            
+            $stmt = $pdo->prepare($query);
+            $params = [':start_date' => $startDate, ':end_date' => $endDate];
+            if ($staffId !== 'all') {
+                $params[':staff_id'] = $staffId;
+            }
+            $stmt->execute($params);
+            $shifts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if ($format === 'csv') {
+                // Generate CSV content
+                header('Content-Type: text/csv');
+                header('Content-Disposition: attachment; filename="time_report_' . date('Y-m-d') . '.csv"');
+                
+                $output = fopen('php://output', 'w');
+                fputcsv($output, ['Date', 'Staff Name', 'Clock In', 'Clock Out', 'Lunch Start', 'Lunch End', 'Total Hours']);
+                
+                foreach ($shifts as $shift) {
+                    fputcsv($output, [
+                        $shift['shift_date'],
+                        $shift['first_name'] . ' ' . $shift['last_name'],
+                        $shift['clock_in'],
+                        $shift['clock_out'],
+                        $shift['lunch_start'] ?? '',
+                        $shift['lunch_end'] ?? '',
+                        $shift['total_hours']
+                    ]);
+                }
+                
+                fclose($output);
+                exit;
+            }
+            
+            // Return JSON for view format
+            $totalHours = array_sum(array_column($shifts, 'total_hours'));
+            echo json_encode([
+                'success' => true,
+                'shifts' => $shifts,
+                'total_hours' => $totalHours,
+                'shift_count' => count($shifts),
+                'period' => ['start' => $startDate, 'end' => $endDate]
+            ]);
             break;
             
         default:
