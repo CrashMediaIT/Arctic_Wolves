@@ -2246,3 +2246,327 @@ CREATE TABLE IF NOT EXISTS `session_evaluation_scores` (
     INDEX `idx_athlete` (`athlete_id`),
     INDEX `idx_skill` (`skill_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- SCHEMA UPDATES - Added Jan 27 2026
+-- Payroll and Onboarding Features for HR Module
+-- =========================================================
+
+-- Employee Payroll Information
+CREATE TABLE IF NOT EXISTS `employee_payroll` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `employee_type` ENUM('hourly', 'salary', 'contract') DEFAULT 'hourly',
+    `pay_rate` DECIMAL(12,2) NOT NULL COMMENT 'Hourly rate or annual salary',
+    `pay_frequency` ENUM('weekly', 'bi-weekly', 'semi-monthly', 'monthly') DEFAULT 'bi-weekly',
+    `stripe_account_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe Connect account ID for payouts',
+    `sin_last_four` VARCHAR(4) DEFAULT NULL COMMENT 'Last 4 digits of SIN for verification',
+    `start_date` DATE NOT NULL,
+    `end_date` DATE DEFAULT NULL,
+    `cpp_exempt` TINYINT(1) DEFAULT 0 COMMENT 'Canada Pension Plan exemption',
+    `ei_exempt` TINYINT(1) DEFAULT 0 COMMENT 'Employment Insurance exemption',
+    `pension_enrolled` TINYINT(1) DEFAULT 0 COMMENT 'Enrolled in company pension',
+    `pension_contribution_rate` DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Employee pension contribution %',
+    `employer_pension_match` DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Employer pension match %',
+    `tax_province` VARCHAR(2) DEFAULT 'BC' COMMENT 'Province for tax calculations',
+    `federal_td1_claim` DECIMAL(10,2) DEFAULT NULL COMMENT 'Federal personal tax credit claim',
+    `provincial_td1_claim` DECIMAL(10,2) DEFAULT NULL COMMENT 'Provincial personal tax credit claim',
+    `additional_tax_deduction` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Additional tax to withhold per pay',
+    `status` ENUM('active', 'on_leave', 'terminated') DEFAULT 'active',
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_user_payroll` (`user_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_type` (`employee_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Employee Banking Information
+CREATE TABLE IF NOT EXISTS `employee_banking` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `institution_number` VARCHAR(3) NOT NULL COMMENT 'Canadian bank institution number',
+    `transit_number` VARCHAR(5) NOT NULL COMMENT 'Canadian bank transit number',
+    `account_number_encrypted` BLOB NOT NULL COMMENT 'Encrypted bank account number',
+    `account_type` ENUM('checking', 'savings') DEFAULT 'checking',
+    `is_primary` TINYINT(1) DEFAULT 1,
+    `verified_at` TIMESTAMP NULL DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_primary` (`is_primary`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Employee Home Address (for T4 and payroll purposes)
+CREATE TABLE IF NOT EXISTS `employee_addresses` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `address_type` ENUM('home', 'mailing') DEFAULT 'home',
+    `street_address` VARCHAR(255) NOT NULL,
+    `unit_number` VARCHAR(50) DEFAULT NULL,
+    `city` VARCHAR(100) NOT NULL,
+    `province` VARCHAR(2) NOT NULL COMMENT 'Province code (BC, ON, etc.)',
+    `postal_code` VARCHAR(10) NOT NULL,
+    `country` VARCHAR(2) DEFAULT 'CA',
+    `is_primary` TINYINT(1) DEFAULT 1,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_type` (`address_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payroll History/Pay Stubs
+CREATE TABLE IF NOT EXISTS `payroll_history` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `pay_period_start` DATE NOT NULL,
+    `pay_period_end` DATE NOT NULL,
+    `pay_date` DATE NOT NULL,
+    `hours_worked` DECIMAL(8,2) DEFAULT NULL COMMENT 'For hourly employees',
+    `regular_hours` DECIMAL(8,2) DEFAULT 0.00,
+    `overtime_hours` DECIMAL(8,2) DEFAULT 0.00,
+    `gross_pay` DECIMAL(12,2) NOT NULL,
+    `cpp_deduction` DECIMAL(10,2) DEFAULT 0.00,
+    `ei_deduction` DECIMAL(10,2) DEFAULT 0.00,
+    `federal_tax` DECIMAL(10,2) DEFAULT 0.00,
+    `provincial_tax` DECIMAL(10,2) DEFAULT 0.00,
+    `pension_deduction` DECIMAL(10,2) DEFAULT 0.00,
+    `other_deductions` DECIMAL(10,2) DEFAULT 0.00,
+    `other_deductions_details` JSON DEFAULT NULL,
+    `total_deductions` DECIMAL(12,2) NOT NULL,
+    `net_pay` DECIMAL(12,2) NOT NULL,
+    `ytd_gross` DECIMAL(12,2) DEFAULT 0.00 COMMENT 'Year-to-date gross',
+    `ytd_cpp` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Year-to-date CPP',
+    `ytd_ei` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Year-to-date EI',
+    `ytd_tax` DECIMAL(12,2) DEFAULT 0.00 COMMENT 'Year-to-date total tax',
+    `stripe_transfer_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stripe transfer ID for payment',
+    `payment_status` ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+    `payment_method` ENUM('direct_deposit', 'cheque', 'manual') DEFAULT 'direct_deposit',
+    `processed_by` INT DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`processed_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_pay_date` (`pay_date`),
+    INDEX `idx_pay_period` (`pay_period_start`, `pay_period_end`),
+    INDEX `idx_status` (`payment_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- CRA Tax Rates (updated annually based on CRA standards)
+CREATE TABLE IF NOT EXISTS `cra_tax_rates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `tax_year` YEAR NOT NULL,
+    `rate_type` ENUM('cpp', 'ei', 'federal_basic', 'federal_bracket', 'provincial_basic', 'provincial_bracket') NOT NULL,
+    `province` VARCHAR(2) DEFAULT NULL COMMENT 'NULL for federal rates, province code for provincial',
+    `bracket_min` DECIMAL(12,2) DEFAULT 0.00 COMMENT 'Income bracket minimum',
+    `bracket_max` DECIMAL(12,2) DEFAULT NULL COMMENT 'Income bracket maximum (NULL for unlimited)',
+    `rate_percentage` DECIMAL(6,4) NOT NULL COMMENT 'Tax rate as percentage',
+    `max_pensionable_earnings` DECIMAL(12,2) DEFAULT NULL COMMENT 'For CPP max',
+    `max_insurable_earnings` DECIMAL(12,2) DEFAULT NULL COMMENT 'For EI max',
+    `basic_exemption` DECIMAL(12,2) DEFAULT NULL COMMENT 'Basic personal exemption amount',
+    `effective_date` DATE NOT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_year` (`tax_year`),
+    INDEX `idx_type` (`rate_type`),
+    INDEX `idx_province` (`province`),
+    UNIQUE KEY `unique_rate` (`tax_year`, `rate_type`, `province`, `bracket_min`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- T4 Slip Records
+CREATE TABLE IF NOT EXISTS `t4_slips` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `tax_year` YEAR NOT NULL,
+    `employer_name` VARCHAR(255) NOT NULL DEFAULT 'Arctic Wolves Hockey',
+    `employer_bn` VARCHAR(15) DEFAULT NULL COMMENT 'Business Number',
+    `employment_income` DECIMAL(12,2) NOT NULL COMMENT 'Box 14',
+    `cpp_contributions` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Box 16',
+    `cpp_pensionable_earnings` DECIMAL(12,2) DEFAULT 0.00 COMMENT 'Box 26',
+    `ei_premiums` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Box 18',
+    `ei_insurable_earnings` DECIMAL(12,2) DEFAULT 0.00 COMMENT 'Box 24',
+    `rpp_contributions` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Box 20 - Registered Pension',
+    `income_tax_deducted` DECIMAL(12,2) DEFAULT 0.00 COMMENT 'Box 22',
+    `union_dues` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Box 44',
+    `charitable_donations` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Box 46',
+    `other_info` JSON DEFAULT NULL COMMENT 'Other boxes and info',
+    `employee_sin_encrypted` BLOB DEFAULT NULL COMMENT 'Encrypted SIN',
+    `employee_address` TEXT DEFAULT NULL COMMENT 'Address at year end',
+    `province_of_employment` VARCHAR(2) DEFAULT 'BC',
+    `generated_at` TIMESTAMP NULL DEFAULT NULL,
+    `generated_by` INT DEFAULT NULL,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded T4 in Nextcloud',
+    `status` ENUM('draft', 'generated', 'filed', 'amended') DEFAULT 'draft',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`generated_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_user_year` (`user_id`, `tax_year`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_year` (`tax_year`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Employee Onboarding Records
+CREATE TABLE IF NOT EXISTS `employee_onboarding` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT DEFAULT NULL COMMENT 'NULL until user account is created',
+    `first_name` VARCHAR(100) NOT NULL,
+    `last_name` VARCHAR(100) NOT NULL,
+    `email` VARCHAR(255) NOT NULL,
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `role` ENUM('coach', 'health_coach', 'admin', 'team_coach') NOT NULL,
+    `start_date` DATE NOT NULL,
+    `employee_type` ENUM('full_time', 'part_time', 'contract', 'seasonal') DEFAULT 'part_time',
+    `employment_status` VARCHAR(50) DEFAULT 'new',
+    `onboarding_status` ENUM('pending', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending',
+    `personal_info_collected` TINYINT(1) DEFAULT 0,
+    `banking_info_collected` TINYINT(1) DEFAULT 0,
+    `tax_forms_completed` TINYINT(1) DEFAULT 0,
+    `payroll_setup_completed` TINYINT(1) DEFAULT 0,
+    `equipment_assigned` TINYINT(1) DEFAULT 0,
+    `perks_assigned` TINYINT(1) DEFAULT 0,
+    `training_completed` TINYINT(1) DEFAULT 0,
+    `emergency_contact_name` VARCHAR(255) DEFAULT NULL,
+    `emergency_contact_phone` VARCHAR(20) DEFAULT NULL,
+    `emergency_contact_relationship` VARCHAR(50) DEFAULT NULL,
+    `sin_collected` TINYINT(1) DEFAULT 0,
+    `sin_last_four` VARCHAR(4) DEFAULT NULL,
+    `date_of_birth` DATE DEFAULT NULL,
+    `street_address` VARCHAR(255) DEFAULT NULL,
+    `unit_number` VARCHAR(50) DEFAULT NULL,
+    `city` VARCHAR(100) DEFAULT NULL,
+    `province` VARCHAR(2) DEFAULT NULL,
+    `postal_code` VARCHAR(10) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `nextcloud_folder` VARCHAR(500) DEFAULT NULL COMMENT 'Path to onboarding docs in Nextcloud',
+    `processed_by` INT DEFAULT NULL,
+    `completed_at` TIMESTAMP NULL DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`processed_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_email` (`email`),
+    INDEX `idx_status` (`onboarding_status`),
+    INDEX `idx_start_date` (`start_date`),
+    INDEX `idx_role` (`role`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Onboarding Equipment Assignments
+CREATE TABLE IF NOT EXISTS `onboarding_equipment` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `onboarding_id` INT NOT NULL,
+    `equipment_type` ENUM('camera', 'tablet', 'laptop', 'phone', 'uniform', 'keys', 'access_card', 'other') NOT NULL,
+    `equipment_name` VARCHAR(255) NOT NULL,
+    `serial_number` VARCHAR(100) DEFAULT NULL,
+    `asset_tag` VARCHAR(50) DEFAULT NULL,
+    `condition_on_issue` ENUM('new', 'good', 'fair', 'refurbished') DEFAULT 'new',
+    `value` DECIMAL(10,2) DEFAULT NULL,
+    `issued_date` DATE DEFAULT NULL,
+    `return_expected_date` DATE DEFAULT NULL,
+    `returned_date` DATE DEFAULT NULL,
+    `condition_on_return` ENUM('good', 'fair', 'damaged', 'lost') DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `assigned_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`onboarding_id`) REFERENCES `employee_onboarding`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_onboarding` (`onboarding_id`),
+    INDEX `idx_type` (`equipment_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Onboarding Perks
+CREATE TABLE IF NOT EXISTS `onboarding_perks` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `onboarding_id` INT NOT NULL,
+    `perk_type` ENUM('equipment', 'clothing', 'gear', 'membership', 'discount', 'other') NOT NULL,
+    `perk_name` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `quantity` INT DEFAULT 1,
+    `value` DECIMAL(10,2) DEFAULT NULL,
+    `is_recurring` TINYINT(1) DEFAULT 0 COMMENT 'Annual perk vs one-time',
+    `issued_date` DATE DEFAULT NULL,
+    `expiry_date` DATE DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `assigned_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`onboarding_id`) REFERENCES `employee_onboarding`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_onboarding` (`onboarding_id`),
+    INDEX `idx_type` (`perk_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Onboarding Documents
+CREATE TABLE IF NOT EXISTS `onboarding_documents` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `onboarding_id` INT NOT NULL,
+    `document_type` ENUM('id', 'sin_card', 'td1_federal', 'td1_provincial', 'banking', 'contract', 'policy_acknowledgment', 'photo', 'certification', 'other') NOT NULL,
+    `document_name` VARCHAR(255) NOT NULL,
+    `file_path` VARCHAR(500) DEFAULT NULL,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL,
+    `file_size` INT DEFAULT NULL,
+    `status` ENUM('pending', 'received', 'verified', 'rejected') DEFAULT 'pending',
+    `verified_by` INT DEFAULT NULL,
+    `verified_at` TIMESTAMP NULL DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `uploaded_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`onboarding_id`) REFERENCES `employee_onboarding`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`verified_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_onboarding` (`onboarding_id`),
+    INDEX `idx_type` (`document_type`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default CRA tax rates for 2026 (Canada)
+INSERT INTO `cra_tax_rates` (`tax_year`, `rate_type`, `province`, `bracket_min`, `bracket_max`, `rate_percentage`, `max_pensionable_earnings`, `max_insurable_earnings`, `basic_exemption`, `effective_date`, `notes`) VALUES
+-- CPP 2026 rates
+(2026, 'cpp', NULL, 0, NULL, 5.9500, 71300.00, NULL, 3500.00, '2026-01-01', 'CPP employee contribution rate for 2026'),
+-- EI 2026 rates
+(2026, 'ei', NULL, 0, NULL, 1.6600, NULL, 64200.00, NULL, '2026-01-01', 'EI employee premium rate for 2026'),
+-- Federal Basic Personal Amount 2026
+(2026, 'federal_basic', NULL, 0, NULL, 0.0000, NULL, NULL, 16129.00, '2026-01-01', 'Federal Basic Personal Amount for 2026'),
+-- Federal tax brackets 2026
+(2026, 'federal_bracket', NULL, 0, 55867.00, 15.0000, NULL, NULL, NULL, '2026-01-01', 'Federal bracket 1'),
+(2026, 'federal_bracket', NULL, 55867.01, 111733.00, 20.5000, NULL, NULL, NULL, '2026-01-01', 'Federal bracket 2'),
+(2026, 'federal_bracket', NULL, 111733.01, 173205.00, 26.0000, NULL, NULL, NULL, '2026-01-01', 'Federal bracket 3'),
+(2026, 'federal_bracket', NULL, 173205.01, 246752.00, 29.0000, NULL, NULL, NULL, '2026-01-01', 'Federal bracket 4'),
+(2026, 'federal_bracket', NULL, 246752.01, NULL, 33.0000, NULL, NULL, NULL, '2026-01-01', 'Federal bracket 5'),
+-- BC Provincial Basic Personal Amount 2026
+(2026, 'provincial_basic', 'BC', 0, NULL, 0.0000, NULL, NULL, 12580.00, '2026-01-01', 'BC Basic Personal Amount for 2026'),
+-- BC Provincial tax brackets 2026
+(2026, 'provincial_bracket', 'BC', 0, 47937.00, 5.0600, NULL, NULL, NULL, '2026-01-01', 'BC bracket 1'),
+(2026, 'provincial_bracket', 'BC', 47937.01, 95875.00, 7.7000, NULL, NULL, NULL, '2026-01-01', 'BC bracket 2'),
+(2026, 'provincial_bracket', 'BC', 95875.01, 110076.00, 10.5000, NULL, NULL, NULL, '2026-01-01', 'BC bracket 3'),
+(2026, 'provincial_bracket', 'BC', 110076.01, 133664.00, 12.2900, NULL, NULL, NULL, '2026-01-01', 'BC bracket 4'),
+(2026, 'provincial_bracket', 'BC', 133664.01, 181232.00, 14.7000, NULL, NULL, NULL, '2026-01-01', 'BC bracket 5'),
+(2026, 'provincial_bracket', 'BC', 181232.01, 252752.00, 16.8000, NULL, NULL, NULL, '2026-01-01', 'BC bracket 6'),
+(2026, 'provincial_bracket', 'BC', 252752.01, NULL, 20.5000, NULL, NULL, NULL, '2026-01-01', 'BC bracket 7'),
+-- Ontario Provincial Basic Personal Amount 2026
+(2026, 'provincial_basic', 'ON', 0, NULL, 0.0000, NULL, NULL, 12399.00, '2026-01-01', 'ON Basic Personal Amount for 2026'),
+-- ON Provincial tax brackets 2026
+(2026, 'provincial_bracket', 'ON', 0, 51446.00, 5.0500, NULL, NULL, NULL, '2026-01-01', 'ON bracket 1'),
+(2026, 'provincial_bracket', 'ON', 51446.01, 102894.00, 9.1500, NULL, NULL, NULL, '2026-01-01', 'ON bracket 2'),
+(2026, 'provincial_bracket', 'ON', 102894.01, 150000.00, 11.1600, NULL, NULL, NULL, '2026-01-01', 'ON bracket 3'),
+(2026, 'provincial_bracket', 'ON', 150000.01, 220000.00, 12.1600, NULL, NULL, NULL, '2026-01-01', 'ON bracket 4'),
+(2026, 'provincial_bracket', 'ON', 220000.01, NULL, 13.1600, NULL, NULL, NULL, '2026-01-01', 'ON bracket 5'),
+-- Alberta Provincial tax (flat rate)
+(2026, 'provincial_basic', 'AB', 0, NULL, 0.0000, NULL, NULL, 21003.00, '2026-01-01', 'AB Basic Personal Amount for 2026'),
+(2026, 'provincial_bracket', 'AB', 0, 148269.00, 10.0000, NULL, NULL, NULL, '2026-01-01', 'AB bracket 1'),
+(2026, 'provincial_bracket', 'AB', 148269.01, 177922.00, 12.0000, NULL, NULL, NULL, '2026-01-01', 'AB bracket 2'),
+(2026, 'provincial_bracket', 'AB', 177922.01, 237230.00, 13.0000, NULL, NULL, NULL, '2026-01-01', 'AB bracket 3'),
+(2026, 'provincial_bracket', 'AB', 237230.01, 355845.00, 14.0000, NULL, NULL, NULL, '2026-01-01', 'AB bracket 4'),
+(2026, 'provincial_bracket', 'AB', 355845.01, NULL, 15.0000, NULL, NULL, NULL, '2026-01-01', 'AB bracket 5')
+ON DUPLICATE KEY UPDATE rate_percentage = VALUES(rate_percentage), max_pensionable_earnings = VALUES(max_pensionable_earnings), max_insurable_earnings = VALUES(max_insurable_earnings), basic_exemption = VALUES(basic_exemption);

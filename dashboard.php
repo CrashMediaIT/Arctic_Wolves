@@ -95,6 +95,8 @@ $allowed_pages = [
     
     // HR (Admin)
     'termination'             => 'views/hr_termination.php',
+    'payroll'                 => 'views/hr_payroll.php',
+    'onboarding'              => 'views/hr_onboarding.php',
     
     // Administration (Admin)
     'all_users'               => 'views/admin_users.php',
@@ -620,6 +622,12 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <div class="nav-group">
         <span class="nav-label">HR</span>
         <nav class="nav-menu">
+            <a href="?page=payroll" class="nav-link <?= $page=='payroll'?'active':'' ?>">
+                <i class="fa-solid fa-money-check-dollar icon"></i> Payroll
+            </a>
+            <a href="?page=onboarding" class="nav-link <?= $page=='onboarding'?'active':'' ?>">
+                <i class="fa-solid fa-user-plus icon"></i> Onboarding
+            </a>
             <a href="?page=termination" class="nav-link <?= $page=='termination'?'active':'' ?>">
                 <i class="fa-solid fa-user-slash icon"></i> Termination
             </a>
