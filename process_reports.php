@@ -55,20 +55,30 @@ function generateReport() {
     
     $report_type = $_POST['report_type'] ?? '';
     $format = $_POST['format'] ?? 'pdf';
-    $date_from = $_POST['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
-    $date_to = $_POST['date_to'] ?? date('Y-m-d');
+    $date_range = $_POST['date_range'] ?? 'this_month';
     $schedule = isset($_POST['schedule']) && $_POST['schedule'] == '1';
     
     if (empty($report_type)) {
         throw new Exception('Report type is required');
     }
     
+    // Calculate date range based on selection
+    $dates = calculateDateRange($date_range, $_POST);
+    $date_from = $dates['from'];
+    $date_to = $dates['to'];
+    
     // Build parameters
     $parameters = [
         'date_from' => $date_from,
         'date_to' => $date_to,
+        'date_range' => $date_range,
         'athlete_ids' => $_POST['athlete_ids'] ?? [],
-        'team_ids' => $_POST['team_ids'] ?? []
+        'team_ids' => $_POST['team_ids'] ?? [],
+        'detailed_breakdown' => isset($_POST['detailed_breakdown']),
+        'show_charts' => isset($_POST['show_charts']),
+        'compare_previous' => isset($_POST['compare_previous']),
+        'compare_year_1' => $_POST['compare_year_1'] ?? null,
+        'compare_year_2' => $_POST['compare_year_2'] ?? null,
     ];
     
     // Generate the report
@@ -96,6 +106,30 @@ function generateReport() {
     
     $report_id = $pdo->lastInsertId();
     
+    // Add audit log entry for report generation
+    $auditData = [
+        'report_id' => $report_id,
+        'report_name' => $report_name,
+        'report_type' => $report_type,
+        'format' => $format,
+        'date_range' => $date_range,
+        'date_from' => $date_from,
+        'date_to' => $date_to,
+    ];
+    
+    $auditStmt = $pdo->prepare("
+        INSERT INTO audit_logs 
+        (user_id, action_type, action, table_name, record_id, new_values, ip_address, user_agent, created_at)
+        VALUES (?, 'CREATE', 'report_generated', 'reports', ?, ?, ?, ?, NOW())
+    ");
+    $auditStmt->execute([
+        $user_id,
+        $report_id,
+        json_encode($auditData),
+        $_SERVER['REMOTE_ADDR'] ?? 'CLI',
+        $_SERVER['HTTP_USER_AGENT'] ?? 'CLI'
+    ]);
+    
     // If scheduled, create schedule record
     if ($schedule) {
         $frequency = $_POST['frequency'] ?? 'weekly';
@@ -104,23 +138,119 @@ function generateReport() {
         $next_run = calculateNextRun($frequency);
         
         $stmt = $pdo->prepare("
-            INSERT INTO report_schedules (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, report_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO report_schedules (created_by, report_type, parameters, schedule_frequency, format, recipients, next_run, is_active, report_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $user_id,
             $report_type,
             json_encode($parameters),
             $frequency,
+            $format,
             $email_recipients,
             $next_run,
             1,
             $report_type . ' Report'
         ]);
+        
+        $schedule_id = $pdo->lastInsertId();
+        
+        // Audit log for schedule creation
+        $scheduleAuditData = [
+            'schedule_id' => $schedule_id,
+            'report_type' => $report_type,
+            'frequency' => $frequency,
+            'format' => $format,
+            'recipients' => $email_recipients,
+        ];
+        
+        $auditStmt = $pdo->prepare("
+            INSERT INTO audit_logs 
+            (user_id, action_type, action, table_name, record_id, new_values, ip_address, user_agent, created_at)
+            VALUES (?, 'CREATE', 'schedule_created', 'report_schedules', ?, ?, ?, ?, NOW())
+        ");
+        $auditStmt->execute([
+            $user_id,
+            $schedule_id,
+            json_encode($scheduleAuditData),
+            $_SERVER['REMOTE_ADDR'] ?? 'CLI',
+            $_SERVER['HTTP_USER_AGENT'] ?? 'CLI'
+        ]);
     }
     
-    header('Location: dashboard.php?page=reports&success=1');
+    header('Location: dashboard.php?page=financial_reports&tab=history&success=1');
     exit;
+}
+
+/**
+ * Calculate date range based on selection
+ */
+function calculateDateRange($date_range, $post_data) {
+    $now = new DateTime();
+    
+    switch ($date_range) {
+        case 'today':
+            return ['from' => $now->format('Y-m-d'), 'to' => $now->format('Y-m-d')];
+            
+        case 'yesterday':
+            $yesterday = (clone $now)->modify('-1 day');
+            return ['from' => $yesterday->format('Y-m-d'), 'to' => $yesterday->format('Y-m-d')];
+            
+        case 'this_week':
+            $start = (clone $now)->modify('monday this week');
+            return ['from' => $start->format('Y-m-d'), 'to' => $now->format('Y-m-d')];
+            
+        case 'last_week':
+            $start = (clone $now)->modify('monday last week');
+            $end = (clone $start)->modify('+6 days');
+            return ['from' => $start->format('Y-m-d'), 'to' => $end->format('Y-m-d')];
+            
+        case 'this_month':
+            return ['from' => $now->format('Y-m-01'), 'to' => $now->format('Y-m-d')];
+            
+        case 'last_month':
+            $start = (clone $now)->modify('first day of last month');
+            $end = (clone $now)->modify('last day of last month');
+            return ['from' => $start->format('Y-m-d'), 'to' => $end->format('Y-m-d')];
+            
+        case 'this_quarter':
+            $quarter = ceil($now->format('n') / 3);
+            $start_month = ($quarter - 1) * 3 + 1;
+            $start = new DateTime($now->format('Y') . '-' . str_pad($start_month, 2, '0', STR_PAD_LEFT) . '-01');
+            return ['from' => $start->format('Y-m-d'), 'to' => $now->format('Y-m-d')];
+            
+        case 'last_quarter':
+            $quarter = ceil($now->format('n') / 3);
+            $prev_quarter = $quarter == 1 ? 4 : $quarter - 1;
+            $year = $quarter == 1 ? $now->format('Y') - 1 : $now->format('Y');
+            $start_month = ($prev_quarter - 1) * 3 + 1;
+            $end_month = $prev_quarter * 3;
+            $start = new DateTime($year . '-' . str_pad($start_month, 2, '0', STR_PAD_LEFT) . '-01');
+            $end = new DateTime($year . '-' . str_pad($end_month, 2, '0', STR_PAD_LEFT) . '-01');
+            $end->modify('last day of this month');
+            return ['from' => $start->format('Y-m-d'), 'to' => $end->format('Y-m-d')];
+            
+        case 'this_year':
+            return ['from' => $now->format('Y-01-01'), 'to' => $now->format('Y-m-d')];
+            
+        case 'last_year':
+            $last_year = $now->format('Y') - 1;
+            return ['from' => $last_year . '-01-01', 'to' => $last_year . '-12-31'];
+            
+        case 'year_comparison':
+            // For year comparison, use full years
+            $year1 = $post_data['compare_year_1'] ?? $now->format('Y');
+            return ['from' => $year1 . '-01-01', 'to' => $year1 . '-12-31'];
+            
+        case 'custom':
+            return [
+                'from' => $post_data['date_from'] ?? $now->format('Y-m-01'),
+                'to' => $post_data['date_to'] ?? $now->format('Y-m-d')
+            ];
+            
+        default:
+            return ['from' => $now->format('Y-m-01'), 'to' => $now->format('Y-m-d')];
+    }
 }
 
 function fetchReportData($report_type, $parameters) {
@@ -559,13 +689,142 @@ function getPackagesDiscountsData($parameters) {
 function generateReportFile($report_type, $format, $data, $parameters) {
     if ($format === 'csv') {
         return generateCSV($report_type, $data, $parameters);
+    } elseif ($format === 'excel') {
+        return generateExcel($report_type, $data, $parameters);
     } else {
         return generatePDF($report_type, $data, $parameters);
     }
 }
 
+/**
+ * Sanitize report type for safe filename use
+ */
+function sanitizeReportType($report_type) {
+    // Remove any path traversal characters and only allow alphanumeric and underscores
+    return preg_replace('/[^a-zA-Z0-9_]/', '', $report_type);
+}
+
+/**
+ * Generate Excel file (tab-separated with .xls extension for compatibility)
+ */
+function generateExcel($report_type, $data, $parameters) {
+    $safe_report_type = sanitizeReportType($report_type);
+    $filename = 'reports/' . $safe_report_type . '_' . date('Y-m-d_His') . '.xls';
+    $filepath = __DIR__ . '/' . $filename;
+    
+    // Ensure reports directory exists with secure permissions
+    $dir = dirname($filepath);
+    if (!file_exists($dir)) {
+        mkdir($dir, 0750, true);
+    }
+    
+    // Generate HTML table that Excel can open
+    $html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+    $html .= '<style>table { border-collapse: collapse; } th, td { border: 1px solid #000; padding: 8px; text-align: left; }</style>';
+    $html .= '</head><body>';
+    $html .= '<h1>' . htmlspecialchars(ucwords(str_replace('_', ' ', $report_type))) . ' Report</h1>';
+    $html .= '<p>Period: ' . htmlspecialchars($parameters['date_from']) . ' to ' . htmlspecialchars($parameters['date_to']) . '</p>';
+    $html .= '<p>Generated: ' . date('F j, Y g:i A') . '</p>';
+    $html .= '<table>';
+    
+    // Generate table based on report type
+    $html .= generateExcelTable($report_type, $data);
+    
+    $html .= '</table></body></html>';
+    
+    file_put_contents($filepath, $html);
+    
+    return $filename;
+}
+
+/**
+ * Generate HTML table content for Excel export
+ */
+function generateExcelTable($report_type, $data) {
+    $html = '';
+    
+    switch ($report_type) {
+        case 'revenue_summary':
+        case 'monthly_revenue':
+            $html .= '<tr><th>Month</th><th>Transactions</th><th>Revenue</th><th>Payment Method</th></tr>';
+            if (is_array($data)) {
+                foreach ($data as $row) {
+                    $html .= '<tr>';
+                    $html .= '<td>' . htmlspecialchars($row['month'] ?? '') . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['transaction_count'] ?? 0) . '</td>';
+                    $html .= '<td>$' . number_format($row['total_revenue'] ?? 0, 2) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['payment_method'] ?? '') . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            break;
+            
+        case 'profit_loss':
+            $html .= '<tr><th>Metric</th><th>Amount</th></tr>';
+            $html .= '<tr><td>Period</td><td>' . htmlspecialchars($data['period'] ?? '') . '</td></tr>';
+            $html .= '<tr><td>Revenue</td><td>$' . number_format($data['revenue'] ?? 0, 2) . '</td></tr>';
+            $html .= '<tr><td>Expenses</td><td>$' . number_format($data['expenses'] ?? 0, 2) . '</td></tr>';
+            $html .= '<tr><td>Net Profit</td><td>$' . number_format($data['profit'] ?? 0, 2) . '</td></tr>';
+            break;
+            
+        case 'session_analytics':
+        case 'session_attendance':
+            $html .= '<tr><th>Date</th><th>Session Type</th><th>Location</th><th>Bookings</th><th>Confirmed</th></tr>';
+            if (is_array($data)) {
+                foreach ($data as $row) {
+                    $html .= '<tr>';
+                    $html .= '<td>' . htmlspecialchars(date('M j, Y', strtotime($row['session_date'] ?? ''))) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['session_type'] ?? '') . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['location_name'] ?? '') . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['total_bookings'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['confirmed_bookings'] ?? 0) . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            break;
+            
+        case 'package_performance':
+        case 'package_sales':
+            $html .= '<tr><th>Package</th><th>Purchases</th><th>Revenue</th><th>Discounted</th></tr>';
+            if (is_array($data)) {
+                foreach ($data as $row) {
+                    $html .= '<tr>';
+                    $html .= '<td>' . htmlspecialchars($row['package_name'] ?? '') . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['purchases'] ?? 0) . '</td>';
+                    $html .= '<td>$' . number_format($row['revenue'] ?? 0, 2) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['discounted_purchases'] ?? 0) . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            break;
+            
+        case 'client_billing':
+            $html .= '<tr><th>Name</th><th>Email</th><th>Invoices</th><th>Total Billed</th><th>Paid</th><th>Outstanding</th></tr>';
+            if (is_array($data)) {
+                foreach ($data as $row) {
+                    $html .= '<tr>';
+                    $html .= '<td>' . htmlspecialchars(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['email'] ?? '') . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['invoice_count'] ?? 0) . '</td>';
+                    $html .= '<td>$' . number_format($row['total_billed'] ?? 0, 2) . '</td>';
+                    $html .= '<td>$' . number_format($row['total_paid'] ?? 0, 2) . '</td>';
+                    $html .= '<td>$' . number_format($row['outstanding'] ?? 0, 2) . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            break;
+            
+        default:
+            $html .= '<tr><th>Data</th></tr>';
+            $html .= '<tr><td>' . htmlspecialchars(json_encode($data)) . '</td></tr>';
+    }
+    
+    return $html;
+}
+
 function generateCSV($report_type, $data, $parameters) {
-    $filename = 'reports/' . $report_type . '_' . date('Y-m-d_His') . '.csv';
+    $safe_report_type = sanitizeReportType($report_type);
+    $filename = 'reports/' . $safe_report_type . '_' . date('Y-m-d_His') . '.csv';
     $filepath = __DIR__ . '/' . $filename;
     
     // Ensure reports directory exists with secure permissions
@@ -653,7 +912,8 @@ function generatePDF($report_type, $data, $parameters) {
     // For PDF generation, we'll use a simple HTML to PDF approach
     // In production, you would use TCPDF or mPDF library
     
-    $filename = 'reports/' . $report_type . '_' . date('Y-m-d_His') . '.pdf';
+    $safe_report_type = sanitizeReportType($report_type);
+    $filename = 'reports/' . $safe_report_type . '_' . date('Y-m-d_His') . '.pdf';
     $filepath = __DIR__ . '/' . $filename;
     
     // Ensure reports directory exists with secure permissions
@@ -801,6 +1061,10 @@ function calculateNextRun($frequency) {
             return date('Y-m-d H:i:s', strtotime('+1 week'));
         case 'monthly':
             return date('Y-m-d H:i:s', strtotime('+1 month'));
+        case 'quarterly':
+            return date('Y-m-d H:i:s', strtotime('+3 months'));
+        case 'annually':
+            return date('Y-m-d H:i:s', strtotime('+1 year'));
         default:
             return date('Y-m-d H:i:s', strtotime('+1 week'));
     }
@@ -923,8 +1187,8 @@ function createSchedule() {
     
     $stmt = $pdo->prepare("
         INSERT INTO report_schedules 
-        (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, report_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (created_by, report_type, parameters, schedule_frequency, format, recipients, next_run, is_active, report_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     
     $stmt->execute([
@@ -932,13 +1196,14 @@ function createSchedule() {
         $report_type,
         $parameters,
         $frequency_normalized,
+        $format,
         $email_recipients,
         $next_run->format('Y-m-d H:i:s'),
         $is_active,
         $report_name
     ]);
     
-    header('Location: dashboard.php?page=schedules&success=Schedule+created+successfully');
+    header('Location: dashboard.php?page=financial_reports&tab=schedules&success=Schedule+created+successfully');
     exit;
 }
 
