@@ -8,6 +8,42 @@ require 'mailer.php';
 
 setSecurityHeaders();
 
+/**
+ * Fetch refunds with optional filters
+ * @param PDO $pdo Database connection
+ * @param string $start_date Start date for filter
+ * @param string $end_date End date for filter
+ * @param string $user_search Optional user search term
+ * @return array Array of refund records
+ */
+function fetchRefundsWithFilters($pdo, $start_date, $end_date, $user_search = '') {
+    $query = "
+        SELECT r.*, u.email, u.first_name, u.last_name,
+               s.title as session_name, s.session_date,
+               CONCAT(admin.first_name, ' ', admin.last_name) as processed_by_name
+        FROM refunds r
+        JOIN users u ON r.user_id = u.id
+        LEFT JOIN bookings b ON r.booking_id = b.id
+        LEFT JOIN sessions s ON b.session_id = s.id
+        LEFT JOIN users admin ON r.refunded_by = admin.id
+        WHERE DATE(r.refund_date) BETWEEN ? AND ?
+    ";
+    $params = [$start_date, $end_date];
+    
+    // Add user search filter if provided
+    if (!empty($user_search)) {
+        $query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)";
+        $search_param = "%$user_search%";
+        array_push($params, $search_param, $search_param, $search_param, $search_param);
+    }
+    
+    $query .= " ORDER BY r.refund_date DESC";
+    
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     http_response_code(403);
     die(json_encode(['success' => false, 'message' => 'Access denied']));
@@ -267,21 +303,9 @@ try {
         case 'list_refunds':
             $start_date = $_GET['start_date'] ?? date('Y-m-01');
             $end_date = $_GET['end_date'] ?? date('Y-m-t');
+            $user_search = trim($_GET['user_search'] ?? '');
             
-            $stmt = $pdo->prepare("
-                SELECT r.*, u.email, u.first_name, u.last_name,
-                       s.title as session_name, s.session_date,
-                       CONCAT(admin.first_name, ' ', admin.last_name) as processed_by_name
-                FROM refunds r
-                JOIN users u ON r.user_id = u.id
-                LEFT JOIN bookings b ON r.booking_id = b.id
-                LEFT JOIN sessions s ON b.session_id = s.id
-                LEFT JOIN users admin ON r.refunded_by = admin.id
-                WHERE DATE(r.refund_date) BETWEEN ? AND ?
-                ORDER BY r.refund_date DESC
-            ");
-            $stmt->execute([$start_date, $end_date]);
-            $refunds = $stmt->fetchAll();
+            $refunds = fetchRefundsWithFilters($pdo, $start_date, $end_date, $user_search);
             
             echo json_encode(['success' => true, 'refunds' => $refunds]);
             break;
@@ -289,21 +313,9 @@ try {
         case 'export_refunds':
             $start_date = $_GET['start_date'] ?? date('Y-m-01');
             $end_date = $_GET['end_date'] ?? date('Y-m-t');
+            $user_search = trim($_GET['user_search'] ?? '');
             
-            $stmt = $pdo->prepare("
-                SELECT r.*, u.email, u.first_name, u.last_name,
-                       s.title as session_name, s.session_date,
-                       CONCAT(admin.first_name, ' ', admin.last_name) as processed_by_name
-                FROM refunds r
-                JOIN users u ON r.user_id = u.id
-                LEFT JOIN bookings b ON r.booking_id = b.id
-                LEFT JOIN sessions s ON b.session_id = s.id
-                LEFT JOIN users admin ON r.refunded_by = admin.id
-                WHERE DATE(r.refund_date) BETWEEN ? AND ?
-                ORDER BY r.refund_date DESC
-            ");
-            $stmt->execute([$start_date, $end_date]);
-            $refunds = $stmt->fetchAll();
+            $refunds = fetchRefundsWithFilters($pdo, $start_date, $end_date, $user_search);
             
             header('Content-Type: text/csv');
             header('Content-Disposition: attachment; filename="refunds_' . date('Y-m-d') . '.csv"');
