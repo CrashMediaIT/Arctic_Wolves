@@ -238,6 +238,35 @@ $sessions = $sessions_stmt->fetchAll();
     .tab-content.active {
         display: block;
     }
+    
+    /* Quick Filter Buttons */
+    .btn-filter {
+        padding: 10px 18px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        color: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .btn-filter:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.25);
+        color: white;
+    }
+    
+    .btn-filter.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    .btn-filter i {
+        margin-right: 6px;
+    }
 </style>
 
 <div class="dash-content refunds-container">
@@ -304,7 +333,28 @@ $sessions = $sessions_stmt->fetchAll();
                 </button>
             </h3>
             
-            <div class="search-grid" style="grid-template-columns: 1fr 1fr auto;">
+            <!-- Quick Period Filters -->
+            <div class="quick-filters" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="btn btn-filter" onclick="setQuickFilter('week')" id="filterWeek">
+                    <i class="fas fa-calendar-week"></i> This Week
+                </button>
+                <button class="btn btn-filter active" onclick="setQuickFilter('month')" id="filterMonth">
+                    <i class="fas fa-calendar-alt"></i> This Month
+                </button>
+                <button class="btn btn-filter" onclick="setQuickFilter('year')" id="filterYear">
+                    <i class="fas fa-calendar"></i> This Year
+                </button>
+                <button class="btn btn-filter" onclick="setQuickFilter('custom')" id="filterCustom">
+                    <i class="fas fa-sliders-h"></i> Custom Range
+                </button>
+            </div>
+            
+            <div class="search-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div class="form-group">
+                    <label>Search User</label>
+                    <input type="text" id="historyUserSearch" placeholder="Name or email...">
+                </div>
+                
                 <div class="form-group">
                     <label>Start Date</label>
                     <input type="date" id="historyStartDate" value="<?= date('Y-m-01') ?>">
@@ -321,6 +371,13 @@ $sessions = $sessions_stmt->fetchAll();
                         <i class="fas fa-filter"></i> Filter
                     </button>
                 </div>
+            </div>
+            
+            <!-- Results Summary -->
+            <div id="historyResultsSummary" style="margin-top: 15px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; display: none;">
+                <span style="color: rgba(255, 255, 255, 0.7);">
+                    Showing <strong id="resultsCount">0</strong> refunds totaling <strong id="resultsTotal">$0.00</strong>
+                </span>
             </div>
         </div>
         
@@ -645,12 +702,14 @@ document.getElementById('refundForm').addEventListener('submit', async function(
 async function loadRefundHistory() {
     const startDate = document.getElementById('historyStartDate').value;
     const endDate = document.getElementById('historyEndDate').value;
+    const userSearch = document.getElementById('historyUserSearch').value;
     
     try {
         const params = new URLSearchParams({
             action: 'list_refunds',
             start_date: startDate,
-            end_date: endDate
+            end_date: endDate,
+            user_search: userSearch
         });
         
         const response = await fetch(`process_refunds.php?${params}`);
@@ -668,9 +727,26 @@ async function loadRefundHistory() {
 
 function displayRefundHistory(refunds) {
     const container = document.getElementById('historyResults');
+    const summaryDiv = document.getElementById('historyResultsSummary');
+    const resultsCount = document.getElementById('resultsCount');
+    const resultsTotal = document.getElementById('resultsTotal');
+    
+    // Calculate totals for summary
+    let totalAmount = 0;
+    refunds.forEach(refund => {
+        const amount = refund.refund_type === 'credit' 
+            ? parseFloat(refund.credit_amount || 0) 
+            : parseFloat(refund.refund_amount || 0);
+        totalAmount += amount;
+    });
+    
+    // Update summary
+    resultsCount.textContent = refunds.length;
+    resultsTotal.textContent = '$' + totalAmount.toFixed(2);
+    summaryDiv.style.display = refunds.length > 0 ? 'block' : 'none';
     
     if (refunds.length === 0) {
-        container.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 40px;">No refunds found</p>';
+        container.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 40px;">No refunds found for the selected filters</p>';
         return;
     }
     
@@ -714,11 +790,75 @@ function displayRefundHistory(refunds) {
 function exportRefunds() {
     const startDate = document.getElementById('historyStartDate').value;
     const endDate = document.getElementById('historyEndDate').value;
-    window.location.href = `process_refunds.php?action=export_refunds&start_date=${startDate}&end_date=${endDate}`;
+    const userSearch = document.getElementById('historyUserSearch').value;
+    const params = new URLSearchParams({
+        action: 'export_refunds',
+        start_date: startDate,
+        end_date: endDate,
+        user_search: userSearch
+    });
+    window.location.href = `process_refunds.php?${params}`;
+}
+
+// Quick filter functions for week, month, year
+function setQuickFilter(period) {
+    const today = new Date();
+    let startDate, endDate;
+    
+    // Update active button state
+    document.querySelectorAll('.btn-filter').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('filter' + period.charAt(0).toUpperCase() + period.slice(1)).classList.add('active');
+    
+    switch (period) {
+        case 'week':
+            // Start of current week (Monday)
+            const dayOfWeek = today.getDay();
+            const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            startDate = new Date(today);
+            startDate.setDate(today.getDate() - diffToMonday);
+            // End of current week (Sunday)
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6);
+            break;
+            
+        case 'month':
+            // Start of current month
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            // End of current month
+            endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            break;
+            
+        case 'year':
+            // Start of current year
+            startDate = new Date(today.getFullYear(), 0, 1);
+            // End of current year
+            endDate = new Date(today.getFullYear(), 11, 31);
+            break;
+            
+        case 'custom':
+            // Just enable the date inputs without changing them
+            return;
+    }
+    
+    // Format dates as YYYY-MM-DD
+    const formatDate = (d) => d.toISOString().split('T')[0];
+    
+    document.getElementById('historyStartDate').value = formatDate(startDate);
+    document.getElementById('historyEndDate').value = formatDate(endDate);
+    
+    // Automatically load results
+    loadRefundHistory();
 }
 
 // Load initial data
 document.addEventListener('DOMContentLoaded', function() {
     RefundSystem.init();
+    
+    // Add enter key support for user search
+    document.getElementById('historyUserSearch').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            loadRefundHistory();
+        }
+    });
 });
 </script>

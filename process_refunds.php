@@ -267,8 +267,9 @@ try {
         case 'list_refunds':
             $start_date = $_GET['start_date'] ?? date('Y-m-01');
             $end_date = $_GET['end_date'] ?? date('Y-m-t');
+            $user_search = trim($_GET['user_search'] ?? '');
             
-            $stmt = $pdo->prepare("
+            $query = "
                 SELECT r.*, u.email, u.first_name, u.last_name,
                        s.title as session_name, s.session_date,
                        CONCAT(admin.first_name, ' ', admin.last_name) as processed_by_name
@@ -278,9 +279,23 @@ try {
                 LEFT JOIN sessions s ON b.session_id = s.id
                 LEFT JOIN users admin ON r.refunded_by = admin.id
                 WHERE DATE(r.refund_date) BETWEEN ? AND ?
-                ORDER BY r.refund_date DESC
-            ");
-            $stmt->execute([$start_date, $end_date]);
+            ";
+            $params = [$start_date, $end_date];
+            
+            // Add user search filter if provided
+            if (!empty($user_search)) {
+                $query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)";
+                $search_param = "%$user_search%";
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+            }
+            
+            $query .= " ORDER BY r.refund_date DESC";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($params);
             $refunds = $stmt->fetchAll();
             
             echo json_encode(['success' => true, 'refunds' => $refunds]);
@@ -289,8 +304,9 @@ try {
         case 'export_refunds':
             $start_date = $_GET['start_date'] ?? date('Y-m-01');
             $end_date = $_GET['end_date'] ?? date('Y-m-t');
+            $user_search = trim($_GET['user_search'] ?? '');
             
-            $stmt = $pdo->prepare("
+            $query = "
                 SELECT r.*, u.email, u.first_name, u.last_name,
                        s.title as session_name, s.session_date,
                        CONCAT(admin.first_name, ' ', admin.last_name) as processed_by_name
@@ -300,9 +316,23 @@ try {
                 LEFT JOIN sessions s ON b.session_id = s.id
                 LEFT JOIN users admin ON r.refunded_by = admin.id
                 WHERE DATE(r.refund_date) BETWEEN ? AND ?
-                ORDER BY r.refund_date DESC
-            ");
-            $stmt->execute([$start_date, $end_date]);
+            ";
+            $params = [$start_date, $end_date];
+            
+            // Add user search filter if provided
+            if (!empty($user_search)) {
+                $query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)";
+                $search_param = "%$user_search%";
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+            }
+            
+            $query .= " ORDER BY r.refund_date DESC";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($params);
             $refunds = $stmt->fetchAll();
             
             header('Content-Type: text/csv');
