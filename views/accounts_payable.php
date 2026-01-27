@@ -709,7 +709,8 @@ td { border-bottom: 1px solid var(--border); color: var(--text-white); }
 </style>
 
 <script>
-var csrfToken = '<?= generateCsrfToken() ?>';
+// Get CSRF token from a hidden input field
+var csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '<?= htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8') ?>';
 
 // Expense functions
 function openExpenseModal() {
@@ -747,11 +748,35 @@ function editExpense(expense) {
 }
 
 function deleteExpense(id) {
+    // Validate id is a number
+    id = parseInt(id, 10);
+    if (isNaN(id) || id <= 0) {
+        alert('Invalid expense ID');
+        return;
+    }
     if (confirm('Are you sure you want to delete this expense?')) {
         var form = document.createElement('form');
         form.method = 'POST';
         form.action = 'process_expenses.php';
-        form.innerHTML = '<input type="hidden" name="csrf_token" value="' + csrfToken + '"><input type="hidden" name="action" value="delete"><input type="hidden" name="expense_id" value="' + id + '">';
+        
+        var csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        var actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'delete';
+        form.appendChild(actionInput);
+        
+        var idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'expense_id';
+        idInput.value = id;
+        form.appendChild(idInput);
+        
         document.body.appendChild(form);
         form.submit();
     }

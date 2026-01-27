@@ -3,7 +3,11 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
-require_once 'cloud_config.php';
+
+// Conditionally load cloud_config if available
+if (file_exists(__DIR__ . '/cloud_config.php')) {
+    require_once 'cloud_config.php';
+}
 
 setSecurityHeaders();
 
@@ -91,16 +95,25 @@ function performReceiptOCR($file_path) {
         'raw_text' => ''
     ];
     
-    // Check if Tesseract is installed
-    $tesseract_check = shell_exec('which tesseract 2>/dev/null');
+    // Check if Tesseract is installed using safe command execution
+    $tesseract_path = '/usr/bin/tesseract';
+    $tesseract_check = file_exists($tesseract_path) && is_executable($tesseract_path);
     
-    if (empty($tesseract_check)) {
+    if (!$tesseract_check) {
         $ocr_data['error'] = 'OCR not available - Tesseract not installed';
         return $ocr_data;
     }
     
+    // Validate file path is within expected directory
+    $real_file_path = realpath($file_path);
+    $upload_dir = realpath(dirname($file_path));
+    if (!$real_file_path || !$upload_dir || strpos($real_file_path, $upload_dir) !== 0) {
+        $ocr_data['error'] = 'Invalid file path';
+        return $ocr_data;
+    }
+    
     $output_file = sys_get_temp_dir() . '/' . uniqid('ocr_');
-    $command = sprintf('tesseract %s %s 2>&1', escapeshellarg($file_path), escapeshellarg($output_file));
+    $command = sprintf('%s %s %s 2>&1', escapeshellcmd($tesseract_path), escapeshellarg($real_file_path), escapeshellarg($output_file));
     shell_exec($command);
     
     $ocr_text = '';
@@ -502,8 +515,9 @@ try {
                 exit();
             }
             
-            // Save temporarily
-            $temp_file = sys_get_temp_dir() . '/' . uniqid('ocr_') . '.jpg';
+            // Save temporarily with correct extension based on MIME type
+            $ext = ($mime_type === 'image/png') ? '.png' : '.jpg';
+            $temp_file = sys_get_temp_dir() . '/' . uniqid('ocr_') . $ext;
             move_uploaded_file($_FILES['receipt_file']['tmp_name'], $temp_file);
             
             // Perform OCR
@@ -743,7 +757,12 @@ try {
             }
             
             try {
-                require_once 'stripe-php/init.php';
+                // Check Stripe library exists
+                $stripe_lib_path = __DIR__ . '/stripe-php/init.php';
+                if (!file_exists($stripe_lib_path)) {
+                    throw new Exception('Stripe library not installed. Please install it from System Tools.');
+                }
+                require_once $stripe_lib_path;
                 \Stripe\Stripe::setApiKey($stripe_secret);
                 
                 // Check for existing cardholder or create new one

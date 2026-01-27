@@ -615,6 +615,9 @@ if ($expenseStats['last_month'] > 0) {
 
 <script>
 var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+if (!csrfToken) {
+    console.warn('CSRF token not found - form submissions may fail');
+}
 var ocrData = null;
 
 function openAddExpenseModal() { document.getElementById('add-expense-card').style.display = 'block'; document.getElementById('add-expense-card').scrollIntoView({ behavior: 'smooth' }); }
