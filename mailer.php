@@ -306,6 +306,33 @@ function sendEmail($to, $type, $data) {
         </div>";
     }
     
+    // 8. EMAIL CHANGE CONFIRMATION
+    elseif ($type == 'email_change_confirmation') {
+        $subject = "Confirm Email Address Change";
+        $name = htmlspecialchars($data['name'] ?? 'User');
+        $old_email = htmlspecialchars($data['old_email'] ?? '');
+        $new_email = htmlspecialchars($data['new_email'] ?? '');
+        $confirm_link = $data['confirm_link'] ?? '#';
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            <h2 style='color: #6B46C1; margin-top: 0;'>Email Change Request</h2>
+            <p style='color: #ccc;'>Hi $name,</p>
+            <p style='color: #ccc;'>We received a request to change your email address from:</p>
+            <div style='background: #1e293b; padding: 20px; margin: 20px 0; border-radius: 6px; border: 1px solid #333;'>
+                <p style='margin: 0 0 10px 0; color: #94a3b8;'>Current email: <strong style='color: #fff;'>$old_email</strong></p>
+                <p style='margin: 0; color: #94a3b8;'>New email: <strong style='color: #6B46C1;'>$new_email</strong></p>
+            </div>
+            <p style='color: #ccc;'>If you made this request, please click the button below to confirm the change:</p>
+            <p style='margin-top: 25px; text-align: center;'>
+                <a href='$confirm_link' style='display: inline-block; background: #6B46C1; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Confirm Email Change</a>
+            </p>
+            <p style='color: #ef4444; font-size: 13px; margin-top: 25px;'>⚠️ If you did not request this change, please ignore this email. Your email address will remain unchanged.</p>
+            <p style='color: #666; font-size: 12px; margin-top: 20px;'>This link will expire in 24 hours.</p>
+            $footer
+        </div>";
+    }
+    
     // --- SENDING ---
     $mailer = new SmtpMailer();
     try {

@@ -21,21 +21,30 @@ try {
     
     // Get user's teams from athlete_teams table
     $userTeams = [];
+    $currentTeam = null;
     try {
-        // Try to fetch with league column
+        // Try to fetch with league and position columns
         $teamsStmt = $pdo->prepare("
-            SELECT id, team_name, league, season_year, season_type, season, is_current, created_at
+            SELECT id, team_name, league, position, season_year, season_type, season, is_current, created_at
             FROM athlete_teams 
             WHERE user_id = ? OR athlete_id = ?
             ORDER BY is_current DESC, created_at DESC
         ");
         $teamsStmt->execute([$user_id, $user_id]);
         $userTeams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Find current team
+        foreach ($userTeams as $team) {
+            if ($team['is_current']) {
+                $currentTeam = $team;
+                break;
+            }
+        }
     } catch (PDOException $teamsError) {
-        // Try without league column as fallback
+        // Try without position column as fallback
         try {
             $teamsStmt = $pdo->prepare("
-                SELECT id, team_name, '' as league, season_year, season_type, season, is_current, created_at
+                SELECT id, team_name, league, '' as position, season_year, season_type, season, is_current, created_at
                 FROM athlete_teams 
                 WHERE user_id = ? OR athlete_id = ?
                 ORDER BY is_current DESC, created_at DESC
@@ -43,10 +52,45 @@ try {
             $teamsStmt->execute([$user_id, $user_id]);
             $userTeams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $fallbackError) {
-            // Table may not exist or have different schema
-            error_log("Failed to load user teams from database: " . $fallbackError->getMessage());
+            // Try without league column as additional fallback
+            try {
+                $teamsStmt = $pdo->prepare("
+                    SELECT id, team_name, '' as league, '' as position, season_year, season_type, season, is_current, created_at
+                    FROM athlete_teams 
+                    WHERE user_id = ? OR athlete_id = ?
+                    ORDER BY is_current DESC, created_at DESC
+                ");
+                $teamsStmt->execute([$user_id, $user_id]);
+                $userTeams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (PDOException $finalError) {
+                // Table may not exist or have different schema
+                error_log("Failed to load user teams from database: " . $finalError->getMessage());
+            }
         }
     }
+    
+    // Get performance stats for current team (based on position)
+    $performanceStats = [];
+    if ($playerData) {
+        $performanceStats = [
+            'games_played' => $playerData['games_played'] ?? 0,
+            'goals' => $playerData['goals'] ?? 0,
+            'assists' => $playerData['assists'] ?? 0,
+            'points' => $playerData['points'] ?? ($playerData['goals'] ?? 0) + ($playerData['assists'] ?? 0),
+            'plus_minus' => $playerData['plus_minus'] ?? 0,
+            'penalty_minutes' => $playerData['penalty_minutes'] ?? 0,
+            'shots' => $playerData['shots'] ?? 0,
+            // Goalie-specific stats
+            'shots_against' => $playerData['shots_against'] ?? 0,
+            'goals_against' => $playerData['goals_against'] ?? 0,
+            'saves' => $playerData['saves'] ?? 0,
+            'save_percentage' => $playerData['save_percentage'] ?? 0,
+        ];
+    }
+    
+    // Determine if user is goalie (from current team position or user position)
+    $currentPosition = $currentTeam['position'] ?? $userData['position'] ?? '';
+    $isGoalie = ($currentPosition === 'goalie');
     
     // Get user preferences for notifications
     $userPreferences = [];
@@ -70,6 +114,9 @@ try {
     $playerData = null;
     $userPreferences = [];
     $userTeams = [];
+    $currentTeam = null;
+    $performanceStats = [];
+    $isGoalie = false;
 }
 
 $activeTab = $_GET['tab'] ?? 'personal';
@@ -136,6 +183,50 @@ function isPreferenceEnabled($preferences, $key) {
         </button>
     </div>
 </div>
+
+<?php
+// Message handling
+$msg = $_GET['msg'] ?? '';
+$error = $_GET['error'] ?? '';
+$messages = [
+    'profile_updated' => ['type' => 'success', 'text' => 'Profile updated successfully!'],
+    'email_change_pending' => ['type' => 'info', 'text' => 'A confirmation email has been sent to your current email address. Please check your inbox to confirm the email change.'],
+    'email_changed' => ['type' => 'success', 'text' => 'Your email address has been successfully changed!'],
+    'pass_updated' => ['type' => 'success', 'text' => 'Password changed successfully!'],
+    'team_added' => ['type' => 'success', 'text' => 'Team added to your history!'],
+    'team_removed' => ['type' => 'success', 'text' => 'Team removed from your history.'],
+    'player_info_updated' => ['type' => 'success', 'text' => 'Player information updated!'],
+    'photo_uploaded' => ['type' => 'success', 'text' => 'Profile photo updated!'],
+    'photo_removed' => ['type' => 'success', 'text' => 'Profile photo removed.'],
+];
+$errors = [
+    'passwords_mismatch' => 'New passwords do not match.',
+    'password_too_short' => 'Password must be at least 8 characters.',
+    'invalid_current_password' => 'Current password is incorrect.',
+    'password_change_failed' => 'Failed to change password. Please try again.',
+    'update_failed' => 'Failed to update profile. Please try again.',
+    'email_change_failed' => 'Failed to confirm email change. Please try again.',
+    'invalid_or_expired_token' => 'The email confirmation link is invalid or has expired.',
+    'team_name_required' => 'Team name is required.',
+    'team_add_failed' => 'Failed to add team. Please try again.',
+];
+?>
+
+<?php if ($msg && isset($messages[$msg])): ?>
+<div class="alert alert-<?php echo $messages[$msg]['type']; ?>" id="alertMessage">
+    <i class="fas <?php echo $messages[$msg]['type'] === 'success' ? 'fa-check-circle' : 'fa-info-circle'; ?>"></i>
+    <span><?php echo $messages[$msg]['text']; ?></span>
+    <button type="button" onclick="document.getElementById('alertMessage').style.display='none'" class="alert-close">&times;</button>
+</div>
+<?php endif; ?>
+
+<?php if ($error && isset($errors[$error])): ?>
+<div class="alert alert-error" id="alertError">
+    <i class="fas fa-exclamation-circle"></i>
+    <span><?php echo $errors[$error]; ?></span>
+    <button type="button" onclick="document.getElementById('alertError').style.display='none'" class="alert-close">&times;</button>
+</div>
+<?php endif; ?>
 
 <div class="profile-content">
     <!-- Personal Information Tab -->
@@ -320,6 +411,7 @@ function isPreferenceEnabled($preferences, $key) {
                         <thead>
                             <tr style="border-bottom: 1px solid var(--border);">
                                 <th style="padding: 12px; text-align: left; color: var(--text); font-size: 13px;">Team Name</th>
+                                <th style="padding: 12px; text-align: left; color: var(--text); font-size: 13px;">Position</th>
                                 <th style="padding: 12px; text-align: left; color: var(--text); font-size: 13px;">League</th>
                                 <th style="padding: 12px; text-align: left; color: var(--text); font-size: 13px;">Season</th>
                                 <th style="padding: 12px; text-align: center; color: var(--text); font-size: 13px;">Current</th>
@@ -330,6 +422,22 @@ function isPreferenceEnabled($preferences, $key) {
                             <?php foreach ($userTeams as $team): ?>
                             <tr style="border-bottom: 1px solid var(--border);">
                                 <td style="padding: 12px; color: var(--text-primary, #fff);"><?php echo htmlspecialchars($team['team_name'] ?? ''); ?></td>
+                                <td style="padding: 12px; color: var(--text);">
+                                    <?php 
+                                    $positionLabels = [
+                                        'forward' => 'Forward',
+                                        'defense' => 'Defense', 
+                                        'goalie' => 'Goalie',
+                                        'left_wing' => 'Left Wing',
+                                        'right_wing' => 'Right Wing',
+                                        'center' => 'Center',
+                                        'left_defense' => 'Left Defense',
+                                        'right_defense' => 'Right Defense'
+                                    ];
+                                    $pos = $team['position'] ?? '';
+                                    echo htmlspecialchars($positionLabels[$pos] ?? ($pos ?: '-'));
+                                    ?>
+                                </td>
                                 <td style="padding: 12px; color: var(--text);"><?php echo htmlspecialchars($team['league'] ?? '-'); ?></td>
                                 <td style="padding: 12px; color: var(--text);">
                                     <?php 
@@ -383,11 +491,37 @@ function isPreferenceEnabled($preferences, $key) {
                                 <input type="text" name="team_name" class="form-input" placeholder="e.g., Arctic Wolves U16" required>
                             </div>
                             <div class="form-group">
+                                <label>Position *</label>
+                                <select name="team_position" class="form-select" required>
+                                    <option value="">Select Position</option>
+                                    <optgroup label="Forwards">
+                                        <option value="left_wing">Left Wing</option>
+                                        <option value="center">Center</option>
+                                        <option value="right_wing">Right Wing</option>
+                                        <option value="forward">Forward (General)</option>
+                                    </optgroup>
+                                    <optgroup label="Defense">
+                                        <option value="left_defense">Left Defense</option>
+                                        <option value="right_defense">Right Defense</option>
+                                        <option value="defense">Defense (General)</option>
+                                    </optgroup>
+                                    <optgroup label="Goalie">
+                                        <option value="goalie">Goalie</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px;">
+                            <div class="form-group">
                                 <label>League</label>
                                 <input type="text" name="league" class="form-input" placeholder="e.g., CSSHL">
                             </div>
+                            <div class="form-group">
+                                <label>Season Year</label>
+                                <input type="text" name="season_year" class="form-input" placeholder="e.g., 2024-2025">
+                            </div>
                         </div>
-                        <div class="form-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;">
+                        <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px;">
                             <div class="form-group">
                                 <label>Season Type</label>
                                 <select name="season_type" class="form-select">
@@ -397,10 +531,6 @@ function isPreferenceEnabled($preferences, $key) {
                                     <option value="Spring">Spring</option>
                                     <option value="Summer">Summer</option>
                                 </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Season Year</label>
-                                <input type="text" name="season_year" class="form-input" placeholder="e.g., 2024-2025">
                             </div>
                             <div class="form-group" style="display: flex; align-items: flex-end;">
                                 <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -416,6 +546,103 @@ function isPreferenceEnabled($preferences, $key) {
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Performance Stats Section (Position-based) -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-bar"></i> Performance Stats</h3>
+                <?php if ($currentTeam): ?>
+                <span class="badge" style="background: rgba(107, 70, 193, 0.15); color: #8B5CF6; padding: 6px 12px; border-radius: 12px; font-size: 12px;">
+                    <?php echo htmlspecialchars($currentTeam['team_name']); ?>
+                </span>
+                <?php endif; ?>
+            </div>
+            <div class="card-body">
+                <?php if (empty($userTeams)): ?>
+                <div style="text-align: center; padding: 24px; color: var(--text-muted);">
+                    <i class="fas fa-chart-bar" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5;"></i>
+                    <p>Add a team above to track your performance stats.</p>
+                </div>
+                <?php else: ?>
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px;">
+                    <?php if ($isGoalie): ?>
+                    <!-- Goalie Stats -->
+                    <div class="stat-box">
+                        <div class="stat-label">Games Played</div>
+                        <div class="stat-value"><?php echo $performanceStats['games_played'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Goals Against</div>
+                        <div class="stat-value"><?php echo $performanceStats['goals_against'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Saves</div>
+                        <div class="stat-value"><?php echo $performanceStats['saves'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box stat-highlight">
+                        <div class="stat-label">Save %</div>
+                        <div class="stat-value">
+                            <?php 
+                            $shotsAgainst = $performanceStats['shots_against'] ?? 0;
+                            $goalsAgainst = $performanceStats['goals_against'] ?? 0;
+                            $savePercentage = $shotsAgainst > 0 ? (($shotsAgainst - $goalsAgainst) / $shotsAgainst * 100) : 0;
+                            echo number_format($savePercentage, 1) . '%';
+                            ?>
+                        </div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Shots Against</div>
+                        <div class="stat-value"><?php echo $performanceStats['shots_against'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Goals</div>
+                        <div class="stat-value"><?php echo $performanceStats['goals'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Assists</div>
+                        <div class="stat-value"><?php echo $performanceStats['assists'] ?? 0; ?></div>
+                    </div>
+                    <?php else: ?>
+                    <!-- Player Stats (Forward/Defense) -->
+                    <div class="stat-box">
+                        <div class="stat-label">Games Played</div>
+                        <div class="stat-value"><?php echo $performanceStats['games_played'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box stat-highlight">
+                        <div class="stat-label">Goals</div>
+                        <div class="stat-value"><?php echo $performanceStats['goals'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box stat-highlight">
+                        <div class="stat-label">Assists</div>
+                        <div class="stat-value"><?php echo $performanceStats['assists'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box stat-highlight">
+                        <div class="stat-label">Points</div>
+                        <div class="stat-value"><?php echo ($performanceStats['goals'] ?? 0) + ($performanceStats['assists'] ?? 0); ?></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">+/-</div>
+                        <div class="stat-value <?php echo ($performanceStats['plus_minus'] ?? 0) >= 0 ? 'stat-positive' : 'stat-negative'; ?>">
+                            <?php echo ($performanceStats['plus_minus'] ?? 0) >= 0 ? '+' : ''; ?><?php echo $performanceStats['plus_minus'] ?? 0; ?>
+                        </div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Shots</div>
+                        <div class="stat-value"><?php echo $performanceStats['shots'] ?? 0; ?></div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">PIM</div>
+                        <div class="stat-value"><?php echo $performanceStats['penalty_minutes'] ?? 0; ?></div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <p style="color: var(--text-muted); font-size: 12px; margin-top: 16px; text-align: center;">
+                    <i class="fas fa-info-circle"></i> Stats are shown based on your current team position. 
+                    <?php if ($isGoalie): ?>Goalie stats displayed.<?php else: ?>Player stats displayed.<?php endif; ?>
+                </p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -1066,5 +1293,107 @@ document.addEventListener('DOMContentLoaded', function() {
     .player-form .form-row {
         grid-template-columns: 1fr;
     }
+}
+
+/* Alert Messages */
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.25));
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: #10b981;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.25));
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    color: #3b82f6;
+}
+
+.alert-error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.25));
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #ef4444;
+}
+
+.alert i {
+    font-size: 20px;
+}
+
+.alert span {
+    flex: 1;
+    font-weight: 500;
+}
+
+.alert-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    padding: 0;
+    line-height: 1;
+}
+
+.alert-close:hover {
+    opacity: 1;
+}
+
+/* Performance Stats Section */
+.stat-box {
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.08) 0%, transparent 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-box:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.stat-box.stat-highlight {
+    background: linear-gradient(135deg, rgba(107, 70, 193, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%);
+    border-color: rgba(107, 70, 193, 0.3);
+}
+
+.stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-white);
+}
+
+.stat-value.stat-positive {
+    color: #10b981;
+}
+
+.stat-value.stat-negative {
+    color: #ef4444;
 }
 </style>

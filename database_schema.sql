@@ -45,6 +45,22 @@ CREATE TABLE IF NOT EXISTS `parent_athlete_relationships` (
     UNIQUE KEY `unique_parent_athlete` (`parent_id`, `athlete_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Email change requests (for secure email address changes)
+CREATE TABLE IF NOT EXISTS `email_change_requests` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `old_email` VARCHAR(255) NOT NULL,
+    `new_email` VARCHAR(255) NOT NULL,
+    `token` VARCHAR(64) NOT NULL,
+    `expires_at` DATETIME NOT NULL,
+    `confirmed_at` DATETIME DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_user_request` (`user_id`),
+    INDEX `idx_token` (`token`),
+    INDEX `idx_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Coach-Athlete assignments
 -- Teams
 CREATE TABLE IF NOT EXISTS `teams` (
