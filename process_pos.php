@@ -50,9 +50,23 @@ try {
         case 'process_card_payment':
             $items = $input['items'] ?? [];
             $terminalReader = $input['terminal_reader'] ?? '';
+            $customerUserId = !empty($input['customer_user_id']) ? intval($input['customer_user_id']) : null;
             
             if (empty($items)) {
                 throw new Exception('Cart is empty');
+            }
+            
+            // Get customer details if a user is assigned
+            $customerName = null;
+            $customerEmail = null;
+            if ($customerUserId) {
+                $customerStmt = $pdo->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
+                $customerStmt->execute([$customerUserId]);
+                $customer = $customerStmt->fetch(PDO::FETCH_ASSOC);
+                if ($customer) {
+                    $customerName = $customer['first_name'] . ' ' . $customer['last_name'];
+                    $customerEmail = $customer['email'];
+                }
             }
             
             // Calculate totals
@@ -137,13 +151,17 @@ try {
             // Create POS transaction record with appropriate status
             $stmt = $pdo->prepare("
                 INSERT INTO pos_transactions (
-                    transaction_number, staff_id, subtotal, tax_amount, total,
-                    payment_method, card_amount, status, stripe_payment_intent, terminal_reader_id
-                ) VALUES (?, ?, ?, ?, ?, 'card', ?, ?, ?, ?)
+                    transaction_number, staff_id, customer_user_id, customer_name, customer_email,
+                    subtotal, tax_amount, total, payment_method, card_amount, status, 
+                    stripe_payment_intent, terminal_reader_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'card', ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $transactionNumber,
                 $_SESSION['user_id'],
+                $customerUserId,
+                $customerName,
+                $customerEmail,
                 $subtotal,
                 $taxAmount,
                 $total,
@@ -207,9 +225,23 @@ try {
         case 'process_cash_payment':
             $items = $input['items'] ?? [];
             $cashReceived = floatval($input['cash_received'] ?? 0);
+            $customerUserId = !empty($input['customer_user_id']) ? intval($input['customer_user_id']) : null;
             
             if (empty($items)) {
                 throw new Exception('Cart is empty');
+            }
+            
+            // Get customer details if a user is assigned
+            $customerName = null;
+            $customerEmail = null;
+            if ($customerUserId) {
+                $customerStmt = $pdo->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
+                $customerStmt->execute([$customerUserId]);
+                $customer = $customerStmt->fetch(PDO::FETCH_ASSOC);
+                if ($customer) {
+                    $customerName = $customer['first_name'] . ' ' . $customer['last_name'];
+                    $customerEmail = $customer['email'];
+                }
             }
             
             // Calculate totals
@@ -234,13 +266,16 @@ try {
             // Create POS transaction record
             $stmt = $pdo->prepare("
                 INSERT INTO pos_transactions (
-                    transaction_number, staff_id, subtotal, tax_amount, total,
-                    payment_method, cash_amount, change_given, status
-                ) VALUES (?, ?, ?, ?, ?, 'cash', ?, ?, 'completed')
+                    transaction_number, staff_id, customer_user_id, customer_name, customer_email,
+                    subtotal, tax_amount, total, payment_method, cash_amount, change_given, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'cash', ?, ?, 'completed')
             ");
             $stmt->execute([
                 $transactionNumber,
                 $_SESSION['user_id'],
+                $customerUserId,
+                $customerName,
+                $customerEmail,
                 $subtotal,
                 $taxAmount,
                 $total,

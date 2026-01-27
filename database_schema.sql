@@ -1216,6 +1216,8 @@ CREATE TABLE IF NOT EXISTS `mileage_logs` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `trip_date` DATE NOT NULL,
+    `title` VARCHAR(255) DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
     `athlete_id` INT DEFAULT NULL,
     `session_id` INT DEFAULT NULL,
     `purpose` VARCHAR(255) DEFAULT NULL,
@@ -1231,7 +1233,8 @@ CREATE TABLE IF NOT EXISTS `mileage_logs` (
     FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_date` (`trip_date`),
-    INDEX `idx_athlete` (`athlete_id`)
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_title` (`title`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage stops (multi-stop trip tracking)
@@ -3101,6 +3104,7 @@ CREATE TABLE IF NOT EXISTS `pos_transactions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `transaction_number` VARCHAR(50) NOT NULL UNIQUE,
     `staff_id` INT NOT NULL,
+    `customer_user_id` INT DEFAULT NULL,
     `customer_name` VARCHAR(255) DEFAULT NULL,
     `customer_email` VARCHAR(255) DEFAULT NULL,
     `subtotal` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -3118,7 +3122,9 @@ CREATE TABLE IF NOT EXISTS `pos_transactions` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT,
+    FOREIGN KEY (`customer_user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_staff` (`staff_id`),
+    INDEX `idx_customer` (`customer_user_id`),
     INDEX `idx_status` (`status`),
     INDEX `idx_payment_method` (`payment_method`),
     INDEX `idx_created` (`created_at`)

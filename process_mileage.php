@@ -39,6 +39,8 @@ try {
             checkCsrfToken();
             
             $trip_date = $_POST['trip_date'];
+            $title = trim($_POST['title'] ?? '');
+            $description = trim($_POST['description'] ?? '');
             $athlete_id = intval($_POST['athlete_id'] ?? 0);
             $session_id = intval($_POST['session_id'] ?? 0);
             $purpose = trim($_POST['purpose']);
@@ -74,13 +76,14 @@ try {
             
             // Insert mileage log
             $stmt = $pdo->prepare("
-                INSERT INTO mileage_logs (user_id, trip_date, athlete_id, session_id, purpose, 
+                INSERT INTO mileage_logs (user_id, trip_date, title, description, athlete_id, session_id, purpose, 
                                          total_distance_km, total_distance_miles, reimbursement_rate, 
                                          reimbursement_amount, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
             $stmt->execute([
-                $user_id, $trip_date, $athlete_id ?: null, $session_id ?: null, $purpose,
+                $user_id, $trip_date, $title ?: null, $description ?: null,
+                $athlete_id ?: null, $session_id ?: null, $purpose,
                 $distance_km, $distance_miles, $rate_per_mile, $reimbursement_amount
             ]);
             
@@ -118,6 +121,8 @@ try {
             
             $log_id = intval($_POST['log_id']);
             $trip_date = $_POST['trip_date'];
+            $title = trim($_POST['title'] ?? '');
+            $description = trim($_POST['description'] ?? '');
             $athlete_id = intval($_POST['athlete_id'] ?? 0);
             $session_id = intval($_POST['session_id'] ?? 0);
             $purpose = trim($_POST['purpose']);
@@ -136,13 +141,14 @@ try {
             // Update mileage log
             $stmt = $pdo->prepare("
                 UPDATE mileage_logs 
-                SET trip_date = ?, athlete_id = ?, session_id = ?, purpose = ?,
+                SET trip_date = ?, title = ?, description = ?, athlete_id = ?, session_id = ?, purpose = ?,
                     total_distance_km = ?, total_distance_miles = ?, reimbursement_rate = ?,
                     reimbursement_amount = ?
                 WHERE id = ? AND user_id = ?
             ");
             $stmt->execute([
-                $trip_date, $athlete_id ?: null, $session_id ?: null, $purpose,
+                $trip_date, $title ?: null, $description ?: null,
+                $athlete_id ?: null, $session_id ?: null, $purpose,
                 $distance_km, $distance_miles, $rate_per_km,
                 $reimbursement_amount, $log_id, $user_id
             ]);
@@ -194,33 +200,91 @@ try {
             break;
             
         case 'export_csv':
-            $start_date = $_GET['start_date'] ?? date('Y-m-01');
-            $end_date = $_GET['end_date'] ?? date('Y-m-t');
+            // Get filter parameters
+            $period = $_GET['period'] ?? 'month';
+            $search = trim($_GET['search'] ?? '');
+            $athlete_filter = intval($_GET['athlete_id'] ?? 0);
+            $session_filter = intval($_GET['session_id'] ?? 0);
+            
+            // Build date filter based on period
+            $date_condition = "";
+            switch ($period) {
+                case 'week':
+                    $date_condition = "ml.trip_date >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)";
+                    break;
+                case 'month':
+                    $date_condition = "ml.trip_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
+                    break;
+                case 'last_month':
+                    $date_condition = "ml.trip_date >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH) AND ml.trip_date < DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
+                    break;
+                case '3months':
+                    $date_condition = "ml.trip_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)";
+                    break;
+                case '6months':
+                    $date_condition = "ml.trip_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)";
+                    break;
+                case 'year':
+                    $date_condition = "YEAR(ml.trip_date) = YEAR(CURDATE())";
+                    break;
+                case 'last_year':
+                    $date_condition = "YEAR(ml.trip_date) = YEAR(CURDATE()) - 1";
+                    break;
+                default:
+                    $date_condition = "1=1"; // All time
+            }
+            
+            $params = [];
+            $where_conditions = [$date_condition];
+            
+            if (!empty($search)) {
+                $where_conditions[] = "(ml.title LIKE ? OR ml.purpose LIKE ? OR ml.description LIKE ?)";
+                $params[] = '%' . $search . '%';
+                $params[] = '%' . $search . '%';
+                $params[] = '%' . $search . '%';
+            }
+            
+            if ($athlete_filter > 0) {
+                $where_conditions[] = "ml.athlete_id = ?";
+                $params[] = $athlete_filter;
+            }
+            
+            if ($session_filter > 0) {
+                $where_conditions[] = "ml.session_id = ?";
+                $params[] = $session_filter;
+            }
+            
+            $where_clause = implode(' AND ', $where_conditions);
             
             $stmt = $pdo->prepare("
                 SELECT ml.*, u.first_name, u.last_name,
-                       CONCAT(a.first_name, ' ', a.last_name) as athlete_name
+                       CONCAT(a.first_name, ' ', a.last_name) as athlete_name,
+                       s.title as session_name
                 FROM mileage_logs ml
                 LEFT JOIN users u ON ml.user_id = u.id
                 LEFT JOIN users a ON ml.athlete_id = a.id
-                WHERE ml.trip_date BETWEEN ? AND ?
+                LEFT JOIN sessions s ON ml.session_id = s.id
+                WHERE $where_clause
                 ORDER BY ml.trip_date DESC
             ");
-            $stmt->execute([$start_date, $end_date]);
+            $stmt->execute($params);
             $logs = $stmt->fetchAll();
             
             header('Content-Type: text/csv');
             header('Content-Disposition: attachment; filename="mileage_logs_' . date('Y-m-d') . '.csv"');
             
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Date', 'Coach', 'Athlete', 'Purpose', 'Distance (km)', 'Distance (mi)', 'Rate/km', 'Reimbursement', 'Reimbursed']);
+            fputcsv($output, ['Date', 'Title', 'Coach', 'Athlete', 'Session', 'Purpose', 'Description', 'Distance (km)', 'Distance (mi)', 'Rate/km', 'Reimbursement', 'Reimbursed']);
             
             foreach ($logs as $log) {
                 fputcsv($output, [
                     $log['trip_date'],
+                    $log['title'] ?? '',
                     $log['first_name'] . ' ' . $log['last_name'],
                     $log['athlete_name'] ?: 'N/A',
+                    $log['session_name'] ?: 'N/A',
                     $log['purpose'],
+                    $log['description'] ?? '',
                     number_format($log['total_distance_km'], 2),
                     number_format($log['total_distance_miles'], 2),
                     '$' . number_format($log['reimbursement_rate'], 2),
