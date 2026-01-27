@@ -77,14 +77,45 @@ if ($action == 'update_info') {
 // ACTION 3: STANDARD PASSWORD CHANGE (Voluntary)
 // =========================================================
 if ($action == 'change_password') {
-    $raw_pass = $_POST['password'];
-    $hash = password_hash($raw_pass, PASSWORD_BCRYPT);
+    $current_pass = $_POST['current_password'] ?? '';
+    $new_pass = $_POST['new_password'] ?? '';
+    $confirm_pass = $_POST['confirm_password'] ?? '';
+    
+    // Validate that new password and confirm password match
+    if ($new_pass !== $confirm_pass) {
+        header("Location: dashboard.php?page=profile&tab=security&error=passwords_mismatch");
+        exit();
+    }
+    
+    // Validate password strength (minimum 8 characters)
+    if (strlen($new_pass) < 8) {
+        header("Location: dashboard.php?page=profile&tab=security&error=password_too_short");
+        exit();
+    }
     
     try {
+        // Get current password hash from database
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$current_user_id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Verify current password
+        if (!$user || !password_verify($current_pass, $user['password'])) {
+            header("Location: dashboard.php?page=profile&tab=security&error=invalid_current_password");
+            exit();
+        }
+        
+        // Hash new password and update
+        $hash = password_hash($new_pass, PASSWORD_BCRYPT);
         $pdo->prepare("UPDATE users SET password = ? WHERE id = ?")->execute([$hash, $current_user_id]);
-        header("Location: dashboard.php?page=profile&msg=pass_updated");
+        
+        header("Location: dashboard.php?page=profile&tab=security&msg=pass_updated");
         exit();
-    } catch (PDOException $e) { die("Error."); }
+    } catch (PDOException $e) { 
+        error_log("Password change error: " . $e->getMessage());
+        header("Location: dashboard.php?page=profile&tab=security&error=password_change_failed");
+        exit();
+    }
 }
 
 // =========================================================
@@ -95,6 +126,7 @@ if ($action == 'add_team') {
     $league = trim($_POST['league'] ?? '');
     $year  = trim($_POST['season_year'] ?? '');
     $type  = trim($_POST['season_type'] ?? '');
+    $position = trim($_POST['team_position'] ?? '');
     $is_current = isset($_POST['is_current']) && $_POST['is_current'] == '1' ? 1 : 0;
     
     // Build season display string, handling empty values properly
@@ -111,9 +143,9 @@ if ($action == 'add_team') {
         if ($is_current) {
             $pdo->prepare("UPDATE athlete_teams SET is_current = 0 WHERE user_id = ? OR athlete_id = ?")->execute([$current_user_id, $current_user_id]);
         }
-        // Insert new team
-        $stmt = $pdo->prepare("INSERT INTO athlete_teams (user_id, athlete_id, team_name, league, season_year, season_type, season, is_current) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$current_user_id, $current_user_id, $name, $league, $year, $type, $season_display, $is_current]);
+        // Insert new team with position
+        $stmt = $pdo->prepare("INSERT INTO athlete_teams (user_id, athlete_id, team_name, league, season_year, season_type, season, position, is_current) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$current_user_id, $current_user_id, $name, $league, $year, $type, $season_display, $position, $is_current]);
         
         header("Location: dashboard.php?page=profile&tab=player&msg=team_added");
         exit();
@@ -183,25 +215,84 @@ if ($action == 'force_password_reset') {
 if ($action == 'update_profile') {
     $first_name = trim($_POST['first_name'] ?? '');
     $last_name = trim($_POST['last_name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
+    $new_email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $birth_date = $_POST['birth_date'] ?? null;
     $position = $_POST['position'] ?? null;
     $primary_arena = trim($_POST['primary_arena'] ?? '');
     
     try {
-        $stmt = $pdo->prepare("
-            UPDATE users 
-            SET first_name = ?, last_name = ?, email = ?, phone = ?, 
-                birth_date = ?, position = ?, primary_arena = ?
-            WHERE id = ?
-        ");
-        $stmt->execute([
-            $first_name, $last_name, $email, $phone, 
-            $birth_date, $position, $primary_arena, $current_user_id
-        ]);
-        header("Location: dashboard.php?page=profile&msg=profile_updated");
-        exit();
+        // Get current user email to check if it's being changed
+        $stmt = $pdo->prepare("SELECT email, first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$current_user_id]);
+        $currentUser = $stmt->fetch(PDO::FETCH_ASSOC);
+        $old_email = $currentUser['email'];
+        
+        // Check if email is being changed
+        if ($new_email !== $old_email) {
+            // Generate a verification token for email change
+            $email_change_token = bin2hex(random_bytes(32));
+            $token_expiry = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            
+            // Store the pending email change
+            $stmt = $pdo->prepare("
+                INSERT INTO email_change_requests (user_id, old_email, new_email, token, expires_at) 
+                VALUES (?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE new_email = ?, token = ?, expires_at = ?
+            ");
+            $stmt->execute([
+                $current_user_id, $old_email, $new_email, $email_change_token, $token_expiry,
+                $new_email, $email_change_token, $token_expiry
+            ]);
+            
+            // Send confirmation email to OLD email address
+            require_once __DIR__ . '/mailer.php';
+            
+            // Build confirmation link securely - use SERVER_NAME (more reliable) or validate HTTP_HOST
+            $host = $_SERVER['SERVER_NAME'] ?? 'localhost';
+            // Validate host is not malicious
+            if (!preg_match('/^[a-zA-Z0-9][a-zA-Z0-9\-\.]*\.[a-zA-Z]{2,}$/', $host) && $host !== 'localhost') {
+                $host = 'localhost';
+            }
+            $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            $confirm_link = $protocol . "://" . $host . "/dashboard.php?page=confirm_email&token=" . $email_change_token;
+            
+            sendEmail($old_email, 'email_change_confirmation', [
+                'name' => $first_name,
+                'old_email' => $old_email,
+                'new_email' => $new_email,
+                'confirm_link' => $confirm_link
+            ]);
+            
+            // Update other fields but NOT the email
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET first_name = ?, last_name = ?, phone = ?, 
+                    birth_date = ?, position = ?, primary_arena = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $first_name, $last_name, $phone, 
+                $birth_date, $position, $primary_arena, $current_user_id
+            ]);
+            
+            header("Location: dashboard.php?page=profile&msg=email_change_pending");
+            exit();
+        } else {
+            // Email not changed, update all fields normally
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, 
+                    birth_date = ?, position = ?, primary_arena = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $first_name, $last_name, $new_email, $phone, 
+                $birth_date, $position, $primary_arena, $current_user_id
+            ]);
+            header("Location: dashboard.php?page=profile&msg=profile_updated");
+            exit();
+        }
     } catch (PDOException $e) {
         error_log("Profile update error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&error=update_failed");
@@ -347,6 +438,48 @@ if ($action == 'update_preference') {
         echo json_encode(['success' => false, 'message' => 'Database error']);
     }
     exit();
+}
+
+// =========================================================
+// ACTION 11: CONFIRM EMAIL CHANGE
+// =========================================================
+if ($action == 'confirm_email_change') {
+    $token = trim($_POST['token'] ?? $_GET['token'] ?? '');
+    
+    if (empty($token)) {
+        header("Location: dashboard.php?page=profile&error=invalid_or_expired_token");
+        exit();
+    }
+    
+    try {
+        // Find the email change request
+        $stmt = $pdo->prepare("
+            SELECT * FROM email_change_requests 
+            WHERE token = ? AND user_id = ? AND expires_at > NOW() AND confirmed_at IS NULL
+        ");
+        $stmt->execute([$token, $current_user_id]);
+        $request = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$request) {
+            header("Location: dashboard.php?page=profile&error=invalid_or_expired_token");
+            exit();
+        }
+        
+        // Update the user's email
+        $stmt = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
+        $stmt->execute([$request['new_email'], $current_user_id]);
+        
+        // Mark the request as confirmed
+        $stmt = $pdo->prepare("UPDATE email_change_requests SET confirmed_at = NOW() WHERE id = ?");
+        $stmt->execute([$request['id']]);
+        
+        header("Location: dashboard.php?page=profile&msg=email_changed");
+        exit();
+    } catch (PDOException $e) {
+        error_log("Email change confirmation error: " . $e->getMessage());
+        header("Location: dashboard.php?page=profile&error=email_change_failed");
+        exit();
+    }
 }
 
 // Fallback
