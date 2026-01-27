@@ -144,14 +144,23 @@ if ($editDrillId) {
                         </div>
 
                         <div class="form-group">
-                            <label>Category *</label>
+                            <label>Category (Skill Focus) *</label>
                             <select name="category" class="form-input" required>
                                 <option value="">-- Select Category --</option>
                                 <?php 
-                                $cats = ['Skating', 'Shooting', 'Passing', 'Stickhandling', 'Defensive', 'Offensive', 'Conditioning'];
+                                // Fetch skill categories from database
+                                $skillStmt = $pdo->prepare("SELECT name FROM eval_skills ORDER BY name ASC");
+                                $skillStmt->execute();
+                                $skillCategories = $skillStmt->fetchAll(PDO::FETCH_COLUMN);
+                                
+                                // If no skills in database, use default categories
+                                if (empty($skillCategories)) {
+                                    $skillCategories = ['Skating', 'Shooting', 'Passing', 'Stickhandling', 'Defensive', 'Offensive', 'Conditioning'];
+                                }
+                                
                                 $currentCat = $editingDrill['category'] ?? '';
-                                foreach ($cats as $cat): ?>
-                                <option <?php echo ($currentCat === $cat) ? 'selected' : ''; ?>><?php echo $cat; ?></option>
+                                foreach ($skillCategories as $cat): ?>
+                                <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo ($currentCat === $cat) ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -197,24 +206,55 @@ if ($editDrillId) {
 
                     <div class="form-group">
                         <label>Equipment Needed</label>
-                        <?php $equipment = explode(',', $editingDrill['equipment'] ?? ''); ?>
+                        <?php 
+                        $currentEquipment = explode(',', $editingDrill['equipment'] ?? '');
+                        // Fetch equipment categories from database
+                        $equipStmt = $pdo->prepare("SELECT id, name FROM equipment WHERE equipment_type = 'category' ORDER BY name ASC");
+                        $equipStmt->execute();
+                        $equipmentCategories = $equipStmt->fetchAll();
+                        ?>
                         <div class="equipment-tags">
-                            <label class="checkbox-tag">
-                                <input type="checkbox" name="equipment[]" value="pucks" <?php echo in_array('pucks', $equipment) ? 'checked' : ''; ?>>
-                                <span><i class="fas fa-hockey-puck"></i> Pucks</span>
-                            </label>
-                            <label class="checkbox-tag">
-                                <input type="checkbox" name="equipment[]" value="cones" <?php echo in_array('cones', $equipment) ? 'checked' : ''; ?>>
-                                <span><i class="fas fa-traffic-cone"></i> Cones</span>
-                            </label>
-                            <label class="checkbox-tag">
-                                <input type="checkbox" name="equipment[]" value="nets" <?php echo in_array('nets', $equipment) ? 'checked' : ''; ?>>
-                                <span><i class="fas fa-bullseye"></i> Nets</span>
-                            </label>
-                            <label class="checkbox-tag">
-                                <input type="checkbox" name="equipment[]" value="sticks" <?php echo in_array('sticks', $equipment) ? 'checked' : ''; ?>>
-                                <span><i class="fas fa-hockey-stick"></i> Extra Sticks</span>
-                            </label>
+                            <?php if (count($equipmentCategories) > 0): ?>
+                                <?php foreach ($equipmentCategories as $equip): 
+                                    $equipValue = strtolower(str_replace(' ', '_', $equip['name']));
+                                    $isChecked = in_array($equipValue, $currentEquipment) || in_array($equip['name'], $currentEquipment);
+                                    // Get appropriate icon based on equipment name
+                                    $icon = 'fa-tools';
+                                    $nameLower = strtolower($equip['name']);
+                                    if (strpos($nameLower, 'puck') !== false) $icon = 'fa-hockey-puck';
+                                    elseif (strpos($nameLower, 'cone') !== false) $icon = 'fa-play';
+                                    elseif (strpos($nameLower, 'net') !== false) $icon = 'fa-bullseye';
+                                    elseif (strpos($nameLower, 'stick') !== false) $icon = 'fa-slash';
+                                    elseif (strpos($nameLower, 'tire') !== false) $icon = 'fa-circle-notch';
+                                    elseif (strpos($nameLower, 'goal') !== false) $icon = 'fa-border-all';
+                                ?>
+                                <label class="checkbox-tag">
+                                    <input type="checkbox" name="equipment[]" value="<?php echo htmlspecialchars($equipValue); ?>" <?php echo $isChecked ? 'checked' : ''; ?>>
+                                    <span><i class="fas <?php echo $icon; ?>"></i> <?php echo htmlspecialchars($equip['name']); ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <!-- Fallback to default equipment if no categories defined -->
+                                <label class="checkbox-tag">
+                                    <input type="checkbox" name="equipment[]" value="pucks" <?php echo in_array('pucks', $currentEquipment) ? 'checked' : ''; ?>>
+                                    <span><i class="fas fa-hockey-puck"></i> Pucks</span>
+                                </label>
+                                <label class="checkbox-tag">
+                                    <input type="checkbox" name="equipment[]" value="cones" <?php echo in_array('cones', $currentEquipment) ? 'checked' : ''; ?>>
+                                    <span><i class="fas fa-play"></i> Cones</span>
+                                </label>
+                                <label class="checkbox-tag">
+                                    <input type="checkbox" name="equipment[]" value="nets" <?php echo in_array('nets', $currentEquipment) ? 'checked' : ''; ?>>
+                                    <span><i class="fas fa-bullseye"></i> Nets</span>
+                                </label>
+                                <label class="checkbox-tag">
+                                    <input type="checkbox" name="equipment[]" value="sticks" <?php echo in_array('sticks', $currentEquipment) ? 'checked' : ''; ?>>
+                                    <span><i class="fas fa-slash"></i> Extra Sticks</span>
+                                </label>
+                                <p class="help-text" style="width: 100%; margin-top: 8px; font-size: 12px; color: var(--text-dim);">
+                                    <i class="fas fa-info-circle"></i> <a href="?page=categories&tab=equipment" style="color: var(--primary-light);">Add more equipment categories</a> in the admin settings.
+                                </p>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </form>
