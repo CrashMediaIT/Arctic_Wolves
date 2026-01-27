@@ -40,6 +40,7 @@ $isFrontDesk   = ($user_role === 'front_desk_staff');
 $isAnyCoach    = ($isCoach || $isHealthCoach || $isAdmin);
 $isTeamStaff   = ($isTeamCoach);
 $canAccessPOS  = ($isAdmin || $isFrontDesk);
+$canAccessHealthManagement = ($isHealthCoach || $isAdmin);
 
 $page = $_GET['page'] ?? 'home';
 
@@ -190,6 +191,11 @@ $allowed_pages = [
     'testing'                 => 'views/testing.php',
     'parent_home'             => 'views/parent_home.php',
     'athlete_detail'          => 'views/athlete_detail.php',
+    
+    // Health Management (Health Coaches & Admins)
+    'library_workouts'        => 'views/library_workouts.php',
+    'library_nutrition'       => 'views/library_nutrition.php',
+    'health_coach_roster'     => 'views/health_coach_roster.php',
     
     // Profile and Settings
     'profile'                 => 'views/profile.php',
@@ -603,6 +609,24 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>">
                 <i class="fa-solid fa-plane icon"></i> Travel
+            </a>
+        </nav>
+    </div>
+    <?php endif; ?>
+
+    <!-- HEALTH MANAGEMENT (Health Coaches and Admins) -->
+    <?php if($canAccessHealthManagement): ?>
+    <div class="nav-group">
+        <span class="nav-label">Health</span>
+        <nav class="nav-menu">
+            <a href="?page=library_workouts" class="nav-link <?= $page=='library_workouts'?'active':'' ?>">
+                <i class="fa-solid fa-dumbbell icon"></i> Strength & Conditioning
+            </a>
+            <a href="?page=library_nutrition" class="nav-link <?= $page=='library_nutrition'?'active':'' ?>">
+                <i class="fa-solid fa-utensils icon"></i> Nutrition
+            </a>
+            <a href="?page=health_coach_roster" class="nav-link <?= $page=='health_coach_roster'?'active':'' ?>">
+                <i class="fa-solid fa-users-gear icon"></i> My Athletes
             </a>
         </nav>
     </div>
