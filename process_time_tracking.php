@@ -38,7 +38,7 @@ if (!isset($input['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equ
 }
 
 $action = $input['action'] ?? '';
-$userId = $_SESSION['user_id'];
+$userId = intval($_SESSION['user_id']); // Ensure user ID is an integer
 
 try {
     switch ($action) {
@@ -492,11 +492,11 @@ try {
             
             $pinHash = password_hash($pin, PASSWORD_DEFAULT);
             
-            // Insert or update PIN
+            // Insert or update PIN - use new_values alias for MySQL 8.0.20+ compatibility
             $stmt = $pdo->prepare("
                 INSERT INTO staff_pins (user_id, pin_hash, is_active) 
-                VALUES (?, ?, 1)
-                ON DUPLICATE KEY UPDATE pin_hash = VALUES(pin_hash), is_active = 1
+                VALUES (?, ?, 1) AS new_values
+                ON DUPLICATE KEY UPDATE pin_hash = new_values.pin_hash, is_active = 1
             ");
             $stmt->execute([$staffId, $pinHash]);
             

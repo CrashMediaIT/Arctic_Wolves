@@ -26,7 +26,8 @@ try {
     $stmt->execute([$currentUserId]);
     $shifts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Calculate summaries
+    // Calculate summaries - periods are hardcoded constants, safe for SQL interpolation
+    $allowedPeriods = ['week', 'month', 'quarter', 'year'];
     $periods = [
         'week' => 'DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
         'month' => 'DATE_SUB(CURDATE(), INTERVAL 1 MONTH)',
@@ -35,6 +36,7 @@ try {
     ];
     
     foreach ($periods as $period => $dateExpr) {
+        if (!in_array($period, $allowedPeriods)) continue; // Whitelist check for defense in depth
         $summaryStmt = $pdo->prepare("
             SELECT COALESCE(SUM(total_hours), 0) as total_hours, COUNT(*) as shift_count
             FROM staff_shifts 
