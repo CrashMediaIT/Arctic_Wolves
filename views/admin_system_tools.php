@@ -84,6 +84,10 @@ try {
                 <i class="fas fa-rocket"></i>
                 <span>Production</span>
             </a>
+            <a href="?page=system_tools&tab=updates" class="tools-tab-link <?php echo $activeTab === 'updates' ? 'active' : ''; ?>">
+                <i class="fas fa-download"></i>
+                <span>Updates</span>
+            </a>
             <a href="system_health_validator.php" class="tools-tab-link">
                 <i class="fas fa-heartbeat"></i>
                 <span>Health</span>
@@ -368,9 +372,11 @@ try {
 
     <!-- Nextcloud Integration Tab -->
     <div class="tab-content <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>" id="nextcloud-tab">
+        <!-- Primary Server Card -->
         <div class="card">
             <div class="card-header">
-                <h3><i class="fas fa-cloud"></i> Nextcloud Integration</h3>
+                <h3><i class="fas fa-cloud"></i> Primary Nextcloud Server</h3>
+                <span class="badge badge-primary">Active</span>
             </div>
             <div class="card-body">
                 <div class="integration-status <?php echo !empty($settings['nextcloud_url']) ? 'connected' : 'disconnected'; ?>">
@@ -378,7 +384,7 @@ try {
                         <i class="fas <?php echo !empty($settings['nextcloud_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
                     </div>
                     <div class="status-info">
-                        <h4><?php echo !empty($settings['nextcloud_url']) ? 'Connected to Nextcloud' : 'Not Connected'; ?></h4>
+                        <h4><?php echo !empty($settings['nextcloud_url']) ? 'Connected to Primary Server' : 'Not Connected'; ?></h4>
                         <p><?php echo !empty($settings['nextcloud_url']) ? htmlspecialchars($settings['nextcloud_url']) : 'Configure Nextcloud settings to enable file sync'; ?></p>
                     </div>
                 </div>
@@ -391,7 +397,7 @@ try {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>Nextcloud URL</h4>
-                                <p>Your Nextcloud server address</p>
+                                <p>Your primary Nextcloud server address</p>
                             </div>
                             <input type="url" name="nextcloud_url" class="form-input" 
                                    value="<?php echo htmlspecialchars($settings['nextcloud_url'] ?? ''); ?>"
@@ -416,15 +422,6 @@ try {
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>Sync Folder</h4>
-                                <p>Folder path for uploaded files</p>
-                            </div>
-                            <input type="text" name="nextcloud_folder" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['nextcloud_folder'] ?? '/Arctic_Wolves'); ?>"
-                                   placeholder="/Arctic_Wolves">
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
                                 <h4>Enable Auto-Sync</h4>
                                 <p>Automatically sync backups and uploads</p>
                             </div>
@@ -437,8 +434,54 @@ try {
                         </div>
                     </div>
                     
+                    <!-- Directory Configuration -->
                     <div class="sync-options">
-                        <h4><i class="fas fa-folder-open"></i> Sync Options</h4>
+                        <h4><i class="fas fa-folder-tree"></i> Directory Configuration</h4>
+                        <p class="help-text" style="margin-bottom: 16px;">Configure the Nextcloud directory path for each file type</p>
+                        <div class="settings-list">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-database" style="color: #8B5CF6; margin-right: 8px;"></i>Backups Directory</h4>
+                                    <p>Database backups storage path</p>
+                                </div>
+                                <input type="text" name="nextcloud_backups_dir" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_backups_dir'] ?? '/Arctic_Wolves/Backups'); ?>"
+                                       placeholder="/Arctic_Wolves/Backups">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-video" style="color: #10b981; margin-right: 8px;"></i>Videos Directory</h4>
+                                    <p>Video uploads storage path</p>
+                                </div>
+                                <input type="text" name="nextcloud_videos_dir" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_videos_dir'] ?? '/Arctic_Wolves/Videos'); ?>"
+                                       placeholder="/Arctic_Wolves/Videos">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-receipt" style="color: #f59e0b; margin-right: 8px;"></i>Receipts Directory</h4>
+                                    <p>Scanned receipts storage path</p>
+                                </div>
+                                <input type="text" name="nextcloud_receipts_dir" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_receipts_dir'] ?? '/Arctic_Wolves/Receipts'); ?>"
+                                       placeholder="/Arctic_Wolves/Receipts">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-file-alt" style="color: #3b82f6; margin-right: 8px;"></i>Documents Directory</h4>
+                                    <p>General documents storage path</p>
+                                </div>
+                                <input type="text" name="nextcloud_documents_dir" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_documents_dir'] ?? '/Arctic_Wolves/Documents'); ?>"
+                                       placeholder="/Arctic_Wolves/Documents">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sync Options -->
+                    <div class="sync-options" style="margin-top: 24px;">
+                        <h4><i class="fas fa-check-double"></i> Sync Options</h4>
+                        <p class="help-text" style="margin-bottom: 16px;">Select which content types to sync to Nextcloud</p>
                         <div class="checkbox-grid">
                             <label class="checkbox-item">
                                 <input type="checkbox" name="sync_backups" 
@@ -464,7 +507,7 @@ try {
                     </div>
                     
                     <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="testNextcloudConnection()">
+                        <button type="button" class="btn btn-secondary" onclick="testNextcloudConnection('primary')">
                             <i class="fas fa-vial"></i> Test Connection
                         </button>
                         <button type="button" class="btn btn-secondary" onclick="syncNow()">
@@ -472,6 +515,108 @@ try {
                         </button>
                         <button type="submit" class="btn btn-primary" data-action="save">
                             <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Backup Server Card -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-cloud-upload-alt"></i> Backup Nextcloud Server (Redundancy)</h3>
+                <span class="badge badge-secondary">Standby</span>
+            </div>
+            <div class="card-body">
+                <div class="info-box" style="margin-bottom: 24px;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <p><strong>Redundancy Configuration:</strong> The backup server receives periodic copies of all files from the primary. If the primary becomes unavailable for 5 minutes, the system automatically fails over to the backup server and promotes it to primary. When the original primary comes back online, files saved during the outage are synced back to it.</p>
+                    </div>
+                </div>
+                
+                <div class="integration-status <?php echo !empty($settings['nextcloud_backup_url']) ? 'connected' : 'disconnected'; ?>">
+                    <div class="status-icon">
+                        <i class="fas <?php echo !empty($settings['nextcloud_backup_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                    </div>
+                    <div class="status-info">
+                        <h4><?php echo !empty($settings['nextcloud_backup_url']) ? 'Backup Server Connected' : 'Backup Server Not Configured'; ?></h4>
+                        <p><?php echo !empty($settings['nextcloud_backup_url']) ? htmlspecialchars($settings['nextcloud_backup_url']) : 'Configure backup server for redundancy'; ?></p>
+                    </div>
+                </div>
+                
+                <form id="nextcloud-backup-form" method="POST" action="process_settings.php" data-form-type="nextcloud-backup">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_nextcloud_backup">
+                    <input type="hidden" name="redirect_page" value="system_tools">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Enable Backup Server</h4>
+                                <p>Activate redundant Nextcloud server for failover</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="nextcloud_backup_enabled" 
+                                       <?php echo !empty($settings['nextcloud_backup_enabled']) ? 'checked' : ''; ?>
+                                       data-action="toggle-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Backup Server URL</h4>
+                                <p>Your backup Nextcloud server address</p>
+                            </div>
+                            <input type="url" name="nextcloud_backup_url" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['nextcloud_backup_url'] ?? ''); ?>"
+                                   placeholder="https://backup-cloud.example.com">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Username</h4>
+                                <p>Backup server account username</p>
+                            </div>
+                            <input type="text" name="nextcloud_backup_username" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['nextcloud_backup_username'] ?? ''); ?>"
+                                   placeholder="admin">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>App Password</h4>
+                                <p>Backup server app-specific password<?php echo !empty($settings['nextcloud_backup_password']) ? ' (currently set)' : ''; ?></p>
+                            </div>
+                            <input type="password" name="nextcloud_backup_password" class="form-input" 
+                                   placeholder="<?php echo !empty($settings['nextcloud_backup_password']) ? 'Leave blank to keep current password' : 'Enter app password'; ?>">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Failover Timeout (seconds)</h4>
+                                <p>Time to wait before failing over to backup (default: 300 = 5 minutes)</p>
+                            </div>
+                            <input type="number" name="nextcloud_failover_timeout" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['nextcloud_failover_timeout'] ?? '300'); ?>"
+                                   placeholder="300" min="60" max="3600">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Sync Interval (minutes)</h4>
+                                <p>How often to sync files from primary to backup</p>
+                            </div>
+                            <input type="number" name="nextcloud_sync_interval" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['nextcloud_sync_interval'] ?? '60'); ?>"
+                                   placeholder="60" min="5" max="1440">
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="testNextcloudConnection('backup')">
+                            <i class="fas fa-vial"></i> Test Backup Connection
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="syncToBackup()">
+                            <i class="fas fa-sync"></i> Sync to Backup Now
+                        </button>
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Backup Settings
                         </button>
                     </div>
                 </form>
@@ -584,34 +729,110 @@ try {
                 <h3><i class="fas fa-palette"></i> Theme Customization</h3>
             </div>
             <div class="card-body">
-                <form id="theme-form" method="POST" action="process_settings.php" data-form-type="theme">
+                <form id="theme-form" method="POST" action="process_theme.php" enctype="multipart/form-data" data-form-type="theme">
                     <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="update_theme">
-                    <div class="theme-colors">
-                        <div class="color-picker-item">
-                            <label>Primary Color</label>
-                            <div class="color-input-group">
-                                <input type="color" name="primary_color" value="#6B46C1">
-                                <input type="text" class="form-input" value="#6B46C1" readonly>
+                    <input type="hidden" name="redirect_page" value="system_tools">
+                    
+                    <!-- Color Scheme Section -->
+                    <div class="sync-options" style="margin-bottom: 24px;">
+                        <h4><i class="fas fa-swatchbook"></i> Color Scheme</h4>
+                        <p class="help-text" style="margin-bottom: 16px;">Customize the application's color palette</p>
+                        <div class="theme-colors">
+                            <div class="color-picker-item">
+                                <label>Primary Color</label>
+                                <div class="color-input-group">
+                                    <input type="color" name="primary_color" id="primary_color" value="<?php echo htmlspecialchars($settings['primary_color'] ?? '#6B46C1'); ?>">
+                                    <input type="text" class="form-input" id="primary_color_text" value="<?php echo htmlspecialchars($settings['primary_color'] ?? '#6B46C1'); ?>" readonly>
+                                </div>
                             </div>
-                        </div>
-                        <div class="color-picker-item">
-                            <label>Accent Color</label>
-                            <div class="color-input-group">
-                                <input type="color" name="accent_color" value="#8B5CF6">
-                                <input type="text" class="form-input" value="#8B5CF6" readonly>
+                            <div class="color-picker-item">
+                                <label>Accent Color</label>
+                                <div class="color-input-group">
+                                    <input type="color" name="accent_color" id="accent_color" value="<?php echo htmlspecialchars($settings['accent_color'] ?? '#8B5CF6'); ?>">
+                                    <input type="text" class="form-input" id="accent_color_text" value="<?php echo htmlspecialchars($settings['accent_color'] ?? '#8B5CF6'); ?>" readonly>
+                                </div>
                             </div>
-                        </div>
-                        <div class="color-picker-item">
-                            <label>Background Color</label>
-                            <div class="color-input-group">
-                                <input type="color" name="bg_color" value="#06080b">
-                                <input type="text" class="form-input" value="#06080b" readonly>
+                            <div class="color-picker-item">
+                                <label>Background Color</label>
+                                <div class="color-input-group">
+                                    <input type="color" name="bg_color" id="bg_color" value="<?php echo htmlspecialchars($settings['background_color'] ?? '#06080b'); ?>">
+                                    <input type="text" class="form-input" id="bg_color_text" value="<?php echo htmlspecialchars($settings['background_color'] ?? '#06080b'); ?>" readonly>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Logo & Branding Section -->
+                    <div class="sync-options" style="margin-bottom: 24px;">
+                        <h4><i class="fas fa-image"></i> Logo & Branding</h4>
+                        <p class="help-text" style="margin-bottom: 16px;">Upload a logo or use a URL. The logo will also be used as the site favicon.</p>
+                        
+                        <div class="settings-list">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Logo Source</h4>
+                                    <p>Choose how to provide your logo</p>
+                                </div>
+                                <div class="logo-source-options" style="display: flex; gap: 20px;">
+                                    <label class="radio-item">
+                                        <input type="radio" name="logo_method" value="upload" <?php echo (($settings['logo_method'] ?? 'url') === 'upload') ? 'checked' : ''; ?> onchange="toggleLogoInput()">
+                                        <span>Upload File</span>
+                                    </label>
+                                    <label class="radio-item">
+                                        <input type="radio" name="logo_method" value="url" <?php echo (($settings['logo_method'] ?? 'url') === 'url') ? 'checked' : ''; ?> onchange="toggleLogoInput()">
+                                        <span>Use URL</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="setting-item" id="logo-upload-row" style="<?php echo (($settings['logo_method'] ?? 'url') === 'url') ? 'display: none;' : ''; ?>">
+                                <div class="setting-info">
+                                    <h4>Upload Logo</h4>
+                                    <p>Recommended: PNG or SVG, 200x50px or higher</p>
+                                </div>
+                                <input type="file" name="logo" class="form-input" accept="image/*" style="max-width: 300px;">
+                            </div>
+                            
+                            <div class="setting-item" id="logo-url-row" style="<?php echo (($settings['logo_method'] ?? 'url') === 'upload') ? 'display: none;' : ''; ?>">
+                                <div class="setting-info">
+                                    <h4>Logo URL</h4>
+                                    <p>Direct URL to your logo image</p>
+                                </div>
+                                <input type="url" name="logo_url" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['logo_url'] ?? ''); ?>"
+                                       placeholder="https://example.com/logo.png" style="min-width: 300px;">
+                            </div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Use Logo as Favicon</h4>
+                                    <p>Automatically use the logo as the browser favicon (tab icon)</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="use_logo_as_favicon" 
+                                           <?php echo !empty($settings['use_logo_as_favicon']) ? 'checked' : ''; ?>
+                                           data-action="toggle-setting">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <?php if (!empty($settings['logo_url'])): ?>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Current Logo Preview</h4>
+                                    <p>This logo is currently in use</p>
+                                </div>
+                                <div class="logo-preview" style="background: #0A0A0F; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <img src="<?php echo htmlspecialchars($settings['logo_url']); ?>" alt="Current Logo" style="max-height: 60px; max-width: 200px;">
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
                     <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" data-action="reset">
+                        <button type="button" class="btn btn-secondary" onclick="resetThemeToDefault()">
                             <i class="fas fa-undo"></i> Reset to Default
                         </button>
                         <button type="submit" class="btn btn-primary" data-action="save">
@@ -635,7 +856,7 @@ try {
                         <i class="fas fa-download"></i>
                         <h4>Backup Database</h4>
                         <p>Create a full database backup</p>
-                        <button class="btn btn-primary" data-action="backup">
+                        <button class="btn btn-primary" onclick="performDatabaseBackup()">
                             <i class="fas fa-download"></i> Backup Now
                         </button>
                     </div>
@@ -643,25 +864,39 @@ try {
                         <i class="fas fa-upload"></i>
                         <h4>Restore Database</h4>
                         <p>Restore from backup file</p>
-                        <button class="btn btn-secondary" data-action="restore">
+                        <button class="btn btn-secondary" onclick="showRestoreModal()">
                             <i class="fas fa-upload"></i> Restore
                         </button>
                     </div>
                     <div class="db-tool-card">
-                        <i class="fas fa-sync"></i>
-                        <h4>Optimize Database</h4>
-                        <p>Optimize tables and clean up</p>
-                        <button class="btn btn-secondary" data-action="optimize">
-                            <i class="fas fa-sync"></i> Optimize
+                        <i class="fas fa-wrench"></i>
+                        <h4>Repair & Optimize</h4>
+                        <p>Repair damaged tables and optimize for performance</p>
+                        <button class="btn btn-secondary" onclick="repairOptimizeDatabase()">
+                            <i class="fas fa-wrench"></i> Repair & Optimize
                         </button>
                     </div>
                     <div class="db-tool-card warning">
                         <i class="fas fa-trash-alt"></i>
                         <h4>Clear Cache</h4>
-                        <p>Clear all cached data</p>
-                        <button class="btn btn-secondary" data-action="clear-cache">
-                            <i class="fas fa-trash-alt"></i> Clear
+                        <p>Clear all cached data and temporary files</p>
+                        <button class="btn btn-secondary" onclick="clearCache()">
+                            <i class="fas fa-trash-alt"></i> Clear Cache
                         </button>
+                    </div>
+                </div>
+                
+                <!-- Database Status Info -->
+                <div class="info-box" style="margin-top: 24px;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <p><strong>Repair & Optimize</strong> performs the following operations:</p>
+                        <ul style="margin: 8px 0; padding-left: 20px; color: var(--text-dim);">
+                            <li>CHECK TABLE - Identifies corrupted or damaged tables</li>
+                            <li>REPAIR TABLE - Fixes any corruption found</li>
+                            <li>OPTIMIZE TABLE - Defragments tables and reclaims unused space</li>
+                            <li>ANALYZE TABLE - Updates table statistics for better query performance</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -724,6 +959,115 @@ try {
                         <i class="fas fa-rocket"></i> Activate Production Mode
                     </button>
                     <p class="help-text">Make sure you have backed up your database before proceeding</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Updates Tab -->
+    <div class="tab-content <?php echo $activeTab === 'updates' ? 'active' : ''; ?>" id="updates-tab">
+        <!-- System Updates Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-code-branch"></i> System Updates</h3>
+            </div>
+            <div class="card-body">
+                <div class="info-box" style="margin-bottom: 24px;">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Check for and apply updates from the Arctic Wolves GitHub repository. Updates include new features, bug fixes, and security patches.</p>
+                </div>
+                
+                <div id="github-update-status" class="integration-status disconnected" style="margin-bottom: 24px;">
+                    <div class="status-icon">
+                        <i class="fas fa-sync"></i>
+                    </div>
+                    <div class="status-info">
+                        <h4>Update Status</h4>
+                        <p>Click "Check for Updates" to see available updates</p>
+                    </div>
+                </div>
+                
+                <form id="github-form" method="POST" action="process_settings.php" data-form-type="github">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_github_settings">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>GitHub Personal Access Token (Optional)</h4>
+                                <p>Required only if the repository is private. Leave blank for public repos.<?php echo !empty($settings['github_token']) ? ' (currently set)' : ''; ?></p>
+                            </div>
+                            <input type="password" name="github_token" class="form-input" 
+                                   placeholder="<?php echo !empty($settings['github_token']) ? 'Leave blank to keep current token' : 'ghp_xxxxxxxxxxxxx'; ?>"
+                                   style="min-width: 300px;">
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="testGitHubConnection()">
+                            <i class="fas fa-vial"></i> Test Connection
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="checkForUpdates()">
+                            <i class="fas fa-sync"></i> Check for Updates
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="applyUpdates()" id="apply-updates-btn" disabled>
+                            <i class="fas fa-download"></i> Apply Updates
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Update Log -->
+                <div id="update-log" style="display: none; margin-top: 24px;">
+                    <h4 style="color: var(--text-white); margin-bottom: 12px;"><i class="fas fa-list"></i> Update Log</h4>
+                    <div id="update-log-content" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; color: var(--text-dim);"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stripe PHP Library Updates -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fab fa-stripe-s"></i> Stripe PHP Library</h3>
+            </div>
+            <div class="card-body">
+                <div class="info-box" style="margin-bottom: 24px;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <p>Update the Stripe PHP library from the official repository: <a href="https://github.com/stripe/stripe-php" target="_blank" style="color: #8B5CF6;">stripe/stripe-php</a></p>
+                        <p style="margin-top: 8px; font-size: 13px; color: var(--text-dim);">The Stripe PHP library is located in the <code>/stripe-php</code> directory at the root of this application.</p>
+                    </div>
+                </div>
+                
+                <?php
+                // Get current Stripe version if available - validate path is within expected directory
+                $stripe_base_path = realpath(__DIR__ . '/../stripe-php');
+                $stripe_version_file = $stripe_base_path ? $stripe_base_path . '/VERSION' : '';
+                $current_stripe_version = 'Unknown';
+                if ($stripe_version_file && strpos(realpath(dirname($stripe_version_file)), $stripe_base_path) === 0) {
+                    if (file_exists($stripe_version_file)) {
+                        $current_stripe_version = trim(file_get_contents($stripe_version_file));
+                    }
+                }
+                ?>
+                
+                <div class="integration-status connected" style="margin-bottom: 24px;">
+                    <div class="status-icon">
+                        <i class="fab fa-stripe-s"></i>
+                    </div>
+                    <div class="status-info">
+                        <h4>Current Version: <?php echo htmlspecialchars($current_stripe_version); ?></h4>
+                        <p>Stripe PHP Library installed in /stripe-php</p>
+                    </div>
+                </div>
+                
+                <div id="stripe-update-status" style="display: none; margin-bottom: 24px;"></div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="checkStripeUpdates()">
+                        <i class="fas fa-sync"></i> Check for Updates
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="updateStripeLibrary()" id="update-stripe-btn" disabled>
+                        <i class="fas fa-download"></i> Update Stripe Library
+                    </button>
                 </div>
             </div>
         </div>
@@ -973,6 +1317,482 @@ function testGoogleMapsAPI() {
         btn.disabled = false;
         btn.innerHTML = originalText;
         alert('✗ Failed to test Google Maps API\n\nPlease check your network connection and API key.');
+        console.error('Error:', error);
+    });
+}
+
+// Theme functions
+function toggleLogoInput() {
+    const method = document.querySelector('input[name="logo_method"]:checked').value;
+    document.getElementById('logo-upload-row').style.display = method === 'upload' ? '' : 'none';
+    document.getElementById('logo-url-row').style.display = method === 'url' ? '' : 'none';
+}
+
+function resetThemeToDefault() {
+    if (confirm('Reset all theme settings to default values?')) {
+        document.getElementById('primary_color').value = '#6B46C1';
+        document.getElementById('primary_color_text').value = '#6B46C1';
+        document.getElementById('accent_color').value = '#8B5CF6';
+        document.getElementById('accent_color_text').value = '#8B5CF6';
+        document.getElementById('bg_color').value = '#06080b';
+        document.getElementById('bg_color_text').value = '#06080b';
+    }
+}
+
+// Color picker sync
+document.querySelectorAll('input[type="color"]').forEach(input => {
+    input.addEventListener('input', function() {
+        const textInput = this.nextElementSibling;
+        if (textInput && textInput.tagName === 'INPUT') {
+            textInput.value = this.value;
+        }
+    });
+});
+
+// Database Tools functions
+function performDatabaseBackup() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Backing up...';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_database_backup.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=manual_backup&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            alert('✓ Database Backup Complete!\n\n' + (data.message || 'Backup created successfully.'));
+        } else {
+            alert('✗ Backup Failed\n\n' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: Failed to create backup');
+        console.error('Error:', error);
+    });
+}
+
+function showRestoreModal() {
+    window.location.href = 'dashboard.php?page=database_restore';
+}
+
+function repairOptimizeDatabase() {
+    if (!confirm('This will repair and optimize all database tables. Continue?')) return;
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Optimizing...';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_database_backup.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=repair_optimize&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            alert('✓ Database Optimized!\n\n' + (data.message || 'All tables have been repaired and optimized.'));
+        } else {
+            alert('✗ Optimization Failed\n\n' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: Failed to optimize database');
+        console.error('Error:', error);
+    });
+}
+
+function clearCache() {
+    if (!confirm('Clear all cached data? This may temporarily slow down the application.')) return;
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_database_backup.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=clear_cache&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            alert('✓ Cache Cleared!\n\n' + (data.message || 'All cached data has been cleared.'));
+        } else {
+            alert('✗ Clear Cache Failed\n\n' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error: Failed to clear cache');
+        console.error('Error:', error);
+    });
+}
+
+// Nextcloud functions
+function testNextcloudConnection(serverType = 'primary') {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    const formId = serverType === 'backup' ? 'nextcloud-backup-form' : 'nextcloud-form';
+    const formData = new FormData(document.getElementById(formId));
+    formData.append('action', serverType === 'backup' ? 'test_nextcloud_backup' : 'test_nextcloud');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            alert('✓ Nextcloud Connection Successful!\n\n' + (data.message || 'Connected successfully.'));
+        } else {
+            alert('✗ Nextcloud Connection Failed\n\n' + (data.message || 'Could not connect to server'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error testing Nextcloud connection');
+        console.error('Error:', error);
+    });
+}
+
+function syncToBackup() {
+    if (!confirm('Sync all files from primary to backup server? This may take some time.')) return;
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    
+    const formData = new FormData(document.getElementById('nextcloud-backup-form'));
+    formData.append('action', 'sync_to_backup');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            alert('✓ Sync Completed!\n\n' + (data.message || 'Files synced to backup server.'));
+        } else {
+            alert('✗ Sync Failed\n\n' + (data.message || 'Could not sync files'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error syncing files');
+        console.error('Error:', error);
+    });
+}
+
+// GitHub Update functions
+function testGitHubConnection() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=test_github&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        const statusDiv = document.getElementById('github-update-status');
+        if (data.success) {
+            statusDiv.className = 'integration-status connected';
+            statusDiv.innerHTML = `
+                <div class="status-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="status-info">
+                    <h4>Connected to ${data.repo_name || 'Arctic_Wolves'}</h4>
+                    <p>Repository access confirmed. ${data.private ? '(Private repository)' : '(Public repository)'}</p>
+                </div>
+            `;
+            alert('✓ GitHub Connection Successful!');
+        } else {
+            statusDiv.className = 'integration-status disconnected';
+            statusDiv.innerHTML = `
+                <div class="status-icon"><i class="fas fa-times-circle"></i></div>
+                <div class="status-info">
+                    <h4>Connection Failed</h4>
+                    <p>${data.message || 'Could not connect to repository'}</p>
+                </div>
+            `;
+            alert('✗ GitHub Connection Failed\n\n' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error testing GitHub connection');
+        console.error('Error:', error);
+    });
+}
+
+function checkForUpdates() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=check_updates&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        const statusDiv = document.getElementById('github-update-status');
+        const applyBtn = document.getElementById('apply-updates-btn');
+        
+        if (data.success) {
+            if (data.has_updates) {
+                statusDiv.className = 'integration-status connected';
+                statusDiv.innerHTML = `
+                    <div class="status-icon"><i class="fas fa-arrow-circle-down"></i></div>
+                    <div class="status-info">
+                        <h4>Updates Available</h4>
+                        <p>Latest commit: ${data.latest_commit.message || 'No message'}<br>
+                        <small>By ${data.latest_commit.author || 'Unknown'} on ${new Date(data.latest_commit.date).toLocaleString()}</small></p>
+                    </div>
+                `;
+                applyBtn.disabled = false;
+            } else {
+                statusDiv.className = 'integration-status connected';
+                statusDiv.innerHTML = `
+                    <div class="status-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="status-info">
+                        <h4>System Up to Date</h4>
+                        <p>You are running the latest version.</p>
+                    </div>
+                `;
+                applyBtn.disabled = true;
+            }
+        } else {
+            statusDiv.className = 'integration-status disconnected';
+            statusDiv.innerHTML = `
+                <div class="status-icon"><i class="fas fa-exclamation-circle"></i></div>
+                <div class="status-info">
+                    <h4>Check Failed</h4>
+                    <p>${data.message || 'Could not check for updates'}</p>
+                </div>
+            `;
+            applyBtn.disabled = true;
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error checking for updates');
+        console.error('Error:', error);
+    });
+}
+
+function applyUpdates() {
+    if (!confirm('Apply all available updates? This will update system files.\n\nMake sure you have a backup before proceeding.')) return;
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    
+    const logDiv = document.getElementById('update-log');
+    const logContent = document.getElementById('update-log-content');
+    logDiv.style.display = 'block';
+    logContent.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying updates...\n';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=apply_updates&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            logContent.innerHTML = `✓ ${data.message}\n\nUpdated: ${data.updated_count || 0} files\nDeleted: ${data.deleted_count || 0} files`;
+            if (data.errors && data.errors.length > 0) {
+                logContent.innerHTML += '\n\nWarnings:\n' + data.errors.join('\n');
+            }
+            document.getElementById('apply-updates-btn').disabled = true;
+            
+            const statusDiv = document.getElementById('github-update-status');
+            statusDiv.className = 'integration-status connected';
+            statusDiv.innerHTML = `
+                <div class="status-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="status-info">
+                    <h4>Updates Applied Successfully</h4>
+                    <p>System has been updated to the latest version.</p>
+                </div>
+            `;
+        } else {
+            logContent.innerHTML = '✗ Update failed: ' + (data.message || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        logContent.innerHTML = '✗ Error applying updates: ' + error.message;
+        console.error('Error:', error);
+    });
+}
+
+// Stripe Library Update functions
+function checkStripeUpdates() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    // Route through server-side endpoint for security
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=check_stripe_updates&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        const statusDiv = document.getElementById('stripe-update-status');
+        const updateBtn = document.getElementById('update-stripe-btn');
+        
+        if (data.success && data.tag_name) {
+            const latestVersion = data.tag_name.replace('v', '');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'integration-status connected';
+            statusDiv.innerHTML = `
+                <div class="status-icon"><i class="fas fa-info-circle"></i></div>
+                <div class="status-info">
+                    <h4>Latest Version: ${latestVersion}</h4>
+                    <p>${data.name || 'Stripe PHP Library'}<br>
+                    <small>Released: ${new Date(data.published_at).toLocaleDateString()}</small></p>
+                </div>
+            `;
+            updateBtn.disabled = false;
+            updateBtn.setAttribute('data-version', data.tag_name);
+        } else {
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'integration-status disconnected';
+            statusDiv.innerHTML = `
+                <div class="status-icon"><i class="fas fa-exclamation-circle"></i></div>
+                <div class="status-info">
+                    <h4>Check Failed</h4>
+                    <p>${data.message || 'Could not retrieve latest Stripe version.'}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error checking Stripe updates');
+        console.error('Error:', error);
+    });
+}
+
+function updateStripeLibrary() {
+    if (!confirm('Update the Stripe PHP library?\n\nThis will download the latest version from GitHub.\n\nMake sure you have a backup before proceeding.')) return;
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=update_stripe_library&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (data.success) {
+            alert('✓ Stripe Library Updated!\n\n' + (data.message || 'Update completed successfully.'));
+            location.reload();
+        } else {
+            alert('✗ Update Failed\n\n' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert('Error updating Stripe library');
         console.error('Error:', error);
     });
 }
@@ -2107,6 +2927,82 @@ function testGoogleMapsAPI() {
     font-size: 14px;
     color: var(--text-dim);
     font-weight: 500;
+}
+
+/* Badge Styles */
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-primary {
+    background: var(--primary);
+    color: #fff;
+}
+
+.badge-secondary {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+}
+
+/* Radio Item Styles */
+.radio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px 16px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.radio-item:hover {
+    border-color: var(--primary);
+}
+
+.radio-item:has(input:checked) {
+    border-color: var(--primary);
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.radio-item input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.radio-item span {
+    font-size: 14px;
+    color: var(--text-white);
+}
+
+/* Logo Preview Styles */
+.logo-preview {
+    display: inline-block;
+}
+
+.logo-preview img {
+    display: block;
+    object-fit: contain;
+}
+
+/* Update Log Styles */
+#update-log-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Card Header with Badge */
+.card-header .badge {
+    margin-left: auto;
 }
 </style>
 

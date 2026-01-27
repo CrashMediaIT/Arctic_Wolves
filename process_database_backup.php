@@ -195,6 +195,89 @@ try {
             echo json_encode($result);
             break;
             
+        case 'repair_optimize':
+            // Get all tables from database
+            $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+            $results = [];
+            $errors = [];
+            
+            foreach ($tables as $table) {
+                // Validate table name - only alphanumeric characters and underscores allowed
+                if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
+                    $errors[] = "Skipped invalid table name: " . substr($table, 0, 50);
+                    continue;
+                }
+                
+                // Use prepared statement pattern with validated table name
+                // Note: Table names cannot be parameterized, but we've validated the format above
+                $safe_table = $pdo->quote($table);
+                $safe_table = substr($safe_table, 1, -1); // Remove quotes added by PDO::quote
+                
+                // Check table
+                $check = $pdo->query("CHECK TABLE `$safe_table`")->fetch(PDO::FETCH_ASSOC);
+                $results[$table] = ['check' => $check['Msg_text'] ?? 'OK'];
+                
+                // Repair if needed
+                if (($check['Msg_text'] ?? '') !== 'OK') {
+                    $repair = $pdo->query("REPAIR TABLE `$safe_table`")->fetch(PDO::FETCH_ASSOC);
+                    $results[$table]['repair'] = $repair['Msg_text'] ?? 'Unknown';
+                }
+                
+                // Optimize table
+                $optimize = $pdo->query("OPTIMIZE TABLE `$safe_table`")->fetch(PDO::FETCH_ASSOC);
+                $results[$table]['optimize'] = $optimize['Msg_text'] ?? 'OK';
+                
+                // Analyze table
+                $analyze = $pdo->query("ANALYZE TABLE `$safe_table`")->fetch(PDO::FETCH_ASSOC);
+                $results[$table]['analyze'] = $analyze['Msg_text'] ?? 'OK';
+            }
+            
+            logAction($pdo, $user_id, 'database_optimized', 'Repaired and optimized ' . count($results) . ' tables');
+            
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Successfully repaired and optimized ' . count($results) . ' database tables.',
+                'tables_processed' => count($results),
+                'errors' => $errors
+            ]);
+            break;
+            
+        case 'clear_cache':
+            $cache_cleared = [];
+            
+            // Clear file cache directory
+            $cache_dir = __DIR__ . '/cache';
+            if (is_dir($cache_dir)) {
+                $files = glob($cache_dir . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file) && basename($file) !== '.gitkeep') {
+                        unlink($file);
+                        $cache_cleared[] = basename($file);
+                    }
+                }
+            }
+            
+            // Clear tmp directory contents (non-essential)
+            $tmp_dir = __DIR__ . '/tmp';
+            if (is_dir($tmp_dir)) {
+                $files = glob($tmp_dir . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file) && basename($file) !== '.gitkeep') {
+                        unlink($file);
+                        $cache_cleared[] = 'tmp/' . basename($file);
+                    }
+                }
+            }
+            
+            logAction($pdo, $user_id, 'cache_cleared', 'Cleared ' . count($cache_cleared) . ' cached files');
+            
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Successfully cleared ' . count($cache_cleared) . ' cached files.',
+                'files_cleared' => count($cache_cleared)
+            ]);
+            break;
+            
         default:
             throw new Exception('Invalid action');
     }
