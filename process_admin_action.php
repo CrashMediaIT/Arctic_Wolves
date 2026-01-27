@@ -1129,6 +1129,16 @@ if ($action == 'admin_update_profile_image') {
             exit();
         }
         
+        // Validate MIME type
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $_FILES['profile_image']['tmp_name']);
+        finfo_close($finfo);
+        $allowed_mimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($mime, $allowed_mimes)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid file content type']);
+            exit();
+        }
+        
         // Check file size (5MB max)
         if ($_FILES['profile_image']['size'] > 5 * 1024 * 1024) {
             echo json_encode(['success' => false, 'message' => 'File too large. Maximum size is 5MB']);
@@ -1138,9 +1148,13 @@ if ($action == 'admin_update_profile_image') {
         $upload_dir = 'uploads/profiles/';
         if (!is_dir($upload_dir)) {
             mkdir($upload_dir, 0755, true);
+            // Create .htaccess to prevent PHP execution
+            file_put_contents($upload_dir . '.htaccess', "Options -Indexes\n<FilesMatch \"\\.(php|phtml|php3|php4|php5|phps|shtml|pl|py|cgi)$\">\n    Order Deny,Allow\n    Deny from all\n</FilesMatch>");
         }
         
-        $new_name = $upload_dir . "profile_" . $user_id_to_update . "_" . time() . "." . $ext;
+        // Generate secure random filename
+        $random_suffix = bin2hex(random_bytes(8));
+        $new_name = $upload_dir . "profile_" . $user_id_to_update . "_" . $random_suffix . "." . $ext;
         
         if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $new_name)) {
             // Delete old profile image if exists

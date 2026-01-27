@@ -236,8 +236,16 @@ foreach ($users as $u) {
                                 <tr>
                                     <td>
                                         <div class="user-cell">
-                                            <?php if (!empty($user['profile_image'])): ?>
-                                                <img src="<?php echo htmlspecialchars($user['profile_image']); ?>" alt="Profile" class="user-avatar-img">
+                                            <?php 
+                                            // Validate profile image path
+                                            $profile_img = $user['profile_image'] ?? '';
+                                            $is_valid_image = !empty($profile_img) && 
+                                                              strpos($profile_img, 'uploads/profiles/') === 0 && 
+                                                              preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $profile_img) && 
+                                                              file_exists($profile_img);
+                                            ?>
+                                            <?php if ($is_valid_image): ?>
+                                                <img src="<?php echo htmlspecialchars($profile_img); ?>" alt="Profile" class="user-avatar-img">
                                             <?php else: ?>
                                                 <div class="user-avatar">
                                                     <?php 
