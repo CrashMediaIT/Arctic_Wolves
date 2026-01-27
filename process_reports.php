@@ -138,14 +138,15 @@ function generateReport() {
         $next_run = calculateNextRun($frequency);
         
         $stmt = $pdo->prepare("
-            INSERT INTO report_schedules (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, report_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO report_schedules (created_by, report_type, parameters, schedule_frequency, format, recipients, next_run, is_active, report_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $user_id,
             $report_type,
             json_encode($parameters),
             $frequency,
+            $format,
             $email_recipients,
             $next_run,
             1,
@@ -159,6 +160,7 @@ function generateReport() {
             'schedule_id' => $schedule_id,
             'report_type' => $report_type,
             'frequency' => $frequency,
+            'format' => $format,
             'recipients' => $email_recipients,
         ];
         
@@ -695,10 +697,19 @@ function generateReportFile($report_type, $format, $data, $parameters) {
 }
 
 /**
+ * Sanitize report type for safe filename use
+ */
+function sanitizeReportType($report_type) {
+    // Remove any path traversal characters and only allow alphanumeric and underscores
+    return preg_replace('/[^a-zA-Z0-9_]/', '', $report_type);
+}
+
+/**
  * Generate Excel file (tab-separated with .xls extension for compatibility)
  */
 function generateExcel($report_type, $data, $parameters) {
-    $filename = 'reports/' . $report_type . '_' . date('Y-m-d_His') . '.xls';
+    $safe_report_type = sanitizeReportType($report_type);
+    $filename = 'reports/' . $safe_report_type . '_' . date('Y-m-d_His') . '.xls';
     $filepath = __DIR__ . '/' . $filename;
     
     // Ensure reports directory exists with secure permissions
@@ -812,7 +823,8 @@ function generateExcelTable($report_type, $data) {
 }
 
 function generateCSV($report_type, $data, $parameters) {
-    $filename = 'reports/' . $report_type . '_' . date('Y-m-d_His') . '.csv';
+    $safe_report_type = sanitizeReportType($report_type);
+    $filename = 'reports/' . $safe_report_type . '_' . date('Y-m-d_His') . '.csv';
     $filepath = __DIR__ . '/' . $filename;
     
     // Ensure reports directory exists with secure permissions
@@ -900,7 +912,8 @@ function generatePDF($report_type, $data, $parameters) {
     // For PDF generation, we'll use a simple HTML to PDF approach
     // In production, you would use TCPDF or mPDF library
     
-    $filename = 'reports/' . $report_type . '_' . date('Y-m-d_His') . '.pdf';
+    $safe_report_type = sanitizeReportType($report_type);
+    $filename = 'reports/' . $safe_report_type . '_' . date('Y-m-d_His') . '.pdf';
     $filepath = __DIR__ . '/' . $filename;
     
     // Ensure reports directory exists with secure permissions
@@ -1048,6 +1061,10 @@ function calculateNextRun($frequency) {
             return date('Y-m-d H:i:s', strtotime('+1 week'));
         case 'monthly':
             return date('Y-m-d H:i:s', strtotime('+1 month'));
+        case 'quarterly':
+            return date('Y-m-d H:i:s', strtotime('+3 months'));
+        case 'annually':
+            return date('Y-m-d H:i:s', strtotime('+1 year'));
         default:
             return date('Y-m-d H:i:s', strtotime('+1 week'));
     }
@@ -1170,8 +1187,8 @@ function createSchedule() {
     
     $stmt = $pdo->prepare("
         INSERT INTO report_schedules 
-        (created_by, report_type, parameters, schedule_frequency, recipients, next_run, is_active, report_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (created_by, report_type, parameters, schedule_frequency, format, recipients, next_run, is_active, report_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     
     $stmt->execute([
@@ -1179,13 +1196,14 @@ function createSchedule() {
         $report_type,
         $parameters,
         $frequency_normalized,
+        $format,
         $email_recipients,
         $next_run->format('Y-m-d H:i:s'),
         $is_active,
         $report_name
     ]);
     
-    header('Location: dashboard.php?page=schedules&success=Schedule+created+successfully');
+    header('Location: dashboard.php?page=financial_reports&tab=schedules&success=Schedule+created+successfully');
     exit;
 }
 

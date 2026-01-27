@@ -602,7 +602,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=financial_reports" class="nav-link <?= in_array($page, ['reports', 'schedules', 'financial_reports'])?'active':'' ?>">
                 <i class="fa-solid fa-chart-pie icon"></i> Financial Reports Hub
             </a>
-            <a href="?page=credits_refunds" class="nav-link <?= $page=='credits_refunds'?'active':'' ?>">>
+            <a href="?page=credits_refunds" class="nav-link <?= $page=='credits_refunds'?'active':'' ?>">
                 <i class="fa-solid fa-money-bill-transfer icon"></i> Credits & Refunds
             </a>
             <a href="?page=expenses" class="nav-link <?= $page=='expenses'?'active':'' ?>">
