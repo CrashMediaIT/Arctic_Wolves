@@ -607,12 +607,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (categorySelect) {
         categorySelect.addEventListener('change', function() {
+            const gameInputs = gameFields ? gameFields.querySelectorAll('input, select') : [];
+            const drillInputs = drillFields ? drillFields.querySelectorAll('input, select') : [];
+            
             if (this.value === 'game') {
                 gameFields.style.display = 'block';
                 drillFields.style.display = 'none';
+                // Make game fields required
+                gameInputs.forEach(input => {
+                    if (input.name === 'game_date' || input.name === 'opponent_team') {
+                        input.required = true;
+                    }
+                });
+                // Remove required from drill fields
+                drillInputs.forEach(input => input.required = false);
             } else {
                 gameFields.style.display = 'none';
                 drillFields.style.display = 'block';
+                // Remove required from game fields
+                gameInputs.forEach(input => input.required = false);
             }
         });
     }

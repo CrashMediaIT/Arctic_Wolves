@@ -221,8 +221,8 @@ function handleAthleteVideoUpload() {
         $team_played_on = trim($_POST['team_played_on'] ?? '');
         $opponent_team = trim($_POST['opponent_team'] ?? '');
         
-        if (empty($game_date) || empty($opponent_team)) {
-            throw new Exception('Game date and opponent team are required for game videos');
+        if (empty($game_date) || empty($team_played_on) || empty($opponent_team)) {
+            throw new Exception('Game date, team played on, and opponent team are required for game videos');
         }
     }
     
@@ -685,13 +685,18 @@ function sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video
                 }
                 
                 if (!empty($smtp_settings['smtp_host'])) {
+                    // Get base URL from settings or use default
+                    $base_url_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'site_base_url'");
+                    $base_url = $base_url_stmt->fetchColumn() ?: 'https://arcticwolves.com';
+                    $base_url = rtrim($base_url, '/');
+                    
                     $mailer = new SmtpMailer();
                     $email_body = "
                         <h2>New Video for Review</h2>
                         <p>Hi {$coach['first_name']},</p>
                         <p>{$message}</p>
                         <p>Please log in to review the video and provide feedback.</p>
-                        <p><a href='" . ($_SERVER['HTTP_HOST'] ?? 'arcticwolves.com') . "/{$link}'>Review Video</a></p>
+                        <p><a href='{$base_url}/{$link}'>Review Video</a></p>
                         <p>Thank you,<br>Arctic Wolves System</p>
                     ";
                     $mailer->send($coach['email'], 'New Video for Review - Arctic Wolves', $email_body, $smtp_settings);
@@ -743,13 +748,18 @@ function sendVideoReviewNotificationToAthlete($pdo, $athlete_id, $coach_id, $vid
                 }
                 
                 if (!empty($smtp_settings['smtp_host'])) {
+                    // Get base URL from settings or use default
+                    $base_url_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'site_base_url'");
+                    $base_url = $base_url_stmt->fetchColumn() ?: 'https://arcticwolves.com';
+                    $base_url = rtrim($base_url, '/');
+                    
                     $mailer = new SmtpMailer();
                     $email_body = "
                         <h2>Your Video Has Been Reviewed</h2>
                         <p>Hi {$athlete['first_name']},</p>
                         <p>{$message}</p>
                         <p>Log in to see the feedback from your coach.</p>
-                        <p><a href='" . ($_SERVER['HTTP_HOST'] ?? 'arcticwolves.com') . "/{$link}'>View Feedback</a></p>
+                        <p><a href='{$base_url}/{$link}'>View Feedback</a></p>
                         <p>Keep up the great work!<br>Arctic Wolves System</p>
                     ";
                     $mailer->send($athlete['email'], 'Video Reviewed - Arctic Wolves', $email_body, $smtp_settings);

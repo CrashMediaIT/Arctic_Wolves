@@ -110,6 +110,7 @@ try {
     <h2><i class="fas fa-cog"></i> Recording Setup</h2>
     
     <form id="recordingSetupForm" class="recording-form">
+        <?= csrfTokenInput() ?>
         <div class="form-row">
             <div class="form-group">
                 <label>Session *</label>
@@ -995,6 +996,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function handleFileSelect(file) {
+        const maxSize = 500 * 1024 * 1024; // 500MB
+        
+        if (file.size > maxSize) {
+            alert('File size exceeds 500MB limit. Please choose a smaller file.');
+            videoFileInput.value = '';
+            selectedFileInfo.style.display = 'none';
+            uploadFileBtn.disabled = true;
+            return;
+        }
+        
         document.getElementById('selectedFileName').textContent = file.name;
         document.getElementById('selectedFileSize').textContent = formatFileSize(file.size);
         selectedFileInfo.style.display = 'flex';
