@@ -27,6 +27,7 @@
             
             <div class="nav-menu">
                 <a href="#programs">Programs</a>
+                <a href="sessions_public.php">Sessions</a>
                 <a href="#standards">Standards</a>
                 <a href="login.php" class="nav-btn">Athlete Login</a>
             </div>

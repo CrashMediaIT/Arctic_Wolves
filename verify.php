@@ -23,7 +23,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Success: Mark Verified & Clear Code
         $pdo->prepare("UPDATE users SET is_verified = 1, verification_code = NULL WHERE email = ?")->execute([$email]);
         $_SESSION['success_msg'] = "Account verified successfully! You can now login.";
-        header("Location: login.php");
+        
+        // Pass through any session intent
+        $intentParam = isset($_SESSION['session_intent']) ? '&session_intent=' . urlencode($_SESSION['session_intent']) : '';
+        header("Location: login.php" . ($intentParam ? '?' . ltrim($intentParam, '&') : ''));
         exit();
     } else {
         $msg = "Invalid verification code or email.";

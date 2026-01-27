@@ -230,6 +230,146 @@ if ($action == 'delete_type') {
 }
 
 // =========================================================
+// MODULE 2B: TRAINING SESSION TEMPLATES
+// =========================================================
+if ($action == 'create_training_session') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        // Validate inputs
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $sessionType = $_POST['session_type'] ?? 'on_ice';
+        $price = floatval($_POST['price'] ?? 0);
+        $duration = intval($_POST['duration'] ?? 60);
+        $maxParticipants = !empty($_POST['max_participants']) ? intval($_POST['max_participants']) : null;
+        $coachId = !empty($_POST['coach_id']) ? intval($_POST['coach_id']) : null;
+        $locationId = !empty($_POST['location_id']) ? intval($_POST['location_id']) : null;
+        $practicePlanId = !empty($_POST['practice_plan_id']) ? intval($_POST['practice_plan_id']) : null;
+        $sessionTypeId = !empty($_POST['session_type_id']) ? intval($_POST['session_type_id']) : null;
+        $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $showOnLanding = isset($_POST['show_on_landing']) ? 1 : 0;
+        $isTemplate = isset($_POST['is_template']) ? 1 : 0;
+        $skillIds = $_POST['skill_ids'] ?? [];
+        $sessionDates = $_POST['session_dates'] ?? [];
+        
+        if (empty($name) || strlen($name) > 255) {
+            throw new Exception('Session name is required and must be under 255 characters');
+        }
+        if ($price < 0) {
+            throw new Exception('Price must be a positive value');
+        }
+        if ($duration < 15 || $duration > 480) {
+            throw new Exception('Duration must be between 15 and 480 minutes');
+        }
+        
+        $pdo->beginTransaction();
+        
+        // Insert training session template
+        $stmt = $pdo->prepare("
+            INSERT INTO training_session_templates 
+            (name, description, session_type_id, duration_minutes, price, max_participants, 
+             coach_id, location_id, practice_plan_id, session_type, is_active, show_on_landing, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $name, $description, $sessionTypeId, $duration, $price, $maxParticipants,
+            $coachId, $locationId, $practicePlanId, $sessionType, $isActive, $showOnLanding, $_SESSION['user_id']
+        ]);
+        
+        $templateId = $pdo->lastInsertId();
+        
+        // Insert skill associations
+        if (!empty($skillIds) && is_array($skillIds)) {
+            $skillStmt = $pdo->prepare("INSERT INTO template_skill_types (template_id, skill_id) VALUES (?, ?)");
+            foreach ($skillIds as $skillId) {
+                $skillStmt->execute([$templateId, intval($skillId)]);
+            }
+        }
+        
+        // Insert session dates
+        if (!empty($sessionDates) && is_array($sessionDates)) {
+            $dateStmt = $pdo->prepare("
+                INSERT INTO training_session_dates (template_id, session_date, team_id, is_active) 
+                VALUES (?, ?, ?, 1)
+            ");
+            foreach ($sessionDates as $dateData) {
+                if (!empty($dateData['datetime'])) {
+                    $teamId = !empty($dateData['team_id']) ? intval($dateData['team_id']) : null;
+                    $dateStmt->execute([$templateId, $dateData['datetime'], $teamId]);
+                }
+            }
+        }
+        
+        $pdo->commit();
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Training session created successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=added");
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("Create training session error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=error&message=" . urlencode($e->getMessage()));
+    }
+    exit();
+}
+
+if ($action == 'toggle_session_status') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    $sessionId = intval($_POST['id'] ?? 0);
+    
+    try {
+        // Try training_session_templates first
+        $stmt = $pdo->prepare("SELECT id, is_active FROM training_session_templates WHERE id = ?");
+        $stmt->execute([$sessionId]);
+        $template = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($template) {
+            $newStatus = $template['is_active'] ? 0 : 1;
+            $pdo->prepare("UPDATE training_session_templates SET is_active = ? WHERE id = ?")->execute([$newStatus, $sessionId]);
+        } else {
+            // Try session_types
+            $stmt = $pdo->prepare("SELECT id, is_active FROM session_types WHERE id = ?");
+            $stmt->execute([$sessionId]);
+            $sessionType = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($sessionType) {
+                $newStatus = $sessionType['is_active'] ? 0 : 1;
+                $pdo->prepare("UPDATE session_types SET is_active = ? WHERE id = ?")->execute([$newStatus, $sessionId]);
+            } else {
+                throw new Exception('Session not found');
+            }
+        }
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session status updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=success");
+    } catch (Exception $e) {
+        error_log("Toggle session status error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=error");
+    }
+    exit();
+}
+
+// =========================================================
 // MODULE 3: USER ROLES
 // =========================================================
 if ($action == 'update_role') {
@@ -745,10 +885,14 @@ if ($action == 'create_discount') {
     $valid_until = !empty($_POST['end_date']) ? $_POST['end_date'] : NULL;
     $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
     $description = trim($_POST['description'] ?? '');
+    // New fields for enhanced discounts
+    $store_credit_value = !empty($_POST['store_credit_value']) ? floatval($_POST['store_credit_value']) : NULL;
+    $auto_generate_type = $_POST['auto_generate_type'] ?? 'none';
+    $days_since_registration = !empty($_POST['days_since_registration']) ? intval($_POST['days_since_registration']) : NULL;
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO discount_codes (code, discount_type, discount_value, max_uses, valid_from, valid_until, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active]);
+        $stmt = $pdo->prepare("INSERT INTO discount_codes (code, discount_type, discount_value, max_uses, valid_from, valid_until, is_active, description, store_credit_value, auto_generate_type, days_since_registration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active, $description, $store_credit_value, $auto_generate_type, $days_since_registration]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
