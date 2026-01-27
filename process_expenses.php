@@ -878,7 +878,12 @@ try {
                 $stripe_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'stripe_secret_key'");
                 $stripe_secret = $stripe_key_stmt->fetchColumn();
                 
-                require_once 'stripe-php/init.php';
+                // Check Stripe library exists
+                $stripe_lib_path = __DIR__ . '/stripe-php/init.php';
+                if (!file_exists($stripe_lib_path)) {
+                    throw new Exception('Stripe library not installed');
+                }
+                require_once $stripe_lib_path;
                 \Stripe\Stripe::setApiKey($stripe_secret);
                 
                 \Stripe\Issuing\Card::update($stripe_card_id, ['status' => 'active']);
