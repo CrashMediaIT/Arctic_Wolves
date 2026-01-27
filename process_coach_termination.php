@@ -80,8 +80,8 @@ if ($action === 'create') {
             $insert_stmt = $pdo->prepare("
                 INSERT INTO employee_terminations 
                 (user_id, termination_date, termination_type, reason_category, reason, notice_period_days, 
-                 offboarding_checklist, final_comments, processed_by, status, notes, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                 offboarding_checklist, final_comments, processed_by, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
             
             $insert_stmt->execute([
@@ -94,8 +94,7 @@ if ($action === 'create') {
                 json_encode($checklist),
                 $final_comments,
                 $user_id,
-                $status,
-                $notes
+                $status
             ]);
             
             $termination_id = $pdo->lastInsertId();
@@ -182,7 +181,7 @@ if ($action === 'create') {
             
             // Create audit log
             $audit_data = [
-                'action' => 'STAFF_TERMINATION_CREATED',
+                'action' => 'EMPLOYEE_TERMINATION_CREATED',
                 'staff_id' => $staff_user_id,
                 'staff_name' => $staff_member['name'],
                 'termination_type' => $termination_type,
