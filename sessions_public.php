@@ -16,7 +16,13 @@ if (isset($_GET['register'])) {
     
     if ($intentId > 0 && $db_connected) {
         // Generate a unique token
-        $token = bin2hex(random_bytes(32));
+        try {
+            $token = bin2hex(random_bytes(32));
+        } catch (Exception $e) {
+            error_log("Token generation failed: " . $e->getMessage());
+            header("Location: login.php");
+            exit();
+        }
         $expiresAt = date('Y-m-d H:i:s', strtotime('+24 hours'));
         
         try {

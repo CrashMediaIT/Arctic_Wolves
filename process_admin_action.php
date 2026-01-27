@@ -254,7 +254,7 @@ if ($action == 'create_training_session') {
         $sessionDates = $_POST['session_dates'] ?? [];
         
         if (empty($name) || strlen($name) > 255) {
-            throw new Exception('Session name is required and must be under 255 characters');
+            throw new Exception('Session name is required (maximum 255 characters)');
         }
         if ($price < 0) {
             throw new Exception('Price must be a positive value');
