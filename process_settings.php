@@ -95,12 +95,16 @@ try {
             $videos_dir = trim($_POST['nextcloud_videos_dir'] ?? '/Arctic_Wolves/Videos');
             $receipts_dir = trim($_POST['nextcloud_receipts_dir'] ?? '/Arctic_Wolves/Receipts');
             $documents_dir = trim($_POST['nextcloud_documents_dir'] ?? '/Arctic_Wolves/Documents');
+            $hr_dir = trim($_POST['nextcloud_hr_dir'] ?? '/Arctic_Wolves/HR');
+            $terminations_dir = trim($_POST['nextcloud_terminations_dir'] ?? '/Arctic_Wolves/HR/Terminations');
             
             // Sync options
             $sync_backups = isset($_POST['sync_backups']) ? '1' : '0';
             $sync_videos = isset($_POST['sync_videos']) ? '1' : '0';
             $sync_receipts = isset($_POST['sync_receipts']) ? '1' : '0';
             $sync_documents = isset($_POST['sync_documents']) ? '1' : '0';
+            $sync_hr = isset($_POST['sync_hr']) ? '1' : '0';
+            $sync_terminations = isset($_POST['sync_terminations']) ? '1' : '0';
             
             updateSetting($pdo, 'nextcloud_url', $url);
             updateSetting($pdo, 'nextcloud_username', $username);
@@ -120,12 +124,16 @@ try {
             updateSetting($pdo, 'nextcloud_videos_dir', $videos_dir);
             updateSetting($pdo, 'nextcloud_receipts_dir', $receipts_dir);
             updateSetting($pdo, 'nextcloud_documents_dir', $documents_dir);
+            updateSetting($pdo, 'nextcloud_hr_dir', $hr_dir);
+            updateSetting($pdo, 'nextcloud_terminations_dir', $terminations_dir);
             
             // Save sync options
             updateSetting($pdo, 'sync_backups', $sync_backups);
             updateSetting($pdo, 'sync_videos', $sync_videos);
             updateSetting($pdo, 'sync_receipts', $sync_receipts);
             updateSetting($pdo, 'sync_documents', $sync_documents);
+            updateSetting($pdo, 'sync_hr', $sync_hr);
+            updateSetting($pdo, 'sync_terminations', $sync_terminations);
             
             // Redirect back to the appropriate page
             $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';

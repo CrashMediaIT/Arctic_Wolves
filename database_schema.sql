@@ -1581,7 +1581,8 @@ CREATE TABLE IF NOT EXISTS `employee_terminations` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `termination_date` DATE NOT NULL,
-    `termination_type` ENUM('voluntary', 'involuntary', 'retirement', 'contract_end') DEFAULT 'voluntary',
+    `termination_type` ENUM('voluntary', 'involuntary', 'retirement', 'contract_end', 'mutual') DEFAULT 'voluntary',
+    `reason_category` VARCHAR(100) DEFAULT NULL,
     `reason` TEXT DEFAULT NULL,
     `notice_period_days` INT DEFAULT NULL,
     `final_pay_date` DATE DEFAULT NULL,
@@ -1590,8 +1591,12 @@ CREATE TABLE IF NOT EXISTS `employee_terminations` (
     `exit_interview_notes` TEXT DEFAULT NULL,
     `equipment_returned` TINYINT(1) DEFAULT 0,
     `access_revoked` TINYINT(1) DEFAULT 0,
+    `offboarding_checklist` JSON DEFAULT NULL,
+    `final_comments` TEXT DEFAULT NULL,
+    `documents_path` VARCHAR(500) DEFAULT NULL,
+    `nextcloud_folder` VARCHAR(500) DEFAULT NULL,
     `processed_by` INT NOT NULL,
-    `status` ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending',
+    `status` ENUM('pending', 'scheduled', 'in_progress', 'completed') DEFAULT 'pending',
     `notes` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1601,6 +1606,22 @@ CREATE TABLE IF NOT EXISTS `employee_terminations` (
     INDEX `idx_date` (`termination_date`),
     INDEX `idx_type` (`termination_type`),
     INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Termination documents tracking
+CREATE TABLE IF NOT EXISTS `termination_documents` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `termination_id` INT NOT NULL,
+    `document_name` VARCHAR(255) NOT NULL,
+    `document_type` VARCHAR(50) DEFAULT NULL,
+    `file_path` VARCHAR(500) DEFAULT NULL,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL,
+    `file_size` INT DEFAULT NULL,
+    `uploaded_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`termination_id`) REFERENCES `employee_terminations`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_termination` (`termination_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- User credits (flexible credit system)
