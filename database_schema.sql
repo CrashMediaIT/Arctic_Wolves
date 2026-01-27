@@ -3101,6 +3101,7 @@ CREATE TABLE IF NOT EXISTS `pos_transactions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `transaction_number` VARCHAR(50) NOT NULL UNIQUE,
     `staff_id` INT NOT NULL,
+    `customer_user_id` INT DEFAULT NULL,
     `customer_name` VARCHAR(255) DEFAULT NULL,
     `customer_email` VARCHAR(255) DEFAULT NULL,
     `subtotal` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -3118,7 +3119,9 @@ CREATE TABLE IF NOT EXISTS `pos_transactions` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT,
+    FOREIGN KEY (`customer_user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_staff` (`staff_id`),
+    INDEX `idx_customer` (`customer_user_id`),
     INDEX `idx_status` (`status`),
     INDEX `idx_payment_method` (`payment_method`),
     INDEX `idx_created` (`created_at`)

@@ -58,6 +58,16 @@ try {
     // Table might not exist yet
     $readers = [];
 }
+
+// Get users for order assignment
+$posUsers = [];
+try {
+    $usersStmt = $pdo->query("SELECT id, first_name, last_name, email, role FROM users WHERE is_active = 1 ORDER BY first_name, last_name");
+    $posUsers = $usersStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("POS users fetch error: " . $e->getMessage());
+    $posUsers = [];
+}
 ?>
 
 <div class="page-header">
@@ -527,6 +537,27 @@ try {
         background: #10b981;
     }
     
+    /* Customer Assignment Section */
+    .pos-customer-section {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .pos-customer-select {
+        width: 100%;
+        padding: 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: #fff;
+        font-size: 13px;
+    }
+    
+    .pos-customer-select:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+    
     @media (max-width: 1000px) {
         .pos-container {
             grid-template-columns: 1fr;
@@ -602,6 +633,19 @@ try {
             </select>
         </div>
         <?php endif; ?>
+        
+        <!-- Customer Assignment Section -->
+        <div class="pos-customer-section">
+            <label style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px; display: block;">
+                <i class="fas fa-user"></i> Assign to Customer (Optional)
+            </label>
+            <select class="pos-customer-select" id="customer-user-id">
+                <option value="">-- Walk-in Customer --</option>
+                <?php foreach ($posUsers as $user): ?>
+                    <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?> (<?= htmlspecialchars($user['email']) ?>)</option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         
         <div class="pos-cart-items" id="pos-cart-items">
             <div class="pos-cart-empty">
@@ -834,6 +878,7 @@ function processCardPayment() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     
     const terminalReader = document.getElementById('terminal-reader')?.value || '';
+    const customerUserId = document.getElementById('customer-user-id')?.value || '';
     
     fetch('process_pos.php', {
         method: 'POST',
@@ -844,6 +889,7 @@ function processCardPayment() {
             action: 'process_card_payment',
             items: cart,
             terminal_reader: terminalReader,
+            customer_user_id: customerUserId,
             csrf_token: '<?= $_SESSION['csrf_token'] ?? '' ?>'
         })
     })
@@ -853,6 +899,7 @@ function processCardPayment() {
             alert('Payment successful! Transaction #' + data.transaction_number);
             cart = [];
             renderCart();
+            document.getElementById('customer-user-id').value = '';
         } else {
             alert('Payment failed: ' + (data.message || 'Unknown error'));
         }
@@ -885,6 +932,7 @@ function openCashModal() {
     }
     
     const change = receivedAmount - total;
+    const customerUserId = document.getElementById('customer-user-id')?.value || '';
     
     fetch('process_pos.php', {
         method: 'POST',
@@ -895,6 +943,7 @@ function openCashModal() {
             action: 'process_cash_payment',
             items: cart,
             cash_received: receivedAmount,
+            customer_user_id: customerUserId,
             csrf_token: '<?= $_SESSION['csrf_token'] ?? '' ?>'
         })
     })
@@ -904,6 +953,7 @@ function openCashModal() {
             alert('Payment successful!\nTransaction #' + data.transaction_number + '\nChange: $' + change.toFixed(2));
             cart = [];
             renderCart();
+            document.getElementById('customer-user-id').value = '';
         } else {
             alert('Payment failed: ' + (data.message || 'Unknown error'));
         }
