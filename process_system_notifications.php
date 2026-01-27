@@ -5,6 +5,7 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/mailer.php';
 
 // Set JSON header
 header('Content-Type: application/json');
@@ -35,6 +36,7 @@ try {
             
             $end_date = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
             $is_active = isset($_POST['is_active']) ? 1 : 0;
+            $send_email = isset($_POST['send_email']) ? 1 : 0;
             
             $stmt->execute([
                 $_POST['title'],
@@ -46,7 +48,51 @@ try {
                 $user_id
             ]);
             
-            echo json_encode(['success' => true, 'message' => 'Notification created successfully']);
+            // Send email to all users if send_email is checked
+            $emails_sent = 0;
+            if ($send_email && $is_active) {
+                try {
+                    // Get all users with email notifications enabled in batches to prevent memory issues
+                    $batch_size = 100;
+                    $offset = 0;
+                    
+                    do {
+                        $users_stmt = $pdo->prepare("
+                            SELECT id, email, first_name 
+                            FROM users 
+                            WHERE email_notifications = 1 
+                            AND email IS NOT NULL 
+                            AND email != ''
+                            LIMIT ? OFFSET ?
+                        ");
+                        $users_stmt->execute([$batch_size, $offset]);
+                        $users = $users_stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        foreach ($users as $user) {
+                            $result = sendEmail($user['email'], 'system_notification', [
+                                'name' => $user['first_name'] ?? 'User',
+                                'title' => $_POST['title'],
+                                'message' => $_POST['message'],
+                                'notification_type' => $_POST['notification_type']
+                            ]);
+                            if ($result) {
+                                $emails_sent++;
+                            }
+                        }
+                        
+                        $offset += $batch_size;
+                    } while (count($users) === $batch_size);
+                } catch (Exception $e) {
+                    error_log("System notification email error: " . $e->getMessage());
+                }
+            }
+            
+            $message = 'Notification created successfully';
+            if ($send_email && $is_active) {
+                $message .= ". Emails sent: $emails_sent";
+            }
+            
+            echo json_encode(['success' => true, 'message' => $message]);
             break;
             
         case 'update':
