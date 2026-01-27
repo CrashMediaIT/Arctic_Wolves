@@ -2570,3 +2570,174 @@ INSERT INTO `cra_tax_rates` (`tax_year`, `rate_type`, `province`, `bracket_min`,
 (2026, 'provincial_bracket', 'AB', 237230.01, 355845.00, 14.0000, NULL, NULL, NULL, '2026-01-01', 'AB bracket 4'),
 (2026, 'provincial_bracket', 'AB', 355845.01, NULL, 15.0000, NULL, NULL, NULL, '2026-01-01', 'AB bracket 5')
 ON DUPLICATE KEY UPDATE rate_percentage = VALUES(rate_percentage), max_pensionable_earnings = VALUES(max_pensionable_earnings), max_insurable_earnings = VALUES(max_insurable_earnings), basic_exemption = VALUES(basic_exemption);
+
+-- =========================================================
+-- SCHEMA UPDATES - Jan 27 2026
+-- Enhanced Products Page: Sessions, Packages, and Discounts
+-- =========================================================
+
+-- Enhance session_types table with additional fields
+ALTER TABLE `session_types`
+ADD COLUMN IF NOT EXISTS `max_participants` INT DEFAULT NULL COMMENT 'Maximum participants for this session type',
+ADD COLUMN IF NOT EXISTS `is_active` TINYINT(1) DEFAULT 1 COMMENT 'Whether this session type is active',
+ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
+ADD COLUMN IF NOT EXISTS `session_type` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice' COMMENT 'Type of session',
+ADD COLUMN IF NOT EXISTS `is_template` TINYINT(1) DEFAULT 0 COMMENT 'Whether this is a reusable template';
+
+-- Training Session Templates - Reusable session configurations
+CREATE TABLE IF NOT EXISTS `training_session_templates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `session_type_id` INT DEFAULT NULL,
+    `duration_minutes` INT DEFAULT 60,
+    `price` DECIMAL(10,2) DEFAULT 0.00,
+    `max_participants` INT DEFAULT NULL,
+    `coach_id` INT DEFAULT NULL,
+    `location_id` INT DEFAULT NULL,
+    `practice_plan_id` INT DEFAULT NULL,
+    `session_type` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice',
+    `is_active` TINYINT(1) DEFAULT 1,
+    `show_on_landing` TINYINT(1) DEFAULT 0,
+    `created_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_type_id`) REFERENCES `session_types`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`location_id`) REFERENCES `locations`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`practice_plan_id`) REFERENCES `practice_plans`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_active` (`is_active`),
+    INDEX `idx_landing` (`show_on_landing`),
+    INDEX `idx_type` (`session_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Training Session Template Skill Types - Link templates to skill categories
+CREATE TABLE IF NOT EXISTS `template_skill_types` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `template_id` INT NOT NULL,
+    `skill_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`template_id`) REFERENCES `training_session_templates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`skill_id`) REFERENCES `eval_skills`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_template_skill` (`template_id`, `skill_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Session Skill Types - Link actual sessions to skill categories
+CREATE TABLE IF NOT EXISTS `session_skill_types` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_id` INT NOT NULL,
+    `skill_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`skill_id`) REFERENCES `eval_skills`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_session_skill` (`session_id`, `skill_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Training Session Dates - Multiple dates per session/template
+CREATE TABLE IF NOT EXISTS `training_session_dates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `template_id` INT DEFAULT NULL COMMENT 'Reference to template if from template',
+    `session_id` INT DEFAULT NULL COMMENT 'Reference to actual session',
+    `session_date` DATETIME NOT NULL,
+    `team_id` INT DEFAULT NULL COMMENT 'Team assigned to this specific date',
+    `max_participants` INT DEFAULT NULL COMMENT 'Override max participants for this date',
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`template_id`) REFERENCES `training_session_templates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
+    INDEX `idx_template` (`template_id`),
+    INDEX `idx_session` (`session_id`),
+    INDEX `idx_date` (`session_date`),
+    INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Session Date Athletes - Athletes assigned to specific session dates
+CREATE TABLE IF NOT EXISTS `session_date_athletes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_date_id` INT NOT NULL,
+    `athlete_id` INT NOT NULL,
+    `assigned_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_date_id`) REFERENCES `training_session_dates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_date_athlete` (`session_date_id`, `athlete_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Enhance packages table with store credit and landing page options
+ALTER TABLE `packages`
+ADD COLUMN IF NOT EXISTS `store_credit` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Store credit value included in package',
+ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
+ADD COLUMN IF NOT EXISTS `package_type` ENUM('sessions_only', 'credit_only', 'mixed') DEFAULT 'sessions_only' COMMENT 'Type of package content';
+
+-- Package Sessions - Link packages to specific sessions
+CREATE TABLE IF NOT EXISTS `package_sessions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `package_id` INT NOT NULL,
+    `session_id` INT DEFAULT NULL COMMENT 'Specific session',
+    `template_id` INT DEFAULT NULL COMMENT 'Session template',
+    `quantity` INT DEFAULT 1 COMMENT 'Number of sessions of this type',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`template_id`) REFERENCES `training_session_templates`(`id`) ON DELETE SET NULL,
+    INDEX `idx_package` (`package_id`),
+    INDEX `idx_session` (`session_id`),
+    INDEX `idx_template` (`template_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Enhance discount_codes table with store credit and dynamic code options
+ALTER TABLE `discount_codes`
+ADD COLUMN IF NOT EXISTS `store_credit_value` DECIMAL(10,2) DEFAULT NULL COMMENT 'Store credit amount for store_credit type',
+ADD COLUMN IF NOT EXISTS `auto_generate_type` ENUM('none', 'new_registration', 'time_based', 'referral') DEFAULT 'none' COMMENT 'Type of auto-generated code',
+ADD COLUMN IF NOT EXISTS `days_since_registration` INT DEFAULT NULL COMMENT 'Trigger after X days for time_based codes',
+ADD COLUMN IF NOT EXISTS `description` VARCHAR(255) DEFAULT NULL COMMENT 'User-friendly description of the discount';
+
+-- Update discount_type enum to include store_credit option
+ALTER TABLE `discount_codes`
+MODIFY COLUMN `discount_type` ENUM('percentage', 'fixed', 'store_credit') DEFAULT 'percentage';
+
+-- User Store Credits - Track user store credit balances
+CREATE TABLE IF NOT EXISTS `user_store_credits` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `amount` DECIMAL(10,2) NOT NULL,
+    `transaction_type` ENUM('earned', 'used', 'expired', 'refund', 'adjustment') NOT NULL,
+    `reference_type` VARCHAR(50) DEFAULT NULL COMMENT 'e.g., package_purchase, discount_code',
+    `reference_id` INT DEFAULT NULL,
+    `description` VARCHAR(255) DEFAULT NULL,
+    `expires_at` DATE DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_type` (`transaction_type`),
+    INDEX `idx_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Session Registrations from Landing Page - Track registration intent before login
+CREATE TABLE IF NOT EXISTS `session_registration_intents` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_id` INT DEFAULT NULL,
+    `template_id` INT DEFAULT NULL,
+    `session_date_id` INT DEFAULT NULL,
+    `package_id` INT DEFAULT NULL,
+    `intent_token` VARCHAR(64) NOT NULL UNIQUE,
+    `user_id` INT DEFAULT NULL COMMENT 'Set after login/registration',
+    `status` ENUM('pending', 'completed', 'expired') DEFAULT 'pending',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `expires_at` TIMESTAMP NOT NULL,
+    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`template_id`) REFERENCES `training_session_templates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`session_date_id`) REFERENCES `training_session_dates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_token` (`intent_token`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add show_on_landing to sessions table if not exists
+ALTER TABLE `sessions`
+ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
+ADD COLUMN IF NOT EXISTS `session_type_category` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice';

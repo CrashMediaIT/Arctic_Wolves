@@ -44,20 +44,39 @@ try {
             $age_group = trim($_POST['age_group'] ?? '');
             $skill_level = trim($_POST['skill_level'] ?? '');
             $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            // New fields for enhanced packages
+            $store_credit = floatval($_POST['store_credit'] ?? 0);
+            $show_on_landing = isset($_POST['show_on_landing']) ? 1 : 0;
+            $package_type = $_POST['package_type'] ?? 'sessions_only';
+            $package_session_ids = $_POST['package_session_ids'] ?? [];
             
             if (empty($name) || $price < 0) {
                 throw new Exception('Invalid package data');
             }
             
+            $pdo->beginTransaction();
+            
             $stmt = $pdo->prepare("
                 INSERT INTO packages (name, description, price, credits, valid_days, 
-                                     age_group, skill_level, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                     age_group, skill_level, is_active, store_credit, show_on_landing, package_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active
+                $age_group ?: null, $skill_level ?: null, $is_active, $store_credit, $show_on_landing, $package_type
             ]);
+            
+            $package_id = $pdo->lastInsertId();
+            
+            // Insert package sessions if provided
+            if (!empty($package_session_ids) && is_array($package_session_ids)) {
+                $sessionStmt = $pdo->prepare("INSERT INTO package_sessions (package_id, template_id) VALUES (?, ?)");
+                foreach ($package_session_ids as $sessionId) {
+                    $sessionStmt->execute([$package_id, intval($sessionId)]);
+                }
+            }
+            
+            $pdo->commit();
             
             if ($isAjax) {
                 header('Content-Type: application/json');

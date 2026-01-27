@@ -13,8 +13,45 @@ if (!$db_connected || !$pdo) {
     die("Database connection failed. Please check your configuration. Error: " . ($db_error ?? 'Unknown error'));
 }
 
-// If already logged in, redirect to dashboard
+// Handle session intent from public sessions page
+$sessionIntent = $_GET['session_intent'] ?? $_SESSION['session_intent'] ?? null;
+if (isset($_GET['session_intent'])) {
+    $_SESSION['session_intent'] = $_GET['session_intent'];
+}
+
+// If already logged in, redirect to dashboard (or session intent)
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
+    // Check if there's a session intent to complete
+    if ($sessionIntent && $db_connected) {
+        try {
+            $stmt = $pdo->prepare("
+                SELECT * FROM session_registration_intents 
+                WHERE intent_token = ? AND status = 'pending' AND expires_at > NOW()
+            ");
+            $stmt->execute([$sessionIntent]);
+            $intent = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($intent) {
+                // Mark intent as completed and link to user
+                $pdo->prepare("UPDATE session_registration_intents SET user_id = ?, status = 'completed' WHERE id = ?")
+                    ->execute([$_SESSION['user_id'], $intent['id']]);
+                
+                // Clear session intent
+                unset($_SESSION['session_intent']);
+                
+                // Redirect to booking page with session pre-selected
+                if ($intent['template_id']) {
+                    header("Location: dashboard.php?page=booking&session=" . $intent['template_id']);
+                    exit();
+                } elseif ($intent['package_id']) {
+                    header("Location: dashboard.php?page=booking&package=" . $intent['package_id']);
+                    exit();
+                }
+            }
+        } catch (PDOException $e) {
+            error_log("Session intent processing error: " . $e->getMessage());
+        }
+    }
     header("Location: dashboard.php");
     exit();
 }
@@ -68,7 +105,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     exit();
                 }
                 
-                // 4. REDIRECT TO DASHBOARD
+                // 4. CHECK FOR SESSION INTENT (from public sessions page)
+                if ($sessionIntent) {
+                    try {
+                        $intentStmt = $pdo->prepare("
+                            SELECT * FROM session_registration_intents 
+                            WHERE intent_token = ? AND status = 'pending' AND expires_at > NOW()
+                        ");
+                        $intentStmt->execute([$sessionIntent]);
+                        $intent = $intentStmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($intent) {
+                            // Mark intent as completed and link to user
+                            $pdo->prepare("UPDATE session_registration_intents SET user_id = ?, status = 'completed' WHERE id = ?")
+                                ->execute([$user['id'], $intent['id']]);
+                            
+                            // Clear session intent
+                            unset($_SESSION['session_intent']);
+                            
+                            // Redirect to booking page with session pre-selected
+                            if ($intent['template_id']) {
+                                header("Location: dashboard.php?page=booking&session=" . $intent['template_id']);
+                                exit();
+                            } elseif ($intent['package_id']) {
+                                header("Location: dashboard.php?page=booking&package=" . $intent['package_id']);
+                                exit();
+                            }
+                        }
+                    } catch (PDOException $e) {
+                        error_log("Session intent processing error on login: " . $e->getMessage());
+                    }
+                }
+                
+                // 5. REDIRECT TO DASHBOARD
                 header("Location: dashboard.php");
                 exit();
             }

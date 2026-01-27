@@ -1,12 +1,88 @@
-<!-- Accounting Products View -->
+<!-- Accounting Products View - Enhanced Sessions, Packages, and Discounts -->
 <?php
-// Fetch session types from database
+// Fetch session templates from database
+try {
+    $templatesStmt = $pdo->query("
+        SELECT tst.*, 
+               st.name as session_type_name,
+               CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+               l.name as location_name,
+               pp.name as practice_plan_name
+        FROM training_session_templates tst
+        LEFT JOIN session_types st ON tst.session_type_id = st.id
+        LEFT JOIN users u ON tst.coach_id = u.id
+        LEFT JOIN locations l ON tst.location_id = l.id
+        LEFT JOIN practice_plans pp ON tst.practice_plan_id = pp.id
+        ORDER BY tst.created_at DESC
+    ");
+    $sessionTemplates = $templatesStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Session templates fetch error: " . $e->getMessage());
+    $sessionTemplates = [];
+}
+
+// Fetch session types from database (fallback for templates that don't exist yet)
 try {
     $sessionTypesStmt = $pdo->query("SELECT * FROM session_types ORDER BY name");
     $sessionTypes = $sessionTypesStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Session types fetch error: " . $e->getMessage());
     $sessionTypes = [];
+}
+
+// Fetch coaches from database
+try {
+    $coachesStmt = $pdo->query("
+        SELECT id, first_name, last_name, role 
+        FROM users 
+        WHERE role IN ('coach', 'health_coach', 'admin') AND is_active = 1
+        ORDER BY last_name, first_name
+    ");
+    $coaches = $coachesStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Coaches fetch error: " . $e->getMessage());
+    $coaches = [];
+}
+
+// Fetch teams from database
+try {
+    $teamsStmt = $pdo->query("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
+    $teams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Teams fetch error: " . $e->getMessage());
+    $teams = [];
+}
+
+// Fetch locations from database
+try {
+    $locationsStmt = $pdo->query("SELECT id, name, city FROM locations ORDER BY city, name");
+    $locations = $locationsStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Locations fetch error: " . $e->getMessage());
+    $locations = [];
+}
+
+// Fetch practice plans from database
+try {
+    $plansStmt = $pdo->query("SELECT id, name FROM practice_plans ORDER BY name");
+    $practicePlans = $plansStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Practice plans fetch error: " . $e->getMessage());
+    $practicePlans = [];
+}
+
+// Fetch skill categories (eval_skills table)
+try {
+    $skillsStmt = $pdo->query("
+        SELECT es.id, es.name, es.description, ec.name as category_name 
+        FROM eval_skills es 
+        LEFT JOIN eval_categories ec ON es.category_id = ec.id 
+        ORDER BY ec.name, es.name
+    ");
+    $skills = $skillsStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Skills fetch error: " . $e->getMessage());
+    $skills = [];
 }
 
 // Fetch packages from database
@@ -28,7 +104,7 @@ try {
 }
 
 // Calculate stats
-$sessionCount = count($sessionTypes);
+$sessionCount = count($sessionTemplates) > 0 ? count($sessionTemplates) : count($sessionTypes);
 $packageCount = count(array_filter($packages, function($p) { return !empty($p['is_active']); }));
 $discountCount = count(array_filter($discounts, function($d) { return !empty($d['is_active']); }));
 $avgPackagePrice = $packageCount > 0 ? array_sum(array_column($packages, 'price')) / count($packages) : 0;
@@ -55,7 +131,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <h1 class="page-title">
         <i class="fas fa-box-open"></i> Products & Pricing
     </h1>
-    <p class="page-description">Manage sessions, packages, and discount codes</p>
+    <p class="page-description">Manage training sessions, packages, and discount codes</p>
 </div>
 
 <div class="products-content">
@@ -65,7 +141,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
             <div class="stat-info">
                 <span class="stat-value"><?= $sessionCount ?></span>
-                <span class="stat-label">Session Types</span>
+                <span class="stat-label">Sessions</span>
             </div>
         </div>
         <div class="product-stat-card packages">
@@ -114,35 +190,60 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="tab-content <?= $activeTab === 'sessions' ? 'active' : '' ?>" id="sessions-tab">
         <div class="content-card">
             <div class="card-header">
-                <h3><i class="fas fa-calendar-day"></i> Session Types</h3>
-                <button class="btn btn-primary" data-action="add" data-modal="add-session-type-modal"><i class="fas fa-plus"></i> Add Session Type</button>
+                <h3><i class="fas fa-calendar-day"></i> Training Sessions & Templates</h3>
+                <button class="btn btn-primary" data-action="add" data-modal="add-session-modal"><i class="fas fa-plus"></i> Create Session</button>
             </div>
             <div class="card-body">
                 <div class="products-grid">
-                    <?php if (empty($sessionTypes)): ?>
+                    <?php 
+                    // Display session templates if they exist, otherwise fall back to session types
+                    $displaySessions = count($sessionTemplates) > 0 ? $sessionTemplates : $sessionTypes;
+                    
+                    if (empty($displaySessions)): ?>
                         <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
                             <i class="fas fa-calendar-day" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
-                            <p style="color: var(--text-dim);">No session types yet. Click "Add Session Type" to create one.</p>
+                            <p style="color: var(--text-dim);">No sessions yet. Click "Create Session" to add one.</p>
                         </div>
                     <?php else: ?>
-                        <?php foreach ($sessionTypes as $session): 
+                        <?php foreach ($displaySessions as $session): 
                             $isActive = isset($session['is_active']) ? $session['is_active'] : 1;
+                            $isTemplate = isset($session['is_template']) ? $session['is_template'] : (isset($session['template_id']) || !isset($session['default_price']));
+                            $sessionType = $session['session_type'] ?? $session['session_type_category'] ?? 'on_ice';
+                            $showOnLanding = isset($session['show_on_landing']) ? $session['show_on_landing'] : 0;
+                            $price = $session['price'] ?? $session['default_price'] ?? 0;
+                            $duration = $session['duration_minutes'] ?? 60;
+                            $maxParticipants = $session['max_participants'] ?? null;
                         ?>
                         <div class="product-card session-card">
-                            <div class="product-type-badge individual"><i class="fas fa-calendar-check"></i></div>
+                            <div class="product-type-badge <?= $sessionType ?>">
+                                <i class="fas fa-<?= $sessionType === 'on_ice' ? 'skating' : ($sessionType === 'nutrition' ? 'utensils' : ($sessionType === 'off_ice' ? 'dumbbell' : 'calendar-check')) ?>"></i>
+                            </div>
+                            <?php if ($showOnLanding): ?>
+                            <div class="product-badge landing">Public</div>
+                            <?php endif; ?>
                             <div class="product-header">
                                 <h4><?= htmlspecialchars($session['name']) ?></h4>
                                 <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
                             </div>
-                            <div class="product-price">$<?= number_format($session['default_price'] ?? 0, 2) ?><small>/session</small></div>
+                            <div class="product-price">$<?= number_format($price, 2) ?><small>/session</small></div>
                             <div class="product-details">
-                                <p><i class="fas fa-clock"></i> <?= $session['duration_minutes'] ?? 60 ?> minutes</p>
+                                <p><i class="fas fa-clock"></i> <?= $duration ?> minutes</p>
+                                <?php if ($maxParticipants): ?>
+                                <p><i class="fas fa-users"></i> Max <?= $maxParticipants ?> participants</p>
+                                <?php endif; ?>
+                                <?php if (!empty($session['coach_name'])): ?>
+                                <p><i class="fas fa-user-tie"></i> <?= htmlspecialchars($session['coach_name']) ?></p>
+                                <?php endif; ?>
                                 <?php if (!empty($session['description'])): ?>
                                 <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars(substr($session['description'], 0, 50)) ?><?= strlen($session['description']) > 50 ? '...' : '' ?></p>
                                 <?php endif; ?>
+                                <p class="session-type-label">
+                                    <span class="type-badge <?= $sessionType ?>"><?= ucfirst(str_replace('_', ' ', $sessionType)) ?></span>
+                                </p>
                             </div>
                             <div class="product-actions">
-                                <button class="btn-action" data-action="edit" data-id="<?= $session['id'] ?>" data-type="session" data-modal="edit-session-type-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn-action" data-action="edit" data-id="<?= $session['id'] ?>" data-type="session" data-modal="edit-session-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn-action" data-action="manage-dates" data-id="<?= $session['id'] ?>" data-type="session" data-modal="manage-dates-modal" title="Manage Dates"><i class="fas fa-calendar-plus"></i></button>
                                 <button class="btn-action <?= $isActive ? '' : 'active' ?>" data-action="toggle-status" data-id="<?= $session['id'] ?>" data-type="session" title="<?= $isActive ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= $isActive ? 'on' : 'off' ?>"></i></button>
                             </div>
                         </div>
@@ -170,25 +271,38 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <?php else: ?>
                         <?php foreach ($packages as $package): 
                             $isActive = !empty($package['is_active']);
+                            $showOnLanding = isset($package['show_on_landing']) ? $package['show_on_landing'] : 0;
+                            $packageType = $package['package_type'] ?? 'sessions_only';
+                            $storeCredit = $package['store_credit'] ?? 0;
                         ?>
                         <div class="product-card <?= $isActive ? 'featured' : '' ?>">
                             <?php if ($isActive): ?><div class="product-badge">Active</div><?php endif; ?>
+                            <?php if ($showOnLanding): ?><div class="product-badge landing" style="right: 80px;">Public</div><?php endif; ?>
                             <div class="product-header">
                                 <h4><?= htmlspecialchars($package['name']) ?></h4>
                                 <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
                             </div>
                             <div class="product-price">$<?= number_format($package['price'] ?? 0, 2) ?></div>
                             <div class="product-details">
-                                <p><i class="fas fa-calendar-check"></i> <?= $package['credits'] ?? 0 ?> sessions</p>
+                                <?php if ($package['credits'] ?? 0 > 0): ?>
+                                <p><i class="fas fa-calendar-check"></i> <?= $package['credits'] ?> sessions</p>
+                                <?php endif; ?>
+                                <?php if ($storeCredit > 0): ?>
+                                <p><i class="fas fa-wallet"></i> $<?= number_format($storeCredit, 2) ?> store credit</p>
+                                <?php endif; ?>
                                 <?php if (!empty($package['valid_days'])): ?>
                                 <p><i class="fas fa-clock"></i> Valid <?= $package['valid_days'] ?> days</p>
                                 <?php endif; ?>
                                 <?php if (!empty($package['description'])): ?>
                                 <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars(substr($package['description'], 0, 40)) ?><?= strlen($package['description']) > 40 ? '...' : '' ?></p>
                                 <?php endif; ?>
+                                <p class="package-type-label">
+                                    <span class="type-badge <?= $packageType ?>"><?= ucfirst(str_replace('_', ' ', $packageType)) ?></span>
+                                </p>
                             </div>
                             <div class="product-actions">
                                 <button class="btn-action" data-action="edit" data-id="<?= $package['id'] ?>" data-type="package" data-modal="edit-package-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn-action" data-action="manage-sessions" data-id="<?= $package['id'] ?>" data-type="package" data-modal="manage-package-sessions-modal" title="Manage Sessions"><i class="fas fa-list-check"></i></button>
                                 <button class="btn-action <?= $isActive ? '' : 'active' ?>" data-action="toggle-status" data-id="<?= $package['id'] ?>" data-type="package" title="<?= $isActive ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= $isActive ? 'on' : 'off' ?>"></i></button>
                             </div>
                         </div>
@@ -218,10 +332,12 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         <thead>
                             <tr>
                                 <th>Code</th>
+                                <th>Description</th>
                                 <th>Type</th>
-                                <th>Amount</th>
+                                <th>Value</th>
                                 <th>Valid Until</th>
                                 <th>Uses</th>
+                                <th>Auto-Generate</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -231,16 +347,39 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 $isActive = !empty($discount['is_active']);
                                 $discountType = $discount['discount_type'] ?? $discount['type'] ?? 'percentage';
                                 $discountValue = $discount['discount_value'] ?? $discount['value'] ?? 0;
+                                $storeCredit = $discount['store_credit_value'] ?? 0;
                                 $validUntil = $discount['valid_until'] ?? $discount['expiry_date'] ?? null;
                                 $maxUses = $discount['max_uses'] ?? $discount['usage_limit'] ?? null;
                                 $currentUses = $discount['times_used'] ?? $discount['used_count'] ?? 0;
+                                $autoGenerate = $discount['auto_generate_type'] ?? 'none';
+                                $description = $discount['description'] ?? '';
                             ?>
                             <tr>
-                                <td><strong><?= htmlspecialchars($discount['code']) ?></strong></td>
-                                <td><?= ucfirst($discountType) ?></td>
-                                <td><?= $discountType === 'percentage' ? $discountValue . '%' : '$' . number_format($discountValue, 2) ?></td>
+                                <td><strong style="font-family: monospace; background: var(--bg-main); padding: 4px 8px; border-radius: 4px;"><?= htmlspecialchars($discount['code']) ?></strong></td>
+                                <td><?= htmlspecialchars($description) ?: '-' ?></td>
+                                <td>
+                                    <span class="discount-type-badge <?= $discountType ?>">
+                                        <?= $discountType === 'percentage' ? '% Off' : ($discountType === 'store_credit' ? 'Credit' : '$ Off') ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php if ($discountType === 'percentage'): ?>
+                                        <?= $discountValue ?>%
+                                    <?php elseif ($discountType === 'store_credit'): ?>
+                                        $<?= number_format($storeCredit > 0 ? $storeCredit : $discountValue, 2) ?> credit
+                                    <?php else: ?>
+                                        $<?= number_format($discountValue, 2) ?>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= $validUntil ? date('M d, Y', strtotime($validUntil)) : 'No expiry' ?></td>
                                 <td><?= $currentUses ?> / <?= $maxUses ?? '∞' ?></td>
+                                <td>
+                                    <?php if ($autoGenerate !== 'none'): ?>
+                                    <span class="auto-badge"><?= ucfirst(str_replace('_', ' ', $autoGenerate)) ?></span>
+                                    <?php else: ?>
+                                    <span style="color: var(--text-dim);">Manual</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><span class="status-badge <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span></td>
                                 <td>
                                     <div class="table-actions">
@@ -415,9 +554,11 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     color: #fff;
 }
 
-.product-type-badge.individual { background: linear-gradient(135deg, #3B82F6, #2563EB); }
-.product-type-badge.group { background: linear-gradient(135deg, #10b981, #059669); }
-.product-type-badge.skills { background: linear-gradient(135deg, #8B5CF6, #6B46C1); }
+.product-type-badge.on_ice { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+.product-type-badge.off_ice { background: linear-gradient(135deg, #10b981, #059669); }
+.product-type-badge.nutrition { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.product-type-badge.meeting { background: linear-gradient(135deg, #8B5CF6, #6B46C1); }
+.product-type-badge.other { background: linear-gradient(135deg, #6b7280, #4b5563); }
 
 .product-badge {
     position: absolute;
@@ -431,6 +572,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+.product-badge.landing {
+    background: linear-gradient(135deg, #10b981, #059669);
 }
 
 .product-header {
@@ -499,6 +644,44 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     width: 20px;
 }
 
+.type-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.type-badge.on_ice { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.type-badge.off_ice { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.type-badge.nutrition { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.type-badge.meeting { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
+.type-badge.sessions_only { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.type-badge.credit_only { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.type-badge.mixed { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
+
+.discount-type-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.discount-type-badge.percentage { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.discount-type-badge.fixed { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.discount-type-badge.store_credit { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+.auto-badge {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8B5CF6;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
 .product-actions {
     display: flex;
     gap: 10px;
@@ -554,6 +737,108 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     height: 32px;
 }
 
+/* Multi-select checkboxes */
+.skill-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 12px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.skill-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.skill-checkbox:hover {
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.skill-checkbox input {
+    accent-color: var(--primary);
+}
+
+/* Session date list */
+.session-dates-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.session-date-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.session-date-item .date-info {
+    flex: 1;
+}
+
+.session-date-item .date-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Session search for packages */
+.session-search-container {
+    margin-bottom: 16px;
+}
+
+.session-search-input {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-white);
+    font-size: 14px;
+}
+
+.session-search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.session-search-results {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.session-search-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.session-search-item:hover {
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.session-search-item:last-child {
+    border-bottom: none;
+}
+
 @media (max-width: 768px) {
     .product-stats {
         grid-template-columns: repeat(2, 1fr);
@@ -581,59 +866,192 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 }
 </style>
 
-<!-- Add Session Type Modal -->
-<div id="add-session-type-modal" class="modal">
-    <div class="modal-content">
+<!-- Add Session Modal -->
+<div id="add-session-modal" class="modal">
+    <div class="modal-content modal-lg">
         <div class="modal-header">
-            <h2 class="modal-title">Add Session Type</h2>
-            <button class="modal-close" onclick="closeModal('add-session-type-modal')">&times;</button>
+            <h2 class="modal-title"><i class="fas fa-calendar-plus"></i> Create Training Session</h2>
+            <button class="modal-close" onclick="closeModal('add-session-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <form method="POST" action="process_admin_action.php" id="add-session-form">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="create_session_type">
+            <input type="hidden" name="action" value="create_training_session">
             
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Session Name *</label>
-                    <input type="text" name="name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3"></textarea>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Price *</label>
-                        <input type="number" name="price" class="form-input" step="0.01" min="0" required>
+                <!-- Basic Info Section -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-info-circle"></i> Basic Information</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Session Name *</label>
+                            <input type="text" name="name" class="form-input" required placeholder="e.g., Power Skating Clinic">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session Type *</label>
+                            <select name="session_type" class="form-input" required>
+                                <option value="on_ice">On Ice</option>
+                                <option value="off_ice">Off Ice / Workout</option>
+                                <option value="nutrition">Nutrition Meeting</option>
+                                <option value="meeting">General Meeting</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Duration (minutes) *</label>
-                        <input type="number" name="duration" class="form-input" min="15" step="15" required>
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-textarea" rows="3" placeholder="What will athletes learn in this session?"></textarea>
                     </div>
                 </div>
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Max Participants</label>
-                        <input type="number" name="max_participants" class="form-input" min="1">
+                <!-- Pricing & Duration Section -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-dollar-sign"></i> Pricing & Duration</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Price ($) *</label>
+                            <input type="number" name="price" class="form-input" step="0.01" min="0" required placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Duration (minutes) *</label>
+                            <input type="number" name="duration" class="form-input" min="15" step="15" value="60" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Participants</label>
+                            <input type="number" name="max_participants" class="form-input" min="1" placeholder="Leave blank for unlimited">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Assignment Section -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-user-tie"></i> Assignments</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Coach</label>
+                            <select name="coach_id" class="form-input">
+                                <option value="">Select Coach (Optional)</option>
+                                <?php foreach ($coaches as $coach): ?>
+                                <option value="<?= $coach['id'] ?>"><?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?> (<?= ucfirst($coach['role']) ?>)</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Location</label>
+                            <select name="location_id" class="form-input">
+                                <option value="">Select Location (Optional)</option>
+                                <?php foreach ($locations as $location): ?>
+                                <option value="<?= $location['id'] ?>"><?= htmlspecialchars($location['name']) ?><?= $location['city'] ? ' - ' . htmlspecialchars($location['city']) : '' ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select name="is_active" class="form-input">
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Practice Plan</label>
+                            <select name="practice_plan_id" class="form-input">
+                                <option value="">Select Practice Plan (Optional)</option>
+                                <?php foreach ($practicePlans as $plan): ?>
+                                <option value="<?= $plan['id'] ?>"><?= htmlspecialchars($plan['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session Type Category</label>
+                            <select name="session_type_id" class="form-input">
+                                <option value="">Select Category (Optional)</option>
+                                <?php foreach ($sessionTypes as $type): ?>
+                                <option value="<?= $type['id'] ?>"><?= htmlspecialchars($type['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Skills Section -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-star"></i> Skill Types (Focus Areas)</h4>
+                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Select the skills that will be worked on during this session</p>
+                    
+                    <div class="skill-selector">
+                        <?php if (!empty($skills)): ?>
+                            <?php foreach ($skills as $skill): ?>
+                            <label class="skill-checkbox">
+                                <input type="checkbox" name="skill_ids[]" value="<?= $skill['id'] ?>">
+                                <span><?= htmlspecialchars($skill['name']) ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <p style="color: var(--text-dim); grid-column: 1/-1;">No skills defined yet. Create skills in Categories management.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Session Dates Section -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-calendar-alt"></i> Session Dates</h4>
+                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Add one or more dates when this session will be held</p>
+                    
+                    <div id="session-dates-container">
+                        <div class="session-date-input" data-index="0">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Date & Time</label>
+                                    <input type="datetime-local" name="session_dates[0][datetime]" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Team (Optional)</label>
+                                    <select name="session_dates[0][team_id]" class="form-input">
+                                        <option value="">All Athletes</option>
+                                        <?php foreach ($teams as $team): ?>
+                                        <option value="<?= $team['id'] ?>"><?= htmlspecialchars($team['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex: 0 0 auto; align-self: end;">
+                                    <button type="button" class="btn-action remove-date" onclick="removeSessionDate(this)" style="display: none;"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="addSessionDate()" style="margin-top: 12px;"><i class="fas fa-plus"></i> Add Another Date</button>
+                </div>
+                
+                <!-- Display Options -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-eye"></i> Display Options</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select name="is_active" class="form-input">
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">
+                                <input type="checkbox" name="show_on_landing" value="1">
+                                <span>Show on Landing Page (Public Sessions Tab)</span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">
+                                <input type="checkbox" name="is_template" value="1">
+                                <span>Save as Template (Reusable)</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-session-type-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Session Type</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('add-session-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Session</button>
             </div>
         </form>
     </div>
@@ -641,57 +1059,132 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 
 <!-- Add Package Modal -->
 <div id="add-package-modal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content modal-lg">
         <div class="modal-header">
-            <h2 class="modal-title">Create Package</h2>
+            <h2 class="modal-title"><i class="fas fa-box"></i> Create Package</h2>
             <button class="modal-close" onclick="closeModal('add-package-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_packages.php">
+        <form method="POST" action="process_packages.php" id="add-package-form">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create">
             
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Package Name *</label>
-                    <input type="text" name="name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3"></textarea>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Price *</label>
-                        <input type="number" name="price" class="form-input" step="0.01" min="0" required>
+                <!-- Basic Info Section -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-info-circle"></i> Package Details</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Package Name *</label>
+                            <input type="text" name="name" class="form-input" required placeholder="e.g., Elite Training Bundle">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Price ($) *</label>
+                            <input type="number" name="price" class="form-input" step="0.01" min="0" required placeholder="0.00">
+                        </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Number of Sessions *</label>
-                        <input type="number" name="session_count" class="form-input" min="1" required>
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-textarea" rows="3" placeholder="What's included in this package?"></textarea>
                     </div>
                 </div>
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Validity (days)</label>
-                        <input type="number" name="validity_days" class="form-input" min="1" placeholder="e.g., 90">
+                <!-- Package Type Section -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-list-check"></i> Package Contents</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Package Type *</label>
+                            <select name="package_type" class="form-input" id="package-type-select" onchange="togglePackageTypeFields()">
+                                <option value="sessions_only">Sessions Only</option>
+                                <option value="credit_only">Store Credit Only</option>
+                                <option value="mixed">Mixed (Sessions + Credit)</option>
+                            </select>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select name="is_active" class="form-input">
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
-                        </select>
+                    <div class="form-row" id="sessions-count-row">
+                        <div class="form-group">
+                            <label class="form-label">Number of Sessions</label>
+                            <input type="number" name="session_count" class="form-input" min="0" value="0" placeholder="Number of sessions included">
+                            <small class="form-help-text" style="color: var(--text-dim);">Generic session credits. For specific sessions, use the session selector below.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row" id="store-credit-row" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Store Credit Value ($)</label>
+                            <input type="number" name="store_credit" class="form-input" step="0.01" min="0" value="0" placeholder="0.00">
+                            <small class="form-help-text" style="color: var(--text-dim);">Dollar amount of store credit included in this package.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Validity Period (days)</label>
+                            <input type="number" name="validity_days" class="form-input" min="1" placeholder="e.g., 90">
+                            <small class="form-help-text" style="color: var(--text-dim);">Leave blank for no expiration.</small>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label class="form-label">
-                        <input type="checkbox" name="featured" value="1"> Featured Package
-                    </label>
+                <!-- Session Selector Section -->
+                <div class="form-section" id="session-selector-section">
+                    <h4 class="section-title"><i class="fas fa-calendar-check"></i> Assign Specific Sessions (Optional)</h4>
+                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Search and add specific sessions to include in this package</p>
+                    
+                    <div class="session-search-container">
+                        <input type="text" id="session-search-input" class="session-search-input" placeholder="Search sessions by name or skill type..." onkeyup="filterSessions()">
+                    </div>
+                    
+                    <div class="session-search-results" id="session-search-results">
+                        <?php 
+                        $displaySessions = count($sessionTemplates) > 0 ? $sessionTemplates : $sessionTypes;
+                        foreach ($displaySessions as $session): 
+                            $sessionName = htmlspecialchars($session['name']);
+                            $sessionPrice = $session['price'] ?? $session['default_price'] ?? 0;
+                        ?>
+                        <div class="session-search-item" data-name="<?= strtolower($sessionName) ?>">
+                            <div>
+                                <strong><?= $sessionName ?></strong>
+                                <span style="color: var(--text-dim); margin-left: 10px;">$<?= number_format($sessionPrice, 2) ?></span>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="addSessionToPackage(<?= $session['id'] ?>, '<?= addslashes($sessionName) ?>')">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <div id="selected-sessions-container" style="margin-top: 16px;">
+                        <h5 style="color: var(--text-white); margin-bottom: 10px;">Selected Sessions:</h5>
+                        <div id="selected-sessions-list">
+                            <p style="color: var(--text-dim); font-size: 13px;">No specific sessions selected yet.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Display Options -->
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-eye"></i> Display Options</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select name="is_active" class="form-input">
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">
+                                <input type="checkbox" name="show_on_landing" value="1">
+                                <span>Show on Landing Page (Above Individual Sessions)</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -707,37 +1200,44 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 <div id="add-discount-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title">Create Discount</h2>
+            <h2 class="modal-title"><i class="fas fa-tags"></i> Create Discount Code</h2>
             <button class="modal-close" onclick="closeModal('add-discount-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <form method="POST" action="process_admin_action.php" id="add-discount-form">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create_discount">
             
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Discount Code *</label>
-                    <input type="text" name="code" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <input type="text" name="description" class="form-input">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Discount Code *</label>
+                        <input type="text" name="code" class="form-input" required placeholder="e.g., HOCKEY10" style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input type="text" name="description" class="form-input" placeholder="e.g., Save 10% on all packages">
+                    </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Discount Type *</label>
-                        <select name="type" class="form-input" required>
-                            <option value="">Select Type</option>
-                            <option value="percentage">Percentage</option>
-                            <option value="fixed">Fixed Amount</option>
+                        <select name="type" class="form-input" id="discount-type-select" required onchange="toggleDiscountTypeFields()">
+                            <option value="percentage">Percentage Off</option>
+                            <option value="fixed">Fixed Amount Off</option>
+                            <option value="store_credit">Store Credit</option>
                         </select>
                     </div>
-                    
+                    <div class="form-group" id="discount-value-group">
+                        <label class="form-label" id="discount-value-label">Percentage (%)</label>
+                        <input type="number" name="value" class="form-input" step="0.01" min="0" required placeholder="10">
+                    </div>
+                </div>
+                
+                <div class="form-row" id="store-credit-discount-row" style="display: none;">
                     <div class="form-group">
-                        <label class="form-label">Value *</label>
-                        <input type="number" name="value" class="form-input" step="0.01" min="0" required>
+                        <label class="form-label">Store Credit Amount ($)</label>
+                        <input type="number" name="store_credit_value" class="form-input" step="0.01" min="0" placeholder="25.00">
                     </div>
                 </div>
                 
@@ -746,7 +1246,6 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         <label class="form-label">Start Date</label>
                         <input type="date" name="start_date" class="form-input">
                     </div>
-                    
                     <div class="form-group">
                         <label class="form-label">End Date</label>
                         <input type="date" name="end_date" class="form-input">
@@ -758,13 +1257,35 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         <label class="form-label">Usage Limit</label>
                         <input type="number" name="usage_limit" class="form-input" min="1" placeholder="Leave empty for unlimited">
                     </div>
-                    
                     <div class="form-group">
                         <label class="form-label">Status</label>
                         <select name="is_active" class="form-input">
                             <option value="1">Active</option>
                             <option value="0">Inactive</option>
                         </select>
+                    </div>
+                </div>
+                
+                <!-- Auto-Generate Options -->
+                <div class="form-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                    <h4 class="section-title"><i class="fas fa-magic"></i> Auto-Generation Rules (Optional)</h4>
+                    <p class="form-help-text" style="margin-bottom: 12px; color: var(--text-dim); font-size: 13px;">Set up dynamic discount code generation rules</p>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Auto-Generate Type</label>
+                            <select name="auto_generate_type" class="form-input" id="auto-generate-select" onchange="toggleAutoGenerateFields()">
+                                <option value="none">Manual Code Only</option>
+                                <option value="new_registration">New Registration Welcome</option>
+                                <option value="time_based">Time-Based (Days Since Registration)</option>
+                                <option value="referral">Referral Reward</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="days-since-registration-group" style="display: none;">
+                            <label class="form-label">Days Since Registration</label>
+                            <input type="number" name="days_since_registration" class="form-input" min="1" placeholder="e.g., 30">
+                            <small class="form-help-text" style="color: var(--text-dim);">Generate code X days after user registration</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -777,10 +1298,91 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     </div>
 </div>
 
+<!-- Edit Session Modal (simplified - can be expanded) -->
+<div id="edit-session-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Session</h2>
+            <button class="modal-close" onclick="closeModal('edit-session-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-dim); text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>
+                Loading session details...
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Package Modal (simplified - can be expanded) -->
+<div id="edit-package-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Package</h2>
+            <button class="modal-close" onclick="closeModal('edit-package-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-dim); text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>
+                Loading package details...
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Discount Modal (simplified - can be expanded) -->
+<div id="edit-discount-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Discount</h2>
+            <button class="modal-close" onclick="closeModal('edit-discount-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-dim); text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>
+                Loading discount details...
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Session Dates Modal -->
+<div id="manage-dates-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-calendar-alt"></i> Manage Session Dates</h2>
+            <button class="modal-close" onclick="closeModal('manage-dates-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-dim); text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>
+                Loading session dates...
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Package Sessions Modal -->
+<div id="manage-package-sessions-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-list-check"></i> Manage Package Sessions</h2>
+            <button class="modal-close" onclick="closeModal('manage-package-sessions-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-dim); text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>
+                Loading package sessions...
+            </p>
+        </div>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    var sessionDateIndex = 0;
+    var selectedPackageSessions = [];
     
     // Show notification helper
     function showNotification(message, type) {
@@ -820,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Handle toggle-status buttons - different endpoints for different types
+    // Handle toggle-status buttons
     document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -830,7 +1432,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!confirm('Are you sure you want to toggle the status of this ' + itemType + '?')) return;
             
-            // Determine the correct endpoint
             var endpoint = 'process_admin_action.php';
             var action = 'toggle_' + itemType + '_status';
             
@@ -851,7 +1452,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     showNotification(data.message || 'Status updated successfully!', 'success');
-                    // Toggle button icon/text
                     var icon = button.querySelector('i');
                     if (icon) {
                         icon.classList.toggle('fa-toggle-on');
@@ -911,23 +1511,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Handle edit buttons for modals
-    document.querySelectorAll('[data-action="edit"][data-modal]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var modalId = this.getAttribute('data-modal');
-            var itemId = this.getAttribute('data-id');
-            var modal = document.getElementById(modalId);
-            
-            if (modal) {
-                // Set item ID in hidden field if exists
-                var idField = modal.querySelector('input[name$="_id"]');
-                if (idField) idField.value = itemId;
-                modal.classList.add('active');
-            }
-        });
-    });
-    
     // Handle add buttons for modals
     document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
@@ -940,7 +1523,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Convert forms to AJAX submissions with success widget
+    // Handle edit buttons for modals
+    document.querySelectorAll('[data-action="edit"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var itemId = this.getAttribute('data-id');
+            var modal = document.getElementById(modalId);
+            
+            if (modal) {
+                var idField = modal.querySelector('input[name$="_id"]');
+                if (idField) idField.value = itemId;
+                modal.classList.add('active');
+            }
+        });
+    });
+    
+    // Convert forms to AJAX submissions
     document.querySelectorAll('.modal form').forEach(function(form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -961,13 +1560,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(function(response) {
-                // Get content type to determine how to parse
                 var contentType = response.headers.get('content-type');
                 var isJson = contentType && contentType.includes('application/json');
                 
-                // Check for non-OK response
                 if (!response.ok) {
-                    // Try to parse error message from JSON response
                     if (isJson) {
                         return response.json().then(function(data) {
                             var errorMsg = data.message || data.error || 'Request failed with status: ' + response.status;
@@ -979,14 +1575,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     return { success: false, message: 'Request failed with status: ' + response.status };
                 }
                 
-                // If JSON response, parse it
                 if (isJson) {
                     return response.json().catch(function() {
                         return { success: false, message: 'Invalid JSON response from server' };
                     });
                 }
                 
-                // If we got a non-JSON response (like HTML redirect), treat as error
                 return { success: false, message: 'Unexpected response from server. Please refresh and try again.' };
             })
             .then(function(data) {
@@ -1001,7 +1595,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     showNotification(message, 'success');
                     if (modal) closeModal(modal.id);
                     
-                    // Determine which tab to stay on based on the modal ID
                     var currentTab = 'sessions';
                     if (modal && modal.id.includes('package')) {
                         currentTab = 'packages';
@@ -1011,7 +1604,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         currentTab = 'sessions';
                     }
                     
-                    // Reload with tab parameter to stay on the same tab
                     setTimeout(function() { 
                         window.location.href = 'dashboard.php?page=products&tab=' + currentTab + '&status=success';
                     }, 1500);
@@ -1035,9 +1627,164 @@ function closeModal(modalId) {
     var modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.remove('active');
-        // Reset form if exists
         var form = modal.querySelector('form');
         if (form) form.reset();
     }
+}
+
+// Session date management
+var sessionDateIndex = 0;
+function addSessionDate() {
+    sessionDateIndex++;
+    var container = document.getElementById('session-dates-container');
+    var teams = <?= json_encode($teams) ?>;
+    
+    var teamOptions = '<option value="">All Athletes</option>';
+    teams.forEach(function(team) {
+        teamOptions += '<option value="' + team.id + '">' + team.name + '</option>';
+    });
+    
+    var newDate = document.createElement('div');
+    newDate.className = 'session-date-input';
+    newDate.setAttribute('data-index', sessionDateIndex);
+    newDate.innerHTML = '<div class="form-row">' +
+        '<div class="form-group">' +
+            '<label class="form-label">Date & Time</label>' +
+            '<input type="datetime-local" name="session_dates[' + sessionDateIndex + '][datetime]" class="form-input">' +
+        '</div>' +
+        '<div class="form-group">' +
+            '<label class="form-label">Team (Optional)</label>' +
+            '<select name="session_dates[' + sessionDateIndex + '][team_id]" class="form-input">' + teamOptions + '</select>' +
+        '</div>' +
+        '<div class="form-group" style="flex: 0 0 auto; align-self: end;">' +
+            '<button type="button" class="btn-action remove-date" onclick="removeSessionDate(this)"><i class="fas fa-trash"></i></button>' +
+        '</div>' +
+    '</div>';
+    
+    container.appendChild(newDate);
+    
+    // Show remove button on first date if there's more than one
+    var firstRemoveBtn = container.querySelector('.session-date-input[data-index="0"] .remove-date');
+    if (firstRemoveBtn && container.querySelectorAll('.session-date-input').length > 1) {
+        firstRemoveBtn.style.display = 'block';
+    }
+}
+
+function removeSessionDate(button) {
+    var dateInput = button.closest('.session-date-input');
+    var container = document.getElementById('session-dates-container');
+    
+    if (container.querySelectorAll('.session-date-input').length > 1) {
+        dateInput.remove();
+    }
+    
+    // Hide remove button if only one date remains
+    if (container.querySelectorAll('.session-date-input').length === 1) {
+        var remainingRemoveBtn = container.querySelector('.remove-date');
+        if (remainingRemoveBtn) remainingRemoveBtn.style.display = 'none';
+    }
+}
+
+// Package type toggle
+function togglePackageTypeFields() {
+    var packageType = document.getElementById('package-type-select').value;
+    var sessionsRow = document.getElementById('sessions-count-row');
+    var creditRow = document.getElementById('store-credit-row');
+    var sessionSelector = document.getElementById('session-selector-section');
+    
+    if (packageType === 'sessions_only') {
+        sessionsRow.style.display = 'block';
+        creditRow.style.display = 'none';
+        sessionSelector.style.display = 'block';
+    } else if (packageType === 'credit_only') {
+        sessionsRow.style.display = 'none';
+        creditRow.style.display = 'block';
+        sessionSelector.style.display = 'none';
+    } else { // mixed
+        sessionsRow.style.display = 'block';
+        creditRow.style.display = 'block';
+        sessionSelector.style.display = 'block';
+    }
+}
+
+// Discount type toggle
+function toggleDiscountTypeFields() {
+    var discountType = document.getElementById('discount-type-select').value;
+    var valueLabel = document.getElementById('discount-value-label');
+    var storeCreditRow = document.getElementById('store-credit-discount-row');
+    
+    if (discountType === 'percentage') {
+        valueLabel.textContent = 'Percentage (%)';
+        storeCreditRow.style.display = 'none';
+    } else if (discountType === 'fixed') {
+        valueLabel.textContent = 'Amount ($)';
+        storeCreditRow.style.display = 'none';
+    } else { // store_credit
+        valueLabel.textContent = 'Value (ignored for credit)';
+        storeCreditRow.style.display = 'block';
+    }
+}
+
+// Auto-generate toggle
+function toggleAutoGenerateFields() {
+    var autoType = document.getElementById('auto-generate-select').value;
+    var daysGroup = document.getElementById('days-since-registration-group');
+    
+    if (autoType === 'time_based') {
+        daysGroup.style.display = 'block';
+    } else {
+        daysGroup.style.display = 'none';
+    }
+}
+
+// Session search for packages
+function filterSessions() {
+    var searchInput = document.getElementById('session-search-input').value.toLowerCase();
+    var items = document.querySelectorAll('.session-search-item');
+    
+    items.forEach(function(item) {
+        var name = item.getAttribute('data-name');
+        if (name.includes(searchInput)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+var selectedPackageSessions = [];
+function addSessionToPackage(sessionId, sessionName) {
+    if (selectedPackageSessions.find(s => s.id === sessionId)) {
+        alert('This session is already added to the package.');
+        return;
+    }
+    
+    selectedPackageSessions.push({ id: sessionId, name: sessionName });
+    updateSelectedSessionsList();
+}
+
+function removeSessionFromPackage(sessionId) {
+    selectedPackageSessions = selectedPackageSessions.filter(s => s.id !== sessionId);
+    updateSelectedSessionsList();
+}
+
+function updateSelectedSessionsList() {
+    var container = document.getElementById('selected-sessions-list');
+    
+    if (selectedPackageSessions.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-dim); font-size: 13px;">No specific sessions selected yet.</p>';
+        return;
+    }
+    
+    var html = '';
+    selectedPackageSessions.forEach(function(session) {
+        html += '<div class="session-date-item">' +
+            '<div class="date-info"><strong>' + session.name + '</strong></div>' +
+            '<input type="hidden" name="package_session_ids[]" value="' + session.id + '">' +
+            '<button type="button" class="btn-action danger" onclick="removeSessionFromPackage(' + session.id + ')"><i class="fas fa-times"></i></button>' +
+        '</div>';
+    });
+    
+    container.innerHTML = html;
 }
 </script>
