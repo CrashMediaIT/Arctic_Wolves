@@ -10,7 +10,7 @@ require_once __DIR__ . '/db_config.php';
  * Get Nextcloud settings from database
  */
 function getNextcloudSettings($pdo) {
-    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_url', 'nextcloud_username', 'nextcloud_password', 'nextcloud_receipt_folder', 'nextcloud_hr_dir', 'nextcloud_terminations_dir', 'nextcloud_payroll_dir', 'nextcloud_onboarding_dir')");
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_url', 'nextcloud_username', 'nextcloud_password', 'nextcloud_receipt_folder', 'nextcloud_hr_dir', 'nextcloud_terminations_dir', 'nextcloud_payroll_dir', 'nextcloud_onboarding_dir', 'nextcloud_drill_videos_dir')");
     $settings = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $settings[$row['setting_key']] = $row['setting_value'];
@@ -455,6 +455,179 @@ function exportTerminationData($pdo, $settings, $termination_data, $staff_name, 
         return [
             'success' => false,
             'message' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Upload drill video to Nextcloud
+ * Creates folder structure: /DrillVideos/YYYY/MM/DD/
+ * Naming convention: SessionName-DrillName-AthleteName-Rep#.ext
+ * 
+ * @param PDO $pdo Database connection
+ * @param array $settings Nextcloud settings
+ * @param string $session_name Session title
+ * @param string $drill_name Drill title
+ * @param string $athlete_name Full name of the athlete
+ * @param int $rep_number Rep number
+ * @param array $file Uploaded file ($_FILES format)
+ * @param string $date Date in Y-m-d format (defaults to today)
+ * @return array Result with success status and file path
+ */
+function uploadDrillVideo($pdo, $settings, $session_name, $drill_name, $athlete_name, $rep_number, $file, $date = null) {
+    try {
+        $connection = connectNextcloud($settings);
+        
+        // Get base drill videos directory
+        $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/Arctic_Wolves/DrillVideos';
+        
+        // Parse date for Year/Month/Day folders
+        $date_obj = new DateTime($date ?? date('Y-m-d'));
+        $year = $date_obj->format('Y');
+        $month = $date_obj->format('m');
+        $day = $date_obj->format('d');
+        
+        // Create folder structure: /DrillVideos/YYYY/MM/DD
+        $folder_path = ensureNextcloudPath($connection, $drill_videos_dir, [$year, $month, $day]);
+        
+        // Sanitize names for filename
+        $safe_session = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $session_name);
+        $safe_session = str_replace(' ', '_', trim($safe_session));
+        
+        $safe_drill = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $drill_name);
+        $safe_drill = str_replace(' ', '_', trim($safe_drill));
+        
+        $safe_athlete = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $athlete_name);
+        $safe_athlete = str_replace(' ', '_', trim($safe_athlete));
+        
+        // Get file extension
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['mp4', 'mov', 'avi', 'webm', 'mkv'])) {
+            throw new Exception("Invalid video file format: $ext");
+        }
+        
+        // Build filename: SessionName-DrillName-AthleteName-Rep#.ext
+        $filename = sprintf('%s-%s-%s-Rep%d.%s', 
+            $safe_session, 
+            $safe_drill, 
+            $safe_athlete, 
+            $rep_number,
+            $ext
+        );
+        
+        // Read file content
+        $file_content = file_get_contents($file['tmp_name']);
+        if ($file_content === false) {
+            throw new Exception("Failed to read uploaded file");
+        }
+        
+        // Determine content type
+        $content_types = [
+            'mp4' => 'video/mp4',
+            'mov' => 'video/quicktime',
+            'avi' => 'video/x-msvideo',
+            'webm' => 'video/webm',
+            'mkv' => 'video/x-matroska'
+        ];
+        $content_type = $content_types[$ext] ?? 'video/mp4';
+        
+        // Upload file
+        $remote_path = $folder_path . '/' . $filename;
+        uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
+        
+        return [
+            'success' => true,
+            'folder_path' => $folder_path,
+            'filename' => $filename,
+            'remote_path' => $remote_path,
+            'file_size' => strlen($file_content)
+        ];
+        
+    } catch (Exception $e) {
+        error_log("Error uploading drill video: " . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Get drill video path for Nextcloud
+ * Returns the expected path for a drill video based on naming convention
+ * 
+ * @param array $settings Nextcloud settings
+ * @param string $session_name Session title
+ * @param string $drill_name Drill title
+ * @param string $athlete_name Full name of the athlete
+ * @param int $rep_number Rep number
+ * @param string $date Date in Y-m-d format
+ * @param string $ext File extension (default: mp4)
+ * @return string Expected Nextcloud path
+ */
+function getDrillVideoPath($settings, $session_name, $drill_name, $athlete_name, $rep_number, $date, $ext = 'mp4') {
+    $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/Arctic_Wolves/DrillVideos';
+    
+    $date_obj = new DateTime($date);
+    $year = $date_obj->format('Y');
+    $month = $date_obj->format('m');
+    $day = $date_obj->format('d');
+    
+    $safe_session = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $session_name));
+    $safe_drill = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $drill_name));
+    $safe_athlete = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $athlete_name));
+    
+    $filename = sprintf('%s-%s-%s-Rep%d.%s', $safe_session, $safe_drill, $safe_athlete, $rep_number, $ext);
+    
+    return sprintf('%s/%s/%s/%s/%s', $drill_videos_dir, $year, $month, $day, $filename);
+}
+
+/**
+ * List drill videos for a specific date
+ * 
+ * @param PDO $pdo Database connection
+ * @param array $settings Nextcloud settings
+ * @param string $date Date in Y-m-d format
+ * @return array List of video files
+ */
+function listDrillVideosForDate($pdo, $settings, $date) {
+    try {
+        $connection = connectNextcloud($settings);
+        $drill_videos_dir = $settings['nextcloud_drill_videos_dir'] ?? '/Arctic_Wolves/DrillVideos';
+        
+        $date_obj = new DateTime($date);
+        $folder_path = sprintf('%s/%s/%s/%s', 
+            $drill_videos_dir, 
+            $date_obj->format('Y'),
+            $date_obj->format('m'),
+            $date_obj->format('d')
+        );
+        
+        // Check if folder exists
+        if (!nextcloudFolderExists($connection, $folder_path)) {
+            return ['success' => true, 'videos' => []];
+        }
+        
+        $files = listNextcloudFiles($connection, $folder_path);
+        
+        // Filter for video files only
+        $video_extensions = ['mp4', 'mov', 'avi', 'webm', 'mkv'];
+        $videos = array_filter($files, function($file) use ($video_extensions) {
+            $ext = strtolower(pathinfo($file['filename'], PATHINFO_EXTENSION));
+            return in_array($ext, $video_extensions);
+        });
+        
+        return [
+            'success' => true,
+            'videos' => array_values($videos),
+            'folder_path' => $folder_path
+        ];
+        
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => $e->getMessage(),
+            'videos' => []
         ];
     }
 }
