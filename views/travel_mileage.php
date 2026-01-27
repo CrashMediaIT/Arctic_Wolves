@@ -160,12 +160,22 @@ foreach ($mileage_entries as $entry) {
 
                 <div class="form-row">
                     <div class="form-group">
+                        <?php if ($mileage_unit === 'miles'): ?>
                         <label>Distance (miles) *</label>
                         <input type="number" name="distance_miles" class="form-input" placeholder="0.0" step="0.1" min="0" required data-field="distance">
+                        <?php else: ?>
+                        <label>Distance (km) *</label>
+                        <input type="number" name="distance_km" class="form-input" placeholder="0.0" step="0.1" min="0" required data-field="distance">
+                        <?php endif; ?>
                     </div>
                     <div class="form-group">
+                        <?php if ($mileage_unit === 'miles'): ?>
                         <label>Rate per Mile</label>
                         <input type="number" name="rate_per_mile" class="form-input" value="<?= $mileage_rate_per_mile ?>" step="0.01" min="0" readonly data-field="rate">
+                        <?php else: ?>
+                        <label>Rate per Kilometer</label>
+                        <input type="number" name="rate_per_km" class="form-input" value="<?= $mileage_rate_per_km ?>" step="0.01" min="0" readonly data-field="rate">
+                        <?php endif; ?>
                     </div>
                     <div class="form-group">
                         <label>Total Amount</label>
@@ -416,6 +426,7 @@ foreach ($mileage_entries as $entry) {
                 </div>
 
                 <div class="form-row">
+                    <?php if ($mileage_unit === 'miles'): ?>
                     <div class="form-group">
                         <label>Distance (miles) *</label>
                         <input type="number" name="distance_miles" id="editDistanceMiles" class="form-input" step="0.1" min="0" required>
@@ -424,6 +435,16 @@ foreach ($mileage_entries as $entry) {
                         <label>Distance (km)</label>
                         <input type="number" name="distance_km" id="editDistanceKm" class="form-input" step="0.1" min="0" readonly>
                     </div>
+                    <?php else: ?>
+                    <div class="form-group">
+                        <label>Distance (km) *</label>
+                        <input type="number" name="distance_km" id="editDistanceKm" class="form-input" step="0.1" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Distance (miles)</label>
+                        <input type="number" name="distance_miles" id="editDistanceMiles" class="form-input" step="0.1" min="0" readonly>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
             

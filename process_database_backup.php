@@ -195,6 +195,77 @@ try {
             echo json_encode($result);
             break;
             
+        case 'repair_optimize':
+            // Get all tables from database
+            $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+            $results = [];
+            $errors = [];
+            
+            foreach ($tables as $table) {
+                // Check table
+                $check = $pdo->query("CHECK TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                $results[$table] = ['check' => $check['Msg_text'] ?? 'OK'];
+                
+                // Repair if needed
+                if (($check['Msg_text'] ?? '') !== 'OK') {
+                    $repair = $pdo->query("REPAIR TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                    $results[$table]['repair'] = $repair['Msg_text'] ?? 'Unknown';
+                }
+                
+                // Optimize table
+                $optimize = $pdo->query("OPTIMIZE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                $results[$table]['optimize'] = $optimize['Msg_text'] ?? 'OK';
+                
+                // Analyze table
+                $analyze = $pdo->query("ANALYZE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                $results[$table]['analyze'] = $analyze['Msg_text'] ?? 'OK';
+            }
+            
+            logAction($pdo, $user_id, 'database_optimized', 'Repaired and optimized ' . count($tables) . ' tables');
+            
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Successfully repaired and optimized ' . count($tables) . ' database tables.',
+                'tables_processed' => count($tables)
+            ]);
+            break;
+            
+        case 'clear_cache':
+            $cache_cleared = [];
+            
+            // Clear file cache directory
+            $cache_dir = __DIR__ . '/cache';
+            if (is_dir($cache_dir)) {
+                $files = glob($cache_dir . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file) && basename($file) !== '.gitkeep') {
+                        unlink($file);
+                        $cache_cleared[] = basename($file);
+                    }
+                }
+            }
+            
+            // Clear tmp directory contents (non-essential)
+            $tmp_dir = __DIR__ . '/tmp';
+            if (is_dir($tmp_dir)) {
+                $files = glob($tmp_dir . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file) && basename($file) !== '.gitkeep') {
+                        unlink($file);
+                        $cache_cleared[] = 'tmp/' . basename($file);
+                    }
+                }
+            }
+            
+            logAction($pdo, $user_id, 'cache_cleared', 'Cleared ' . count($cache_cleared) . ' cached files');
+            
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Successfully cleared ' . count($cache_cleared) . ' cached files.',
+                'files_cleared' => count($cache_cleared)
+            ]);
+            break;
+            
         default:
             throw new Exception('Invalid action');
     }

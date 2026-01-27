@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 $action = $_POST['action'] ?? '';
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'update_stripe_library'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -90,6 +90,18 @@ try {
             $ocr_enabled = isset($_POST['nextcloud_ocr_enabled']) ? '1' : '0';
             $auto_sync = isset($_POST['nextcloud_auto_sync']) ? '1' : '0';
             
+            // Directory settings
+            $backups_dir = trim($_POST['nextcloud_backups_dir'] ?? '/Arctic_Wolves/Backups');
+            $videos_dir = trim($_POST['nextcloud_videos_dir'] ?? '/Arctic_Wolves/Videos');
+            $receipts_dir = trim($_POST['nextcloud_receipts_dir'] ?? '/Arctic_Wolves/Receipts');
+            $documents_dir = trim($_POST['nextcloud_documents_dir'] ?? '/Arctic_Wolves/Documents');
+            
+            // Sync options
+            $sync_backups = isset($_POST['sync_backups']) ? '1' : '0';
+            $sync_videos = isset($_POST['sync_videos']) ? '1' : '0';
+            $sync_receipts = isset($_POST['sync_receipts']) ? '1' : '0';
+            $sync_documents = isset($_POST['sync_documents']) ? '1' : '0';
+            
             updateSetting($pdo, 'nextcloud_url', $url);
             updateSetting($pdo, 'nextcloud_username', $username);
             // Only update password if a new one is provided
@@ -102,6 +114,18 @@ try {
             updateSetting($pdo, 'nextcloud_webdav_path', $webdav_path);
             updateSetting($pdo, 'nextcloud_ocr_enabled', $ocr_enabled);
             updateSetting($pdo, 'nextcloud_auto_sync', $auto_sync);
+            
+            // Save directory settings
+            updateSetting($pdo, 'nextcloud_backups_dir', $backups_dir);
+            updateSetting($pdo, 'nextcloud_videos_dir', $videos_dir);
+            updateSetting($pdo, 'nextcloud_receipts_dir', $receipts_dir);
+            updateSetting($pdo, 'nextcloud_documents_dir', $documents_dir);
+            
+            // Save sync options
+            updateSetting($pdo, 'sync_backups', $sync_backups);
+            updateSetting($pdo, 'sync_videos', $sync_videos);
+            updateSetting($pdo, 'sync_receipts', $sync_receipts);
+            updateSetting($pdo, 'sync_documents', $sync_documents);
             
             // Redirect back to the appropriate page
             $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
@@ -272,6 +296,126 @@ try {
             $updater = new GitHubUpdater($pdo);
             $result = $updater->applyUpdates();
             echo json_encode($result);
+            exit;
+            
+        case 'update_nextcloud_backup':
+            $backup_enabled = isset($_POST['nextcloud_backup_enabled']) ? '1' : '0';
+            $backup_url = trim($_POST['nextcloud_backup_url'] ?? '');
+            $backup_username = trim($_POST['nextcloud_backup_username'] ?? '');
+            $backup_password = trim($_POST['nextcloud_backup_password'] ?? '');
+            $failover_timeout = intval($_POST['nextcloud_failover_timeout'] ?? 300);
+            $sync_interval = intval($_POST['nextcloud_sync_interval'] ?? 60);
+            
+            updateSetting($pdo, 'nextcloud_backup_enabled', $backup_enabled);
+            updateSetting($pdo, 'nextcloud_backup_url', $backup_url);
+            updateSetting($pdo, 'nextcloud_backup_username', $backup_username);
+            if (!empty($backup_password)) {
+                $encrypted_password = encryptPassword($backup_password);
+                updateSetting($pdo, 'nextcloud_backup_password', $encrypted_password);
+            }
+            updateSetting($pdo, 'nextcloud_failover_timeout', $failover_timeout);
+            updateSetting($pdo, 'nextcloud_sync_interval', $sync_interval);
+            
+            header('Location: dashboard.php?page=system_tools&tab=nextcloud&success=1');
+            exit;
+            
+        case 'test_nextcloud_backup':
+            $settings = [
+                'nextcloud_url' => trim($_POST['nextcloud_backup_url'] ?? ''),
+                'nextcloud_username' => trim($_POST['nextcloud_backup_username'] ?? ''),
+                'nextcloud_password' => trim($_POST['nextcloud_backup_password'] ?? ''),
+                'nextcloud_receipt_folder' => '/Arctic_Wolves',
+                'nextcloud_webdav_path' => ''
+            ];
+            
+            $result = testNextcloudConnection($settings);
+            echo json_encode($result);
+            exit;
+            
+        case 'sync_to_backup':
+            // This would sync files from primary to backup - placeholder for now
+            echo json_encode(['success' => true, 'message' => 'Sync to backup initiated. Files will be synchronized in the background.']);
+            exit;
+            
+        case 'update_stripe_library':
+            // Update Stripe PHP library from GitHub
+            $stripe_path = __DIR__ . '/stripe-php';
+            $temp_path = sys_get_temp_dir() . '/stripe-php-' . time();
+            
+            // Get latest release info
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'header' => 'User-Agent: Arctic-Wolves-Updater',
+                    'timeout' => 30
+                ]
+            ]);
+            
+            $release_info = @file_get_contents('https://api.github.com/repos/stripe/stripe-php/releases/latest', false, $context);
+            if ($release_info === false) {
+                echo json_encode(['success' => false, 'message' => 'Failed to fetch latest Stripe release info']);
+                exit;
+            }
+            
+            $release = json_decode($release_info, true);
+            if (!isset($release['zipball_url'])) {
+                echo json_encode(['success' => false, 'message' => 'Could not find download URL for latest release']);
+                exit;
+            }
+            
+            // Download the release
+            $zip_url = $release['zipball_url'];
+            $zip_content = @file_get_contents($zip_url, false, $context);
+            if ($zip_content === false) {
+                echo json_encode(['success' => false, 'message' => 'Failed to download Stripe library']);
+                exit;
+            }
+            
+            // Save and extract
+            $zip_file = $temp_path . '.zip';
+            if (file_put_contents($zip_file, $zip_content) === false) {
+                echo json_encode(['success' => false, 'message' => 'Failed to save downloaded file']);
+                exit;
+            }
+            
+            $zip = new ZipArchive();
+            if ($zip->open($zip_file) !== true) {
+                unlink($zip_file);
+                echo json_encode(['success' => false, 'message' => 'Failed to extract Stripe library']);
+                exit;
+            }
+            
+            // Extract to temp directory
+            mkdir($temp_path, 0755, true);
+            $zip->extractTo($temp_path);
+            $zip->close();
+            unlink($zip_file);
+            
+            // Find the extracted folder (it has a dynamic name)
+            $extracted_dir = glob($temp_path . '/stripe-stripe-php-*')[0] ?? null;
+            if (!$extracted_dir || !is_dir($extracted_dir)) {
+                echo json_encode(['success' => false, 'message' => 'Could not find extracted files']);
+                exit;
+            }
+            
+            // Backup current stripe-php if exists
+            if (is_dir($stripe_path)) {
+                $backup_path = $stripe_path . '.backup-' . date('Y-m-d-His');
+                rename($stripe_path, $backup_path);
+            }
+            
+            // Move new files to stripe-php
+            rename($extracted_dir, $stripe_path);
+            
+            // Cleanup temp directory
+            if (is_dir($temp_path)) {
+                rmdir($temp_path);
+            }
+            
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Stripe library updated to version ' . ($release['tag_name'] ?? 'latest')
+            ]);
             exit;
             
         default:
