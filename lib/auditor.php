@@ -35,15 +35,35 @@ class Auditor {
                 }
             }
             
-            // Insert audit log
+            // Map action to action_type for consistency
+            // Default to uppercase action name if no specific mapping
+            $action_type = strtoupper($action);
+            
+            // Handle common action patterns
+            if (in_array($action, ['create', 'insert'])) {
+                $action_type = 'INSERT';
+            } elseif (in_array($action, ['update', 'edit', 'modify'])) {
+                $action_type = 'UPDATE';
+            } elseif (in_array($action, ['delete', 'remove'])) {
+                $action_type = 'DELETE';
+            } elseif (in_array($action, ['view', 'read', 'access'])) {
+                $action_type = 'VIEW';
+            } elseif (in_array($action, ['login_success', 'login_failed', 'logout'])) {
+                $action_type = 'AUTH';
+            } elseif (in_array($action, ['cleanup', 'maintenance', 'cron'])) {
+                $action_type = 'SYSTEM';
+            }
+            
+            // Insert audit log with both action and action_type for compatibility
             $stmt = $pdo->prepare("
                 INSERT INTO audit_logs (
-                    user_id, action, table_name, record_id, changes, ip_address, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+                    user_id, action_type, action, table_name, record_id, changes, ip_address, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
             ");
             
             $stmt->execute([
                 $user_id,
+                $action_type,
                 $action,
                 $table_name,
                 $record_id,

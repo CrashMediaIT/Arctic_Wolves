@@ -667,25 +667,32 @@ CREATE TABLE IF NOT EXISTS `athlete_teams` (
     INDEX `idx_season` (`season`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Audit logs (alternative/extended audit table)
+-- Audit logs - history and restore point for all admin tasks
+-- Tracks all changes with old/new values for potential restoration
 CREATE TABLE IF NOT EXISTS `audit_logs` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT DEFAULT NULL,
     `action_type` VARCHAR(100) NOT NULL,
     `table_name` VARCHAR(100) DEFAULT NULL,
     `record_id` INT DEFAULT NULL,
+    `action` VARCHAR(100) DEFAULT NULL,
     `description` TEXT DEFAULT NULL,
-    `old_data` TEXT DEFAULT NULL,
-    `new_data` TEXT DEFAULT NULL,
+    `details` TEXT DEFAULT NULL,
+    `changes` TEXT DEFAULT NULL,
+    `old_values` TEXT DEFAULT NULL,
+    `new_values` TEXT DEFAULT NULL,
     `ip_address` VARCHAR(45) DEFAULT NULL,
     `user_agent` TEXT DEFAULT NULL,
     `session_id` VARCHAR(100) DEFAULT NULL,
+    `is_demo` TINYINT(1) DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_action` (`action_type`),
+    INDEX `idx_action_name` (`action`),
     INDEX `idx_table` (`table_name`),
-    INDEX `idx_created` (`created_at`)
+    INDEX `idx_created` (`created_at`),
+    INDEX `idx_demo` (`is_demo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Scheduled backup jobs

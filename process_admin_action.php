@@ -1470,8 +1470,8 @@ if ($action == 'cleanup_demo_data') {
         $seeder = new DemoDataSeeder($pdo);
         $deleted_count = $seeder->cleanupDemoData();
         
-        // Log the action
-        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, details, ip_address, created_at) VALUES (?, 'production_mode_activated', ?, ?, NOW())");
+        // Log the action with action_type for consistency
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action_type, action, details, ip_address, created_at) VALUES (?, 'ADMIN', 'production_mode_activated', ?, ?, NOW())");
         $stmt->execute([
             $_SESSION['user_id'],
             "Removed $deleted_count demo records",
