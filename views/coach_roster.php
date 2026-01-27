@@ -196,6 +196,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                             <td>
                                 <div class="table-actions">
                                     <button class="btn-icon" title="View Profile" data-action="view-profile" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-eye"></i></button>
+                                    <a href="?page=stats&tab=goals&athlete_id=<?= $athlete['id'] ?>" class="btn-icon" title="Manage Goals"><i class="fas fa-bullseye"></i></a>
                                     <button class="btn-icon" title="Schedule Session" data-action="schedule-session" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-calendar-plus"></i></button>
                                     <button class="btn-icon" title="Message" data-action="message-athlete" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-envelope"></i></button>
                                 </div>
