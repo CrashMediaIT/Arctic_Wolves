@@ -2,11 +2,13 @@
 /**
  * Process Coach Termination
  * Comprehensive coach termination with automatic backup and data transfer
+ * Also handles HR termination form submissions with Nextcloud document upload
  */
 
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once 'cloud_config.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -21,11 +23,223 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
 checkCsrfToken();
 
 $user_id = $_SESSION['user_id'];
+$action = $_POST['action'] ?? '';
+
+// Handle HR Termination Form (create action)
+if ($action === 'create') {
+    try {
+        $staff_user_id = intval($_POST['user_id']);
+        $termination_date = trim($_POST['termination_date']);
+        $termination_type = trim($_POST['termination_type']);
+        $reason_category = trim($_POST['reason_category']);
+        $notes = trim($_POST['notes']);
+        $notice_period = !empty($_POST['notice_period']) ? intval($_POST['notice_period']) : null;
+        $checklist = isset($_POST['checklist']) ? $_POST['checklist'] : [];
+        $final_comments = trim($_POST['final_comments'] ?? '');
+        
+        // Validation
+        if (empty($staff_user_id)) {
+            throw new Exception('Staff member must be selected');
+        }
+        
+        if (empty($termination_date)) {
+            throw new Exception('Termination date is required');
+        }
+        
+        if (empty($termination_type)) {
+            throw new Exception('Termination type is required');
+        }
+        
+        if (empty($notes)) {
+            throw new Exception('Detailed reason/notes is required');
+        }
+        
+        // Verify staff member exists and is eligible for termination (admin, coach, health_coach, team_coach)
+        $staff_stmt = $pdo->prepare("
+            SELECT id, CONCAT(first_name, ' ', last_name) as name, first_name, last_name, role, email 
+            FROM users 
+            WHERE id = ? AND role IN ('admin', 'coach', 'health_coach', 'team_coach') AND is_active = 1
+        ");
+        $staff_stmt->execute([$staff_user_id]);
+        $staff_member = $staff_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$staff_member) {
+            throw new Exception('Staff member not found or not eligible for termination');
+        }
+        
+        // Determine status based on termination date
+        $term_date = new DateTime($termination_date);
+        $today = new DateTime();
+        $status = ($term_date > $today) ? 'scheduled' : 'pending';
+        
+        // Start transaction
+        $pdo->beginTransaction();
+        
+        try {
+            // Insert termination record
+            $insert_stmt = $pdo->prepare("
+                INSERT INTO employee_terminations 
+                (user_id, termination_date, termination_type, reason_category, reason, notice_period_days, 
+                 offboarding_checklist, final_comments, processed_by, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            
+            $insert_stmt->execute([
+                $staff_user_id,
+                $termination_date,
+                $termination_type,
+                $reason_category,
+                $notes,
+                $notice_period,
+                json_encode($checklist),
+                $final_comments,
+                $user_id,
+                $status
+            ]);
+            
+            $termination_id = $pdo->lastInsertId();
+            
+            // Handle Nextcloud upload
+            $nextcloud_folder = null;
+            $uploaded_docs = [];
+            
+            try {
+                $nc_settings = getNextcloudSettings($pdo);
+                
+                if (!empty($nc_settings['nextcloud_url']) && !empty($nc_settings['nextcloud_username'])) {
+                    // Upload documents to Nextcloud
+                    if (!empty($_FILES['documents']) && !empty($_FILES['documents']['name'][0])) {
+                        $upload_result = uploadTerminationDocuments(
+                            $pdo, 
+                            $nc_settings, 
+                            $staff_member['name'], 
+                            $termination_date, 
+                            $_FILES['documents']
+                        );
+                        
+                        if ($upload_result['success']) {
+                            $nextcloud_folder = $upload_result['folder_path'];
+                            $uploaded_docs = $upload_result['uploaded_files'];
+                            
+                            // Save document records
+                            foreach ($uploaded_docs as $doc) {
+                                $doc_stmt = $pdo->prepare("
+                                    INSERT INTO termination_documents 
+                                    (termination_id, document_name, document_type, nextcloud_path, file_size, uploaded_by, created_at)
+                                    VALUES (?, ?, ?, ?, ?, ?, NOW())
+                                ");
+                                $doc_stmt->execute([
+                                    $termination_id,
+                                    $doc['original_name'],
+                                    $doc['content_type'],
+                                    $doc['remote_path'],
+                                    $doc['file_size'],
+                                    $user_id
+                                ]);
+                            }
+                        }
+                    }
+                    
+                    // Export termination data to Nextcloud
+                    $termination_data = [
+                        'employee_name' => $staff_member['name'],
+                        'email' => $staff_member['email'],
+                        'role' => $staff_member['role'],
+                        'termination_date' => $termination_date,
+                        'termination_type' => $termination_type,
+                        'reason_category' => $reason_category,
+                        'notes' => $notes,
+                        'notice_period' => $notice_period,
+                        'checklist' => $checklist,
+                        'final_comments' => $final_comments,
+                        'processed_by' => $user_id,
+                        'termination_id' => $termination_id
+                    ];
+                    
+                    $export_result = exportTerminationData(
+                        $pdo, 
+                        $nc_settings, 
+                        $termination_data, 
+                        $staff_member['name'], 
+                        $termination_date
+                    );
+                    
+                    if ($export_result['success'] && empty($nextcloud_folder)) {
+                        $nextcloud_folder = $export_result['folder_path'];
+                    }
+                }
+            } catch (Exception $nc_error) {
+                error_log("Nextcloud upload error: " . $nc_error->getMessage());
+                // Continue without Nextcloud - not critical
+            }
+            
+            // Update termination record with Nextcloud folder path
+            if ($nextcloud_folder) {
+                $update_stmt = $pdo->prepare("UPDATE employee_terminations SET nextcloud_folder = ? WHERE id = ?");
+                $update_stmt->execute([$nextcloud_folder, $termination_id]);
+            }
+            
+            // Create audit log
+            $audit_data = [
+                'action' => 'EMPLOYEE_TERMINATION_CREATED',
+                'staff_id' => $staff_user_id,
+                'staff_name' => $staff_member['name'],
+                'termination_type' => $termination_type,
+                'reason_category' => $reason_category,
+                'termination_date' => $termination_date,
+                'nextcloud_folder' => $nextcloud_folder,
+                'documents_uploaded' => count($uploaded_docs),
+                'created_by' => $user_id,
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            
+            $audit_stmt = $pdo->prepare("
+                INSERT INTO audit_logs 
+                (user_id, action_type, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at)
+                VALUES (?, 'CREATE', 'employee_terminations', ?, NULL, ?, ?, ?, NOW())
+            ");
+            
+            $audit_stmt->execute([
+                $user_id,
+                $termination_id,
+                json_encode($audit_data),
+                $_SERVER['REMOTE_ADDR'] ?? null,
+                $_SERVER['HTTP_USER_AGENT'] ?? null
+            ]);
+            
+            // Commit transaction
+            $pdo->commit();
+            
+            // Redirect back to termination page with success message
+            $_SESSION['flash_message'] = 'Termination record created successfully for ' . $staff_member['name'];
+            $_SESSION['flash_type'] = 'success';
+            header('Location: dashboard.php?page=termination');
+            exit;
+            
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        
+    } catch (Exception $e) {
+        $_SESSION['flash_message'] = 'Error: ' . $e->getMessage();
+        $_SESSION['flash_type'] = 'error';
+        header('Location: dashboard.php?page=termination');
+        exit;
+    }
+}
+
+// Original coach-to-coach termination logic (for admin_coach_termination.php)
+// Only run if coach termination fields are provided
+if (empty($_POST['coach_to_terminate']) && empty($_POST['transfer_to_coach'])) {
+    // No coach termination data, exit
+    exit;
+}
 
 try {
-    $coach_to_terminate = intval($_POST['coach_to_terminate']);
-    $transfer_to_coach = intval($_POST['transfer_to_coach']);
-    $termination_reason = trim($_POST['termination_reason']);
+    $coach_to_terminate = intval($_POST['coach_to_terminate'] ?? 0);
+    $transfer_to_coach = intval($_POST['transfer_to_coach'] ?? 0);
+    $termination_reason = trim($_POST['termination_reason'] ?? '');
     
     // Validation
     if (empty($coach_to_terminate) || empty($transfer_to_coach)) {

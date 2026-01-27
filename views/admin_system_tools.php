@@ -475,6 +475,24 @@ try {
                                        value="<?php echo htmlspecialchars($settings['nextcloud_documents_dir'] ?? '/Arctic_Wolves/Documents'); ?>"
                                        placeholder="/Arctic_Wolves/Documents">
                             </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-users-cog" style="color: #ec4899; margin-right: 8px;"></i>HR Directory</h4>
+                                    <p>Human Resources files storage path</p>
+                                </div>
+                                <input type="text" name="nextcloud_hr_dir" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_hr_dir'] ?? '/Arctic_Wolves/HR'); ?>"
+                                       placeholder="/Arctic_Wolves/HR">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-user-times" style="color: #ef4444; margin-right: 8px;"></i>Terminations Directory</h4>
+                                    <p>Staff termination documents (organized by Year/Month/StaffName)</p>
+                                </div>
+                                <input type="text" name="nextcloud_terminations_dir" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_terminations_dir'] ?? '/Arctic_Wolves/HR/Terminations'); ?>"
+                                       placeholder="/Arctic_Wolves/HR/Terminations">
+                            </div>
                         </div>
                     </div>
                     
@@ -502,6 +520,16 @@ try {
                                 <input type="checkbox" name="sync_documents" 
                                        <?php echo ($settings['sync_documents'] ?? true) ? 'checked' : ''; ?>>
                                 <span>Documents</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sync_hr" 
+                                       <?php echo ($settings['sync_hr'] ?? true) ? 'checked' : ''; ?>>
+                                <span>HR Files</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sync_terminations" 
+                                       <?php echo ($settings['sync_terminations'] ?? true) ? 'checked' : ''; ?>>
+                                <span>Termination Documents</span>
                             </label>
                         </div>
                     </div>
