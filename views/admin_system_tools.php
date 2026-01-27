@@ -1038,9 +1038,15 @@ try {
                 </div>
                 
                 <?php
-                // Get current Stripe version if available
-                $stripe_version_file = __DIR__ . '/../stripe-php/VERSION';
-                $current_stripe_version = file_exists($stripe_version_file) ? trim(file_get_contents($stripe_version_file)) : 'Unknown';
+                // Get current Stripe version if available - validate path is within expected directory
+                $stripe_base_path = realpath(__DIR__ . '/../stripe-php');
+                $stripe_version_file = $stripe_base_path ? $stripe_base_path . '/VERSION' : '';
+                $current_stripe_version = 'Unknown';
+                if ($stripe_version_file && strpos(realpath(dirname($stripe_version_file)), $stripe_base_path) === 0) {
+                    if (file_exists($stripe_version_file)) {
+                        $current_stripe_version = trim(file_get_contents($stripe_version_file));
+                    }
+                }
                 ?>
                 
                 <div class="integration-status connected" style="margin-bottom: 24px;">
@@ -1704,11 +1710,13 @@ function checkStripeUpdates() {
     
     const csrfToken = document.querySelector('input[name="csrf_token"]').value;
     
-    // Check latest release from Stripe GitHub
-    fetch('https://api.github.com/repos/stripe/stripe-php/releases/latest', {
+    // Route through server-side endpoint for security
+    fetch('process_settings.php', {
+        method: 'POST',
         headers: {
-            'User-Agent': 'Arctic-Wolves-Updater'
-        }
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=check_stripe_updates&csrf_token=${encodeURIComponent(csrfToken)}`
     })
     .then(response => response.json())
     .then(data => {
@@ -1718,7 +1726,7 @@ function checkStripeUpdates() {
         const statusDiv = document.getElementById('stripe-update-status');
         const updateBtn = document.getElementById('update-stripe-btn');
         
-        if (data.tag_name) {
+        if (data.success && data.tag_name) {
             const latestVersion = data.tag_name.replace('v', '');
             statusDiv.style.display = 'block';
             statusDiv.className = 'integration-status connected';
@@ -1739,7 +1747,7 @@ function checkStripeUpdates() {
                 <div class="status-icon"><i class="fas fa-exclamation-circle"></i></div>
                 <div class="status-info">
                     <h4>Check Failed</h4>
-                    <p>Could not retrieve latest Stripe version.</p>
+                    <p>${data.message || 'Could not retrieve latest Stripe version.'}</p>
                 </div>
             `;
         }

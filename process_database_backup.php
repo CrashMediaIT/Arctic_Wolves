@@ -202,31 +202,43 @@ try {
             $errors = [];
             
             foreach ($tables as $table) {
+                // Validate table name - only alphanumeric characters and underscores allowed
+                if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
+                    $errors[] = "Skipped invalid table name: " . substr($table, 0, 50);
+                    continue;
+                }
+                
+                // Use prepared statement pattern with validated table name
+                // Note: Table names cannot be parameterized, but we've validated the format above
+                $safe_table = $pdo->quote($table);
+                $safe_table = substr($safe_table, 1, -1); // Remove quotes added by PDO::quote
+                
                 // Check table
-                $check = $pdo->query("CHECK TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                $check = $pdo->query("CHECK TABLE `$safe_table`")->fetch(PDO::FETCH_ASSOC);
                 $results[$table] = ['check' => $check['Msg_text'] ?? 'OK'];
                 
                 // Repair if needed
                 if (($check['Msg_text'] ?? '') !== 'OK') {
-                    $repair = $pdo->query("REPAIR TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                    $repair = $pdo->query("REPAIR TABLE `$safe_table`")->fetch(PDO::FETCH_ASSOC);
                     $results[$table]['repair'] = $repair['Msg_text'] ?? 'Unknown';
                 }
                 
                 // Optimize table
-                $optimize = $pdo->query("OPTIMIZE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                $optimize = $pdo->query("OPTIMIZE TABLE `$safe_table`")->fetch(PDO::FETCH_ASSOC);
                 $results[$table]['optimize'] = $optimize['Msg_text'] ?? 'OK';
                 
                 // Analyze table
-                $analyze = $pdo->query("ANALYZE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+                $analyze = $pdo->query("ANALYZE TABLE `$safe_table`")->fetch(PDO::FETCH_ASSOC);
                 $results[$table]['analyze'] = $analyze['Msg_text'] ?? 'OK';
             }
             
-            logAction($pdo, $user_id, 'database_optimized', 'Repaired and optimized ' . count($tables) . ' tables');
+            logAction($pdo, $user_id, 'database_optimized', 'Repaired and optimized ' . count($results) . ' tables');
             
             echo json_encode([
                 'success' => true, 
-                'message' => 'Successfully repaired and optimized ' . count($tables) . ' database tables.',
-                'tables_processed' => count($tables)
+                'message' => 'Successfully repaired and optimized ' . count($results) . ' database tables.',
+                'tables_processed' => count($results),
+                'errors' => $errors
             ]);
             break;
             

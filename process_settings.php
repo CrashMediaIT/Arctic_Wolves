@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 $action = $_POST['action'] ?? '';
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'update_stripe_library'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -337,9 +337,43 @@ try {
             echo json_encode(['success' => true, 'message' => 'Sync to backup initiated. Files will be synchronized in the background.']);
             exit;
             
+        case 'check_stripe_updates':
+            // Check latest Stripe release via server-side request
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'header' => 'User-Agent: Arctic-Wolves-Updater',
+                    'timeout' => 30
+                ]
+            ]);
+            
+            $release_info = @file_get_contents('https://api.github.com/repos/stripe/stripe-php/releases/latest', false, $context);
+            if ($release_info === false) {
+                echo json_encode(['success' => false, 'message' => 'Failed to fetch Stripe release info']);
+                exit;
+            }
+            
+            $release = json_decode($release_info, true);
+            if (!isset($release['tag_name'])) {
+                echo json_encode(['success' => false, 'message' => 'Invalid response from GitHub']);
+                exit;
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'tag_name' => $release['tag_name'],
+                'name' => $release['name'] ?? 'Stripe PHP Library',
+                'published_at' => $release['published_at'] ?? ''
+            ]);
+            exit;
+            
         case 'update_stripe_library':
             // Update Stripe PHP library from GitHub
-            $stripe_path = __DIR__ . '/stripe-php';
+            $stripe_path = realpath(__DIR__ . '/stripe-php');
+            if (!$stripe_path || strpos($stripe_path, realpath(__DIR__)) !== 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid stripe-php path']);
+                exit;
+            }
             $temp_path = sys_get_temp_dir() . '/stripe-php-' . time();
             
             // Get latest release info
@@ -391,10 +425,19 @@ try {
             $zip->close();
             unlink($zip_file);
             
-            // Find the extracted folder (it has a dynamic name)
-            $extracted_dir = glob($temp_path . '/stripe-stripe-php-*')[0] ?? null;
-            if (!$extracted_dir || !is_dir($extracted_dir)) {
-                echo json_encode(['success' => false, 'message' => 'Could not find extracted files']);
+            // Find the extracted folder - validate it matches the expected naming pattern
+            $extracted_dirs = glob($temp_path . '/stripe-stripe-php-*');
+            $extracted_dir = null;
+            foreach ($extracted_dirs as $dir) {
+                // Validate directory name matches expected pattern (alphanumeric hash)
+                $dir_name = basename($dir);
+                if (preg_match('/^stripe-stripe-php-[a-f0-9]+$/i', $dir_name) && is_dir($dir)) {
+                    $extracted_dir = $dir;
+                    break;
+                }
+            }
+            if (!$extracted_dir) {
+                echo json_encode(['success' => false, 'message' => 'Could not find extracted files with valid naming pattern']);
                 exit;
             }
             
