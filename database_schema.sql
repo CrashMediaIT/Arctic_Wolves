@@ -2741,3 +2741,213 @@ CREATE TABLE IF NOT EXISTS `session_registration_intents` (
 ALTER TABLE `sessions`
 ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
 ADD COLUMN IF NOT EXISTS `session_type_category` ENUM('on_ice', 'off_ice', 'nutrition', 'meeting', 'other') DEFAULT 'on_ice';
+
+-- =====================================================
+-- ENHANCED EXPENSES SYSTEM TABLES (CRA Best Practices)
+-- =====================================================
+
+-- Enhanced Expenses table with CRA-compliant fields
+ALTER TABLE `expenses`
+ADD COLUMN IF NOT EXISTS `vendor_name` VARCHAR(255) DEFAULT NULL AFTER `category`,
+ADD COLUMN IF NOT EXISTS `subtotal` DECIMAL(10,2) DEFAULT NULL AFTER `amount`,
+ADD COLUMN IF NOT EXISTS `tax_amount` DECIMAL(10,2) DEFAULT 0.00 AFTER `subtotal`,
+ADD COLUMN IF NOT EXISTS `total_amount` DECIMAL(10,2) DEFAULT NULL AFTER `tax_amount`,
+ADD COLUMN IF NOT EXISTS `payment_method` VARCHAR(50) DEFAULT NULL AFTER `total_amount`,
+ADD COLUMN IF NOT EXISTS `reference_number` VARCHAR(100) DEFAULT NULL AFTER `payment_method`,
+ADD COLUMN IF NOT EXISTS `nextcloud_path` VARCHAR(500) DEFAULT NULL AFTER `receipt_url`,
+ADD COLUMN IF NOT EXISTS `ocr_data` JSON DEFAULT NULL AFTER `nextcloud_path`,
+ADD COLUMN IF NOT EXISTS `ocr_processed` TINYINT(1) DEFAULT 0 AFTER `ocr_data`,
+ADD COLUMN IF NOT EXISTS `currency` VARCHAR(3) DEFAULT 'CAD' AFTER `ocr_processed`;
+
+-- Expense line items (individual itemized list with prices)
+CREATE TABLE IF NOT EXISTS `expense_line_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `expense_id` INT NOT NULL,
+    `item_name` VARCHAR(255) NOT NULL,
+    `quantity` DECIMAL(10,2) DEFAULT 1.00,
+    `unit_price` DECIMAL(10,2) NOT NULL,
+    `total_price` DECIMAL(10,2) NOT NULL,
+    `category` VARCHAR(100) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`expense_id`) REFERENCES `expenses`(`id`) ON DELETE CASCADE,
+    INDEX `idx_expense` (`expense_id`),
+    INDEX `idx_item` (`item_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- ACCOUNTS PAYABLE - PAYEE MANAGEMENT
+-- =====================================================
+
+-- Payees table for managing vendors/suppliers
+CREATE TABLE IF NOT EXISTS `payees` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `company_name` VARCHAR(255) DEFAULT NULL,
+    `email` VARCHAR(255) DEFAULT NULL,
+    `phone` VARCHAR(50) DEFAULT NULL,
+    `address_line1` VARCHAR(255) DEFAULT NULL,
+    `address_line2` VARCHAR(255) DEFAULT NULL,
+    `city` VARCHAR(100) DEFAULT NULL,
+    `state_province` VARCHAR(100) DEFAULT NULL,
+    `postal_code` VARCHAR(20) DEFAULT NULL,
+    `country` VARCHAR(100) DEFAULT 'Canada',
+    `default_payment_method` ENUM('bank_transfer', 'cheque', 'stripe', 'etransfer', 'cash', 'credit_card') DEFAULT 'bank_transfer',
+    `bank_name` VARCHAR(255) DEFAULT NULL,
+    `bank_account_number` VARCHAR(255) DEFAULT NULL COMMENT 'Encrypted',
+    `bank_routing_number` VARCHAR(50) DEFAULT NULL COMMENT 'Encrypted',
+    `stripe_account_id` VARCHAR(255) DEFAULT NULL,
+    `etransfer_email` VARCHAR(255) DEFAULT NULL,
+    `tax_id` VARCHAR(50) DEFAULT NULL COMMENT 'Business Number / GST/HST',
+    `default_currency` VARCHAR(3) DEFAULT 'CAD',
+    `notes` TEXT DEFAULT NULL,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_name` (`name`),
+    INDEX `idx_active` (`is_active`),
+    INDEX `idx_payment_method` (`default_payment_method`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Link expenses to payees
+ALTER TABLE `expenses`
+ADD COLUMN IF NOT EXISTS `payee_id` INT DEFAULT NULL AFTER `vendor_name`,
+ADD CONSTRAINT `fk_expense_payee` FOREIGN KEY (`payee_id`) REFERENCES `payees`(`id`) ON DELETE SET NULL;
+
+-- =====================================================
+-- BATCH PAYMENTS
+-- =====================================================
+
+-- Batch payment groups
+CREATE TABLE IF NOT EXISTS `payment_batches` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `batch_name` VARCHAR(255) NOT NULL,
+    `batch_date` DATE NOT NULL,
+    `total_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    `currency` VARCHAR(3) DEFAULT 'CAD',
+    `status` ENUM('draft', 'pending', 'processing', 'completed', 'failed', 'cancelled') DEFAULT 'draft',
+    `payment_method` ENUM('bank_transfer', 'cheque', 'stripe', 'etransfer', 'mixed') DEFAULT 'mixed',
+    `notes` TEXT DEFAULT NULL,
+    `processed_at` TIMESTAMP NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_status` (`status`),
+    INDEX `idx_date` (`batch_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Individual payments within a batch
+CREATE TABLE IF NOT EXISTS `batch_payments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `batch_id` INT NOT NULL,
+    `payee_id` INT NOT NULL,
+    `expense_id` INT DEFAULT NULL,
+    `amount` DECIMAL(10,2) NOT NULL,
+    `currency` VARCHAR(3) DEFAULT 'CAD',
+    `payment_method` ENUM('bank_transfer', 'cheque', 'stripe', 'etransfer', 'cash', 'credit_card') NOT NULL,
+    `status` ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') DEFAULT 'pending',
+    `stripe_transfer_id` VARCHAR(255) DEFAULT NULL,
+    `reference_number` VARCHAR(100) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `processed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`batch_id`) REFERENCES `payment_batches`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`payee_id`) REFERENCES `payees`(`id`) ON DELETE RESTRICT,
+    FOREIGN KEY (`expense_id`) REFERENCES `expenses`(`id`) ON DELETE SET NULL,
+    INDEX `idx_batch` (`batch_id`),
+    INDEX `idx_payee` (`payee_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- STRIPE VIRTUAL CARDS
+-- =====================================================
+
+-- Stripe Issuing cardholders
+CREATE TABLE IF NOT EXISTS `stripe_cardholders` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT DEFAULT NULL,
+    `stripe_cardholder_id` VARCHAR(255) NOT NULL UNIQUE,
+    `name` VARCHAR(255) NOT NULL,
+    `email` VARCHAR(255) NOT NULL,
+    `phone` VARCHAR(50) DEFAULT NULL,
+    `type` ENUM('individual', 'company') DEFAULT 'individual',
+    `status` ENUM('active', 'inactive', 'blocked') DEFAULT 'active',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_stripe_id` (`stripe_cardholder_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Stripe virtual cards
+CREATE TABLE IF NOT EXISTS `stripe_virtual_cards` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `cardholder_id` INT NOT NULL,
+    `stripe_card_id` VARCHAR(255) NOT NULL UNIQUE,
+    `card_name` VARCHAR(255) DEFAULT NULL,
+    `last4` VARCHAR(4) DEFAULT NULL,
+    `brand` VARCHAR(50) DEFAULT NULL,
+    `exp_month` INT DEFAULT NULL,
+    `exp_year` INT DEFAULT NULL,
+    `currency` VARCHAR(3) DEFAULT 'CAD',
+    `status` ENUM('active', 'inactive', 'canceled') DEFAULT 'inactive',
+    `spending_limit` DECIMAL(10,2) DEFAULT NULL,
+    `spending_limit_interval` ENUM('per_authorization', 'daily', 'weekly', 'monthly', 'yearly', 'all_time') DEFAULT 'monthly',
+    `purpose` VARCHAR(255) DEFAULT NULL COMMENT 'What the card is used for',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`cardholder_id`) REFERENCES `stripe_cardholders`(`id`) ON DELETE CASCADE,
+    INDEX `idx_stripe_id` (`stripe_card_id`),
+    INDEX `idx_cardholder` (`cardholder_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- EXPENSE EXPORTS
+-- =====================================================
+
+-- Track expense exports
+CREATE TABLE IF NOT EXISTS `expense_exports` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `export_name` VARCHAR(255) NOT NULL,
+    `export_type` ENUM('week', 'month', 'quarter', 'year', 'custom') NOT NULL,
+    `period_start` DATE NOT NULL,
+    `period_end` DATE NOT NULL,
+    `year` INT DEFAULT NULL,
+    `total_expenses` DECIMAL(12,2) DEFAULT 0.00,
+    `expense_count` INT DEFAULT 0,
+    `file_path` VARCHAR(500) DEFAULT NULL,
+    `file_size` BIGINT DEFAULT NULL,
+    `includes_receipts` TINYINT(1) DEFAULT 1,
+    `status` ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_type` (`export_type`),
+    INDEX `idx_period` (`period_start`, `period_end`),
+    INDEX `idx_year` (`year`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- System activation tracking (for year selection in exports)
+CREATE TABLE IF NOT EXISTS `system_activation` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `activation_year` INT NOT NULL DEFAULT 2026,
+    `activation_date` DATE NOT NULL,
+    `activated_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`activated_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default system activation for 2026
+INSERT IGNORE INTO `system_activation` (`id`, `activation_year`, `activation_date`) 
+VALUES (1, 2026, '2026-01-01');
+
+-- Add display_order to expense_categories if not exists
+ALTER TABLE `expense_categories`
+ADD COLUMN IF NOT EXISTS `display_order` INT DEFAULT 0 AFTER `is_active`;
