@@ -10,7 +10,7 @@ require_once __DIR__ . '/db_config.php';
  * Get Nextcloud settings from database
  */
 function getNextcloudSettings($pdo) {
-    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_url', 'nextcloud_username', 'nextcloud_password', 'nextcloud_receipt_folder', 'nextcloud_hr_dir', 'nextcloud_terminations_dir')");
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_url', 'nextcloud_username', 'nextcloud_password', 'nextcloud_receipt_folder', 'nextcloud_hr_dir', 'nextcloud_terminations_dir', 'nextcloud_payroll_dir', 'nextcloud_onboarding_dir')");
     $settings = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $settings[$row['setting_key']] = $row['setting_value'];
