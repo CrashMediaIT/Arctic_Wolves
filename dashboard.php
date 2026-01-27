@@ -120,6 +120,7 @@ $allowed_pages = [
     'termination'             => 'views/hr_termination.php',
     'payroll'                 => 'views/hr_payroll.php',
     'onboarding'              => 'views/hr_onboarding.php',
+    'hr_time_tracking'        => 'views/hr_time_tracking.php',
     
     // Administration (Admin)
     'all_users'               => 'views/admin_users.php',
@@ -680,6 +681,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
         <nav class="nav-menu">
             <a href="?page=admin_staff_scheduling" class="nav-link <?= $page=='admin_staff_scheduling'?'active':'' ?>">
                 <i class="fa-solid fa-calendar-check icon"></i> Staff Scheduling
+            </a>
+            <a href="?page=hr_time_tracking" class="nav-link <?= $page=='hr_time_tracking'?'active':'' ?>">
+                <i class="fa-solid fa-clock icon"></i> Time Tracking
             </a>
             <a href="?page=payroll" class="nav-link <?= $page=='payroll'?'active':'' ?>">
                 <i class="fa-solid fa-money-check-dollar icon"></i> Payroll

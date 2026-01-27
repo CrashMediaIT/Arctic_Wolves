@@ -3205,6 +3205,7 @@ CREATE TABLE IF NOT EXISTS `staff_schedules` (
     `schedule_date` DATE NOT NULL,
     `start_time` TIME NOT NULL,
     `end_time` TIME NOT NULL,
+    `lunch_break_minutes` INT DEFAULT 30,
     `location` VARCHAR(255) DEFAULT NULL,
     `notes` TEXT DEFAULT NULL,
     `created_by` INT DEFAULT NULL,
