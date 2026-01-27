@@ -700,6 +700,12 @@ document.getElementById('payType')?.addEventListener('change', function() {
     document.getElementById('payRateLabel').textContent = this.value === 'salary' ? '(annual)' : '(per hour)';
 });
 
+// Equipment type options (generated from PHP)
+const equipmentTypeOptions = `<option value="">-- Select --</option><?php foreach($equipmentTypes as $code => $name): ?><option value="<?= $code ?>"><?= $name ?></option><?php endforeach; ?>`;
+
+// Perk type options (generated from PHP)
+const perkTypeOptions = `<option value="">-- Select --</option><?php foreach($perkTypes as $code => $name): ?><option value="<?= $code ?>"><?= $name ?></option><?php endforeach; ?>`;
+
 // Add equipment row
 let equipmentIndex = 1;
 document.getElementById('addEquipment')?.addEventListener('click', function() {
@@ -709,10 +715,7 @@ document.getElementById('addEquipment')?.addEventListener('click', function() {
                 <div class="form-group">
                     <label class="form-label">Equipment Type</label>
                     <select name="equipment[${equipmentIndex}][type]" class="form-input">
-                        <option value="">-- Select --</option>
-                        <?php foreach($equipmentTypes as $code => $name): ?>
-                        <option value="<?= $code ?>"><?= $name ?></option>
-                        <?php endforeach; ?>
+                        ${equipmentTypeOptions}
                     </select>
                 </div>
                 <div class="form-group">
@@ -742,10 +745,7 @@ document.getElementById('addPerk')?.addEventListener('click', function() {
                 <div class="form-group">
                     <label class="form-label">Perk Type</label>
                     <select name="perks[${perkIndex}][type]" class="form-input">
-                        <option value="">-- Select --</option>
-                        <?php foreach($perkTypes as $code => $name): ?>
-                        <option value="<?= $code ?>"><?= $name ?></option>
-                        <?php endforeach; ?>
+                        ${perkTypeOptions}
                     </select>
                 </div>
                 <div class="form-group">

@@ -432,7 +432,7 @@ $provinces = [
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-mail-bulk"></i> Postal Code *</label>
-                        <input type="text" name="postal_code" class="form-input" required placeholder="V6B 1A1" pattern="[A-Za-z]\d[A-Za-z][ ]?\d[A-Za-z]\d">
+                        <input type="text" name="postal_code" class="form-input" required placeholder="V6B 1A1" pattern="[A-Za-z][0-9][A-Za-z] ?[0-9][A-Za-z][0-9]">
                     </div>
                 </div>
 

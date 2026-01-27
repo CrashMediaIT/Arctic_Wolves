@@ -29,9 +29,9 @@ $action = $_POST['action'] ?? '';
  */
 function encryptBankingData($data, $pdo) {
     // Use a simple encryption for demo - in production use proper key management
-    $key = getenv('ENCRYPTION_KEY') ?: 'default_encryption_key_change_me';
+    $key = getenv('ENCRYPTION_KEY') ?: hash('sha256', 'arctic_wolves_secure_key_change_in_production', true);
     $cipher = 'AES-256-CBC';
-    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($cipher));
+    $iv = random_bytes(openssl_cipher_iv_length($cipher));
     $encrypted = openssl_encrypt($data, $cipher, $key, 0, $iv);
     return base64_encode($iv . '::' . $encrypted);
 }
@@ -59,6 +59,15 @@ function calculateDeductions($grossPay, $payrollInfo, $pdo) {
         'provincial_tax' => 0,
         'pension' => 0
     ];
+    
+    // Calculate pay periods per year based on frequency
+    $payPeriodsPerYear = match($payrollInfo['pay_frequency']) {
+        'weekly' => 52,
+        'bi-weekly' => 26,
+        'semi-monthly' => 24,
+        'monthly' => 12,
+        default => 26
+    };
     
     // Get CRA rates for current year
     $ratesQuery = "SELECT * FROM cra_tax_rates WHERE tax_year = ?";
@@ -91,7 +100,7 @@ function calculateDeductions($grossPay, $payrollInfo, $pdo) {
     
     // CPP calculation (if not exempt)
     if (!$payrollInfo['cpp_exempt'] && $cppRate) {
-        $basicExemption = $cppRate['basic_exemption'] / 26; // Per pay period (bi-weekly)
+        $basicExemption = $cppRate['basic_exemption'] / $payPeriodsPerYear; // Per pay period
         $maxPensionable = $cppRate['max_pensionable_earnings'];
         $cppableEarnings = max(0, $grossPay - $basicExemption);
         $deductions['cpp'] = round($cppableEarnings * ($cppRate['rate_percentage'] / 100), 2);
@@ -99,13 +108,13 @@ function calculateDeductions($grossPay, $payrollInfo, $pdo) {
     
     // EI calculation (if not exempt)
     if (!$payrollInfo['ei_exempt'] && $eiRate) {
-        $maxInsurable = $eiRate['max_insurable_earnings'] / 26; // Per pay period
+        $maxInsurable = $eiRate['max_insurable_earnings'] / $payPeriodsPerYear; // Per pay period
         $eiableEarnings = min($grossPay, $maxInsurable);
         $deductions['ei'] = round($eiableEarnings * ($eiRate['rate_percentage'] / 100), 2);
     }
     
     // Federal tax calculation (simplified - annualize then de-annualize)
-    $annualIncome = $grossPay * 26;
+    $annualIncome = $grossPay * $payPeriodsPerYear;
     $taxableIncome = max(0, $annualIncome - $federalBasic);
     $federalTax = 0;
     
@@ -122,7 +131,7 @@ function calculateDeductions($grossPay, $payrollInfo, $pdo) {
             }
         }
     }
-    $deductions['federal_tax'] = round($federalTax / 26, 2); // Per pay period
+    $deductions['federal_tax'] = round($federalTax / $payPeriodsPerYear, 2); // Per pay period
     
     // Provincial tax calculation
     $provincialTaxableIncome = max(0, $annualIncome - $provincialBasic);
@@ -141,7 +150,7 @@ function calculateDeductions($grossPay, $payrollInfo, $pdo) {
             }
         }
     }
-    $deductions['provincial_tax'] = round($provincialTax / 26, 2);
+    $deductions['provincial_tax'] = round($provincialTax / $payPeriodsPerYear, 2);
     
     // Pension deduction
     if ($payrollInfo['pension_enrolled']) {
@@ -413,8 +422,16 @@ if ($action === 'run_payroll') {
                                      ($payrollInfo['pay_frequency'] === 'semi-monthly' ? 24 : 12));
                     $grossPay = $payrollInfo['pay_rate'] / $periodsPerYear;
                 } else {
-                    // Hourly - assume 80 hours for bi-weekly
-                    $hoursWorked = 80;
+                    // Hourly - calculate standard hours based on pay frequency
+                    // Standard work week is 40 hours in Canada
+                    $standardWeeklyHours = 40;
+                    $hoursWorked = match($payrollInfo['pay_frequency']) {
+                        'weekly' => $standardWeeklyHours,        // 40 hours per week
+                        'bi-weekly' => $standardWeeklyHours * 2, // 80 hours per 2 weeks
+                        'semi-monthly' => $standardWeeklyHours * 2.17, // ~86.8 hours
+                        'monthly' => $standardWeeklyHours * 4.33, // ~173.2 hours
+                        default => $standardWeeklyHours * 2
+                    };
                     $grossPay = $payrollInfo['pay_rate'] * $hoursWorked;
                 }
                 
