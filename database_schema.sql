@@ -2144,3 +2144,61 @@ CREATE TABLE IF NOT EXISTS `user_preferences` (
     INDEX `idx_user` (`user_id`),
     INDEX `idx_key` (`preference_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Session Evaluations - Link evaluations to sessions
+CREATE TABLE IF NOT EXISTS `session_evaluations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_id` INT NOT NULL,
+    `name` VARCHAR(255) DEFAULT NULL COMMENT 'Optional custom name for this evaluation session',
+    `description` TEXT DEFAULT NULL,
+    `status` ENUM('draft', 'active', 'completed') DEFAULT 'draft',
+    `created_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_session` (`session_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Session Evaluation Athletes - Athletes assigned to a session evaluation (can be non-users)
+CREATE TABLE IF NOT EXISTS `session_evaluation_athletes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_evaluation_id` INT NOT NULL,
+    `user_id` INT DEFAULT NULL COMMENT 'Link to users table if athlete is a registered user',
+    `first_name` VARCHAR(100) NOT NULL,
+    `last_name` VARCHAR(100) NOT NULL,
+    `email` VARCHAR(255) DEFAULT NULL COMMENT 'Email for creating user account if provided',
+    `date_of_birth` DATE DEFAULT NULL,
+    `external_id` VARCHAR(100) DEFAULT NULL COMMENT 'External identifier for imported athletes',
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_evaluation_id`) REFERENCES `session_evaluations`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_session_eval` (`session_evaluation_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Session Evaluation Scores - Store individual skill scores for each athlete in a session evaluation
+CREATE TABLE IF NOT EXISTS `session_evaluation_scores` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_evaluation_id` INT NOT NULL,
+    `athlete_id` INT NOT NULL COMMENT 'References session_evaluation_athletes.id',
+    `skill_id` INT NOT NULL,
+    `rating` INT DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `evaluator_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_evaluation_id`) REFERENCES `session_evaluations`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `session_evaluation_athletes`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`skill_id`) REFERENCES `eval_skills`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`evaluator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_athlete_skill` (`session_evaluation_id`, `athlete_id`, `skill_id`),
+    INDEX `idx_session_eval` (`session_evaluation_id`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_skill` (`skill_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

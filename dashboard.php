@@ -133,6 +133,10 @@ $allowed_pages = [
     'manage_athletes'         => 'views/manage_athletes.php',
     'athletes'                => 'views/athletes.php',
     
+    // Session Evaluations (Coaches Corner)
+    'coach_session_evaluations' => 'views/coach_session_evaluations.php',
+    'session_evaluation_form'   => 'views/session_evaluation_form.php',
+    
     // Evaluations
     'evaluations_goals'       => 'views/evaluations_goals.php',
     'evaluations_skills'      => 'views/evaluations_skills.php',
@@ -568,8 +572,11 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=roster" class="nav-link <?= $page=='roster'?'active':'' ?>">
                 <i class="fa-solid fa-users-gear icon"></i> Roster
             </a>
+            <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>">
+                <i class="fa-solid fa-clipboard-check icon"></i> Session Evaluations
+            </a>
             <a href="?page=coach_evaluations" class="nav-link <?= $page=='coach_evaluations'?'active':'' ?>">
-                <i class="fa-solid fa-clipboard-check icon"></i> Evaluations
+                <i class="fa-solid fa-chart-line icon"></i> Athlete Evaluations
             </a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>">
                 <i class="fa-solid fa-plane icon"></i> Travel
