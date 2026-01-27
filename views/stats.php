@@ -349,25 +349,25 @@ try {
     <div class="success-message-widget" id="successWidget">
         <i class="fas fa-check-circle"></i>
         <span>Goal created successfully!</span>
-        <button type="button" onclick="document.getElementById('successWidget').style.display='none'">&times;</button>
+        <button type="button" onclick="document.getElementById('successWidget').style.display='none'" aria-label="Dismiss message">&times;</button>
     </div>
     <?php elseif ($msg === 'updated'): ?>
     <div class="success-message-widget" id="successWidget">
         <i class="fas fa-check-circle"></i>
         <span>Goal updated successfully!</span>
-        <button type="button" onclick="document.getElementById('successWidget').style.display='none'">&times;</button>
+        <button type="button" onclick="document.getElementById('successWidget').style.display='none'" aria-label="Dismiss message">&times;</button>
     </div>
     <?php elseif ($msg === 'archived'): ?>
     <div class="success-message-widget" id="successWidget">
         <i class="fas fa-check-circle"></i>
         <span>Goal archived successfully!</span>
-        <button type="button" onclick="document.getElementById('successWidget').style.display='none'">&times;</button>
+        <button type="button" onclick="document.getElementById('successWidget').style.display='none'" aria-label="Dismiss message">&times;</button>
     </div>
     <?php elseif ($msg === 'progress_added'): ?>
     <div class="success-message-widget" id="successWidget">
         <i class="fas fa-check-circle"></i>
         <span>Progress note added successfully!</span>
-        <button type="button" onclick="document.getElementById('successWidget').style.display='none'">&times;</button>
+        <button type="button" onclick="document.getElementById('successWidget').style.display='none'" aria-label="Dismiss message">&times;</button>
     </div>
     <?php endif; ?>
 
@@ -670,7 +670,7 @@ try {
         <div class="modal-content modal-lg">
             <div class="modal-header">
                 <h2 class="modal-title" id="modalTitle"><i class="fas fa-bullseye"></i> Create Goal</h2>
-                <button class="modal-close" onclick="closeGoalModal()">&times;</button>
+                <button class="modal-close" onclick="closeGoalModal()" aria-label="Close modal">&times;</button>
             </div>
             <form id="goalForm" method="POST" action="process_goals.php">
                 <?php echo csrfTokenInput(); ?>
@@ -744,7 +744,7 @@ try {
         <div class="modal-content modal-lg">
             <div class="modal-header">
                 <h2 class="modal-title">Goal Details</h2>
-                <button class="modal-close" onclick="closeGoalDetailModal()">&times;</button>
+                <button class="modal-close" onclick="closeGoalDetailModal()" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body" id="goalDetailContent">
                 <!-- Content loaded via AJAX -->
@@ -758,7 +758,7 @@ try {
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title"><i class="fas fa-plus-circle"></i> Add Progress Note</h2>
-                <button class="modal-close" onclick="closeProgressNoteModal()">&times;</button>
+                <button class="modal-close" onclick="closeProgressNoteModal()" aria-label="Close modal">&times;</button>
             </div>
             <form id="progressNoteForm" method="POST" action="process_goals.php">
                 <?php echo csrfTokenInput(); ?>
@@ -1739,9 +1739,9 @@ try {
 
 <script>
 let stepCounter = 0;
-const isCoach = <?php echo $isCoach ? 'true' : 'false'; ?>;
-const viewingAthleteId = <?php echo $viewing_athlete_id; ?>;
-const currentUserId = <?php echo $user_id; ?>;
+const isCoach = <?php echo json_encode($isCoach); ?>;
+const viewingAthleteId = <?php echo json_encode($viewing_athlete_id); ?>;
+const currentUserId = <?php echo json_encode($user_id); ?>;
 const canManageGoals = isCoach || viewingAthleteId === currentUserId;
 
 function updateFilter(type, value) {
@@ -1793,7 +1793,12 @@ function removeStep(id) {
 function editGoal(goalId) {
     // Fetch goal data and populate modal
     fetch(`process_goals.php?action=get_goal&goal_id=${goalId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch goal data');
+            }
+            return response.json();
+        })
         .then(data => {
             document.getElementById('modalTitle').innerHTML = '<i class="fas fa-bullseye"></i> Edit Goal';
             document.getElementById('formAction').value = 'update_goal';
@@ -1810,12 +1815,13 @@ function editGoal(goalId) {
             if (data.steps && data.steps.length > 0) {
                 data.steps.forEach(step => {
                     stepCounter++;
+                    const escapedTitle = escapeHtml(step.title || '');
                     const stepHtml = `
                         <div class="step-item" data-step-id="${stepCounter}">
                             <span class="step-handle"><i class="fas fa-grip-vertical"></i></span>
                             <div class="step-content">
                                 <input type="text" name="steps[${stepCounter}][title]" class="step-input" 
-                                       value="${escapeHtml(step.title || '')}" required>
+                                       value="${escapedTitle}" required>
                                 <input type="hidden" name="steps[${stepCounter}][id]" value="${step.id}">
                                 <input type="hidden" name="steps[${stepCounter}][order]" value="${stepCounter}">
                             </div>
@@ -1843,7 +1849,12 @@ function viewGoalDetail(goalId) {
     document.body.style.overflow = 'hidden';
     
     fetch(`process_goals.php?action=get_goal_detail&goal_id=${goalId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch goal details');
+            }
+            return response.json();
+        })
         .then(data => {
             renderGoalDetail(data);
         })
@@ -1954,19 +1965,30 @@ function closeProgressNoteModal() {
     document.getElementById('progressNoteModal').style.display = 'none';
 }
 
+function getCsrfToken() {
+    // Get CSRF token from an existing form
+    const tokenField = document.querySelector('input[name="csrf_token"]');
+    return tokenField ? tokenField.value : '';
+}
+
 function toggleStep(stepId, goalId, isCompleted) {
     const formData = new FormData();
     formData.append('action', 'complete_step');
     formData.append('step_id', stepId);
     formData.append('goal_id', goalId);
     formData.append('is_completed', isCompleted ? '1' : '0');
-    formData.append('csrf_token', '<?php echo generateCsrfToken(); ?>');
+    formData.append('csrf_token', getCsrfToken());
     
     fetch('process_goals.php', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to update step');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             viewGoalDetail(goalId); // Refresh detail view
@@ -1987,13 +2009,18 @@ function completeGoal(goalId) {
     const formData = new FormData();
     formData.append('action', 'complete_goal');
     formData.append('goal_id', goalId);
-    formData.append('csrf_token', '<?php echo generateCsrfToken(); ?>');
+    formData.append('csrf_token', getCsrfToken());
     
     fetch('process_goals.php', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to complete goal');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             location.reload();
