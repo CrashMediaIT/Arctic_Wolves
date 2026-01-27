@@ -247,8 +247,15 @@ if ($action == 'update_profile') {
             
             // Send confirmation email to OLD email address
             require_once __DIR__ . '/mailer.php';
-            $confirm_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . 
-                           "://" . $_SERVER['HTTP_HOST'] . "/dashboard.php?page=confirm_email&token=" . $email_change_token;
+            
+            // Build confirmation link securely - use SERVER_NAME (more reliable) or validate HTTP_HOST
+            $host = $_SERVER['SERVER_NAME'] ?? 'localhost';
+            // Validate host is not malicious
+            if (!preg_match('/^[a-zA-Z0-9][a-zA-Z0-9\-\.]*\.[a-zA-Z]{2,}$/', $host) && $host !== 'localhost') {
+                $host = 'localhost';
+            }
+            $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            $confirm_link = $protocol . "://" . $host . "/dashboard.php?page=confirm_email&token=" . $email_change_token;
             
             sendEmail($old_email, 'email_change_confirmation', [
                 'name' => $first_name,
@@ -440,7 +447,7 @@ if ($action == 'confirm_email_change') {
     $token = trim($_POST['token'] ?? $_GET['token'] ?? '');
     
     if (empty($token)) {
-        header("Location: dashboard.php?page=profile&error=invalid_token");
+        header("Location: dashboard.php?page=profile&error=invalid_or_expired_token");
         exit();
     }
     

@@ -587,7 +587,11 @@ $errors = [
                             <?php 
                             $shotsAgainst = $performanceStats['shots_against'] ?? 0;
                             $goalsAgainst = $performanceStats['goals_against'] ?? 0;
-                            $savePercentage = $shotsAgainst > 0 ? (($shotsAgainst - $goalsAgainst) / $shotsAgainst * 100) : 0;
+                            // Calculate save percentage, clamp to 0-100 range
+                            $savePercentage = 0;
+                            if ($shotsAgainst > 0) {
+                                $savePercentage = max(0, min(100, (($shotsAgainst - $goalsAgainst) / $shotsAgainst * 100)));
+                            }
                             echo number_format($savePercentage, 1) . '%';
                             ?>
                         </div>
@@ -664,13 +668,13 @@ $errors = [
 
                     <div class="form-group">
                         <label>New Password *</label>
-                        <input type="password" name="new_password" class="form-input" required>
-                        <small class="form-hint">Minimum 8 characters, include uppercase, lowercase, and numbers</small>
+                        <input type="password" name="new_password" class="form-input" minlength="8" required>
+                        <small class="form-hint">Minimum 8 characters</small>
                     </div>
 
                     <div class="form-group">
                         <label>Confirm New Password *</label>
-                        <input type="password" name="confirm_password" class="form-input" required>
+                        <input type="password" name="confirm_password" class="form-input" minlength="8" required>
                     </div>
 
                     <div class="form-actions">
