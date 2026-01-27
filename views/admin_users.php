@@ -6,10 +6,21 @@ try {
     $role_filter = $_GET['role'] ?? '';
     $status_filter = $_GET['status'] ?? '';
     $search = $_GET['search'] ?? '';
+    $team_filter = $_GET['team'] ?? '';
+    $age_filter = $_GET['age'] ?? '';
+    
+    // Fetch teams for filter dropdown
+    $teams_stmt = $pdo->query("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
+    $teams = $teams_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fetch coaches for assignment dropdown
+    $coaches_stmt = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as name FROM users WHERE role IN ('coach', 'team_coach', 'health_coach') AND is_verified = 1 ORDER BY first_name");
+    $coaches = $coaches_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Build query
     $where = [];
     $params = [];
+    $join_clauses = "";
     
     if (!empty($role_filter)) {
         $where[] = "u.role = ?";
@@ -24,12 +35,45 @@ try {
         }
     }
     
+    // Enhanced search - includes phone number
     if (!empty($search)) {
-        $where[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)";
+        $where[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)";
         $search_param = "%$search%";
         $params[] = $search_param;
         $params[] = $search_param;
         $params[] = $search_param;
+        $params[] = $search_param;
+    }
+    
+    // Team filter
+    if (!empty($team_filter)) {
+        $join_clauses .= " LEFT JOIN team_roster tr ON u.id = tr.athlete_id";
+        $where[] = "tr.team_id = ?";
+        $params[] = $team_filter;
+    }
+    
+    // Age filter (calculate age from birth_date)
+    if (!empty($age_filter)) {
+        switch ($age_filter) {
+            case 'u10':
+                $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 10";
+                break;
+            case 'u12':
+                $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 10 AND TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 12";
+                break;
+            case 'u14':
+                $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 12 AND TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 14";
+                break;
+            case 'u16':
+                $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 14 AND TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 16";
+                break;
+            case 'u18':
+                $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 16 AND TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 18";
+                break;
+            case '18plus':
+                $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 18";
+                break;
+        }
     }
     
     $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -37,9 +81,16 @@ try {
     $stmt = $pdo->prepare("
         SELECT u.*, 
                CONCAT(u.first_name, ' ', u.last_name) as full_name,
-               COUNT(DISTINCT s.id) as session_count
+               COUNT(DISTINCT s.id) as session_count,
+               coach.first_name as coach_first_name,
+               coach.last_name as coach_last_name,
+               t.name as team_name
         FROM users u
         LEFT JOIN sessions s ON u.id = s.coach_id
+        LEFT JOIN users coach ON u.assigned_coach_id = coach.id
+        LEFT JOIN team_roster tr2 ON u.id = tr2.athlete_id
+        LEFT JOIN teams t ON tr2.team_id = t.id
+        $join_clauses
         $where_clause
         GROUP BY u.id
         ORDER BY u.created_at DESC
@@ -52,6 +103,8 @@ try {
     error_log("Users fetch error: " . $e->getMessage());
     $users = [];
     $total_users = 0;
+    $teams = [];
+    $coaches = [];
 }
 
 // Count by role for stats
@@ -102,7 +155,7 @@ foreach ($users as $u) {
             <input type="hidden" name="page" value="all_users">
             <div class="search-input-wrapper">
                 <i class="fas fa-search"></i>
-                <input type="text" name="search" class="form-input" placeholder="Search users by name or email..." 
+                <input type="text" name="search" class="form-input" placeholder="Search by name, email, or phone..." 
                        value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
             </div>
             <select name="role" class="form-select" id="roleFilter">
@@ -119,12 +172,34 @@ foreach ($users as $u) {
                 <option value="active" <?php echo $status_filter === 'active' ? 'selected' : ''; ?>>Active</option>
                 <option value="inactive" <?php echo $status_filter === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
             </select>
+            <select name="team" class="form-select" id="teamFilter">
+                <option value="">All Teams</option>
+                <?php foreach ($teams as $team): ?>
+                    <option value="<?php echo $team['id']; ?>" <?php echo $team_filter == $team['id'] ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($team['name']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <select name="age" class="form-select" id="ageFilter">
+                <option value="">All Ages</option>
+                <option value="u10" <?php echo $age_filter === 'u10' ? 'selected' : ''; ?>>Under 10</option>
+                <option value="u12" <?php echo $age_filter === 'u12' ? 'selected' : ''; ?>>U12 (10-11)</option>
+                <option value="u14" <?php echo $age_filter === 'u14' ? 'selected' : ''; ?>>U14 (12-13)</option>
+                <option value="u16" <?php echo $age_filter === 'u16' ? 'selected' : ''; ?>>U16 (14-15)</option>
+                <option value="u18" <?php echo $age_filter === 'u18' ? 'selected' : ''; ?>>U18 (16-17)</option>
+                <option value="18plus" <?php echo $age_filter === '18plus' ? 'selected' : ''; ?>>18+</option>
+            </select>
             <button type="submit" class="btn btn-secondary"><i class="fas fa-filter"></i> Filter</button>
         </form>
         <div class="action-buttons">
-            <form method="POST" action="process_admin_action.php" style="display: inline;">
+            <form method="POST" action="process_admin_action.php" style="display: inline;" id="exportForm">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="action" value="export_users">
+                <input type="hidden" name="filter_role" value="<?php echo htmlspecialchars($role_filter); ?>">
+                <input type="hidden" name="filter_status" value="<?php echo htmlspecialchars($status_filter); ?>">
+                <input type="hidden" name="filter_team" value="<?php echo htmlspecialchars($team_filter); ?>">
+                <input type="hidden" name="filter_age" value="<?php echo htmlspecialchars($age_filter); ?>">
+                <input type="hidden" name="filter_search" value="<?php echo htmlspecialchars($search); ?>">
                 <button type="submit" class="btn btn-secondary">
                     <i class="fas fa-file-export"></i> Export
                 </button>
@@ -149,8 +224,8 @@ foreach ($users as $u) {
                             <tr>
                                 <th>User</th>
                                 <th>Role</th>
-                                <th>Email</th>
-                                <th>Phone</th>
+                                <th>Contact</th>
+                                <th>Coach/Team</th>
                                 <th>Joined</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -161,12 +236,24 @@ foreach ($users as $u) {
                                 <tr>
                                     <td>
                                         <div class="user-cell">
-                                            <div class="user-avatar">
-                                                <?php 
-                                                    $initials = strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1));
-                                                    echo htmlspecialchars($initials);
-                                                ?>
-                                            </div>
+                                            <?php 
+                                            // Validate profile image path
+                                            $profile_img = $user['profile_image'] ?? '';
+                                            $is_valid_image = !empty($profile_img) && 
+                                                              strpos($profile_img, 'uploads/profiles/') === 0 && 
+                                                              preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $profile_img) && 
+                                                              file_exists($profile_img);
+                                            ?>
+                                            <?php if ($is_valid_image): ?>
+                                                <img src="<?php echo htmlspecialchars($profile_img); ?>" alt="Profile" class="user-avatar-img">
+                                            <?php else: ?>
+                                                <div class="user-avatar">
+                                                    <?php 
+                                                        $initials = strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1));
+                                                        echo htmlspecialchars($initials);
+                                                    ?>
+                                                </div>
+                                            <?php endif; ?>
                                             <div class="user-info-cell">
                                                 <span class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></span>
                                                 <span class="user-id">#<?php echo $user['id']; ?></span>
@@ -178,8 +265,27 @@ foreach ($users as $u) {
                                             <?php echo ucfirst(str_replace('_', ' ', $user['role'])); ?>
                                         </span>
                                     </td>
-                                    <td class="email-cell"><?php echo htmlspecialchars($user['email']); ?></td>
-                                    <td><?php echo htmlspecialchars($user['phone'] ?? '-'); ?></td>
+                                    <td>
+                                        <div class="contact-cell">
+                                            <span class="contact-email"><?php echo htmlspecialchars($user['email']); ?></span>
+                                            <?php if (!empty($user['phone'])): ?>
+                                                <span class="contact-phone"><i class="fas fa-phone"></i> <?php echo htmlspecialchars($user['phone']); ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="assignment-cell">
+                                            <?php if (!empty($user['coach_first_name'])): ?>
+                                                <span class="assignment-coach"><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($user['coach_first_name'] . ' ' . $user['coach_last_name']); ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($user['team_name'])): ?>
+                                                <span class="assignment-team"><i class="fas fa-users"></i> <?php echo htmlspecialchars($user['team_name']); ?></span>
+                                            <?php endif; ?>
+                                            <?php if (empty($user['coach_first_name']) && empty($user['team_name'])): ?>
+                                                <span class="no-assignment">-</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
                                     <td class="date-cell"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
                                     <td>
                                         <span class="status-badge <?php echo $user['is_verified'] ? 'active' : 'inactive'; ?>">
@@ -195,8 +301,17 @@ foreach ($users as $u) {
                                                     data-last-name="<?php echo htmlspecialchars($user['last_name']); ?>"
                                                     data-phone="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>"
                                                     data-role="<?php echo htmlspecialchars($user['role']); ?>"
-                                                    title="Edit">
+                                                    data-coach-id="<?php echo htmlspecialchars($user['assigned_coach_id'] ?? ''); ?>"
+                                                    data-birth-date="<?php echo htmlspecialchars($user['birth_date'] ?? ''); ?>"
+                                                    title="Edit User">
                                                 <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn-icon" data-action="manage-user" data-id="<?php echo $user['id']; ?>" 
+                                                    data-name="<?php echo htmlspecialchars($user['full_name']); ?>"
+                                                    data-role="<?php echo htmlspecialchars($user['role']); ?>"
+                                                    data-coach-id="<?php echo htmlspecialchars($user['assigned_coach_id'] ?? ''); ?>"
+                                                    title="Manage Assignments">
+                                                <i class="fas fa-cogs"></i>
                                             </button>
                                             <button class="btn-icon" data-action="reset-password" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['full_name']); ?>" title="Reset Password">
                                                 <i class="fas fa-lock"></i>
@@ -341,19 +456,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Apply filters
     var roleFilter = document.getElementById('roleFilter');
     var statusFilter = document.getElementById('statusFilter');
+    var teamFilter = document.getElementById('teamFilter');
+    var ageFilter = document.getElementById('ageFilter');
     if (roleFilter) roleFilter.addEventListener('change', applyFilters);
     if (statusFilter) statusFilter.addEventListener('change', applyFilters);
+    if (teamFilter) teamFilter.addEventListener('change', applyFilters);
+    if (ageFilter) ageFilter.addEventListener('change', applyFilters);
 });
 
 function applyFilters() {
     var role = document.getElementById('roleFilter').value;
     var status = document.getElementById('statusFilter').value;
     var search = document.getElementById('userSearch').value;
+    var team = document.getElementById('teamFilter').value;
+    var age = document.getElementById('ageFilter').value;
     
     var url = '?page=all_users';
     if (role) url += '&role=' + encodeURIComponent(role);
     if (status) url += '&status=' + encodeURIComponent(status);
     if (search) url += '&search=' + encodeURIComponent(search);
+    if (team) url += '&team=' + encodeURIComponent(team);
+    if (age) url += '&age=' + encodeURIComponent(age);
     
     window.location.href = url;
 }
@@ -695,6 +818,203 @@ function closeModal(modalId) {
     font-size: 14px;
 }
 
+/* Profile Image Avatar */
+.user-avatar-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.25);
+}
+
+/* Contact Cell Styles */
+.contact-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contact-email {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.contact-phone {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.contact-phone i {
+    margin-right: 4px;
+    font-size: 10px;
+}
+
+/* Assignment Cell Styles */
+.assignment-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.assignment-coach, .assignment-team {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.assignment-coach {
+    color: #3B82F6;
+}
+
+.assignment-team {
+    color: var(--primary-light);
+}
+
+.no-assignment {
+    color: var(--text-muted);
+}
+
+/* Management Modal Styles */
+.management-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 15px;
+}
+
+.management-tab {
+    padding: 8px 16px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.management-tab:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.management-tab.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Profile Upload Preview */
+.profile-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-upload-area:hover {
+    border-color: var(--primary);
+    background: rgba(107, 70, 193, 0.05);
+}
+
+.profile-upload-area i {
+    font-size: 40px;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.profile-preview {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 15px;
+}
+
+/* Notification Settings */
+.notification-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.notification-option:last-child {
+    border-bottom: none;
+}
+
+.notification-option-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.notification-option-info p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 26px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border);
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--primary);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
 @media (max-width: 768px) {
     .users-page-header {
         flex-direction: column;
@@ -734,7 +1054,7 @@ function closeModal(modalId) {
             <h2 class="modal-title">Add New User</h2>
             <button class="modal-close" onclick="closeModal('add-user-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <form method="POST" action="process_admin_action.php" enctype="multipart/form-data">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create_user">
             
@@ -764,10 +1084,12 @@ function closeModal(modalId) {
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Role *</label>
-                        <select name="role" class="form-input" required>
+                        <select name="role" class="form-input" required id="add-user-role">
                             <option value="">Select Role</option>
                             <option value="admin">Admin</option>
                             <option value="coach">Coach</option>
+                            <option value="health_coach">Health Coach</option>
+                            <option value="team_coach">Team Coach</option>
                             <option value="athlete">Athlete</option>
                             <option value="parent">Parent</option>
                         </select>
@@ -778,6 +1100,33 @@ function closeModal(modalId) {
                         <select name="is_verified" class="form-input">
                             <option value="1">Active</option>
                             <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Date of Birth</label>
+                    <input type="date" name="birth_date" class="form-input">
+                </div>
+                
+                <div class="form-row athlete-coach-fields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Assign Coach</label>
+                        <select name="assigned_coach_id" class="form-input">
+                            <option value="">No Coach</option>
+                            <?php foreach ($coaches as $coach): ?>
+                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Assign Team</label>
+                        <select name="team_id" class="form-input">
+                            <option value="">No Team</option>
+                            <?php foreach ($teams as $team): ?>
+                                <option value="<?php echo $team['id']; ?>"><?php echo htmlspecialchars($team['name']); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
@@ -796,6 +1145,18 @@ function closeModal(modalId) {
         </form>
     </div>
 </div>
+
+<script>
+// Toggle athlete/coach fields based on role selection
+document.getElementById('add-user-role').addEventListener('change', function() {
+    var athleteFields = this.closest('form').querySelector('.athlete-coach-fields');
+    if (this.value === 'athlete') {
+        athleteFields.style.display = 'grid';
+    } else {
+        athleteFields.style.display = 'none';
+    }
+});
+</script>
 
 <!-- Edit User Modal -->
 <div id="edit-user-modal" class="modal">
@@ -832,15 +1193,46 @@ function closeModal(modalId) {
                     <input type="tel" name="phone" id="edit-user-phone" class="form-input">
                 </div>
                 
-                <div class="form-group">
-                    <label class="form-label">Role *</label>
-                    <select name="role" id="edit-user-role" class="form-input" required>
-                        <option value="">Select Role</option>
-                        <option value="admin">Admin</option>
-                        <option value="coach">Coach</option>
-                        <option value="athlete">Athlete</option>
-                        <option value="parent">Parent</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Role *</label>
+                        <select name="role" id="edit-user-role" class="form-input" required>
+                            <option value="">Select Role</option>
+                            <option value="admin">Admin</option>
+                            <option value="coach">Coach</option>
+                            <option value="health_coach">Health Coach</option>
+                            <option value="team_coach">Team Coach</option>
+                            <option value="athlete">Athlete</option>
+                            <option value="parent">Parent</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="date" name="birth_date" id="edit-user-birth-date" class="form-input">
+                    </div>
+                </div>
+                
+                <div class="form-row edit-athlete-coach-fields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Assign Coach</label>
+                        <select name="assigned_coach_id" id="edit-user-coach-id" class="form-input">
+                            <option value="">No Coach</option>
+                            <?php foreach ($coaches as $coach): ?>
+                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Assign Team</label>
+                        <select name="team_id" id="edit-user-team-id" class="form-input">
+                            <option value="">No Team</option>
+                            <?php foreach ($teams as $team): ?>
+                                <option value="<?php echo $team['id']; ?>"><?php echo htmlspecialchars($team['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -869,6 +1261,8 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         var lastName = this.getAttribute('data-last-name');
         var phone = this.getAttribute('data-phone');
         var role = this.getAttribute('data-role');
+        var coachId = this.getAttribute('data-coach-id');
+        var birthDate = this.getAttribute('data-birth-date');
         
         document.getElementById('edit-user-id').value = id;
         document.getElementById('edit-user-email').value = email;
@@ -876,9 +1270,27 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         document.getElementById('edit-user-last-name').value = lastName;
         document.getElementById('edit-user-phone').value = phone || '';
         document.getElementById('edit-user-role').value = role;
+        document.getElementById('edit-user-birth-date').value = birthDate || '';
+        
+        var coachSelect = document.getElementById('edit-user-coach-id');
+        if (coachSelect) coachSelect.value = coachId || '';
+        
+        // Show/hide athlete coach fields based on role
+        var athleteFields = document.querySelector('.edit-athlete-coach-fields');
+        if (athleteFields) {
+            athleteFields.style.display = role === 'athlete' ? 'grid' : 'none';
+        }
         
         document.getElementById('edit-user-modal').classList.add('active');
     });
+});
+
+// Toggle edit modal athlete fields when role changes
+document.getElementById('edit-user-role').addEventListener('change', function() {
+    var athleteFields = document.querySelector('.edit-athlete-coach-fields');
+    if (athleteFields) {
+        athleteFields.style.display = this.value === 'athlete' ? 'grid' : 'none';
+    }
 });
 </script>
 
@@ -968,6 +1380,317 @@ document.getElementById('reset-password-form').addEventListener('submit', functi
     .catch(function(error) {
         submitBtn.innerHTML = originalBtnText;
         submitBtn.disabled = false;
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    });
+});
+</script>
+
+<!-- Manage User Modal (Profile Image, Team, Notifications) -->
+<div id="manage-user-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Manage User - <span class="manage-user-name"></span></h2>
+            <button class="modal-close" onclick="closeModal('manage-user-modal')">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+            <input type="hidden" id="manage-user-id" value="">
+            
+            <!-- Management Tabs -->
+            <div class="management-tabs">
+                <button type="button" class="management-tab active" data-tab="profile-tab">
+                    <i class="fas fa-user-circle"></i> Profile Image
+                </button>
+                <button type="button" class="management-tab" data-tab="assignments-tab">
+                    <i class="fas fa-users"></i> Assignments
+                </button>
+                <button type="button" class="management-tab" data-tab="notifications-tab">
+                    <i class="fas fa-bell"></i> Notifications
+                </button>
+            </div>
+            
+            <!-- Profile Image Tab -->
+            <div id="profile-tab" class="tab-content active">
+                <form id="profile-image-form" enctype="multipart/form-data">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="admin_update_profile_image">
+                    <input type="hidden" name="user_id" class="manage-form-user-id" value="">
+                    
+                    <div class="profile-upload-area" onclick="document.getElementById('profile-image-input').click()">
+                        <img src="" alt="" class="profile-preview" id="profile-preview" style="display: none;">
+                        <div id="profile-upload-placeholder">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Click to upload profile image</p>
+                            <small style="color: var(--text-muted);">JPG, PNG, GIF up to 5MB</small>
+                        </div>
+                    </div>
+                    <input type="file" id="profile-image-input" name="profile_image" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="fas fa-upload"></i> Upload Image</button>
+                        <button type="button" class="btn btn-secondary" id="remove-profile-image"><i class="fas fa-trash"></i> Remove</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Assignments Tab -->
+            <div id="assignments-tab" class="tab-content">
+                <form id="assignments-form">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="admin_update_assignments">
+                    <input type="hidden" name="user_id" class="manage-form-user-id" value="">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Assigned Coach</label>
+                        <select name="assigned_coach_id" class="form-input" id="manage-coach-select">
+                            <option value="">No Coach Assigned</option>
+                            <?php foreach ($coaches as $coach): ?>
+                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Team Assignment</label>
+                        <select name="team_id" class="form-input" id="manage-team-select">
+                            <option value="">No Team Assigned</option>
+                            <?php foreach ($teams as $team): ?>
+                                <option value="<?php echo $team['id']; ?>"><?php echo htmlspecialchars($team['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Jersey Number</label>
+                        <input type="number" name="jersey_number" class="form-input" min="0" max="99" placeholder="Enter jersey number">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Position</label>
+                        <select name="position" class="form-input">
+                            <option value="">Select Position</option>
+                            <option value="Center">Center</option>
+                            <option value="Left Wing">Left Wing</option>
+                            <option value="Right Wing">Right Wing</option>
+                            <option value="Left Defense">Left Defense</option>
+                            <option value="Right Defense">Right Defense</option>
+                            <option value="Goalie">Goalie</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-save"></i> Save Assignments</button>
+                </form>
+            </div>
+            
+            <!-- Notifications Tab -->
+            <div id="notifications-tab" class="tab-content">
+                <form id="notifications-form">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="admin_update_notifications">
+                    <input type="hidden" name="user_id" class="manage-form-user-id" value="">
+                    
+                    <div class="notification-option">
+                        <div class="notification-option-info">
+                            <h4>Email Notifications</h4>
+                            <p>Receive notifications via email</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="email_notifications" value="1" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="notification-option">
+                        <div class="notification-option-info">
+                            <h4>Session Reminders</h4>
+                            <p>Get reminders before scheduled sessions</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="session_reminders" value="1" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="notification-option">
+                        <div class="notification-option-info">
+                            <h4>Goal Updates</h4>
+                            <p>Notifications about goal progress</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="goal_updates" value="1" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="notification-option">
+                        <div class="notification-option-info">
+                            <h4>Marketing Emails</h4>
+                            <p>Receive promotional content and updates</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="marketing_emails" value="1">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;"><i class="fas fa-save"></i> Save Notification Settings</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Manage user modal tab switching
+document.querySelectorAll('.management-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+        // Remove active class from all tabs and content
+        document.querySelectorAll('.management-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        
+        // Add active class to clicked tab and corresponding content
+        this.classList.add('active');
+        var tabId = this.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+    });
+});
+
+// Handle manage user button click
+document.querySelectorAll('[data-action="manage-user"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var userId = this.getAttribute('data-id');
+        var userName = this.getAttribute('data-name');
+        var coachId = this.getAttribute('data-coach-id');
+        
+        document.getElementById('manage-user-id').value = userId;
+        document.querySelectorAll('.manage-form-user-id').forEach(function(el) { el.value = userId; });
+        document.querySelector('.manage-user-name').textContent = userName;
+        
+        // Set coach dropdown if available
+        var coachSelect = document.getElementById('manage-coach-select');
+        if (coachSelect && coachId) coachSelect.value = coachId;
+        
+        // Reset to first tab
+        document.querySelectorAll('.management-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        document.querySelector('.management-tab[data-tab="profile-tab"]').classList.add('active');
+        document.getElementById('profile-tab').classList.add('active');
+        
+        document.getElementById('manage-user-modal').classList.add('active');
+    });
+});
+
+// Profile image preview
+document.getElementById('profile-image-input').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profile-preview').src = e.target.result;
+            document.getElementById('profile-preview').style.display = 'block';
+            document.getElementById('profile-upload-placeholder').style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Profile image upload
+document.getElementById('profile-image-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var formData = new FormData(this);
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Profile image updated!', 'success');
+            setTimeout(function() { location.reload(); }, 1000);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to update image'), 'error');
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    });
+});
+
+// Remove profile image
+document.getElementById('remove-profile-image').addEventListener('click', function() {
+    if (!confirm('Are you sure you want to remove the profile image?')) return;
+    
+    var userId = document.getElementById('manage-user-id').value;
+    var formData = new FormData();
+    formData.append('action', 'admin_remove_profile_image');
+    formData.append('user_id', userId);
+    formData.append('csrf_token', document.querySelector('[name="csrf_token"]').value);
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Profile image removed!', 'success');
+            setTimeout(function() { location.reload(); }, 1000);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to remove image'), 'error');
+        }
+    });
+});
+
+// Assignments form submit
+document.getElementById('assignments-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var formData = new FormData(this);
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Assignments updated!', 'success');
+            setTimeout(function() { location.reload(); }, 1000);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to update assignments'), 'error');
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    });
+});
+
+// Notifications form submit
+document.getElementById('notifications-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var formData = new FormData(this);
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Notification settings updated!', 'success');
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to update settings'), 'error');
+        }
+    })
+    .catch(function(error) {
         console.error('Error:', error);
         showNotification('An error occurred. Please try again.', 'error');
     });
