@@ -3159,3 +3159,60 @@ CREATE TABLE IF NOT EXISTS `pos_terminal_readers` (
     INDEX `idx_status` (`status`),
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- STAFF TIME TRACKING AND SCHEDULING TABLES
+-- =========================================================
+
+-- Staff PIN codes for kiosk login
+CREATE TABLE IF NOT EXISTS `staff_pins` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL UNIQUE,
+    `pin_hash` VARCHAR(255) NOT NULL,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Staff shifts (time tracking entries)
+CREATE TABLE IF NOT EXISTS `staff_shifts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `staff_id` INT NOT NULL,
+    `shift_date` DATE NOT NULL,
+    `clock_in` DATETIME NOT NULL,
+    `clock_out` DATETIME DEFAULT NULL,
+    `lunch_start` DATETIME DEFAULT NULL,
+    `lunch_end` DATETIME DEFAULT NULL,
+    `total_hours` DECIMAL(5,2) DEFAULT NULL,
+    `status` ENUM('active', 'completed', 'incomplete') DEFAULT 'active',
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_staff` (`staff_id`),
+    INDEX `idx_date` (`shift_date`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_staff_date` (`staff_id`, `shift_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Staff schedules (planned shifts)
+CREATE TABLE IF NOT EXISTS `staff_schedules` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `staff_id` INT NOT NULL,
+    `schedule_date` DATE NOT NULL,
+    `start_time` TIME NOT NULL,
+    `end_time` TIME NOT NULL,
+    `location` VARCHAR(255) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_staff` (`staff_id`),
+    INDEX `idx_date` (`schedule_date`),
+    INDEX `idx_staff_date` (`staff_id`, `schedule_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
