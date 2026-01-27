@@ -5,8 +5,8 @@ require 'db_config.php';
 require 'security.php';
 require 'mailer.php';
 
-// 1. SECURITY: Only Coach, Coach Plus, or Admin can run this
-$coach_roles = ['coach', 'coach_plus', 'admin'];
+// 1. SECURITY: Only Coach, Coach Plus, Health Coach, or Admin can run this
+$coach_roles = ['coach', 'coach_plus', 'health_coach', 'admin'];
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $coach_roles)) {
     header("Location: dashboard.php"); 
     exit();
@@ -19,6 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $coach_id = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'];
+
+// Determine if this is from health coach roster - whitelist the valid redirect pages
+$assign_to_health_coach = isset($_POST['assign_to_health_coach']) && $_POST['assign_to_health_coach'] === '1';
+$redirect_page = $assign_to_health_coach ? 'health_coach_roster' : 'roster';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $first = trim($_POST['first_name']);
@@ -35,7 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->execute([$email]);
     if ($stmt->rowCount() > 0) {
-        header("Location: dashboard.php?page=roster&error=email_taken");
+        header("Location: dashboard.php?page={$redirect_page}&error=email_taken");
         exit();
     }
 
@@ -45,11 +49,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 3. INSERT USER
         // is_verified = 1 (Instant Access)
         // force_pass_change = 1 (Must change password immediately)
-        $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change) 
-                VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1)";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob]);
+        // If health coach is creating, set assigned_coach_id and created_by_coach_id
+        if ($user_role === 'health_coach' || ($user_role === 'admin' && $assign_to_health_coach)) {
+            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, assigned_coach_id, created_by_coach_id) 
+                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, ?, ?)";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob, $coach_id, $coach_id]);
+        } else {
+            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change) 
+                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1)";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob]);
+        }
         
         $athlete_id = $pdo->lastInsertId();
         
@@ -77,14 +88,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Continue anyway - user is created
         }
 
-        // Redirect back to roster page with success message
-        header("Location: dashboard.php?page=roster&status=athlete_created");
+        // Redirect back to appropriate roster page with success message
+        header("Location: dashboard.php?page={$redirect_page}&status=athlete_created");
         exit();
 
     } catch (PDOException $e) {
         $pdo->rollBack();
         error_log("Athlete creation error: " . $e->getMessage());
-        header("Location: dashboard.php?page=roster&error=creation_failed");
+        header("Location: dashboard.php?page={$redirect_page}&error=creation_failed");
         exit();
     }
 }

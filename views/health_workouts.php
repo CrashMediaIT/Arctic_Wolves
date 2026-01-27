@@ -90,11 +90,27 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 ?>
 
 <!-- Health Workouts View -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-dumbbell"></i> Strength & Conditioning
-    </h1>
-    <p class="page-description">Your personalized workout programs</p>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <h1 class="page-title">
+            <i class="fas fa-dumbbell"></i> Strength & Conditioning
+        </h1>
+        <p class="page-description">Your personalized workout programs</p>
+    </div>
+    <button class="btn-primary" data-action="contact" data-modal="contact-coach-modal">
+        <i class="fas fa-envelope"></i> Contact Coach
+    </button>
+</div>
+
+<!-- Time Filter -->
+<div class="time-filter-bar">
+    <span class="filter-label">View:</span>
+    <div class="time-filter-buttons">
+        <button class="time-filter-btn active" data-filter="day" onclick="setTimeFilter('day')">Day</button>
+        <button class="time-filter-btn" data-filter="week" onclick="setTimeFilter('week')">Week</button>
+        <button class="time-filter-btn" data-filter="month" onclick="setTimeFilter('month')">Month</button>
+        <button class="time-filter-btn" data-filter="year" onclick="setTimeFilter('year')">Year</button>
+    </div>
 </div>
 
 <div class="workouts-content">
@@ -265,6 +281,64 @@ if ($current_program && $current_program['total_workouts'] > 0) {
             </div>
         </div>
     </div>
+    
+    <!-- Workout History Section -->
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fas fa-history"></i> Workout History</h3>
+        </div>
+        <div class="card-body">
+            <div class="workout-history-list">
+                <?php
+                // Demo workout history data
+                $workout_history = [
+                    ['date' => date('Y-m-d', strtotime('-1 day')), 'name' => 'Upper Body Strength', 'duration' => '45 min', 'exercises_completed' => 4, 'total_exercises' => 4],
+                    ['date' => date('Y-m-d', strtotime('-2 days')), 'name' => 'Cardio & Core', 'duration' => '50 min', 'exercises_completed' => 4, 'total_exercises' => 4],
+                    ['date' => date('Y-m-d', strtotime('-4 days')), 'name' => 'Lower Body Power', 'duration' => '55 min', 'exercises_completed' => 4, 'total_exercises' => 4],
+                    ['date' => date('Y-m-d', strtotime('-5 days')), 'name' => 'Full Body Circuit', 'duration' => '40 min', 'exercises_completed' => 3, 'total_exercises' => 4],
+                    ['date' => date('Y-m-d', strtotime('-7 days')), 'name' => 'Upper Body Strength', 'duration' => '48 min', 'exercises_completed' => 4, 'total_exercises' => 4],
+                ];
+                
+                if (count($workout_history) > 0):
+                    foreach ($workout_history as $history):
+                        $completion_percent = $history['total_exercises'] > 0 ? ($history['exercises_completed'] / $history['total_exercises']) * 100 : 0;
+                ?>
+                <div class="history-item" 
+                     data-date="<?= htmlspecialchars($history['date'], ENT_QUOTES, 'UTF-8') ?>"
+                     data-name="<?= htmlspecialchars($history['name'], ENT_QUOTES, 'UTF-8') ?>"
+                     onclick="viewHistoryDetails(this.dataset.date, this.dataset.name)">
+                    <div class="history-date">
+                        <span class="date-day"><?= date('d', strtotime($history['date'])) ?></span>
+                        <span class="date-month"><?= date('M', strtotime($history['date'])) ?></span>
+                    </div>
+                    <div class="history-details">
+                        <h4><?= htmlspecialchars($history['name']) ?></h4>
+                        <div class="history-meta">
+                            <span><i class="fas fa-clock"></i> <?= $history['duration'] ?></span>
+                            <span><i class="fas fa-check-circle"></i> <?= $history['exercises_completed'] ?>/<?= $history['total_exercises'] ?> exercises</span>
+                        </div>
+                    </div>
+                    <div class="history-status">
+                        <?php if ($completion_percent === 100.0): ?>
+                            <span class="status-badge completed"><i class="fas fa-check"></i> Completed</span>
+                        <?php else: ?>
+                            <span class="status-badge partial"><i class="fas fa-exclamation"></i> <?= number_format($completion_percent) ?>%</span>
+                        <?php endif; ?>
+                    </div>
+                    <button class="btn-icon"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <?php 
+                    endforeach;
+                else:
+                ?>
+                <div class="placeholder-container">
+                    <i class="fas fa-history placeholder-icon"></i>
+                    <p class="placeholder-text">No workout history yet. Complete your first workout to see it here!</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Contact Coach Modal -->
@@ -304,6 +378,52 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 </div>
 
 <style>
+/* Time Filter Bar */
+.time-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.filter-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
+.time-filter-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.time-filter-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-main);
+    color: var(--text-dim);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.time-filter-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.time-filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
 .content-section {
     margin-bottom: 24px;
 }
@@ -813,6 +933,152 @@ if ($current_program && $current_program['total_workouts'] > 0) {
     display: block;
     margin-bottom: 12px;
 }
+
+/* Workout History Styles */
+.workout-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.history-item:hover {
+    border-color: var(--primary);
+    transform: translateX(4px);
+}
+
+.history-date {
+    min-width: 50px;
+    text-align: center;
+    padding: 8px;
+    background: var(--bg-card);
+    border-radius: 8px;
+}
+
+.history-date .date-day {
+    display: block;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text-white);
+    line-height: 1;
+}
+
+.history-date .date-month {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.history-details {
+    flex: 1;
+}
+
+.history-details h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 5px;
+}
+
+.history-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.history-meta i {
+    color: var(--primary);
+    margin-right: 5px;
+}
+
+.history-status .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-badge.completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.status-badge.partial {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.history-item .btn-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.history-item:hover .btn-icon {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+/* Exercise Completion Checkbox */
+.exercise-completion {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: 6px;
+    margin-top: 12px;
+}
+
+.exercise-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.exercise-checkbox-wrapper input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+}
+
+.exercise-checkbox-wrapper label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-white);
+    cursor: pointer;
+}
+
+.exercise-checkbox-wrapper.completed label {
+    color: #10b981;
+    text-decoration: line-through;
+}
 </style>
 
 <script>
@@ -866,6 +1132,12 @@ function showDayDetails(element) {
                         <strong>How to perform:</strong><br>
                         ${ex.description}
                     </div>
+                    <div class="exercise-completion">
+                        <div class="exercise-checkbox-wrapper" onclick="event.stopPropagation(); toggleExerciseCompletion(this, '${ex.name}')">
+                            <input type="checkbox" id="ex-complete-${index}">
+                            <label for="ex-complete-${index}">Mark as completed</label>
+                        </div>
+                    </div>
                 </div>
             </div>`;
         }).join('');
@@ -892,5 +1164,85 @@ function toggleExerciseDetails(card) {
 
 function closeDayDetails() {
     document.getElementById('dayDetailsPanel').style.display = 'none';
+}
+
+// Time filter function
+function setTimeFilter(filter) {
+    // Update button states
+    document.querySelectorAll('.time-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === filter) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Show notification about filter change
+    showWorkoutNotification('Showing ' + filter + ' view of workout plans', 'info');
+}
+
+// Toggle exercise completion
+function toggleExerciseCompletion(wrapper, exerciseName) {
+    const checkbox = wrapper.querySelector('input[type="checkbox"]');
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        wrapper.classList.add('completed');
+        showWorkoutNotification(exerciseName + ' marked as completed!', 'success');
+    } else {
+        wrapper.classList.remove('completed');
+        showWorkoutNotification(exerciseName + ' unmarked', 'info');
+    }
+}
+
+// View workout history details
+function viewHistoryDetails(date, workoutName) {
+    showWorkoutNotification('Loading workout details for ' + workoutName + ' on ' + date, 'info');
+}
+
+// Notification helper
+function showWorkoutNotification(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'workout-notification';
+    
+    let icon = 'info-circle';
+    let bgColor = 'rgba(107, 70, 193, 0.9)';
+    
+    if (type === 'error') {
+        icon = 'exclamation-circle';
+        bgColor = 'rgba(239, 68, 68, 0.9)';
+    } else if (type === 'success') {
+        icon = 'check-circle';
+        bgColor = 'rgba(16, 185, 129, 0.9)';
+    }
+    
+    // Create icon element separately to avoid XSS
+    const iconEl = document.createElement('i');
+    iconEl.className = 'fas fa-' + icon;
+    
+    const textEl = document.createElement('span');
+    textEl.textContent = message;
+    
+    alertDiv.appendChild(iconEl);
+    alertDiv.appendChild(textEl);
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 280px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        background: ${bgColor};
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 3000);
 }
 </script>

@@ -157,11 +157,26 @@ if (!$nutrition_plan) {
 ?>
 
 <!-- Health Nutrition View -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-apple-alt"></i> Nutrition Plan
-    </h1>
-    <p class="page-description">Fuel your performance with proper nutrition</p>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <h1 class="page-title">
+            <i class="fas fa-apple-alt"></i> Nutrition Plan
+        </h1>
+        <p class="page-description">Fuel your performance with proper nutrition</p>
+    </div>
+    <button class="btn-primary" data-action="contact" data-modal="contact-coach-modal">
+        <i class="fas fa-envelope"></i> Contact Coach
+    </button>
+</div>
+
+<!-- Time Filter -->
+<div class="nutrition-filter-bar">
+    <span class="filter-label">View:</span>
+    <div class="time-filter-buttons">
+        <button class="time-filter-btn active" data-filter="day" onclick="setNutritionFilter('day')">Day</button>
+        <button class="time-filter-btn" data-filter="week" onclick="setNutritionFilter('week')">Week</button>
+        <button class="time-filter-btn" data-filter="month" onclick="setNutritionFilter('month')">Month</button>
+    </div>
 </div>
 
 <?php if (isset($is_demo_nutrition) && $is_demo_nutrition): ?>
@@ -301,6 +316,66 @@ if (!$nutrition_plan) {
             </div>
         </div>
     </div>
+    
+    <!-- Meal Plan History Section -->
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fas fa-history"></i> Meal Plan History</h3>
+        </div>
+        <div class="card-body">
+            <div class="meal-history-list">
+                <?php
+                // Demo meal plan history data
+                $meal_history = [
+                    ['date' => date('Y-m-d', strtotime('-1 day')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2350, 'target_calories' => 2500, 'meals_completed' => 5, 'total_meals' => 5],
+                    ['date' => date('Y-m-d', strtotime('-2 days')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2420, 'target_calories' => 2500, 'meals_completed' => 5, 'total_meals' => 5],
+                    ['date' => date('Y-m-d', strtotime('-3 days')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2180, 'target_calories' => 2500, 'meals_completed' => 4, 'total_meals' => 5],
+                    ['date' => date('Y-m-d', strtotime('-4 days')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2510, 'target_calories' => 2500, 'meals_completed' => 5, 'total_meals' => 5],
+                    ['date' => date('Y-m-d', strtotime('-5 days')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2290, 'target_calories' => 2500, 'meals_completed' => 4, 'total_meals' => 5],
+                ];
+                
+                if (count($meal_history) > 0):
+                    foreach ($meal_history as $history):
+                        $completion_percent = $history['total_meals'] > 0 ? ($history['meals_completed'] / $history['total_meals']) * 100 : 0;
+                        $calorie_percent = $history['target_calories'] > 0 ? ($history['calories_logged'] / $history['target_calories']) * 100 : 0;
+                ?>
+                <div class="meal-history-item" 
+                     data-date="<?= htmlspecialchars($history['date'], ENT_QUOTES, 'UTF-8') ?>"
+                     onclick="viewMealHistoryDetails(this.dataset.date)">
+                    <div class="history-date">
+                        <span class="date-day"><?= date('d', strtotime($history['date'])) ?></span>
+                        <span class="date-month"><?= date('M', strtotime($history['date'])) ?></span>
+                    </div>
+                    <div class="history-details">
+                        <h4><?= htmlspecialchars($history['plan_name']) ?></h4>
+                        <div class="history-meta">
+                            <span><i class="fas fa-fire"></i> <?= number_format($history['calories_logged']) ?> / <?= number_format($history['target_calories']) ?> cal</span>
+                            <span><i class="fas fa-utensils"></i> <?= $history['meals_completed'] ?>/<?= $history['total_meals'] ?> meals</span>
+                        </div>
+                    </div>
+                    <div class="history-status">
+                        <?php if ($completion_percent >= 100.0 && $calorie_percent >= 90): ?>
+                            <span class="status-badge completed"><i class="fas fa-check"></i> On Track</span>
+                        <?php elseif ($completion_percent >= 80): ?>
+                            <span class="status-badge partial"><i class="fas fa-exclamation"></i> <?= number_format($calorie_percent) ?>%</span>
+                        <?php else: ?>
+                            <span class="status-badge low"><i class="fas fa-times"></i> Incomplete</span>
+                        <?php endif; ?>
+                    </div>
+                    <button class="btn-icon"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <?php 
+                    endforeach;
+                else:
+                ?>
+                <div class="placeholder-container">
+                    <i class="fas fa-history placeholder-icon"></i>
+                    <p class="placeholder-text">No meal history yet. Log your first meal to see it here!</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Contact Coach Modal -->
@@ -340,6 +415,52 @@ if (!$nutrition_plan) {
 </div>
 
 <style>
+/* Nutrition Filter Bar */
+.nutrition-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.filter-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
+.time-filter-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.time-filter-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-main);
+    color: var(--text-dim);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.time-filter-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.time-filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
 .content-section {
     margin-bottom: 24px;
 }
@@ -782,6 +903,139 @@ if (!$nutrition_plan) {
     outline: none;
     border-color: var(--primary);
 }
+
+/* Meal History Styles */
+.meal-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.meal-history-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.meal-history-item:hover {
+    border-color: var(--primary);
+    transform: translateX(4px);
+}
+
+.meal-history-item .history-date {
+    min-width: 50px;
+    text-align: center;
+    padding: 8px;
+    background: var(--bg-card);
+    border-radius: 8px;
+}
+
+.meal-history-item .history-date .date-day {
+    display: block;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text-white);
+    line-height: 1;
+}
+
+.meal-history-item .history-date .date-month {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.meal-history-item .history-details {
+    flex: 1;
+}
+
+.meal-history-item .history-details h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 5px;
+}
+
+.meal-history-item .history-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.meal-history-item .history-meta i {
+    color: var(--primary);
+    margin-right: 5px;
+}
+
+.meal-history-item .history-status .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.meal-history-item .status-badge.completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.meal-history-item .status-badge.partial {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.meal-history-item .status-badge.low {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.meal-history-item .btn-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.meal-history-item:hover .btn-icon {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.placeholder-container {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.placeholder-icon {
+    font-size: 48px;
+    color: var(--text-dim);
+    opacity: 0.3;
+    margin-bottom: 16px;
+}
+
+.placeholder-text {
+    color: var(--text-dim);
+    font-size: 14px;
+}
 </style>
 
 <!-- Log Meal Modal -->
@@ -931,7 +1185,15 @@ function showNutritionNotification(message, type = 'info') {
         bgColor = 'rgba(16, 185, 129, 0.9)';
     }
     
-    alertDiv.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+    // Create icon element separately to avoid XSS
+    const iconEl = document.createElement('i');
+    iconEl.className = 'fas fa-' + icon;
+    
+    const textEl = document.createElement('span');
+    textEl.textContent = message;
+    
+    alertDiv.appendChild(iconEl);
+    alertDiv.appendChild(textEl);
     alertDiv.style.cssText = `
         position: fixed;
         top: 20px;
@@ -952,5 +1214,24 @@ function showNutritionNotification(message, type = 'info') {
     
     document.body.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 4000);
+}
+
+// Nutrition time filter function
+function setNutritionFilter(filter) {
+    // Update button states
+    document.querySelectorAll('.nutrition-filter-bar .time-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === filter) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Show notification about filter change
+    showNutritionNotification('Showing ' + filter + ' view of meal plans', 'info');
+}
+
+// View meal history details
+function viewMealHistoryDetails(date) {
+    showNutritionNotification('Loading meal plan details for ' + date, 'info');
 }
 </script>
