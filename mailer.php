@@ -244,6 +244,68 @@ function sendEmail($to, $type, $data) {
         </div>";
     }
     
+    // 6. SYSTEM NOTIFICATION (Maintenance, promotions, announcements)
+    elseif ($type == 'system_notification') {
+        $notif_type = $data['notification_type'] ?? 'info';
+        $title = htmlspecialchars($data['title'] ?? 'System Notification');
+        $message = htmlspecialchars($data['message'] ?? '');
+        $name = htmlspecialchars($data['name'] ?? 'Athlete');
+        
+        // Set subject and color based on notification type (whitelist approach for safety)
+        $subject = "Arctic Wolves: " . $title;
+        $color_map = [
+            'info' => '#3b82f6',
+            'maintenance' => '#fbbf24',
+            'warning' => '#f59e0b',
+            'alert' => '#ef4444'
+        ];
+        $icon_map = [
+            'info' => '&#9432;',
+            'maintenance' => '&#9881;',
+            'warning' => '&#9888;',
+            'alert' => '&#10071;'
+        ];
+        $color = isset($color_map[$notif_type]) ? $color_map[$notif_type] : $color_map['info'];
+        $icon = isset($icon_map[$notif_type]) ? $icon_map[$notif_type] : $icon_map['info'];
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            <h2 style='color: $color; margin-top: 0;'>$icon $title</h2>
+            <p style='color: #ccc;'>Hi $name,</p>
+            <div style='background: #1e293b; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid $color;'>
+                <p style='color: #e2e8f0; margin: 0; line-height: 1.6;'>$message</p>
+            </div>
+            <p style='color: #94a3b8; font-size: 13px;'>This is an automated system notification from Arctic Wolves Performance.</p>
+            $footer
+        </div>";
+    }
+    
+    // 7. GENERAL NOTIFICATION (For createNotification function)
+    elseif ($type == 'notification') {
+        $title = htmlspecialchars($data['title'] ?? 'Notification');
+        $message = htmlspecialchars($data['message'] ?? '');
+        $name = htmlspecialchars($data['name'] ?? 'Athlete');
+        $link = $data['link'] ?? null;
+        
+        $subject = "Arctic Wolves: " . $title;
+        
+        $linkHtml = '';
+        if ($link) {
+            $linkHtml = "<p style='margin-top: 20px;'><a href='" . htmlspecialchars($link) . "' style='display: inline-block; background: #7000a4; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;'>View Details</a></p>";
+        }
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            <h2 style='color: #7000a4; margin-top: 0;'>$title</h2>
+            <p style='color: #ccc;'>Hi $name,</p>
+            <div style='background: #1e293b; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #7000a4;'>
+                <p style='color: #e2e8f0; margin: 0; line-height: 1.6;'>$message</p>
+            </div>
+            $linkHtml
+            $footer
+        </div>";
+    }
+    
     // --- SENDING ---
     $mailer = new SmtpMailer();
     try {
