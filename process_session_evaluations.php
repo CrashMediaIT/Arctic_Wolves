@@ -48,6 +48,18 @@ function sendResponse($success, $message, $data = []) {
     exit;
 }
 
+// Helper function to safely parse date strings
+function parseDateSafely($dateStr) {
+    if (empty($dateStr)) {
+        return null;
+    }
+    $timestamp = strtotime($dateStr);
+    if ($timestamp === false) {
+        return null;
+    }
+    return date('Y-m-d', $timestamp);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();
     
@@ -335,7 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 INSERT INTO users (first_name, last_name, email, password, role, date_of_birth, is_active, created_at)
                                 VALUES (?, ?, ?, ?, 'athlete', ?, 1, NOW())
                             ");
-                            $dob = !empty($date_of_birth) ? date('Y-m-d', strtotime($date_of_birth)) : null;
+                            $dob = parseDateSafely($date_of_birth);
                             $stmt->execute([
                                 $first_name,
                                 $last_name,
@@ -363,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         (session_evaluation_id, user_id, first_name, last_name, email, date_of_birth, notes, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
                     ");
-                    $dob = !empty($date_of_birth) ? date('Y-m-d', strtotime($date_of_birth)) : null;
+                    $dob = parseDateSafely($date_of_birth);
                     $stmt->execute([
                         $evaluation_id,
                         $new_user_id,

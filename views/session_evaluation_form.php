@@ -503,26 +503,12 @@ try {
     color: #f59e0b;
 }
 
-.star:hover,
-.star-rating:hover .star {
-    color: var(--border, #2D2D3F);
-}
-
-.star-rating:hover .star:hover,
-.star-rating:hover .star:hover ~ .star {
-    color: var(--border, #2D2D3F);
-}
-
-.star-rating .star:hover,
-.star-rating .star:hover ~ .star {
-    color: var(--border, #2D2D3F);
-}
-
+/* Star rating hover effect - fill stars up to and including hovered star */
 .star-rating:hover .star {
     color: #f59e0b;
 }
 
-.star-rating:hover .star:hover ~ .star {
+.star-rating .star:hover ~ .star {
     color: var(--border, #2D2D3F);
 }
 
@@ -798,7 +784,12 @@ async function loadAthlete(athleteId) {
     
     // Load scores from server
     try {
-        const response = await fetch(`process_session_evaluations.php?action=get_athlete_scores&evaluation_id=${evaluationId}&athlete_id=${athleteId}`);
+        const params = new URLSearchParams({
+            action: 'get_athlete_scores',
+            evaluation_id: evaluationId,
+            athlete_id: athleteId
+        });
+        const response = await fetch(`process_session_evaluations.php?${params.toString()}`);
         const data = await response.json();
         
         if (data.success) {
