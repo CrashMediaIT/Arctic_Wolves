@@ -95,6 +95,10 @@ $allowed_pages = [
     'products'                => 'views/accounting_products.php',
     'accounts_payable'        => 'views/accounts_payable.php',
     
+    // Merchandise (Admin)
+    'merchandise_categories'  => 'views/merchandise_categories.php',
+    'merchandise_products'    => 'views/merchandise_products.php',
+    
     // HR (Admin)
     'termination'             => 'views/hr_termination.php',
     'payroll'                 => 'views/hr_payroll.php',
@@ -608,6 +612,21 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=products" class="nav-link <?= $page=='products'?'active':'' ?>">
                 <i class="fa-solid fa-box-open icon"></i> Products
+            </a>
+        </nav>
+    </div>
+    <?php endif; ?>
+
+    <!-- MERCHANDISE (Admins only) -->
+    <?php if($isAdmin): ?>
+    <div class="nav-group">
+        <span class="nav-label">Merchandise</span>
+        <nav class="nav-menu">
+            <a href="?page=merchandise_categories" class="nav-link <?= $page=='merchandise_categories'?'active':'' ?>">
+                <i class="fa-solid fa-tags icon"></i> Categories
+            </a>
+            <a href="?page=merchandise_products" class="nav-link <?= $page=='merchandise_products'?'active':'' ?>">
+                <i class="fa-solid fa-tshirt icon"></i> Products
             </a>
         </nav>
     </div>
