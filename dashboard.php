@@ -34,10 +34,12 @@ $isCoach       = ($user_role === 'coach');
 $isHealthCoach = ($user_role === 'health_coach');
 $isTeamCoach   = ($user_role === 'team_coach');
 $isParent      = ($user_role === 'parent');
+$isFrontDesk   = ($user_role === 'front_desk_staff');
 
 // Combined role checks for sections
 $isAnyCoach    = ($isCoach || $isHealthCoach || $isAdmin);
 $isTeamStaff   = ($isTeamCoach);
+$canAccessPOS  = ($isAdmin || $isFrontDesk);
 
 $page = $_GET['page'] ?? 'home';
 
@@ -98,6 +100,11 @@ $allowed_pages = [
     // Merchandise (Admin)
     'merchandise_categories'  => 'views/merchandise_categories.php',
     'merchandise_products'    => 'views/merchandise_products.php',
+    
+    // POS System (Admin and Front Desk Staff)
+    'pos_terminal'            => 'views/pos_terminal.php',
+    'shop_orders'             => 'views/shop_orders.php',
+    'pos_transactions'        => 'views/pos_transactions.php',
     
     // HR (Admin)
     'termination'             => 'views/hr_termination.php',
@@ -627,6 +634,24 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=merchandise_products" class="nav-link <?= $page=='merchandise_products'?'active':'' ?>">
                 <i class="fa-solid fa-tshirt icon"></i> Products
+            </a>
+        </nav>
+    </div>
+    <?php endif; ?>
+
+    <!-- POS SYSTEM (Admins and Front Desk Staff) -->
+    <?php if($canAccessPOS): ?>
+    <div class="nav-group">
+        <span class="nav-label">Point of Sale</span>
+        <nav class="nav-menu">
+            <a href="?page=pos_terminal" class="nav-link <?= $page=='pos_terminal'?'active':'' ?>">
+                <i class="fa-solid fa-cash-register icon"></i> POS Terminal
+            </a>
+            <a href="?page=shop_orders" class="nav-link <?= $page=='shop_orders'?'active':'' ?>">
+                <i class="fa-solid fa-shopping-bag icon"></i> Shop Orders
+            </a>
+            <a href="?page=pos_transactions" class="nav-link <?= $page=='pos_transactions'?'active':'' ?>">
+                <i class="fa-solid fa-receipt icon"></i> POS Transactions
             </a>
         </nav>
     </div>

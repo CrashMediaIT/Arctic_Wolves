@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password` VARCHAR(255) NOT NULL,
     `first_name` VARCHAR(100) NOT NULL,
     `last_name` VARCHAR(100) NOT NULL,
-    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach') DEFAULT 'athlete',
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff') DEFAULT 'athlete',
     `is_active` TINYINT(1) DEFAULT 1,
     `is_verified` TINYINT(1) DEFAULT 0,
     `verification_code` VARCHAR(10) DEFAULT NULL,
@@ -1395,7 +1395,7 @@ CREATE TABLE IF NOT EXISTS `reports` (
 -- Role permissions mapping
 CREATE TABLE IF NOT EXISTS `role_permissions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach') NOT NULL,
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff') NOT NULL,
     `permission_id` INT NOT NULL,
     `granted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`) ON DELETE CASCADE,
@@ -3022,4 +3022,140 @@ CREATE TABLE IF NOT EXISTS `merchandise_product_images` (
     FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
     INDEX `idx_product` (`product_id`),
     INDEX `idx_primary` (`is_primary`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- ONLINE SHOP AND POS SYSTEM TABLES
+-- =====================================================
+
+-- Alter merchandise_categories to add parent_id for subcategories
+ALTER TABLE `merchandise_categories`
+ADD COLUMN IF NOT EXISTS `parent_id` INT DEFAULT NULL AFTER `id`,
+ADD COLUMN IF NOT EXISTS `slug` VARCHAR(255) DEFAULT NULL AFTER `name`,
+ADD INDEX IF NOT EXISTS `idx_parent` (`parent_id`),
+ADD INDEX IF NOT EXISTS `idx_slug` (`slug`);
+
+-- Shop Orders (for guest and logged-in user purchases)
+CREATE TABLE IF NOT EXISTS `shop_orders` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `order_number` VARCHAR(50) NOT NULL UNIQUE,
+    `user_id` INT DEFAULT NULL,
+    `customer_email` VARCHAR(255) NOT NULL,
+    `customer_first_name` VARCHAR(100) NOT NULL,
+    `customer_last_name` VARCHAR(100) NOT NULL,
+    `customer_phone` VARCHAR(20) DEFAULT NULL,
+    `billing_address_line1` VARCHAR(255) DEFAULT NULL,
+    `billing_address_line2` VARCHAR(255) DEFAULT NULL,
+    `billing_city` VARCHAR(100) DEFAULT NULL,
+    `billing_state` VARCHAR(100) DEFAULT NULL,
+    `billing_postal_code` VARCHAR(20) DEFAULT NULL,
+    `billing_country` VARCHAR(2) DEFAULT 'CA',
+    `shipping_address_line1` VARCHAR(255) DEFAULT NULL,
+    `shipping_address_line2` VARCHAR(255) DEFAULT NULL,
+    `shipping_city` VARCHAR(100) DEFAULT NULL,
+    `shipping_state` VARCHAR(100) DEFAULT NULL,
+    `shipping_postal_code` VARCHAR(20) DEFAULT NULL,
+    `shipping_country` VARCHAR(2) DEFAULT 'CA',
+    `shipping_same_as_billing` TINYINT(1) DEFAULT 1,
+    `subtotal` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `tax_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `shipping_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `discount_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `total` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `status` ENUM('pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded') DEFAULT 'pending',
+    `payment_status` ENUM('pending', 'paid', 'failed', 'refunded', 'partially_refunded') DEFAULT 'pending',
+    `stripe_session_id` VARCHAR(255) DEFAULT NULL,
+    `stripe_payment_intent` VARCHAR(255) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_email` (`customer_email`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_payment_status` (`payment_status`),
+    INDEX `idx_stripe_session` (`stripe_session_id`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Shop Order Items
+CREATE TABLE IF NOT EXISTS `shop_order_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `order_id` INT NOT NULL,
+    `product_id` INT NOT NULL,
+    `product_name` VARCHAR(255) NOT NULL,
+    `product_sku` VARCHAR(100) DEFAULT NULL,
+    `size` VARCHAR(50) DEFAULT NULL,
+    `quantity` INT NOT NULL DEFAULT 1,
+    `unit_price` DECIMAL(10,2) NOT NULL,
+    `total_price` DECIMAL(10,2) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`order_id`) REFERENCES `shop_orders`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE RESTRICT,
+    INDEX `idx_order` (`order_id`),
+    INDEX `idx_product` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- POS Transactions (for in-person sales via terminal)
+CREATE TABLE IF NOT EXISTS `pos_transactions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `transaction_number` VARCHAR(50) NOT NULL UNIQUE,
+    `staff_id` INT NOT NULL,
+    `customer_name` VARCHAR(255) DEFAULT NULL,
+    `customer_email` VARCHAR(255) DEFAULT NULL,
+    `subtotal` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `tax_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `discount_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `total` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `payment_method` ENUM('card', 'cash', 'mixed') DEFAULT 'card',
+    `cash_amount` DECIMAL(10,2) DEFAULT NULL,
+    `card_amount` DECIMAL(10,2) DEFAULT NULL,
+    `change_given` DECIMAL(10,2) DEFAULT NULL,
+    `status` ENUM('pending', 'completed', 'cancelled', 'refunded') DEFAULT 'pending',
+    `stripe_payment_intent` VARCHAR(255) DEFAULT NULL,
+    `terminal_reader_id` VARCHAR(255) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`staff_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT,
+    INDEX `idx_staff` (`staff_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_payment_method` (`payment_method`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- POS Transaction Items
+CREATE TABLE IF NOT EXISTS `pos_transaction_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `transaction_id` INT NOT NULL,
+    `product_id` INT NOT NULL,
+    `product_name` VARCHAR(255) NOT NULL,
+    `product_sku` VARCHAR(100) DEFAULT NULL,
+    `size` VARCHAR(50) DEFAULT NULL,
+    `quantity` INT NOT NULL DEFAULT 1,
+    `unit_price` DECIMAL(10,2) NOT NULL,
+    `total_price` DECIMAL(10,2) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`transaction_id`) REFERENCES `pos_transactions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE RESTRICT,
+    INDEX `idx_transaction` (`transaction_id`),
+    INDEX `idx_product` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- POS Terminal Readers (for bbpos wisepos e integration)
+CREATE TABLE IF NOT EXISTS `pos_terminal_readers` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `stripe_reader_id` VARCHAR(255) NOT NULL UNIQUE,
+    `label` VARCHAR(100) NOT NULL,
+    `location_name` VARCHAR(255) DEFAULT NULL,
+    `device_type` VARCHAR(50) DEFAULT 'bbpos_wisepos_e',
+    `serial_number` VARCHAR(100) DEFAULT NULL,
+    `status` ENUM('online', 'offline', 'busy') DEFAULT 'offline',
+    `is_active` TINYINT(1) DEFAULT 1,
+    `last_seen_at` TIMESTAMP DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_stripe_reader` (`stripe_reader_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

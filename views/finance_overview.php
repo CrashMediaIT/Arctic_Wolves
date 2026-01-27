@@ -79,7 +79,7 @@ switch ($filterPeriod) {
 
 // Fetch financial data
 try {
-    // Get total revenue
+    // Get total revenue from payments
     $stmt = $pdo->prepare("
         SELECT COALESCE(SUM(amount), 0) as total_revenue
         FROM payments
@@ -89,6 +89,31 @@ try {
     $stmt->execute([$startDate, $endDate]);
     $revenueData = $stmt->fetch(PDO::FETCH_ASSOC);
     $revenue = $revenueData['total_revenue'] ?? 0;
+    
+    // Get revenue from shop orders
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(total), 0) as shop_revenue
+        FROM shop_orders
+        WHERE payment_status = 'paid'
+        AND DATE(created_at) BETWEEN ? AND ?
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $shopRevenueData = $stmt->fetch(PDO::FETCH_ASSOC);
+    $shopRevenue = $shopRevenueData['shop_revenue'] ?? 0;
+    
+    // Get revenue from POS transactions
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(total), 0) as pos_revenue
+        FROM pos_transactions
+        WHERE status = 'completed'
+        AND DATE(created_at) BETWEEN ? AND ?
+    ");
+    $stmt->execute([$startDate, $endDate]);
+    $posRevenueData = $stmt->fetch(PDO::FETCH_ASSOC);
+    $posRevenue = $posRevenueData['pos_revenue'] ?? 0;
+    
+    // Add shop and POS revenue to total
+    $revenue += $shopRevenue + $posRevenue;
     
     // Get total expenses
     $stmt = $pdo->prepare("
@@ -124,6 +149,31 @@ try {
     $stmt->execute();
     $recentPayments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Get recent shop orders
+    $stmt = $pdo->prepare("
+        SELECT 'shop_order' as type, id, total as amount, created_at as trans_date,
+               customer_first_name as first_name, customer_last_name as last_name, order_number
+        FROM shop_orders
+        WHERE payment_status = 'paid'
+        ORDER BY created_at DESC
+        LIMIT 5
+    ");
+    $stmt->execute();
+    $recentShopOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get recent POS transactions
+    $stmt = $pdo->prepare("
+        SELECT 'pos' as type, pt.id, pt.total as amount, pt.created_at as trans_date,
+               u.first_name, u.last_name, pt.payment_method, pt.transaction_number
+        FROM pos_transactions pt
+        LEFT JOIN users u ON pt.staff_id = u.id
+        WHERE pt.status = 'completed'
+        ORDER BY pt.created_at DESC
+        LIMIT 5
+    ");
+    $stmt->execute();
+    $recentPOSTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
     $stmt = $pdo->prepare("
         SELECT 'expense' as type, e.id, e.amount, e.expense_date as trans_date,
                e.description, e.vendor_name
@@ -135,11 +185,11 @@ try {
     $recentExpenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Merge and sort by date
-    $transactions = array_merge($recentPayments, $recentExpenses);
+    $transactions = array_merge($recentPayments, $recentShopOrders, $recentPOSTransactions, $recentExpenses);
     usort($transactions, function($a, $b) {
         return strtotime($b['trans_date']) - strtotime($a['trans_date']);
     });
-    $transactions = array_slice($transactions, 0, 8);
+    $transactions = array_slice($transactions, 0, 10);
     
     // Get revenue data for chart (based on chart period)
     $chartDays = intval($chartPeriod);
@@ -376,16 +426,29 @@ try {
         <div class="card-body">
             <?php if (count($transactions) > 0): ?>
                 <div class="transactions-list">
-                    <?php foreach ($transactions as $trans): ?>
+                    <?php foreach ($transactions as $trans): 
+                        $isIncome = in_array($trans['type'], ['payment', 'shop_order', 'pos']);
+                        $iconMap = [
+                            'payment' => 'credit-card',
+                            'shop_order' => 'shopping-bag',
+                            'pos' => 'cash-register',
+                            'expense' => 'receipt'
+                        ];
+                        $icon = $iconMap[$trans['type']] ?? 'money-bill';
+                    ?>
                         <div class="transaction-item <?= $trans['type'] ?>">
                             <div class="transaction-icon">
-                                <i class="fas fa-<?= $trans['type'] === 'payment' ? 'arrow-down' : 'arrow-up' ?>"></i>
+                                <i class="fas fa-<?= $icon ?>"></i>
                             </div>
                             <div class="transaction-details">
                                 <h4>
                                     <?php 
                                     if ($trans['type'] === 'payment') {
                                         echo 'Payment - ' . htmlspecialchars(($trans['first_name'] ?? '') . ' ' . ($trans['last_name'] ?? ''));
+                                    } elseif ($trans['type'] === 'shop_order') {
+                                        echo 'Shop Order #' . htmlspecialchars($trans['order_number'] ?? $trans['id']);
+                                    } elseif ($trans['type'] === 'pos') {
+                                        echo 'POS Sale - ' . htmlspecialchars($trans['transaction_number'] ?? '');
                                     } else {
                                         echo 'Expense - ' . htmlspecialchars($trans['description'] ?? $trans['vendor_name'] ?? 'Expense');
                                     }
@@ -395,8 +458,8 @@ try {
                                     <?= date('M d, Y \a\t g:i A', strtotime($trans['trans_date'])) ?>
                                 </span>
                             </div>
-                            <div class="transaction-amount <?= $trans['type'] === 'payment' ? 'positive' : 'negative' ?>">
-                                <?= $trans['type'] === 'payment' ? '+' : '-' ?>$<?= number_format($trans['amount'], 2) ?>
+                            <div class="transaction-amount <?= $isIncome ? 'positive' : 'negative' ?>">
+                                <?= $isIncome ? '+' : '-' ?>$<?= number_format($trans['amount'], 2) ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

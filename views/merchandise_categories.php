@@ -1,25 +1,51 @@
 <?php
 // Merchandise Categories Management View
-// Fetch all merchandise categories from database
+// Fetch all merchandise categories from database with parent relationship
 try {
     $stmt = $pdo->prepare("
         SELECT mc.*, 
                CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+               pc.name as parent_name,
                (SELECT COUNT(*) FROM merchandise_products mp WHERE mp.category_id = mc.id) as product_count
         FROM merchandise_categories mc
         LEFT JOIN users u ON mc.created_by = u.id
-        ORDER BY mc.display_order ASC, mc.name ASC
+        LEFT JOIN merchandise_categories pc ON mc.parent_id = pc.id
+        ORDER BY COALESCE(mc.parent_id, mc.id), mc.parent_id IS NOT NULL, mc.display_order ASC, mc.name ASC
     ");
     $stmt->execute();
-    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $allCategories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Separate parent and child categories
+    $categories = [];
+    $subcategories = [];
+    foreach ($allCategories as $cat) {
+        if (empty($cat['parent_id'])) {
+            $categories[] = $cat;
+        } else {
+            $subcategories[$cat['parent_id']][] = $cat;
+        }
+    }
+    
+    // Get parent categories for dropdown
+    $parentCategoriesStmt = $pdo->prepare("
+        SELECT id, name FROM merchandise_categories WHERE parent_id IS NULL OR parent_id = 0 ORDER BY name ASC
+    ");
+    $parentCategoriesStmt->execute();
+    $parentCategories = $parentCategoriesStmt->fetchAll(PDO::FETCH_ASSOC);
+    
 } catch (PDOException $e) {
     error_log("Merchandise categories fetch error: " . $e->getMessage());
     $categories = [];
+    $subcategories = [];
+    $parentCategories = [];
+    $allCategories = [];
 }
 
-$totalCategories = count($categories);
-$activeCategories = count(array_filter($categories, function($c) { return !empty($c['is_active']); }));
-$totalProducts = array_sum(array_column($categories, 'product_count'));
+$totalCategories = count($allCategories);
+$activeCategories = count(array_filter($allCategories, function($c) { return !empty($c['is_active']); }));
+$totalProducts = array_sum(array_column($allCategories, 'product_count'));
+$parentCount = count($categories);
+$subcategoryCount = $totalCategories - $parentCount;
 ?>
 
 <!-- Merchandise Categories Management View -->
@@ -107,7 +133,31 @@ $totalProducts = array_sum(array_column($categories, 'product_count'));
                             <div class="category-meta" style="display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-dim); margin-bottom: 16px;">
                                 <span><i class="fas fa-box" style="margin-right: 4px;"></i> <?= $category['product_count'] ?> Products</span>
                                 <span><i class="fas fa-sort" style="margin-right: 4px;"></i> Order: <?= $category['display_order'] ?></span>
+                                <?php 
+                                $subCount = isset($subcategories[$category['id']]) ? count($subcategories[$category['id']]) : 0;
+                                if ($subCount > 0): ?>
+                                    <span><i class="fas fa-folder-tree" style="margin-right: 4px;"></i> <?= $subCount ?> Subcategories</span>
+                                <?php endif; ?>
                             </div>
+                            
+                            <?php if (isset($subcategories[$category['id']]) && !empty($subcategories[$category['id']])): ?>
+                            <div class="subcategories-list" style="margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Subcategories:</div>
+                                <?php foreach ($subcategories[$category['id']] as $subcat): ?>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border);">
+                                        <span style="font-size: 13px;">
+                                            <?= htmlspecialchars($subcat['name']) ?>
+                                            <span style="color: var(--text-dim);">(<?= $subcat['product_count'] ?>)</span>
+                                        </span>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button class="btn-action" onclick='editCategory(<?= json_encode($subcat) ?>)' title="Edit" style="padding: 4px 8px; border: none; border-radius: 4px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light); cursor: pointer; font-size: 11px;">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
                             
                             <div class="category-actions" style="display: flex; gap: 8px;">
                                 <button class="btn-action" onclick='editCategory(<?= json_encode($category) ?>)' title="Edit" style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light); cursor: pointer;">
@@ -143,6 +193,23 @@ $totalProducts = array_sum(array_column($categories, 'product_count'));
                 <div class="form-group">
                     <label class="form-label">Category Name *</label>
                     <input type="text" name="name" class="form-input" required placeholder="e.g., Jerseys, Accessories">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Parent Category</label>
+                    <select name="parent_id" class="form-input">
+                        <option value="">None (Top-Level Category)</option>
+                        <?php foreach ($parentCategories as $parentCat): ?>
+                            <option value="<?= $parentCat['id'] ?>"><?= htmlspecialchars($parentCat['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small style="color: var(--text-dim);">Select a parent to make this a subcategory</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">URL Slug</label>
+                    <input type="text" name="slug" class="form-input" placeholder="jerseys (auto-generated if empty)">
+                    <small style="color: var(--text-dim);">Used for shop URLs</small>
                 </div>
                 
                 <div class="form-group">
@@ -196,6 +263,21 @@ $totalProducts = array_sum(array_column($categories, 'product_count'));
                 <div class="form-group">
                     <label class="form-label">Category Name *</label>
                     <input type="text" name="name" id="edit-category-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Parent Category</label>
+                    <select name="parent_id" id="edit-category-parent" class="form-input">
+                        <option value="">None (Top-Level Category)</option>
+                        <?php foreach ($parentCategories as $parentCat): ?>
+                            <option value="<?= $parentCat['id'] ?>"><?= htmlspecialchars($parentCat['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">URL Slug</label>
+                    <input type="text" name="slug" id="edit-category-slug" class="form-input">
                 </div>
                 
                 <div class="form-group">
@@ -432,6 +514,18 @@ function editCategory(category) {
     document.getElementById('edit-category-description').value = category.description || '';
     document.getElementById('edit-category-order').value = category.display_order || 0;
     document.getElementById('edit-category-status').value = category.is_active;
+    document.getElementById('edit-category-parent').value = category.parent_id || '';
+    document.getElementById('edit-category-slug').value = category.slug || '';
+    
+    // Don't allow selecting self as parent
+    const parentSelect = document.getElementById('edit-category-parent');
+    Array.from(parentSelect.options).forEach(option => {
+        if (option.value == category.id) {
+            option.disabled = true;
+        } else {
+            option.disabled = false;
+        }
+    });
     
     // Show image preview if exists
     const previewDiv = document.getElementById('edit-category-image-preview');
