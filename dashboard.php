@@ -84,8 +84,9 @@ $allowed_pages = [
     'mileage_tracker'         => 'views/mileage_tracker.php',
     
     // Accounting and Reports (Admin)
-    'accounting_dashboard'    => 'views/accounting_dashboard.php',
-    'billing_dashboard'       => 'views/accounting_billing.php',
+    'finance_dashboard'       => 'views/finance_dashboard.php',
+    'accounting_dashboard'    => 'views/finance_dashboard.php',
+    'billing_dashboard'       => 'views/finance_dashboard.php',
     'reports'                 => 'views/accounting_reports.php',
     'schedules'               => 'views/accounting_schedules.php',
     'financial_reports'       => 'views/financial_reports.php',
@@ -593,11 +594,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <div class="nav-group">
         <span class="nav-label">Accounting & Reports</span>
         <nav class="nav-menu">
-            <a href="?page=accounting_dashboard" class="nav-link <?= $page=='accounting_dashboard'?'active':'' ?>">
-                <i class="fa-solid fa-chart-pie icon"></i> Accounting Dashboard
-            </a>
-            <a href="?page=billing_dashboard" class="nav-link <?= $page=='billing_dashboard'?'active':'' ?>">
-                <i class="fa-solid fa-file-invoice-dollar icon"></i> Billing Dashboard
+            <a href="?page=finance_dashboard" class="nav-link <?= in_array($page, ['finance_dashboard', 'accounting_dashboard', 'billing_dashboard'])?'active':'' ?>">
+                <i class="fa-solid fa-chart-pie icon"></i> Finance Dashboard
             </a>
             <a href="?page=financial_reports" class="nav-link <?= in_array($page, ['reports', 'schedules', 'financial_reports'])?'active':'' ?>">
                 <i class="fa-solid fa-chart-pie icon"></i> Financial Reports Hub

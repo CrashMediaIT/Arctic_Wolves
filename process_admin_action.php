@@ -476,7 +476,7 @@ if ($action == 'create_invoice') {
             exit();
         }
         
-        header("Location: dashboard.php?page=billing_dashboard&status=invoice_created&invoice_id=$invoice_id");
+        header("Location: dashboard.php?page=finance_dashboard&tab=billing&status=invoice_created&invoice_id=$invoice_id");
     } catch (PDOException $e) {
         error_log("Invoice creation error: " . $e->getMessage());
         
@@ -487,7 +487,7 @@ if ($action == 'create_invoice') {
             exit();
         }
         
-        header("Location: dashboard.php?page=billing_dashboard&error=invoice_creation_failed");
+        header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=invoice_creation_failed");
     }
     exit();
 }
@@ -499,7 +499,7 @@ if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] 
     $invoice_id = intval($_POST['invoice_id'] ?? $_GET['invoice_id'] ?? 0);
     
     if ($invoice_id <= 0) {
-        header("Location: dashboard.php?page=billing_dashboard&error=invalid_invoice");
+        header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=invalid_invoice");
         exit();
     }
     
@@ -515,7 +515,7 @@ if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] 
         $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$invoice) {
-            header("Location: dashboard.php?page=billing_dashboard&error=invoice_not_found");
+            header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=invoice_not_found");
             exit();
         }
         
@@ -619,7 +619,7 @@ if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] 
         
     } catch (PDOException $e) {
         error_log("Invoice download error: " . $e->getMessage());
-        header("Location: dashboard.php?page=billing_dashboard&error=download_failed");
+        header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=download_failed");
         exit();
     }
 }
@@ -631,7 +631,7 @@ if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == '
     $invoice_id = intval($_POST['invoice_id'] ?? $_GET['invoice_id'] ?? 0);
     
     if ($invoice_id <= 0) {
-        header("Location: dashboard.php?page=billing_dashboard&error=invalid_invoice");
+        header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=invalid_invoice");
         exit();
     }
     
@@ -647,7 +647,7 @@ if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == '
         $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$invoice) {
-            header("Location: dashboard.php?page=billing_dashboard&error=invoice_not_found");
+            header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=invoice_not_found");
             exit();
         }
         
@@ -757,7 +757,7 @@ if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == '
         <div class="actions">
             <a href="process_admin_action.php?action=download_invoice&invoice_id=' . $invoice_id . '" class="btn">Download</a>
             <a href="javascript:window.print()" class="btn">Print</a>
-            <a href="dashboard.php?page=billing_dashboard" class="btn" style="background: #666;">Back</a>
+            <a href="dashboard.php?page=finance_dashboard&tab=billing" class="btn" style="background: #666;">Back</a>
         </div>
     </div>
 </body>
@@ -768,7 +768,7 @@ if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == '
         
     } catch (PDOException $e) {
         error_log("Invoice view error: " . $e->getMessage());
-        header("Location: dashboard.php?page=billing_dashboard&error=view_failed");
+        header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=view_failed");
         exit();
     }
 }
@@ -838,7 +838,7 @@ if ($action == 'record_payment') {
             exit();
         }
         
-        header("Location: dashboard.php?page=billing_dashboard&status=payment_recorded");
+        header("Location: dashboard.php?page=finance_dashboard&tab=billing&status=payment_recorded");
     } catch (Exception $e) {
         error_log("Record payment error: " . $e->getMessage());
         
@@ -848,7 +848,7 @@ if ($action == 'record_payment') {
             exit();
         }
         
-        header("Location: dashboard.php?page=billing_dashboard&error=payment_failed");
+        header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=payment_failed");
     }
     exit();
 }
