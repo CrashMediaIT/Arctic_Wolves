@@ -54,11 +54,24 @@ try {
     foreach ($skillsByCategory as $skills) {
         $total_skills += count($skills);
     }
+    
+    // Get all available skills from the Skills Library (Categories view)
+    // Shows all skills with their current category assignment (if any) to allow reassignment
+    $stmt = $pdo->prepare("
+        SELECT es.id, es.name, es.description, ec.name as current_category
+        FROM eval_skills es
+        LEFT JOIN eval_categories ec ON es.category_id = ec.id
+        ORDER BY es.name ASC
+    ");
+    $stmt->execute();
+    $allSkillsLibrary = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
 } catch (Exception $e) {
     $categories = [];
     $skillsByCategory = [];
     $total_categories = 0;
     $total_skills = 0;
+    $allSkillsLibrary = [];
 }
 ?>
 
@@ -93,7 +106,10 @@ try {
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-tools"></i> Framework Builder</h3>
-            <button class="btn-primary" data-action="add" data-modal="add-eval-category-modal"><i class="fas fa-plus"></i> Add Evaluation Category</button>
+            <div class="card-header-actions">
+                <a href="?page=categories&tab=skills" class="btn-secondary btn-sm"><i class="fas fa-tags"></i> Manage Skills Library</a>
+                <button class="btn-primary" data-action="add" data-modal="add-eval-category-modal"><i class="fas fa-plus"></i> Add Evaluation Category</button>
+            </div>
         </div>
         <div class="card-body">
             <div class="framework-tree">
@@ -101,6 +117,9 @@ try {
                     <div class="empty-state">
                         <i class="fas fa-clipboard-check" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
                         <p>No evaluation categories yet. Click "Add Evaluation Category" to get started.</p>
+                        <p style="font-size: 13px; color: var(--text-dim); margin-top: 8px;">
+                            First, <a href="?page=categories&tab=skills" style="color: var(--primary-light);">add skills to your library</a>, then create evaluation categories here.
+                        </p>
                     </div>
                 <?php else: ?>
                     <?php foreach ($categories as $category): ?>
@@ -113,7 +132,8 @@ try {
                                     <span class="criteria-count"><?php echo count($skillsByCategory[$category['id']] ?? []); ?> criteria</span>
                                 </div>
                                 <div class="category-actions">
-                                    <button class="btn-icon" title="Add Criteria" data-action="add-skill" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-plus"></i></button>
+                                    <button class="btn-icon btn-scale" title="Assign Scale to Category" data-action="assign-scale" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-star-half-alt"></i></button>
+                                    <button class="btn-icon" title="Add Criteria from Library" data-action="add-skill" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-plus"></i></button>
                                     <button class="btn-icon" title="Edit" data-action="edit-category" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-edit"></i></button>
                                     <button class="btn-icon" title="Delete" data-action="delete-category" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-trash"></i></button>
                                 </div>
@@ -124,7 +144,7 @@ try {
                                 if (empty($skills)): 
                                 ?>
                                     <div class="empty-criteria">
-                                        <p style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">No criteria in this category yet.</p>
+                                        <p style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">No criteria in this category yet. Click <i class="fas fa-plus"></i> to add from Skills Library.</p>
                                     </div>
                                 <?php else: ?>
                                     <?php foreach ($skills as $skill): ?>
@@ -134,6 +154,7 @@ try {
                                                 <span class="criteria-name"><?php echo htmlspecialchars($skill['name']); ?></span>
                                             </div>
                                             <div class="criteria-actions">
+                                                <button class="btn-icon btn-scale-sm" title="Set Scale" data-action="set-skill-scale" data-skill-id="<?php echo $skill['id']; ?>"><i class="fas fa-star-half-alt"></i></button>
                                                 <button class="btn-icon" title="Edit" data-action="edit-skill" data-skill-id="<?php echo $skill['id']; ?>"><i class="fas fa-edit"></i></button>
                                                 <button class="btn-icon" title="Delete" data-action="delete-skill" data-skill-id="<?php echo $skill['id']; ?>"><i class="fas fa-trash"></i></button>
                                             </div>
@@ -286,6 +307,33 @@ try {
 
 .content-card .card-header h3 i {
     color: var(--primary-light);
+}
+
+.card-header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.btn-sm {
+    font-size: 13px;
+    padding: 8px 14px;
+}
+
+.btn-scale, .btn-scale-sm {
+    background: rgba(251, 191, 36, 0.15) !important;
+    border-color: rgba(251, 191, 36, 0.3) !important;
+    color: #fbbf24 !important;
+}
+
+.btn-scale:hover, .btn-scale-sm:hover {
+    background: #fbbf24 !important;
+    border-color: #fbbf24 !important;
+    color: #000 !important;
+}
+
+.skill-checkbox-item:hover {
+    background: rgba(107, 70, 193, 0.1);
 }
 
 .content-card .card-body {
@@ -641,17 +689,44 @@ try {
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Category Name *</label>
-                    <input type="text" name="name" class="form-input" required>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Skating Skills">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Describe this evaluation category..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Skills from Library</label>
+                    <p class="form-help-text" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+                        <i class="fas fa-info-circle"></i> Select existing skills from the Skills Library to include in this category. 
+                        <a href="?page=categories&tab=skills" style="color: var(--primary-light);">Manage Skills Library →</a>
+                    </p>
+                    <div class="skills-checkbox-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                        <?php if (empty($allSkillsLibrary)): ?>
+                            <p style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 10px;">
+                                No skills in library. <a href="?page=categories&tab=skills" style="color: var(--primary-light);">Add skills first →</a>
+                            </p>
+                        <?php else: ?>
+                            <?php foreach ($allSkillsLibrary as $skill): ?>
+                                <label class="skill-checkbox-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+                                    <input type="checkbox" name="skill_ids[]" value="<?php echo $skill['id']; ?>" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                                    <span>
+                                        <strong><?php echo htmlspecialchars($skill['name']); ?></strong>
+                                        <?php if ($skill['current_category']): ?>
+                                            <small style="color: var(--text-dim);"> (in <?php echo htmlspecialchars($skill['current_category']); ?>)</small>
+                                        <?php endif; ?>
+                                    </span>
+                                </label>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Weight (%)</label>
-                    <input type="number" name="weight" class="form-input" min="0" max="100" step="1">
+                    <input type="number" name="weight" class="form-input" min="0" max="100" step="1" placeholder="Optional weight for scoring">
                 </div>
                 
                 <div class="form-group">
@@ -764,6 +839,170 @@ try {
     </div>
 </div>
 
+<!-- Add Skill Modal -->
+<div id="add-skill-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Skill/Criteria to Category</h2>
+            <button class="modal-close" onclick="closeModal('add-skill-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="add_skill_to_category">
+            <input type="hidden" name="category_id" id="add-skill-category-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Adding to Category:</label>
+                    <input type="text" id="add-skill-category-name" class="form-input" readonly style="opacity: 0.7;">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Select from Skills Library *</label>
+                    <select name="skill_id" class="form-select" id="add-skill-select">
+                        <option value="">-- Select a Skill --</option>
+                        <?php foreach ($allSkillsLibrary as $skill): ?>
+                            <option value="<?php echo $skill['id']; ?>">
+                                <?php echo htmlspecialchars($skill['name']); ?>
+                                <?php if ($skill['current_category']): ?>
+                                    (in <?php echo htmlspecialchars($skill['current_category']); ?>)
+                                <?php endif; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="form-help-text" style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+                        <i class="fas fa-info-circle"></i> Skills are managed in the <a href="?page=categories&tab=skills" style="color: var(--primary-light);">Skills Library</a>
+                    </p>
+                </div>
+                
+                <div class="divider-text" style="text-align: center; margin: 20px 0; color: var(--text-muted);">
+                    <span style="background: var(--bg-card); padding: 0 10px;">or create new</span>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">New Skill Name</label>
+                    <input type="text" name="new_skill_name" class="form-input" placeholder="e.g., Skating Speed">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">New Skill Description</label>
+                    <textarea name="new_skill_description" class="form-textarea" rows="2" placeholder="Describe what this skill measures..."></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-skill-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Add to Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div id="edit-category-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Category</h2>
+            <button class="modal-close" onclick="closeModal('edit-category-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_category">
+            <input type="hidden" name="category_id" id="edit-category-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Category Name *</label>
+                    <input type="text" name="name" id="edit-category-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-category-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-category-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Skill Modal -->
+<div id="edit-skill-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Skill</h2>
+            <button class="modal-close" onclick="closeModal('edit-skill-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_skill">
+            <input type="hidden" name="skill_id" id="edit-skill-id">
+            <input type="hidden" name="category_id" id="edit-skill-category-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Skill Name *</label>
+                    <input type="text" name="name" id="edit-skill-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea name="description" id="edit-skill-description" class="form-textarea" rows="3" required></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-skill-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Skill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Assign Scale Modal -->
+<div id="assign-scale-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Assign Scale</h2>
+            <button class="modal-close" onclick="closeModal('assign-scale-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="assign_scale">
+            <input type="hidden" name="target_type" id="assign-scale-target-type">
+            <input type="hidden" name="target_id" id="assign-scale-target-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Assigning Scale To:</label>
+                    <input type="text" id="assign-scale-target-name" class="form-input" readonly style="opacity: 0.7;">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Scale *</label>
+                    <select name="scale_id" class="form-select" required>
+                        <option value="">-- Choose a Scale --</option>
+                        <option value="1">1-5 Scale (Default)</option>
+                        <option value="2">10 Point Scale</option>
+                    </select>
+                    <p class="form-help-text" style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+                        <i class="fas fa-info-circle"></i> This scale will be used when evaluating this skill.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('assign-scale-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Assign Scale</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Include SortableJS library for drag-and-drop -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" 
         integrity="sha256-ipiJrswvAR4VAx/th+6zWsdeYmVae0iJuiR+6OqHJHQ=" 
@@ -773,6 +1012,19 @@ try {
 <script src="js/eval_framework.js"></script>
 
 <script>
+// Store categories and skills data for client-side lookup
+var categoriesData = <?php echo json_encode(array_values($categories), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+var skillsData = <?php 
+    $allSkills = [];
+    foreach ($skillsByCategory as $catId => $skills) {
+        foreach ($skills as $skill) {
+            $skill['category_id'] = $catId;
+            $allSkills[] = $skill;
+        }
+    }
+    echo json_encode($allSkills, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+?>;
+
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
     
@@ -796,6 +1048,36 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
     }
     
+    // AJAX helper for delete operations
+    function ajaxPost(action, data, onSuccess) {
+        var formData = new FormData();
+        formData.append('action', action);
+        formData.append('csrf_token', csrfToken);
+        for (var key in data) {
+            formData.append(key, data[key]);
+        }
+        
+        fetch('process_eval_framework.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showNotification(data.message || 'Operation successful!', 'success');
+                if (onSuccess) onSuccess(data);
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            showNotification('An error occurred. Please try again.', 'error');
+        });
+    }
+    
     // Handle add buttons for modals
     document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
@@ -808,6 +1090,118 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Handle add-skill buttons
+    document.querySelectorAll('[data-action="add-skill"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var categoryId = this.getAttribute('data-category-id');
+            var category = categoriesData.find(function(c) { return c.id == categoryId; });
+            
+            document.getElementById('add-skill-category-id').value = categoryId;
+            document.getElementById('add-skill-category-name').value = category ? category.name : 'Unknown Category';
+            
+            var modal = document.getElementById('add-skill-modal');
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
+    // Handle edit-category buttons
+    document.querySelectorAll('[data-action="edit-category"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var categoryId = this.getAttribute('data-category-id');
+            var category = categoriesData.find(function(c) { return c.id == categoryId; });
+            
+            if (category) {
+                document.getElementById('edit-category-id').value = category.id;
+                document.getElementById('edit-category-name').value = category.name;
+                document.getElementById('edit-category-description').value = category.description || '';
+            }
+            
+            var modal = document.getElementById('edit-category-modal');
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
+    // Handle delete-category buttons
+    document.querySelectorAll('[data-action="delete-category"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var categoryId = this.getAttribute('data-category-id');
+            var category = categoriesData.find(function(c) { return c.id == categoryId; });
+            var name = category ? category.name : 'this category';
+            
+            if (confirm('Are you sure you want to delete "' + name + '"? This cannot be undone.')) {
+                ajaxPost('delete_category', { category_id: categoryId });
+            }
+        });
+    });
+    
+    // Handle edit-skill buttons
+    document.querySelectorAll('[data-action="edit-skill"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var skillId = this.getAttribute('data-skill-id');
+            var skill = skillsData.find(function(s) { return s.id == skillId; });
+            
+            if (skill) {
+                document.getElementById('edit-skill-id').value = skill.id;
+                document.getElementById('edit-skill-category-id').value = skill.category_id;
+                document.getElementById('edit-skill-name').value = skill.name;
+                document.getElementById('edit-skill-description').value = skill.description || '';
+            }
+            
+            var modal = document.getElementById('edit-skill-modal');
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
+    // Handle delete-skill buttons
+    document.querySelectorAll('[data-action="delete-skill"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var skillId = this.getAttribute('data-skill-id');
+            var skill = skillsData.find(function(s) { return s.id == skillId; });
+            var name = skill ? skill.name : 'this skill';
+            
+            if (confirm('Are you sure you want to delete "' + name + '"? This cannot be undone.')) {
+                ajaxPost('delete_skill', { skill_id: skillId });
+            }
+        });
+    });
+    
+    // Handle assign-scale buttons (for categories)
+    document.querySelectorAll('[data-action="assign-scale"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var categoryId = this.getAttribute('data-category-id');
+            var category = categoriesData.find(function(c) { return c.id == categoryId; });
+            
+            document.getElementById('assign-scale-target-type').value = 'category';
+            document.getElementById('assign-scale-target-id').value = categoryId;
+            document.getElementById('assign-scale-target-name').value = 'Category: ' + (category ? category.name : 'Unknown');
+            
+            var modal = document.getElementById('assign-scale-modal');
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
+    // Handle set-skill-scale buttons (for individual skills)
+    document.querySelectorAll('[data-action="set-skill-scale"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var skillId = this.getAttribute('data-skill-id');
+            var skill = skillsData.find(function(s) { return s.id == skillId; });
+            
+            document.getElementById('assign-scale-target-type').value = 'skill';
+            document.getElementById('assign-scale-target-id').value = skillId;
+            document.getElementById('assign-scale-target-name').value = 'Skill: ' + (skill ? skill.name : 'Unknown');
+            
+            var modal = document.getElementById('assign-scale-modal');
+            if (modal) modal.classList.add('active');
+        });
+    });
+    
     // Convert forms to AJAX submissions with success widget
     document.querySelectorAll('.modal form').forEach(function(form) {
         form.addEventListener('submit', function(e) {
@@ -817,13 +1211,15 @@ document.addEventListener('DOMContentLoaded', function() {
             var modal = form.closest('.modal');
             var submitBtn = form.querySelector('button[type="submit"]');
             var originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            // Use getAttribute to get the action URL (not the shadowed property)
+            var actionUrl = form.getAttribute('action') || 'process_eval_framework.php';
             
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
                 submitBtn.disabled = true;
             }
             
-            fetch(form.action, {
+            fetch(actionUrl, {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }

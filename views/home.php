@@ -105,7 +105,211 @@ try {
     $pendingReviews = [];
     $athleteUpdates = [];
 }
+
+// Fetch active system notifications for all users
+$systemNotifications = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT id, title, message, notification_type, start_date, end_date
+        FROM system_notifications
+        WHERE is_active = 1
+          AND start_date <= NOW()
+          AND (end_date IS NULL OR end_date >= NOW())
+        ORDER BY 
+            CASE notification_type 
+                WHEN 'alert' THEN 1 
+                WHEN 'maintenance' THEN 2 
+                WHEN 'warning' THEN 3 
+                ELSE 4 
+            END,
+            start_date DESC
+        LIMIT 5
+    ");
+    $stmt->execute();
+    $systemNotifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("System notifications fetch error: " . $e->getMessage());
+}
 ?>
+
+<?php if (!empty($systemNotifications)): ?>
+<!-- System Notifications Banner -->
+<div class="system-notifications-widget">
+    <?php foreach ($systemNotifications as $sysNotif): ?>
+        <div class="system-alert system-alert-<?php echo htmlspecialchars($sysNotif['notification_type']); ?>" id="system-alert-<?php echo (int)$sysNotif['id']; ?>">
+            <div class="system-alert-icon">
+                <?php 
+                $icon = 'info-circle';
+                switch ($sysNotif['notification_type']) {
+                    case 'warning': $icon = 'exclamation-triangle'; break;
+                    case 'alert': $icon = 'exclamation-circle'; break;
+                    case 'maintenance': $icon = 'tools'; break;
+                }
+                ?>
+                <i class="fas fa-<?php echo $icon; ?>" aria-hidden="true"></i>
+            </div>
+            <div class="system-alert-content">
+                <strong><?php echo htmlspecialchars($sysNotif['title']); ?></strong>
+                <p><?php echo htmlspecialchars($sysNotif['message']); ?></p>
+                <?php if ($sysNotif['end_date']): ?>
+                    <small>Until <?php echo date('M j, Y g:i A', strtotime($sysNotif['end_date'])); ?></small>
+                <?php endif; ?>
+            </div>
+            <button class="system-alert-dismiss" 
+                    aria-label="Dismiss notification: <?php echo htmlspecialchars($sysNotif['title']); ?>"
+                    data-notification-id="<?php echo (int)$sysNotif['id']; ?>">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+        </div>
+    <?php endforeach; ?>
+</div>
+
+<script>
+// System notification dismiss handler
+document.querySelectorAll('.system-alert-dismiss').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var alert = this.closest('.system-alert');
+        var notifId = this.getAttribute('data-notification-id');
+        if (alert) {
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateX(100%)';
+            setTimeout(function() { alert.style.display = 'none'; }, 300);
+            // Store dismissed notification in sessionStorage to persist during session
+            if (notifId) {
+                var dismissed = JSON.parse(sessionStorage.getItem('dismissedNotifications') || '[]');
+                if (!dismissed.includes(notifId)) {
+                    dismissed.push(notifId);
+                    sessionStorage.setItem('dismissedNotifications', JSON.stringify(dismissed));
+                }
+            }
+        }
+    });
+});
+
+// Hide already dismissed notifications on page load
+document.addEventListener('DOMContentLoaded', function() {
+    var dismissed = JSON.parse(sessionStorage.getItem('dismissedNotifications') || '[]');
+    dismissed.forEach(function(id) {
+        var alert = document.getElementById('system-alert-' + id);
+        if (alert) alert.style.display = 'none';
+    });
+});
+</script>
+
+<style>
+/* System Notifications Widget */
+.system-notifications-widget {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.system-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border-left: 4px solid;
+    position: relative;
+    animation: slideIn 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.system-alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
+}
+
+.system-alert-info .system-alert-icon {
+    color: #3b82f6;
+}
+
+.system-alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: #f59e0b;
+}
+
+.system-alert-warning .system-alert-icon {
+    color: #f59e0b;
+}
+
+.system-alert-alert {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}
+
+.system-alert-alert .system-alert-icon {
+    color: #ef4444;
+}
+
+.system-alert-maintenance {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: #fbbf24;
+}
+
+.system-alert-maintenance .system-alert-icon {
+    color: #fbbf24;
+}
+
+.system-alert-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.system-alert-content {
+    flex: 1;
+}
+
+.system-alert-content strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.system-alert-content p {
+    font-size: 14px;
+    color: #94a3b8;
+    margin: 0 0 4px 0;
+    line-height: 1.5;
+}
+
+.system-alert-content small {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.system-alert-dismiss {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 16px;
+    transition: color 0.2s;
+    flex-shrink: 0;
+}
+
+.system-alert-dismiss:hover {
+    color: #fff;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+<?php endif; ?>
 
 <div class="dashboard-content">
     <!-- Role-specific content will be loaded here -->
