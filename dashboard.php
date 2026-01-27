@@ -88,6 +88,7 @@ $allowed_pages = [
     'billing_dashboard'       => 'views/accounting_billing.php',
     'reports'                 => 'views/accounting_reports.php',
     'schedules'               => 'views/accounting_schedules.php',
+    'financial_reports'       => 'views/financial_reports.php',
     'credits_refunds'         => 'views/accounting_credits.php',
     'expenses'                => 'views/accounting_expenses.php',
     'products'                => 'views/accounting_products.php',
@@ -598,13 +599,10 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=billing_dashboard" class="nav-link <?= $page=='billing_dashboard'?'active':'' ?>">
                 <i class="fa-solid fa-file-invoice-dollar icon"></i> Billing Dashboard
             </a>
-            <a href="?page=reports" class="nav-link <?= $page=='reports'?'active':'' ?>">
-                <i class="fa-solid fa-chart-bar icon"></i> Reports
+            <a href="?page=financial_reports" class="nav-link <?= in_array($page, ['reports', 'schedules', 'financial_reports'])?'active':'' ?>">
+                <i class="fa-solid fa-chart-pie icon"></i> Financial Reports Hub
             </a>
-            <a href="?page=schedules" class="nav-link <?= $page=='schedules'?'active':'' ?>">
-                <i class="fa-solid fa-calendar-days icon"></i> Schedules
-            </a>
-            <a href="?page=credits_refunds" class="nav-link <?= $page=='credits_refunds'?'active':'' ?>">
+            <a href="?page=credits_refunds" class="nav-link <?= $page=='credits_refunds'?'active':'' ?>">>
                 <i class="fa-solid fa-money-bill-transfer icon"></i> Credits & Refunds
             </a>
             <a href="?page=expenses" class="nav-link <?= $page=='expenses'?'active':'' ?>">
