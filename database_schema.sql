@@ -307,18 +307,31 @@ CREATE TABLE IF NOT EXISTS `videos` (
     `thumbnail_url` VARCHAR(255) DEFAULT NULL,
     `upload_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `video_type` ENUM('drill_review', 'coach_review', 'uploaded_by_athlete') DEFAULT 'drill_review',
+    `video_category` ENUM('drill', 'game') DEFAULT 'drill',
     `drill_id` INT DEFAULT NULL,
     `session_id` INT DEFAULT NULL,
+    `rep_number` INT DEFAULT 1,
+    `game_date` DATE DEFAULT NULL,
+    `team_played_on` VARCHAR(255) DEFAULT NULL,
+    `opponent_team` VARCHAR(255) DEFAULT NULL,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL,
+    `local_path` VARCHAR(500) DEFAULT NULL,
+    `is_uploaded_to_cloud` TINYINT(1) DEFAULT 0,
     `status` ENUM('pending_review', 'reviewed', 'archived') DEFAULT 'pending_review',
     `coach_notes` TEXT DEFAULT NULL,
     `athlete_notes` TEXT DEFAULT NULL,
     `reviewed_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`drill_id`) REFERENCES `drills`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     INDEX `idx_athlete` (`athlete_id`),
-    INDEX `idx_status` (`status`)
+    INDEX `idx_status` (`status`),
+    INDEX `idx_video_category` (`video_category`),
+    INDEX `idx_coach` (`coach_id`),
+    INDEX `idx_session` (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Workout exercises library
