@@ -1,7 +1,7 @@
 <?php
 // Determine which tab should be active based on URL parameter
 $activeTab = $_GET['tab'] ?? 'skills';
-$validTabs = ['skills', 'drills', 'positions'];
+$validTabs = ['skills', 'drills', 'positions', 'equipment'];
 if (!in_array($activeTab, $validTabs)) {
     $activeTab = 'skills';
 }
@@ -30,6 +30,10 @@ if (!in_array($activeTab, $validTabs)) {
             <span class="stat-value" id="total-positions-count">-</span>
             <span class="stat-label">Positions</span>
         </div>
+        <div class="header-stat">
+            <span class="stat-value" id="total-equipment-count">-</span>
+            <span class="stat-label">Equipment</span>
+        </div>
     </div>
 </div>
 
@@ -48,6 +52,10 @@ if (!in_array($activeTab, $validTabs)) {
             <button class="tab-btn <?= $activeTab === 'positions' ? 'active' : '' ?>" data-tab="positions" data-action="switch-tab">
                 <span class="tab-icon"><i class="fas fa-user-tag"></i></span>
                 <span class="tab-text">Positions</span>
+            </button>
+            <button class="tab-btn <?= $activeTab === 'equipment' ? 'active' : '' ?>" data-tab="equipment" data-action="switch-tab">
+                <span class="tab-icon"><i class="fas fa-toolbox"></i></span>
+                <span class="tab-text">Equipment</span>
             </button>
         </div>
     </div>
@@ -221,6 +229,64 @@ if (!in_array($activeTab, $validTabs)) {
                     else:
                     ?>
                     <p class="placeholder-text">No positions found. Click "Add Position" to create your first position.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equipment Tab -->
+    <div class="tab-content <?= $activeTab === 'equipment' ? 'active' : '' ?>" id="equipment-tab">
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-toolbox"></i> Equipment Categories</h3>
+                <button class="btn-primary" data-action="add" data-modal="add-equipment-modal"><i class="fas fa-plus"></i> Add Equipment</button>
+            </div>
+            <div class="card-body">
+                <p class="info-text" style="margin-bottom: 16px; padding: 12px; background: rgba(107, 70, 193, 0.1); border-radius: 8px; color: var(--text-secondary); font-size: 13px;">
+                    <i class="fas fa-info-circle" style="color: var(--primary-light); margin-right: 8px;"></i>
+                    Equipment categories defined here will be available when creating drills. Add equipment items that coaches commonly use during practice.
+                </p>
+                <div class="categories-list">
+                    <?php
+                    // Fetch all equipment categories from database
+                    // Equipment used for drills is stored in the equipment table with equipment_type = 'category'
+                    $stmt = $pdo->prepare("SELECT id, name, notes as description FROM equipment WHERE equipment_type = 'category' ORDER BY name ASC");
+                    $stmt->execute();
+                    $equipment_items = $stmt->fetchAll();
+                    
+                    if (count($equipment_items) > 0):
+                        foreach ($equipment_items as $equip):
+                    ?>
+                    <div class="category-item">
+                        <div class="category-icon"><i class="fas fa-toolbox"></i></div>
+                        <div class="category-info">
+                            <h4><?= htmlspecialchars($equip['name']) ?></h4>
+                            <p><?= htmlspecialchars($equip['description'] ?: 'No description') ?></p>
+                        </div>
+                        <div class="category-actions">
+                            <button class="btn-icon" title="Edit" 
+                                    data-action="edit" 
+                                    data-id="<?= $equip['id'] ?>" 
+                                    data-type="equipment" 
+                                    data-name="<?= htmlspecialchars($equip['name']) ?>"
+                                    data-description="<?= htmlspecialchars($equip['description'] ?? '') ?>">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon" title="Delete" 
+                                    data-action="delete" 
+                                    data-id="<?= $equip['id'] ?>" 
+                                    data-type="equipment" 
+                                    data-name="<?= htmlspecialchars($equip['name']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <?php 
+                        endforeach;
+                    else:
+                    ?>
+                    <p class="placeholder-text">No equipment found. Click "Add Equipment" to create your first equipment category.</p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -743,6 +809,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('edit-drill-type-description').value = description;
                 
                 document.getElementById('edit-drill-type-modal').classList.add('active');
+            } else if (type === 'equipment') {
+                document.getElementById('edit-equipment-id').value = id;
+                document.getElementById('edit-equipment-name').value = name;
+                document.getElementById('edit-equipment-description').value = description;
+                
+                document.getElementById('edit-equipment-modal').classList.add('active');
             }
         });
     });
@@ -822,15 +894,18 @@ function updateStatsCounts() {
     const skillsCount = document.querySelectorAll('#skills-tab .category-item').length;
     const drillsCount = document.querySelectorAll('#drills-tab .category-item').length;
     const positionsCount = document.querySelectorAll('#positions-tab .category-item').length;
+    const equipmentCount = document.querySelectorAll('#equipment-tab .category-item').length;
     
     // Update the header stats
     const skillsEl = document.getElementById('total-skills-count');
     const drillsEl = document.getElementById('total-drills-count');
     const positionsEl = document.getElementById('total-positions-count');
+    const equipmentEl = document.getElementById('total-equipment-count');
     
     if (skillsEl) skillsEl.textContent = skillsCount;
     if (drillsEl) drillsEl.textContent = drillsCount;
     if (positionsEl) positionsEl.textContent = positionsCount;
+    if (equipmentEl) equipmentEl.textContent = equipmentCount;
 }
 
 // Show notification helper
@@ -979,6 +1054,70 @@ function openModal(modalId) {
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('edit-drill-type-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Drill Type</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Equipment Modal -->
+<div id="add-equipment-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Equipment Category</h2>
+            <button class="modal-close" onclick="closeModal('add-equipment-modal')">&times;</button>
+        </div>
+        <form id="add-equipment-form" method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_equipment">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Equipment Name *</label>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Pucks, Cones, Nets">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Brief description of this equipment"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Equipment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Equipment Modal -->
+<div id="edit-equipment-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Equipment</h2>
+            <button class="modal-close" onclick="closeModal('edit-equipment-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="type" value="equipment">
+            <input type="hidden" name="id" id="edit-equipment-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Equipment Name *</label>
+                    <input type="text" name="name" id="edit-equipment-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-equipment-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Equipment</button>
             </div>
         </form>
     </div>
