@@ -878,6 +878,9 @@ if ($action == 'create_user') {
     $role = $_POST['role'];
     $is_verified = intval($_POST['is_verified'] ?? 1);
     $password = $_POST['password'];
+    $birth_date = !empty($_POST['birth_date']) ? $_POST['birth_date'] : null;
+    $assigned_coach_id = !empty($_POST['assigned_coach_id']) ? intval($_POST['assigned_coach_id']) : null;
+    $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
 
     try {
         // Hash the password
@@ -886,10 +889,17 @@ if ($action == 'create_user') {
         
         // Insert new user
         $stmt = $pdo->prepare("
-            INSERT INTO users (email, password, first_name, last_name, role, phone, is_verified, force_pass_change, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO users (email, password, first_name, last_name, role, phone, is_verified, force_pass_change, birth_date, assigned_coach_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$email, $hashed_password, $first_name, $last_name, $role, $phone, $is_verified, $force_pass_change]);
+        $stmt->execute([$email, $hashed_password, $first_name, $last_name, $role, $phone, $is_verified, $force_pass_change, $birth_date, $assigned_coach_id]);
+        
+        $new_user_id = $pdo->lastInsertId();
+        
+        // Assign team if provided
+        if ($team_id && $role === 'athlete') {
+            $pdo->prepare("INSERT INTO team_roster (team_id, athlete_id) VALUES (?, ?)")->execute([$team_id, $new_user_id]);
+        }
         
         header("Location: dashboard.php?page=all_users&status=success");
     } catch (PDOException $e) {
@@ -907,6 +917,9 @@ if ($action == 'update_user') {
     $phone = trim($_POST['phone'] ?? '');
     $role = $_POST['role'];
     $password = trim($_POST['password'] ?? '');
+    $birth_date = !empty($_POST['birth_date']) ? $_POST['birth_date'] : null;
+    $assigned_coach_id = !empty($_POST['assigned_coach_id']) ? intval($_POST['assigned_coach_id']) : null;
+    $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
 
     try {
         // Check if password is being updated
@@ -914,17 +927,31 @@ if ($action == 'update_user') {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("
                 UPDATE users 
-                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, password = ?
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, password = ?, birth_date = ?, assigned_coach_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $hashed_password, $user_id_to_update]);
+            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $hashed_password, $birth_date, $assigned_coach_id, $user_id_to_update]);
         } else {
             $stmt = $pdo->prepare("
                 UPDATE users 
-                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, birth_date = ?, assigned_coach_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $user_id_to_update]);
+            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $birth_date, $assigned_coach_id, $user_id_to_update]);
+        }
+        
+        // Handle team assignment if provided
+        if ($role === 'athlete' && $team_id) {
+            // Check if user already has a team roster entry
+            $check_stmt = $pdo->prepare("SELECT id FROM team_roster WHERE athlete_id = ?");
+            $check_stmt->execute([$user_id_to_update]);
+            $existing = $check_stmt->fetch();
+            
+            if ($existing) {
+                $pdo->prepare("UPDATE team_roster SET team_id = ? WHERE athlete_id = ?")->execute([$team_id, $user_id_to_update]);
+            } else {
+                $pdo->prepare("INSERT INTO team_roster (team_id, athlete_id) VALUES (?, ?)")->execute([$team_id, $user_id_to_update]);
+            }
         }
         
         header("Location: dashboard.php?page=all_users&status=success");
@@ -1072,6 +1099,316 @@ if ($action == 'toggle_session_status') {
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
+}
+
+// =========================================================
+// MODULE 8.6: ADMIN PROFILE IMAGE MANAGEMENT
+// =========================================================
+if ($action == 'admin_update_profile_image') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_update = intval($_POST['user_id'] ?? 0);
+        
+        if ($user_id_to_update <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
+            exit();
+        }
+        
+        if (!isset($_FILES['profile_image']) || $_FILES['profile_image']['error'] !== 0) {
+            echo json_encode(['success' => false, 'message' => 'No file uploaded or upload error']);
+            exit();
+        }
+        
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $filename = $_FILES['profile_image']['name'];
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        
+        if (!in_array($ext, $allowed)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid file type. Allowed: JPG, PNG, GIF, WEBP']);
+            exit();
+        }
+        
+        // Check file size (5MB max)
+        if ($_FILES['profile_image']['size'] > 5 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => 'File too large. Maximum size is 5MB']);
+            exit();
+        }
+        
+        $upload_dir = 'uploads/profiles/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        
+        $new_name = $upload_dir . "profile_" . $user_id_to_update . "_" . time() . "." . $ext;
+        
+        if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $new_name)) {
+            // Delete old profile image if exists
+            $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
+            $stmt->execute([$user_id_to_update]);
+            $old_image = $stmt->fetchColumn();
+            if ($old_image && file_exists($old_image)) {
+                unlink($old_image);
+            }
+            
+            // Update database
+            $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $user_id_to_update]);
+            
+            echo json_encode(['success' => true, 'message' => 'Profile image updated successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to save uploaded file']);
+        }
+    } catch (PDOException $e) {
+        error_log("Admin profile image update error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
+if ($action == 'admin_remove_profile_image') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_update = intval($_POST['user_id'] ?? 0);
+        
+        if ($user_id_to_update <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
+            exit();
+        }
+        
+        // Get and delete old profile image
+        $stmt = $pdo->prepare("SELECT profile_image FROM users WHERE id = ?");
+        $stmt->execute([$user_id_to_update]);
+        $old_image = $stmt->fetchColumn();
+        
+        if ($old_image && file_exists($old_image)) {
+            unlink($old_image);
+        }
+        
+        // Update database
+        $pdo->prepare("UPDATE users SET profile_image = NULL WHERE id = ?")->execute([$user_id_to_update]);
+        
+        echo json_encode(['success' => true, 'message' => 'Profile image removed successfully']);
+    } catch (PDOException $e) {
+        error_log("Admin profile image remove error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
+// =========================================================
+// MODULE 8.7: ADMIN USER ASSIGNMENTS (Coach, Team)
+// =========================================================
+if ($action == 'admin_update_assignments') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_update = intval($_POST['user_id'] ?? 0);
+        $assigned_coach_id = !empty($_POST['assigned_coach_id']) ? intval($_POST['assigned_coach_id']) : null;
+        $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
+        $jersey_number = !empty($_POST['jersey_number']) ? intval($_POST['jersey_number']) : null;
+        $position = trim($_POST['position'] ?? '');
+        
+        if ($user_id_to_update <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
+            exit();
+        }
+        
+        // Update assigned coach
+        $pdo->prepare("UPDATE users SET assigned_coach_id = ? WHERE id = ?")->execute([$assigned_coach_id, $user_id_to_update]);
+        
+        // Handle team assignment
+        if ($team_id) {
+            // Check if user already has a team roster entry
+            $check_stmt = $pdo->prepare("SELECT id FROM team_roster WHERE athlete_id = ?");
+            $check_stmt->execute([$user_id_to_update]);
+            $existing = $check_stmt->fetch();
+            
+            if ($existing) {
+                // Update existing entry
+                $pdo->prepare("UPDATE team_roster SET team_id = ?, jersey_number = ?, position = ? WHERE athlete_id = ?")
+                    ->execute([$team_id, $jersey_number, $position, $user_id_to_update]);
+            } else {
+                // Insert new entry
+                $pdo->prepare("INSERT INTO team_roster (team_id, athlete_id, jersey_number, position) VALUES (?, ?, ?, ?)")
+                    ->execute([$team_id, $user_id_to_update, $jersey_number, $position]);
+            }
+        } else {
+            // Remove from team roster if team_id is null
+            $pdo->prepare("DELETE FROM team_roster WHERE athlete_id = ?")->execute([$user_id_to_update]);
+        }
+        
+        echo json_encode(['success' => true, 'message' => 'Assignments updated successfully']);
+    } catch (PDOException $e) {
+        error_log("Admin assignments update error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
+// =========================================================
+// MODULE 8.8: ADMIN NOTIFICATION PREFERENCES
+// =========================================================
+if ($action == 'admin_update_notifications') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_update = intval($_POST['user_id'] ?? 0);
+        
+        if ($user_id_to_update <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
+            exit();
+        }
+        
+        $preferences = [
+            'email_notifications' => isset($_POST['email_notifications']) ? '1' : '0',
+            'session_reminders' => isset($_POST['session_reminders']) ? '1' : '0',
+            'goal_updates' => isset($_POST['goal_updates']) ? '1' : '0',
+            'marketing_emails' => isset($_POST['marketing_emails']) ? '1' : '0'
+        ];
+        
+        foreach ($preferences as $key => $value) {
+            // Try to update, if no rows affected then insert
+            $stmt = $pdo->prepare("INSERT INTO user_preferences (user_id, preference_key, preference_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE preference_value = ?");
+            $stmt->execute([$user_id_to_update, $key, $value, $value]);
+        }
+        
+        echo json_encode(['success' => true, 'message' => 'Notification settings updated successfully']);
+    } catch (PDOException $e) {
+        error_log("Admin notifications update error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
+// =========================================================
+// MODULE 8.9: FILTERED USER EXPORT
+// =========================================================
+if ($action == 'export_users') {
+    try {
+        // Get filter values
+        $role_filter = $_POST['filter_role'] ?? '';
+        $status_filter = $_POST['filter_status'] ?? '';
+        $team_filter = $_POST['filter_team'] ?? '';
+        $age_filter = $_POST['filter_age'] ?? '';
+        $search = $_POST['filter_search'] ?? '';
+        
+        // Build query with filters
+        $where = [];
+        $params = [];
+        $join_clauses = "";
+        
+        if (!empty($role_filter)) {
+            $where[] = "u.role = ?";
+            $params[] = $role_filter;
+        }
+        
+        if (!empty($status_filter)) {
+            if ($status_filter === 'active') {
+                $where[] = "u.is_verified = 1";
+            } elseif ($status_filter === 'inactive') {
+                $where[] = "u.is_verified = 0";
+            }
+        }
+        
+        if (!empty($search)) {
+            $where[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)";
+            $search_param = "%$search%";
+            $params[] = $search_param;
+            $params[] = $search_param;
+            $params[] = $search_param;
+            $params[] = $search_param;
+        }
+        
+        if (!empty($team_filter)) {
+            $join_clauses .= " LEFT JOIN team_roster tr ON u.id = tr.athlete_id";
+            $where[] = "tr.team_id = ?";
+            $params[] = $team_filter;
+        }
+        
+        if (!empty($age_filter)) {
+            switch ($age_filter) {
+                case 'u10':
+                    $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 10";
+                    break;
+                case 'u12':
+                    $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 10 AND TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 12";
+                    break;
+                case 'u14':
+                    $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 12 AND TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 14";
+                    break;
+                case 'u16':
+                    $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 14 AND TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 16";
+                    break;
+                case 'u18':
+                    $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 16 AND TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) < 18";
+                    break;
+                case '18plus':
+                    $where[] = "TIMESTAMPDIFF(YEAR, u.birth_date, CURDATE()) >= 18";
+                    break;
+            }
+        }
+        
+        $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        
+        $stmt = $pdo->prepare("
+            SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.role, 
+                   u.is_verified, u.created_at, u.birth_date,
+                   coach.first_name as coach_first_name, coach.last_name as coach_last_name,
+                   t.name as team_name,
+                   COUNT(DISTINCT s.id) as session_count
+            FROM users u
+            LEFT JOIN sessions s ON u.id = s.coach_id
+            LEFT JOIN users coach ON u.assigned_coach_id = coach.id
+            LEFT JOIN team_roster tr2 ON u.id = tr2.athlete_id
+            LEFT JOIN teams t ON tr2.team_id = t.id
+            $join_clauses
+            $where_clause
+            GROUP BY u.id
+            ORDER BY u.created_at DESC
+        ");
+        $stmt->execute($params);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Set CSV headers
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="users_export_' . date('Y-m-d') . '.csv"');
+        
+        $output = fopen('php://output', 'w');
+        
+        // Write headers
+        fputcsv($output, ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Status', 'Birth Date', 'Coach', 'Team', 'Sessions', 'Created']);
+        
+        // Write data
+        foreach ($users as $user) {
+            $coach_name = '';
+            if (!empty($user['coach_first_name'])) {
+                $coach_name = $user['coach_first_name'] . ' ' . $user['coach_last_name'];
+            }
+            
+            fputcsv($output, [
+                $user['id'],
+                $user['first_name'],
+                $user['last_name'],
+                $user['email'],
+                $user['phone'] ?? '',
+                ucfirst(str_replace('_', ' ', $user['role'])),
+                $user['is_verified'] ? 'Active' : 'Inactive',
+                $user['birth_date'] ?? '',
+                $coach_name,
+                $user['team_name'] ?? '',
+                $user['session_count'],
+                date('Y-m-d', strtotime($user['created_at']))
+            ]);
+        }
+        
+        fclose($output);
+        exit();
+    } catch (PDOException $e) {
+        error_log("Export users error: " . $e->getMessage());
+        header("Location: dashboard.php?page=all_users&status=export_error");
+        exit();
+    }
 }
 
 if ($action == 'export') {
