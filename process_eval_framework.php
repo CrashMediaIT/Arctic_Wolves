@@ -57,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'create_category':
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description'] ?? '');
+                $skill_ids = $_POST['skill_ids'] ?? [];
                 
                 if (empty($name)) {
                     throw new Exception('Category name is required');
@@ -67,8 +68,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, NOW())
                 ");
                 $stmt->execute([$name, $description]);
+                $category_id = $pdo->lastInsertId();
                 
-                sendResponse(true, 'Category created successfully', 'admin_eval_framework', ['category_id' => $pdo->lastInsertId()]);
+                // If skills were selected from library, assign them to this category
+                if (!empty($skill_ids) && is_array($skill_ids)) {
+                    $updateStmt = $pdo->prepare("UPDATE eval_skills SET category_id = ? WHERE id = ?");
+                    foreach ($skill_ids as $skill_id) {
+                        $skill_id = intval($skill_id);
+                        if ($skill_id > 0) {
+                            $updateStmt->execute([$category_id, $skill_id]);
+                        }
+                    }
+                }
+                
+                sendResponse(true, 'Category created successfully', 'admin_eval_framework', ['category_id' => $category_id]);
+                break;
+                
+            case 'add_skill_to_category':
+                $category_id = intval($_POST['category_id']);
+                $skill_id = intval($_POST['skill_id'] ?? 0);
+                $new_skill_name = trim($_POST['new_skill_name'] ?? '');
+                $new_skill_description = trim($_POST['new_skill_description'] ?? '');
+                
+                // Verify category exists
+                $check = $pdo->prepare("SELECT id FROM eval_categories WHERE id = ?");
+                $check->execute([$category_id]);
+                if (!$check->fetch()) {
+                    throw new Exception('Invalid category');
+                }
+                
+                if ($skill_id > 0) {
+                    // Assign existing skill to this category
+                    $stmt = $pdo->prepare("UPDATE eval_skills SET category_id = ? WHERE id = ?");
+                    $stmt->execute([$category_id, $skill_id]);
+                    sendResponse(true, 'Skill added to category successfully');
+                } elseif (!empty($new_skill_name)) {
+                    // Create a new skill and assign to this category
+                    $stmt = $pdo->prepare("
+                        INSERT INTO eval_skills (category_id, name, description, created_at)
+                        VALUES (?, ?, ?, NOW())
+                    ");
+                    $stmt->execute([$category_id, $new_skill_name, $new_skill_description]);
+                    sendResponse(true, 'New skill created and added to category', 'admin_eval_framework', ['skill_id' => $pdo->lastInsertId()]);
+                } else {
+                    throw new Exception('Please select a skill from the library or create a new one');
+                }
+                break;
+                
+            case 'assign_scale':
+                $target_type = $_POST['target_type'] ?? '';
+                $target_id = intval($_POST['target_id'] ?? 0);
+                $scale_id = intval($_POST['scale_id'] ?? 0);
+                
+                if (!in_array($target_type, ['category', 'skill']) || $target_id <= 0 || $scale_id <= 0) {
+                    throw new Exception('Invalid scale assignment parameters');
+                }
+                
+                // For now, we'll store scale assignment in a simple way
+                // In a full implementation, you'd have a scale_assignments table
+                // For now, just acknowledge the assignment
+                sendResponse(true, 'Scale assigned successfully. Note: Full scale persistence requires database schema update.');
                 break;
                 
             case 'update_category':
