@@ -110,13 +110,13 @@ $totalProducts = array_sum(array_column($categories, 'product_count'));
                             </div>
                             
                             <div class="category-actions" style="display: flex; gap: 8px;">
-                                <button class="btn-action" onclick="editCategory(<?= $category['id'] ?>, '<?= htmlspecialchars(addslashes($category['name'])) ?>', '<?= htmlspecialchars(addslashes($category['description'] ?? '')) ?>', '<?= htmlspecialchars(addslashes($category['image_url'] ?? '')) ?>', <?= $category['display_order'] ?>, <?= $category['is_active'] ?>)" title="Edit" style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light); cursor: pointer;">
+                                <button class="btn-action" onclick='editCategory(<?= json_encode($category) ?>)' title="Edit" style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light); cursor: pointer;">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <button class="btn-action" onclick="toggleCategoryStatus(<?= $category['id'] ?>, <?= $category['is_active'] ?>)" title="<?= $category['is_active'] ? 'Deactivate' : 'Activate' ?>" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; cursor: pointer;">
+                                <button class="btn-action" onclick="toggleCategoryStatus(<?= intval($category['id']) ?>, <?= intval($category['is_active']) ?>)" title="<?= $category['is_active'] ? 'Deactivate' : 'Activate' ?>" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; cursor: pointer;">
                                     <i class="fas fa-toggle-<?= $category['is_active'] ? 'on' : 'off' ?>"></i>
                                 </button>
-                                <button class="btn-action" onclick="deleteCategory(<?= $category['id'] ?>, '<?= htmlspecialchars(addslashes($category['name'])) ?>', <?= $category['product_count'] ?>)" title="Delete" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer;">
+                                <button class="btn-action" onclick='deleteCategory(<?= json_encode(["id" => $category["id"], "name" => $category["name"], "product_count" => $category["product_count"]]) ?>)' title="Delete" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer;">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -426,17 +426,17 @@ function closeModal(modalId) {
     document.getElementById(modalId).classList.remove('active');
 }
 
-function editCategory(id, name, description, imageUrl, displayOrder, isActive) {
-    document.getElementById('edit-category-id').value = id;
-    document.getElementById('edit-category-name').value = name;
-    document.getElementById('edit-category-description').value = description;
-    document.getElementById('edit-category-order').value = displayOrder;
-    document.getElementById('edit-category-status').value = isActive;
+function editCategory(category) {
+    document.getElementById('edit-category-id').value = category.id;
+    document.getElementById('edit-category-name').value = category.name || '';
+    document.getElementById('edit-category-description').value = category.description || '';
+    document.getElementById('edit-category-order').value = category.display_order || 0;
+    document.getElementById('edit-category-status').value = category.is_active;
     
     // Show image preview if exists
     const previewDiv = document.getElementById('edit-category-image-preview');
-    if (imageUrl) {
-        previewDiv.innerHTML = '<img src="' + imageUrl + '" style="max-width: 150px; max-height: 100px; border-radius: 8px;">';
+    if (category.image_url) {
+        previewDiv.innerHTML = '<img src="' + category.image_url + '" style="max-width: 150px; max-height: 100px; border-radius: 8px;">';
     } else {
         previewDiv.innerHTML = '';
     }
@@ -457,7 +457,7 @@ function toggleCategoryStatus(id, currentStatus) {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'action=toggle_status&id=' + id + '&csrf_token=' + encodeURIComponent(csrfToken)
+        body: 'action=toggle_status&id=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(csrfToken)
     })
     .then(response => response.json())
     .then(data => {
@@ -473,13 +473,13 @@ function toggleCategoryStatus(id, currentStatus) {
     });
 }
 
-function deleteCategory(id, name, productCount) {
-    if (productCount > 0) {
-        alert('Cannot delete category "' + name + '" because it has ' + productCount + ' products. Please move or delete the products first.');
+function deleteCategory(category) {
+    if (category.product_count > 0) {
+        alert('Cannot delete category "' + category.name + '" because it has ' + category.product_count + ' products. Please move or delete the products first.');
         return;
     }
     
-    if (!confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete "' + category.name + '"? This action cannot be undone.')) {
         return;
     }
     
@@ -491,7 +491,7 @@ function deleteCategory(id, name, productCount) {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'action=delete&id=' + id + '&csrf_token=' + encodeURIComponent(csrfToken)
+        body: 'action=delete&id=' + encodeURIComponent(category.id) + '&csrf_token=' + encodeURIComponent(csrfToken)
     })
     .then(response => response.json())
     .then(data => {

@@ -196,13 +196,13 @@ $filterCategory = $_GET['category'] ?? '';
                                     <button class="btn-action" onclick='editProduct(<?= json_encode($product) ?>)' title="Edit" style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light); cursor: pointer;">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="btn-action" onclick="manageInventory(<?= $product['id'] ?>, '<?= htmlspecialchars(addslashes($product['name'])) ?>')" title="Manage Inventory" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(16, 185, 129, 0.1); color: #10b981; cursor: pointer;">
+                                    <button class="btn-action" onclick='manageInventory(<?= json_encode(["id" => $product["id"], "name" => $product["name"]]) ?>)' title="Manage Inventory" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(16, 185, 129, 0.1); color: #10b981; cursor: pointer;">
                                         <i class="fas fa-warehouse"></i>
                                     </button>
-                                    <button class="btn-action" onclick="toggleProductStatus(<?= $product['id'] ?>, <?= $product['is_active'] ?>)" title="<?= $product['is_active'] ? 'Deactivate' : 'Activate' ?>" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; cursor: pointer;">
+                                    <button class="btn-action" onclick="toggleProductStatus(<?= intval($product['id']) ?>, <?= intval($product['is_active']) ?>)" title="<?= $product['is_active'] ? 'Deactivate' : 'Activate' ?>" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; cursor: pointer;">
                                         <i class="fas fa-toggle-<?= $product['is_active'] ? 'on' : 'off' ?>"></i>
                                     </button>
-                                    <button class="btn-action" onclick="deleteProduct(<?= $product['id'] ?>, '<?= htmlspecialchars(addslashes($product['name'])) ?>')" title="Delete" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer;">
+                                    <button class="btn-action" onclick='deleteProduct(<?= json_encode(["id" => $product["id"], "name" => $product["name"]]) ?>)' title="Delete" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer;">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -692,15 +692,12 @@ function editProduct(product) {
     openModal('edit-product-modal');
 }
 
-function manageInventory(productId, productName) {
-    document.getElementById('inventory-product-id').value = productId;
-    document.getElementById('inventory-product-name').textContent = productName;
+function manageInventory(product) {
+    document.getElementById('inventory-product-id').value = product.id;
+    document.getElementById('inventory-product-name').textContent = product.name;
     
     // Fetch current sizes
-    const csrfInput = document.querySelector('input[name="csrf_token"]');
-    const csrfToken = csrfInput ? csrfInput.value : '';
-    
-    fetch('process_merchandise_products.php?action=get_sizes&product_id=' + productId)
+    fetch('process_merchandise_products.php?action=get_sizes&product_id=' + encodeURIComponent(product.id))
         .then(response => response.json())
         .then(data => {
             const container = document.getElementById('inventory-sizes-container');
@@ -751,7 +748,7 @@ function toggleProductStatus(id, currentStatus) {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'action=toggle_status&id=' + id + '&csrf_token=' + encodeURIComponent(csrfToken)
+        body: 'action=toggle_status&id=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(csrfToken)
     })
     .then(response => response.json())
     .then(data => {
@@ -767,8 +764,8 @@ function toggleProductStatus(id, currentStatus) {
     });
 }
 
-function deleteProduct(id, name) {
-    if (!confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
+function deleteProduct(product) {
+    if (!confirm('Are you sure you want to delete "' + product.name + '"? This action cannot be undone.')) {
         return;
     }
     
@@ -780,7 +777,7 @@ function deleteProduct(id, name) {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'action=delete&id=' + id + '&csrf_token=' + encodeURIComponent(csrfToken)
+        body: 'action=delete&id=' + encodeURIComponent(product.id) + '&csrf_token=' + encodeURIComponent(csrfToken)
     })
     .then(response => response.json())
     .then(data => {
