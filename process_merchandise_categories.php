@@ -61,9 +61,17 @@ try {
             $description = trim($_POST['description'] ?? '');
             $displayOrder = intval($_POST['display_order'] ?? 0);
             $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            $parentId = !empty($_POST['parent_id']) ? intval($_POST['parent_id']) : null;
+            $slug = trim($_POST['slug'] ?? '');
             
             if (empty($name)) {
                 throw new Exception('Category name is required');
+            }
+            
+            // Generate slug if not provided
+            if (empty($slug)) {
+                $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $name));
+                $slug = trim($slug, '-');
             }
             
             // Handle image upload
@@ -73,11 +81,13 @@ try {
             }
             
             $stmt = $pdo->prepare("
-                INSERT INTO merchandise_categories (name, description, image_url, display_order, is_active, created_by)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO merchandise_categories (parent_id, name, slug, description, image_url, display_order, is_active, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
+                $parentId,
                 $name,
+                $slug,
                 $description ?: null,
                 $imageUrl,
                 $displayOrder,
@@ -99,6 +109,8 @@ try {
             $description = trim($_POST['description'] ?? '');
             $displayOrder = intval($_POST['display_order'] ?? 0);
             $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            $parentId = !empty($_POST['parent_id']) ? intval($_POST['parent_id']) : null;
+            $slug = trim($_POST['slug'] ?? '');
             
             if ($id <= 0) {
                 throw new Exception('Invalid category ID');
@@ -106,6 +118,17 @@ try {
             
             if (empty($name)) {
                 throw new Exception('Category name is required');
+            }
+            
+            // Prevent setting self as parent
+            if ($parentId === $id) {
+                throw new Exception('Category cannot be its own parent');
+            }
+            
+            // Generate slug if not provided
+            if (empty($slug)) {
+                $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $name));
+                $slug = trim($slug, '-');
             }
             
             // Handle image upload
@@ -119,17 +142,17 @@ try {
             if ($updateImage) {
                 $stmt = $pdo->prepare("
                     UPDATE merchandise_categories 
-                    SET name = ?, description = ?, image_url = ?, display_order = ?, is_active = ?
+                    SET parent_id = ?, name = ?, slug = ?, description = ?, image_url = ?, display_order = ?, is_active = ?
                     WHERE id = ?
                 ");
-                $stmt->execute([$name, $description ?: null, $imageUrl, $displayOrder, $isActive, $id]);
+                $stmt->execute([$parentId, $name, $slug, $description ?: null, $imageUrl, $displayOrder, $isActive, $id]);
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE merchandise_categories 
-                    SET name = ?, description = ?, display_order = ?, is_active = ?
+                    SET parent_id = ?, name = ?, slug = ?, description = ?, display_order = ?, is_active = ?
                     WHERE id = ?
                 ");
-                $stmt->execute([$name, $description ?: null, $displayOrder, $isActive, $id]);
+                $stmt->execute([$parentId, $name, $slug, $description ?: null, $displayOrder, $isActive, $id]);
             }
             
             if ($isAjax) {
