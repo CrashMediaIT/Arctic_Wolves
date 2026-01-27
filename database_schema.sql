@@ -1216,6 +1216,8 @@ CREATE TABLE IF NOT EXISTS `mileage_logs` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `trip_date` DATE NOT NULL,
+    `title` VARCHAR(255) DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
     `athlete_id` INT DEFAULT NULL,
     `session_id` INT DEFAULT NULL,
     `purpose` VARCHAR(255) DEFAULT NULL,
@@ -1231,7 +1233,8 @@ CREATE TABLE IF NOT EXISTS `mileage_logs` (
     FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_date` (`trip_date`),
-    INDEX `idx_athlete` (`athlete_id`)
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_title` (`title`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Mileage stops (multi-stop trip tracking)

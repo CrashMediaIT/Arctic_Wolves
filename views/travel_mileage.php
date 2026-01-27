@@ -6,14 +6,33 @@ $mileage_rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? $rates['mil
 $mileage_rate_per_km = floatval($rates['mileage_rate_per_km'] ?? ($mileage_rate_per_mile / 1.60934));
 $mileage_unit = $rates['mileage_unit'] ?? 'km';
 
-// Get filter period
+// Get filter parameters
 $filter_period = $_GET['period'] ?? 'month';
+$filter_search = trim($_GET['search'] ?? '');
+$filter_athlete = isset($_GET['athlete_id']) ? intval($_GET['athlete_id']) : 0;
+$filter_session = isset($_GET['session_id']) ? intval($_GET['session_id']) : 0;
 
-// Calculate date range
+// Get athletes for filter dropdown
+$athletes_stmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role = 'athlete' AND is_active = 1 ORDER BY first_name, last_name");
+$athletes = $athletes_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Get sessions for filter dropdown
+$sessions_stmt = $pdo->query("
+    SELECT s.id, s.title as session_name, s.session_date
+    FROM sessions s 
+    WHERE s.session_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+    ORDER BY s.session_date DESC
+    LIMIT 100
+");
+$sessions = $sessions_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Calculate date range based on period
 $date_filter = "";
 $date_params = [$user_id];
 
-if ($filter_period === 'month') {
+if ($filter_period === 'week') {
+    $date_filter = " AND m.trip_date >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)";
+} elseif ($filter_period === 'month') {
     $date_filter = " AND m.trip_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
 } elseif ($filter_period === 'last_month') {
     $date_filter = " AND m.trip_date >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH) AND m.trip_date < DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
@@ -23,6 +42,33 @@ if ($filter_period === 'month') {
     $date_filter = " AND m.trip_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)";
 } elseif ($filter_period === 'year') {
     $date_filter = " AND YEAR(m.trip_date) = YEAR(CURDATE())";
+} elseif ($filter_period === 'last_year') {
+    $date_filter = " AND YEAR(m.trip_date) = YEAR(CURDATE()) - 1";
+} elseif ($filter_period === 'all') {
+    $date_filter = "";
+}
+
+// Add search filter
+$search_filter = "";
+if (!empty($filter_search)) {
+    $search_filter = " AND (m.title LIKE ? OR m.purpose LIKE ? OR m.description LIKE ?)";
+    $date_params[] = '%' . $filter_search . '%';
+    $date_params[] = '%' . $filter_search . '%';
+    $date_params[] = '%' . $filter_search . '%';
+}
+
+// Add athlete filter
+$athlete_filter = "";
+if ($filter_athlete > 0) {
+    $athlete_filter = " AND m.athlete_id = ?";
+    $date_params[] = $filter_athlete;
+}
+
+// Add session filter
+$session_filter = "";
+if ($filter_session > 0) {
+    $session_filter = " AND m.session_id = ?";
+    $date_params[] = $filter_session;
 }
 
 // Get mileage entries with route info from stops
@@ -30,7 +76,10 @@ $mileage_query = "
     SELECT m.*,
            m.reimbursement_amount as calculated_amount,
            start_stop.address as from_location,
-           end_stop.address as to_location
+           end_stop.address as to_location,
+           CONCAT(a.first_name, ' ', a.last_name) as athlete_name,
+           s.title as session_name,
+           (SELECT COUNT(*) FROM mileage_stops WHERE mileage_log_id = m.id) as stop_count
     FROM mileage_logs m
     LEFT JOIN mileage_stops start_stop ON m.id = start_stop.mileage_log_id AND start_stop.stop_order = 0
     LEFT JOIN (
@@ -42,7 +91,9 @@ $mileage_query = "
             GROUP BY mileage_log_id
         ) max_stops ON ms.mileage_log_id = max_stops.mileage_log_id AND ms.stop_order = max_stops.max_order
     ) end_stop ON m.id = end_stop.mileage_log_id
-    WHERE m.user_id = ?" . $date_filter . "
+    LEFT JOIN users a ON m.athlete_id = a.id
+    LEFT JOIN sessions s ON m.session_id = s.id
+    WHERE m.user_id = ?" . $date_filter . $search_filter . $athlete_filter . $session_filter . "
     ORDER BY m.trip_date DESC, m.created_at DESC
     LIMIT 100
 ";
@@ -124,16 +175,23 @@ foreach ($mileage_entries as $entry) {
             <h3><i class="fas fa-plus-circle"></i> Add Mileage Entry</h3>
         </div>
         <div class="card-body">
-            <form class="mileage-form" method="POST" action="process_mileage.php" data-form="mileage-entry">
+            <form class="mileage-form" method="POST" action="process_mileage.php" data-form="mileage-entry" id="addMileageForm">
                 <?= csrfTokenInput() ?>
                 <input type="hidden" name="action" value="create">
-                <!-- Note: user_id will be validated server-side from session -->
+                <input type="hidden" name="waypoints" id="waypointsData">
                 
                 <div class="form-row">
+                    <div class="form-group">
+                        <label>Trip Title *</label>
+                        <input type="text" name="title" class="form-input" placeholder="e.g., Weekly Training Trip" required>
+                    </div>
                     <div class="form-group">
                         <label>Date *</label>
                         <input type="date" name="trip_date" class="form-input" required max="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d') ?>">
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label>Purpose *</label>
                         <select name="purpose" class="form-input" required>
@@ -145,18 +203,70 @@ foreach ($mileage_entries as $entry) {
                             <option>Other</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Assign to Athlete (Optional)</label>
+                        <select name="athlete_id" class="form-input">
+                            <option value="">-- No Athlete --</option>
+                            <?php foreach ($athletes as $athlete): ?>
+                                <option value="<?= $athlete['id'] ?>"><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>From Location *</label>
-                        <input type="text" name="from_location" class="form-input" placeholder="Starting location" required>
-                    </div>
-                    <div class="form-group">
-                        <label>To Location *</label>
-                        <input type="text" name="to_location" class="form-input" placeholder="Destination" required>
+                        <label>Assign to Session (Optional)</label>
+                        <select name="session_id" class="form-input">
+                            <option value="">-- No Session --</option>
+                            <?php foreach ($sessions as $session): ?>
+                                <option value="<?= $session['id'] ?>"><?= htmlspecialchars($session['session_name']) ?> - <?= date('M d, Y', strtotime($session['session_date'])) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" class="form-textarea" rows="2" placeholder="Trip description (optional)"></textarea>
+                </div>
+
+                <hr style="border-color: var(--border); margin: 20px 0;">
+                
+                <h4 style="color: var(--text-white); margin-bottom: 15px;"><i class="fas fa-map-marker-alt"></i> Trip Stops</h4>
+                
+                <div id="stopsContainer">
+                    <div class="stop-row" data-index="0">
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label>Start Location *</label>
+                                <input type="text" class="form-input stop-address" data-index="0" placeholder="Starting address" required>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Stop Name</label>
+                                <input type="text" class="form-input stop-name" data-index="0" placeholder="e.g., Home" value="Start">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stop-row" data-index="1">
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label>End Location *</label>
+                                <input type="text" class="form-input stop-address" data-index="1" placeholder="Destination address" required>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Stop Name</label>
+                                <input type="text" class="form-input stop-name" data-index="1" placeholder="e.g., Arena" value="End">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn-secondary" id="addStopBtn" style="margin: 15px 0;">
+                    <i class="fas fa-plus"></i> Add Stop
+                </button>
+
+                <hr style="border-color: var(--border); margin: 20px 0;">
 
                 <div class="form-row">
                     <div class="form-group">
@@ -197,18 +307,52 @@ foreach ($mileage_entries as $entry) {
 
     <!-- Mileage Log -->
     <div class="content-card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap: wrap; gap: 15px;">
             <h3><i class="fas fa-list"></i> Mileage Log</h3>
-            <form method="GET" action="" class="filter-group">
+            <form method="GET" action="" class="filter-group" id="filterForm" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
                 <input type="hidden" name="page" value="mileage">
-                <select name="period" class="form-input-small" data-action="auto-submit">
-                    <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
-                    <option value="last_month" <?= $filter_period === 'last_month' ? 'selected' : '' ?>>Last Month</option>
-                    <option value="3months" <?= $filter_period === '3months' ? 'selected' : '' ?>>Last 3 Months</option>
-                    <option value="6months" <?= $filter_period === '6months' ? 'selected' : '' ?>>Last 6 Months</option>
-                    <option value="year" <?= $filter_period === 'year' ? 'selected' : '' ?>>This Year</option>
-                </select>
-                <button type="button" class="btn-secondary" data-action="export-mileage"><i class="fas fa-file-export"></i> Export</button>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; color: var(--text-dim);">Period</label>
+                    <select name="period" class="form-input-small" data-action="auto-submit">
+                        <option value="week" <?= $filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
+                        <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
+                        <option value="last_month" <?= $filter_period === 'last_month' ? 'selected' : '' ?>>Last Month</option>
+                        <option value="3months" <?= $filter_period === '3months' ? 'selected' : '' ?>>Last 3 Months</option>
+                        <option value="6months" <?= $filter_period === '6months' ? 'selected' : '' ?>>Last 6 Months</option>
+                        <option value="year" <?= $filter_period === 'year' ? 'selected' : '' ?>>This Year</option>
+                        <option value="last_year" <?= $filter_period === 'last_year' ? 'selected' : '' ?>>Last Year</option>
+                        <option value="all" <?= $filter_period === 'all' ? 'selected' : '' ?>>All Time</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; color: var(--text-dim);">Search</label>
+                    <input type="text" name="search" class="form-input-small" placeholder="Search title/purpose..." value="<?= htmlspecialchars($filter_search) ?>" style="width: 150px;">
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; color: var(--text-dim);">Athlete</label>
+                    <select name="athlete_id" class="form-input-small" data-action="auto-submit">
+                        <option value="">All Athletes</option>
+                        <?php foreach ($athletes as $athlete): ?>
+                            <option value="<?= $athlete['id'] ?>" <?= $filter_athlete == $athlete['id'] ? 'selected' : '' ?>><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; color: var(--text-dim);">Session</label>
+                    <select name="session_id" class="form-input-small" data-action="auto-submit">
+                        <option value="">All Sessions</option>
+                        <?php foreach ($sessions as $session): ?>
+                            <option value="<?= $session['id'] ?>" <?= $filter_session == $session['id'] ? 'selected' : '' ?>><?= htmlspecialchars($session['session_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-secondary" style="height: fit-content;"><i class="fas fa-search"></i> Filter</button>
+                <button type="button" class="btn-secondary" data-action="export-mileage" style="height: fit-content;"><i class="fas fa-file-export"></i> Export</button>
             </form>
         </div>
         <div class="card-body">
@@ -218,8 +362,10 @@ foreach ($mileage_entries as $entry) {
                     <thead>
                         <tr>
                             <th>Date</th>
+                            <th>Title</th>
                             <th>Purpose</th>
                             <th>Route</th>
+                            <th>Assigned To</th>
                             <th>Distance</th>
                             <th>Amount</th>
                             <th>Status</th>
@@ -228,15 +374,39 @@ foreach ($mileage_entries as $entry) {
                     </thead>
                     <tbody>
                         <?php foreach ($mileage_entries as $entry): ?>
-                        <tr data-entry-id="<?= $entry['id'] ?>">
+                        <tr data-entry-id="<?= $entry['id'] ?>" 
+                            data-title="<?= htmlspecialchars($entry['title'] ?? '') ?>"
+                            data-description="<?= htmlspecialchars($entry['description'] ?? '') ?>"
+                            data-athlete-id="<?= $entry['athlete_id'] ?? '' ?>"
+                            data-session-id="<?= $entry['session_id'] ?? '' ?>">
                             <td><?= date('M d, Y', strtotime($entry['trip_date'])) ?></td>
+                            <td>
+                                <div style="font-weight: 600;"><?= htmlspecialchars($entry['title'] ?? 'Untitled') ?></div>
+                                <?php if (!empty($entry['description'])): ?>
+                                <div style="font-size: 11px; color: var(--text-dim); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><?= htmlspecialchars($entry['description']) ?></div>
+                                <?php endif; ?>
+                            </td>
                             <td><?= htmlspecialchars($entry['purpose'] ?? 'N/A') ?></td>
                             <td>
                                 <div class="route-info">
                                     <span class="route-from"><?= htmlspecialchars($entry['from_location'] ?? 'N/A') ?></span>
                                     <i class="fas fa-arrow-right"></i>
                                     <span class="route-to"><?= htmlspecialchars($entry['to_location'] ?? 'N/A') ?></span>
+                                    <?php if (($entry['stop_count'] ?? 0) > 2): ?>
+                                    <span class="stops-badge">+<?= ($entry['stop_count'] - 2) ?> stops</span>
+                                    <?php endif; ?>
                                 </div>
+                            </td>
+                            <td>
+                                <?php if (!empty($entry['athlete_name'])): ?>
+                                <div style="font-size: 12px;"><i class="fas fa-user" style="color: var(--primary);"></i> <?= htmlspecialchars($entry['athlete_name']) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($entry['session_name'])): ?>
+                                <div style="font-size: 11px; color: var(--text-dim);"><i class="fas fa-calendar-alt"></i> <?= htmlspecialchars($entry['session_name']) ?></div>
+                                <?php endif; ?>
+                                <?php if (empty($entry['athlete_name']) && empty($entry['session_name'])): ?>
+                                <span style="color: var(--text-dim);">-</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($mileage_unit === 'miles'): ?>
@@ -269,7 +439,7 @@ foreach ($mileage_entries as $entry) {
             <?php else: ?>
             <div class="placeholder-container">
                 <i class="fas fa-car placeholder-icon"></i>
-                <p class="placeholder-text">No mileage entries found for the selected period.</p>
+                <p class="placeholder-text">No mileage entries found for the selected filters.</p>
             </div>
             <?php endif; ?>
         </div>
@@ -381,6 +551,60 @@ foreach ($mileage_entries as $entry) {
     color: var(--neon);
     font-size: 10px;
 }
+
+.stops-badge {
+    background: var(--primary);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+}
+
+.stop-row {
+    background: var(--bg-card);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.stop-row .remove-stop-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.stop-row .remove-stop-btn:hover {
+    background: #dc2626;
+}
+
+.filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.form-input-small {
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-white);
+    font-size: 13px;
+}
 </style>
 
 <!-- Edit Mileage Modal -->
@@ -398,9 +622,16 @@ foreach ($mileage_entries as $entry) {
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-group">
+                        <label>Title *</label>
+                        <input type="text" name="title" id="editTitle" class="form-input" required>
+                    </div>
+                    <div class="form-group">
                         <label>Date *</label>
                         <input type="date" name="trip_date" id="editTripDate" class="form-input" required>
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label>Purpose *</label>
                         <select name="purpose" id="editPurpose" class="form-input" required>
@@ -412,6 +643,32 @@ foreach ($mileage_entries as $entry) {
                             <option>Other</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Athlete (Optional)</label>
+                        <select name="athlete_id" id="editAthleteId" class="form-input">
+                            <option value="">-- No Athlete --</option>
+                            <?php foreach ($athletes as $athlete): ?>
+                                <option value="<?= $athlete['id'] ?>"><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Session (Optional)</label>
+                        <select name="session_id" id="editSessionId" class="form-input">
+                            <option value="">-- No Session --</option>
+                            <?php foreach ($sessions as $session): ?>
+                                <option value="<?= $session['id'] ?>"><?= htmlspecialchars($session['session_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" id="editDescription" class="form-textarea" rows="2"></textarea>
                 </div>
 
                 <div class="form-row">
@@ -479,6 +736,7 @@ foreach ($mileage_entries as $entry) {
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
     var pendingDeleteId = null;
+    var stopIndex = 2; // Start with 2 since we have start (0) and end (1)
     
     // Show notification helper
     function showNotification(message, type) {
@@ -522,6 +780,54 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Add stop functionality
+    var addStopBtn = document.getElementById('addStopBtn');
+    if (addStopBtn) {
+        addStopBtn.addEventListener('click', function() {
+            var container = document.getElementById('stopsContainer');
+            var endStop = container.lastElementChild;
+            
+            var newStop = document.createElement('div');
+            newStop.className = 'stop-row';
+            newStop.dataset.index = stopIndex;
+            newStop.innerHTML = '<button type="button" class="remove-stop-btn" onclick="removeStop(this)"><i class="fas fa-times"></i></button>' +
+                '<div class="form-row">' +
+                    '<div class="form-group" style="flex: 2;">' +
+                        '<label>Stop ' + stopIndex + ' *</label>' +
+                        '<input type="text" class="form-input stop-address" data-index="' + stopIndex + '" placeholder="Stop address" required>' +
+                    '</div>' +
+                    '<div class="form-group" style="flex: 1;">' +
+                        '<label>Stop Name</label>' +
+                        '<input type="text" class="form-input stop-name" data-index="' + stopIndex + '" placeholder="e.g., Gas Station" value="Stop ' + stopIndex + '">' +
+                    '</div>' +
+                '</div>';
+            
+            container.insertBefore(newStop, endStop);
+            stopIndex++;
+        });
+    }
+    
+    // Handle form submission to gather waypoints
+    var addForm = document.getElementById('addMileageForm');
+    if (addForm) {
+        addForm.addEventListener('submit', function(e) {
+            var waypoints = [];
+            var stopAddresses = document.querySelectorAll('.stop-address');
+            var stopNames = document.querySelectorAll('.stop-name');
+            
+            stopAddresses.forEach(function(input, i) {
+                if (input.value.trim()) {
+                    waypoints.push({
+                        name: stopNames[i]?.value || 'Stop',
+                        address: input.value.trim()
+                    });
+                }
+            });
+            
+            document.getElementById('waypointsData').value = JSON.stringify(waypoints);
+        });
+    }
+    
     // Edit entry handlers
     document.querySelectorAll('[data-action="edit-entry"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
@@ -531,10 +837,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Extract data from the row
             var dateCell = row.cells[0].textContent;
-            var purpose = row.cells[1].textContent;
+            var titleDiv = row.cells[1].querySelector('div');
+            var title = titleDiv ? titleDiv.textContent : '';
+            var description = row.dataset.description || '';
+            var purpose = row.cells[2].textContent;
             var fromLocation = row.querySelector('.route-from')?.textContent || '';
             var toLocation = row.querySelector('.route-to')?.textContent || '';
-            var distance = row.cells[3].textContent.replace(' mi', '');
+            var distance = row.cells[5].textContent.replace(' mi', '').replace(' km', '');
+            var athleteId = row.dataset.athleteId || '';
+            var sessionId = row.dataset.sessionId || '';
             
             // Convert date format (M dd, YYYY to YYYY-MM-DD)
             var date = new Date(dateCell);
@@ -542,12 +853,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Populate modal
             document.getElementById('editLogId').value = entryId;
+            document.getElementById('editTitle').value = title.trim() !== 'Untitled' ? title.trim() : '';
             document.getElementById('editTripDate').value = formattedDate;
             document.getElementById('editPurpose').value = purpose.trim() !== 'N/A' ? purpose.trim() : '';
+            document.getElementById('editDescription').value = description;
             document.getElementById('editFromLocation').value = fromLocation.trim() !== 'N/A' ? fromLocation.trim() : '';
             document.getElementById('editToLocation').value = toLocation.trim() !== 'N/A' ? toLocation.trim() : '';
             document.getElementById('editDistanceMiles').value = parseFloat(distance) || 0;
             document.getElementById('editDistanceKm').value = (parseFloat(distance) * 1.60934).toFixed(2) || 0;
+            document.getElementById('editAthleteId').value = athleteId;
+            document.getElementById('editSessionId').value = sessionId;
             
             // Show modal
             document.getElementById('edit-mileage-modal').classList.add('active');
@@ -654,16 +969,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Export mileage
+    // Export mileage with current filters
     document.querySelectorAll('[data-action="export-mileage"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
-            var startDate = '<?= htmlspecialchars(date("Y-m-01"), ENT_QUOTES) ?>';
-            var endDate = '<?= htmlspecialchars(date("Y-m-t"), ENT_QUOTES) ?>';
-            window.location.href = 'process_mileage.php?action=export_csv&start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
+            // Get current filter values
+            var form = document.getElementById('filterForm');
+            var params = new URLSearchParams(new FormData(form));
+            params.set('action', 'export_csv');
+            window.location.href = 'process_mileage.php?' + params.toString();
         });
     });
 });
+
+// Remove stop function
+function removeStop(btn) {
+    var stopRow = btn.closest('.stop-row');
+    stopRow.remove();
+}
 
 function closeMileageModal() {
     document.getElementById('edit-mileage-modal').classList.remove('active');
