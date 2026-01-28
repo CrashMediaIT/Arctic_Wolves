@@ -348,23 +348,26 @@ if ($action == 'update_player_info') {
 // ACTION 7B: UPDATE PERFORMANCE STATS (Games, Goals, Assists, etc.)
 // =========================================================
 if ($action == 'update_performance_stats') {
-    $games_played = intval($_POST['games_played'] ?? 0);
-    $goals = intval($_POST['goals'] ?? 0);
-    $assists = intval($_POST['assists'] ?? 0);
-    $plus_minus = intval($_POST['plus_minus'] ?? 0);
-    $shots = intval($_POST['shots'] ?? 0);
-    $penalty_minutes = intval($_POST['penalty_minutes'] ?? 0);
-    $goals_against = intval($_POST['goals_against'] ?? 0);
-    $shots_against = intval($_POST['shots_against'] ?? 0);
-    $saves = intval($_POST['saves'] ?? 0);
+    // Server-side validation with max(0, ...) to prevent negative values
+    $games_played = max(0, min(9999, intval($_POST['games_played'] ?? 0)));
+    $goals = max(0, min(9999, intval($_POST['goals'] ?? 0)));
+    $assists = max(0, min(9999, intval($_POST['assists'] ?? 0)));
+    $plus_minus = max(-999, min(999, intval($_POST['plus_minus'] ?? 0))); // +/- can be negative
+    $shots = max(0, min(9999, intval($_POST['shots'] ?? 0)));
+    $penalty_minutes = max(0, min(9999, intval($_POST['penalty_minutes'] ?? 0)));
+    $goals_against = max(0, min(9999, intval($_POST['goals_against'] ?? 0)));
+    $shots_against = max(0, min(9999, intval($_POST['shots_against'] ?? 0)));
+    $saves = max(0, min(9999, intval($_POST['saves'] ?? 0)));
     
     // Calculate derived stats
     $points = $goals + $assists;
     
-    // Calculate save percentage if shots_against > 0
+    // Calculate save percentage based on saves and shots_against
+    // Using user-provided saves value directly for calculation
     $save_percentage = 0;
     if ($shots_against > 0) {
-        $save_percentage = (($shots_against - $goals_against) / $shots_against) * 100;
+        // Use saves input directly: save% = (saves / shots_against) * 100
+        $save_percentage = ($saves / $shots_against) * 100;
         $save_percentage = max(0, min(100, $save_percentage));
     }
     

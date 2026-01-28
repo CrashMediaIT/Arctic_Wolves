@@ -611,14 +611,14 @@ $errors = [
                             <div class="stat-label">Save %</div>
                             <div class="stat-value">
                                 <?php 
-                                $shotsAgainst = $performanceStats['shots_against'] ?? 0;
-                                $goalsAgainst = $performanceStats['goals_against'] ?? 0;
-                                // Calculate save percentage, clamp to 0-100 range
-                                $savePercentage = 0;
-                                if ($shotsAgainst > 0) {
-                                    $savePercentage = max(0, min(100, (($shotsAgainst - $goalsAgainst) / $shotsAgainst * 100)));
+                                $displayShotsAgainst = $performanceStats['shots_against'] ?? 0;
+                                $displaySaves = $performanceStats['saves'] ?? 0;
+                                // Calculate save percentage using saves value directly
+                                $displaySavePercentage = 0;
+                                if ($displayShotsAgainst > 0) {
+                                    $displaySavePercentage = max(0, min(100, ($displaySaves / $displayShotsAgainst * 100)));
                                 }
-                                echo number_format($savePercentage, 1) . '%';
+                                echo number_format($displaySavePercentage, 1) . '%';
                                 ?>
                             </div>
                         </div>
@@ -681,32 +681,32 @@ $errors = [
                         <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
                             <div class="form-group">
                                 <label>Games Played</label>
-                                <input type="number" name="games_played" class="form-input" min="0" 
+                                <input type="number" name="games_played" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['games_played'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Goals Against</label>
-                                <input type="number" name="goals_against" class="form-input" min="0" 
+                                <input type="number" name="goals_against" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['goals_against'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Shots Against</label>
-                                <input type="number" name="shots_against" class="form-input" min="0" 
+                                <input type="number" name="shots_against" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['shots_against'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Saves</label>
-                                <input type="number" name="saves" class="form-input" min="0" 
+                                <input type="number" name="saves" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['saves'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Goals</label>
-                                <input type="number" name="goals" class="form-input" min="0" 
+                                <input type="number" name="goals" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['goals'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Assists</label>
-                                <input type="number" name="assists" class="form-input" min="0" 
+                                <input type="number" name="assists" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['assists'] ?? 0); ?>">
                             </div>
                         </div>
@@ -715,32 +715,32 @@ $errors = [
                         <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
                             <div class="form-group">
                                 <label>Games Played</label>
-                                <input type="number" name="games_played" class="form-input" min="0" 
+                                <input type="number" name="games_played" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['games_played'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Goals</label>
-                                <input type="number" name="goals" class="form-input" min="0" 
+                                <input type="number" name="goals" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['goals'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Assists</label>
-                                <input type="number" name="assists" class="form-input" min="0" 
+                                <input type="number" name="assists" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['assists'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>+/-</label>
-                                <input type="number" name="plus_minus" class="form-input" 
+                                <input type="number" name="plus_minus" class="form-input" min="-999" max="999"
                                        value="<?php echo htmlspecialchars($performanceStats['plus_minus'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Shots</label>
-                                <input type="number" name="shots" class="form-input" min="0" 
+                                <input type="number" name="shots" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['shots'] ?? 0); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Penalty Minutes (PIM)</label>
-                                <input type="number" name="penalty_minutes" class="form-input" min="0" 
+                                <input type="number" name="penalty_minutes" class="form-input" min="0" max="9999"
                                        value="<?php echo htmlspecialchars($performanceStats['penalty_minutes'] ?? 0); ?>">
                             </div>
                         </div>
@@ -887,6 +887,7 @@ function toggleStatsEdit() {
     const displayMode = document.getElementById('stats-display-mode');
     const editMode = document.getElementById('stats-edit-mode');
     const editBtn = document.getElementById('edit-stats-btn');
+    const statsForm = document.getElementById('stats-form');
     
     if (displayMode && editMode && editBtn) {
         if (editMode.style.display === 'none') {
@@ -894,6 +895,10 @@ function toggleStatsEdit() {
             editMode.style.display = 'block';
             editBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
         } else {
+            // Reset form to original values when canceling
+            if (statsForm) {
+                statsForm.reset();
+            }
             displayMode.style.display = 'block';
             editMode.style.display = 'none';
             editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Stats';
