@@ -29,7 +29,9 @@ if ($user_role === 'athlete') {
                    l.name as location_name,
                    pp.name as practice_plan_name,
                    pp.description as practice_plan_description,
-                   spp.practice_plan_id
+                   spp.practice_plan_id,
+                   b.id as booking_id,
+                   b.status as booking_status
             FROM sessions s
             LEFT JOIN users c ON s.coach_id = c.id
             LEFT JOIN session_types st ON s.session_type_id = st.id
@@ -50,7 +52,9 @@ if ($user_role === 'athlete') {
                    l.name as location_name,
                    pp.name as practice_plan_name,
                    pp.description as practice_plan_description,
-                   spp.practice_plan_id
+                   spp.practice_plan_id,
+                   b.id as booking_id,
+                   b.status as booking_status
             FROM sessions s
             LEFT JOIN users c ON s.coach_id = c.id
             LEFT JOIN session_types st ON s.session_type_id = st.id
@@ -61,6 +65,7 @@ if ($user_role === 'athlete') {
             WHERE b.user_id IS NOT NULL
               AND s.session_date >= NOW()
               AND s.status = 'scheduled'
+              AND b.status != 'cancelled'
         ";
     }
     $params = [$user_id];
@@ -376,8 +381,8 @@ $is_demo_data = false;
                 </div>
                 <div class="session-actions">
                     <button class="btn-secondary" data-action="view-session" data-session-id="<?= $session['id'] ?>"><i class="fas fa-eye"></i> View</button>
-                    <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+24 hours')): ?>
-                        <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>"><i class="fas fa-times"></i> Cancel</button>
+                    <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+24 hours') && !empty($session['booking_id']) && $session['booking_status'] !== 'cancelled'): ?>
+                        <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>" data-booking-id="<?= $session['booking_id'] ?>"><i class="fas fa-times"></i> Cancel</button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1158,10 +1163,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }, true); // Use capture phase to run before app.js
     });
     
-    // Add click handlers for cancel-session buttons on demo sessions
+    // Add click handlers for cancel-session buttons
     document.querySelectorAll('[data-action="cancel-session"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
             const sessionId = this.getAttribute('data-session-id');
+            const bookingId = this.getAttribute('data-booking-id');
             const sessionCard = this.closest('.session-card');
             
             // Check if this is demo data
@@ -1169,11 +1177,7 @@ document.addEventListener('DOMContentLoaded', function() {
                           (sessionId && String(sessionId).startsWith('demo-'));
             
             if (isDemo) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                
-                // Show info message for demo sessions using toast notification
+                // Show info message for demo sessions
                 if (typeof window.showToast === 'function') {
                     window.showToast('This is a demo session. Book a real session to manage cancellations.', 'info');
                 } else {
@@ -1181,7 +1185,96 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 return false;
             }
-        }, true); // Use capture phase to run before app.js
+            
+            // Real booking - confirm cancellation
+            if (!bookingId) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Unable to cancel: Booking ID not found', 'error');
+                } else {
+                    alert('Unable to cancel: Booking ID not found');
+                }
+                return false;
+            }
+            
+            // Get session title for confirmation message
+            const sessionTitle = sessionCard ? 
+                (sessionCard.querySelector('.session-title')?.textContent || 'this session') : 
+                'this session';
+            
+            if (!confirm(`Are you sure you want to cancel ${sessionTitle}?\n\nCancellations within 24 hours of the session may not be eligible for refund.`)) {
+                return false;
+            }
+            
+            // Disable button and show loading state
+            const originalHtml = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling...';
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+            
+            // Send cancellation request
+            fetch('process_booking.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=cancel_booking&booking_id=${bookingId}&csrf_token=${encodeURIComponent(csrfToken)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(data.message, 'success');
+                    } else {
+                        alert(data.message);
+                    }
+                    
+                    // Remove the session card from the list after a short delay
+                    setTimeout(() => {
+                        if (sessionCard) {
+                            sessionCard.style.opacity = '0';
+                            sessionCard.style.transform = 'scale(0.95)';
+                            setTimeout(() => {
+                                sessionCard.remove();
+                                
+                                // Check if there are no more sessions
+                                const remainingSessions = document.querySelectorAll('.session-card').length;
+                                if (remainingSessions === 0) {
+                                    // Reload to show empty state
+                                    window.location.reload();
+                                }
+                            }, 300);
+                        }
+                    }, 1000);
+                } else {
+                    // Show error message
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(data.message || 'Failed to cancel booking', 'error');
+                    } else {
+                        alert(data.message || 'Failed to cancel booking');
+                    }
+                    
+                    // Re-enable button
+                    this.disabled = false;
+                    this.innerHTML = originalHtml;
+                }
+            })
+            .catch(error => {
+                console.error('Error cancelling booking:', error);
+                
+                if (typeof window.showToast === 'function') {
+                    window.showToast('An error occurred while cancelling the booking', 'error');
+                } else {
+                    alert('An error occurred while cancelling the booking');
+                }
+                
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = originalHtml;
+            });
+        }, true); // Use capture phase
     });
     
     // Close modal when clicking overlay
