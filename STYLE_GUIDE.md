@@ -144,7 +144,46 @@ This document describes the unified style guide for the Arctic Wolves dashboard.
 </div>
 ```
 
-### 6. Cards
+### 6. Page Tabs
+
+Used for parent pages with sub-views (Sessions, Video, Health, Drills, etc.):
+
+**Standard Page Tabs:**
+```html
+<div class="page-tabs">
+    <a href="?page=sub_page1" class="page-tab active">
+        <i class="fas fa-clock"></i> Tab 1
+    </a>
+    <a href="?page=sub_page2" class="page-tab">
+        <i class="fas fa-calendar"></i> Tab 2
+    </a>
+</div>
+<div class="page-tab-content">
+    <!-- Sub-page content here -->
+</div>
+```
+
+**Page Tabs with Action Button:**
+```html
+<div class="page-tabs-wrapper">
+    <div class="page-tabs">
+        <a href="?page=sub_page1" class="page-tab active">
+            <i class="fas fa-film"></i> Tab 1
+        </a>
+        <a href="?page=sub_page2" class="page-tab">
+            <i class="fas fa-comments"></i> Tab 2
+        </a>
+    </div>
+    <div class="page-tabs-action">
+        <button class="btn btn-primary"><i class="fas fa-plus"></i> Action</button>
+    </div>
+</div>
+<div class="page-tab-content">
+    <!-- Sub-page content here -->
+</div>
+```
+
+### 7. Cards
 
 ```html
 <div class="card">
@@ -160,7 +199,7 @@ This document describes the unified style guide for the Arctic Wolves dashboard.
 </div>
 ```
 
-### 7. Forms
+### 8. Forms
 
 ```html
 <div class="form-group">
@@ -180,7 +219,7 @@ This document describes the unified style guide for the Arctic Wolves dashboard.
 </div>
 ```
 
-### 8. Badges
+### 9. Badges
 
 ```html
 <span class="badge badge-primary">Primary</span>
@@ -189,7 +228,7 @@ This document describes the unified style guide for the Arctic Wolves dashboard.
 <span class="badge badge-danger">Danger</span>
 ```
 
-### 9. Alerts
+### 10. Alerts
 
 ```html
 <div class="alert alert-success">
@@ -203,7 +242,7 @@ This document describes the unified style guide for the Arctic Wolves dashboard.
 </div>
 ```
 
-### 10. Empty States
+### 11. Empty States
 
 ```html
 <div class="empty-state-card">
