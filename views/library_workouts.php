@@ -24,7 +24,7 @@ $query = "
            (SELECT COUNT(*) FROM workout_template_items WHERE template_id = wt.id) as exercise_count
     FROM workout_templates wt
     LEFT JOIN workout_plan_categories wpc ON wt.category_id = wpc.id
-    LEFT JOIN users u ON wt.created_by_coach_id = u.id
+    LEFT JOIN users u ON wt.created_by = u.id
 ";
 
 if ($category_filter) {
@@ -204,7 +204,7 @@ $templates = $stmt->fetchAll();
                     <span class="template-category"><?= htmlspecialchars($template['category_name']) ?></span>
                 <?php endif; ?>
                 
-                <h3 class="template-title"><?= htmlspecialchars($template['title']) ?></h3>
+                <h3 class="template-title"><?= htmlspecialchars($template['name']) ?></h3>
                 
                 <div class="template-meta">
                     <i class="fas fa-list"></i>

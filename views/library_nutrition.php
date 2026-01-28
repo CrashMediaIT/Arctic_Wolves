@@ -24,7 +24,7 @@ $query = "
            (SELECT COUNT(*) FROM nutrition_template_items WHERE template_id = nt.id) as food_count
     FROM nutrition_templates nt
     LEFT JOIN nutrition_plan_categories npc ON nt.category_id = npc.id
-    LEFT JOIN users u ON nt.created_by_coach_id = u.id
+    LEFT JOIN users u ON nt.created_by = u.id
 ";
 
 if ($category_filter) {
@@ -202,7 +202,7 @@ $templates = $stmt->fetchAll();
                     <span class="template-category"><?= htmlspecialchars($template['category_name']) ?></span>
                 <?php endif; ?>
                 
-                <h3 class="template-title"><?= htmlspecialchars($template['title']) ?></h3>
+                <h3 class="template-title"><?= htmlspecialchars($template['name']) ?></h3>
                 
                 <div class="template-meta">
                     <i class="fas fa-utensils"></i>

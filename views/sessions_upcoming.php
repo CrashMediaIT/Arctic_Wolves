@@ -169,98 +169,10 @@ $coaches = $coaches_stmt->fetchAll();
 // Get current view mode
 $view_mode = $_GET['view'] ?? 'list';
 
-// Demo data for sessions if no real data exists
-if (count($sessions) === 0 && !$show_history) {
-    // Use DateTime for reliable date handling
-    $today = new DateTime();
-    
-    $demo_sessions = [
-        [
-            'id' => 'demo-1',
-            'session_type_name' => 'Skating Skills',
-            'skill_id' => 'demo-skill-1',
-            'session_date' => (clone $today)->modify('+1 day')->setTime(10, 0)->format('Y-m-d H:i:s'),
-            'duration_minutes' => 60,
-            'coach_name' => 'Coach Smith',
-            'location_name' => 'Main Arena',
-            'description' => 'Focus on edge work and crossovers',
-            'practice_plan_name' => 'Basic Skating Fundamentals',
-            'practice_plan_description' => 'Covers forward skating, backward skating, and transitions'
-        ],
-        [
-            'id' => 'demo-2',
-            'session_type_name' => 'Power Skating',
-            'skill_id' => 'demo-skill-2',
-            'session_date' => (clone $today)->modify('+2 days')->setTime(14, 0)->format('Y-m-d H:i:s'),
-            'duration_minutes' => 90,
-            'coach_name' => 'Coach Johnson',
-            'location_name' => 'Training Center',
-            'description' => 'Building speed and acceleration',
-            'practice_plan_name' => 'Speed Development',
-            'practice_plan_description' => 'Focus on explosive starts and stride efficiency'
-        ],
-        [
-            'id' => 'demo-3',
-            'session_type_name' => 'Stick Handling',
-            'skill_id' => 'demo-skill-3',
-            'session_date' => (clone $today)->modify('+3 days')->setTime(9, 0)->format('Y-m-d H:i:s'),
-            'duration_minutes' => 60,
-            'coach_name' => 'Coach Williams',
-            'location_name' => 'Practice Rink',
-            'description' => 'Puck control and deking techniques',
-            'practice_plan_name' => null,
-            'practice_plan_description' => null
-        ],
-        [
-            'id' => 'demo-4',
-            'session_type_name' => 'Shooting Practice',
-            'skill_id' => 'demo-skill-4',
-            'session_date' => (clone $today)->modify('+5 days')->setTime(16, 0)->format('Y-m-d H:i:s'),
-            'duration_minutes' => 75,
-            'coach_name' => 'Coach Smith',
-            'location_name' => 'Main Arena',
-            'description' => 'Wrist shots and slap shots',
-            'practice_plan_name' => 'Shooting Mechanics',
-            'practice_plan_description' => 'Work on accuracy and technique'
-        ],
-        [
-            'id' => 'demo-5',
-            'session_type_name' => 'Game Simulation',
-            'skill_id' => 'demo-skill-5',
-            'session_date' => (clone $today)->modify('+7 days')->setTime(11, 0)->format('Y-m-d H:i:s'),
-            'duration_minutes' => 120,
-            'coach_name' => 'Coach Johnson',
-            'location_name' => 'Main Arena',
-            'description' => 'Full ice scrimmage with tactical focus',
-            'practice_plan_name' => 'Game Situations',
-            'practice_plan_description' => 'Scrimmage with tactical coaching'
-        ]
-    ];
-    $sessions = $demo_sessions;
-    $is_demo_data = true;
-} else {
-    // If we have real sessions, it's not demo data
-    // If we have no sessions (e.g., viewing history with no history), still not demo data
-    $is_demo_data = false;
-}
+// No demo data for sessions - show empty state when no real data exists
+$is_demo_data = false;
 
-// Demo skills and locations if none exist
-if (count($skills) === 0) {
-    $skills = [
-        ['id' => 'demo-skill-1', 'name' => 'Skating Skills'],
-        ['id' => 'demo-skill-2', 'name' => 'Power Skating'],
-        ['id' => 'demo-skill-3', 'name' => 'Stick Handling'],
-        ['id' => 'demo-skill-4', 'name' => 'Shooting Practice'],
-        ['id' => 'demo-skill-5', 'name' => 'Game Simulation']
-    ];
-}
-if (count($locations) === 0) {
-    $locations = [
-        ['id' => 'demo-loc-1', 'name' => 'Main Arena'],
-        ['id' => 'demo-loc-2', 'name' => 'Training Center'],
-        ['id' => 'demo-loc-3', 'name' => 'Practice Rink']
-    ];
-}
+// Use empty arrays for skills and locations if none exist (no demo data)
 ?>
 
 <!-- Upcoming Sessions View -->
