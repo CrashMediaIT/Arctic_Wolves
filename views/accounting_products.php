@@ -241,17 +241,17 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 </div>
 
 <!-- Product Tabs -->
-<div class="page-tabs">
-    <button type="button" class="page-tab <?= $activeTab === 'sessions' ? 'active' : '' ?>" data-tab="sessions" data-action="switch-tab">
+<div class="product-tabs">
+    <button type="button" class="tab-btn <?= $activeTab === 'sessions' ? 'active' : '' ?>" data-tab="sessions" data-action="switch-tab">
         <i class="fas fa-calendar-day"></i> Sessions
     </button>
-    <button type="button" class="page-tab <?= $activeTab === 'packages' ? 'active' : '' ?>" data-tab="packages" data-action="switch-tab">
+    <button type="button" class="tab-btn <?= $activeTab === 'packages' ? 'active' : '' ?>" data-tab="packages" data-action="switch-tab">
         <i class="fas fa-box"></i> Packages
     </button>
-    <button type="button" class="page-tab <?= $activeTab === 'discounts' ? 'active' : '' ?>" data-tab="discounts" data-action="switch-tab">
+    <button type="button" class="tab-btn <?= $activeTab === 'discounts' ? 'active' : '' ?>" data-tab="discounts" data-action="switch-tab">
         <i class="fas fa-tags"></i> Discounts
     </button>
-    <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
+    <button type="button" class="tab-btn <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
         <i class="fas fa-tshirt"></i> Merchandise
     </button>
 </div>

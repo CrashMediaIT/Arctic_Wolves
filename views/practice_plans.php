@@ -586,7 +586,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
                         </button>
                     <?php endif; ?>
                     <?php if ($can_create && $plan['created_by'] == $user_id): ?>
-                        <button class="btn-icon" data-action="edit" data-id="<?= $plan['id'] ?>" data-modal="plan-modal">
+                        <button class="btn-icon" data-action="edit" data-id="<?= $plan['id'] ?>" data-modal="planModal">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     <?php endif; ?>
