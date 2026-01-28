@@ -217,24 +217,13 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <title>Arctic Wolves Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <!-- Unified Style Guide - Authoritative stylesheet based on Upcoming Sessions and Bookings -->
+    <link rel="stylesheet" href="css/style-guide.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="views/shared_styles.css">
     <style>
-        :root { 
-            --primary: #6B46C1; 
-            --primary-hover: #7C3AED; 
-            --primary-light: #8B5CF6;
-            --bg: #0A0A0F; 
-            --bg-secondary: #13131A;
-            --sidebar: #0D0D14; 
-            --border: #2D2D3F; 
-            --border-light: #3A3A4F;
-            --text: #A8A8B8; 
-            --text-muted: #6B6B7B;
-            --card-bg: #16161F;
-        }
-        * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); font-family: 'Inter', sans-serif; color: #fff; display: flex; height: 100vh; overflow: hidden; }
+        /* Dashboard-specific layout styles */
+        body { margin: 0; background: var(--bg-main); font-family: 'Inter', sans-serif; color: #fff; display: flex; height: 100vh; overflow: hidden; }
         
         /* Sidebar */
         .sidebar { width: 280px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; overflow-y: auto; }
