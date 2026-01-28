@@ -1493,15 +1493,37 @@ document.addEventListener('DOMContentLoaded', function() {
             if (packageId.startsWith('demo-')) {
                 showBookingNotification('Demo Mode: This is a demo package. Contact admin to set up real packages for purchase.', 'info');
             } else {
+                // Validate CSRF token exists
+                const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+                if (!csrfToken) {
+                    showBookingNotification('Security token missing. Please refresh the page and try again.', 'error');
+                    return;
+                }
+                
+                // Validate packageId is a valid numeric ID
+                if (!/^\d+$/.test(packageId)) {
+                    showBookingNotification('Invalid package ID.', 'error');
+                    return;
+                }
+                
                 // Submit via form for Stripe checkout with CSRF protection
-                const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+                // Use DOM methods instead of innerHTML to prevent XSS
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = 'process_purchase_package.php';
-                form.innerHTML = `
-                    <input type="hidden" name="package_id" value="${packageId}">
-                    <input type="hidden" name="csrf_token" value="${csrfToken}">
-                `;
+                
+                const packageInput = document.createElement('input');
+                packageInput.type = 'hidden';
+                packageInput.name = 'package_id';
+                packageInput.value = packageId;
+                form.appendChild(packageInput);
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+                
                 document.body.appendChild(form);
                 form.submit();
             }
@@ -1521,16 +1543,42 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sessionId.startsWith('demo-')) {
             showBookingNotification('Demo Mode: This is a demo session. Book real sessions when they become available.', 'info');
         } else {
-            // Submit registration - get CSRF token from existing form
-            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+            // Validate CSRF token exists
+            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+            if (!csrfToken) {
+                showBookingNotification('Security token missing. Please refresh the page and try again.', 'error');
+                return;
+            }
+            
+            // Validate sessionId is a valid numeric ID  
+            if (!/^\d+$/.test(sessionId)) {
+                showBookingNotification('Invalid session ID.', 'error');
+                return;
+            }
+            
+            // Submit registration - use DOM methods instead of innerHTML to prevent XSS
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = 'process_booking.php';
-            form.innerHTML = `
-                <input type="hidden" name="action" value="register_session">
-                <input type="hidden" name="session_id" value="${sessionId}">
-                <input type="hidden" name="csrf_token" value="${csrfToken}">
-            `;
+            
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'register_session';
+            form.appendChild(actionInput);
+            
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'session_id';
+            sessionInput.value = sessionId;
+            form.appendChild(sessionInput);
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            
             document.body.appendChild(form);
             form.submit();
         }

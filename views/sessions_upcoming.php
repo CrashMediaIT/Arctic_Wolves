@@ -4,6 +4,7 @@ $filter_period = $_GET['filter_period'] ?? 'all';
 $filter_coach = $_GET['filter_coach'] ?? 'all';
 $filter_skill = $_GET['filter_skill'] ?? 'all';
 $filter_location = $_GET['filter_location'] ?? 'all';
+// Strict validation: only accept '1' as true
 $show_history = isset($_GET['history']) && $_GET['history'] === '1';
 
 // Get skill types (session types) for filter
@@ -15,56 +16,96 @@ $locations_query = "SELECT * FROM locations WHERE is_active = 1 ORDER BY name";
 $locations = $pdo->query($locations_query)->fetchAll();
 
 // Build query for upcoming sessions or session history
+// Date and status conditions are hardcoded based on boolean $show_history - not user input
 // For athletes, show sessions they're registered for
 // For coaches/admins, show all sessions they're involved with
 if ($user_role === 'athlete') {
-    $date_condition = $show_history ? "s.session_date < NOW()" : "s.session_date >= NOW()";
-    $status_condition = $show_history ? "s.status IN ('scheduled', 'completed')" : "s.status = 'scheduled'";
-    
-    $sessions_query = "
-        SELECT s.*, 
-               CONCAT(c.first_name, ' ', c.last_name) as coach_name,
-               st.name as session_type_name,
-               st.id as skill_id,
-               l.name as location_name,
-               pp.name as practice_plan_name,
-               pp.description as practice_plan_description,
-               spp.practice_plan_id
-        FROM sessions s
-        LEFT JOIN users c ON s.coach_id = c.id
-        LEFT JOIN session_types st ON s.session_type_id = st.id
-        LEFT JOIN locations l ON s.location_id = l.id
-        LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
-        LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
-        LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
-        WHERE b.user_id IS NOT NULL
-          AND {$date_condition}
-          AND {$status_condition}
-    ";
+    if ($show_history) {
+        $sessions_query = "
+            SELECT s.*, 
+                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   st.name as session_type_name,
+                   st.id as skill_id,
+                   l.name as location_name,
+                   pp.name as practice_plan_name,
+                   pp.description as practice_plan_description,
+                   spp.practice_plan_id
+            FROM sessions s
+            LEFT JOIN users c ON s.coach_id = c.id
+            LEFT JOIN session_types st ON s.session_type_id = st.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+            LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
+            LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
+            WHERE b.user_id IS NOT NULL
+              AND s.session_date < NOW()
+              AND s.status IN ('scheduled', 'completed')
+        ";
+    } else {
+        $sessions_query = "
+            SELECT s.*, 
+                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   st.name as session_type_name,
+                   st.id as skill_id,
+                   l.name as location_name,
+                   pp.name as practice_plan_name,
+                   pp.description as practice_plan_description,
+                   spp.practice_plan_id
+            FROM sessions s
+            LEFT JOIN users c ON s.coach_id = c.id
+            LEFT JOIN session_types st ON s.session_type_id = st.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+            LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
+            LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
+            WHERE b.user_id IS NOT NULL
+              AND s.session_date >= NOW()
+              AND s.status = 'scheduled'
+        ";
+    }
     $params = [$user_id];
 } else {
-    $date_condition = $show_history ? "s.session_date < NOW()" : "s.session_date >= NOW()";
-    $status_condition = $show_history ? "s.status IN ('scheduled', 'completed')" : "s.status = 'scheduled'";
-    
-    $sessions_query = "
-        SELECT s.*, 
-               CONCAT(c.first_name, ' ', c.last_name) as coach_name,
-               st.name as session_type_name,
-               st.id as skill_id,
-               l.name as location_name,
-               pp.name as practice_plan_name,
-               pp.description as practice_plan_description,
-               spp.practice_plan_id
-        FROM sessions s
-        LEFT JOIN users c ON s.coach_id = c.id
-        LEFT JOIN session_types st ON s.session_type_id = st.id
-        LEFT JOIN locations l ON s.location_id = l.id
-        LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
-        LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
-        WHERE s.coach_id = ? 
-          AND {$date_condition}
-          AND {$status_condition}
-    ";
+    if ($show_history) {
+        $sessions_query = "
+            SELECT s.*, 
+                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   st.name as session_type_name,
+                   st.id as skill_id,
+                   l.name as location_name,
+                   pp.name as practice_plan_name,
+                   pp.description as practice_plan_description,
+                   spp.practice_plan_id
+            FROM sessions s
+            LEFT JOIN users c ON s.coach_id = c.id
+            LEFT JOIN session_types st ON s.session_type_id = st.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+            LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
+            WHERE s.coach_id = ? 
+              AND s.session_date < NOW()
+              AND s.status IN ('scheduled', 'completed')
+        ";
+    } else {
+        $sessions_query = "
+            SELECT s.*, 
+                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   st.name as session_type_name,
+                   st.id as skill_id,
+                   l.name as location_name,
+                   pp.name as practice_plan_name,
+                   pp.description as practice_plan_description,
+                   spp.practice_plan_id
+            FROM sessions s
+            LEFT JOIN users c ON s.coach_id = c.id
+            LEFT JOIN session_types st ON s.session_type_id = st.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+            LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
+            WHERE s.coach_id = ? 
+              AND s.session_date >= NOW()
+              AND s.status = 'scheduled'
+        ";
+    }
     $params = [$user_id];
 }
 
@@ -198,7 +239,9 @@ if (count($sessions) === 0 && !$show_history) {
     $sessions = $demo_sessions;
     $is_demo_data = true;
 } else {
-    $is_demo_data = count($sessions) === 0 ? true : false;
+    // If we have real sessions, it's not demo data
+    // If we have no sessions (e.g., viewing history with no history), still not demo data
+    $is_demo_data = false;
 }
 
 // Demo skills and locations if none exist
@@ -1156,10 +1199,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 
-                // Populate modal with session data
+                // Populate modal with session data - use textContent to prevent XSS
                 const titleEl = document.getElementById('modalSessionTitle');
                 const title = sessionCard?.getAttribute('data-session-title') || 'Session';
-                titleEl.innerHTML = title + (isDemo ? '<span class="demo-badge">Demo</span>' : '');
+                // Clear and rebuild title safely
+                titleEl.textContent = title;
+                if (isDemo) {
+                    const badge = document.createElement('span');
+                    badge.className = 'demo-badge';
+                    badge.textContent = 'Demo';
+                    titleEl.appendChild(badge);
+                }
                 
                 document.getElementById('modalSessionDateTime').textContent = 
                     (sessionCard?.getAttribute('data-session-datetime') || 'Date') + 

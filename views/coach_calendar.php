@@ -426,6 +426,11 @@ function openSessionDetailModal(cardEl) {
 }
 function closeSessionDetailModal() { document.getElementById('sessionDetailModal').classList.remove('active'); }
 function openAssignPlanModal(sessionId, currentPlanId) {
+    // Validate sessionId is numeric to prevent XSS
+    if (!/^\d+$/.test(sessionId) && !sessionId.startsWith('demo-')) {
+        alert('Invalid session ID.');
+        return;
+    }
     document.getElementById('assignPlanSessionId').value = sessionId;
     document.getElementById('assignPlanSelect').value = currentPlanId || '';
     document.getElementById('assignPlanModal').classList.add('active');
@@ -439,9 +444,20 @@ document.querySelectorAll('.session-modal-overlay').forEach(overlay => {
 });
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.querySelectorAll('.session-modal-overlay.active').forEach(m => m.classList.remove('active')); });
 document.getElementById('assignPlanForm')?.addEventListener('submit', function(e) {
-    if (document.getElementById('assignPlanSessionId').value.startsWith('demo-')) { e.preventDefault(); alert('Demo Mode'); closeAssignPlanModal(); }
+    const sessionId = document.getElementById('assignPlanSessionId').value;
+    if (sessionId.startsWith('demo-')) { e.preventDefault(); alert('Demo Mode: Cannot assign plans to demo sessions.'); closeAssignPlanModal(); return; }
+    // Validate sessionId is numeric
+    if (!/^\d+$/.test(sessionId)) { e.preventDefault(); alert('Invalid session ID.'); return; }
 });
 document.getElementById('privateSessionForm')?.addEventListener('submit', function(e) {
-    if (this.querySelector('[name="session_type_id"]').value.startsWith('demo-')) { e.preventDefault(); alert('Demo Mode'); }
+    const sessionTypeId = this.querySelector('[name="session_type_id"]').value;
+    if (sessionTypeId.startsWith('demo-')) { e.preventDefault(); alert('Demo Mode: Cannot create sessions with demo data.'); return; }
+    // Validate at least one athlete is selected
+    const selectedAthletes = this.querySelectorAll('[name="athlete_ids[]"]:checked');
+    if (selectedAthletes.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one athlete for the private session.');
+        return;
+    }
 });
 </script>
