@@ -157,14 +157,14 @@ class DemoDataSeeder {
         echo "Seeding Locations...\n";
         
         $locations = [
-            ['Demo Arena North', '123 Hockey Way', 'North City', 'NS', '12345', '555-0101'],
-            ['Demo Arena South', '456 Ice Lane', 'South City', 'NS', '12346', '555-0102'],
-            ['Demo Training Center', '789 Practice Rd', 'Central City', 'NS', '12347', '555-0103'],
+            ['Demo Arena North', '123 Hockey Way', 'North City', 'NS', 'B1A 1A1', '555-0101'],
+            ['Demo Arena South', '456 Ice Lane', 'South City', 'NS', 'B2B 2B2', '555-0102'],
+            ['Demo Training Center', '789 Practice Rd', 'Central City', 'NS', 'B3C 3C3', '555-0103'],
         ];
         
         foreach ($locations as $location) {
             $stmt = $this->pdo->prepare("
-                INSERT INTO locations (name, address, city, state, zip_code, phone, is_demo)
+                INSERT INTO locations (name, address, city, province, postal_code, phone, is_demo)
                 VALUES (?, ?, ?, ?, ?, ?, 1)
             ");
             $stmt->execute($location);

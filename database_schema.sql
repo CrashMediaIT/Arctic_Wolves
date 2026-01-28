@@ -145,9 +145,14 @@ CREATE TABLE IF NOT EXISTS `locations` (
     `city` VARCHAR(100) DEFAULT NULL,
     `province` VARCHAR(50) DEFAULT NULL,
     `postal_code` VARCHAR(10) DEFAULT NULL,
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `google_place_id` VARCHAR(255) DEFAULT NULL,
+    `image_url` VARCHAR(500) DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
+    `is_demo` TINYINT(1) DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_active` (`is_active`)
+    INDEX `idx_active` (`is_active`),
+    INDEX `idx_demo` (`is_demo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Session types
