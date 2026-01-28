@@ -356,7 +356,7 @@ $employees = $employees_stmt->fetchAll();
     <div class="modal-container modal-large">
         <div class="modal-header">
             <h3><i class="fas fa-user-times"></i> Termination Details</h3>
-            <button class="modal-close" onclick="closeTerminationModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeTerminationModal()">&times;</button>
         </div>
         <div class="modal-body">
             <div class="detail-grid">

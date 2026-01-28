@@ -101,7 +101,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2>Create New Goal</h2>
-            <button class="modal-close" onclick="closeModal('add-goal-modal')">
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-goal-modal')">
                 <i class="fas fa-times"></i>
             </button>
         </div>

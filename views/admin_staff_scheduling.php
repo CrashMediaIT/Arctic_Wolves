@@ -725,7 +725,7 @@ foreach ($allSchedules as $schedule) {
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="schedule-modal-title"><i class="fas fa-calendar-plus" style="color: var(--primary); margin-right: 10px;"></i> Create Schedule</h3>
-            <button class="modal-close" onclick="closeScheduleModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeScheduleModal()">&times;</button>
         </div>
         
         <form id="schedule-form" onsubmit="submitSchedule(event)">
@@ -792,7 +792,7 @@ foreach ($allSchedules as $schedule) {
     <div class="modal-content">
         <div class="modal-header">
             <h3>Set Staff PIN</h3>
-            <button class="modal-close" onclick="closePinModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closePinModal()">&times;</button>
         </div>
         <p style="color: var(--text-dim); margin-bottom: 20px;">
             Set a 4-digit PIN for <strong id="pin-staff-name">Staff</strong> to use for kiosk login.

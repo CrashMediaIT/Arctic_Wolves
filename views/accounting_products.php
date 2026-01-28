@@ -103,10 +103,34 @@ try {
     $discounts = [];
 }
 
+// Fetch merchandise products from database
+try {
+    $merchProductsStmt = $pdo->query("
+        SELECT mp.*, mc.name as category_name 
+        FROM merchandise_products mp 
+        LEFT JOIN merchandise_categories mc ON mp.category_id = mc.id 
+        ORDER BY mp.name
+    ");
+    $merchProducts = $merchProductsStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Merchandise products fetch error: " . $e->getMessage());
+    $merchProducts = [];
+}
+
+// Fetch merchandise categories for the add/edit modals
+try {
+    $merchCategoriesStmt = $pdo->query("SELECT id, name FROM merchandise_categories WHERE is_active = 1 ORDER BY name");
+    $merchCategories = $merchCategoriesStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Merchandise categories fetch error: " . $e->getMessage());
+    $merchCategories = [];
+}
+
 // Calculate stats
 $sessionCount = count($sessionTemplates) > 0 ? count($sessionTemplates) : count($sessionTypes);
 $packageCount = count(array_filter($packages, function($p) { return !empty($p['is_active']); }));
 $discountCount = count(array_filter($discounts, function($d) { return !empty($d['is_active']); }));
+$merchProductCount = count(array_filter($merchProducts, function($p) { return !empty($p['is_active']); }));
 $avgPackagePrice = $packageCount > 0 ? array_sum(array_column($packages, 'price')) / count($packages) : 0;
 
 // Handle tab from URL
@@ -183,6 +207,11 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             <i class="fas fa-tags"></i> 
             <span>Discounts</span>
             <small><?= $discountCount ?> codes</small>
+        </button>
+        <button class="tab-btn <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
+            <i class="fas fa-tshirt"></i> 
+            <span>Merchandise</span>
+            <small><?= $merchProductCount ?> products</small>
         </button>
     </div>
 
@@ -385,6 +414,65 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                     <div class="table-actions">
                                         <button class="btn-action" data-action="edit" data-id="<?= $discount['id'] ?>" data-type="discount" data-modal="edit-discount-modal" title="Edit"><i class="fas fa-edit"></i></button>
                                         <button class="btn-action danger" data-action="delete" data-id="<?= $discount['id'] ?>" data-type="discount" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merchandise Tab -->
+    <div class="tab-content <?= $activeTab === 'merchandise' ? 'active' : '' ?>" id="merchandise-tab">
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-tshirt"></i> Merchandise Products</h3>
+                <button class="btn btn-primary" data-action="add" data-modal="add-merchandise-product-modal"><i class="fas fa-plus"></i> Add Product</button>
+            </div>
+            <div class="card-body">
+                <?php if (empty($merchProducts)): ?>
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fas fa-tshirt"></i></div>
+                    <h4>No Merchandise Products</h4>
+                    <p>Create your first merchandise product to start selling in the shop and POS.</p>
+                    <button class="btn btn-primary" data-action="add" data-modal="add-merchandise-product-modal"><i class="fas fa-plus"></i> Add Product</button>
+                </div>
+                <?php else: ?>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($merchProducts as $product): ?>
+                            <tr>
+                                <td>
+                                    <div class="product-info">
+                                        <strong><?= htmlspecialchars($product['name']) ?></strong>
+                                        <?php if (!empty($product['sku'])): ?>
+                                        <small style="color: var(--text-dim);">SKU: <?= htmlspecialchars($product['sku']) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td><?= htmlspecialchars($product['category_name'] ?? 'Uncategorized') ?></td>
+                                <td>$<?= number_format($product['price'] ?? 0, 2) ?></td>
+                                <td><?= $product['stock_quantity'] ?? 0 ?></td>
+                                <td><span class="status-badge <?= !empty($product['is_active']) ? 'active' : 'inactive' ?>"><?= !empty($product['is_active']) ? 'Active' : 'Inactive' ?></span></td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-action" data-action="edit" data-id="<?= $product['id'] ?>" data-type="merch-product" data-modal="edit-merchandise-product-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-action danger" data-action="delete" data-id="<?= $product['id'] ?>" data-type="merch-product" title="Delete"><i class="fas fa-trash"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -871,7 +959,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-calendar-plus"></i> Create Training Session</h2>
-            <button class="modal-close" onclick="closeModal('add-session-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-session-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php" id="add-session-form">
             <?php echo csrfTokenInput(); ?>
@@ -1062,7 +1150,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-box"></i> Create Package</h2>
-            <button class="modal-close" onclick="closeModal('add-package-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-package-modal')">&times;</button>
         </div>
         <form method="POST" action="process_packages.php" id="add-package-form">
             <?php echo csrfTokenInput(); ?>
@@ -1201,7 +1289,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-tags"></i> Create Discount Code</h2>
-            <button class="modal-close" onclick="closeModal('add-discount-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-discount-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php" id="add-discount-form">
             <?php echo csrfTokenInput(); ?>
@@ -1303,7 +1391,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Session</h2>
-            <button class="modal-close" onclick="closeModal('edit-session-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-session-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1319,7 +1407,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Package</h2>
-            <button class="modal-close" onclick="closeModal('edit-package-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-package-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1335,7 +1423,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Discount</h2>
-            <button class="modal-close" onclick="closeModal('edit-discount-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-discount-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1351,7 +1439,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-calendar-alt"></i> Manage Session Dates</h2>
-            <button class="modal-close" onclick="closeModal('manage-dates-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('manage-dates-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1367,7 +1455,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-list-check"></i> Manage Package Sessions</h2>
-            <button class="modal-close" onclick="closeModal('manage-package-sessions-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('manage-package-sessions-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">

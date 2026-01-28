@@ -168,7 +168,7 @@ $message = $_GET['message'] ?? '';
     <div class="modal-content">
         <div class="modal-header">
             <h2><i class="fas fa-plus-circle"></i> Assign Evaluation to Session</h2>
-            <button class="modal-close" onclick="closeModal('assign-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('assign-modal')">&times;</button>
         </div>
         <form id="assign-form" method="POST" action="process_session_evaluations.php">
             <?= csrfTokenInput() ?>
@@ -206,7 +206,7 @@ $message = $_GET['message'] ?? '';
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h2><i class="fas fa-users"></i> Manage Athletes</h2>
-            <button class="modal-close" onclick="closeModal('athletes-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('athletes-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <input type="hidden" id="current-evaluation-id">

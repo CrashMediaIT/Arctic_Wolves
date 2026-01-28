@@ -1107,7 +1107,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h3><i class="fas fa-envelope"></i> Test SMTP Connection</h3>
-            <button type="button" class="modal-close" onclick="closeSmtpTestModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeSmtpTestModal()">&times;</button>
         </div>
         <div class="modal-body">
             <p>Enter an email address to send a test message:</p>

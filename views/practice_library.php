@@ -132,7 +132,7 @@ try {
             <h2 class="modal-title"><i class="fas fa-clipboard-list"></i> <span id="view-plan-title">Practice Plan</span></h2>
             <div class="modal-actions">
                 <button class="btn-secondary btn-sm" onclick="printPracticePlan()"><i class="fas fa-print"></i> Print</button>
-                <button class="modal-close" onclick="closePlanViewModal()">&times;</button>
+                <button class="modal-close" aria-label="Close modal" onclick="closePlanViewModal()">&times;</button>
             </div>
         </div>
         <div class="modal-body" id="practice-view-content">

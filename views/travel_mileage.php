@@ -612,7 +612,7 @@ foreach ($mileage_entries as $entry) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Mileage Entry</h2>
-            <button class="modal-close" onclick="closeMileageModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeMileageModal()">&times;</button>
         </div>
         <form method="POST" action="process_mileage.php" id="editMileageForm">
             <?= csrfTokenInput() ?>
@@ -718,7 +718,7 @@ foreach ($mileage_entries as $entry) {
     <div class="modal-content" style="max-width: 400px;">
         <div class="modal-header">
             <h2 class="modal-title">Delete Entry</h2>
-            <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeDeleteModal()">&times;</button>
         </div>
         <div class="modal-body" style="text-align: center;">
             <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ef4444; margin-bottom: 16px;"></i>

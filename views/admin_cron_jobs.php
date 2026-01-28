@@ -239,7 +239,7 @@ $inactiveJobs = count($cronJobs) - $activeJobs;
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Cron Job</h2>
-            <button class="modal-close" onclick="closeModal('add-cron-job-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-cron-job-modal')">&times;</button>
         </div>
         <form method="POST" action="process_cron_jobs.php">
             <?php echo csrfTokenInput(); ?>
@@ -305,7 +305,7 @@ $inactiveJobs = count($cronJobs) - $activeJobs;
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Cron Job</h2>
-            <button class="modal-close" onclick="closeModal('edit-cron-job-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-cron-job-modal')">&times;</button>
         </div>
         <form method="POST" action="process_cron_jobs.php">
             <?php echo csrfTokenInput(); ?>

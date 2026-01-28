@@ -447,7 +447,7 @@ $reviewed_videos = array_filter($videos, function($v) {
     <div class="modal-content">
         <div class="modal-header">
             <h3><i class="fas fa-check-circle"></i> Review Video</h3>
-            <button class="modal-close" data-action="close-modal"><i class="fas fa-times"></i></button>
+            <button class="modal-close" aria-label="Close modal" data-action="close-modal"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
             <form id="reviewForm" method="POST" action="process_video.php">

@@ -708,7 +708,7 @@ $csrf_token = generateCsrfToken();
     <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header" style="background: linear-gradient(180deg, rgba(112, 0, 164, 0.08) 0%, transparent 100%); padding: 24px; border-bottom: 1px solid #1e293b;">
             <h2 style="margin: 0; font-size: 20px; display: flex; align-items: center; gap: 12px;"><i class="fas fa-eye" style="color: #a855f7;"></i> Audit Log Details</h2>
-            <button class="modal-close" onclick="closeViewModal()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer;">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeViewModal()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer;">&times;</button>
         </div>
         <div class="modal-body" id="modalContent" style="padding: 24px;">
             <!-- Content loaded via JavaScript -->

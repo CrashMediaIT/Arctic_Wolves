@@ -670,7 +670,7 @@ try {
         <div class="modal-content modal-lg">
             <div class="modal-header">
                 <h2 class="modal-title" id="modalTitle"><i class="fas fa-bullseye"></i> Create Goal</h2>
-                <button class="modal-close" onclick="closeGoalModal()" aria-label="Close modal">&times;</button>
+                <button class="modal-close" aria-label="Close modal" onclick="closeGoalModal()">&times;</button>
             </div>
             <form id="goalForm" method="POST" action="process_goals.php">
                 <?php echo csrfTokenInput(); ?>
@@ -744,7 +744,7 @@ try {
         <div class="modal-content modal-lg">
             <div class="modal-header">
                 <h2 class="modal-title">Goal Details</h2>
-                <button class="modal-close" onclick="closeGoalDetailModal()" aria-label="Close modal">&times;</button>
+                <button class="modal-close" aria-label="Close modal" onclick="closeGoalDetailModal()">&times;</button>
             </div>
             <div class="modal-body" id="goalDetailContent">
                 <!-- Content loaded via AJAX -->
@@ -758,7 +758,7 @@ try {
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title"><i class="fas fa-plus-circle"></i> Add Progress Note</h2>
-                <button class="modal-close" onclick="closeProgressNoteModal()" aria-label="Close modal">&times;</button>
+                <button class="modal-close" aria-label="Close modal" onclick="closeProgressNoteModal()">&times;</button>
             </div>
             <form id="progressNoteForm" method="POST" action="process_goals.php">
                 <?php echo csrfTokenInput(); ?>

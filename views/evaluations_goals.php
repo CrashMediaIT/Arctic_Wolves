@@ -616,7 +616,7 @@ $evaluations = $evals_stmt->fetchAll();
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title" id="modalTitle">Create Evaluation</h2>
-            <button class="modal-close" onclick="closeModal('evaluationModal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('evaluationModal')">&times;</button>
         </div>
         <form id="evaluationForm" method="POST" action="process_evaluations.php">
             <div class="modal-body">
@@ -664,7 +664,7 @@ $evaluations = $evals_stmt->fetchAll();
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title" id="detailTitle">Evaluation Details</h2>
-            <button class="modal-close" onclick="closeModal('evaluationDetailModal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('evaluationDetailModal')">&times;</button>
         </div>
         <div class="modal-body" id="evaluationDetailContent">
             <!-- Content loaded dynamically -->
@@ -677,7 +677,7 @@ $evaluations = $evals_stmt->fetchAll();
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Step</h2>
-            <button class="modal-close" onclick="closeModal('addStepModal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('addStepModal')">&times;</button>
         </div>
         <form id="addStepForm" method="POST" action="process_evaluations.php">
             <div class="modal-body">

@@ -240,7 +240,7 @@ $athletes = $athletes_stmt->fetchAll();
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-user-plus"></i> Add Athlete</h2>
-            <button class="modal-close" onclick="closeModal('add-health-athlete-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-health-athlete-modal')">&times;</button>
         </div>
         <form method="POST" action="process_create_athlete.php">
             <?php echo csrfTokenInput(); ?>
@@ -295,7 +295,7 @@ $athletes = $athletes_stmt->fetchAll();
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-dumbbell"></i> Assign Workout Plan</h2>
-            <button class="modal-close" onclick="closeModal('assign-workout-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('assign-workout-modal')">&times;</button>
         </div>
         <form method="POST" action="process_health_assignments.php">
             <?php echo csrfTokenInput(); ?>
@@ -345,7 +345,7 @@ $athletes = $athletes_stmt->fetchAll();
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-utensils"></i> Assign Nutrition Plan</h2>
-            <button class="modal-close" onclick="closeModal('assign-nutrition-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('assign-nutrition-modal')">&times;</button>
         </div>
         <form method="POST" action="process_health_assignments.php">
             <?php echo csrfTokenInput(); ?>

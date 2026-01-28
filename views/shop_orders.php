@@ -258,7 +258,7 @@ try {
     <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-shopping-bag"></i> Order Details</h2>
-            <button class="modal-close" onclick="closeModal('order-details-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('order-details-modal')">&times;</button>
         </div>
         <div class="modal-body" id="order-details-content">
             <div style="text-align: center; padding: 40px;">
