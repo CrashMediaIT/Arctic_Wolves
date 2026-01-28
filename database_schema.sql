@@ -793,6 +793,19 @@ CREATE TABLE IF NOT EXISTS `athlete_notes` (
     INDEX `idx_coach` (`coach_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Seasons (moved before athlete_stats to satisfy foreign key constraint)
+CREATE TABLE IF NOT EXISTS `seasons` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_dates` (`start_date`, `end_date`),
+    INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Athlete statistics tracking
 CREATE TABLE IF NOT EXISTS `athlete_stats` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -1486,19 +1499,6 @@ CREATE TABLE IF NOT EXISTS `role_permissions` (
     FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_role_permission` (`role`, `permission_id`),
     INDEX `idx_role` (`role`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Seasons
-CREATE TABLE IF NOT EXISTS `seasons` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
-    `start_date` DATE NOT NULL,
-    `end_date` DATE NOT NULL,
-    `description` TEXT DEFAULT NULL,
-    `is_active` TINYINT(1) DEFAULT 1,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_dates` (`start_date`, `end_date`),
-    INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Security event logs
