@@ -72,9 +72,55 @@ try {
     $transactions = [];
     $todayStats = [];
 }
+
+// Check if being loaded as a tab in Finance Dashboard
+$in_finance_dashboard = (isset($tab) && in_array($tab, ['pos_transactions', 'shop_orders']));
 ?>
 
-<div class="page-header">
+<?php if (!$in_finance_dashboard): ?>
+<style>
+/* POS Transactions Page Header - Financial Reports Hub Style */
+.pos-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.pos-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.pos-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), #5a0080);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+.pos-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.pos-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+</style>
+
+<div class="pos-page-header">
     <div class="page-header-content">
         <div class="page-header-icon">
             <i class="fas fa-receipt"></i>
@@ -103,13 +149,66 @@ try {
         </div>
     </div>
 </div>
+<?php endif; ?>
+
+<!-- Stats Row for tab view -->
+<?php if ($in_finance_dashboard): ?>
+<div class="stats-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(107, 70, 193, 0.15); color: var(--primary);">
+            <i class="fas fa-receipt"></i>
+        </div>
+        <div>
+            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;"><?= $todayStats['transaction_count'] ?? 0 ?></h4>
+            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Today's Transactions</p>
+        </div>
+    </div>
+    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(16, 185, 129, 0.15); color: #10b981;">
+            <i class="fas fa-dollar-sign"></i>
+        </div>
+        <div>
+            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;">$<?= number_format($todayStats['total_sales'] ?? 0, 0) ?></h4>
+            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Today's Sales</p>
+        </div>
+    </div>
+    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+            <i class="fas fa-credit-card"></i>
+        </div>
+        <div>
+            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;">$<?= number_format($todayStats['card_sales'] ?? 0, 0) ?></h4>
+            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Card Sales</p>
+        </div>
+    </div>
+    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(16, 185, 129, 0.15); color: #10b981;">
+            <i class="fas fa-money-bill"></i>
+        </div>
+        <div>
+            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;">$<?= number_format($todayStats['cash_sales'] ?? 0, 0) ?></h4>
+            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Cash Sales</p>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php
+// Determine base URL for filters
+$posBaseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=pos_transactions' : '?page=pos_transactions';
+?>
 
 <div class="content-card">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
         <h3><i class="fas fa-history"></i> Transaction History</h3>
         
         <form method="GET" action="" style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <?php if ($in_finance_dashboard): ?>
+            <input type="hidden" name="page" value="finance_dashboard">
+            <input type="hidden" name="tab" value="pos_transactions">
+            <?php else: ?>
             <input type="hidden" name="page" value="pos_transactions">
+            <?php endif; ?>
             <input type="date" name="date" value="<?= htmlspecialchars($dateFilter) ?>" class="form-input" style="width: auto;">
             <select name="payment" class="form-input" style="width: auto;">
                 <option value="">All Payments</option>
@@ -119,7 +218,7 @@ try {
             </select>
             <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
             <?php if ($dateFilter || $paymentFilter): ?>
-                <a href="?page=pos_transactions" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                <a href="<?= $posBaseUrl ?>" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
             <?php endif; ?>
         </form>
     </div>

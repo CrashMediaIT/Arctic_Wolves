@@ -628,7 +628,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=library_nutrition" class="nav-link <?= $page=='library_nutrition'?'active':'' ?>">
                 <i class="fa-solid fa-utensils icon"></i> Nutrition
             </a>
-            <a href="?page=health_coach_roster" class="nav-link <?= $page=='health_coach_roster'?'active':'' ?>">
+            <a href="?page=roster" class="nav-link <?= $page=='roster' || $page=='health_coach_roster'?'active':'' ?>">
                 <i class="fa-solid fa-users-gear icon"></i> Roster
             </a>
         </nav>
@@ -640,7 +640,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <div class="nav-group">
         <span class="nav-label">Accounting & Reports</span>
         <nav class="nav-menu">
-            <a href="?page=finance_dashboard" class="nav-link <?= in_array($page, ['finance_dashboard', 'accounting_dashboard', 'billing_dashboard'])?'active':'' ?>">
+            <a href="?page=finance_dashboard" class="nav-link <?= in_array($page, ['finance_dashboard', 'accounting_dashboard', 'billing_dashboard', 'pos_transactions', 'shop_orders'])?'active':'' ?>">
                 <i class="fa-solid fa-chart-pie icon"></i> Finance Dashboard
             </a>
             <a href="?page=financial_reports" class="nav-link <?= in_array($page, ['reports', 'schedules', 'financial_reports'])?'active':'' ?>">
@@ -672,12 +672,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=pos_schedule" class="nav-link <?= $page=='pos_schedule'?'active':'' ?>">
                 <i class="fa-solid fa-calendar-alt icon"></i> My Schedule
-            </a>
-            <a href="?page=shop_orders" class="nav-link <?= $page=='shop_orders'?'active':'' ?>">
-                <i class="fa-solid fa-shopping-bag icon"></i> Shop Orders
-            </a>
-            <a href="?page=pos_transactions" class="nav-link <?= $page=='pos_transactions'?'active':'' ?>">
-                <i class="fa-solid fa-receipt icon"></i> POS Transactions
             </a>
         </nav>
     </div>
