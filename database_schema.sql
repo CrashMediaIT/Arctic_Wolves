@@ -2508,7 +2508,7 @@ CREATE TABLE IF NOT EXISTS `employee_onboarding` (
     `last_name` VARCHAR(100) NOT NULL,
     `email` VARCHAR(255) NOT NULL,
     `phone` VARCHAR(20) DEFAULT NULL,
-    `role` ENUM('coach', 'health_coach', 'admin', 'team_coach') NOT NULL,
+    `role` ENUM('coach', 'health_coach', 'admin', 'team_coach', 'front_desk_staff') NOT NULL,
     `start_date` DATE NOT NULL,
     `employee_type` ENUM('full_time', 'part_time', 'contract', 'seasonal') DEFAULT 'part_time',
     `employment_status` VARCHAR(50) DEFAULT 'new',

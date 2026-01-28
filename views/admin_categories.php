@@ -887,6 +887,16 @@ document.addEventListener('DOMContentLoaded', function() {
             window.history.replaceState({}, '', url);
         });
     });
+    
+    // Handle add buttons to open modals
+    document.querySelectorAll('[data-action="add"][data-modal]').forEach(button => {
+        button.addEventListener('click', function() {
+            const modalId = this.getAttribute('data-modal');
+            if (modalId) {
+                openModal(modalId);
+            }
+        });
+    });
 });
 
 // Show notification helper
