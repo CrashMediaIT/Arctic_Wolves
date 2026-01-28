@@ -1509,6 +1509,88 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     </div>
 </div>
 
+<!-- Add Merchandise Product Modal -->
+<div id="add-merchandise-product-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-tshirt"></i> Add Merchandise Product</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-merchandise-product-modal')">&times;</button>
+        </div>
+        <form action="process_merchandise_products.php" method="POST" enctype="multipart/form-data">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="create">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Product Name *</label>
+                        <input type="text" name="name" class="form-input" required placeholder="e.g., Team Jersey">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select name="category_id" class="form-input">
+                            <option value="">-- No Category --</option>
+                            <?php foreach ($merchCategories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Price *</label>
+                        <input type="number" name="price" class="form-input" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SKU (Optional)</label>
+                        <input type="text" name="sku" class="form-input" placeholder="PROD-001">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Product description..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Stock Quantity</label>
+                        <input type="number" name="stock_quantity" class="form-input" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="is_active" class="form-input">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Image</label>
+                    <input type="file" name="image" class="form-input" accept="image/*">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-merchandise-product-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Add Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Merchandise Product Modal -->
+<div id="edit-merchandise-product-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Merchandise Product</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-merchandise-product-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-dim); text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>
+                Loading product details...
+            </p>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
