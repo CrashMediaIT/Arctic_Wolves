@@ -43,9 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
 // Fetch orders
 $statusFilter = $_GET['status'] ?? '';
 $searchQuery = trim($_GET['search'] ?? '');
-$page = max(1, intval($_GET['page'] ?? 1));
+$currentPage = max(1, intval($_GET['pg'] ?? 1));
 $perPage = 20;
-$offset = ($page - 1) * $perPage;
+$offset = ($currentPage - 1) * $perPage;
 
 $where = ["1=1"];
 $params = [];
@@ -147,6 +147,27 @@ $in_finance_dashboard = (isset($tab) && in_array($tab, ['pos_transactions', 'sho
     font-size: 14px;
     color: var(--text-dim);
     margin: 0;
+}
+.shop-page-header .page-header-stats {
+    display: flex;
+    gap: 24px;
+}
+.shop-page-header .header-stat {
+    text-align: center;
+}
+.shop-page-header .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-white);
+}
+.shop-page-header .stat-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
 }
 </style>
 
@@ -329,20 +350,20 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
             
             <?php if ($totalPages > 1): ?>
                 <div class="pagination" style="display: flex; justify-content: center; gap: 8px; margin-top: 20px;">
-                    <?php if ($page > 1): ?>
-                        <a href="?page=shop_orders&<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" class="page-link" style="padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: #fff; text-decoration: none;">
+                    <?php if ($currentPage > 1): ?>
+                        <a href="<?= $baseUrl ?>&<?= http_build_query(array_merge($_GET, ['pg' => $currentPage - 1])) ?>" class="page-link" style="padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: #fff; text-decoration: none;">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     <?php endif; ?>
                     
-                    <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
-                        <a href="?page=shop_orders&<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" class="page-link <?= $i === $page ? 'active' : '' ?>" style="padding: 8px 14px; background: <?= $i === $page ? 'var(--primary)' : 'var(--bg)' ?>; border: 1px solid <?= $i === $page ? 'var(--primary)' : 'var(--border)' ?>; border-radius: 6px; color: #fff; text-decoration: none;">
+                    <?php for ($i = max(1, $currentPage - 2); $i <= min($totalPages, $currentPage + 2); $i++): ?>
+                        <a href="<?= $baseUrl ?>&<?= http_build_query(array_merge($_GET, ['pg' => $i])) ?>" class="page-link <?= $i === $currentPage ? 'active' : '' ?>" style="padding: 8px 14px; background: <?= $i === $currentPage ? 'var(--primary)' : 'var(--bg)' ?>; border: 1px solid <?= $i === $currentPage ? 'var(--primary)' : 'var(--border)' ?>; border-radius: 6px; color: #fff; text-decoration: none;">
                             <?= $i ?>
                         </a>
                     <?php endfor; ?>
                     
-                    <?php if ($page < $totalPages): ?>
-                        <a href="?page=shop_orders&<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" class="page-link" style="padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: #fff; text-decoration: none;">
+                    <?php if ($currentPage < $totalPages): ?>
+                        <a href="<?= $baseUrl ?>&<?= http_build_query(array_merge($_GET, ['pg' => $currentPage + 1])) ?>" class="page-link" style="padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: #fff; text-decoration: none;">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     <?php endif; ?>

@@ -66,7 +66,7 @@ $tab = $_GET['tab'] ?? 'overview';
         </div>
         <div class="page-header-text">
             <h1 class="page-title">Finance Dashboard</h1>
-            <p class="page-description">Financial overview, billing, transactions and payment management</p>
+            <p class="page-description">Financial overview, billing, transactions, and payment management</p>
         </div>
     </div>
 </div>
