@@ -151,11 +151,97 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;">&times;</button>
 </div>
 <?php endif; ?>
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-box-open"></i> Products & Pricing
-    </h1>
-    <p class="page-description">Manage training sessions, packages, and discount codes</p>
+
+<style>
+/* Products Page Header - Financial Reports Hub Style */
+.products-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.products-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.products-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), #5a0080);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+.products-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.products-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+.products-page-header .page-header-stats {
+    display: flex;
+    gap: 20px;
+}
+.products-page-header .header-stat {
+    text-align: center;
+    padding: 12px 20px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 90px;
+}
+.products-page-header .header-stat .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-white);
+}
+.products-page-header .header-stat .stat-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+</style>
+
+<div class="products-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-box-open"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Products & Pricing</h1>
+            <p class="page-description">Manage training sessions, packages, and discount codes</p>
+        </div>
+    </div>
+    <div class="page-header-stats">
+        <div class="header-stat">
+            <span class="stat-value"><?= $sessionCount ?></span>
+            <span class="stat-label">Sessions</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value"><?= $packageCount ?></span>
+            <span class="stat-label">Packages</span>
+        </div>
+        <div class="header-stat">
+            <span class="stat-value"><?= $discountCount ?></span>
+            <span class="stat-label">Discounts</span>
+        </div>
+    </div>
 </div>
 
 <div class="products-content">

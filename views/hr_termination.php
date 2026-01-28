@@ -54,11 +54,58 @@ $employees_stmt = $pdo->query($employeesQuery);
 $employees = $employees_stmt->fetchAll();
 ?>
 <!-- HR Termination View -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-user-times"></i> Staff Termination Management
-    </h1>
-    <p class="page-description">Process staff termination and offboarding procedures. Track all terminations for administration review.</p>
+<style>
+/* Termination Page Header - Financial Reports Hub Style */
+.termination-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.termination-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.termination-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+}
+.termination-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.termination-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+</style>
+
+<div class="termination-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-user-times"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Staff Termination Management</h1>
+            <p class="page-description">Process staff termination and offboarding procedures. Track all terminations for administration review.</p>
+        </div>
+    </div>
 </div>
 
 <div class="termination-content">

@@ -267,19 +267,82 @@ $sessions = $sessions_stmt->fetchAll();
     .btn-filter i {
         margin-right: 6px;
     }
+    
+    /* Page Header - Financial Reports Hub Style */
+    .refunds-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    .refunds-page-header .page-header-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .refunds-page-header .page-header-icon {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, var(--primary), #5a0080);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+    }
+    .refunds-page-header .page-title {
+        font-size: 28px;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+        color: #fff;
+    }
+    .refunds-page-header .page-description {
+        font-size: 14px;
+        color: var(--text-dim);
+        margin: 0;
+    }
+    
+    /* Tabs - Financial Reports Hub Style */
+    .refunds-tabs { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
+    .refunds-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .refunds-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
+    .refunds-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
+    .refunds-tab i { font-size: 16px; }
+    
+    /* Tab Content Container */
+    .refunds-tab-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 24px; }
 </style>
 
 <div class="dash-content refunds-container">
-    <div class="dash-header">
-        <h2><i class="fas fa-undo"></i> Refund Management</h2>
-        <p style="color: rgba(255, 255, 255, 0.6);">Process refunds and view refund history</p>
+    <div class="refunds-page-header">
+        <div class="page-header-content">
+            <div class="page-header-icon">
+                <i class="fas fa-undo"></i>
+            </div>
+            <div class="page-header-text">
+                <h1 class="page-title">Credits & Refunds</h1>
+                <p class="page-description">Process refunds and view refund history</p>
+            </div>
+        </div>
     </div>
     
-    <div class="tabs">
-        <button class="tab active" onclick="switchTab('bookings')">Search Bookings</button>
-        <button class="tab" onclick="switchTab('history')">Refund History</button>
+    <div class="refunds-tabs">
+        <button class="refunds-tab active" onclick="switchRefundTab('bookings')">
+            <i class="fas fa-search"></i> Search Bookings
+        </button>
+        <button class="refunds-tab" onclick="switchRefundTab('history')">
+            <i class="fas fa-history"></i> Refund History
+        </button>
     </div>
     
+    <div class="refunds-tab-content">
     <!-- Search Bookings Tab -->
     <div id="bookingsTab" class="tab-content active">
         <div class="search-card">
@@ -384,6 +447,7 @@ $sessions = $sessions_stmt->fetchAll();
         <div id="historyResults" style="overflow-x: auto;"></div>
     </div>
 </div>
+</div> <!-- Close refunds-tab-content -->
 
 <!-- Refund Modal -->
 <div id="refundModal" class="modal">
@@ -491,18 +555,24 @@ const RefundSystem = {
     }
 };
 
-function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+// New tab switching function for the updated design
+function switchRefundTab(tab) {
+    document.querySelectorAll('.refunds-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
     
     if (tab === 'bookings') {
-        document.querySelector('.tab:nth-child(1)').classList.add('active');
+        document.querySelector('.refunds-tab:nth-child(1)').classList.add('active');
         document.getElementById('bookingsTab').classList.add('active');
     } else {
-        document.querySelector('.tab:nth-child(2)').classList.add('active');
+        document.querySelector('.refunds-tab:nth-child(2)').classList.add('active');
         document.getElementById('historyTab').classList.add('active');
         loadRefundHistory();
     }
+}
+
+// Legacy function for backward compatibility
+function switchTab(tab) {
+    switchRefundTab(tab);
 }
 
 async function searchBookings() {
