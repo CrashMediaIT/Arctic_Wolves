@@ -107,18 +107,35 @@ try {
 try {
     $merchProductsStmt = $pdo->query("
         SELECT mp.*, mc.name as category_name,
-               (SELECT SUM(mps.quantity) FROM merchandise_product_sizes mps WHERE mps.product_id = mp.id) as total_quantity
+               COALESCE((SELECT SUM(mps.quantity) FROM merchandise_product_sizes mps WHERE mps.product_id = mp.id), 0) as total_quantity
         FROM merchandise_products mp 
         LEFT JOIN merchandise_categories mc ON mp.category_id = mc.id 
         ORDER BY mp.name
     ");
     $merchProducts = $merchProductsStmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Fetch sizes for each product
-    $sizesStmt = $pdo->prepare("SELECT * FROM merchandise_product_sizes WHERE product_id = ? ORDER BY id ASC");
-    foreach ($merchProducts as &$product) {
-        $sizesStmt->execute([$product['id']]);
-        $product['sizes'] = $sizesStmt->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch all sizes in a single query to avoid N+1 problem
+    $productIds = array_column($merchProducts, 'id');
+    if (!empty($productIds)) {
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $sizesStmt = $pdo->prepare("SELECT * FROM merchandise_product_sizes WHERE product_id IN ($placeholders) ORDER BY product_id, id ASC");
+        $sizesStmt->execute($productIds);
+        $allSizes = $sizesStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Group sizes by product_id
+        $sizesByProduct = [];
+        foreach ($allSizes as $size) {
+            $sizesByProduct[$size['product_id']][] = $size;
+        }
+        
+        // Assign sizes to products
+        foreach ($merchProducts as &$product) {
+            $product['sizes'] = $sizesByProduct[$product['id']] ?? [];
+        }
+    } else {
+        foreach ($merchProducts as &$product) {
+            $product['sizes'] = [];
+        }
     }
 } catch (PDOException $e) {
     error_log("Merchandise products fetch error: " . $e->getMessage());
@@ -954,8 +971,28 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     margin-bottom: 0;
 }
 
+.size-stock-row .size-input {
+    flex: 1;
+    min-width: 150px;
+}
+
+.size-stock-row .qty-input {
+    width: 100px;
+}
+
 .size-stock-row .remove-size-btn {
     flex-shrink: 0;
+}
+
+.add-size-btn {
+    margin-top: 8px;
+}
+
+.form-help {
+    display: block;
+    margin-top: 8px;
+    color: var(--text-dim);
+    font-size: 12px;
 }
 
 /* Size badges display in table */
@@ -1555,18 +1592,18 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                 
                 <!-- Size/Stock Options -->
                 <div class="form-group">
-                    <label class="form-label">Size & Stock Options</label>
-                    <div class="size-stock-container" id="add-merch-sizes-container">
+                    <label class="form-label" id="size-stock-label">Size & Stock Options</label>
+                    <div class="size-stock-container" id="add-merch-sizes-container" aria-labelledby="size-stock-label">
                         <div class="size-stock-row">
-                            <input type="text" name="sizes[]" class="form-input" placeholder="Size (e.g., S, M, L, XL)" style="flex: 1;">
-                            <input type="number" name="quantities[]" class="form-input" min="0" value="0" placeholder="Qty" style="width: 100px;">
-                            <button type="button" class="btn-action danger remove-size-btn" onclick="this.closest('.size-stock-row').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+                            <input type="text" name="sizes[]" class="form-input size-input" placeholder="Size (e.g., S, M, L, XL)" aria-label="Size name">
+                            <input type="number" name="quantities[]" class="form-input qty-input" min="0" value="0" placeholder="Qty" aria-label="Quantity">
+                            <button type="button" class="btn-action danger remove-size-btn" onclick="removeSizeRow(this)" title="Remove size" aria-label="Remove this size"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="addMerchSizeRow('add-merch-sizes-container')" style="margin-top: 8px;">
+                    <button type="button" class="btn btn-secondary btn-sm add-size-btn" onclick="addMerchSizeRow('add-merch-sizes-container')">
                         <i class="fas fa-plus"></i> Add Size
                     </button>
-                    <small style="display: block; margin-top: 8px; color: var(--text-dim);">Add different sizes with their stock quantities. Leave empty for products without sizes.</small>
+                    <small class="form-help">Add different sizes with their stock quantities. Leave empty for products without sizes.</small>
                 </div>
                 
                 <div class="form-row">
@@ -1879,6 +1916,15 @@ function closeModal(modalId) {
         modal.classList.remove('active');
         var form = modal.querySelector('form');
         if (form) form.reset();
+        // Reset size rows to single empty row
+        var sizesContainer = modal.querySelector('.size-stock-container');
+        if (sizesContainer) {
+            sizesContainer.innerHTML = '<div class="size-stock-row">' +
+                '<input type="text" name="sizes[]" class="form-input size-input" placeholder="Size (e.g., S, M, L, XL)" aria-label="Size name">' +
+                '<input type="number" name="quantities[]" class="form-input qty-input" min="0" value="0" placeholder="Qty" aria-label="Quantity">' +
+                '<button type="button" class="btn-action danger remove-size-btn" onclick="removeSizeRow(this)" title="Remove size" aria-label="Remove this size"><i class="fas fa-trash"></i></button>' +
+            '</div>';
+        }
     }
 }
 
@@ -1887,10 +1933,42 @@ function addMerchSizeRow(containerId) {
     var container = document.getElementById(containerId);
     var newRow = document.createElement('div');
     newRow.className = 'size-stock-row';
-    newRow.innerHTML = '<input type="text" name="sizes[]" class="form-input" placeholder="Size (e.g., S, M, L, XL)" style="flex: 1;">' +
-        '<input type="number" name="quantities[]" class="form-input" min="0" value="0" placeholder="Qty" style="width: 100px;">' +
-        '<button type="button" class="btn-action danger remove-size-btn" onclick="this.closest(\'.size-stock-row\').remove()" title="Remove"><i class="fas fa-trash"></i></button>';
+    
+    var sizeInput = document.createElement('input');
+    sizeInput.type = 'text';
+    sizeInput.name = 'sizes[]';
+    sizeInput.className = 'form-input size-input';
+    sizeInput.placeholder = 'Size (e.g., S, M, L, XL)';
+    sizeInput.setAttribute('aria-label', 'Size name');
+    
+    var qtyInput = document.createElement('input');
+    qtyInput.type = 'number';
+    qtyInput.name = 'quantities[]';
+    qtyInput.className = 'form-input qty-input';
+    qtyInput.min = '0';
+    qtyInput.value = '0';
+    qtyInput.placeholder = 'Qty';
+    qtyInput.setAttribute('aria-label', 'Quantity');
+    
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-action danger remove-size-btn';
+    removeBtn.title = 'Remove size';
+    removeBtn.setAttribute('aria-label', 'Remove this size');
+    removeBtn.onclick = function() { removeSizeRow(this); };
+    removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    
+    newRow.appendChild(sizeInput);
+    newRow.appendChild(qtyInput);
+    newRow.appendChild(removeBtn);
     container.appendChild(newRow);
+}
+
+function removeSizeRow(btn) {
+    var row = btn.closest('.size-stock-row');
+    if (row) {
+        row.remove();
+    }
 }
 
 // Session date management
