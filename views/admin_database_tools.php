@@ -46,14 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token'])) {
         
         // Log the action
         $stmt = $pdo->prepare("
-            INSERT INTO database_maintenance_logs (run_by, action_type, details, status)
+            INSERT INTO database_maintenance_logs (performed_by, maintenance_type, description, status)
             VALUES (?, ?, ?, ?)
         ");
         $stmt->execute([
             $user_id,
             $maintenance_action,
             json_encode($results),
-            $results['status'] ?? 'success'
+            $results['status'] ?? 'completed'
         ]);
         
         $action_performed = true;
@@ -68,10 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token'])) {
 
 // Get recent maintenance logs
 $logs_stmt = $pdo->prepare("
-    SELECT dml.*, CONCAT(u.first_name, ' ', u.last_name) as run_by_name
+    SELECT dml.*, CONCAT(u.first_name, ' ', u.last_name) as performed_by_name
     FROM database_maintenance_logs dml
-    INNER JOIN users u ON dml.run_by = u.id
-    ORDER BY dml.created_at DESC
+    LEFT JOIN users u ON dml.performed_by = u.id
+    ORDER BY dml.start_time DESC
     LIMIT 20
 ");
 $logs_stmt->execute();
