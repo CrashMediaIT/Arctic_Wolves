@@ -784,8 +784,49 @@ function toggleSubmenu(element) {
     }
 }
 
-// Persist submenu state on page load based on active page
+// Persist sidebar scroll position across page loads
 document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Restore scroll position from sessionStorage
+    const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
+    if (savedScrollPos && sidebar) {
+        sidebar.scrollTop = parseInt(savedScrollPos, 10);
+    }
+    
+    // Also scroll to active nav link if it's not visible
+    const activeLink = sidebar?.querySelector('.nav-link.active');
+    if (activeLink && sidebar) {
+        // Check if active link is in view
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const linkRect = activeLink.getBoundingClientRect();
+        
+        // If active link is not visible, scroll to it (but keep some context)
+        if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
+            // Only scroll if we didn't have a saved position
+            if (!savedScrollPos) {
+                activeLink.scrollIntoView({ block: 'center', behavior: 'instant' });
+            }
+        }
+    }
+    
+    // Save scroll position before page unload
+    window.addEventListener('beforeunload', function() {
+        if (sidebar) {
+            sessionStorage.setItem('sidebarScrollPos', sidebar.scrollTop);
+        }
+    });
+    
+    // Also save on nav link click (backup)
+    const navLinks = document.querySelectorAll('.sidebar .nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (sidebar) {
+                sessionStorage.setItem('sidebarScrollPos', sidebar.scrollTop);
+            }
+        });
+    });
+    
     // Find all active nav links in submenus
     const activeSubLinks = document.querySelectorAll('.nav-submenu .nav-link.active');
     activeSubLinks.forEach(link => {

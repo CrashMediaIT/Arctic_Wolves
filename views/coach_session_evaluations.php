@@ -1,70 +1,9 @@
 <!-- Coach Session Evaluations View -->
 <!-- Shows list and calendar view of sessions with evaluations assigned -->
 
-<style>
-/* Session Evaluations Page Header - Financial Reports Hub Style */
-.eval-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.eval-page-header .page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.eval-page-header .page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), #5a0080);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-.eval-page-header .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-.eval-page-header .page-description {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
-}
-
-/* View Toggle - Financial Reports Hub Style */
-.session-evals-tabs-wrapper { display: flex; align-items: stretch; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
-.session-evals-tabs-inner { display: flex; flex: 1; gap: 0; }
-.session-evals-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
-.session-evals-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
-.session-evals-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
-.session-evals-tab i { font-size: 16px; }
-.session-evals-action { display: flex; align-items: center; padding: 12px 16px; border-left: 1px solid var(--border); }
-
-/* Tab Content Container */
-.session-evals-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 24px; }
-</style>
-
-<div class="eval-page-header">
-    <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-clipboard-check"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Session Evaluations</h1>
-            <p class="page-description">View and manage evaluations assigned to sessions</p>
-        </div>
-    </div>
+<div class="page-header">
+    <h1 class="page-title"><i class="fas fa-clipboard-check"></i> Session Evaluations</h1>
+    <p class="page-description">View and manage evaluations assigned to sessions</p>
 </div>
 
 <?php
@@ -109,38 +48,38 @@ $activeView = $_GET['view'] ?? 'list';
 <?php endif; ?>
 
 <!-- Tabs Navigation -->
-<div class="session-evals-tabs-wrapper">
-    <div class="session-evals-tabs-inner">
-        <button class="session-evals-tab <?= $activeView === 'list' ? 'active' : '' ?>" data-view="list" onclick="switchEvalView('list')">
+<div class="page-tabs-wrapper">
+    <div class="page-tabs">
+        <button type="button" class="page-tab <?= $activeView === 'list' ? 'active' : '' ?>" data-view="list" onclick="switchEvalView('list')">
             <i class="fas fa-list"></i> List View
         </button>
-        <button class="session-evals-tab <?= $activeView === 'calendar' ? 'active' : '' ?>" data-view="calendar" onclick="switchEvalView('calendar')">
+        <button type="button" class="page-tab <?= $activeView === 'calendar' ? 'active' : '' ?>" data-view="calendar" onclick="switchEvalView('calendar')">
             <i class="fas fa-calendar-alt"></i> Calendar View
         </button>
     </div>
     <?php if ($user_role === 'admin' || $user_role === 'coach_plus'): ?>
-    <div class="session-evals-action">
-        <button class="btn btn-primary" onclick="openAssignModal()">
+    <div class="page-tabs-action">
+        <button type="button" class="btn btn-primary" onclick="openAssignModal()">
             <i class="fas fa-plus"></i> Assign Evaluation to Session
         </button>
     </div>
     <?php endif; ?>
 </div>
 
-<div class="session-evals-content">
+<div class="page-tab-content">
     <!-- List View -->
     <div id="list-view" class="view-container <?= $activeView === 'list' ? 'active' : '' ?>">
         <?php if (empty($sessions)): ?>
-            <div class="placeholder-container">
-                <i class="fas fa-clipboard-list placeholder-icon"></i>
-                <h3>No Session Evaluations Found</h3>
-                <p class="placeholder-text">No evaluations have been assigned to sessions yet. Click "Assign Evaluation to Session" to get started.</p>
+            <div class="empty-state-card">
+                <i class="fas fa-clipboard-list"></i>
+                <h4>No Session Evaluations Found</h4>
+                <p>No evaluations have been assigned to sessions yet. Click "Assign Evaluation to Session" to get started.</p>
             </div>
         <?php else: ?>
-            <div class="content-card">
+            <div class="card">
                 <div class="card-header">
                     <h3><i class="fas fa-list"></i> Sessions with Evaluations</h3>
-                    <span class="badge"><?= count($sessions) ?> sessions</span>
+                    <span class="badge badge-primary"><?= count($sessions) ?> sessions</span>
                 </div>
                 <div class="card-body">
                     <div class="sessions-list">
