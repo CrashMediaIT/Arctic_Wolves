@@ -1052,7 +1052,7 @@ input:checked + .toggle-slider:before {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add New User</h2>
-            <button class="modal-close" onclick="closeModal('add-user-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-user-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php" enctype="multipart/form-data">
             <?php echo csrfTokenInput(); ?>
@@ -1163,7 +1163,7 @@ document.getElementById('add-user-role').addEventListener('change', function() {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit User</h2>
-            <button class="modal-close" onclick="closeModal('edit-user-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-user-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -1299,7 +1299,7 @@ document.getElementById('edit-user-role').addEventListener('change', function() 
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
             <h2 class="modal-title">Reset Password</h2>
-            <button class="modal-close" onclick="closeModal('reset-password-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('reset-password-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php" id="reset-password-form">
             <?php echo csrfTokenInput(); ?>
@@ -1391,7 +1391,7 @@ document.getElementById('reset-password-form').addEventListener('submit', functi
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
             <h2 class="modal-title">Manage User - <span class="manage-user-name"></span></h2>
-            <button class="modal-close" onclick="closeModal('manage-user-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('manage-user-modal')">&times;</button>
         </div>
         
         <div class="modal-body">

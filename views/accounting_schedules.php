@@ -631,7 +631,7 @@ exit;
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Schedule</h2>
-            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeEditModal()">&times;</button>
         </div>
         <form method="POST" action="process_reports.php" id="editScheduleForm">
             <?= csrfTokenInput() ?>

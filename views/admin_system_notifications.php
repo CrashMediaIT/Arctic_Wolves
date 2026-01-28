@@ -673,7 +673,7 @@ $csrf_token = generateCsrfToken();
     <div class="modal-content">
         <div class="modal-header">
             <h2 id="modalTitle">Create System Notification</h2>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal()">&times;</button>
         </div>
         <form id="notificationForm" method="POST" action="process_system_notifications.php" onsubmit="submitForm(event)">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">

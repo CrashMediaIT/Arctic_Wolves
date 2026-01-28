@@ -1193,7 +1193,7 @@ if ($eval_id && $evaluation) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Create Skills Evaluation</h2>
-            <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeCreateModal()">&times;</button>
         </div>
         <form id="createForm" method="POST" action="process_evaluations.php" onsubmit="createEvaluation(event)">
             <?= csrfTokenInput() ?>
@@ -1228,7 +1228,7 @@ if ($eval_id && $evaluation) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Share Evaluation</h2>
-            <button class="modal-close" onclick="closeShareModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeShareModal()">&times;</button>
         </div>
         <div id="shareLinkContent"></div>
     </div>

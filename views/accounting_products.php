@@ -871,7 +871,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-calendar-plus"></i> Create Training Session</h2>
-            <button class="modal-close" onclick="closeModal('add-session-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-session-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php" id="add-session-form">
             <?php echo csrfTokenInput(); ?>
@@ -1062,7 +1062,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-box"></i> Create Package</h2>
-            <button class="modal-close" onclick="closeModal('add-package-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-package-modal')">&times;</button>
         </div>
         <form method="POST" action="process_packages.php" id="add-package-form">
             <?php echo csrfTokenInput(); ?>
@@ -1201,7 +1201,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-tags"></i> Create Discount Code</h2>
-            <button class="modal-close" onclick="closeModal('add-discount-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-discount-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php" id="add-discount-form">
             <?php echo csrfTokenInput(); ?>
@@ -1303,7 +1303,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Session</h2>
-            <button class="modal-close" onclick="closeModal('edit-session-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-session-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1319,7 +1319,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Package</h2>
-            <button class="modal-close" onclick="closeModal('edit-package-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-package-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1335,7 +1335,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Discount</h2>
-            <button class="modal-close" onclick="closeModal('edit-discount-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-discount-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1351,7 +1351,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-calendar-alt"></i> Manage Session Dates</h2>
-            <button class="modal-close" onclick="closeModal('manage-dates-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('manage-dates-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1367,7 +1367,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-list-check"></i> Manage Package Sessions</h2>
-            <button class="modal-close" onclick="closeModal('manage-package-sessions-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('manage-package-sessions-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">

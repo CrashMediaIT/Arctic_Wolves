@@ -259,7 +259,7 @@ $session_types = $pdo->query("
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title" id="modalTitle">Add Session Type</h2>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal()">&times;</button>
         </div>
         
         <form method="POST" action="process_admin_action.php" id="typeForm">

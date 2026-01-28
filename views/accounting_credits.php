@@ -343,7 +343,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Issue Credit/Refund</h2>
-            <button class="modal-close" onclick="closeModal('issue-credit-refund-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('issue-credit-refund-modal')">&times;</button>
         </div>
         <form method="POST" action="process_refunds.php">
             <?php echo csrfTokenInput(); ?>

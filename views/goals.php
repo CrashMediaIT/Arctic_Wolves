@@ -976,7 +976,7 @@ sort($all_tags);
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title" id="modalTitle">Create Goal</h2>
-            <button class="modal-close" onclick="closeGoalModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeGoalModal()">&times;</button>
         </div>
         <form id="goalForm" method="POST" action="process_goals.php">
             <?php echo csrfTokenInput(); ?>
@@ -1038,7 +1038,7 @@ sort($all_tags);
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Goal Details</h2>
-            <button class="modal-close" onclick="closeGoalDetailModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeGoalDetailModal()">&times;</button>
         </div>
         <div class="modal-body" id="goalDetailContent">
             <!-- Content loaded via AJAX -->
@@ -1051,7 +1051,7 @@ sort($all_tags);
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Progress Note</h2>
-            <button class="modal-close" onclick="closeProgressNoteModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeProgressNoteModal()">&times;</button>
         </div>
         <form id="progressNoteForm" method="POST" action="process_goals.php">
             <?php echo csrfTokenInput(); ?>

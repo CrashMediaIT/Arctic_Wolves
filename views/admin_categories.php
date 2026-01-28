@@ -612,7 +612,7 @@ if (!in_array($activeTab, $validTabs)) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Skill Category</h2>
-            <button class="modal-close" onclick="closeModal('add-skill-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-skill-modal')">&times;</button>
         </div>
         <form id="add-skill-form" method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -648,7 +648,7 @@ if (!in_array($activeTab, $validTabs)) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Drill Type</h2>
-            <button class="modal-close" onclick="closeModal('add-drill-type-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-drill-type-modal')">&times;</button>
         </div>
         <form id="add-drill-type-form" method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -684,7 +684,7 @@ if (!in_array($activeTab, $validTabs)) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Player Position</h2>
-            <button class="modal-close" onclick="closeModal('add-position-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-position-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -730,7 +730,7 @@ if (!in_array($activeTab, $validTabs)) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Player Position</h2>
-            <button class="modal-close" onclick="closeModal('edit-position-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-position-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -998,7 +998,7 @@ function openModal(modalId) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Skill</h2>
-            <button class="modal-close" onclick="closeModal('edit-skill-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-skill-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -1031,7 +1031,7 @@ function openModal(modalId) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Drill Type</h2>
-            <button class="modal-close" onclick="closeModal('edit-drill-type-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-drill-type-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -1064,7 +1064,7 @@ function openModal(modalId) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Equipment Category</h2>
-            <button class="modal-close" onclick="closeModal('add-equipment-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-equipment-modal')">&times;</button>
         </div>
         <form id="add-equipment-form" method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -1095,7 +1095,7 @@ function openModal(modalId) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Equipment</h2>
-            <button class="modal-close" onclick="closeModal('edit-equipment-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-equipment-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>

@@ -433,6 +433,30 @@ try {
         padding: 25px;
         width: 90%;
         max-width: 400px;
+        position: relative;
+    }
+    
+    .pos-modal-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: none;
+        border: none;
+        color: var(--text);
+        font-size: 24px;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: 0.2s;
+    }
+    
+    .pos-modal-close:hover {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
     }
     
     .pos-size-title {
@@ -684,6 +708,7 @@ try {
 <!-- Size Selection Modal -->
 <div class="pos-size-modal" id="size-modal">
     <div class="pos-size-content">
+        <button class="modal-close pos-modal-close" onclick="closeSizeModal()" aria-label="Close size selection">&times;</button>
         <h3 class="pos-size-title" id="size-modal-title">Select Size</h3>
         <div class="pos-size-options" id="size-options"></div>
         <div class="pos-size-actions">

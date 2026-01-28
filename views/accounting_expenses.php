@@ -360,7 +360,7 @@ if ($expenseStats['last_month'] > 0) {
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-camera"></i> Scan Receipt with OCR</h2>
-            <button class="modal-close" onclick="closeModal('ocr-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('ocr-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <p style="margin-bottom: 20px; color: var(--text-dim);">Upload or capture a receipt image. OCR will automatically extract vendor, date, and amounts.</p>
@@ -415,7 +415,7 @@ if ($expenseStats['last_month'] > 0) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-file-export"></i> Export Expenses</h2>
-            <button class="modal-close" onclick="closeModal('export-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('export-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
@@ -482,7 +482,7 @@ if ($expenseStats['last_month'] > 0) {
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h2 class="modal-title">Edit Expense</h2>
-            <button class="modal-close" onclick="closeModal('edit-expense-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-expense-modal')">&times;</button>
         </div>
         <form method="POST" action="process_expenses.php" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">

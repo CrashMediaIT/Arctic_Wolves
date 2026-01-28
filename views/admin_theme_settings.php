@@ -1170,7 +1170,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
     <div class="modal-content">
         <div class="modal-header">
             <h2 id="modalTitle">Add Training Program</h2>
-            <button class="modal-close" onclick="closeProgramModal()">
+            <button class="modal-close" aria-label="Close modal" onclick="closeProgramModal()">
                 <i class="fas fa-times"></i>
             </button>
         </div>

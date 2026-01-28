@@ -346,7 +346,7 @@ if ($current_program && $current_program['total_workouts'] > 0) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Contact Your Coach</h2>
-            <button class="modal-close" onclick="closeModal('contact-coach-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('contact-coach-modal')">&times;</button>
         </div>
         <form method="POST" action="process_contact.php" id="contact-coach-form">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">

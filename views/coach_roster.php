@@ -221,7 +221,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-user-plus"></i> Add Athlete</h2>
-            <button class="modal-close" onclick="closeModal('add-athlete-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-athlete-modal')">&times;</button>
         </div>
         <form method="POST" action="process_create_athlete.php">
             <?php echo csrfTokenInput(); ?>

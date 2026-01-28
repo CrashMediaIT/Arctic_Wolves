@@ -945,7 +945,7 @@ $provinces = [
     <div class="modal-container">
         <div class="modal-header">
             <h3><i class="fas fa-edit"></i> Edit Payroll Settings</h3>
-            <button class="modal-close" onclick="closeEditPayrollModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeEditPayrollModal()">&times;</button>
         </div>
         <form method="POST" action="process_payroll.php">
             <?= csrfTokenInput() ?>

@@ -695,7 +695,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Drill</h2>
-            <button class="modal-close" onclick="closeModal('edit-drill-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-drill-modal')">&times;</button>
         </div>
         <form method="POST" action="process_drills.php" id="editDrillForm">
             <?php echo csrfTokenInput(); ?>
@@ -748,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-hockey-puck"></i> <span id="viewDrillTitle">Drill Details</span></h2>
-            <button class="modal-close" onclick="closeModal('view-drill-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('view-drill-modal')">&times;</button>
         </div>
         <div class="modal-body">
             <div id="viewDrillContent">

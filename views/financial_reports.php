@@ -594,7 +594,7 @@ foreach ($scheduled_reports as $schedule) {
     <div class="modal">
         <div class="modal-header">
             <h3><i class="fas fa-edit"></i> Edit Schedule</h3>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal()">&times;</button>
         </div>
         <form id="editScheduleForm" method="POST" action="process_reports.php">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">

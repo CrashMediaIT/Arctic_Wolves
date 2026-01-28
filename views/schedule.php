@@ -533,7 +533,7 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Book Session</h2>
-            <button class="modal-close" onclick="closeBookingModal()">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeBookingModal()">&times;</button>
         </div>
         
         <form method="POST" action="process_booking.php" id="bookingForm">

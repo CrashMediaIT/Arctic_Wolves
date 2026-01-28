@@ -253,8 +253,10 @@ function performRestore($pdo, $file_path, $user_id) {
         $missing_tables = [];
         
         foreach ($critical_tables as $table) {
-            $result = $pdo->query("SHOW TABLES LIKE '$table'");
-            if ($result->rowCount() === 0) {
+            // Use prepared statement to prevent SQL injection
+            $stmt = $pdo->prepare("SHOW TABLES LIKE ?");
+            $stmt->execute([$table]);
+            if ($stmt->rowCount() === 0) {
                 $missing_tables[] = $table;
             }
         }

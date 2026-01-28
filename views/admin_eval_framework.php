@@ -680,7 +680,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Evaluation Category</h2>
-            <button class="modal-close" onclick="closeModal('add-eval-category-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-eval-category-modal')">&times;</button>
         </div>
         <form method="POST" action="process_eval_framework.php">
             <?php echo csrfTokenInput(); ?>
@@ -748,7 +748,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Evaluation Scale</h2>
-            <button class="modal-close" onclick="closeModal('add-scale-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-scale-modal')">&times;</button>
         </div>
         <form method="POST" action="process_eval_framework.php">
             <?php echo csrfTokenInput(); ?>
@@ -796,7 +796,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Scale</h2>
-            <button class="modal-close" onclick="closeModal('edit-scale-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-scale-modal')">&times;</button>
         </div>
         <form method="POST" action="process_eval_framework.php">
             <?php echo csrfTokenInput(); ?>
@@ -844,7 +844,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Add Skill/Criteria to Category</h2>
-            <button class="modal-close" onclick="closeModal('add-skill-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-skill-modal')">&times;</button>
         </div>
         <form method="POST" action="process_eval_framework.php">
             <?php echo csrfTokenInput(); ?>
@@ -903,7 +903,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Category</h2>
-            <button class="modal-close" onclick="closeModal('edit-category-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-category-modal')">&times;</button>
         </div>
         <form method="POST" action="process_eval_framework.php">
             <?php echo csrfTokenInput(); ?>
@@ -935,7 +935,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit Skill</h2>
-            <button class="modal-close" onclick="closeModal('edit-skill-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-skill-modal')">&times;</button>
         </div>
         <form method="POST" action="process_eval_framework.php">
             <?php echo csrfTokenInput(); ?>
@@ -968,7 +968,7 @@ try {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Assign Scale</h2>
-            <button class="modal-close" onclick="closeModal('assign-scale-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('assign-scale-modal')">&times;</button>
         </div>
         <form method="POST" action="process_eval_framework.php">
             <?php echo csrfTokenInput(); ?>

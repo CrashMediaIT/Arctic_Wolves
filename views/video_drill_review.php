@@ -517,7 +517,7 @@ if (count($drill_videos) === 0 && count($attended_sessions) === 0) {
     <div class="modal-content video-player-modal">
         <div class="modal-header">
             <h3 id="videoModalTitle"><i class="fas fa-play-circle"></i> Video Player</h3>
-            <button class="modal-close" data-action="close-modal"><i class="fas fa-times"></i></button>
+            <button class="modal-close" aria-label="Close modal" data-action="close-modal"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
             <div class="video-player-container">

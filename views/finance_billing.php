@@ -377,7 +377,7 @@ function getPaymentMethodIcon($method) {
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-file-invoice-dollar"></i> Create Invoice</h2>
-            <button class="modal-close" onclick="closeModal('create-invoice-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('create-invoice-modal')">&times;</button>
         </div>
         <div id="invoice-success-message" class="success-widget" style="display: none;">
             <div class="success-icon"><i class="fas fa-check-circle"></i></div>
@@ -477,7 +477,7 @@ function getPaymentMethodIcon($method) {
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-money-bill-wave"></i> Record Payment</h2>
-            <button class="modal-close" onclick="closeModal('record-payment-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('record-payment-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php" id="recordPaymentForm">
             <?php echo csrfTokenInput(); ?>
