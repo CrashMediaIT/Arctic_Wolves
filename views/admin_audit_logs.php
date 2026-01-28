@@ -458,16 +458,16 @@ $csrf_token = generateCsrfToken();
             <span class="stat-value"><?= number_format($total_logs) ?></span>
             <span class="stat-label">Total Logs</span>
         </div>
-        <div class="header-stat" style="--stat-color: var(--success);">
-            <span class="stat-value" style="color: var(--success);"><?= $insert_count ?></span>
+        <div class="header-stat stat-success">
+            <span class="stat-value"><?= $insert_count ?></span>
             <span class="stat-label">Inserts</span>
         </div>
-        <div class="header-stat" style="--stat-color: var(--info);">
-            <span class="stat-value" style="color: var(--info);"><?= $update_count ?></span>
+        <div class="header-stat stat-info">
+            <span class="stat-value"><?= $update_count ?></span>
             <span class="stat-label">Updates</span>
         </div>
-        <div class="header-stat" style="--stat-color: var(--error);">
-            <span class="stat-value" style="color: var(--error);"><?= $delete_count ?></span>
+        <div class="header-stat stat-error">
+            <span class="stat-value"><?= $delete_count ?></span>
             <span class="stat-label">Deletes</span>
         </div>
     </div>

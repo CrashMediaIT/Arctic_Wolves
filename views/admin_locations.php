@@ -27,36 +27,21 @@ $locations = $pdo->query("
 
 <style>
     /* Locations Page - Component Specific Styles */
-    .btn-secondary {
-        background: transparent;
-        border: 1px solid var(--border);
-        color: #94a3b8;
-        padding: 12px 24px;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s;
-    }
-    .btn-secondary:hover {
-        border-color: var(--primary);
-        color: var(--primary);
-    }
     .locations-table {
         width: 100%;
         border-collapse: collapse;
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
         border-radius: 8px;
         overflow: hidden;
     }
     .locations-table thead {
-        background: #06080b;
+        background: var(--bg-main);
     }
     .locations-table th {
         text-align: left;
         padding: 16px;
-        color: #94a3b8;
+        color: var(--text-dim);
         font-size: 12px;
         text-transform: uppercase;
         font-weight: 700;

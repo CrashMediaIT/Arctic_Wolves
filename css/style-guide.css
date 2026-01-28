@@ -191,6 +191,13 @@ html, body {
     margin-top: 4px;
 }
 
+/* Stat Value Color Variants */
+.header-stat.stat-success .stat-value { color: var(--success); }
+.header-stat.stat-info .stat-value { color: var(--info); }
+.header-stat.stat-error .stat-value { color: var(--error); }
+.header-stat.stat-warning .stat-value { color: var(--warning); }
+.header-stat.stat-primary .stat-value { color: var(--primary-light); }
+
 /* =========================================================
    4. BUTTONS - Primary, Secondary, and Variants
    ========================================================= */
