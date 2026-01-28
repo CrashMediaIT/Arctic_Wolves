@@ -120,9 +120,10 @@ function logEmailAttempt($to, $subject, $type, $status, $errorMsg = null, $data 
     global $pdo;
     try {
         $payload = json_encode($data); // Save data for resending
-        
-        $stmt = $pdo->prepare("INSERT INTO email_logs (recipient, subject, log_data, template_type, status, error_message) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$to, $subject, $payload, $type, $status, $errorMsg]);
+        // Schema uses: to_email, from_email, subject, body, status, error_message, sent_at
+        $from = getEmailConfig()['from_email'] ?? 'noreply@arcticwolves.ca';
+        $stmt = $pdo->prepare("INSERT INTO email_logs (to_email, from_email, subject, body, status, error_message, sent_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$to, $from, $subject, $payload, $status, $errorMsg]);
     } catch (Exception $e) { /* Silent fail if DB issue */ }
 }
 

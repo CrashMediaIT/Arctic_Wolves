@@ -874,12 +874,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const tabName = this.getAttribute('data-tab');
             
             // Remove active from all tab buttons and contents
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.page-tab').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
             // Add active to clicked button and corresponding content
             this.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Update URL without page reload (for bookmarking)
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            window.history.replaceState({}, '', url);
         });
     });
 });
