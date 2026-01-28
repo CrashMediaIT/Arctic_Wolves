@@ -21,11 +21,11 @@ $sessions_query = "
     FROM sessions s
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN users u ON s.coach_id = u.id
-    WHERE DATE(s.session_date) = ? OR DATE(s.date) = ?
+    WHERE DATE(s.session_date) = ?
     ORDER BY s.start_time ASC
 ";
 $sessions_stmt = $pdo->prepare($sessions_query);
-$sessions_stmt->execute([$today, $today]);
+$sessions_stmt->execute([$today]);
 $todays_sessions = $sessions_stmt->fetchAll();
 
 // Get all active sessions for selection (last 7 days)
@@ -33,9 +33,9 @@ $recent_sessions_query = "
     SELECT s.*, st.name as session_type_name
     FROM sessions s
     LEFT JOIN session_types st ON s.session_type_id = st.id
-    WHERE (s.session_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) OR s.date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY))
+    WHERE s.session_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
     AND s.status IN ('scheduled', 'completed', 'in_progress')
-    ORDER BY s.session_date DESC, s.date DESC
+    ORDER BY s.session_date DESC
 ";
 $recent_sessions = $pdo->query($recent_sessions_query)->fetchAll();
 

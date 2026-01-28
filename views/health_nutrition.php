@@ -218,14 +218,31 @@ $is_demo_nutrition = false;
         <div class="card-body">
             <div class="meal-history-list">
                 <?php
-                // Demo meal plan history data
-                $meal_history = [
-                    ['date' => date('Y-m-d', strtotime('-1 day')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2350, 'target_calories' => 2500, 'meals_completed' => 5, 'total_meals' => 5],
-                    ['date' => date('Y-m-d', strtotime('-2 days')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2420, 'target_calories' => 2500, 'meals_completed' => 5, 'total_meals' => 5],
-                    ['date' => date('Y-m-d', strtotime('-3 days')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2180, 'target_calories' => 2500, 'meals_completed' => 4, 'total_meals' => 5],
-                    ['date' => date('Y-m-d', strtotime('-4 days')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2510, 'target_calories' => 2500, 'meals_completed' => 5, 'total_meals' => 5],
-                    ['date' => date('Y-m-d', strtotime('-5 days')), 'plan_name' => 'Hockey Performance Plan', 'calories_logged' => 2290, 'target_calories' => 2500, 'meals_completed' => 4, 'total_meals' => 5],
-                ];
+                // Fetch real meal plan history from database
+                $meal_history = [];
+                try {
+                    $meal_history_query = "
+                        SELECT 
+                            DATE(ml.logged_at) as date,
+                            np.name as plan_name,
+                            SUM(ml.calories) as calories_logged,
+                            np.target_calories,
+                            COUNT(DISTINCT ml.id) as meals_completed,
+                            (SELECT COUNT(*) FROM nutrition_plan_meals WHERE nutrition_plan_id = np.id) as total_meals
+                        FROM meal_logs ml
+                        INNER JOIN nutrition_plans np ON ml.nutrition_plan_id = np.id
+                        WHERE np.user_id = ?
+                        GROUP BY DATE(ml.logged_at), np.id
+                        ORDER BY ml.logged_at DESC
+                        LIMIT 10
+                    ";
+                    $meal_history_stmt = $pdo->prepare($meal_history_query);
+                    $meal_history_stmt->execute([$user_id]);
+                    $meal_history = $meal_history_stmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (PDOException $e) {
+                    error_log("Error fetching meal history: " . $e->getMessage());
+                    $meal_history = [];
+                }
                 
                 if (count($meal_history) > 0):
                     foreach ($meal_history as $history):

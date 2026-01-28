@@ -259,12 +259,61 @@ try {
             header('Location: dashboard.php?page=admin_theme_settings&tab=colors&success=1&reset=1');
             exit;
             
+        case 'update_theme':
+            // Handle theme update from system_tools theme tab
+            // Process colors
+            $colors = [
+                'primary_color' => $_POST['primary_color'] ?? null,
+                'accent_color' => $_POST['accent_color'] ?? null,
+                'background_color' => $_POST['bg_color'] ?? null
+            ];
+            
+            foreach ($colors as $name => $value) {
+                if ($value !== null && preg_match('/^#[a-fA-F0-9]{6}$/', $value)) {
+                    updateThemeSetting($pdo, $name, $value);
+                }
+            }
+            
+            // Handle logo upload
+            if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['logo'], 'logo');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'logo_url', $result['url']);
+                    updateThemeSetting($pdo, 'logo_method', 'upload');
+                }
+            } elseif (!empty($_POST['logo_url'])) {
+                updateThemeSetting($pdo, 'logo_url', $_POST['logo_url']);
+                updateThemeSetting($pdo, 'logo_method', 'url');
+            }
+            
+            // Save logo method preference
+            if (isset($_POST['logo_method'])) {
+                updateThemeSetting($pdo, 'logo_method', $_POST['logo_method']);
+            }
+            
+            // Save favicon preference
+            if (isset($_POST['use_logo_as_favicon'])) {
+                updateThemeSetting($pdo, 'use_logo_as_favicon', '1');
+            } else {
+                updateThemeSetting($pdo, 'use_logo_as_favicon', '0');
+            }
+            
+            // Redirect back to system_tools theme tab
+            header('Location: dashboard.php?page=system_tools&tab=theme&success=1');
+            exit;
+            
         default:
             throw new Exception('Invalid action');
     }
     
 } catch (Exception $e) {
     error_log("Theme settings error: " . $e->getMessage());
-    header('Location: dashboard.php?page=admin_theme_settings&error=' . urlencode($e->getMessage()));
+    // Check if redirect_page was set to determine where to redirect on error
+    $redirect_page = $_POST['redirect_page'] ?? 'admin_theme_settings';
+    if ($redirect_page === 'system_tools') {
+        header('Location: dashboard.php?page=system_tools&tab=theme&error=' . urlencode($e->getMessage()));
+    } else {
+        header('Location: dashboard.php?page=admin_theme_settings&error=' . urlencode($e->getMessage()));
+    }
     exit;
 }
