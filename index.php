@@ -2,6 +2,20 @@
 // Check if database is configured and connected
 require_once __DIR__ . '/db_config.php';
 
+// Detect POS subdomain (pos.arcticwolves.ca)
+// Strict validation: must end with arcticwolves.ca
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$isPosSubdomain = (
+    strpos($host, 'pos.') === 0 && 
+    (preg_match('/^pos\.arcticwolves\.ca$/i', $host) || preg_match('/^pos\..*\.arcticwolves\.ca$/i', $host))
+);
+
+// If on POS subdomain, redirect to POS kiosk
+if ($isPosSubdomain) {
+    header("Location: pos_kiosk.php");
+    exit();
+}
+
 // If database is not connected, check if setup is needed
 if (!isset($db_connected) || !$db_connected) {
     // Check if setup has been completed

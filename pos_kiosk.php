@@ -2,11 +2,25 @@
 /**
  * POS Kiosk Mode
  * Front desk staff login with PIN and integrated time tracking
+ * Supports pos.arcticwolves.ca subdomain for dedicated POS-only access
  */
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
+
+// Detect POS subdomain (pos.arcticwolves.ca)
+// Strict validation: must end with arcticwolves.ca
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$isPosSubdomain = (
+    strpos($host, 'pos.') === 0 && 
+    (preg_match('/^pos\.arcticwolves\.ca$/i', $host) || preg_match('/^pos\..*\.arcticwolves\.ca$/i', $host))
+);
+
+// Store subdomain mode in session for persistent kiosk-only access
+if ($isPosSubdomain) {
+    $_SESSION['pos_subdomain'] = true;
+}
 
 // Generate CSRF token
 CSRFProtection::generateToken();
@@ -79,7 +93,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         $_SESSION['shift_id'] = $activeShift['id'];
                     }
                     
-                    header("Location: dashboard.php?page=pos_terminal");
+                    // Redirect to kiosk dashboard if on POS subdomain, otherwise regular dashboard
+                    if (isset($_SESSION['pos_subdomain']) && $_SESSION['pos_subdomain']) {
+                        header("Location: dashboard_kiosk.php");
+                    } else {
+                        header("Location: dashboard.php?page=pos_terminal");
+                    }
                     exit();
                 } else {
                     $error = "Invalid PIN. Please try again.";
@@ -324,9 +343,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             </form>
         </div>
         
+        <?php if (!$isPosSubdomain): ?>
         <div class="admin-link">
             Admin access? <a href="login.php">Login with email</a>
         </div>
+        <?php endif; ?>
     </div>
     
     <script>
