@@ -76,6 +76,8 @@ $allowed_pages = [
     'team_roster'             => 'views/team_roster.php',
     
     // Coaches Corner - Parent pages with tabs
+    'coach_calendar'          => 'views/coach_calendar.php',
+    
     'drills'                  => 'views/drills.php',
     'drill_library'           => 'views/drills.php',
     'create_drill'            => 'views/drills.php',
@@ -593,6 +595,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <div class="nav-group">
         <span class="nav-label">Coaches Corner</span>
         <nav class="nav-menu">
+            <a href="?page=coach_calendar" class="nav-link <?= $page=='coach_calendar'?'active':'' ?>">
+                <i class="fa-solid fa-calendar icon"></i> Calendar
+            </a>
             <a href="?page=drills" class="nav-link <?= in_array($page, ['drills','drill_library','create_drill','import_drill'])?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-list icon"></i> Drills
             </a>
