@@ -88,18 +88,30 @@ foreach ($allSchedules as $schedule) {
     </div>
 </div>
 
-<!-- Tab Navigation -->
-<div class="tab-navigation">
-    <a href="?page=admin_staff_scheduling&tab=staff" class="tab-link <?= $activeTab === 'staff' ? 'active' : '' ?>">
+<style>
+/* Staff Scheduling Tabs - Financial Reports Hub Style */
+.staff-sched-tabs { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
+.staff-sched-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+.staff-sched-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
+.staff-sched-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
+.staff-sched-tab i { font-size: 16px; }
+
+/* Tab Content Container */
+.staff-sched-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 24px; }
+</style>
+
+<!-- Tabs Navigation -->
+<div class="staff-sched-tabs">
+    <a href="?page=admin_staff_scheduling&tab=staff" class="staff-sched-tab <?= $activeTab === 'staff' ? 'active' : '' ?>">
         <i class="fas fa-users"></i> Staff & PINs
     </a>
-    <a href="?page=admin_staff_scheduling&tab=schedules" class="tab-link <?= $activeTab === 'schedules' ? 'active' : '' ?>">
+    <a href="?page=admin_staff_scheduling&tab=schedules" class="staff-sched-tab <?= $activeTab === 'schedules' ? 'active' : '' ?>">
         <i class="fas fa-list"></i> Schedules List
     </a>
-    <a href="?page=admin_staff_scheduling&tab=calendar" class="tab-link <?= $activeTab === 'calendar' ? 'active' : '' ?>">
+    <a href="?page=admin_staff_scheduling&tab=calendar" class="staff-sched-tab <?= $activeTab === 'calendar' ? 'active' : '' ?>">
         <i class="fas fa-calendar-alt"></i> Calendar View
     </a>
-    <a href="?page=admin_staff_scheduling&tab=history" class="tab-link <?= $activeTab === 'history' ? 'active' : '' ?>">
+    <a href="?page=admin_staff_scheduling&tab=history" class="staff-sched-tab <?= $activeTab === 'history' ? 'active' : '' ?>">
         <i class="fas fa-history"></i> History
     </a>
 </div>

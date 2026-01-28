@@ -72,11 +72,59 @@ if ($expenseStats['last_month'] > 0) {
     <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;">&times;</button>
 </div>
 <?php endif; ?>
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-receipt"></i> Expense Tracking
-    </h1>
-    <p class="page-description">Track, manage, and categorize business expenses (CRA Best Practices)</p>
+
+<style>
+/* Expenses Page Header - Financial Reports Hub Style */
+.expenses-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.expenses-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.expenses-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), #5a0080);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+.expenses-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.expenses-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+</style>
+
+<div class="expenses-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-receipt"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Expense Tracking</h1>
+            <p class="page-description">Track, manage, and categorize business expenses (CRA Best Practices)</p>
+        </div>
+    </div>
 </div>
 
 <div class="expenses-content">

@@ -58,12 +58,24 @@ foreach ($schedules as $schedule) {
     </div>
 </div>
 
-<!-- Tab Navigation -->
-<div class="tab-navigation">
-    <a href="#" class="tab-link active" onclick="switchView('list'); return false;">
+<style>
+/* Schedule Tabs Navigation - Financial Reports Hub Style */
+.schedule-tabs { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
+.schedule-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+.schedule-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
+.schedule-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
+.schedule-tab i { font-size: 16px; }
+
+/* Tab Content Container */
+.schedule-tab-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 24px; }
+</style>
+
+<!-- Tabs Navigation -->
+<div class="schedule-tabs">
+    <a href="#" class="schedule-tab active" onclick="switchScheduleView('list'); return false;">
         <i class="fas fa-list"></i> List View
     </a>
-    <a href="#" class="tab-link" onclick="switchView('calendar'); return false;">
+    <a href="#" class="schedule-tab" onclick="switchScheduleView('calendar'); return false;">
         <i class="fas fa-calendar"></i> Calendar View
     </a>
 </div>
@@ -394,12 +406,13 @@ const scheduleData = <?= json_encode($schedulesByDate) ?>;
 let currentDate = new Date();
 let currentView = 'list';
 
-function switchView(view) {
+// Updated function for new tab design
+function switchScheduleView(view) {
     currentView = view;
     
     // Update tab active state
-    document.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
-    event.target.closest('.tab-link').classList.add('active');
+    document.querySelectorAll('.schedule-tab').forEach(tab => tab.classList.remove('active'));
+    event.target.closest('.schedule-tab').classList.add('active');
     
     // Show/hide views
     if (view === 'list') {
@@ -412,6 +425,11 @@ function switchView(view) {
         document.getElementById('calendar-view').style.display = 'block';
         renderCalendar();
     }
+}
+
+// Legacy function for backward compatibility
+function switchView(view) {
+    switchScheduleView(view);
 }
 
 function filterSchedule(filter) {

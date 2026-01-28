@@ -349,6 +349,45 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         margin-bottom: 10px;
         font-size: 13px;
     }
+    /* Page Header - Financial Reports Hub Style */
+    .practice-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    .practice-page-header .page-header-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .practice-page-header .page-header-icon {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, var(--primary), #5a0080);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+    }
+    .practice-page-header .page-title {
+        font-size: 28px;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+    }
+    .practice-page-header .page-description {
+        font-size: 14px;
+        color: #94a3b8;
+        margin: 0;
+    }
     .selected-drill {
         background: #0d1117;
         border: 1px solid #1e293b;
@@ -422,10 +461,18 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
     }
 </style>
 
-<div class="page-header">
-    <h1 class="page-title"><i class="fas fa-clipboard-list"></i> Practice Plans</h1>
+<div class="practice-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-clipboard-list"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Practice Plans</h1>
+            <p class="page-description">Browse, create, and manage practice plans</p>
+        </div>
+    </div>
     <?php if ($can_create): ?>
-        <button class="btn" data-action="add" onclick="openPlanModal()">
+        <button class="btn btn-primary" data-action="add" onclick="openPlanModal()">
             <i class="fas fa-plus"></i> Create Plan
         </button>
     <?php endif; ?>

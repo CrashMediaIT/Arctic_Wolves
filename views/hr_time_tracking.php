@@ -156,15 +156,27 @@ $totalShifts = array_sum(array_column($summaryData, 'shift_count'));
     </div>
 </div>
 
-<!-- Tab Navigation -->
-<div class="tab-navigation">
-    <a href="?page=hr_time_tracking&tab=overview" class="tab-link <?= $activeTab === 'overview' ? 'active' : '' ?>">
+<style>
+/* HR Time Tracking Tabs - Financial Reports Hub Style */
+.hr-time-tabs { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
+.hr-time-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+.hr-time-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
+.hr-time-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
+.hr-time-tab i { font-size: 16px; }
+
+/* Tab Content Container */
+.hr-time-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 24px; }
+</style>
+
+<!-- Tabs Navigation -->
+<div class="hr-time-tabs">
+    <a href="?page=hr_time_tracking&tab=overview" class="hr-time-tab <?= $activeTab === 'overview' ? 'active' : '' ?>">
         <i class="fas fa-tachometer-alt"></i> Overview
     </a>
-    <a href="?page=hr_time_tracking&tab=reports" class="tab-link <?= $activeTab === 'reports' ? 'active' : '' ?>">
+    <a href="?page=hr_time_tracking&tab=reports" class="hr-time-tab <?= $activeTab === 'reports' ? 'active' : '' ?>">
         <i class="fas fa-file-alt"></i> Generate Reports
     </a>
-    <a href="?page=hr_time_tracking&tab=payroll" class="tab-link <?= $activeTab === 'payroll' ? 'active' : '' ?>">
+    <a href="?page=hr_time_tracking&tab=payroll" class="hr-time-tab <?= $activeTab === 'payroll' ? 'active' : '' ?>">
         <i class="fas fa-money-check"></i> Payroll Integration
     </a>
 </div>

@@ -1079,42 +1079,45 @@ try {
 
 /* Tab Navigation Styles */
 .stats-tabs-wrapper {
-    margin-bottom: 24px;
+    margin-bottom: -1px;
 }
 
 .stats-tabs {
     display: flex;
-    gap: 8px;
+    gap: 0;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 8px;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
 }
 
 .stats-tab-btn {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px 24px;
     background: transparent;
     border: none;
-    border-radius: 8px;
+    border-bottom: 3px solid transparent;
     color: var(--text-dim);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s;
 }
 
 .stats-tab-btn:hover {
-    background: var(--bg-main);
+    background: rgba(139, 92, 246, 0.05);
     color: var(--text-white);
 }
 
 .stats-tab-btn.active {
-    background: var(--primary);
-    color: #fff;
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--primary);
+    border-bottom-color: var(--primary);
 }
 
 .stats-tab-btn i {
