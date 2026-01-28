@@ -446,8 +446,8 @@ $sessions = $sessions_stmt->fetchAll();
         
         <div id="historyResults" style="overflow-x: auto;"></div>
     </div>
-</div>
-</div> <!-- Close refunds-tab-content -->
+    </div> <!-- Close refunds-tab-content -->
+</div> <!-- Close refunds-container -->
 
 <!-- Refund Modal -->
 <div id="refundModal" class="modal">

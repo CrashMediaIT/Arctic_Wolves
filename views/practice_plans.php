@@ -388,7 +388,6 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         color: #94a3b8;
         margin: 0;
     }
-    }
     .selected-drill {
         background: #0d1117;
         border: 1px solid #1e293b;

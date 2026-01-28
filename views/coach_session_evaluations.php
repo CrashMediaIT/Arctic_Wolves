@@ -43,7 +43,6 @@
 }
 
 /* View Toggle - Financial Reports Hub Style */
-.session-evals-tabs { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
 .session-evals-tabs-wrapper { display: flex; align-items: stretch; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
 .session-evals-tabs-inner { display: flex; flex: 1; gap: 0; }
 .session-evals-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
@@ -1008,21 +1007,6 @@ function switchEvalView(view) {
         initCalendar();
     }
 }
-
-// View toggle
-document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
-        
-        this.classList.add('active');
-        document.getElementById(this.dataset.view + '-view').classList.add('active');
-        
-        if (this.dataset.view === 'calendar') {
-            initCalendar();
-        }
-    });
-});
 
 // Athlete tabs
 document.querySelectorAll('.athlete-tab').forEach(tab => {
