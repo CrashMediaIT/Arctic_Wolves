@@ -136,13 +136,8 @@ $totalShifts = array_sum(array_column($summaryData, 'shift_count'));
 
 <div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-chart-line"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Time Tracking Reports</h1>
-            <p class="page-description">View and generate time tracking reports for payroll integration</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-chart-line"></i> Time Tracking Reports</h1>
+        <p class="page-description">View and generate time tracking reports for payroll integration</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
@@ -156,30 +151,20 @@ $totalShifts = array_sum(array_column($summaryData, 'shift_count'));
     </div>
 </div>
 
-<style>
-/* HR Time Tracking Tabs - Financial Reports Hub Style */
-.hr-time-tabs { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
-.hr-time-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
-.hr-time-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
-.hr-time-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
-.hr-time-tab i { font-size: 16px; }
-
-/* Tab Content Container */
-.hr-time-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 24px; }
-</style>
-
 <!-- Tabs Navigation -->
-<div class="hr-time-tabs">
-    <a href="?page=hr_time_tracking&tab=overview" class="hr-time-tab <?= $activeTab === 'overview' ? 'active' : '' ?>">
+<div class="page-tabs">
+    <a href="?page=hr_time_tracking&tab=overview" class="page-tab <?= $activeTab === 'overview' ? 'active' : '' ?>">
         <i class="fas fa-tachometer-alt"></i> Overview
     </a>
-    <a href="?page=hr_time_tracking&tab=reports" class="hr-time-tab <?= $activeTab === 'reports' ? 'active' : '' ?>">
+    <a href="?page=hr_time_tracking&tab=reports" class="page-tab <?= $activeTab === 'reports' ? 'active' : '' ?>">
         <i class="fas fa-file-alt"></i> Generate Reports
     </a>
-    <a href="?page=hr_time_tracking&tab=payroll" class="hr-time-tab <?= $activeTab === 'payroll' ? 'active' : '' ?>">
+    <a href="?page=hr_time_tracking&tab=payroll" class="page-tab <?= $activeTab === 'payroll' ? 'active' : '' ?>">
         <i class="fas fa-money-check"></i> Payroll Integration
     </a>
 </div>
+
+<div class="page-tab-content">
 
 <style>
     .report-filters {

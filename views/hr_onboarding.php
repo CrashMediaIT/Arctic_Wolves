@@ -67,117 +67,63 @@ $perkTypes = [
 ];
 ?>
 <!-- HR Onboarding View -->
-<style>
-/* Onboarding Page Header - Financial Reports Hub Style */
-.onboarding-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.onboarding-page-header .page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.onboarding-page-header .page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), #5a0080);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-.onboarding-page-header .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-.onboarding-page-header .page-description {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
-    max-width: 600px;
-}
 
-/* Onboarding Tabs - Financial Reports Hub Style */
-.onboarding-tabs { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
-.onboarding-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
-.onboarding-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
-.onboarding-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
-.onboarding-tab i { font-size: 16px; }
-</style>
-
-<div class="onboarding-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-user-plus"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Staff Onboarding</h1>
-            <p class="page-description">Onboard new coaches, health coaches, and administrators per Canada's best practices. Create accounts, setup payroll, and assign equipment and perks.</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-user-plus"></i> Staff Onboarding</h1>
+        <p class="page-description">Onboard new coaches, health coaches, and administrators per Canada's best practices. Create accounts, setup payroll, and assign equipment and perks.</p>
     </div>
 </div>
 
-<div class="onboarding-content">
-    <!-- Info Banner -->
-    <div class="alert-card info">
-        <i class="fas fa-info-circle"></i>
-        <div class="alert-content">
-            <h4>Canadian Onboarding Best Practices</h4>
-            <p>This module follows Canadian employment standards for onboarding. Collect SIN, TD1 forms, banking details, and emergency contacts. All documents are securely uploaded to Nextcloud organized by year and employee name.</p>
-        </div>
+<!-- Info Banner -->
+<div class="alert alert-info" style="margin-bottom: 24px;">
+    <i class="fas fa-info-circle"></i>
+    <div>
+        <strong>Canadian Onboarding Best Practices</strong>
+        <p style="margin: 4px 0 0 0;">This module follows Canadian employment standards for onboarding. Collect SIN, TD1 forms, banking details, and emergency contacts. All documents are securely uploaded to Nextcloud organized by year and employee name.</p>
     </div>
+</div>
 
-    <!-- Tab Navigation -->
-    <div class="onboarding-tabs">
-        <a href="?page=onboarding&tab=list" class="onboarding-tab <?= $active_tab === 'list' ? 'active' : '' ?>">
-            <i class="fas fa-list"></i> All Onboardings
-        </a>
-        <a href="?page=onboarding&tab=new" class="onboarding-tab <?= $active_tab === 'new' ? 'active' : '' ?>">
-            <i class="fas fa-plus"></i> New Onboarding
-        </a>
+<!-- Tab Navigation -->
+<div class="page-tabs">
+    <a href="?page=onboarding&tab=list" class="page-tab <?= $active_tab === 'list' ? 'active' : '' ?>">
+        <i class="fas fa-list"></i> All Onboardings
+    </a>
+    <a href="?page=onboarding&tab=new" class="page-tab <?= $active_tab === 'new' ? 'active' : '' ?>">
+        <i class="fas fa-plus"></i> New Onboarding
+    </a>
+</div>
+
+<div class="page-tab-content">
+<?php if ($active_tab === 'list'): ?>
+<!-- Onboarding List -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-clipboard-list"></i> Onboarding Records</h3>
+        <span class="badge badge-primary"><?= $total_onboardings ?> Records</span>
     </div>
-
-    <?php if ($active_tab === 'list'): ?>
-    <!-- Onboarding List -->
-    <div class="content-card">
-        <div class="card-header">
-            <h3><i class="fas fa-clipboard-list"></i> Onboarding Records</h3>
-            <span class="header-badge history"><?= $total_onboardings ?> Records</span>
-        </div>
-        <div class="card-body">
-            <div class="table-container">
-                <table class="data-table" id="onboardingTable">
-                    <thead>
-                        <tr>
-                            <th>New Staff</th>
-                            <th>Role</th>
-                            <th>Start Date</th>
-                            <th>Status</th>
-                            <th>Progress</th>
-                            <th>Documents</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if(!empty($onboardings)): ?>
-                            <?php foreach($onboardings as $ob): 
-                                $progress = 0;
-                                $checks = ['personal_info_collected', 'banking_info_collected', 'tax_forms_completed', 
-                                          'payroll_setup_completed', 'equipment_assigned', 'perks_assigned'];
-                                foreach ($checks as $check) {
-                                    if ($ob[$check]) $progress++;
+    <div class="card-body">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>New Staff</th>
+                        <th>Role</th>
+                        <th>Start Date</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Documents</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(!empty($onboardings)): ?>
+                        <?php foreach($onboardings as $ob): 
+                            $progress = 0;
+                            $checks = ['personal_info_collected', 'banking_info_collected', 'tax_forms_completed', 
+                                      'payroll_setup_completed', 'equipment_assigned', 'perks_assigned'];
+                            foreach ($checks as $check) {
+                                if ($ob[$check]) $progress++;
                                 }
                                 $progressPct = round(($progress / count($checks)) * 100);
                             ?>
@@ -819,3 +765,5 @@ if (dropZone) {
     });
 }
 </script>
+
+</div><!-- End page-tab-content -->
