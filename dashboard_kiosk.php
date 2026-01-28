@@ -5,8 +5,6 @@
  * No sidebar navigation - only shows POS Terminal
  */
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
@@ -16,7 +14,6 @@ require_once __DIR__ . '/security.php';
 setSecurityHeaders();
 
 // Generate CSRF token for this session
-CSRFProtection::generateToken();
 generateCSRFToken();
 
 // Check database connection
@@ -816,10 +813,10 @@ try {
                 ?>
                     <div class="pos-product-card <?= !$inStock ? 'out-of-stock' : '' ?>" 
                          data-id="<?= $product['id'] ?>"
-                         data-name="<?= htmlspecialchars($product['name']) ?>"
+                         data-name="<?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?>"
                          data-price="<?= $product['price'] ?>"
                          data-category="<?= $product['category_id'] ?>"
-                         data-sizes='<?= json_encode($product['sizes']) ?>'
+                         data-sizes='<?= htmlspecialchars(json_encode($product['sizes']), ENT_QUOTES, 'UTF-8') ?>'
                          onclick="<?= $inStock ? 'selectProduct(this)' : '' ?>">
                         <div class="pos-product-image">
                             <?php if ($product['image_url']): ?>
@@ -927,6 +924,13 @@ let selectedSize = '';
 const taxRate = <?= $taxRate ?>;
 const currency = '<?= $currency ?>';
 
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function filterProducts() {
     const search = document.getElementById('pos-search').value.toLowerCase();
     document.querySelectorAll('.pos-product-card').forEach(card => {
@@ -973,8 +977,8 @@ function openSizeModal() {
         const btn = document.createElement('div');
         btn.className = 'pos-size-btn' + (size.quantity <= 0 ? ' disabled' : '');
         btn.innerHTML = `
-            <div class="size-name">${size.size}</div>
-            <div class="size-stock">${size.quantity > 0 ? size.quantity + ' left' : 'Sold out'}</div>
+            <div class="size-name">${escapeHtml(size.size)}</div>
+            <div class="size-stock">${size.quantity > 0 ? escapeHtml(String(size.quantity)) + ' left' : 'Sold out'}</div>
         `;
         if (size.quantity > 0) {
             btn.onclick = function() {
@@ -1070,14 +1074,14 @@ function renderCart() {
         html += `
             <div class="pos-cart-item">
                 <div class="pos-cart-item-info">
-                    <div class="pos-cart-item-name">${item.name}</div>
-                    ${item.size ? `<div class="pos-cart-item-size">Size: ${item.size}</div>` : ''}
+                    <div class="pos-cart-item-name">${escapeHtml(item.name)}</div>
+                    ${item.size ? `<div class="pos-cart-item-size">Size: ${escapeHtml(item.size)}</div>` : ''}
                     <div class="pos-cart-item-price">$${itemTotal.toFixed(2)}</div>
                 </div>
                 <div class="pos-cart-item-qty">
-                    <button class="qty-btn" onclick="updateQuantity('${item.key}', -1)">-</button>
+                    <button class="qty-btn" onclick="updateQuantity('${escapeHtml(item.key)}', -1)">-</button>
                     <span>${item.quantity}</span>
-                    <button class="qty-btn" onclick="updateQuantity('${item.key}', 1)">+</button>
+                    <button class="qty-btn" onclick="updateQuantity('${escapeHtml(item.key)}', 1)">+</button>
                 </div>
             </div>
         `;

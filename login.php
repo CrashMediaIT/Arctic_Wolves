@@ -5,8 +5,12 @@ require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 
 // Detect POS subdomain (pos.arcticwolves.ca) - redirect to kiosk login
+// Strict validation: must end with arcticwolves.ca
 $host = $_SERVER['HTTP_HOST'] ?? '';
-$isPosSubdomain = (strpos($host, 'pos.') === 0);
+$isPosSubdomain = (
+    strpos($host, 'pos.') === 0 && 
+    (preg_match('/^pos\.arcticwolves\.ca$/i', $host) || preg_match('/^pos\..*\.arcticwolves\.ca$/i', $host))
+);
 if ($isPosSubdomain) {
     header("Location: pos_kiosk.php");
     exit();
