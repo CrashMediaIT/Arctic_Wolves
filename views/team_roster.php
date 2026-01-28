@@ -82,7 +82,7 @@ if ($team) {
                    COALESCE(s.wins, 0) as wins
             FROM team_roster tr
             INNER JOIN users u ON tr.athlete_id = u.id
-            LEFT JOIN player_stats s ON s.player_id = u.id
+            LEFT JOIN athlete_stats s ON s.user_id = u.id
         ";
         
         // Add season condition if available

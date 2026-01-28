@@ -172,7 +172,8 @@ CREATE TABLE IF NOT EXISTS `sessions` (
     `location_id` INT DEFAULT NULL,
     `title` VARCHAR(255) NOT NULL,
     `description` TEXT DEFAULT NULL,
-    `session_date` DATETIME NOT NULL,
+    `session_date` DATE NOT NULL,
+    `session_time` TIME DEFAULT NULL,
     `duration_minutes` INT DEFAULT 60,
     `price` DECIMAL(10,2) DEFAULT 0.00,
     `max_participants` INT DEFAULT NULL,
@@ -180,6 +181,10 @@ CREATE TABLE IF NOT EXISTS `sessions` (
     `skill_level` VARCHAR(50) DEFAULT NULL,
     `team_id` INT DEFAULT NULL,
     `coach_id` INT DEFAULT NULL,
+    `arena` VARCHAR(255) DEFAULT NULL COMMENT 'Arena/location name for display',
+    `city` VARCHAR(100) DEFAULT NULL COMMENT 'City for display',
+    `session_type` VARCHAR(100) DEFAULT NULL COMMENT 'Session type name for display',
+    `session_plan` TEXT DEFAULT NULL COMMENT 'Session plan/notes',
     `status` ENUM('scheduled', 'completed', 'cancelled') DEFAULT 'scheduled',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -188,6 +193,7 @@ CREATE TABLE IF NOT EXISTS `sessions` (
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_date` (`session_date`),
+    INDEX `idx_time` (`session_time`),
     INDEX `idx_status` (`status`),
     INDEX `idx_coach_date` (`coach_id`, `session_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -636,7 +642,9 @@ CREATE TABLE IF NOT EXISTS `eval_categories` (
     `name` VARCHAR(100) NOT NULL,
     `description` TEXT DEFAULT NULL,
     `display_order` INT DEFAULT 0,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Evaluation framework skills
@@ -645,9 +653,12 @@ CREATE TABLE IF NOT EXISTS `eval_skills` (
     `category_id` INT NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT DEFAULT NULL,
+    `criteria` TEXT DEFAULT NULL COMMENT 'Evaluation criteria for this skill',
     `display_order` INT DEFAULT 0,
+    `is_active` TINYINT(1) DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`category_id`) REFERENCES `eval_categories`(`id`) ON DELETE CASCADE
+    FOREIGN KEY (`category_id`) REFERENCES `eval_categories`(`id`) ON DELETE CASCADE,
+    INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Athlete evaluations
@@ -655,19 +666,24 @@ CREATE TABLE IF NOT EXISTS `athlete_evaluations` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `athlete_id` INT NOT NULL,
     `evaluator_id` INT NOT NULL,
-    `skill_id` INT NOT NULL,
-    `rating` INT NOT NULL,
+    `skill_id` INT DEFAULT NULL,
+    `rating` INT DEFAULT NULL,
     `comments` TEXT DEFAULT NULL,
-    `evaluation_date` DATE NOT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `evaluation_date` DATE DEFAULT NULL,
+    `eval_date` DATE DEFAULT NULL COMMENT 'Alias for evaluation_date for backward compatibility',
     `session_id` INT DEFAULT NULL,
+    `status` ENUM('draft', 'completed', 'reviewed') DEFAULT 'completed',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`evaluator_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`skill_id`) REFERENCES `eval_skills`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`skill_id`) REFERENCES `eval_skills`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     INDEX `idx_athlete` (`athlete_id`),
     INDEX `idx_skill` (`skill_id`),
-    INDEX `idx_athlete_date` (`athlete_id`, `evaluation_date`)
+    INDEX `idx_athlete_date` (`athlete_id`, `evaluation_date`),
+    INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Scheduled reports
@@ -782,6 +798,7 @@ CREATE TABLE IF NOT EXISTS `athlete_stats` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `team_id` INT DEFAULT NULL,
+    `season_id` INT DEFAULT NULL,
     `season` VARCHAR(50) DEFAULT NULL,
     `games_played` INT DEFAULT 0,
     `goals` INT DEFAULT 0,
@@ -793,6 +810,11 @@ CREATE TABLE IF NOT EXISTS `athlete_stats` (
     `goals_against` INT DEFAULT 0,
     `saves` INT DEFAULT 0,
     `save_percentage` DECIMAL(5,3) DEFAULT 0.000,
+    `gaa` DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Goals Against Average for goalies',
+    `wins` INT DEFAULT 0 COMMENT 'Wins for goalies',
+    `losses` INT DEFAULT 0 COMMENT 'Losses for goalies',
+    `ties` INT DEFAULT 0 COMMENT 'Ties for goalies',
+    `shutouts` INT DEFAULT 0 COMMENT 'Shutouts for goalies',
     `plus_minus` INT DEFAULT 0,
     `height` INT DEFAULT NULL COMMENT 'Height in inches',
     `weight` INT DEFAULT NULL COMMENT 'Weight in pounds',
@@ -805,9 +827,11 @@ CREATE TABLE IF NOT EXISTS `athlete_stats` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE SET NULL,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_team` (`team_id`),
-    INDEX `idx_season` (`season`)
+    INDEX `idx_season` (`season`),
+    INDEX `idx_season_id` (`season_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Athlete team memberships (historical)
