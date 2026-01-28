@@ -42,13 +42,8 @@ foreach ($schedules as $schedule) {
 
 <div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-calendar-alt"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">My Schedule</h1>
-            <p class="page-description">View your upcoming shifts</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-calendar-alt"></i> My Schedule</h1>
+        <p class="page-description">View your upcoming shifts</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
@@ -58,27 +53,17 @@ foreach ($schedules as $schedule) {
     </div>
 </div>
 
-<style>
-/* Schedule Tabs Navigation - Financial Reports Hub Style */
-.schedule-tabs { display: flex; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
-.schedule-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
-.schedule-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
-.schedule-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
-.schedule-tab i { font-size: 16px; }
-
-/* Tab Content Container */
-.schedule-tab-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 24px; }
-</style>
-
 <!-- Tabs Navigation -->
-<div class="schedule-tabs">
-    <a href="#" class="schedule-tab active" onclick="switchScheduleView('list'); return false;">
+<div class="page-tabs">
+    <button type="button" class="page-tab active" onclick="switchScheduleView('list');">
         <i class="fas fa-list"></i> List View
-    </a>
-    <a href="#" class="schedule-tab" onclick="switchScheduleView('calendar'); return false;">
+    </button>
+    <button type="button" class="page-tab" onclick="switchScheduleView('calendar');">
         <i class="fas fa-calendar"></i> Calendar View
-    </a>
+    </button>
 </div>
+
+<div class="page-tab-content">
 
 <style>
     .schedule-filters {
@@ -540,3 +525,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+</div><!-- End page-tab-content -->
