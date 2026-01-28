@@ -49,13 +49,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 3. INSERT USER
         // is_verified = 1 (Instant Access)
         // force_pass_change = 1 (Must change password immediately)
-        // If health coach is creating, set assigned_coach_id and created_by_coach_id
-        if ($user_role === 'health_coach' || ($user_role === 'admin' && $assign_to_health_coach)) {
+        // Set assigned_coach_id and created_by_coach_id for all coach types so athletes show in "My Athletes"
+        if (in_array($user_role, ['coach', 'coach_plus', 'health_coach']) || ($user_role === 'admin' && $assign_to_health_coach)) {
             $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, assigned_coach_id, created_by_coach_id) 
                     VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, ?, ?)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob, $coach_id, $coach_id]);
         } else {
+            // Admin creating without health coach assignment
             $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change) 
                     VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1)";
             $stmt = $pdo->prepare($sql);
