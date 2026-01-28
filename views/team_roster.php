@@ -70,7 +70,8 @@ try {
 $players = [];
 if ($team) {
     try {
-        // Build base query for roster
+        // Build base query for roster with season condition in JOIN
+        $season_join_condition = $current_season_id ? " AND s.season_id = ?" : "";
         $roster_query = "
             SELECT u.id, u.first_name, u.last_name, u.email,
                    tr.jersey_number, tr.position,
@@ -82,16 +83,16 @@ if ($team) {
                    COALESCE(s.wins, 0) as wins
             FROM team_roster tr
             INNER JOIN users u ON tr.athlete_id = u.id
-            LEFT JOIN athlete_stats s ON s.user_id = u.id
+            LEFT JOIN athlete_stats s ON s.user_id = u.id" . $season_join_condition . "
         ";
         
-        // Add season condition if available
+        // Build WHERE conditions
         $where_conditions = ["tr.team_id = ?"];
         $params = [$team['id']];
         
+        // Add season_id to params if needed (for the JOIN condition)
         if ($current_season_id) {
-            $roster_query .= " AND s.season_id = ?";
-            $params[] = $current_season_id;
+            array_splice($params, 1, 0, [$current_season_id]); // Insert after team_id
         }
         
         // Apply position filter

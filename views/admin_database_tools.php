@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token'])) {
         
     } catch (Exception $e) {
         $results = [
-            'status' => 'error',
+            'status' => 'failed',
             'message' => $e->getMessage()
         ];
     }
