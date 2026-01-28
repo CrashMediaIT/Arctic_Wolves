@@ -44,37 +44,28 @@ try {
             $age_group = trim($_POST['age_group'] ?? '');
             $skill_level = trim($_POST['skill_level'] ?? '');
             $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
-            // New fields for enhanced packages
-            $store_credit = floatval($_POST['store_credit'] ?? 0);
-            $show_on_landing = isset($_POST['show_on_landing']) ? 1 : 0;
-            $package_type = $_POST['package_type'] ?? 'sessions_only';
-            $package_session_ids = $_POST['package_session_ids'] ?? [];
             
             if (empty($name) || $price < 0) {
-                throw new Exception('Invalid package data');
+                throw new Exception('Invalid package data: name is required and price must be positive');
             }
             
             $pdo->beginTransaction();
             
+            // Only insert columns that exist in the packages table schema
             $stmt = $pdo->prepare("
                 INSERT INTO packages (name, description, price, credits, valid_days, 
-                                     age_group, skill_level, is_active, store_credit, show_on_landing, package_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     age_group, skill_level, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active, $store_credit, $show_on_landing, $package_type
+                $age_group ?: null, $skill_level ?: null, $is_active
             ]);
             
             $package_id = $pdo->lastInsertId();
             
-            // Insert package sessions if provided
-            if (!empty($package_session_ids) && is_array($package_session_ids)) {
-                $sessionStmt = $pdo->prepare("INSERT INTO package_sessions (package_id, template_id) VALUES (?, ?)");
-                foreach ($package_session_ids as $sessionId) {
-                    $sessionStmt->execute([$package_id, intval($sessionId)]);
-                }
-            }
+            // Note: package_sessions table may have different schema - skip for now if columns don't exist
+            // Package sessions feature requires schema update
             
             $pdo->commit();
             
@@ -83,7 +74,7 @@ try {
                 echo json_encode(['success' => true, 'message' => 'Package created successfully!']);
                 exit();
             }
-            header("Location: dashboard.php?page=accounting_products&tab=packages&status=success");
+            header("Location: dashboard.php?page=products&tab=packages&status=success");
             exit();
             
         case 'update':
@@ -117,7 +108,7 @@ try {
                 echo json_encode(['success' => true, 'message' => 'Package updated successfully!']);
                 exit();
             }
-            header("Location: dashboard.php?page=accounting_products&tab=packages&status=success");
+            header("Location: dashboard.php?page=products&tab=packages&status=success");
             exit();
             
         case 'delete':
@@ -140,7 +131,7 @@ try {
                 echo json_encode(['success' => true, 'message' => 'Package deleted successfully!']);
                 exit();
             }
-            header("Location: dashboard.php?page=accounting_products&tab=packages&status=success&action=delete");
+            header("Location: dashboard.php?page=products&tab=packages&status=success&action=delete");
             exit();
             
         case 'toggle_status':

@@ -260,11 +260,12 @@ if (count($session_types) === 0) {
                     <div class="form-group"><label>Duration</label><select name="duration_minutes" class="form-select"><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option><option value="90">90 min</option></select></div>
                     <div class="form-group"><label>Practice Plan</label><select name="practice_plan_id" class="form-select"><option value="">-- No Plan --</option><?php foreach ($practice_plans as $plan): ?><option value="<?= $plan['id'] ?>"><?= htmlspecialchars($plan['name']) ?></option><?php endforeach; ?></select></div>
                 </div>
-                <div class="form-group"><label>Select Athletes <span class="required">*</span></label>
+                <div class="form-group"><label>Select Athletes (Optional)</label>
+                    <p class="help-text" style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Optionally pre-assign athletes to this session. Leave empty for an open private session.</p>
                     <div class="athlete-selection-grid">
                         <?php if (count($assigned_athletes) > 0): foreach ($assigned_athletes as $athlete): ?>
                             <label class="athlete-checkbox"><input type="checkbox" name="athlete_ids[]" value="<?= $athlete['id'] ?>"><span><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></span></label>
-                        <?php endforeach; else: ?><p class="no-athletes-notice">No athletes assigned to you yet.</p><?php endif; ?>
+                        <?php endforeach; else: ?><p class="no-athletes-notice">No athletes assigned to you yet. This session will be available for any athlete to book.</p><?php endif; ?>
                     </div>
                 </div>
                 <div class="form-group"><label>Description</label><textarea name="description" class="form-textarea" rows="2"></textarea></div>
@@ -452,12 +453,6 @@ document.getElementById('assignPlanForm')?.addEventListener('submit', function(e
 document.getElementById('privateSessionForm')?.addEventListener('submit', function(e) {
     const sessionTypeId = this.querySelector('[name="session_type_id"]').value;
     if (sessionTypeId.startsWith('demo-')) { e.preventDefault(); alert('Demo Mode: Cannot create sessions with demo data.'); return; }
-    // Validate at least one athlete is selected
-    const selectedAthletes = this.querySelectorAll('[name="athlete_ids[]"]:checked');
-    if (selectedAthletes.length === 0) {
-        e.preventDefault();
-        alert('Please select at least one athlete for the private session.');
-        return;
-    }
+    // Athlete selection is now optional - no validation required
 });
 </script>

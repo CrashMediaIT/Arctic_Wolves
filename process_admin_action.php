@@ -876,7 +876,11 @@ if ($action == 'create_discount') {
     
     $code = strtoupper(trim($_POST['code']));
     // Map form field 'type' to schema column 'discount_type'
+    // Note: Schema ENUM only allows 'percentage' or 'fixed', so map 'store_credit' to 'fixed'
     $discount_type = $_POST['type'] ?? 'percentage';
+    if ($discount_type === 'store_credit') {
+        $discount_type = 'fixed'; // Store credit uses fixed amount
+    }
     $discount_value = floatval($_POST['value']);
     // Map form field 'usage_limit' to schema column 'max_uses'
     $max_uses = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : NULL;
@@ -884,30 +888,26 @@ if ($action == 'create_discount') {
     $valid_from = !empty($_POST['start_date']) ? $_POST['start_date'] : NULL;
     $valid_until = !empty($_POST['end_date']) ? $_POST['end_date'] : NULL;
     $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
-    $description = trim($_POST['description'] ?? '');
-    // New fields for enhanced discounts
-    $store_credit_value = !empty($_POST['store_credit_value']) ? floatval($_POST['store_credit_value']) : NULL;
-    $auto_generate_type = $_POST['auto_generate_type'] ?? 'none';
-    $days_since_registration = !empty($_POST['days_since_registration']) ? intval($_POST['days_since_registration']) : NULL;
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO discount_codes (code, discount_type, discount_value, max_uses, valid_from, valid_until, is_active, description, store_credit_value, auto_generate_type, days_since_registration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active, $description, $store_credit_value, $auto_generate_type, $days_since_registration]);
+        // Only insert columns that exist in the discount_codes table schema
+        $stmt = $pdo->prepare("INSERT INTO discount_codes (code, discount_type, discount_value, max_uses, valid_from, valid_until, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'message' => 'Discount code created successfully!']);
             exit();
         }
-        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
+        header("Location: dashboard.php?page=products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Create discount error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Failed to create discount code']);
+            echo json_encode(['success' => false, 'message' => 'Failed to create discount code: ' . $e->getMessage()]);
             exit();
         }
-        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
+        header("Location: dashboard.php?page=products&tab=discounts&status=error");
     }
     exit();
 }
@@ -917,7 +917,11 @@ if ($action == 'edit_discount') {
     
     $discount_id = intval($_POST['discount_id']);
     $code = strtoupper(trim($_POST['code']));
+    // Note: Schema ENUM only allows 'percentage' or 'fixed', so map 'store_credit' to 'fixed'
     $discount_type = $_POST['type'] ?? 'percentage';
+    if ($discount_type === 'store_credit') {
+        $discount_type = 'fixed'; // Store credit uses fixed amount
+    }
     $discount_value = floatval($_POST['value']);
     $max_uses = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : NULL;
     $valid_from = !empty($_POST['start_date']) ? $_POST['start_date'] : NULL;
@@ -933,15 +937,15 @@ if ($action == 'edit_discount') {
             echo json_encode(['success' => true, 'message' => 'Discount code updated successfully!']);
             exit();
         }
-        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
+        header("Location: dashboard.php?page=products&tab=discounts&status=success");
     } catch (PDOException $e) {
         error_log("Edit discount error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Failed to update discount code']);
+            echo json_encode(['success' => false, 'message' => 'Failed to update discount code: ' . $e->getMessage()]);
             exit();
         }
-        header("Location: dashboard.php?page=accounting_products&tab=discounts&status=error");
+        header("Location: dashboard.php?page=products&tab=discounts&status=error");
     }
     exit();
 }

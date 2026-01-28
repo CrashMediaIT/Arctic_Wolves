@@ -110,41 +110,43 @@ try {
             <?= csrfTokenInput() ?>
             <input type="hidden" name="action" value="create">
             
-            <div class="form-group">
-                <label for="goal_title">Goal Title *</label>
-                <input type="text" id="goal_title" name="goal_title" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="goal_description">Description</label>
-                <textarea id="goal_description" name="goal_description" rows="4"></textarea>
-            </div>
-            
-            <div class="form-row">
+            <div class="modal-body">
                 <div class="form-group">
-                    <label for="goal_type">Goal Type</label>
-                    <select id="goal_type" name="goal_type">
-                        <option value="general">General</option>
-                        <option value="skill">Skill Development</option>
-                        <option value="fitness">Fitness</option>
-                        <option value="performance">Performance</option>
-                    </select>
+                    <label for="goal_title">Goal Title *</label>
+                    <input type="text" id="goal_title" name="goal_title" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
-                    <label for="target_value">Target Value *</label>
-                    <input type="number" id="target_value" name="target_value" required>
+                    <label for="goal_description">Description</label>
+                    <textarea id="goal_description" name="goal_description" class="form-input" rows="4"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="goal_type">Goal Type</label>
+                        <select id="goal_type" name="goal_type" class="form-input">
+                            <option value="general">General</option>
+                            <option value="skill">Skill Development</option>
+                            <option value="fitness">Fitness</option>
+                            <option value="performance">Performance</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="target_value">Target Value *</label>
+                        <input type="number" id="target_value" name="target_value" class="form-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="target_date">Target Date</label>
+                    <input type="date" id="target_date" name="target_date" class="form-input">
                 </div>
             </div>
             
-            <div class="form-group">
-                <label for="target_date">Target Date</label>
-                <input type="date" id="target_date" name="target_date">
-            </div>
-            
-            <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-goal-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary">
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-goal-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary">
                     <i class="fas fa-check"></i> Create Goal
                 </button>
             </div>
@@ -258,3 +260,168 @@ try {
     flex: 1;
 }
 </style>
+
+<!-- Edit Goal Modal -->
+<div id="edit-goal-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Goal</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-goal-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="edit-goal-form" method="POST" action="process_goals.php">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="goal_id" id="edit-goal-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="edit_goal_title">Goal Title *</label>
+                    <input type="text" id="edit_goal_title" name="goal_title" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_goal_description">Description</label>
+                    <textarea id="edit_goal_description" name="goal_description" class="form-input" rows="4"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit_goal_type">Goal Type</label>
+                        <select id="edit_goal_type" name="goal_type" class="form-input">
+                            <option value="general">General</option>
+                            <option value="skill">Skill Development</option>
+                            <option value="fitness">Fitness</option>
+                            <option value="performance">Performance</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit_target_value">Target Value *</label>
+                        <input type="number" id="edit_target_value" name="target_value" class="form-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit_current_value">Current Value</label>
+                        <input type="number" id="edit_current_value" name="current_value" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit_target_date">Target Date</label>
+                        <input type="date" id="edit_target_date" name="target_date" class="form-input">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit_goal_status">Status</label>
+                    <select id="edit_goal_status" name="status" class="form-input">
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="paused">Paused</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-goal-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Goal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Progress Update Modal -->
+<div id="progress-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Update Progress</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('progress-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="progress-form" method="POST" action="process_goals.php">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="update_progress">
+            <input type="hidden" name="goal_id" id="progress-goal-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="progress_value">New Progress Value *</label>
+                    <input type="number" id="progress_value" name="current_value" class="form-input" required>
+                    <p class="help-text">Enter your current progress value towards the goal target.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="progress_notes">Notes (Optional)</label>
+                    <textarea id="progress_notes" name="notes" class="form-input" rows="3" placeholder="Add notes about this progress update..."></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('progress-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-arrow-up"></i> Update Progress
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Modal functions
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+        var form = modal.querySelector('form');
+        if (form) form.reset();
+    }
+}
+
+function openModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+}
+
+// Handle edit buttons
+document.querySelectorAll('[data-action="edit"][data-modal="edit-goal-modal"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var goalId = this.getAttribute('data-id');
+        document.getElementById('edit-goal-id').value = goalId;
+        // TODO: Fetch goal data via AJAX and populate form
+        openModal('edit-goal-modal');
+    });
+});
+
+// Handle progress update buttons
+document.querySelectorAll('[data-action="update-progress"][data-modal="progress-modal"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var goalId = this.getAttribute('data-id');
+        document.getElementById('progress-goal-id').value = goalId;
+        openModal('progress-modal');
+    });
+});
+
+// Close modals on background click
+document.querySelectorAll('.modal').forEach(function(modal) {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            var modalId = this.id;
+            closeModal(modalId);
+        }
+    });
+});
+</script>

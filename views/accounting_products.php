@@ -588,62 +588,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     font-weight: 600;
 }
 
-/* Enhanced Tabs */
-.product-tabs {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 28px;
-    background: var(--bg-card);
-    padding: 8px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-}
-
-.tab-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 16px 32px;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-    flex: 1;
-    color: var(--text-dim);
-}
-
-.tab-btn i {
-    font-size: 20px;
-    margin-bottom: 4px;
-}
-
-.tab-btn span {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-white);
-}
-
-.tab-btn small {
-    font-size: 11px;
-    color: var(--text-dim);
-}
-
-.tab-btn:hover {
-    background: rgba(107, 70, 193, 0.1);
-    color: var(--primary);
-}
-
-.tab-btn.active {
-    background: var(--bg-main);
-    border-color: var(--primary);
-    color: var(--primary);
-}
-
-.tab-btn.active i {
-    color: var(--primary);
-}
+/* Note: Page tabs (.page-tabs, .page-tab) are styled in css/style-guide.css */
 
 .products-grid {
     display: grid;
@@ -973,16 +918,6 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 @media (max-width: 768px) {
     .product-stats {
         grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .product-tabs {
-        flex-direction: column;
-    }
-    
-    .tab-btn {
-        flex-direction: row;
-        justify-content: center;
-        gap: 12px;
     }
     
     .products-grid {
@@ -1509,6 +1444,88 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     </div>
 </div>
 
+<!-- Add Merchandise Product Modal -->
+<div id="add-merchandise-product-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-tshirt"></i> Add Merchandise Product</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-merchandise-product-modal')">&times;</button>
+        </div>
+        <form action="process_merchandise_products.php" method="POST" enctype="multipart/form-data">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="create">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Product Name *</label>
+                        <input type="text" name="name" class="form-input" required placeholder="e.g., Team Jersey">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select name="category_id" class="form-input">
+                            <option value="">-- No Category --</option>
+                            <?php foreach ($merchCategories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Price *</label>
+                        <input type="number" name="price" class="form-input" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SKU (Optional)</label>
+                        <input type="text" name="sku" class="form-input" placeholder="PROD-001">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Product description..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Stock Quantity</label>
+                        <input type="number" name="stock_quantity" class="form-input" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="is_active" class="form-input">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Image</label>
+                    <input type="file" name="image" class="form-input" accept="image/*">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-merchandise-product-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Add Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Merchandise Product Modal -->
+<div id="edit-merchandise-product-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Merchandise Product</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-merchandise-product-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-dim); text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>
+                Loading product details...
+            </p>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
@@ -1536,7 +1553,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Tab switching functionality
-    document.querySelectorAll('.tab-btn[data-action="switch-tab"]').forEach(function(btn) {
+    document.querySelectorAll('.page-tab[data-action="switch-tab"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             var tabName = this.getAttribute('data-tab');
@@ -1544,7 +1561,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.tab-content').forEach(function(tab) {
                 tab.classList.remove('active');
             });
-            document.querySelectorAll('.tab-btn').forEach(function(tabBtn) {
+            document.querySelectorAll('.page-tab').forEach(function(tabBtn) {
                 tabBtn.classList.remove('active');
             });
             
