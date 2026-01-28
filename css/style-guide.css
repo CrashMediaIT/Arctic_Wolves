@@ -16,6 +16,7 @@
     --bg-main: #0A0A0F;
     --bg-secondary: #13131A;
     --bg-card: #16161F;
+    --sidebar: #0D0D14;
     
     /* Primary Color (Deep Purple Theme) */
     --primary: #6B46C1;
@@ -1809,7 +1810,7 @@ table tbody tr:last-child td {
 /* =========================================================
    21. RESPONSIVE STYLES
    ========================================================= */
-@media (width <= 1024px) {
+@media (max-width: 1024px) {
     .form-row {
         grid-template-columns: 1fr;
     }
@@ -1824,7 +1825,7 @@ table tbody tr:last-child td {
     }
 }
 
-@media (width <= 768px) {
+@media (max-width: 768px) {
     .page-header h1,
     .page-title {
         font-size: 24px;
@@ -1911,7 +1912,7 @@ table tbody tr:last-child td {
     }
 }
 
-@media (width <= 480px) {
+@media (max-width: 480px) {
     .page-header h1,
     .page-title {
         font-size: 20px;
