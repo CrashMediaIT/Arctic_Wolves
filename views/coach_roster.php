@@ -52,6 +52,48 @@ $athletes = $athletes_stmt->fetchAll();
 $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER BY name")->fetchAll();
 ?>
 
+<style>
+/* Roster Page Header - Financial Reports Hub Style */
+.roster-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.roster-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.roster-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), #5a0080);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+.roster-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.roster-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+</style>
+
 <!-- Coach Roster View -->
 <?php if (isset($_GET['status']) && $_GET['status'] === 'athlete_created'): ?>
 <div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
@@ -77,11 +119,16 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
 </div>
 <?php endif; ?>
 
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-user-friends"></i> Athlete Roster
-    </h1>
-    <p class="page-description">Manage your athletes and track their progress</p>
+<div class="roster-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-user-friends"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Athlete Roster</h1>
+            <p class="page-description">Manage your athletes and track their progress</p>
+        </div>
+    </div>
 </div>
 
 <div class="coach-roster-content">

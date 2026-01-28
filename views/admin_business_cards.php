@@ -77,11 +77,58 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
 }
 ?>
 
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-id-card"></i> Business Card Generator
-    </h1>
-    <p class="page-description">Create professional business cards for team members</p>
+<style>
+/* Business Cards Page Header - Financial Reports Hub Style */
+.business-cards-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.business-cards-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.business-cards-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), #5a0080);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+.business-cards-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.business-cards-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+</style>
+
+<div class="business-cards-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-id-card"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Business Card Generator</h1>
+            <p class="page-description">Create professional business cards for team members</p>
+        </div>
+    </div>
 </div>
 
 <div class="business-cards-content">

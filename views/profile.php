@@ -978,45 +978,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* Profile Tabs - Enhanced */
 .profile-tabs-wrapper {
-    margin-bottom: 24px;
+    margin-bottom: -1px;
 }
 
 .profile-tabs {
     display: flex;
-    gap: 8px;
-    padding: 6px;
+    gap: 0;
     background: var(--bg-card);
-    border-radius: 14px;
     border: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
     overflow-x: auto;
 }
 
 .profile-tab-btn {
+    flex: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
-    padding: 14px 24px;
+    padding: 18px 24px;
     background: transparent;
     border: none;
-    border-radius: 10px;
+    border-bottom: 3px solid transparent;
     font-family: 'Inter', sans-serif;
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: var(--text-dim);
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
 }
 
 .profile-tab-btn:hover {
-    background: rgba(107, 70, 193, 0.1);
-    color: var(--text-primary);
+    background: rgba(139, 92, 246, 0.05);
+    color: var(--text-white);
 }
 
 .profile-tab-btn.active {
-    background: var(--primary);
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--primary);
+    border-bottom-color: var(--primary);
 }
 
 .profile-tab-btn i {

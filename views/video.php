@@ -4,28 +4,46 @@ $tab = $_GET['page'] ?? 'video';
 if ($tab === 'video') $tab = 'drill_review'; // Default tab
 ?>
 
+<style>
+/* Video Tabs Navigation - Financial Reports Hub Style */
+.video-tabs-wrapper { display: flex; align-items: stretch; gap: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px 12px 0 0; overflow: hidden; margin-bottom: -1px; }
+.video-tabs { display: flex; flex: 1; gap: 0; }
+.video-tab { flex: 1; padding: 18px 24px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-dim); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+.video-tab:hover { background: rgba(139, 92, 246, 0.05); color: var(--text-white); }
+.video-tab.active { background: rgba(139, 92, 246, 0.1); color: var(--primary); border-bottom-color: var(--primary); }
+.video-tab i { font-size: 16px; }
+.video-tabs-action { display: flex; align-items: center; padding: 12px 16px; border-left: 1px solid var(--border); }
+.video-tabs-action .btn { white-space: nowrap; }
+
+/* Tab Content Container */
+.video-tab-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 24px; }
+</style>
+
 <div class="page-header">
-    <h1><i class="fa-solid fa-video"></i> Video</h1>
-    <p>Watch session videos and upload videos for coach review</p>
+    <h1 class="page-title"><i class="fas fa-video"></i> Video</h1>
+    <p class="page-description">Watch session videos and upload videos for coach review</p>
 </div>
 
-<div class="video-nav-container">
-    <div class="tab-navigation" data-component="TabNavigation">
-        <a href="?page=drill_review" class="tab-link <?= $tab === 'drill_review' ? 'active' : '' ?>" data-tab="drill_review">
-            <i class="fa-solid fa-film"></i> Drill Review
+<!-- Tabs Navigation -->
+<div class="video-tabs-wrapper">
+    <div class="video-tabs">
+        <a href="?page=drill_review" class="video-tab <?= $tab === 'drill_review' ? 'active' : '' ?>">
+            <i class="fas fa-film"></i> Drill Review
         </a>
-        <a href="?page=coaches_reviews" class="tab-link <?= $tab === 'coaches_reviews' ? 'active' : '' ?>" data-tab="coaches_reviews">
-            <i class="fa-solid fa-comments"></i> Coach Review
+        <a href="?page=coaches_reviews" class="video-tab <?= $tab === 'coaches_reviews' ? 'active' : '' ?>">
+            <i class="fas fa-comments"></i> Coach Review
         </a>
     </div>
     <?php if($isAnyCoach): ?>
-    <a href="?page=record_drill_video" class="btn btn-primary btn-upload-nav">
-        <i class="fa-solid fa-video"></i> Record Drill Video
-    </a>
+    <div class="video-tabs-action">
+        <a href="?page=record_drill_video" class="btn btn-primary">
+            <i class="fas fa-video"></i> Record Drill Video
+        </a>
+    </div>
     <?php endif; ?>
 </div>
 
-<div class="page-tab-content">
+<div class="video-tab-content">
     <?php
     if ($tab === 'drill_review') {
         include __DIR__ . '/video_drill_review.php';
@@ -34,29 +52,3 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
     }
     ?>
 </div>
-
-<style>
-.video-nav-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 30px;
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 0;
-}
-
-.video-nav-container .tab-navigation {
-    margin-bottom: 0;
-    border-bottom: none;
-}
-
-.btn-upload-nav {
-    margin-bottom: 12px;
-}
-
-.btn-upload-nav i {
-    color: #fff;
-}
-</style>
