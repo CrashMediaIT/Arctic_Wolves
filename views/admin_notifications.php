@@ -144,10 +144,7 @@ foreach ($notifications as $n) {
             <div class="empty-state-card">
                 <i class="fas fa-bell-slash"></i>
                 <h4>No Notifications</h4>
-                <p>Create your first system notification to alert users about important updates.</p>
-                <button type="button" class="btn btn-primary" onclick="openCreateModal()">
-                    <i class="fas fa-plus"></i> Create Notification
-                </button>
+                <p>Create your first system notification to alert users about important updates. Use the "Create Notification" button above to get started.</p>
             </div>
         <?php endif; ?>
     </div>

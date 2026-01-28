@@ -11,8 +11,12 @@ class SmtpMailer {
 
     public function send($to, $subject, $body, $config) {
         // 1. CONFIGURATION & SANITIZATION
+        // Require SMTP host from configuration - no hardcoded fallbacks
+        if (empty($config['smtp_host'])) {
+            throw new Exception("SMTP host not configured. Please configure SMTP settings in System Tools.");
+        }
         // Remove 'ssl://' or 'tls://' if accidentally typed in Host field
-        $raw_host = $config['smtp_host'] ?? 'smtp.neo.space';
+        $raw_host = $config['smtp_host'];
         $host     = preg_replace('/^ssl:\/\/|^tls:\/\//', '', trim($raw_host));
         
         $port = $config['smtp_port'] ?? '465';
