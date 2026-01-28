@@ -325,6 +325,24 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                     </div>
                 </div>
                 
+                <!-- Back Card Content Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title"><i class="fas fa-align-center"></i> Back Card Content</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Company Name</label>
+                            <input type="text" name="company_name" id="bc_company_name" class="form-input" 
+                                   placeholder="ARCTIC WOLVES" value="ARCTIC WOLVES" oninput="updateBackCardPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Slogan / Tagline</label>
+                            <input type="text" name="slogan" id="bc_slogan" class="form-input" 
+                                   placeholder="Hockey Training Academy" value="Hockey Training Academy" oninput="updateBackCardPreview()">
+                        </div>
+                    </div>
+                    <p class="form-help"><i class="fas fa-info-circle"></i> These text fields appear on the back of the business card below the logo.</p>
+                </div>
+                
                 <!-- Card Style Options Section -->
                 <div class="form-section">
                     <h4 class="form-section-title"><i class="fas fa-palette"></i> Card Style Options</h4>
@@ -421,8 +439,8 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                                 <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves Logo">
                             </div>
                             <div class="back-company-name">
-                                <h1>ARCTIC WOLVES</h1>
-                                <p class="tagline">Hockey Training Academy</p>
+                                <h1 id="preview-company-name">ARCTIC WOLVES</h1>
+                                <p class="tagline" id="preview-slogan">Hockey Training Academy</p>
                             </div>
                         </div>
                     </div>
@@ -539,11 +557,30 @@ function updatePreview() {
         titleElement.classList.add('long-title');
     }
     
+    // Update back card preview as well
+    updateBackCardPreview();
+    
     // Regenerate QR code
     generateQRCode();
     
     // Show success message
     showNotification('Preview updated!', 'success');
+}
+
+// Update back card preview with company name and slogan
+function updateBackCardPreview() {
+    const companyName = document.getElementById('bc_company_name')?.value || 'ARCTIC WOLVES';
+    const slogan = document.getElementById('bc_slogan')?.value || 'Hockey Training Academy';
+    
+    const companyNameElement = document.getElementById('preview-company-name');
+    const sloganElement = document.getElementById('preview-slogan');
+    
+    if (companyNameElement) {
+        companyNameElement.textContent = companyName;
+    }
+    if (sloganElement) {
+        sloganElement.textContent = slogan;
+    }
 }
 
 // Generate QR Code
