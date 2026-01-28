@@ -47,8 +47,71 @@ $totalValue = array_sum(array_map(function($p) {
 $filterCategory = $_GET['category'] ?? '';
 ?>
 
+<style>
+/* Products Page Header - Financial Reports Hub Style */
+.products-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.products-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.products-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), #5a0080);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+.products-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.products-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+.products-page-header .page-header-stats {
+    display: flex;
+    gap: 24px;
+}
+.products-page-header .header-stat {
+    text-align: center;
+}
+.products-page-header .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-white);
+}
+.products-page-header .stat-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+</style>
+
 <!-- Merchandise Products Management View -->
-<div class="page-header">
+<div class="products-page-header">
     <div class="page-header-content">
         <div class="page-header-icon">
             <i class="fas fa-tshirt"></i>

@@ -73,15 +73,79 @@ if ($current_program && $current_program['total_workouts'] > 0) {
 }
 ?>
 
+<style>
+/* Health Workouts Page Header - Financial Reports Hub Style */
+.health-workouts-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.health-workouts-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.health-workouts-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), #5a0080);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+.health-workouts-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.health-workouts-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+.health-workouts-page-header .btn-contact {
+    background: var(--primary);
+    color: #fff;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.health-workouts-page-header .btn-contact:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(107, 70, 193, 0.3);
+}
+</style>
+
 <!-- Health Workouts View -->
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
-    <div>
-        <h1 class="page-title">
-            <i class="fas fa-dumbbell"></i> Strength & Conditioning
-        </h1>
-        <p class="page-description">Your personalized workout programs</p>
+<div class="health-workouts-page-header">
+    <div class="page-header-content">
+        <div class="page-header-icon">
+            <i class="fas fa-dumbbell"></i>
+        </div>
+        <div class="page-header-text">
+            <h1 class="page-title">Strength & Conditioning</h1>
+            <p class="page-description">Your personalized workout programs</p>
+        </div>
     </div>
-    <button class="btn-primary" data-action="contact" data-modal="contact-coach-modal">
+    <button class="btn-contact" data-action="contact" data-modal="contact-coach-modal">
         <i class="fas fa-envelope"></i> Contact Coach
     </button>
 </div>

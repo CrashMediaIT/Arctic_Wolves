@@ -43,9 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
 // Fetch orders
 $statusFilter = $_GET['status'] ?? '';
 $searchQuery = trim($_GET['search'] ?? '');
-$page = max(1, intval($_GET['page'] ?? 1));
+$currentPage = max(1, intval($_GET['pg'] ?? 1));
 $perPage = 20;
-$offset = ($page - 1) * $perPage;
+$offset = ($currentPage - 1) * $perPage;
 
 $where = ["1=1"];
 $params = [];
@@ -102,9 +102,76 @@ try {
     $orders = [];
     $stats = [];
 }
+
+// Check if being loaded as a tab in Finance Dashboard
+$in_finance_dashboard = (isset($tab) && in_array($tab, ['pos_transactions', 'shop_orders']));
 ?>
 
-<div class="page-header">
+<?php if (!$in_finance_dashboard): ?>
+<style>
+/* Shop Orders Page Header - Financial Reports Hub Style */
+.shop-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.shop-page-header .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.shop-page-header .page-header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary), #5a0080);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
+}
+.shop-page-header .page-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+}
+.shop-page-header .page-description {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
+.shop-page-header .page-header-stats {
+    display: flex;
+    gap: 24px;
+}
+.shop-page-header .header-stat {
+    text-align: center;
+}
+.shop-page-header .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-white);
+}
+.shop-page-header .stat-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+</style>
+
+<div class="shop-page-header">
     <div class="page-header-content">
         <div class="page-header-icon">
             <i class="fas fa-shopping-bag"></i>
@@ -133,20 +200,73 @@ try {
         </div>
     </div>
 </div>
+<?php endif; ?>
+
+<!-- Stats Row for tab view -->
+<?php if ($in_finance_dashboard): ?>
+<div class="stats-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(107, 70, 193, 0.15); color: var(--primary);">
+            <i class="fas fa-shopping-bag"></i>
+        </div>
+        <div>
+            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;"><?= $stats['total_orders'] ?? 0 ?></h4>
+            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Orders</p>
+        </div>
+    </div>
+    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div>
+            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;"><?= $stats['pending_count'] ?? 0 ?></h4>
+            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Pending</p>
+        </div>
+    </div>
+    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(16, 185, 129, 0.15); color: #10b981;">
+            <i class="fas fa-spinner"></i>
+        </div>
+        <div>
+            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;"><?= $stats['processing_count'] ?? 0 ?></h4>
+            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Processing</p>
+        </div>
+    </div>
+    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(16, 185, 129, 0.15); color: #10b981;">
+            <i class="fas fa-dollar-sign"></i>
+        </div>
+        <div>
+            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;">$<?= number_format($stats['total_revenue'] ?? 0, 0) ?></h4>
+            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Revenue</p>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php
+// Determine base URL for filters
+$baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '?page=shop_orders';
+?>
 
 <div class="content-card">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <a href="?page=shop_orders" class="filter-btn <?= empty($statusFilter) ? 'active' : '' ?>">All</a>
-            <a href="?page=shop_orders&status=pending" class="filter-btn <?= $statusFilter === 'pending' ? 'active' : '' ?>">Pending</a>
-            <a href="?page=shop_orders&status=paid" class="filter-btn <?= $statusFilter === 'paid' ? 'active' : '' ?>">Paid</a>
-            <a href="?page=shop_orders&status=processing" class="filter-btn <?= $statusFilter === 'processing' ? 'active' : '' ?>">Processing</a>
-            <a href="?page=shop_orders&status=shipped" class="filter-btn <?= $statusFilter === 'shipped' ? 'active' : '' ?>">Shipped</a>
-            <a href="?page=shop_orders&status=delivered" class="filter-btn <?= $statusFilter === 'delivered' ? 'active' : '' ?>">Delivered</a>
+            <a href="<?= $baseUrl ?>" class="filter-btn <?= empty($statusFilter) ? 'active' : '' ?>">All</a>
+            <a href="<?= $baseUrl ?>&status=pending" class="filter-btn <?= $statusFilter === 'pending' ? 'active' : '' ?>">Pending</a>
+            <a href="<?= $baseUrl ?>&status=paid" class="filter-btn <?= $statusFilter === 'paid' ? 'active' : '' ?>">Paid</a>
+            <a href="<?= $baseUrl ?>&status=processing" class="filter-btn <?= $statusFilter === 'processing' ? 'active' : '' ?>">Processing</a>
+            <a href="<?= $baseUrl ?>&status=shipped" class="filter-btn <?= $statusFilter === 'shipped' ? 'active' : '' ?>">Shipped</a>
+            <a href="<?= $baseUrl ?>&status=delivered" class="filter-btn <?= $statusFilter === 'delivered' ? 'active' : '' ?>">Delivered</a>
         </div>
         
         <form method="GET" action="" style="display: flex; gap: 10px;">
+            <?php if ($in_finance_dashboard): ?>
+            <input type="hidden" name="page" value="finance_dashboard">
+            <input type="hidden" name="tab" value="shop_orders">
+            <?php else: ?>
             <input type="hidden" name="page" value="shop_orders">
+            <?php endif; ?>
             <?php if ($statusFilter): ?><input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>"><?php endif; ?>
             <input type="text" name="search" placeholder="Search orders..." value="<?= htmlspecialchars($searchQuery) ?>" class="form-input" style="width: 200px;">
             <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
@@ -230,20 +350,20 @@ try {
             
             <?php if ($totalPages > 1): ?>
                 <div class="pagination" style="display: flex; justify-content: center; gap: 8px; margin-top: 20px;">
-                    <?php if ($page > 1): ?>
-                        <a href="?page=shop_orders&<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" class="page-link" style="padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: #fff; text-decoration: none;">
+                    <?php if ($currentPage > 1): ?>
+                        <a href="<?= $baseUrl ?>&<?= http_build_query(array_merge($_GET, ['pg' => $currentPage - 1])) ?>" class="page-link" style="padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: #fff; text-decoration: none;">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     <?php endif; ?>
                     
-                    <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
-                        <a href="?page=shop_orders&<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" class="page-link <?= $i === $page ? 'active' : '' ?>" style="padding: 8px 14px; background: <?= $i === $page ? 'var(--primary)' : 'var(--bg)' ?>; border: 1px solid <?= $i === $page ? 'var(--primary)' : 'var(--border)' ?>; border-radius: 6px; color: #fff; text-decoration: none;">
+                    <?php for ($i = max(1, $currentPage - 2); $i <= min($totalPages, $currentPage + 2); $i++): ?>
+                        <a href="<?= $baseUrl ?>&<?= http_build_query(array_merge($_GET, ['pg' => $i])) ?>" class="page-link <?= $i === $currentPage ? 'active' : '' ?>" style="padding: 8px 14px; background: <?= $i === $currentPage ? 'var(--primary)' : 'var(--bg)' ?>; border: 1px solid <?= $i === $currentPage ? 'var(--primary)' : 'var(--border)' ?>; border-radius: 6px; color: #fff; text-decoration: none;">
                             <?= $i ?>
                         </a>
                     <?php endfor; ?>
                     
-                    <?php if ($page < $totalPages): ?>
-                        <a href="?page=shop_orders&<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" class="page-link" style="padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: #fff; text-decoration: none;">
+                    <?php if ($currentPage < $totalPages): ?>
+                        <a href="<?= $baseUrl ?>&<?= http_build_query(array_merge($_GET, ['pg' => $currentPage + 1])) ?>" class="page-link" style="padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: #fff; text-decoration: none;">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     <?php endif; ?>
