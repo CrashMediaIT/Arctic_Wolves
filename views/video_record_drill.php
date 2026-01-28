@@ -22,7 +22,7 @@ $sessions_query = "
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN users u ON s.coach_id = u.id
     WHERE DATE(s.session_date) = ?
-    ORDER BY s.start_time ASC
+    ORDER BY s.session_time ASC
 ";
 $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute([$today]);
@@ -121,7 +121,7 @@ try {
                             <?php foreach ($todays_sessions as $session): ?>
                                 <option value="<?= $session['id'] ?>" data-date="<?= $session['session_date'] ?? $session['date'] ?>">
                                     <?= htmlspecialchars($session['title'] ?? $session['session_type_name']) ?>
-                                    - <?= date('g:i A', strtotime($session['start_time'] ?? '09:00')) ?>
+                                    - <?= date('g:i A', strtotime($session['session_time'] ?? '09:00')) ?>
                                 </option>
                             <?php endforeach; ?>
                         </optgroup>
