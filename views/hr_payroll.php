@@ -42,20 +42,6 @@ try {
     $payroll_employees = [];
 }
 
-// Fetch payroll stats
-try {
-    $statsQuery = "SELECT 
-        COUNT(*) as total_employees,
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
-        COUNT(CASE WHEN employee_type = 'salary' THEN 1 END) as salaried,
-        COUNT(CASE WHEN employee_type = 'hourly' THEN 1 END) as hourly
-        FROM employee_payroll WHERE status != 'terminated'";
-    $statsResult = $pdo->query($statsQuery);
-    $payrollStats = $statsResult->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $payrollStats = ['total_employees' => 0, 'active' => 0, 'salaried' => 0, 'hourly' => 0];
-}
-
 // Fetch recent pay runs
 try {
     $recentPayQuery = "SELECT ph.*, u.first_name, u.last_name
@@ -185,38 +171,6 @@ $provinces = [
 </div>
 
 <div class="payroll-content">
-    <!-- Payroll Stats -->
-    <div class="termination-stats">
-        <div class="termination-stat-card total">
-            <div class="stat-icon"><i class="fas fa-users"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $payrollStats['total_employees'] ?></span>
-                <span class="stat-label">Total on Payroll</span>
-            </div>
-        </div>
-        <div class="termination-stat-card completed">
-            <div class="stat-icon"><i class="fas fa-user-check"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $payrollStats['active'] ?></span>
-                <span class="stat-label">Active Employees</span>
-            </div>
-        </div>
-        <div class="termination-stat-card pending">
-            <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $payrollStats['salaried'] ?></span>
-                <span class="stat-label">Salaried</span>
-            </div>
-        </div>
-        <div class="termination-stat-card upcoming">
-            <div class="stat-icon"><i class="fas fa-clock"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $payrollStats['hourly'] ?></span>
-                <span class="stat-label">Hourly</span>
-            </div>
-        </div>
-    </div>
-
     <!-- CRA Info Banner -->
     <div class="alert-card info">
         <i class="fas fa-info-circle"></i>

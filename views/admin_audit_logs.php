@@ -574,7 +574,7 @@ $csrf_token = generateCsrfToken();
 <!-- Filters Card -->
 <div class="filters-card">
     <form method="GET" action="" class="filters-form">
-        <input type="hidden" name="page" value="audit_logs">
+        <input type="hidden" name="page" value="audit_log">
         <div class="filter-group">
             <label>Table</label>
             <select name="table" class="filter-select">
@@ -604,7 +604,7 @@ $csrf_token = generateCsrfToken();
         </div>
         <div class="filter-actions">
             <button type="submit" class="btn-filter"><i class="fas fa-filter"></i> Apply</button>
-            <a href="?page=audit_logs" class="btn-reset">Reset</a>
+            <a href="?page=audit_log" class="btn-reset">Reset</a>
         </div>
     </form>
 </div>
@@ -682,15 +682,15 @@ $csrf_token = generateCsrfToken();
         <?php if ($total_pages > 1): ?>
             <div class="pagination">
                 <?php if ($page_num > 1): ?>
-                    <a href="?page=audit_logs&p=1<?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-angles-left"></i></a>
-                    <a href="?page=audit_logs&p=<?= $page_num - 1 ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-chevron-left"></i></a>
+                    <a href="?page=audit_log&p=1<?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-angles-left"></i></a>
+                    <a href="?page=audit_log&p=<?= $page_num - 1 ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-chevron-left"></i></a>
                 <?php endif; ?>
                 
                 <span class="page-info">Page <?= $page_num ?> of <?= $total_pages ?></span>
                 
                 <?php if ($page_num < $total_pages): ?>
-                    <a href="?page=audit_logs&p=<?= $page_num + 1 ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-chevron-right"></i></a>
-                    <a href="?page=audit_logs&p=<?= $total_pages ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-angles-right"></i></a>
+                    <a href="?page=audit_log&p=<?= $page_num + 1 ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-chevron-right"></i></a>
+                    <a href="?page=audit_log&p=<?= $total_pages ?><?= $filter_table ? '&table=' . urlencode($filter_table) : '' ?><?= $filter_action ? '&action=' . urlencode($filter_action) : '' ?><?= $filter_user ? '&user=' . urlencode($filter_user) : '' ?>" class="page-link"><i class="fas fa-angles-right"></i></a>
                 <?php endif; ?>
             </div>
         <?php endif; ?>

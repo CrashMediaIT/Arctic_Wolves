@@ -41,19 +41,6 @@ try {
     $onboardings = [];
 }
 
-// Fetch onboarding stats
-try {
-    $statsQuery = "SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN onboarding_status = 'pending' THEN 1 END) as pending,
-        COUNT(CASE WHEN onboarding_status = 'in_progress' THEN 1 END) as in_progress,
-        COUNT(CASE WHEN onboarding_status = 'completed' THEN 1 END) as completed
-        FROM employee_onboarding";
-    $onboardingStats = $pdo->query($statsQuery)->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $onboardingStats = ['total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0];
-}
-
 // Canadian provinces
 $provinces = [
     'AB' => 'Alberta', 'BC' => 'British Columbia', 'MB' => 'Manitoba',
@@ -143,38 +130,6 @@ $perkTypes = [
 </div>
 
 <div class="onboarding-content">
-    <!-- Stats -->
-    <div class="termination-stats">
-        <div class="termination-stat-card total">
-            <div class="stat-icon"><i class="fas fa-users"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $onboardingStats['total'] ?></span>
-                <span class="stat-label">Total Onboardings</span>
-            </div>
-        </div>
-        <div class="termination-stat-card pending">
-            <div class="stat-icon"><i class="fas fa-hourglass-start"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $onboardingStats['pending'] ?></span>
-                <span class="stat-label">Pending</span>
-            </div>
-        </div>
-        <div class="termination-stat-card upcoming">
-            <div class="stat-icon"><i class="fas fa-spinner"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $onboardingStats['in_progress'] ?></span>
-                <span class="stat-label">In Progress</span>
-            </div>
-        </div>
-        <div class="termination-stat-card completed">
-            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $onboardingStats['completed'] ?></span>
-                <span class="stat-label">Completed</span>
-            </div>
-        </div>
-    </div>
-
     <!-- Info Banner -->
     <div class="alert-card info">
         <i class="fas fa-info-circle"></i>
