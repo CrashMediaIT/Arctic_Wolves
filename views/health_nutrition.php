@@ -1043,7 +1043,7 @@ if (!$nutrition_plan) {
     <div class="modal-content">
         <div class="modal-header">
             <h3><i class="fas fa-utensils"></i> Log Meal</h3>
-            <button class="modal-close" aria-label="Close log meal modal" onclick="closeLogMealModal()"><i class="fas fa-times"></i></button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeLogMealModal()"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
             <form id="logMealForm" method="POST" action="process_nutrition.php">

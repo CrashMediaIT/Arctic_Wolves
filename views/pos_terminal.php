@@ -708,7 +708,7 @@ try {
 <!-- Size Selection Modal -->
 <div class="pos-size-modal" id="size-modal">
     <div class="pos-size-content">
-        <button class="modal-close pos-modal-close" onclick="closeSizeModal()" aria-label="Close size selection">&times;</button>
+        <button class="modal-close pos-modal-close" onclick="closeSizeModal()" aria-label="Close modal">&times;</button>
         <h3 class="pos-size-title" id="size-modal-title">Select Size</h3>
         <div class="pos-size-options" id="size-options"></div>
         <div class="pos-size-actions">
