@@ -53,45 +53,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
 ?>
 
 <style>
-/* Roster Page Header - Financial Reports Hub Style */
-.roster-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.roster-page-header .page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.roster-page-header .page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), #5a0080);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-.roster-page-header .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-.roster-page-header .page-description {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
-}
+/* Coach Roster - View-specific styles */
 </style>
 
 <!-- Coach Roster View -->
@@ -119,16 +81,9 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
 </div>
 <?php endif; ?>
 
-<div class="roster-page-header">
-    <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-user-friends"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Athlete Roster</h1>
-            <p class="page-description">Manage your athletes and track their progress</p>
-        </div>
-    </div>
+<div class="page-header">
+    <h1 class="page-title"><i class="fas fa-users-gear"></i> Athlete Roster</h1>
+    <p class="page-description">Manage your athletes and track their progress</p>
 </div>
 
 <div class="coach-roster-content">

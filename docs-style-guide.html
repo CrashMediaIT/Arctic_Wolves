@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arctic Wolves - Style Guide Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style-guide.css">
+    <style>
+        .demo-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+        .demo-section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .demo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Page Header Demo -->
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-palette"></i> Arctic Wolves Style Guide
+            </h1>
+            <p class="page-description">Based on Upcoming Sessions and Bookings views - Unified styling for the entire dashboard</p>
+        </div>
+
+        <!-- Buttons Section -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-mouse-pointer"></i> Buttons</h2>
+
+            <h4 style="color: var(--text-secondary); margin-bottom: 12px;">Primary Buttons</h4>
+            <div class="demo-row">
+                <button type="button" class="btn btn-primary"><i class="fas fa-plus"></i> Book Session</button>
+                <button type="button" class="btn btn-primary"><i class="fas fa-search"></i> Apply Filters</button>
+                <button type="button" class="btn btn-primary btn-lg"><i class="fas fa-check"></i> Large Button</button>
+                <button type="button" class="btn btn-primary btn-sm"><i class="fas fa-check"></i> Small</button>
+            </div>
+
+            <h4 style="color: var(--text-secondary); margin-bottom: 12px;">Secondary Buttons</h4>
+            <div class="demo-row">
+                <button type="button" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</button>
+                <button type="button" class="btn btn-secondary"><i class="fas fa-history"></i> History</button>
+                <button type="button" class="btn btn-secondary"><i class="fas fa-eye"></i> View</button>
+            </div>
+
+            <h4 style="color: var(--text-secondary); margin-bottom: 12px;">Other Button Variants</h4>
+            <div class="demo-row">
+                <button type="button" class="btn btn-success"><i class="fas fa-check"></i> Success</button>
+                <button type="button" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</button>
+                <button type="button" class="btn btn-warning"><i class="fas fa-exclamation"></i> Warning</button>
+                <button type="button" class="btn btn-outline"><i class="fas fa-info"></i> Outline</button>
+            </div>
+        </div>
+
+        <!-- Filter Box Section -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-filter"></i> Filter Box</h2>
+
+            <div class="filter-box">
+                <div class="filter-box-header">
+                    <i class="fas fa-filter"></i> Filter Sessions
+                </div>
+                <div class="filter-box-content">
+                    <form class="filter-row">
+                        <div class="filter-field">
+                            <label>Time Period</label>
+                            <select class="form-select">
+                                <option>All Sessions</option>
+                                <option>This Week</option>
+                                <option>Next Week</option>
+                                <option>This Month</option>
+                            </select>
+                        </div>
+                        <div class="filter-field">
+                            <label>Skill Focus</label>
+                            <select class="form-select">
+                                <option>All Skills</option>
+                                <option>Skating</option>
+                                <option>Shooting</option>
+                                <option>Goaltending</option>
+                            </select>
+                        </div>
+                        <div class="filter-field">
+                            <label>Coach</label>
+                            <select class="form-select">
+                                <option>All Coaches</option>
+                                <option>John Smith</option>
+                                <option>Jane Doe</option>
+                            </select>
+                        </div>
+                        <div class="filter-field filter-actions">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                            <button type="button" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Bar Section -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-bars"></i> Action Bar</h2>
+
+            <div class="action-bar">
+                <div class="results-info">
+                    <span>12 sessions found</span>
+                </div>
+                <div class="view-controls">
+                    <div class="view-toggle">
+                        <button type="button" class="view-btn active" title="List View">
+                            <i class="fas fa-list"></i>
+                        </button>
+                        <button type="button" class="view-btn" title="Calendar View">
+                            <i class="fas fa-calendar"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-primary"><i class="fas fa-plus"></i> Book Session</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page Tabs Section -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-folder-open"></i> Page Tabs</h2>
+
+            <p style="color: var(--text-dim); margin-bottom: 20px;">Used for parent pages with sub-views (e.g., Sessions, Video, Health, Drills)</p>
+
+            <h4 style="color: var(--text-secondary); margin-bottom: 12px;">Standard Page Tabs</h4>
+            <div class="page-tabs" style="margin-bottom: 0;">
+                <a href="#" class="page-tab active">
+                    <i class="fas fa-clock"></i> Upcoming
+                </a>
+                <a href="#" class="page-tab">
+                    <i class="fas fa-calendar-plus"></i> Booking
+                </a>
+                <a href="#" class="page-tab">
+                    <i class="fas fa-history"></i> History
+                </a>
+            </div>
+            <div class="page-tab-content" style="margin-bottom: 24px;">
+                <p style="color: var(--text-dim);">Tab content appears here...</p>
+            </div>
+
+            <h4 style="color: var(--text-secondary); margin-bottom: 12px;">Page Tabs with Action Button</h4>
+            <div class="page-tabs-wrapper" style="margin-bottom: 0;">
+                <div class="page-tabs">
+                    <a href="#" class="page-tab active">
+                        <i class="fas fa-film"></i> Drill Review
+                    </a>
+                    <a href="#" class="page-tab">
+                        <i class="fas fa-comments"></i> Coach Review
+                    </a>
+                </div>
+                <div class="page-tabs-action">
+                    <button type="button" class="btn btn-primary"><i class="fas fa-video"></i> Record Drill</button>
+                </div>
+            </div>
+            <div class="page-tab-content">
+                <p style="color: var(--text-dim);">Tab content with action button in header...</p>
+            </div>
+        </div>
+
+        <!-- Session Cards (List View) -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-list"></i> Session List View</h2>
+
+            <div class="sessions-list-grid">
+                <div class="session-list-card">
+                    <div class="session-date-column">
+                        <div class="date-badge">
+                            <span class="date-month">JAN</span>
+                            <span class="date-day">28</span>
+                            <span class="date-weekday">Wed</span>
+                        </div>
+                        <span class="session-time">10:00 AM</span>
+                    </div>
+                    <div class="session-details-column">
+                        <h4 class="session-title">Power Skating Session</h4>
+                        <div class="session-meta">
+                            <span class="meta-item"><i class="fas fa-user-tie"></i> Coach Smith</span>
+                            <span class="meta-item"><i class="fas fa-map-marker-alt"></i> Main Rink</span>
+                            <span class="meta-item"><i class="fas fa-clock"></i> 60 min</span>
+                        </div>
+                        <p class="session-description">Focus on edge work and crossover techniques for improved agility...</p>
+                    </div>
+                    <div class="session-action-column">
+                        <div class="spots-indicator">
+                            <span class="spots-number">5</span>
+                            <span class="spots-text">spots left</span>
+                        </div>
+                        <div class="session-price-tag">$75</div>
+                        <button type="button" class="btn-register"><i class="fas fa-plus-circle"></i> Register</button>
+                    </div>
+                </div>
+
+                <div class="session-list-card">
+                    <div class="session-date-column">
+                        <div class="date-badge">
+                            <span class="date-month">JAN</span>
+                            <span class="date-day">30</span>
+                            <span class="date-weekday">Fri</span>
+                        </div>
+                        <span class="session-time">2:00 PM</span>
+                    </div>
+                    <div class="session-details-column">
+                        <h4 class="session-title">Shooting Clinic</h4>
+                        <div class="session-meta">
+                            <span class="meta-item"><i class="fas fa-user-tie"></i> Coach Johnson</span>
+                            <span class="meta-item"><i class="fas fa-map-marker-alt"></i> Practice Rink</span>
+                            <span class="meta-item"><i class="fas fa-clock"></i> 90 min</span>
+                        </div>
+                        <p class="session-description">Improve your wrist shot, slap shot, and snap shot accuracy...</p>
+                    </div>
+                    <div class="session-action-column">
+                        <div class="spots-indicator almost-full">
+                            <span class="spots-number">2</span>
+                            <span class="spots-text">spots left</span>
+                        </div>
+                        <div class="session-price-tag">$95</div>
+                        <button type="button" class="btn-register"><i class="fas fa-plus-circle"></i> Register</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Package Cards -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-box-open"></i> Training Packages</h2>
+
+            <div class="packages-cards-grid">
+                <div class="package-card">
+                    <div class="package-card-header">
+                        <div class="package-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <h3 class="package-name">Starter</h3>
+                    </div>
+                    <div class="package-card-body">
+                        <div class="package-pricing">
+                            <span class="package-price">$199</span>
+                            <span class="package-credits">5 sessions</span>
+                        </div>
+                        <div class="package-per-session">
+                            <span>$39.80 per session</span>
+                        </div>
+                        <p class="package-description">Perfect for trying out our training programs</p>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> 5 training sessions</li>
+                            <li><i class="fas fa-check"></i> Valid for 60 days</li>
+                            <li><i class="fas fa-check"></i> Flexible scheduling</li>
+                        </ul>
+                    </div>
+                    <div class="package-card-footer">
+                        <button type="button" class="btn-purchase"><i class="fas fa-shopping-cart"></i> Purchase Package</button>
+                    </div>
+                </div>
+
+                <div class="package-card featured">
+                    <div class="package-badge">Most Popular</div>
+                    <div class="package-card-header">
+                        <div class="package-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <h3 class="package-name">Pro</h3>
+                    </div>
+                    <div class="package-card-body">
+                        <div class="package-pricing">
+                            <span class="package-price">$449</span>
+                            <span class="package-credits">12 sessions</span>
+                        </div>
+                        <div class="package-per-session">
+                            <span>$37.42 per session</span>
+                        </div>
+                        <p class="package-description">Our most popular training package</p>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> 12 training sessions</li>
+                            <li><i class="fas fa-check"></i> Valid for 90 days</li>
+                            <li><i class="fas fa-check"></i> Flexible scheduling</li>
+                            <li><i class="fas fa-check"></i> Video review included</li>
+                        </ul>
+                    </div>
+                    <div class="package-card-footer">
+                        <button type="button" class="btn-purchase btn-purchase-featured"><i class="fas fa-shopping-cart"></i> Purchase Package</button>
+                    </div>
+                </div>
+
+                <div class="package-card">
+                    <div class="package-card-header">
+                        <div class="package-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <h3 class="package-name">Elite</h3>
+                    </div>
+                    <div class="package-card-body">
+                        <div class="package-pricing">
+                            <span class="package-price">$799</span>
+                            <span class="package-credits">24 sessions</span>
+                        </div>
+                        <div class="package-per-session">
+                            <span>$33.29 per session</span>
+                        </div>
+                        <p class="package-description">Ultimate training experience</p>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> 24 training sessions</li>
+                            <li><i class="fas fa-check"></i> Valid for 180 days</li>
+                            <li><i class="fas fa-check"></i> Flexible scheduling</li>
+                            <li><i class="fas fa-check"></i> Priority booking</li>
+                        </ul>
+                    </div>
+                    <div class="package-card-footer">
+                        <button type="button" class="btn-purchase"><i class="fas fa-shopping-cart"></i> Purchase Package</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Elements -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-edit"></i> Form Elements</h2>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-user-plus"></i> Book Private Session</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Session Type <span class="required" style="color: var(--error);">*</span></label>
+                            <select class="form-input">
+                                <option value="">-- Select Type --</option>
+                                <option>Power Skating - $75</option>
+                                <option>Shooting Clinic - $85</option>
+                                <option>Goaltending - $95</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Coach <span class="required" style="color: var(--error);">*</span></label>
+                            <select class="form-input">
+                                <option value="">-- Select Coach --</option>
+                                <option>John Smith</option>
+                                <option>Jane Doe</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date <span class="required" style="color: var(--error);">*</span></label>
+                            <input type="date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Time <span class="required" style="color: var(--error);">*</span></label>
+                            <select class="form-input">
+                                <option>-- Select Time --</option>
+                                <option>9:00 AM</option>
+                                <option>10:00 AM</option>
+                                <option>11:00 AM</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Special Notes (Optional)</label>
+                        <textarea class="form-input" rows="3" placeholder="Any specific goals or focus areas for this session?"></textarea>
+                    </div>
+                </div>
+                <div class="card-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="color: var(--text-dim);">Session Price:</span>
+                        <span style="font-size: 24px; font-weight: 900; color: var(--primary); margin-left: 8px;">$75</span>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-lg"><i class="fas fa-check"></i> Book Session</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Badges Section -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-tags"></i> Badges & Tags</h2>
+
+            <div class="demo-row">
+                <span class="badge badge-primary">Primary</span>
+                <span class="badge badge-success">Success</span>
+                <span class="badge badge-warning">Warning</span>
+                <span class="badge badge-danger">Danger</span>
+                <span class="badge badge-info">Info</span>
+                <span class="badge badge-secondary">Secondary</span>
+            </div>
+
+            <h4 style="color: var(--text-secondary); margin: 20px 0 12px;">Session Tags</h4>
+            <div class="session-tags">
+                <span class="tag"><i class="fas fa-bullseye"></i> Power Skating</span>
+                <span class="tag"><i class="fas fa-clipboard-list"></i> Beginner Level</span>
+                <span class="tag"><i class="fas fa-users"></i> Group Session</span>
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-bell"></i> Alerts & Notices</h2>
+
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <span>Your session has been successfully booked!</span>
+            </div>
+
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>There was an error processing your request. Please try again.</span>
+            </div>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Only 2 spots remaining for this session!</span>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <span>New training packages are now available.</span>
+            </div>
+
+            <div class="demo-data-notice">
+                <i class="fas fa-info-circle"></i>
+                <span>Showing demo data. Book sessions to see your real schedule.</span>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-folder-open"></i> Empty States</h2>
+
+            <div class="empty-state-card">
+                <i class="fas fa-calendar-times"></i>
+                <h4>No Upcoming Sessions</h4>
+                <p>Check back soon for new training sessions or book a private lesson below.</p>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-table"></i> Tables</h2>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Session Type</th>
+                            <th>Coach</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Jan 28, 2026</td>
+                            <td>Power Skating</td>
+                            <td>Coach Smith</td>
+                            <td><span class="badge badge-success">Confirmed</span></td>
+                            <td class="table-actions">
+                                <button type="button" class="btn btn-secondary btn-sm"><i class="fas fa-eye"></i> View</button>
+                                <button type="button" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Cancel</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Jan 30, 2026</td>
+                            <td>Shooting Clinic</td>
+                            <td>Coach Johnson</td>
+                            <td><span class="badge badge-warning">Pending</span></td>
+                            <td class="table-actions">
+                                <button type="button" class="btn btn-secondary btn-sm"><i class="fas fa-eye"></i> View</button>
+                                <button type="button" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Cancel</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Feb 2, 2026</td>
+                            <td>Goaltending</td>
+                            <td>Coach Miller</td>
+                            <td><span class="badge badge-primary">Scheduled</span></td>
+                            <td class="table-actions">
+                                <button type="button" class="btn btn-secondary btn-sm"><i class="fas fa-eye"></i> View</button>
+                                <button type="button" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Cancel</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Calendar Section -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-calendar-alt"></i> Calendar View</h2>
+
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button type="button" class="calendar-nav-btn"><i class="fas fa-chevron-left"></i></button>
+                    <h3 class="calendar-month-title">January 2026</h3>
+                    <button type="button" class="calendar-nav-btn"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="calendar-weekdays">
+                    <span>Sun</span>
+                    <span>Mon</span>
+                    <span>Tue</span>
+                    <span>Wed</span>
+                    <span>Thu</span>
+                    <span>Fri</span>
+                    <span>Sat</span>
+                </div>
+                <div class="calendar-grid">
+                    <div class="calendar-day other-month"><span class="calendar-day-number">28</span></div>
+                    <div class="calendar-day other-month"><span class="calendar-day-number">29</span></div>
+                    <div class="calendar-day other-month"><span class="calendar-day-number">30</span></div>
+                    <div class="calendar-day other-month"><span class="calendar-day-number">31</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">1</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">2</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">3</span></div>
+                    <div class="calendar-day has-sessions"><span class="calendar-day-number">4</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">5</span></div>
+                    <div class="calendar-day has-sessions"><span class="calendar-day-number">6</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">7</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">8</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">9</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">10</span></div>
+                    <div class="calendar-day has-sessions"><span class="calendar-day-number">11</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">12</span></div>
+                    <div class="calendar-day has-sessions"><span class="calendar-day-number">13</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">14</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">15</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">16</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">17</span></div>
+                    <div class="calendar-day has-sessions"><span class="calendar-day-number">18</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">19</span></div>
+                    <div class="calendar-day has-sessions"><span class="calendar-day-number">20</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">21</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">22</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">23</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">24</span></div>
+                    <div class="calendar-day has-sessions"><span class="calendar-day-number">25</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">26</span></div>
+                    <div class="calendar-day has-sessions"><span class="calendar-day-number">27</span></div>
+                    <div class="calendar-day today"><span class="calendar-day-number">28</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">29</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">30</span></div>
+                    <div class="calendar-day"><span class="calendar-day-number">31</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="demo-section">
+            <h2 class="demo-section-title"><i class="fas fa-chart-bar"></i> Stat Cards</h2>
+
+            <div class="grid grid-4">
+                <div class="stat-card">
+                    <span class="stat-value">24</span>
+                    <span class="stat-label">Sessions Completed</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">12</span>
+                    <span class="stat-label">Hours Trained</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">5</span>
+                    <span class="stat-label">Upcoming Sessions</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">92%</span>
+                    <span class="stat-label">Attendance Rate</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

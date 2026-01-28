@@ -43,3 +43,6 @@ arctic_wolves.env
 .DS_Store
 Thumbs.db
 .permissions_setup_done
+
+# Linting config (development only)
+.stylelintrc.json

@@ -217,24 +217,13 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <title>Arctic Wolves Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <!-- Unified Style Guide - Authoritative stylesheet based on Upcoming Sessions and Bookings -->
+    <link rel="stylesheet" href="css/style-guide.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="views/shared_styles.css">
     <style>
-        :root { 
-            --primary: #6B46C1; 
-            --primary-hover: #7C3AED; 
-            --primary-light: #8B5CF6;
-            --bg: #0A0A0F; 
-            --bg-secondary: #13131A;
-            --sidebar: #0D0D14; 
-            --border: #2D2D3F; 
-            --border-light: #3A3A4F;
-            --text: #A8A8B8; 
-            --text-muted: #6B6B7B;
-            --card-bg: #16161F;
-        }
-        * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); font-family: 'Inter', sans-serif; color: #fff; display: flex; height: 100vh; overflow: hidden; }
+        /* Dashboard-specific layout styles */
+        body { margin: 0; background: var(--bg-main); font-family: 'Inter', sans-serif; color: #fff; display: flex; height: 100vh; overflow: hidden; }
         
         /* Sidebar */
         .sidebar { width: 280px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; overflow-y: auto; }
@@ -795,8 +784,49 @@ function toggleSubmenu(element) {
     }
 }
 
-// Persist submenu state on page load based on active page
+// Persist sidebar scroll position across page loads
 document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Restore scroll position from sessionStorage
+    const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
+    if (savedScrollPos && sidebar) {
+        sidebar.scrollTop = parseInt(savedScrollPos, 10);
+    }
+    
+    // Also scroll to active nav link if it's not visible
+    const activeLink = sidebar?.querySelector('.nav-link.active');
+    if (activeLink && sidebar) {
+        // Check if active link is in view
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const linkRect = activeLink.getBoundingClientRect();
+        
+        // If active link is not visible, scroll to it (but keep some context)
+        if (linkRect.top < sidebarRect.top || linkRect.bottom > sidebarRect.bottom) {
+            // Only scroll if we didn't have a saved position
+            if (!savedScrollPos) {
+                activeLink.scrollIntoView({ block: 'center', behavior: 'instant' });
+            }
+        }
+    }
+    
+    // Save scroll position before page unload
+    window.addEventListener('beforeunload', function() {
+        if (sidebar) {
+            sessionStorage.setItem('sidebarScrollPos', sidebar.scrollTop);
+        }
+    });
+    
+    // Also save on nav link click (backup)
+    const navLinks = document.querySelectorAll('.sidebar .nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (sidebar) {
+                sessionStorage.setItem('sidebarScrollPos', sidebar.scrollTop);
+            }
+        });
+    });
+    
     // Find all active nav links in submenus
     const activeSubLinks = document.querySelectorAll('.nav-submenu .nav-link.active');
     activeSubLinks.forEach(link => {

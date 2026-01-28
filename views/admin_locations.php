@@ -26,65 +26,22 @@ $locations = $pdo->query("
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
-    .page-title {
-        font-size: 28px;
-        font-weight: 900;
-        color: #fff;
-    }
-    .btn-create {
-        background: var(--primary);
-        color: #fff;
-        padding: 12px 24px;
-        border-radius: 6px;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 14px;
-        transition: all 0.2s;
-        border: none;
-        cursor: pointer;
-    }
-    .btn-create:hover {
-        background: #5a0080;
-    }
-    .btn-secondary {
-        background: transparent;
-        border: 1px solid #1e293b;
-        color: #94a3b8;
-        padding: 12px 24px;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s;
-    }
-    .btn-secondary:hover {
-        border-color: var(--primary);
-        color: var(--primary);
-    }
+    /* Locations Page - Component Specific Styles */
     .locations-table {
         width: 100%;
         border-collapse: collapse;
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
         border-radius: 8px;
         overflow: hidden;
     }
     .locations-table thead {
-        background: #06080b;
+        background: var(--bg-main);
     }
     .locations-table th {
         text-align: left;
         padding: 16px;
-        color: #94a3b8;
+        color: var(--text-dim);
         font-size: 12px;
         text-transform: uppercase;
         font-weight: 700;
@@ -217,14 +174,15 @@ $locations = $pdo->query("
 </style>
 
 <div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-map-marker-alt"></i> Manage Locations
-    </h1>
-    <div>
-        <button onclick="testGoogleAPI()" class="btn-secondary" style="margin-right: 10px;">
+    <div class="page-header-content">
+        <h1 class="page-title"><i class="fas fa-map-marker-alt"></i> Manage Locations</h1>
+        <p class="page-description">Add, edit, and manage training locations</p>
+    </div>
+    <div class="page-header-actions">
+        <button type="button" onclick="testGoogleAPI()" class="btn btn-secondary">
             <i class="fas fa-vial"></i> Test Google API
         </button>
-        <button onclick="openCreateModal()" class="btn-create">
+        <button type="button" onclick="openCreateModal()" class="btn btn-primary">
             <i class="fas fa-plus"></i> Add Location
         </button>
     </div>

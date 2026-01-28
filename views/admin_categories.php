@@ -7,51 +7,39 @@ if (!in_array($activeTab, $validTabs)) {
 }
 ?>
 <!-- Admin Categories Management View -->
-<div class="page-header categories-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-tags"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Category Management</h1>
-            <p class="page-description">Organize and manage system categories, skills, and classifications</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-tags"></i> Category Management</h1>
+        <p class="page-description">Organize and manage system categories, skills, and classifications</p>
     </div>
 </div>
 
-<div class="categories-content">
-    <!-- Category Tabs - Modern Tab Navigation -->
-    <div class="category-tabs-wrapper">
-        <div class="category-tabs">
-            <button class="tab-btn <?= $activeTab === 'skills' ? 'active' : '' ?>" data-tab="skills" data-action="switch-tab">
-                <span class="tab-icon"><i class="fas fa-star"></i></span>
-                <span class="tab-text">Skills</span>
-            </button>
-            <button class="tab-btn <?= $activeTab === 'drills' ? 'active' : '' ?>" data-tab="drills" data-action="switch-tab">
-                <span class="tab-icon"><i class="fas fa-hockey-puck"></i></span>
-                <span class="tab-text">Drill Types</span>
-            </button>
-            <button class="tab-btn <?= $activeTab === 'positions' ? 'active' : '' ?>" data-tab="positions" data-action="switch-tab">
-                <span class="tab-icon"><i class="fas fa-user-tag"></i></span>
-                <span class="tab-text">Positions</span>
-            </button>
-            <button class="tab-btn <?= $activeTab === 'equipment' ? 'active' : '' ?>" data-tab="equipment" data-action="switch-tab">
-                <span class="tab-icon"><i class="fas fa-toolbox"></i></span>
-                <span class="tab-text">Equipment</span>
-            </button>
-            <button class="tab-btn <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
-                <span class="tab-icon"><i class="fas fa-tags"></i></span>
-                <span class="tab-text">Merchandise</span>
-            </button>
-        </div>
-    </div>
+<!-- Category Tabs -->
+<div class="page-tabs">
+    <button type="button" class="page-tab <?= $activeTab === 'skills' ? 'active' : '' ?>" data-tab="skills" data-action="switch-tab">
+        <i class="fas fa-star"></i> Skills
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'drills' ? 'active' : '' ?>" data-tab="drills" data-action="switch-tab">
+        <i class="fas fa-hockey-puck"></i> Drill Types
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'positions' ? 'active' : '' ?>" data-tab="positions" data-action="switch-tab">
+        <i class="fas fa-user-tag"></i> Positions
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'equipment' ? 'active' : '' ?>" data-tab="equipment" data-action="switch-tab">
+        <i class="fas fa-toolbox"></i> Equipment
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
+        <i class="fas fa-tags"></i> Merchandise
+    </button>
+</div>
 
+<div class="page-tab-content">
     <!-- Skills Tab -->
     <div class="tab-content <?= $activeTab === 'skills' ? 'active' : '' ?>" id="skills-tab">
-        <div class="content-card">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-star"></i> Skill Categories</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-skill-modal"><i class="fas fa-plus"></i> Add Skill</button>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-skill-modal"><i class="fas fa-plus"></i> Add Skill</button>
             </div>
             <div class="card-body">
                 <div class="categories-list">

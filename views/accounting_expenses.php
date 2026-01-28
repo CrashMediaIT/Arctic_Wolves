@@ -73,91 +73,79 @@ if ($expenseStats['last_month'] > 0) {
 </div>
 <?php endif; ?>
 
-<style>
-/* Expenses Page Header - Financial Reports Hub Style */
-.expenses-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.expenses-page-header .page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.expenses-page-header .page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), #5a0080);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-.expenses-page-header .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-.expenses-page-header .page-description {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
-}
-</style>
-
-<div class="expenses-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-receipt"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Expense Tracking</h1>
-            <p class="page-description">Track, manage, and categorize business expenses (CRA Best Practices)</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-receipt"></i> Expense Tracking</h1>
+        <p class="page-description">Track, manage, and categorize business expenses (CRA Best Practices)</p>
     </div>
 </div>
 
-<div class="expenses-content">
-    <!-- Expense Stats -->
-    <div class="expense-stats">
-        <div class="expense-stat-card current">
-            <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
-            <div class="stat-info">
-                <span class="stat-value">$<?= number_format($expenseStats['this_month'], 2) ?></span>
-                <span class="stat-label">This Month</span>
-            </div>
+<style>
+/* Expense Stats Cards */
+.expense-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.expense-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.expense-stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+.expense-stat-card.current .stat-icon { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.expense-stat-card.last .stat-icon { background: rgba(107, 70, 193, 0.15); color: var(--primary); }
+.expense-stat-card.change.up .stat-icon { background: rgba(239, 68, 68, 0.15); color: var(--error); }
+.expense-stat-card.change.down .stat-icon { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.expense-stat-card.total .stat-icon { background: rgba(107, 70, 193, 0.15); color: var(--primary); }
+.expense-stat-card .stat-info { display: flex; flex-direction: column; }
+.expense-stat-card .stat-value { font-size: 24px; font-weight: 700; color: var(--text-white); }
+.expense-stat-card .stat-label { font-size: 13px; color: var(--text-dim); }
+</style>
+
+<!-- Expense Stats -->
+<div class="expense-stats">
+    <div class="expense-stat-card current">
+        <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">$<?= number_format($expenseStats['this_month'], 2) ?></span>
+            <span class="stat-label">This Month</span>
         </div>
-        <div class="expense-stat-card last">
-            <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
-            <div class="stat-info">
-                <span class="stat-value">$<?= number_format($expenseStats['last_month'], 2) ?></span>
-                <span class="stat-label">Last Month</span>
-            </div>
+    </div>
+    <div class="expense-stat-card last">
+        <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">$<?= number_format($expenseStats['last_month'], 2) ?></span>
+            <span class="stat-label">Last Month</span>
         </div>
-        <div class="expense-stat-card change <?= $monthChange >= 0 ? 'up' : 'down' ?>">
-            <div class="stat-icon"><i class="fas fa-<?= $monthChange >= 0 ? 'arrow-up' : 'arrow-down' ?>"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $monthChange >= 0 ? '+' : '' ?><?= number_format($monthChange, 1) ?>%</span>
-                <span class="stat-label">vs Last Month</span>
-            </div>
+    </div>
+    <div class="expense-stat-card change <?= $monthChange >= 0 ? 'up' : 'down' ?>">
+        <div class="stat-icon"><i class="fas fa-<?= $monthChange >= 0 ? 'arrow-up' : 'arrow-down' ?>"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $monthChange >= 0 ? '+' : '' ?><?= number_format($monthChange, 1) ?>%</span>
+            <span class="stat-label">vs Last Month</span>
         </div>
-        <div class="expense-stat-card total">
-            <div class="stat-icon"><i class="fas fa-receipt"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $expenseStats['total_count'] ?></span>
-                <span class="stat-label">Total Expenses</span>
-            </div>
+    </div>
+    <div class="expense-stat-card total">
+        <div class="stat-icon"><i class="fas fa-receipt"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $expenseStats['total_count'] ?></span>
+            <span class="stat-label">Total Expenses</span>
         </div>
+    </div>
     </div>
 
     <!-- Quick Actions -->

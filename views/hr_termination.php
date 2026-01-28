@@ -54,90 +54,78 @@ $employees_stmt = $pdo->query($employeesQuery);
 $employees = $employees_stmt->fetchAll();
 ?>
 <!-- HR Termination View -->
-<style>
-/* Termination Page Header - Financial Reports Hub Style */
-.termination-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.termination-page-header .page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.termination-page-header .page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
-}
-.termination-page-header .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-.termination-page-header .page-description {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
-}
-</style>
 
-<div class="termination-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-user-times"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Staff Termination Management</h1>
-            <p class="page-description">Process staff termination and offboarding procedures. Track all terminations for administration review.</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-user-times" style="color: var(--error);"></i> Staff Termination Management</h1>
+        <p class="page-description">Process staff termination and offboarding procedures. Track all terminations for administration review.</p>
     </div>
 </div>
 
-<div class="termination-content">
-    <!-- Termination Stats -->
-    <div class="termination-stats">
-        <div class="termination-stat-card total">
-            <div class="stat-icon"><i class="fas fa-user-times"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $terminationStats['total_terminations'] ?></span>
-                <span class="stat-label">Total Terminations</span>
-            </div>
+<style>
+/* Termination Stats Cards */
+.termination-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.termination-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.termination-stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+.termination-stat-card.total .stat-icon { background: rgba(107, 70, 193, 0.15); color: var(--primary); }
+.termination-stat-card.completed .stat-icon { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.termination-stat-card.pending .stat-icon { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.termination-stat-card.upcoming .stat-icon { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.termination-stat-card .stat-info { display: flex; flex-direction: column; }
+.termination-stat-card .stat-value { font-size: 24px; font-weight: 700; color: var(--text-white); }
+.termination-stat-card .stat-label { font-size: 13px; color: var(--text-dim); }
+</style>
+
+<!-- Termination Stats -->
+<div class="termination-stats">
+    <div class="termination-stat-card total">
+        <div class="stat-icon"><i class="fas fa-user-times"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $terminationStats['total_terminations'] ?></span>
+            <span class="stat-label">Total Terminations</span>
         </div>
-        <div class="termination-stat-card completed">
-            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $terminationStats['completed'] ?></span>
-                <span class="stat-label">Completed</span>
-            </div>
+    </div>
+    <div class="termination-stat-card completed">
+        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $terminationStats['completed'] ?></span>
+            <span class="stat-label">Completed</span>
         </div>
-        <div class="termination-stat-card pending">
-            <div class="stat-icon"><i class="fas fa-clock"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $terminationStats['pending'] ?></span>
-                <span class="stat-label">Pending</span>
-            </div>
+    </div>
+    <div class="termination-stat-card pending">
+        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $terminationStats['pending'] ?></span>
+            <span class="stat-label">Pending</span>
         </div>
-        <div class="termination-stat-card upcoming">
-            <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $terminationStats['upcoming'] ?></span>
-                <span class="stat-label">Upcoming</span>
-            </div>
+    </div>
+    <div class="termination-stat-card upcoming">
+        <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $terminationStats['upcoming'] ?></span>
+            <span class="stat-label">Upcoming</span>
+        </div>
         </div>
     </div>
 

@@ -30,13 +30,8 @@ try {
 
 <div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-clock"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Time Tracking</h1>
-            <p class="page-description">Manage your shift and breaks</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-clock"></i> Time Tracking</h1>
+        <p class="page-description">Manage your shift and breaks</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">

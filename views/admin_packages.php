@@ -36,8 +36,11 @@ $sessions = $pdo->query("
 
 <div class="admin-packages-container">
     <div class="page-header">
-        <h2><i class="fas fa-box"></i> Package Management</h2>
-        <button class="btn-primary" onclick="openPackageModal()">
+        <div class="page-header-content">
+            <h1 class="page-title"><i class="fas fa-box"></i> Package Management</h1>
+            <p class="page-description">Create and manage training packages</p>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="openPackageModal()">
             <i class="fas fa-plus"></i> Create Package
         </button>
     </div>

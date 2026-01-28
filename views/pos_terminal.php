@@ -72,13 +72,8 @@ try {
 
 <div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-cash-register"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">POS Terminal</h1>
-            <p class="page-description">Point of Sale for merchandise transactions</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-cash-register"></i> POS Terminal</h1>
+        <p class="page-description">Point of Sale for merchandise transactions</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
