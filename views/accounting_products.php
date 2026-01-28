@@ -103,15 +103,40 @@ try {
     $discounts = [];
 }
 
-// Fetch merchandise products from database
+// Fetch merchandise products from database with sizes
 try {
     $merchProductsStmt = $pdo->query("
-        SELECT mp.*, mc.name as category_name 
+        SELECT mp.*, mc.name as category_name,
+               COALESCE((SELECT SUM(mps.quantity) FROM merchandise_product_sizes mps WHERE mps.product_id = mp.id), 0) as total_quantity
         FROM merchandise_products mp 
         LEFT JOIN merchandise_categories mc ON mp.category_id = mc.id 
         ORDER BY mp.name
     ");
     $merchProducts = $merchProductsStmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fetch all sizes in a single query to avoid N+1 problem
+    $productIds = array_column($merchProducts, 'id');
+    if (!empty($productIds)) {
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $sizesStmt = $pdo->prepare("SELECT * FROM merchandise_product_sizes WHERE product_id IN ($placeholders) ORDER BY product_id, id ASC");
+        $sizesStmt->execute($productIds);
+        $allSizes = $sizesStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Group sizes by product_id
+        $sizesByProduct = [];
+        foreach ($allSizes as $size) {
+            $sizesByProduct[$size['product_id']][] = $size;
+        }
+        
+        // Assign sizes to products
+        foreach ($merchProducts as &$product) {
+            $product['sizes'] = $sizesByProduct[$product['id']] ?? [];
+        }
+    } else {
+        foreach ($merchProducts as &$product) {
+            $product['sizes'] = [];
+        }
+    }
 } catch (PDOException $e) {
     error_log("Merchandise products fetch error: " . $e->getMessage());
     $merchProducts = [];
@@ -328,7 +353,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 
     <!-- Packages Tab -->
     <div class="tab-content <?= $activeTab === 'packages' ? 'active' : '' ?>" id="packages-tab">
-        <div class="content-card">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-box"></i> Training Packages</h3>
                 <button class="btn btn-primary" data-action="add" data-modal="add-package-modal"><i class="fas fa-plus"></i> Create Package</button>
@@ -336,9 +361,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
             <div class="card-body">
                 <div class="products-grid">
                     <?php if (empty($packages)): ?>
-                        <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
-                            <i class="fas fa-box" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
-                            <p style="color: var(--text-dim);">No packages yet. Click "Create Package" to add one.</p>
+                        <div class="empty-state-card" style="grid-column: 1/-1;">
+                            <i class="fas fa-box"></i>
+                            <h4>No packages yet</h4>
+                            <p>Click "Create Package" to add one.</p>
                         </div>
                     <?php else: ?>
                         <?php foreach ($packages as $package): 
@@ -387,16 +413,17 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 
     <!-- Discounts Tab -->
     <div class="tab-content <?= $activeTab === 'discounts' ? 'active' : '' ?>" id="discounts-tab">
-        <div class="content-card">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-tags"></i> Discount Codes</h3>
                 <button class="btn btn-primary" data-action="add" data-modal="add-discount-modal"><i class="fas fa-plus"></i> Create Discount</button>
             </div>
             <div class="card-body">
                 <?php if (empty($discounts)): ?>
-                    <div class="empty-state" style="text-align: center; padding: 60px 20px;">
-                        <i class="fas fa-tags" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
-                        <p style="color: var(--text-dim);">No discount codes yet. Click "Create Discount" to add one.</p>
+                    <div class="empty-state-card">
+                        <i class="fas fa-tags"></i>
+                        <h4>No discount codes yet</h4>
+                        <p>Click "Create Discount" to add one.</p>
                     </div>
                 <?php else: ?>
                 <div class="table-container">
@@ -471,15 +498,15 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 
     <!-- Merchandise Tab -->
     <div class="tab-content <?= $activeTab === 'merchandise' ? 'active' : '' ?>" id="merchandise-tab">
-        <div class="content-card">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-tshirt"></i> Merchandise Products</h3>
                 <button class="btn btn-primary" data-action="add" data-modal="add-merchandise-product-modal"><i class="fas fa-plus"></i> Add Product</button>
             </div>
             <div class="card-body">
                 <?php if (empty($merchProducts)): ?>
-                <div class="empty-state">
-                    <div class="empty-icon"><i class="fas fa-tshirt"></i></div>
+                <div class="empty-state-card">
+                    <i class="fas fa-tshirt"></i>
                     <h4>No Merchandise Products</h4>
                     <p>Create your first merchandise product to start selling in the shop and POS.</p>
                     <button class="btn btn-primary" data-action="add" data-modal="add-merchandise-product-modal"><i class="fas fa-plus"></i> Add Product</button>
@@ -492,7 +519,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <th>Product</th>
                                 <th>Category</th>
                                 <th>Price</th>
-                                <th>Stock</th>
+                                <th>Stock / Sizes</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -510,7 +537,19 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 </td>
                                 <td><?= htmlspecialchars($product['category_name'] ?? 'Uncategorized') ?></td>
                                 <td>$<?= number_format($product['price'] ?? 0, 2) ?></td>
-                                <td><?= $product['stock_quantity'] ?? 0 ?></td>
+                                <td>
+                                    <?php if (!empty($product['sizes'])): ?>
+                                        <div class="size-stock-display">
+                                            <?php foreach ($product['sizes'] as $size): ?>
+                                                <span class="size-badge" title="<?= htmlspecialchars($size['size']) ?>: <?= $size['quantity'] ?> in stock">
+                                                    <?= htmlspecialchars($size['size']) ?>: <?= $size['quantity'] ?>
+                                                </span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-dim);"><?= $product['total_quantity'] ?? $product['stock_quantity'] ?? 0 ?></span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><span class="status-badge <?= !empty($product['is_active']) ? 'active' : 'inactive' ?>"><?= !empty($product['is_active']) ? 'Active' : 'Inactive' ?></span></td>
                                 <td>
                                     <div class="table-actions">
@@ -915,6 +954,64 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     border-bottom: none;
 }
 
+/* Size/Stock rows for merchandise */
+.size-stock-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.size-stock-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.size-stock-row .form-input {
+    margin-bottom: 0;
+}
+
+.size-stock-row .size-input {
+    flex: 1;
+    min-width: 150px;
+}
+
+.size-stock-row .qty-input {
+    width: 100px;
+}
+
+.size-stock-row .remove-size-btn {
+    flex-shrink: 0;
+}
+
+.add-size-btn {
+    margin-top: 8px;
+}
+
+.form-help {
+    display: block;
+    margin-top: 8px;
+    color: var(--text-dim);
+    font-size: 12px;
+}
+
+/* Size badges display in table */
+.size-stock-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.size-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: rgba(107, 70, 193, 0.15);
+    color: var(--primary-light);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
 @media (max-width: 768px) {
     .product-stats {
         grid-template-columns: repeat(2, 1fr);
@@ -922,6 +1019,14 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     
     .products-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .size-stock-row {
+        flex-wrap: wrap;
+    }
+    
+    .size-stock-row .form-input:first-child {
+        flex: 1 1 100%;
     }
 }
 
@@ -1484,10 +1589,30 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <label class="form-label">Description</label>
                     <textarea name="description" class="form-textarea" rows="3" placeholder="Product description..."></textarea>
                 </div>
+                
+                <!-- Size/Stock Options -->
+                <div class="form-group">
+                    <label class="form-label" id="size-stock-label">Size & Stock Options</label>
+                    <div class="size-stock-container" id="add-merch-sizes-container" aria-labelledby="size-stock-label">
+                        <div class="size-stock-row">
+                            <input type="text" name="sizes[]" class="form-input size-input" placeholder="Size (e.g., S, M, L, XL)" aria-label="Size name">
+                            <input type="number" name="quantities[]" class="form-input qty-input" min="0" value="0" placeholder="Qty" aria-label="Quantity">
+                            <button type="button" class="btn-action danger remove-size-btn" onclick="removeSizeRow(this)" title="Remove size" aria-label="Remove this size"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm add-size-btn" onclick="addMerchSizeRow('add-merch-sizes-container')">
+                        <i class="fas fa-plus"></i> Add Size
+                    </button>
+                    <small class="form-help">Add different sizes with their stock quantities. Leave empty for products without sizes.</small>
+                </div>
+                
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Stock Quantity</label>
-                        <input type="number" name="stock_quantity" class="form-input" min="0" value="0">
+                        <label class="form-label">Track Inventory</label>
+                        <select name="track_inventory" class="form-input">
+                            <option value="1">Yes - Track stock levels</option>
+                            <option value="0">No - Unlimited stock</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Status</label>
@@ -1503,7 +1628,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-merchandise-product-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-merchandise-product-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Add Product</button>
             </div>
         </form>
@@ -1729,7 +1854,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
                 
-                return { success: false, message: 'Unexpected response from server. Please refresh and try again.' };
+                // Try to parse as JSON anyway - some servers don't set content-type properly
+                return response.text().then(function(text) {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        // If we got here and response was ok, it might be a redirect or non-JSON success
+                        // Check if it looks like a successful HTML redirect
+                        if (text.includes('status=success') || text.includes('Operation completed')) {
+                            return { success: true, message: 'Operation completed successfully!' };
+                        }
+                        return { success: false, message: 'Unexpected response from server. Please refresh and try again.' };
+                    }
+                });
             })
             .then(function(data) {
                 if (submitBtn) {
@@ -1748,6 +1885,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         currentTab = 'packages';
                     } else if (modal && modal.id.includes('discount')) {
                         currentTab = 'discounts';
+                    } else if (modal && modal.id.includes('merchandise')) {
+                        currentTab = 'merchandise';
                     } else if (modal && modal.id.includes('session')) {
                         currentTab = 'sessions';
                     }
@@ -1777,6 +1916,58 @@ function closeModal(modalId) {
         modal.classList.remove('active');
         var form = modal.querySelector('form');
         if (form) form.reset();
+        // Reset size rows to single empty row
+        var sizesContainer = modal.querySelector('.size-stock-container');
+        if (sizesContainer) {
+            sizesContainer.innerHTML = '<div class="size-stock-row">' +
+                '<input type="text" name="sizes[]" class="form-input size-input" placeholder="Size (e.g., S, M, L, XL)" aria-label="Size name">' +
+                '<input type="number" name="quantities[]" class="form-input qty-input" min="0" value="0" placeholder="Qty" aria-label="Quantity">' +
+                '<button type="button" class="btn-action danger remove-size-btn" onclick="removeSizeRow(this)" title="Remove size" aria-label="Remove this size"><i class="fas fa-trash"></i></button>' +
+            '</div>';
+        }
+    }
+}
+
+// Merchandise size/stock row management
+function addMerchSizeRow(containerId) {
+    var container = document.getElementById(containerId);
+    var newRow = document.createElement('div');
+    newRow.className = 'size-stock-row';
+    
+    var sizeInput = document.createElement('input');
+    sizeInput.type = 'text';
+    sizeInput.name = 'sizes[]';
+    sizeInput.className = 'form-input size-input';
+    sizeInput.placeholder = 'Size (e.g., S, M, L, XL)';
+    sizeInput.setAttribute('aria-label', 'Size name');
+    
+    var qtyInput = document.createElement('input');
+    qtyInput.type = 'number';
+    qtyInput.name = 'quantities[]';
+    qtyInput.className = 'form-input qty-input';
+    qtyInput.min = '0';
+    qtyInput.value = '0';
+    qtyInput.placeholder = 'Qty';
+    qtyInput.setAttribute('aria-label', 'Quantity');
+    
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-action danger remove-size-btn';
+    removeBtn.title = 'Remove size';
+    removeBtn.setAttribute('aria-label', 'Remove this size');
+    removeBtn.onclick = function() { removeSizeRow(this); };
+    removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    
+    newRow.appendChild(sizeInput);
+    newRow.appendChild(qtyInput);
+    newRow.appendChild(removeBtn);
+    container.appendChild(newRow);
+}
+
+function removeSizeRow(btn) {
+    var row = btn.closest('.size-stock-row');
+    if (row) {
+        row.remove();
     }
 }
 

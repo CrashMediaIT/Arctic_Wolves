@@ -148,7 +148,7 @@ try {
             $price = floatval($_POST['price'] ?? 0);
             $costPrice = !empty($_POST['cost_price']) ? floatval($_POST['cost_price']) : null;
             $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
-            $trackInventory = isset($_POST['track_inventory']) ? 1 : 0;
+            $trackInventory = intval($_POST['track_inventory'] ?? 1);
             
             if (empty($name)) {
                 throw new Exception('Product name is required');
