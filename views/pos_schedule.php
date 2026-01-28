@@ -395,9 +395,18 @@ let currentView = 'list';
 function switchScheduleView(view) {
     currentView = view;
     
-    // Update tab active state
-    document.querySelectorAll('.schedule-tab').forEach(tab => tab.classList.remove('active'));
-    event.target.closest('.schedule-tab').classList.add('active');
+    // Update tab active state - use page-tab class
+    document.querySelectorAll('.page-tab').forEach(tab => tab.classList.remove('active'));
+    
+    // Find and activate the correct tab based on view
+    const tabs = document.querySelectorAll('.page-tab');
+    tabs.forEach(tab => {
+        const tabText = tab.textContent.toLowerCase();
+        if ((view === 'list' && tabText.includes('list')) || 
+            (view === 'calendar' && tabText.includes('calendar'))) {
+            tab.classList.add('active');
+        }
+    });
     
     // Show/hide views
     if (view === 'list') {

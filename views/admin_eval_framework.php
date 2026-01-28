@@ -167,25 +167,13 @@ try {
     <!-- Scoring Scales -->
     <div class="content-card">
         <div class="card-header">
-            <h3><i class="fas fa-star-half-alt"></i> Scoring Scales</h3>
-            <button class="btn-primary" data-action="add" data-modal="add-scale-modal"><i class="fas fa-plus"></i> Add Scale</button>
+            <h3><i class="fas fa-star-half-alt"></i> Scoring Scale</h3>
         </div>
         <div class="card-body">
             <div class="scales-grid">
                 <div class="scale-card">
-                    <h4>1-5 Scale (Default)</h4>
-                    <div class="scale-levels">
-                        <div class="scale-level">1 - Needs Improvement</div>
-                        <div class="scale-level">2 - Below Average</div>
-                        <div class="scale-level">3 - Average</div>
-                        <div class="scale-level">4 - Above Average</div>
-                        <div class="scale-level">5 - Excellent</div>
-                    </div>
-                    <button class="btn-secondary btn-small" data-action="edit" data-id="1" data-modal="edit-scale-modal"><i class="fas fa-edit"></i> Edit</button>
-                </div>
-
-                <div class="scale-card">
-                    <h4>10 Point Scale</h4>
+                    <h4>1-10 Scale (Standard)</h4>
+                    <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 12px;">All skills are evaluated on a 1-10 scale</p>
                     <div class="scale-levels">
                         <div class="scale-level">1-2 - Poor</div>
                         <div class="scale-level">3-4 - Fair</div>
@@ -193,7 +181,6 @@ try {
                         <div class="scale-level">7-8 - Very Good</div>
                         <div class="scale-level">9-10 - Excellent</div>
                     </div>
-                    <button class="btn-secondary btn-small" data-action="edit" data-id="2" data-modal="edit-scale-modal"><i class="fas fa-edit"></i> Edit</button>
                 </div>
             </div>
         </div>
@@ -733,54 +720,6 @@ try {
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('add-eval-category-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Category</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Add Scale Modal -->
-<div id="add-scale-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title">Add Evaluation Scale</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-scale-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_eval_framework.php">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="create_scale">
-            
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Scale Name *</label>
-                    <input type="text" name="name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="2"></textarea>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Min Value *</label>
-                        <input type="number" name="min_value" class="form-input" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Max Value *</label>
-                        <input type="number" name="max_value" class="form-input" required>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Step</label>
-                    <input type="number" name="step" class="form-input" step="0.1" value="1">
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-scale-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Scale</button>
             </div>
         </form>
     </div>

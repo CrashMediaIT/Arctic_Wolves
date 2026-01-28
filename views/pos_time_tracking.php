@@ -422,24 +422,32 @@ function startTimer() {
         const now = new Date();
         let elapsed = Math.floor((now - clockIn) / 1000);
         
-        // Subtract lunch time if applicable
-        if (shiftData.lunch_start && shiftData.lunch_end) {
+        // Ensure elapsed is never negative (handle clock/timezone issues)
+        if (elapsed < 0) elapsed = 0;
+        
+        // Check if currently on lunch break - timer should be paused
+        if (shiftData.lunch_start && !shiftData.lunch_end) {
+            // Currently on lunch - calculate worked time up to lunch start (paused)
+            const lunchStart = new Date(shiftData.lunch_start.replace(' ', 'T'));
+            elapsed = Math.floor((lunchStart - clockIn) / 1000);
+            if (elapsed < 0) elapsed = 0;
+            document.getElementById('timer-label').textContent = 'Paused - On Lunch Break';
+        } else if (shiftData.lunch_start && shiftData.lunch_end) {
+            // Lunch completed - subtract lunch duration from total
             const lunchStart = new Date(shiftData.lunch_start.replace(' ', 'T'));
             const lunchEnd = new Date(shiftData.lunch_end.replace(' ', 'T'));
             const lunchSeconds = Math.floor((lunchEnd - lunchStart) / 1000);
             elapsed -= lunchSeconds;
-        } else if (shiftData.lunch_start && !shiftData.lunch_end) {
-            // Currently on lunch - show lunch timer
-            const lunchStart = new Date(shiftData.lunch_start.replace(' ', 'T'));
-            elapsed = Math.floor((now - lunchStart) / 1000);
-            document.getElementById('timer-label').textContent = 'Lunch Break Duration';
+            if (elapsed < 0) elapsed = 0;
+            document.getElementById('timer-label').textContent = 'Time Worked Today';
         } else {
             document.getElementById('timer-label').textContent = 'Time Worked Today';
         }
         
-        const hours = Math.floor(elapsed / 3600);
-        const minutes = Math.floor((elapsed % 3600) / 60);
-        const seconds = elapsed % 60;
+        // Convert elapsed to hours, minutes, seconds - ensuring positive values
+        const hours = Math.floor(Math.abs(elapsed) / 3600);
+        const minutes = Math.floor((Math.abs(elapsed) % 3600) / 60);
+        const seconds = Math.abs(elapsed) % 60;
         
         document.getElementById('shift-timer').textContent = 
             String(hours).padStart(2, '0') + ':' + 
