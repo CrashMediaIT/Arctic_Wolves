@@ -1636,9 +1636,12 @@ class DemoDataSeeder {
     
     /**
      * Remove all demo data from database
+     * @param bool $silent If true, suppresses all echo output (for AJAX/JSON contexts)
      */
-    public function cleanupDemoData() {
-        echo "\n=== Cleaning Up Demo Data ===\n\n";
+    public function cleanupDemoData($silent = false) {
+        if (!$silent) {
+            echo "\n=== Cleaning Up Demo Data ===\n\n";
+        }
         
         $tables = $this->getAllTables();
         $deleted_total = 0;
@@ -1652,7 +1655,9 @@ class DemoDataSeeder {
                 $stmt->execute();
                 $count = $stmt->rowCount();
                 if ($count > 0) {
-                    echo "  ✓ Deleted $count records from $table\n";
+                    if (!$silent) {
+                        echo "  ✓ Deleted $count records from $table\n";
+                    }
                     $deleted_total += $count;
                 }
             } catch (PDOException $e) {
@@ -1664,8 +1669,10 @@ class DemoDataSeeder {
         // Re-enable foreign key checks
         $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
         
-        echo "\n=== Demo Data Cleanup Complete! ===\n";
-        echo "Total demo records deleted: $deleted_total\n\n";
+        if (!$silent) {
+            echo "\n=== Demo Data Cleanup Complete! ===\n";
+            echo "Total demo records deleted: $deleted_total\n\n";
+        }
         
         return $deleted_total;
     }

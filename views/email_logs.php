@@ -24,9 +24,9 @@ $total_pages = ceil($total_logs / $per_page);
 
 // Get email logs
 $stmt = $pdo->prepare("
-    SELECT id, recipient, subject, status, error_message, sent_at
+    SELECT id, to_email as recipient, subject, status, error_message, sent_at, created_at
     FROM email_logs
-    ORDER BY sent_at DESC
+    ORDER BY created_at DESC
     LIMIT ? OFFSET ?
 ");
 $stmt->execute([$per_page, $offset]);
@@ -187,8 +187,8 @@ $logs = $stmt->fetchAll();
 $stats = $pdo->query("
     SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) as success,
-        SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as failed
+        SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as success,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
     FROM email_logs
 ")->fetch();
 ?>

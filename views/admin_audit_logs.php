@@ -541,7 +541,7 @@ $csrf_token = generateCsrfToken();
                                 </span>
                             </td>
                             <td>
-                                <span class="table-name"><?= htmlspecialchars($log['table_name']) ?></span>
+                                <span class="table-name"><?= htmlspecialchars($log['table_name'] ?? '') ?></span>
                             </td>
                             <td>
                                 <div class="user-info">
@@ -563,7 +563,7 @@ $csrf_token = generateCsrfToken();
                                     </div>
                                 </div>
                             </td>
-                            <td><?= htmlspecialchars($log['record_id']) ?></td>
+                            <td><?= htmlspecialchars($log['record_id'] ?? '') ?></td>
                             <td class="timestamp"><?= date('M d, Y h:i A', strtotime($log['created_at'])) ?></td>
                             <td>
                                 <button class="btn-icon" onclick="viewLogDetails(<?= $log['id'] ?>)" title="View Details">

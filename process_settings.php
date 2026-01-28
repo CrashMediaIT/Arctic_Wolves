@@ -74,7 +74,7 @@ try {
             if ($result) {
                 echo json_encode(['success' => true, 'message' => 'Test email sent successfully']);
             } else {
-                $stmt = $pdo->prepare("SELECT error_message FROM email_logs WHERE recipient = ? AND status = 'FAILED' ORDER BY sent_at DESC LIMIT 1");
+                $stmt = $pdo->prepare("SELECT error_message FROM email_logs WHERE to_email = ? AND status = 'failed' ORDER BY created_at DESC LIMIT 1");
                 $stmt->execute([$test_email]);
                 $error = $stmt->fetchColumn();
                 echo json_encode(['success' => false, 'message' => $error ?: 'Failed to send test email']);

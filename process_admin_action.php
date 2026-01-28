@@ -1963,7 +1963,7 @@ if ($action == 'cleanup_demo_data') {
         require_once __DIR__ . '/demo_data_seeder.php';
         
         $seeder = new DemoDataSeeder($pdo);
-        $deleted_count = $seeder->cleanupDemoData();
+        $deleted_count = $seeder->cleanupDemoData(true); // Use silent mode for AJAX/JSON context
         
         // Log the action with action_type for consistency
         $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action_type, action, details, ip_address, created_at) VALUES (?, 'ADMIN', 'production_mode_activated', ?, ?, NOW())");
