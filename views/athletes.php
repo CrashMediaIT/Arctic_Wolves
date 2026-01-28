@@ -87,75 +87,8 @@ $age_groups = $age_groups_stmt->fetchAll();
 
 <style>
     /* =========================================================
-       ATHLETES PAGE - Modern Enhanced Design
+       ATHLETES PAGE - Component Specific Styles
        ========================================================= */
-    
-    /* Page Header Enhancement */
-    .athletes-page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 20px;
-        margin-bottom: 32px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid var(--border, #2d2d3f);
-    }
-    
-    .page-header-content {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-    }
-    
-    .page-header-icon {
-        width: 56px;
-        height: 56px;
-        background: linear-gradient(135deg, #6B46C1, #7C3AED);
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        color: #fff;
-        box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-    }
-    
-    .page-header-text h1 {
-        font-size: 28px;
-        font-weight: 800;
-        margin: 0 0 4px 0;
-        letter-spacing: -0.5px;
-        color: #fff;
-    }
-    
-    .page-header-text p {
-        font-size: 14px;
-        color: #9ca3af;
-        margin: 0;
-    }
-    
-    .btn-create {
-        background: #6B46C1;
-        color: #fff;
-        padding: 12px 24px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.3s ease;
-        border: none;
-        cursor: pointer;
-    }
-    
-    .btn-create:hover {
-        background: #7C3AED;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(107, 70, 193, 0.4);
-    }
     
     /* Stats Summary Enhancement */
     .stats-summary {
@@ -457,16 +390,6 @@ $age_groups = $age_groups_stmt->fetchAll();
     
     /* Responsive Design */
     @media (max-width: 768px) {
-        .athletes-page-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .page-header-content {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
         .athletes-grid {
             grid-template-columns: 1fr;
         }
@@ -481,18 +404,13 @@ $age_groups = $age_groups_stmt->fetchAll();
     }
 </style>
 
-<div class="athletes-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-users"></i>
-        </div>
-        <div class="page-header-text">
-            <h1>My Athletes</h1>
-            <p>Manage and track your coached athletes</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-users"></i> My Athletes</h1>
+        <p class="page-description">Manage and track your coached athletes</p>
     </div>
     <?php if ($user_role === 'admin'): ?>
-        <a href="?page=manage_athletes&action=create" class="btn-create">
+        <a href="?page=manage_athletes&action=create" class="btn btn-primary">
             <i class="fas fa-user-plus"></i> Add Athlete
         </a>
     <?php endif; ?>
