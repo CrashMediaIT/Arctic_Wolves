@@ -64,23 +64,7 @@ $categories_stmt = $pdo->prepare("SELECT DISTINCT category FROM exercise_library
 $categories_stmt->execute();
 $categories = $categories_stmt->fetchAll(PDO::FETCH_COLUMN);
 
-// Add demo exercises if none exist
-if (count($exercises) === 0) {
-    $exercises = [
-        ['id' => 'demo-1', 'name' => 'Squats', 'category' => 'Lower Body', 'description' => 'Stand with feet shoulder-width apart. Lower your body by bending knees and hips until thighs are parallel to ground. Push back up.', 'sets' => 4, 'reps' => 10, 'weight' => '135 lbs', 'video_url' => ''],
-        ['id' => 'demo-2', 'name' => 'Deadlifts', 'category' => 'Lower Body', 'description' => 'Stand with feet hip-width apart, barbell over mid-foot. Bend at hips and knees, grip bar, then drive through heels to stand.', 'sets' => 3, 'reps' => 8, 'weight' => '185 lbs', 'video_url' => ''],
-        ['id' => 'demo-3', 'name' => 'Bench Press', 'category' => 'Upper Body', 'description' => 'Lie on bench, grip bar slightly wider than shoulders. Lower to chest, pause, then press up.', 'sets' => 4, 'reps' => 8, 'weight' => '135 lbs', 'video_url' => ''],
-        ['id' => 'demo-4', 'name' => 'Pull-ups', 'category' => 'Upper Body', 'description' => 'Hang from bar with overhand grip, pull body up until chin is above bar, lower with control.', 'sets' => 3, 'reps' => 10, 'weight' => 'Body Weight', 'video_url' => ''],
-        ['id' => 'demo-5', 'name' => 'Planks', 'category' => 'Core', 'description' => 'Hold push-up position with weight on forearms. Keep body in straight line from head to heels.', 'sets' => 3, 'reps' => '60 seconds', 'weight' => 'Body Weight', 'video_url' => ''],
-        ['id' => 'demo-6', 'name' => 'Lunges', 'category' => 'Lower Body', 'description' => 'Step forward with one leg, lowering hips until both knees are bent at 90 degrees. Push back to start.', 'sets' => 3, 'reps' => 12, 'weight' => '40 lbs', 'video_url' => ''],
-        ['id' => 'demo-7', 'name' => 'Shoulder Press', 'category' => 'Upper Body', 'description' => 'Stand or sit with dumbbells at shoulder height. Press weights overhead until arms are extended.', 'sets' => 3, 'reps' => 10, 'weight' => '30 lbs', 'video_url' => ''],
-        ['id' => 'demo-8', 'name' => 'Russian Twists', 'category' => 'Core', 'description' => 'Sit with knees bent, lean back slightly. Hold weight and rotate torso side to side.', 'sets' => 3, 'reps' => 20, 'weight' => '15 lbs', 'video_url' => '']
-    ];
-    $categories = ['Upper Body', 'Lower Body', 'Core'];
-    $is_demo_exercises = true;
-} else {
-    $is_demo_exercises = false;
-}
+// No demo exercises - show empty state when no real data exists
 
 // Calculate program progress
 $program_progress = 0;
@@ -169,63 +153,57 @@ if ($current_program && $current_program['total_workouts'] > 0) {
             </div>
         </div>
         <div class="card-body">
+            <?php if (empty($schedule)): ?>
+            <div class="empty-state-small">
+                <i class="fas fa-calendar-times"></i>
+                <p>No workout schedule assigned for this week. Contact your coach for a personalized training plan.</p>
+            </div>
+            <?php else: ?>
             <div class="workout-schedule">
                 <?php
-                // Demo schedule data with detailed exercise info - one week starting from Monday
-                $demo_schedule = [
-                    ['day' => 'MON', 'date' => date('j', strtotime('monday this week')), 'workout' => 'Upper Body Strength', 'status' => 'completed', 'icon' => 'check-circle', 'exercises' => [
-                        ['name' => 'Bench Press', 'sets' => 3, 'reps' => 10, 'weight' => '135 lbs', 'description' => 'Lie on bench, grip bar slightly wider than shoulders. Lower to chest, pause, then press up.'],
-                        ['name' => 'Shoulder Press', 'sets' => 3, 'reps' => 8, 'weight' => '85 lbs', 'description' => 'Stand or sit with dumbbells at shoulder height. Press weights overhead until arms are extended.'],
-                        ['name' => 'Lat Pulldown', 'sets' => 3, 'reps' => 12, 'weight' => '100 lbs', 'description' => 'Sit at pulldown machine, grip bar wide. Pull bar down to chest, squeeze back, then control the return.'],
-                        ['name' => 'Bicep Curls', 'sets' => 3, 'reps' => 15, 'weight' => '25 lbs', 'description' => 'Stand with dumbbells at sides, palms forward. Curl weights toward shoulders, lower with control.']
-                    ]],
-                    ['day' => 'TUE', 'date' => date('j', strtotime('tuesday this week')), 'workout' => 'Cardio & Core', 'status' => 'completed', 'icon' => 'check-circle', 'exercises' => [
-                        ['name' => 'Running', 'sets' => 1, 'reps' => '20 min', 'weight' => 'N/A', 'description' => 'Maintain steady pace at 70-80% max heart rate. Focus on breathing rhythm and form.'],
-                        ['name' => 'Plank', 'sets' => 3, 'reps' => '60 sec', 'weight' => 'Bodyweight', 'description' => 'Hold push-up position with weight on forearms. Keep body in straight line from head to heels.'],
-                        ['name' => 'Russian Twists', 'sets' => 3, 'reps' => 20, 'weight' => '15 lbs', 'description' => 'Sit with knees bent, lean back slightly. Hold weight and rotate torso side to side.'],
-                        ['name' => 'Mountain Climbers', 'sets' => 3, 'reps' => 15, 'weight' => 'Bodyweight', 'description' => 'Start in plank position. Drive knees toward chest alternately at quick pace.']
-                    ]],
-                    ['day' => 'WED', 'date' => date('j', strtotime('wednesday this week')), 'workout' => 'Lower Body Power', 'status' => 'active', 'icon' => 'play-circle', 'exercises' => [
-                        ['name' => 'Squats', 'sets' => 4, 'reps' => 8, 'weight' => '185 lbs', 'description' => 'Stand with feet shoulder-width apart. Lower your body by bending knees and hips until thighs are parallel to ground. Push back up.'],
-                        ['name' => 'Deadlifts', 'sets' => 3, 'reps' => 6, 'weight' => '225 lbs', 'description' => 'Stand with feet hip-width apart, barbell over mid-foot. Bend at hips and knees, grip bar, then drive through heels to stand.'],
-                        ['name' => 'Lunges', 'sets' => 3, 'reps' => 12, 'weight' => '40 lbs', 'description' => 'Step forward with one leg, lowering hips until both knees are bent at 90 degrees. Push back to start.'],
-                        ['name' => 'Calf Raises', 'sets' => 3, 'reps' => 15, 'weight' => '135 lbs', 'description' => 'Stand on edge of step with heels hanging off. Rise up on toes, pause, then lower below platform level.']
-                    ]],
-                    ['day' => 'THU', 'date' => date('j', strtotime('thursday this week')), 'workout' => 'Active Recovery', 'status' => 'upcoming', 'icon' => 'circle', 'exercises' => [
-                        ['name' => 'Yoga', 'sets' => 1, 'reps' => '30 min', 'weight' => 'N/A', 'description' => 'Focus on hip openers, hamstring stretches, and spine mobility. Hold each pose for 30-60 seconds.'],
-                        ['name' => 'Light Stretching', 'sets' => 1, 'reps' => '15 min', 'weight' => 'N/A', 'description' => 'Full body static stretches. Hold each stretch 20-30 seconds without bouncing.'],
-                        ['name' => 'Foam Rolling', 'sets' => 1, 'reps' => '10 min', 'weight' => 'N/A', 'description' => 'Roll out tight muscles including quads, hamstrings, IT band, and back. Spend extra time on tender spots.'],
-                        ['name' => 'Walking', 'sets' => 1, 'reps' => '20 min', 'weight' => 'N/A', 'description' => 'Easy-paced walk to promote blood flow and recovery. Keep heart rate low.']
-                    ]],
-                    ['day' => 'FRI', 'date' => date('j', strtotime('friday this week')), 'workout' => 'Full Body Circuit', 'status' => 'upcoming', 'icon' => 'circle', 'exercises' => [
-                        ['name' => 'Burpees', 'sets' => 3, 'reps' => 10, 'weight' => 'Bodyweight', 'description' => 'From standing, drop to squat, kick feet back to plank, do push-up, jump feet forward, explode up with arms overhead.'],
-                        ['name' => 'Push-ups', 'sets' => 3, 'reps' => 15, 'weight' => 'Bodyweight', 'description' => 'Hands shoulder-width apart, body in straight line. Lower chest to ground, push back up.'],
-                        ['name' => 'Kettlebell Swings', 'sets' => 3, 'reps' => 12, 'weight' => '35 lbs', 'description' => 'Hinge at hips with kettlebell between legs. Thrust hips forward to swing weight to shoulder height.'],
-                        ['name' => 'Box Jumps', 'sets' => 3, 'reps' => 10, 'weight' => 'Bodyweight', 'description' => 'Stand in front of box. Swing arms and jump onto box, landing softly with bent knees. Step down and repeat.']
-                    ]],
-                    ['day' => 'SAT', 'date' => date('j', strtotime('saturday this week')), 'workout' => 'Rest Day', 'status' => 'rest', 'icon' => 'bed', 'exercises' => []],
-                    ['day' => 'SUN', 'date' => date('j', strtotime('sunday this week')), 'workout' => 'Rest Day', 'status' => 'rest', 'icon' => 'bed', 'exercises' => []],
-                ];
+                // Group schedule by day number
+                $schedule_by_day = [];
+                foreach ($schedule as $item) {
+                    $day_num = $item['day_number'];
+                    if (!isset($schedule_by_day[$day_num])) {
+                        $schedule_by_day[$day_num] = [];
+                    }
+                    $schedule_by_day[$day_num][] = $item;
+                }
                 
-                foreach ($demo_schedule as $day_data): 
-                    $status_class = $day_data['status'] === 'completed' ? 'completed' : ($day_data['status'] === 'active' ? 'active' : ($day_data['status'] === 'rest' ? 'rest' : ''));
+                $days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+                foreach ($days as $index => $day_name):
+                    $day_number = $index + 1;
+                    $day_exercises = $schedule_by_day[$day_number] ?? [];
+                    $has_workout = !empty($day_exercises);
+                    $date = date('j', strtotime("monday this week +{$index} days"));
+                    $workout_label = $has_workout ? $day_name . ' Workout' : 'Rest Day';
                 ?>
-                <div class="schedule-day clickable <?= $status_class ?>" 
-                     data-day="<?= $day_data['day'] ?>" 
-                     data-workout="<?= htmlspecialchars($day_data['workout']) ?>"
-                     data-exercises='<?= htmlspecialchars(json_encode($day_data['exercises'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>'
+                <div class="schedule-day clickable <?= $has_workout ? '' : 'rest' ?>" 
+                     data-day="<?= $day_name ?>" 
+                     data-workout="<?= htmlspecialchars($workout_label) ?>"
+                     data-exercises='<?= htmlspecialchars(json_encode(array_map(function($e) {
+                         return [
+                             'name' => $e['exercise_name'] ?? '',
+                             'sets' => $e['sets'] ?? 0,
+                             'reps' => $e['reps'] ?? 0,
+                             'weight' => $e['weight'] ?? 'N/A',
+                             'description' => $e['description'] ?? ''
+                         ];
+                     }, $day_exercises), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>'
                      onclick="showDayDetails(this)">
                     <div class="day-header">
-                        <span class="day-name"><?= $day_data['day'] ?></span>
-                        <span class="day-date"><?= $day_data['date'] ?></span>
+                        <span class="day-name"><?= $day_name ?></span>
+                        <span class="day-date"><?= $date ?></span>
                     </div>
                     <div class="day-workout">
-                        <i class="fas fa-<?= $day_data['icon'] ?>"></i>
-                        <span><?= $day_data['workout'] ?></span>
+                        <i class="fas fa-<?= $has_workout ? 'dumbbell' : 'bed' ?>"></i>
+                        <span><?= $has_workout ? count($day_exercises) . ' exercise(s)' : 'Rest Day' ?></span>
                     </div>
                 </div>
                 <?php endforeach; ?>
             </div>
+            <?php endif; ?>
         </div>
     </div>
 

@@ -43,48 +43,9 @@ $available_sessions_query = "
 ";
 $available_sessions = $pdo->query($available_sessions_query)->fetchAll();
 
-// Demo data for packages if none exist
-if (count($packages) === 0) {
-    $packages = [
-        ['id' => 'demo-1', 'name' => 'Starter Pack', 'price' => 150, 'credits' => 5, 'description' => 'Perfect for getting started with training', 'valid_days' => 30],
-        ['id' => 'demo-2', 'name' => 'Training Bundle', 'price' => 275, 'credits' => 10, 'description' => 'Our most popular package for regular training', 'valid_days' => 60],
-        ['id' => 'demo-3', 'name' => 'Elite Package', 'price' => 500, 'credits' => 20, 'description' => 'Best value for dedicated athletes', 'valid_days' => 90]
-    ];
-    $is_demo_packages = true;
-} else {
-    $is_demo_packages = false;
-}
-
-// Demo data for coaches if none exist
-if (count($coaches) === 0) {
-    $coaches = [
-        ['id' => 'demo-1', 'first_name' => 'Mike', 'last_name' => 'Smith'],
-        ['id' => 'demo-2', 'first_name' => 'Sarah', 'last_name' => 'Johnson'],
-        ['id' => 'demo-3', 'first_name' => 'David', 'last_name' => 'Williams']
-    ];
-}
-
-// Demo data for session types if none exist
-if (count($session_types) === 0) {
-    $session_types = [
-        ['id' => 'demo-1', 'name' => 'Skating Skills', 'price' => 45],
-        ['id' => 'demo-2', 'name' => 'Power Skating', 'price' => 55],
-        ['id' => 'demo-3', 'name' => 'Shooting Practice', 'price' => 50],
-        ['id' => 'demo-4', 'name' => 'Private Lesson', 'price' => 75]
-    ];
-}
-
-// Demo sessions if none exist
-if (count($available_sessions) === 0) {
-    $available_sessions = [
-        ['id' => 'demo-1', 'session_date' => date('Y-m-d H:i:s', strtotime('+2 days 10:00')), 'session_type_name' => 'Power Skating', 'session_price' => 55, 'coach_name' => 'Mike Smith', 'location_name' => 'Main Arena', 'duration_minutes' => 60, 'description' => 'Improve your skating speed and agility', 'max_participants' => 12, 'registered_count' => 8],
-        ['id' => 'demo-2', 'session_date' => date('Y-m-d H:i:s', strtotime('+3 days 14:00')), 'session_type_name' => 'Shooting Practice', 'session_price' => 50, 'coach_name' => 'Sarah Johnson', 'location_name' => 'Training Rink', 'duration_minutes' => 90, 'description' => 'Work on your shooting accuracy and technique', 'max_participants' => 10, 'registered_count' => 6],
-        ['id' => 'demo-3', 'session_date' => date('Y-m-d H:i:s', strtotime('+5 days 16:00')), 'session_type_name' => 'Skating Skills', 'session_price' => 45, 'coach_name' => 'David Williams', 'location_name' => 'Main Arena', 'duration_minutes' => 60, 'description' => 'Fundamental skating drills for all levels', 'max_participants' => 15, 'registered_count' => 3]
-    ];
-    $is_demo_sessions = true;
-} else {
-    $is_demo_sessions = false;
-}
+// No demo data - show empty state when no real data exists
+$is_demo_packages = false;
+$is_demo_sessions = false;
 ?>
 
 <!-- Session Booking View - Two Section Layout -->
