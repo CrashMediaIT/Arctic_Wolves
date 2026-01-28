@@ -177,10 +177,11 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                     $day_exercises = $schedule_by_day[$day_number] ?? [];
                     $has_workout = !empty($day_exercises);
                     $date = date('j', strtotime("monday this week +{$index} days"));
+                    $workout_label = $has_workout ? $day_name . ' Workout' : 'Rest Day';
                 ?>
                 <div class="schedule-day clickable <?= $has_workout ? '' : 'rest' ?>" 
                      data-day="<?= $day_name ?>" 
-                     data-workout="<?= $has_workout ? htmlspecialchars($day_exercises[0]['exercise_name'] ?? 'Workout') : 'Rest Day' ?>"
+                     data-workout="<?= htmlspecialchars($workout_label) ?>"
                      data-exercises='<?= htmlspecialchars(json_encode(array_map(function($e) {
                          return [
                              'name' => $e['exercise_name'] ?? '',
