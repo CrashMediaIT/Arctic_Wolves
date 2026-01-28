@@ -67,7 +67,7 @@ $stmt->execute($params);
 $sessions = $stmt->fetchAll();
 
 // Get tax settings
-$settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $tax_rate = floatval($settings['tax_rate'] ?? 13.00);
 $tax_name = $settings['tax_name'] ?? 'HST';
 

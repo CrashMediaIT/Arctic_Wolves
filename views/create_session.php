@@ -20,7 +20,7 @@ $locations = $pdo->query("SELECT * FROM locations ORDER BY city, name")->fetchAl
 $practice_plans = $pdo->query("SELECT * FROM practice_plans ORDER BY created_at DESC LIMIT 50")->fetchAll();
 
 // Get system settings for defaults
-$settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 ?>
 
 <style>
