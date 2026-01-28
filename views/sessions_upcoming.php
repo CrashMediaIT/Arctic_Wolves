@@ -2,39 +2,68 @@
 // Get filter parameters
 $filter_period = $_GET['filter_period'] ?? 'all';
 $filter_coach = $_GET['filter_coach'] ?? 'all';
+$filter_skill = $_GET['filter_skill'] ?? 'all';
+$filter_location = $_GET['filter_location'] ?? 'all';
+$show_history = isset($_GET['history']) && $_GET['history'] === '1';
 
-// Build query for upcoming sessions
+// Get skill types (session types) for filter
+$skills_query = "SELECT * FROM session_types ORDER BY name";
+$skills = $pdo->query($skills_query)->fetchAll();
+
+// Get locations for filter
+$locations_query = "SELECT * FROM locations WHERE is_active = 1 ORDER BY name";
+$locations = $pdo->query($locations_query)->fetchAll();
+
+// Build query for upcoming sessions or session history
 // For athletes, show sessions they're registered for
 // For coaches/admins, show all sessions they're involved with
 if ($user_role === 'athlete') {
+    $date_condition = $show_history ? "s.session_date < NOW()" : "s.session_date >= NOW()";
+    $status_condition = $show_history ? "s.status IN ('scheduled', 'completed')" : "s.status = 'scheduled'";
+    
     $sessions_query = "
         SELECT s.*, 
                CONCAT(c.first_name, ' ', c.last_name) as coach_name,
                st.name as session_type_name,
-               l.name as location_name
+               st.id as skill_id,
+               l.name as location_name,
+               pp.name as practice_plan_name,
+               pp.description as practice_plan_description,
+               spp.practice_plan_id
         FROM sessions s
         LEFT JOIN users c ON s.coach_id = c.id
         LEFT JOIN session_types st ON s.session_type_id = st.id
         LEFT JOIN locations l ON s.location_id = l.id
+        LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+        LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
         LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ?
         WHERE b.user_id IS NOT NULL
-          AND s.session_date >= NOW() 
-          AND s.status = 'scheduled'
+          AND {$date_condition}
+          AND {$status_condition}
     ";
     $params = [$user_id];
 } else {
+    $date_condition = $show_history ? "s.session_date < NOW()" : "s.session_date >= NOW()";
+    $status_condition = $show_history ? "s.status IN ('scheduled', 'completed')" : "s.status = 'scheduled'";
+    
     $sessions_query = "
         SELECT s.*, 
                CONCAT(c.first_name, ' ', c.last_name) as coach_name,
                st.name as session_type_name,
-               l.name as location_name
+               st.id as skill_id,
+               l.name as location_name,
+               pp.name as practice_plan_name,
+               pp.description as practice_plan_description,
+               spp.practice_plan_id
         FROM sessions s
         LEFT JOIN users c ON s.coach_id = c.id
         LEFT JOIN session_types st ON s.session_type_id = st.id
         LEFT JOIN locations l ON s.location_id = l.id
+        LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
+        LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
         WHERE s.coach_id = ? 
-          AND s.session_date >= NOW() 
-          AND s.status = 'scheduled'
+          AND {$date_condition}
+          AND {$status_condition}
     ";
     $params = [$user_id];
 }
@@ -54,7 +83,19 @@ if ($filter_coach !== 'all') {
     $params[] = $filter_coach;
 }
 
-$sessions_query .= " ORDER BY s.session_date LIMIT 50";
+// Apply skill/session type filter
+if ($filter_skill !== 'all') {
+    $sessions_query .= " AND s.session_type_id = ?";
+    $params[] = $filter_skill;
+}
+
+// Apply location filter
+if ($filter_location !== 'all') {
+    $sessions_query .= " AND s.location_id = ?";
+    $params[] = $filter_location;
+}
+
+$sessions_query .= $show_history ? " ORDER BY s.session_date DESC LIMIT 50" : " ORDER BY s.session_date LIMIT 50";
 
 $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute($params);
@@ -88,7 +129,7 @@ $coaches = $coaches_stmt->fetchAll();
 $view_mode = $_GET['view'] ?? 'list';
 
 // Demo data for sessions if no real data exists
-if (count($sessions) === 0) {
+if (count($sessions) === 0 && !$show_history) {
     // Use DateTime for reliable date handling
     $today = new DateTime();
     
@@ -96,65 +137,99 @@ if (count($sessions) === 0) {
         [
             'id' => 'demo-1',
             'session_type_name' => 'Skating Skills',
+            'skill_id' => 'demo-skill-1',
             'session_date' => (clone $today)->modify('+1 day')->setTime(10, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 60,
             'coach_name' => 'Coach Smith',
             'location_name' => 'Main Arena',
-            'description' => 'Focus on edge work and crossovers'
+            'description' => 'Focus on edge work and crossovers',
+            'practice_plan_name' => 'Basic Skating Fundamentals',
+            'practice_plan_description' => 'Covers forward skating, backward skating, and transitions'
         ],
         [
             'id' => 'demo-2',
             'session_type_name' => 'Power Skating',
+            'skill_id' => 'demo-skill-2',
             'session_date' => (clone $today)->modify('+2 days')->setTime(14, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 90,
             'coach_name' => 'Coach Johnson',
             'location_name' => 'Training Center',
-            'description' => 'Building speed and acceleration'
+            'description' => 'Building speed and acceleration',
+            'practice_plan_name' => 'Speed Development',
+            'practice_plan_description' => 'Focus on explosive starts and stride efficiency'
         ],
         [
             'id' => 'demo-3',
             'session_type_name' => 'Stick Handling',
+            'skill_id' => 'demo-skill-3',
             'session_date' => (clone $today)->modify('+3 days')->setTime(9, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 60,
             'coach_name' => 'Coach Williams',
             'location_name' => 'Practice Rink',
-            'description' => 'Puck control and deking techniques'
+            'description' => 'Puck control and deking techniques',
+            'practice_plan_name' => null,
+            'practice_plan_description' => null
         ],
         [
             'id' => 'demo-4',
             'session_type_name' => 'Shooting Practice',
+            'skill_id' => 'demo-skill-4',
             'session_date' => (clone $today)->modify('+5 days')->setTime(16, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 75,
             'coach_name' => 'Coach Smith',
             'location_name' => 'Main Arena',
-            'description' => 'Wrist shots and slap shots'
+            'description' => 'Wrist shots and slap shots',
+            'practice_plan_name' => 'Shooting Mechanics',
+            'practice_plan_description' => 'Work on accuracy and technique'
         ],
         [
             'id' => 'demo-5',
             'session_type_name' => 'Game Simulation',
+            'skill_id' => 'demo-skill-5',
             'session_date' => (clone $today)->modify('+7 days')->setTime(11, 0)->format('Y-m-d H:i:s'),
             'duration_minutes' => 120,
             'coach_name' => 'Coach Johnson',
             'location_name' => 'Main Arena',
-            'description' => 'Full ice scrimmage with tactical focus'
+            'description' => 'Full ice scrimmage with tactical focus',
+            'practice_plan_name' => 'Game Situations',
+            'practice_plan_description' => 'Scrimmage with tactical coaching'
         ]
     ];
     $sessions = $demo_sessions;
     $is_demo_data = true;
 } else {
-    $is_demo_data = false;
+    $is_demo_data = count($sessions) === 0 ? true : false;
+}
+
+// Demo skills and locations if none exist
+if (count($skills) === 0) {
+    $skills = [
+        ['id' => 'demo-skill-1', 'name' => 'Skating Skills'],
+        ['id' => 'demo-skill-2', 'name' => 'Power Skating'],
+        ['id' => 'demo-skill-3', 'name' => 'Stick Handling'],
+        ['id' => 'demo-skill-4', 'name' => 'Shooting Practice'],
+        ['id' => 'demo-skill-5', 'name' => 'Game Simulation']
+    ];
+}
+if (count($locations) === 0) {
+    $locations = [
+        ['id' => 'demo-loc-1', 'name' => 'Main Arena'],
+        ['id' => 'demo-loc-2', 'name' => 'Training Center'],
+        ['id' => 'demo-loc-3', 'name' => 'Practice Rink']
+    ];
 }
 ?>
 
 <!-- Upcoming Sessions View -->
 <div class="page-header">
     <h1 class="page-title">
-        <i class="fas fa-calendar-alt"></i> Upcoming Sessions
+        <i class="fas fa-<?= $show_history ? 'history' : 'calendar-alt' ?>"></i> 
+        <?= $show_history ? 'Session History' : 'Upcoming Sessions' ?>
     </h1>
-    <p class="page-description">Your scheduled training sessions</p>
+    <p class="page-description"><?= $show_history ? 'Your past training sessions' : 'Your scheduled training sessions' ?></p>
 </div>
 
-<?php if ($is_demo_data): ?>
+<?php if ($is_demo_data && !$show_history): ?>
 <div class="demo-data-notice">
     <i class="fas fa-info-circle"></i>
     <span>Showing demo data. Book sessions to see your real schedule.</span>
@@ -171,6 +246,9 @@ if (count($sessions) === 0) {
             <form method="GET" action="" class="filter-row">
                 <input type="hidden" name="page" value="upcoming_sessions">
                 <input type="hidden" name="view" value="<?= htmlspecialchars($view_mode) ?>">
+                <?php if ($show_history): ?>
+                <input type="hidden" name="history" value="1">
+                <?php endif; ?>
                 <div class="filter-field">
                     <label>Time Period</label>
                     <select name="filter_period" class="form-select" id="filter-period">
@@ -178,6 +256,17 @@ if (count($sessions) === 0) {
                         <option value="week" <?= $filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
                         <option value="next_week" <?= $filter_period === 'next_week' ? 'selected' : '' ?>>Next Week</option>
                         <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Skill Focus</label>
+                    <select name="filter_skill" class="form-select" id="filter-skill">
+                        <option value="all">All Skills</option>
+                        <?php foreach ($skills as $skill): ?>
+                            <option value="<?= $skill['id'] ?>" <?= $filter_skill == $skill['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($skill['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="filter-field">
@@ -191,10 +280,21 @@ if (count($sessions) === 0) {
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="filter-field">
+                    <label>Location</label>
+                    <select name="filter_location" class="form-select" id="filter-location">
+                        <option value="all">All Locations</option>
+                        <?php foreach ($locations as $location): ?>
+                            <option value="<?= $location['id'] ?>" <?= $filter_location == $location['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($location['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <div class="filter-field filter-actions">
                     <label>&nbsp;</label>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
-                    <a href="?page=upcoming_sessions&view=<?= htmlspecialchars($view_mode) ?>" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                    <a href="?page=upcoming_sessions&view=<?= htmlspecialchars($view_mode) ?><?= $show_history ? '&history=1' : '' ?>" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
                 </div>
             </form>
         </div>
@@ -206,12 +306,23 @@ if (count($sessions) === 0) {
             <span><?= count($sessions) ?> session<?= count($sessions) !== 1 ? 's' : '' ?> found</span>
         </div>
         <div class="view-controls">
+            <div class="history-toggle">
+                <?php if ($show_history): ?>
+                    <a href="?page=upcoming_sessions&view=<?= htmlspecialchars($view_mode) ?>" class="btn btn-secondary">
+                        <i class="fas fa-calendar-alt"></i> Upcoming
+                    </a>
+                <?php else: ?>
+                    <a href="?page=upcoming_sessions&view=<?= htmlspecialchars($view_mode) ?>&history=1" class="btn btn-secondary">
+                        <i class="fas fa-history"></i> History
+                    </a>
+                <?php endif; ?>
+            </div>
             <div class="view-toggle">
-                <a href="?page=upcoming_sessions&view=list&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>" 
+                <a href="?page=upcoming_sessions&view=list&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>&filter_skill=<?= $filter_skill ?>&filter_location=<?= $filter_location ?><?= $show_history ? '&history=1' : '' ?>" 
                    class="view-btn <?= $view_mode === 'list' ? 'active' : '' ?>" title="List View">
                     <i class="fas fa-list"></i>
                 </a>
-                <a href="?page=upcoming_sessions&view=calendar&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>" 
+                <a href="?page=upcoming_sessions&view=calendar&filter_period=<?= $filter_period ?>&filter_coach=<?= $filter_coach ?>&filter_skill=<?= $filter_skill ?>&filter_location=<?= $filter_location ?><?= $show_history ? '&history=1' : '' ?>" 
                    class="view-btn <?= $view_mode === 'calendar' ? 'active' : '' ?>" title="Calendar View">
                     <i class="fas fa-calendar"></i>
                 </a>
@@ -249,7 +360,8 @@ if (count($sessions) === 0) {
                  data-time="<?= date('g:i A', $session_datetime) ?>"
                  data-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>"
                  data-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>"
-                 data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>">
+                 data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>"
+                 data-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>">
             </div>
             <?php endforeach; ?>
         </div>
@@ -265,6 +377,7 @@ if (count($sessions) === 0) {
             <div class="session-card" data-component="SessionCard" data-session-id="<?= $session['id'] ?>"
                  <?php if ($is_demo): ?>
                  data-is-demo="true"
+                 <?php endif; ?>
                  data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>"
                  data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $session_datetime) ?>"
                  data-session-end-time="<?= date('g:i A', $session_end_time) ?>"
@@ -272,7 +385,9 @@ if (count($sessions) === 0) {
                  data-session-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>"
                  data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>"
                  data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>"
-                 <?php endif; ?>>
+                 data-session-skill="<?= htmlspecialchars($session['session_type_name'] ?? '') ?>"
+                 data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>"
+                 data-session-practice-plan-desc="<?= htmlspecialchars($session['practice_plan_description'] ?? '') ?>">
                 <div class="session-date">
                     <div class="date-box">
                         <span class="date-day"><?= date('d', $session_datetime) ?></span>
@@ -288,6 +403,16 @@ if (count($sessions) === 0) {
                             <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span>
                         <?php endif; ?>
                     </div>
+                    <?php if (!empty($session['session_type_name']) || !empty($session['practice_plan_name'])): ?>
+                    <div class="session-tags">
+                        <?php if (!empty($session['session_type_name'])): ?>
+                            <span class="tag skill-tag"><i class="fas fa-bullseye"></i> <?= htmlspecialchars($session['session_type_name']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($session['practice_plan_name'])): ?>
+                            <span class="tag plan-tag"><i class="fas fa-clipboard-list"></i> <?= htmlspecialchars($session['practice_plan_name']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
                     <?php if (!empty($session['description'])): ?>
                         <div class="session-description">
                             <p><?= htmlspecialchars(substr($session['description'], 0, 100)) ?><?= strlen($session['description']) > 100 ? '...' : '' ?></p>
@@ -296,7 +421,7 @@ if (count($sessions) === 0) {
                 </div>
                 <div class="session-actions">
                     <button class="btn-secondary" data-action="view-session" data-session-id="<?= $session['id'] ?>"><i class="fas fa-eye"></i> View</button>
-                    <?php if (strtotime($session['session_date']) > strtotime('+24 hours')): ?>
+                    <?php if (!$show_history && strtotime($session['session_date']) > strtotime('+24 hours')): ?>
                         <button class="btn-danger" data-action="cancel-session" data-session-id="<?= $session['id'] ?>"><i class="fas fa-times"></i> Cancel</button>
                     <?php endif; ?>
                 </div>
@@ -304,8 +429,8 @@ if (count($sessions) === 0) {
             <?php endforeach; ?>
         <?php else: ?>
             <div class="placeholder-container">
-                <i class="fas fa-calendar placeholder-icon"></i>
-                <p class="placeholder-text">No upcoming sessions found. Book a session to get started!</p>
+                <i class="fas fa-<?= $show_history ? 'history' : 'calendar' ?> placeholder-icon"></i>
+                <p class="placeholder-text"><?= $show_history ? 'No session history found.' : 'No upcoming sessions found. Book a session to get started!' ?></p>
             </div>
         <?php endif; ?>
         </div>
@@ -904,6 +1029,65 @@ if (count($sessions) === 0) {
     text-transform: uppercase;
     margin-left: 12px;
 }
+
+.skill-tag {
+    background: rgba(107, 70, 193, 0.15);
+    color: var(--primary-light);
+}
+
+.plan-tag {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+}
+
+.history-toggle {
+    margin-right: 10px;
+}
+
+.session-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.session-tags .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.session-tags .tag i {
+    font-size: 10px;
+}
+
+.practice-plan-section {
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.practice-plan-section h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #10B981;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.practice-plan-section p {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+}
 </style>
 
 <!-- Session Detail Modal for Demo Data -->
@@ -931,8 +1115,17 @@ if (count($sessions) === 0) {
                 <span id="modalSessionLocation">-</span>
             </div>
             <div class="session-modal-detail">
+                <label>Skill Focus</label>
+                <span id="modalSessionSkill">-</span>
+            </div>
+            <div class="session-modal-detail">
                 <label>Description</label>
                 <span id="modalSessionDescription">-</span>
+            </div>
+            <div class="practice-plan-section" id="modalPracticePlanSection" style="display: none;">
+                <h4><i class="fas fa-clipboard-list"></i> Practice Plan</h4>
+                <p id="modalPracticePlanName">-</p>
+                <p id="modalPracticePlanDesc" style="margin-top: 8px; font-size: 13px;">-</p>
             </div>
         </div>
         <div class="session-modal-footer">
@@ -953,30 +1146,47 @@ document.addEventListener('DOMContentLoaded', function() {
             const sessionId = this.getAttribute('data-session-id');
             const sessionCard = this.closest('.session-card');
             
-            // Check if this is demo data (either by data-is-demo attribute or by ID format)
+            // Check if we have session card data available
+            const hasCardData = sessionCard && sessionCard.getAttribute('data-session-title');
             const isDemo = (sessionCard && sessionCard.getAttribute('data-is-demo') === 'true') || 
                           (sessionId && String(sessionId).startsWith('demo-'));
             
-            if (isDemo) {
+            if (hasCardData) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 
-                // Populate modal with demo session data
-                document.getElementById('modalSessionTitle').innerHTML = 
-                    (sessionCard?.getAttribute('data-session-title') || 'Demo Session') + 
-                    '<span class="demo-badge">Demo</span>';
+                // Populate modal with session data
+                const titleEl = document.getElementById('modalSessionTitle');
+                const title = sessionCard?.getAttribute('data-session-title') || 'Session';
+                titleEl.innerHTML = title + (isDemo ? '<span class="demo-badge">Demo</span>' : '');
+                
                 document.getElementById('modalSessionDateTime').textContent = 
-                    (sessionCard?.getAttribute('data-session-datetime') || 'Demo Date') + 
+                    (sessionCard?.getAttribute('data-session-datetime') || 'Date') + 
                     (sessionCard?.getAttribute('data-session-end-time') ? ' - ' + sessionCard.getAttribute('data-session-end-time') : '');
                 document.getElementById('modalSessionDuration').textContent = 
                     (sessionCard?.getAttribute('data-session-duration') || '60') + ' minutes';
                 document.getElementById('modalSessionCoach').textContent = 
-                    sessionCard?.getAttribute('data-session-coach') || 'Demo Coach';
+                    sessionCard?.getAttribute('data-session-coach') || 'TBD';
                 document.getElementById('modalSessionLocation').textContent = 
                     sessionCard?.getAttribute('data-session-location') || 'Not specified';
+                document.getElementById('modalSessionSkill').textContent = 
+                    sessionCard?.getAttribute('data-session-skill') || 'Not specified';
                 document.getElementById('modalSessionDescription').textContent = 
                     sessionCard?.getAttribute('data-session-description') || 'No description available';
+                
+                // Handle practice plan section
+                const practicePlanSection = document.getElementById('modalPracticePlanSection');
+                const practicePlanName = sessionCard?.getAttribute('data-session-practice-plan');
+                const practicePlanDesc = sessionCard?.getAttribute('data-session-practice-plan-desc');
+                
+                if (practicePlanName) {
+                    practicePlanSection.style.display = 'block';
+                    document.getElementById('modalPracticePlanName').textContent = practicePlanName;
+                    document.getElementById('modalPracticePlanDesc').textContent = practicePlanDesc || '';
+                } else {
+                    practicePlanSection.style.display = 'none';
+                }
                 
                 // Show modal
                 document.getElementById('sessionDetailModal').classList.add('active');

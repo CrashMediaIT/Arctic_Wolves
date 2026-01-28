@@ -1493,8 +1493,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (packageId.startsWith('demo-')) {
                 showBookingNotification('Demo Mode: This is a demo package. Contact admin to set up real packages for purchase.', 'info');
             } else {
-                // Redirect to payment
-                window.location.href = `process_purchase_package.php?package_id=${packageId}`;
+                // Submit via form for Stripe checkout with CSRF protection
+                const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'process_purchase_package.php';
+                form.innerHTML = `
+                    <input type="hidden" name="package_id" value="${packageId}">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
             }
         });
     });
