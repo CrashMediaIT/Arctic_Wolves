@@ -96,7 +96,7 @@ if ($action === 'assign_workout') {
             // Update existing assignment
             $update_stmt = $pdo->prepare("
                 UPDATE athlete_workout_assignments 
-                SET start_date = ?, notes = ?, assigned_by_coach_id = ?, assigned_date = NOW()
+                SET start_date = ?, notes = ?, assigned_by = ?, assigned_date = NOW()
                 WHERE athlete_id = ? AND workout_plan_id = ? AND status = 'active'
             ");
             $update_stmt->execute([$start_date, $notes, $user_id, $athlete_id, $workout_plan_id]);
@@ -104,7 +104,7 @@ if ($action === 'assign_workout') {
             // Create new assignment
             $insert_stmt = $pdo->prepare("
                 INSERT INTO athlete_workout_assignments 
-                (athlete_id, workout_plan_id, assigned_by_coach_id, start_date, notes, status, assigned_date) 
+                (athlete_id, workout_plan_id, assigned_by, start_date, notes, status, assigned_date) 
                 VALUES (?, ?, ?, ?, ?, 'active', NOW())
             ");
             $insert_stmt->execute([$athlete_id, $workout_plan_id, $user_id, $start_date, $notes]);
@@ -154,7 +154,7 @@ if ($action === 'assign_workout') {
             // Update existing assignment
             $update_stmt = $pdo->prepare("
                 UPDATE athlete_nutrition_assignments 
-                SET start_date = ?, notes = ?, assigned_by_coach_id = ?, assigned_date = NOW()
+                SET start_date = ?, notes = ?, assigned_by = ?, assigned_date = NOW()
                 WHERE athlete_id = ? AND nutrition_plan_id = ? AND status = 'active'
             ");
             $update_stmt->execute([$start_date, $notes, $user_id, $athlete_id, $nutrition_plan_id]);
@@ -162,7 +162,7 @@ if ($action === 'assign_workout') {
             // Create new assignment
             $insert_stmt = $pdo->prepare("
                 INSERT INTO athlete_nutrition_assignments 
-                (athlete_id, nutrition_plan_id, assigned_by_coach_id, start_date, notes, status, assigned_date) 
+                (athlete_id, nutrition_plan_id, assigned_by, start_date, notes, status, assigned_date) 
                 VALUES (?, ?, ?, ?, ?, 'active', NOW())
             ");
             $insert_stmt->execute([$athlete_id, $nutrition_plan_id, $user_id, $start_date, $notes]);

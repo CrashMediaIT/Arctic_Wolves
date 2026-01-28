@@ -39,7 +39,7 @@ if ($action == 'upload_avatar') {
             $new_name = "uploads/avatar_" . $target_id . "_" . time() . "." . $ext;
             
             if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $new_name)) {
-                $pdo->prepare("UPDATE users SET profile_pic = ? WHERE id = ?")->execute([$new_name, $target_id]);
+                $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $target_id]);
                 
                 // Redirect logic
                 if ($target_id == $current_user_id) {

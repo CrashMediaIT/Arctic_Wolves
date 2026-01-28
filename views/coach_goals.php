@@ -10,7 +10,7 @@
 // Fetch athlete list for coach
 try {
     $stmt = $pdo->prepare("
-        SELECT DISTINCT u.id, u.first_name, u.last_name, u.username
+        SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
         FROM users u
         INNER JOIN managed_athletes ma ON u.id = ma.athlete_id
         WHERE ma.coach_id = ?

@@ -53,13 +53,8 @@ try {
 
 <div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-history"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Time History</h1>
-            <p class="page-description">View your complete shift history and hours worked</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-history"></i> Time History</h1>
+        <p class="page-description">View your complete shift history and hours worked</p>
     </div>
 </div>
 
