@@ -138,95 +138,24 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 ?>
 
 <?php if (isset($_GET['status']) && in_array($_GET['status'], ['success', 'added'])): ?>
-<div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
-    <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
-    <span style="color: #10b981; font-weight: 600;">Operation completed successfully!</span>
-    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #10b981; cursor: pointer; font-size: 18px;">&times;</button>
+<div class="alert alert-success" style="margin-bottom: 24px;">
+    <i class="fas fa-check-circle"></i>
+    <span>Operation completed successfully!</span>
+    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>
 </div>
 <?php endif; ?>
 <?php if (isset($_GET['status']) && $_GET['status'] === 'error'): ?>
-<div class="error-alert" style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
-    <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 20px;"></i>
-    <span style="color: #ef4444; font-weight: 600;"><?= htmlspecialchars($_GET['message'] ?? 'An error occurred') ?></span>
-    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;">&times;</button>
+<div class="alert alert-error" style="margin-bottom: 24px;">
+    <i class="fas fa-exclamation-circle"></i>
+    <span><?= htmlspecialchars($_GET['message'] ?? 'An error occurred') ?></span>
+    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>
 </div>
 <?php endif; ?>
 
-<style>
-/* Products Page Header - Financial Reports Hub Style */
-.products-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.products-page-header .page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.products-page-header .page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), #5a0080);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-.products-page-header .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-.products-page-header .page-description {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
-}
-.products-page-header .page-header-stats {
-    display: flex;
-    gap: 20px;
-}
-.products-page-header .header-stat {
-    text-align: center;
-    padding: 12px 20px;
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    min-width: 90px;
-}
-.products-page-header .header-stat .stat-value {
-    display: block;
-    font-size: 24px;
-    font-weight: 800;
-    color: var(--text-white);
-}
-.products-page-header .header-stat .stat-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-</style>
-
-<div class="products-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-box-open"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Products & Pricing</h1>
-            <p class="page-description">Manage training sessions, packages, and discount codes</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-box-open"></i> Products & Pricing</h1>
+        <p class="page-description">Manage training sessions, packages, and discount codes</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
@@ -244,69 +173,96 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     </div>
 </div>
 
-<div class="products-content">
-    <!-- Product Stats -->
-    <div class="product-stats">
-        <div class="product-stat-card sessions">
-            <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $sessionCount ?></span>
-                <span class="stat-label">Sessions</span>
-            </div>
-        </div>
-        <div class="product-stat-card packages">
-            <div class="stat-icon"><i class="fas fa-box"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $packageCount ?></span>
-                <span class="stat-label">Active Packages</span>
-            </div>
-        </div>
-        <div class="product-stat-card discounts">
-            <div class="stat-icon"><i class="fas fa-tags"></i></div>
-            <div class="stat-info">
-                <span class="stat-value"><?= $discountCount ?></span>
-                <span class="stat-label">Discount Codes</span>
-            </div>
-        </div>
-        <div class="product-stat-card revenue">
-            <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
-            <div class="stat-info">
-                <span class="stat-value">$<?= number_format($avgPackagePrice, 0) ?></span>
-                <span class="stat-label">Avg Package Price</span>
-            </div>
+<style>
+/* Product Stats Cards */
+.product-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.product-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.product-stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+.product-stat-card.sessions .stat-icon { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.product-stat-card.packages .stat-icon { background: rgba(107, 70, 193, 0.15); color: var(--primary); }
+.product-stat-card.discounts .stat-icon { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.product-stat-card.revenue .stat-icon { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.product-stat-card .stat-info { display: flex; flex-direction: column; }
+.product-stat-card .stat-value { font-size: 24px; font-weight: 700; color: var(--text-white); }
+.product-stat-card .stat-label { font-size: 13px; color: var(--text-dim); }
+</style>
+
+<!-- Product Stats -->
+<div class="product-stats">
+    <div class="product-stat-card sessions">
+        <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $sessionCount ?></span>
+            <span class="stat-label">Sessions</span>
         </div>
     </div>
-
-    <!-- Product Tabs -->
-    <div class="product-tabs">
-        <button class="tab-btn <?= $activeTab === 'sessions' ? 'active' : '' ?>" data-tab="sessions" data-action="switch-tab">
-            <i class="fas fa-calendar-day"></i> 
-            <span>Sessions</span>
-            <small><?= $sessionCount ?> types</small>
-        </button>
-        <button class="tab-btn <?= $activeTab === 'packages' ? 'active' : '' ?>" data-tab="packages" data-action="switch-tab">
-            <i class="fas fa-box"></i> 
-            <span>Packages</span>
-            <small><?= $packageCount ?> active</small>
-        </button>
-        <button class="tab-btn <?= $activeTab === 'discounts' ? 'active' : '' ?>" data-tab="discounts" data-action="switch-tab">
-            <i class="fas fa-tags"></i> 
-            <span>Discounts</span>
-            <small><?= $discountCount ?> codes</small>
-        </button>
-        <button class="tab-btn <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
-            <i class="fas fa-tshirt"></i> 
-            <span>Merchandise</span>
-            <small><?= $merchProductCount ?> products</small>
-        </button>
+    <div class="product-stat-card packages">
+        <div class="stat-icon"><i class="fas fa-box"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $packageCount ?></span>
+            <span class="stat-label">Active Packages</span>
+        </div>
     </div>
+    <div class="product-stat-card discounts">
+        <div class="stat-icon"><i class="fas fa-tags"></i></div>
+        <div class="stat-info">
+            <span class="stat-value"><?= $discountCount ?></span>
+            <span class="stat-label">Discount Codes</span>
+        </div>
+    </div>
+    <div class="product-stat-card revenue">
+        <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">$<?= number_format($avgPackagePrice, 0) ?></span>
+            <span class="stat-label">Avg Package Price</span>
+        </div>
+    </div>
+</div>
 
+<!-- Product Tabs -->
+<div class="page-tabs">
+    <button type="button" class="page-tab <?= $activeTab === 'sessions' ? 'active' : '' ?>" data-tab="sessions" data-action="switch-tab">
+        <i class="fas fa-calendar-day"></i> Sessions
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'packages' ? 'active' : '' ?>" data-tab="packages" data-action="switch-tab">
+        <i class="fas fa-box"></i> Packages
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'discounts' ? 'active' : '' ?>" data-tab="discounts" data-action="switch-tab">
+        <i class="fas fa-tags"></i> Discounts
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
+        <i class="fas fa-tshirt"></i> Merchandise
+    </button>
+</div>
+
+<div class="page-tab-content">
     <!-- Sessions Tab -->
     <div class="tab-content <?= $activeTab === 'sessions' ? 'active' : '' ?>" id="sessions-tab">
-        <div class="content-card">
+        <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-calendar-day"></i> Training Sessions & Templates</h3>
-                <button class="btn btn-primary" data-action="add" data-modal="add-session-modal"><i class="fas fa-plus"></i> Create Session</button>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-session-modal"><i class="fas fa-plus"></i> Create Session</button>
             </div>
             <div class="card-body">
                 <div class="products-grid">
@@ -315,9 +271,10 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     $displaySessions = count($sessionTemplates) > 0 ? $sessionTemplates : $sessionTypes;
                     
                     if (empty($displaySessions)): ?>
-                        <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
-                            <i class="fas fa-calendar-day" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
-                            <p style="color: var(--text-dim);">No sessions yet. Click "Create Session" to add one.</p>
+                        <div class="empty-state-card" style="grid-column: 1/-1;">
+                            <i class="fas fa-calendar-day"></i>
+                            <h4>No sessions yet</h4>
+                            <p>Click "Create Session" to add one.</p>
                         </div>
                     <?php else: ?>
                         <?php foreach ($displaySessions as $session): 
@@ -357,7 +314,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 </p>
                             </div>
                             <div class="product-actions">
-                                <button class="btn-action" data-action="edit" data-id="<?= $session['id'] ?>" data-type="session" data-modal="edit-session-modal" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button type="button" class="btn-action" data-action="edit" data-id="<?= $session['id'] ?>" data-type="session" data-modal="edit-session-modal" title="Edit"><i class="fas fa-edit"></i></button>
                                 <button class="btn-action" data-action="manage-dates" data-id="<?= $session['id'] ?>" data-type="session" data-modal="manage-dates-modal" title="Manage Dates"><i class="fas fa-calendar-plus"></i></button>
                                 <button class="btn-action <?= $isActive ? '' : 'active' ?>" data-action="toggle-status" data-id="<?= $session['id'] ?>" data-type="session" title="<?= $isActive ? 'Disable' : 'Enable' ?>"><i class="fas fa-toggle-<?= $isActive ? 'on' : 'off' ?>"></i></button>
                             </div>
