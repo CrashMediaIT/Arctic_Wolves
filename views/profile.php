@@ -196,6 +196,7 @@ $messages = [
     'team_added' => ['type' => 'success', 'text' => 'Team added to your history!'],
     'team_removed' => ['type' => 'success', 'text' => 'Team removed from your history.'],
     'player_info_updated' => ['type' => 'success', 'text' => 'Player information updated!'],
+    'stats_updated' => ['type' => 'success', 'text' => 'Performance stats updated successfully!'],
     'photo_uploaded' => ['type' => 'success', 'text' => 'Profile photo updated!'],
     'photo_removed' => ['type' => 'success', 'text' => 'Profile photo removed.'],
 ];
@@ -209,6 +210,7 @@ $errors = [
     'invalid_or_expired_token' => 'The email confirmation link is invalid or has expired.',
     'team_name_required' => 'Team name is required.',
     'team_add_failed' => 'Failed to add team. Please try again.',
+    'stats_update_failed' => 'Failed to update performance stats. Please try again.',
 ];
 ?>
 
@@ -551,13 +553,20 @@ $errors = [
         
         <!-- Performance Stats Section (Position-based) -->
         <div class="card" style="margin-top: 24px;">
-            <div class="card-header">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h3><i class="fas fa-chart-bar"></i> Performance Stats</h3>
-                <?php if ($currentTeam): ?>
-                <span class="badge" style="background: rgba(107, 70, 193, 0.15); color: #8B5CF6; padding: 6px 12px; border-radius: 12px; font-size: 12px;">
-                    <?php echo htmlspecialchars($currentTeam['team_name']); ?>
-                </span>
-                <?php endif; ?>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <?php if ($currentTeam): ?>
+                    <span class="badge" style="background: rgba(107, 70, 193, 0.15); color: #8B5CF6; padding: 6px 12px; border-radius: 12px; font-size: 12px;">
+                        <?php echo htmlspecialchars($currentTeam['team_name']); ?>
+                    </span>
+                    <?php endif; ?>
+                    <?php if (!empty($userTeams)): ?>
+                    <button type="button" class="btn btn-secondary btn-sm" id="edit-stats-btn" onclick="toggleStatsEdit()">
+                        <i class="fas fa-edit"></i> Edit Stats
+                    </button>
+                    <?php endif; ?>
+                </div>
             </div>
             <div class="card-body">
                 <?php if (empty($userTeams)): ?>
@@ -566,85 +575,191 @@ $errors = [
                     <p>Add a team above to track your performance stats.</p>
                 </div>
                 <?php else: ?>
-                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px;">
-                    <?php if ($isGoalie): ?>
-                    <!-- Goalie Stats -->
-                    <div class="stat-box">
-                        <div class="stat-label">Games Played</div>
-                        <div class="stat-value"><?php echo $performanceStats['games_played'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Goals Against</div>
-                        <div class="stat-value"><?php echo $performanceStats['goals_against'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Saves</div>
-                        <div class="stat-value"><?php echo $performanceStats['saves'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box stat-highlight">
-                        <div class="stat-label">Save %</div>
-                        <div class="stat-value">
-                            <?php 
-                            $shotsAgainst = $performanceStats['shots_against'] ?? 0;
-                            $goalsAgainst = $performanceStats['goals_against'] ?? 0;
-                            // Calculate save percentage, clamp to 0-100 range
-                            $savePercentage = 0;
-                            if ($shotsAgainst > 0) {
-                                $savePercentage = max(0, min(100, (($shotsAgainst - $goalsAgainst) / $shotsAgainst * 100)));
-                            }
-                            echo number_format($savePercentage, 1) . '%';
-                            ?>
+                <!-- Display Mode -->
+                <div id="stats-display-mode">
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px;">
+                        <?php if ($isGoalie): ?>
+                        <!-- Goalie Stats -->
+                        <div class="stat-box">
+                            <div class="stat-label">Games Played</div>
+                            <div class="stat-value"><?php echo $performanceStats['games_played'] ?? 0; ?></div>
                         </div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Shots Against</div>
-                        <div class="stat-value"><?php echo $performanceStats['shots_against'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Goals</div>
-                        <div class="stat-value"><?php echo $performanceStats['goals'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Assists</div>
-                        <div class="stat-value"><?php echo $performanceStats['assists'] ?? 0; ?></div>
-                    </div>
-                    <?php else: ?>
-                    <!-- Player Stats (Forward/Defense) -->
-                    <div class="stat-box">
-                        <div class="stat-label">Games Played</div>
-                        <div class="stat-value"><?php echo $performanceStats['games_played'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box stat-highlight">
-                        <div class="stat-label">Goals</div>
-                        <div class="stat-value"><?php echo $performanceStats['goals'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box stat-highlight">
-                        <div class="stat-label">Assists</div>
-                        <div class="stat-value"><?php echo $performanceStats['assists'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box stat-highlight">
-                        <div class="stat-label">Points</div>
-                        <div class="stat-value"><?php echo ($performanceStats['goals'] ?? 0) + ($performanceStats['assists'] ?? 0); ?></div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">+/-</div>
-                        <div class="stat-value <?php echo ($performanceStats['plus_minus'] ?? 0) >= 0 ? 'stat-positive' : 'stat-negative'; ?>">
-                            <?php echo ($performanceStats['plus_minus'] ?? 0) >= 0 ? '+' : ''; ?><?php echo $performanceStats['plus_minus'] ?? 0; ?>
+                        <div class="stat-box">
+                            <div class="stat-label">Goals Against</div>
+                            <div class="stat-value"><?php echo $performanceStats['goals_against'] ?? 0; ?></div>
                         </div>
+                        <div class="stat-box stat-highlight">
+                            <div class="stat-label">GAA</div>
+                            <div class="stat-value">
+                                <?php 
+                                $gamesPlayed = $performanceStats['games_played'] ?? 0;
+                                $goalsAgainst = $performanceStats['goals_against'] ?? 0;
+                                // Calculate Goals Against Average (goals against per game)
+                                $gaa = 0;
+                                if ($gamesPlayed > 0) {
+                                    $gaa = $goalsAgainst / $gamesPlayed;
+                                }
+                                echo number_format($gaa, 2);
+                                ?>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Saves</div>
+                            <div class="stat-value"><?php echo $performanceStats['saves'] ?? 0; ?></div>
+                        </div>
+                        <div class="stat-box stat-highlight">
+                            <div class="stat-label">Save %</div>
+                            <div class="stat-value">
+                                <?php 
+                                $shotsAgainst = $performanceStats['shots_against'] ?? 0;
+                                $goalsAgainst = $performanceStats['goals_against'] ?? 0;
+                                // Calculate save percentage, clamp to 0-100 range
+                                $savePercentage = 0;
+                                if ($shotsAgainst > 0) {
+                                    $savePercentage = max(0, min(100, (($shotsAgainst - $goalsAgainst) / $shotsAgainst * 100)));
+                                }
+                                echo number_format($savePercentage, 1) . '%';
+                                ?>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Shots Against</div>
+                            <div class="stat-value"><?php echo $performanceStats['shots_against'] ?? 0; ?></div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Goals</div>
+                            <div class="stat-value"><?php echo $performanceStats['goals'] ?? 0; ?></div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Assists</div>
+                            <div class="stat-value"><?php echo $performanceStats['assists'] ?? 0; ?></div>
+                        </div>
+                        <?php else: ?>
+                        <!-- Player Stats (Forward/Defense) -->
+                        <div class="stat-box">
+                            <div class="stat-label">Games Played</div>
+                            <div class="stat-value"><?php echo $performanceStats['games_played'] ?? 0; ?></div>
+                        </div>
+                        <div class="stat-box stat-highlight">
+                            <div class="stat-label">Goals</div>
+                            <div class="stat-value"><?php echo $performanceStats['goals'] ?? 0; ?></div>
+                        </div>
+                        <div class="stat-box stat-highlight">
+                            <div class="stat-label">Assists</div>
+                            <div class="stat-value"><?php echo $performanceStats['assists'] ?? 0; ?></div>
+                        </div>
+                        <div class="stat-box stat-highlight">
+                            <div class="stat-label">Points</div>
+                            <div class="stat-value"><?php echo ($performanceStats['goals'] ?? 0) + ($performanceStats['assists'] ?? 0); ?></div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">+/-</div>
+                            <div class="stat-value <?php echo ($performanceStats['plus_minus'] ?? 0) >= 0 ? 'stat-positive' : 'stat-negative'; ?>">
+                                <?php echo ($performanceStats['plus_minus'] ?? 0) >= 0 ? '+' : ''; ?><?php echo $performanceStats['plus_minus'] ?? 0; ?>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Shots</div>
+                            <div class="stat-value"><?php echo $performanceStats['shots'] ?? 0; ?></div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">PIM</div>
+                            <div class="stat-value"><?php echo $performanceStats['penalty_minutes'] ?? 0; ?></div>
+                        </div>
+                        <?php endif; ?>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Shots</div>
-                        <div class="stat-value"><?php echo $performanceStats['shots'] ?? 0; ?></div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">PIM</div>
-                        <div class="stat-value"><?php echo $performanceStats['penalty_minutes'] ?? 0; ?></div>
-                    </div>
-                    <?php endif; ?>
                 </div>
+
+                <!-- Edit Mode (hidden by default) -->
+                <div id="stats-edit-mode" style="display: none;">
+                    <form method="POST" action="process_profile_update.php" id="stats-form">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="update_performance_stats">
+                        
+                        <?php if ($isGoalie): ?>
+                        <!-- Goalie Stats Edit -->
+                        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+                            <div class="form-group">
+                                <label>Games Played</label>
+                                <input type="number" name="games_played" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['games_played'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Goals Against</label>
+                                <input type="number" name="goals_against" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['goals_against'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Shots Against</label>
+                                <input type="number" name="shots_against" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['shots_against'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Saves</label>
+                                <input type="number" name="saves" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['saves'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Goals</label>
+                                <input type="number" name="goals" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['goals'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Assists</label>
+                                <input type="number" name="assists" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['assists'] ?? 0); ?>">
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <!-- Player Stats Edit -->
+                        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+                            <div class="form-group">
+                                <label>Games Played</label>
+                                <input type="number" name="games_played" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['games_played'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Goals</label>
+                                <input type="number" name="goals" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['goals'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Assists</label>
+                                <input type="number" name="assists" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['assists'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>+/-</label>
+                                <input type="number" name="plus_minus" class="form-input" 
+                                       value="<?php echo htmlspecialchars($performanceStats['plus_minus'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Shots</label>
+                                <input type="number" name="shots" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['shots'] ?? 0); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Penalty Minutes (PIM)</label>
+                                <input type="number" name="penalty_minutes" class="form-input" min="0" 
+                                       value="<?php echo htmlspecialchars($performanceStats['penalty_minutes'] ?? 0); ?>">
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Stats
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="toggleStatsEdit()">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
                 <p style="color: var(--text-muted); font-size: 12px; margin-top: 16px; text-align: center;">
                     <i class="fas fa-info-circle"></i> Stats are shown based on your current team position. 
-                    <?php if ($isGoalie): ?>Goalie stats displayed.<?php else: ?>Player stats displayed.<?php endif; ?>
+                    <?php if ($isGoalie): ?>Goalie stats displayed. GAA = Goals Against / Games Played.<?php else: ?>Player stats displayed.<?php endif; ?>
                 </p>
                 <?php endif; ?>
             </div>
@@ -689,6 +804,8 @@ $errors = [
 
     <!-- Notifications Tab -->
     <div class="tab-content <?php echo $activeTab === 'notifications' ? 'active' : ''; ?>" id="notifications-tab">
+        <!-- Hidden CSRF token for AJAX requests -->
+        <input type="hidden" name="csrf_token" id="notifications-csrf-token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
         <div class="card">
             <div class="card-header">
                 <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
@@ -765,6 +882,25 @@ function switchTab(tabName) {
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
 }
 
+// Toggle stats edit mode
+function toggleStatsEdit() {
+    const displayMode = document.getElementById('stats-display-mode');
+    const editMode = document.getElementById('stats-edit-mode');
+    const editBtn = document.getElementById('edit-stats-btn');
+    
+    if (displayMode && editMode && editBtn) {
+        if (editMode.style.display === 'none') {
+            displayMode.style.display = 'none';
+            editMode.style.display = 'block';
+            editBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+        } else {
+            displayMode.style.display = 'block';
+            editMode.style.display = 'none';
+            editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Stats';
+        }
+    }
+}
+
 // Handle notification preference toggles
 document.addEventListener('DOMContentLoaded', function() {
     // Handle remove team form submissions
@@ -790,7 +926,8 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             const prefName = this.name;
             const prefValue = this.checked ? 1 : 0;
-            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+            // Try to get CSRF token from multiple sources (notifications tab has its own hidden input)
+            const csrfToken = document.getElementById('notifications-csrf-token')?.value || document.querySelector('input[name="csrf_token"]')?.value;
             const toggleElement = this;
             const parentItem = this.closest('.preference-item');
             
