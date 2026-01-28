@@ -1,7 +1,7 @@
 <?php
 // Determine which tab should be active based on URL parameter
 $activeTab = $_GET['tab'] ?? 'skills';
-$validTabs = ['skills', 'drills', 'positions', 'equipment'];
+$validTabs = ['skills', 'drills', 'positions', 'equipment', 'merchandise'];
 if (!in_array($activeTab, $validTabs)) {
     $activeTab = 'skills';
 }
@@ -34,6 +34,10 @@ if (!in_array($activeTab, $validTabs)) {
             <span class="stat-value" id="total-equipment-count">-</span>
             <span class="stat-label">Equipment</span>
         </div>
+        <div class="header-stat">
+            <span class="stat-value" id="total-merchandise-count">-</span>
+            <span class="stat-label">Merchandise</span>
+        </div>
     </div>
 </div>
 
@@ -56,6 +60,10 @@ if (!in_array($activeTab, $validTabs)) {
             <button class="tab-btn <?= $activeTab === 'equipment' ? 'active' : '' ?>" data-tab="equipment" data-action="switch-tab">
                 <span class="tab-icon"><i class="fas fa-toolbox"></i></span>
                 <span class="tab-text">Equipment</span>
+            </button>
+            <button class="tab-btn <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
+                <span class="tab-icon"><i class="fas fa-tags"></i></span>
+                <span class="tab-text">Merchandise</span>
             </button>
         </div>
     </div>
@@ -287,6 +295,63 @@ if (!in_array($activeTab, $validTabs)) {
                     else:
                     ?>
                     <p class="placeholder-text">No equipment found. Click "Add Equipment" to create your first equipment category.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merchandise Tab -->
+    <div class="tab-content <?= $activeTab === 'merchandise' ? 'active' : '' ?>" id="merchandise-tab">
+        <div class="content-card">
+            <div class="card-header">
+                <h3><i class="fas fa-tags"></i> Merchandise Categories</h3>
+                <button class="btn-primary" data-action="add" data-modal="add-merchandise-modal"><i class="fas fa-plus"></i> Add Category</button>
+            </div>
+            <div class="card-body">
+                <p class="info-text" style="margin-bottom: 16px; padding: 12px; background: rgba(107, 70, 193, 0.1); border-radius: 8px; color: var(--text-secondary); font-size: 13px;">
+                    <i class="fas fa-info-circle" style="color: var(--primary-light); margin-right: 8px;"></i>
+                    Merchandise categories organize your store products. Categories are displayed in the POS terminal and shop.
+                </p>
+                <div class="categories-list">
+                    <?php
+                    // Fetch all merchandise categories from database
+                    $stmt = $pdo->prepare("SELECT id, name, description, is_active FROM merchandise_categories ORDER BY sort_order, name ASC");
+                    $stmt->execute();
+                    $merchandise_categories = $stmt->fetchAll();
+                    
+                    if (count($merchandise_categories) > 0):
+                        foreach ($merchandise_categories as $merch):
+                    ?>
+                    <div class="category-item <?= !$merch['is_active'] ? 'inactive' : '' ?>">
+                        <div class="category-icon"><i class="fas fa-tag"></i></div>
+                        <div class="category-info">
+                            <h4><?= htmlspecialchars($merch['name']) ?> <?= !$merch['is_active'] ? '<span class="status-badge inactive">Inactive</span>' : '' ?></h4>
+                            <p><?= htmlspecialchars($merch['description'] ?: 'No description') ?></p>
+                        </div>
+                        <div class="category-actions">
+                            <button class="btn-icon" title="Edit" 
+                                    data-action="edit" 
+                                    data-id="<?= $merch['id'] ?>" 
+                                    data-type="merchandise" 
+                                    data-name="<?= htmlspecialchars($merch['name']) ?>"
+                                    data-description="<?= htmlspecialchars($merch['description'] ?? '') ?>">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon" title="Delete" 
+                                    data-action="delete" 
+                                    data-id="<?= $merch['id'] ?>" 
+                                    data-type="merchandise" 
+                                    data-name="<?= htmlspecialchars($merch['name']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <?php 
+                        endforeach;
+                    else:
+                    ?>
+                    <p class="placeholder-text">No merchandise categories found. Click "Add Category" to create your first category.</p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1118,6 +1183,65 @@ function openModal(modalId) {
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeModal('edit-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Equipment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Merchandise Category Modal -->
+<div id="add-merchandise-modal" class="modal">
+    <div class="modal-content">
+        <form method="POST" action="process_admin_action.php">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <input type="hidden" name="action" value="add_merchandise_category">
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-merchandise-modal')">&times;</button>
+            <div class="modal-header">
+                <h3><i class="fas fa-tag"></i> Add Merchandise Category</h3>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Category Name *</label>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Apparel, Equipment, Accessories">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Brief description of this category"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('add-merchandise-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Add Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Merchandise Category Modal -->
+<div id="edit-merchandise-modal" class="modal">
+    <div class="modal-content">
+        <form method="POST" action="process_admin_action.php">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <input type="hidden" name="action" value="edit_merchandise_category">
+            <input type="hidden" name="id" id="edit-merchandise-id">
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-merchandise-modal')">&times;</button>
+            <div class="modal-header">
+                <h3><i class="fas fa-tag"></i> Edit Merchandise Category</h3>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Category Name *</label>
+                    <input type="text" name="name" id="edit-merchandise-name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-merchandise-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-merchandise-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Category</button>
             </div>
         </form>
     </div>

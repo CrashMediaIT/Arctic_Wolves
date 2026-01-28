@@ -610,9 +610,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-check icon"></i> Session Evaluations
             </a>
-            <a href="?page=coach_evaluations" class="nav-link <?= $page=='coach_evaluations'?'active':'' ?>">
-                <i class="fa-solid fa-chart-line icon"></i> Athlete Evaluations
-            </a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>">
                 <i class="fa-solid fa-plane icon"></i> Travel
             </a>
@@ -632,7 +629,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
                 <i class="fa-solid fa-utensils icon"></i> Nutrition
             </a>
             <a href="?page=health_coach_roster" class="nav-link <?= $page=='health_coach_roster'?'active':'' ?>">
-                <i class="fa-solid fa-users-gear icon"></i> My Athletes
+                <i class="fa-solid fa-users-gear icon"></i> Roster
             </a>
         </nav>
     </div>
@@ -657,21 +654,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=products" class="nav-link <?= $page=='products'?'active':'' ?>">
                 <i class="fa-solid fa-box-open icon"></i> Products
-            </a>
-        </nav>
-    </div>
-    <?php endif; ?>
-
-    <!-- MERCHANDISE (Admins only) -->
-    <?php if($isAdmin): ?>
-    <div class="nav-group">
-        <span class="nav-label">Merchandise</span>
-        <nav class="nav-menu">
-            <a href="?page=merchandise_categories" class="nav-link <?= $page=='merchandise_categories'?'active':'' ?>">
-                <i class="fa-solid fa-tags icon"></i> Categories
-            </a>
-            <a href="?page=merchandise_products" class="nav-link <?= $page=='merchandise_products'?'active':'' ?>">
-                <i class="fa-solid fa-tshirt icon"></i> Products
             </a>
         </nav>
     </div>
