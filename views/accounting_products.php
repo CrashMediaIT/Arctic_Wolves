@@ -241,17 +241,17 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 </div>
 
 <!-- Product Tabs -->
-<div class="product-tabs">
-    <button type="button" class="tab-btn <?= $activeTab === 'sessions' ? 'active' : '' ?>" data-tab="sessions" data-action="switch-tab">
+<div class="page-tabs">
+    <button type="button" class="page-tab <?= $activeTab === 'sessions' ? 'active' : '' ?>" data-tab="sessions" data-action="switch-tab">
         <i class="fas fa-calendar-day"></i> Sessions
     </button>
-    <button type="button" class="tab-btn <?= $activeTab === 'packages' ? 'active' : '' ?>" data-tab="packages" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'packages' ? 'active' : '' ?>" data-tab="packages" data-action="switch-tab">
         <i class="fas fa-box"></i> Packages
     </button>
-    <button type="button" class="tab-btn <?= $activeTab === 'discounts' ? 'active' : '' ?>" data-tab="discounts" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'discounts' ? 'active' : '' ?>" data-tab="discounts" data-action="switch-tab">
         <i class="fas fa-tags"></i> Discounts
     </button>
-    <button type="button" class="tab-btn <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
         <i class="fas fa-tshirt"></i> Merchandise
     </button>
 </div>
@@ -588,62 +588,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     font-weight: 600;
 }
 
-/* Enhanced Tabs */
-.product-tabs {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 28px;
-    background: var(--bg-card);
-    padding: 8px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-}
-
-.tab-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 16px 32px;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-    flex: 1;
-    color: var(--text-dim);
-}
-
-.tab-btn i {
-    font-size: 20px;
-    margin-bottom: 4px;
-}
-
-.tab-btn span {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-white);
-}
-
-.tab-btn small {
-    font-size: 11px;
-    color: var(--text-dim);
-}
-
-.tab-btn:hover {
-    background: rgba(107, 70, 193, 0.1);
-    color: var(--primary);
-}
-
-.tab-btn.active {
-    background: var(--bg-main);
-    border-color: var(--primary);
-    color: var(--primary);
-}
-
-.tab-btn.active i {
-    color: var(--primary);
-}
+/* Note: Page tabs (.page-tabs, .page-tab) are styled in css/style-guide.css */
 
 .products-grid {
     display: grid;
@@ -973,16 +918,6 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 @media (max-width: 768px) {
     .product-stats {
         grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .product-tabs {
-        flex-direction: column;
-    }
-    
-    .tab-btn {
-        flex-direction: row;
-        justify-content: center;
-        gap: 12px;
     }
     
     .products-grid {
@@ -1618,7 +1553,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Tab switching functionality
-    document.querySelectorAll('.tab-btn[data-action="switch-tab"]').forEach(function(btn) {
+    document.querySelectorAll('.page-tab[data-action="switch-tab"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             var tabName = this.getAttribute('data-tab');
@@ -1626,7 +1561,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.tab-content').forEach(function(tab) {
                 tab.classList.remove('active');
             });
-            document.querySelectorAll('.tab-btn').forEach(function(tabBtn) {
+            document.querySelectorAll('.page-tab').forEach(function(tabBtn) {
                 tabBtn.classList.remove('active');
             });
             
