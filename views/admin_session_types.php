@@ -22,61 +22,33 @@ $session_types = $pdo->query("
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
-    .page-title {
-        font-size: 28px;
-        font-weight: 900;
-        color: #fff;
-    }
-    .btn-create {
-        background: var(--primary);
-        color: #fff;
-        padding: 12px 24px;
-        border-radius: 6px;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 14px;
-        transition: all 0.2s;
-        border: none;
-        cursor: pointer;
-    }
-    .btn-create:hover {
-        background: #e64500;
-    }
+    /* Session Types - Component Specific Styles */
     .types-table {
         width: 100%;
         border-collapse: collapse;
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
         border-radius: 8px;
         overflow: hidden;
     }
     .types-table thead {
-        background: #06080b;
+        background: var(--bg-main);
     }
     .types-table th {
         text-align: left;
         padding: 16px;
-        color: #94a3b8;
+        color: var(--text-dim);
         font-size: 12px;
         text-transform: uppercase;
         font-weight: 700;
     }
     .types-table td {
         padding: 16px;
-        border-bottom: 1px solid #1e293b;
-        color: #fff;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-white);
     }
     .types-table tr:hover {
-        background: rgba(255, 77, 0, 0.05);
+        background: rgba(107, 70, 193, 0.05);
     }
     .btn-edit, .btn-delete {
         padding: 6px 12px;
@@ -203,10 +175,11 @@ $session_types = $pdo->query("
 </style>
 
 <div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-list-alt"></i> Manage Session Types
-    </h1>
-    <button onclick="openCreateModal()" class="btn-create">
+    <div class="page-header-content">
+        <h1 class="page-title"><i class="fas fa-list-alt"></i> Manage Session Types</h1>
+        <p class="page-description">Add, edit, and manage session types</p>
+    </div>
+    <button type="button" onclick="openCreateModal()" class="btn btn-primary">
         <i class="fas fa-plus"></i> Add Session Type
     </button>
 </div>
