@@ -15,9 +15,9 @@ try {
             SELECT s.*, st.name as session_type_name, st.duration
             FROM sessions s
             LEFT JOIN session_types st ON s.session_type_id = st.id
-            WHERE s.date >= CURDATE()
+            WHERE s.session_date >= CURDATE()
             AND s.status = 'scheduled'
-            ORDER BY s.date ASC, s.start_time ASC
+            ORDER BY s.session_date ASC, s.start_time ASC
             LIMIT 5
         ");
         $stmt->execute();
@@ -63,10 +63,10 @@ try {
             FROM sessions s
             LEFT JOIN session_types st ON s.session_type_id = st.id
             LEFT JOIN session_attendance sa ON s.id = sa.session_id
-            WHERE s.date >= CURDATE() AND s.date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+            WHERE s.session_date >= CURDATE() AND s.session_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
             AND s.status = 'scheduled'
             GROUP BY s.id
-            ORDER BY s.date ASC, s.start_time ASC
+            ORDER BY s.session_date ASC, s.start_time ASC
             LIMIT 10
         ");
         $stmt->execute();

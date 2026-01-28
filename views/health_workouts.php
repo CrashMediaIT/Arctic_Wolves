@@ -332,14 +332,32 @@ if ($current_program && $current_program['total_workouts'] > 0) {
         <div class="card-body">
             <div class="workout-history-list">
                 <?php
-                // Demo workout history data
-                $workout_history = [
-                    ['date' => date('Y-m-d', strtotime('-1 day')), 'name' => 'Upper Body Strength', 'duration' => '45 min', 'exercises_completed' => 4, 'total_exercises' => 4],
-                    ['date' => date('Y-m-d', strtotime('-2 days')), 'name' => 'Cardio & Core', 'duration' => '50 min', 'exercises_completed' => 4, 'total_exercises' => 4],
-                    ['date' => date('Y-m-d', strtotime('-4 days')), 'name' => 'Lower Body Power', 'duration' => '55 min', 'exercises_completed' => 4, 'total_exercises' => 4],
-                    ['date' => date('Y-m-d', strtotime('-5 days')), 'name' => 'Full Body Circuit', 'duration' => '40 min', 'exercises_completed' => 3, 'total_exercises' => 4],
-                    ['date' => date('Y-m-d', strtotime('-7 days')), 'name' => 'Upper Body Strength', 'duration' => '48 min', 'exercises_completed' => 4, 'total_exercises' => 4],
-                ];
+                // Fetch real workout history from database
+                $workout_history = [];
+                try {
+                    $history_query = "
+                        SELECT 
+                            DATE(awf.feedback_date) as date,
+                            wp.name,
+                            CONCAT(COALESCE(SUM(awf.duration_minutes), 0), ' min') as duration,
+                            COUNT(CASE WHEN awf.status = 'completed' THEN 1 END) as exercises_completed,
+                            (SELECT COUNT(DISTINCT wpe.id) FROM workout_plan_exercises wpe 
+                             WHERE wpe.workout_plan_id = wp.id) as total_exercises
+                        FROM athlete_workout_feedback awf
+                        INNER JOIN athlete_workout_assignments awa ON awf.assignment_id = awa.id
+                        INNER JOIN workout_plans wp ON awa.workout_plan_id = wp.id
+                        WHERE awa.athlete_id = ?
+                        GROUP BY DATE(awf.feedback_date), wp.id, wp.name
+                        ORDER BY DATE(awf.feedback_date) DESC
+                        LIMIT 10
+                    ";
+                    $history_stmt = $pdo->prepare($history_query);
+                    $history_stmt->execute([$user_id]);
+                    $workout_history = $history_stmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (PDOException $e) {
+                    error_log("Error fetching workout history: " . $e->getMessage());
+                    $workout_history = [];
+                }
                 
                 if (count($workout_history) > 0):
                     foreach ($workout_history as $history):

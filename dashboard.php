@@ -141,6 +141,7 @@ $allowed_pages = [
     'admin_database_restore'  => 'views/admin_database_restore.php',
     'admin_system_check'      => 'views/admin_system_check.php',
     'admin_permissions'       => 'views/admin_permissions.php',
+    'user_permissions'        => 'views/user_permissions.php',
     'admin_locations'         => 'views/admin_locations.php',
     'admin_team_coaches'      => 'views/admin_team_coaches.php',
     'admin_discounts'         => 'views/admin_discounts.php',
@@ -178,6 +179,7 @@ $allowed_pages = [
     'reports_athlete'         => 'views/reports_athlete.php',
     'reports_income'          => 'views/reports_income.php',
     'scheduled_reports'       => 'views/scheduled_reports.php',
+    'report_view'             => 'views/report_view.php',
     
     // Sessions
     'create_session'          => 'views/create_session.php',
