@@ -345,6 +345,81 @@ if ($action == 'update_player_info') {
 }
 
 // =========================================================
+// ACTION 7B: UPDATE PERFORMANCE STATS (Games, Goals, Assists, etc.)
+// =========================================================
+if ($action == 'update_performance_stats') {
+    // Server-side validation with max(0, ...) to prevent negative values
+    $games_played = max(0, min(9999, intval($_POST['games_played'] ?? 0)));
+    $goals = max(0, min(9999, intval($_POST['goals'] ?? 0)));
+    $assists = max(0, min(9999, intval($_POST['assists'] ?? 0)));
+    $plus_minus = max(-999, min(999, intval($_POST['plus_minus'] ?? 0))); // +/- can be negative
+    $shots = max(0, min(9999, intval($_POST['shots'] ?? 0)));
+    $penalty_minutes = max(0, min(9999, intval($_POST['penalty_minutes'] ?? 0)));
+    $goals_against = max(0, min(9999, intval($_POST['goals_against'] ?? 0)));
+    $shots_against = max(0, min(9999, intval($_POST['shots_against'] ?? 0)));
+    $saves = max(0, min(9999, intval($_POST['saves'] ?? 0)));
+    
+    // Calculate derived stats
+    $points = $goals + $assists;
+    
+    // Calculate save percentage based on saves and shots_against
+    // Using user-provided saves value directly for calculation
+    $save_percentage = 0;
+    if ($shots_against > 0) {
+        // Use saves input directly: save% = (saves / shots_against) * 100
+        $save_percentage = ($saves / $shots_against) * 100;
+        $save_percentage = max(0, min(100, $save_percentage));
+    }
+    
+    // Calculate GAA (Goals Against Average) if games_played > 0
+    $gaa = 0;
+    if ($games_played > 0) {
+        $gaa = $goals_against / $games_played;
+    }
+    
+    try {
+        // Check if athlete_stats record exists for this user
+        $stmt = $pdo->prepare("SELECT id FROM athlete_stats WHERE user_id = ? LIMIT 1");
+        $stmt->execute([$current_user_id]);
+        $existing = $stmt->fetch();
+        
+        if ($existing) {
+            // Update existing record
+            $stmt = $pdo->prepare("
+                UPDATE athlete_stats 
+                SET games_played = ?, goals = ?, assists = ?, points = ?, plus_minus = ?, 
+                    shots = ?, penalty_minutes = ?, goals_against = ?, shots_against = ?, 
+                    saves = ?, save_percentage = ?, gaa = ?
+                WHERE user_id = ?
+            ");
+            $stmt->execute([
+                $games_played, $goals, $assists, $points, $plus_minus, 
+                $shots, $penalty_minutes, $goals_against, $shots_against, 
+                $saves, $save_percentage, $gaa, $current_user_id
+            ]);
+        } else {
+            // Create new record
+            $stmt = $pdo->prepare("
+                INSERT INTO athlete_stats (user_id, games_played, goals, assists, points, plus_minus, 
+                    shots, penalty_minutes, goals_against, shots_against, saves, save_percentage, gaa)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $current_user_id, $games_played, $goals, $assists, $points, $plus_minus, 
+                $shots, $penalty_minutes, $goals_against, $shots_against, $saves, $save_percentage, $gaa
+            ]);
+        }
+        
+        header("Location: dashboard.php?page=profile&tab=player&msg=stats_updated");
+        exit();
+    } catch (PDOException $e) {
+        error_log("Performance stats update error: " . $e->getMessage());
+        header("Location: dashboard.php?page=profile&tab=player&error=stats_update_failed");
+        exit();
+    }
+}
+
+// =========================================================
 // ACTION 8: UPLOAD PROFILE PHOTO
 // =========================================================
 if ($action == 'upload_photo') {
