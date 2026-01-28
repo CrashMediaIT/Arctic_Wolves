@@ -75,15 +75,10 @@ try {
 }
 ?>
 
-<div class="eval-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-clipboard-check"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Evaluation Framework</h1>
-            <p class="page-description">Build and manage athlete evaluation criteria, categories, and scoring scales</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-clipboard-check"></i> Evaluation Framework</h1>
+        <p class="page-description">Build and manage athlete evaluation criteria, categories, and scoring scales</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
@@ -101,43 +96,43 @@ try {
     </div>
 </div>
 
-<div class="eval-framework-content">
-    <!-- Framework Builder -->
-    <div class="content-card">
-        <div class="card-header">
-            <h3><i class="fas fa-tools"></i> Framework Builder</h3>
-            <div class="card-header-actions">
-                <a href="?page=categories&tab=skills" class="btn-secondary btn-sm"><i class="fas fa-tags"></i> Manage Skills Library</a>
-                <button class="btn-primary" data-action="add" data-modal="add-eval-category-modal"><i class="fas fa-plus"></i> Add Evaluation Category</button>
-            </div>
+<!-- Framework Builder -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-tools"></i> Framework Builder</h3>
+        <div class="btn-group">
+            <a href="?page=categories&tab=skills" class="btn btn-secondary"><i class="fas fa-tags"></i> Manage Skills Library</a>
+            <button type="button" class="btn btn-primary" data-action="add" data-modal="add-eval-category-modal"><i class="fas fa-plus"></i> Add Evaluation Category</button>
         </div>
-        <div class="card-body">
-            <div class="framework-tree">
-                <?php if (empty($categories)): ?>
-                    <div class="empty-state">
-                        <i class="fas fa-clipboard-check" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
-                        <p>No evaluation categories yet. Click "Add Evaluation Category" to get started.</p>
-                        <p style="font-size: 13px; color: var(--text-dim); margin-top: 8px;">
-                            First, <a href="?page=categories&tab=skills" style="color: var(--primary-light);">add skills to your library</a>, then create evaluation categories here.
-                        </p>
-                    </div>
-                <?php else: ?>
-                    <?php foreach ($categories as $category): ?>
-                        <!-- Category -->
-                        <div class="framework-category" data-category-id="<?php echo $category['id']; ?>">
-                            <div class="category-header">
-                                <div class="category-title">
-                                    <i class="fas fa-clipboard-list"></i>
-                                    <h4><?php echo htmlspecialchars($category['name']); ?></h4>
-                                    <span class="criteria-count"><?php echo count($skillsByCategory[$category['id']] ?? []); ?> criteria</span>
-                                </div>
-                                <div class="category-actions">
-                                    <button class="btn-icon btn-scale" title="Assign Scale to Category" data-action="assign-scale" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-star-half-alt"></i></button>
-                                    <button class="btn-icon" title="Add Criteria from Library" data-action="add-skill" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-plus"></i></button>
-                                    <button class="btn-icon" title="Edit" data-action="edit-category" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-icon" title="Delete" data-action="delete-category" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-trash"></i></button>
-                                </div>
+    </div>
+    <div class="card-body">
+        <div class="framework-tree">
+            <?php if (empty($categories)): ?>
+                <div class="empty-state-card">
+                    <i class="fas fa-clipboard-check"></i>
+                    <h4>No evaluation categories yet</h4>
+                    <p>Click "Add Evaluation Category" to get started.</p>
+                    <p style="font-size: 13px; color: var(--text-dim); margin-top: 8px;">
+                        First, <a href="?page=categories&tab=skills" style="color: var(--primary-light);">add skills to your library</a>, then create evaluation categories here.
+                    </p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($categories as $category): ?>
+                    <!-- Category -->
+                    <div class="framework-category" data-category-id="<?php echo $category['id']; ?>">
+                        <div class="category-header">
+                            <div class="category-title">
+                                <i class="fas fa-clipboard-list"></i>
+                                <h4><?php echo htmlspecialchars($category['name']); ?></h4>
+                                <span class="criteria-count"><?php echo count($skillsByCategory[$category['id']] ?? []); ?> criteria</span>
                             </div>
+                            <div class="category-actions">
+                                <button type="button" class="btn-icon btn-scale" title="Assign Scale to Category" data-action="assign-scale" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-star-half-alt"></i></button>
+                                <button type="button" class="btn-icon" title="Add Criteria from Library" data-action="add-skill" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-plus"></i></button>
+                                <button type="button" class="btn-icon" title="Edit" data-action="edit-category" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-edit"></i></button>
+                                <button type="button" class="btn-icon" title="Delete" data-action="delete-category" data-category-id="<?php echo $category['id']; ?>"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
                             <div class="criteria-list">
                                 <?php 
                                 $skills = $skillsByCategory[$category['id']] ?? [];
