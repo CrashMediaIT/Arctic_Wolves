@@ -49,7 +49,7 @@ $subtotal = array_sum(array_column($bookings, 'original_price'));
 $tax = array_sum(array_column($bookings, 'tax_amount'));
 $total = array_sum(array_column($bookings, 'amount_paid'));
 
-$settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $tax_name = $settings['tax_name'] ?? 'HST';
 ?>
 

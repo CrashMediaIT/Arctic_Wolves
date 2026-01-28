@@ -47,7 +47,7 @@ if ($athlete_id) {
     $athlete = $athlete_info->fetch(PDO::FETCH_ASSOC);
 }
 
-$settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $tax_name = $settings['tax_name'] ?? 'HST';
 ?>
 

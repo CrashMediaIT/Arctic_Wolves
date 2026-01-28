@@ -94,7 +94,7 @@ $subcategoryCount = $totalCategories - $parentCount;
     <div class="content-card">
         <div class="card-header">
             <h3><i class="fas fa-tags"></i> Merchandise Categories</h3>
-            <button class="btn btn-primary" data-action="add" onclick="openModal('add-category-modal')">
+            <button class="btn btn-primary" onclick="openModal('add-category-modal')">
                 <i class="fas fa-plus"></i> Add Category
             </button>
         </div>

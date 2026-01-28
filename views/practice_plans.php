@@ -472,7 +472,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
         </div>
     </div>
     <?php if ($can_create): ?>
-        <button class="btn btn-primary" data-action="add" onclick="openPlanModal()">
+        <button class="btn btn-primary" onclick="openPlanModal()">
             <i class="fas fa-plus"></i> Create Plan
         </button>
     <?php endif; ?>
@@ -534,7 +534,7 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
             <?php endforeach; ?>
         </select>
     </div>
-    <button class="btn" data-action="filter" onclick="applyFilters()">
+    <button class="btn" onclick="applyFilters()">
         <i class="fas fa-filter"></i> Apply
     </button>
 </div>
@@ -577,11 +577,11 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
                 </div>
                 
                 <div class="plan-actions">
-                    <button class="btn-icon" data-action="view" data-id="<?= $plan['id'] ?>" onclick="viewPlan(<?= $plan['id'] ?>)">
+                    <button class="btn-icon" data-id="<?= $plan['id'] ?>" onclick="viewPlan(<?= $plan['id'] ?>)">
                         <i class="fas fa-eye"></i> View
                     </button>
                     <?php if ($can_share && $plan['created_by'] == $user_id): ?>
-                        <button class="btn-icon" data-action="share" data-id="<?= $plan['id'] ?>" onclick="openShareModal(<?= $plan['id'] ?>, '<?= htmlspecialchars($plan['share_token'] ?? '') ?>')">
+                        <button class="btn-icon" data-id="<?= $plan['id'] ?>" onclick="openShareModal(<?= $plan['id'] ?>, '<?= htmlspecialchars($plan['share_token'] ?? '') ?>')">
                             <i class="fas fa-share"></i> Share
                         </button>
                     <?php endif; ?>

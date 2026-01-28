@@ -25,7 +25,7 @@ if (file_exists('vendor/autoload.php')) {
 }
 
 // 3. LOAD KEYS FROM DB
-$settings = $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $stripe_secret = $settings['stripe_secret_key'] ?? '';
 $currency = $settings['currency'] ?? 'CAD';
 

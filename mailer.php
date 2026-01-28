@@ -112,7 +112,7 @@ class SmtpMailer {
 function getEmailConfig() {
     global $pdo;
     try {
-        return $pdo->query("SELECT * FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+        return $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     } catch (Exception $e) { return []; }
 }
 
