@@ -160,14 +160,28 @@ try {
         case 'manual_backup':
             $id = (int)($_POST['id'] ?? 0);
             
-            if ($id <= 0) throw new Exception('Invalid backup job ID');
-            
-            // Get job details
-            $stmt = $pdo->prepare("SELECT * FROM backup_jobs WHERE id = ?");
-            $stmt->execute([$id]);
-            $job = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$job) throw new Exception('Backup job not found');
+            // Allow quick backup without a backup job ID
+            if ($id <= 0) {
+                // Create a temporary job config for quick backup
+                $job = [
+                    'id' => 0,
+                    'name' => 'Quick Backup',
+                    'destination_type' => 'local',
+                    'nextcloud_folder' => '/Arctic_Wolves/Backups/',
+                    'smb_path' => '',
+                    'smb_username' => '',
+                    'smb_password' => '',
+                    'smb_domain' => '',
+                    'retention_days' => 30
+                ];
+            } else {
+                // Get job details
+                $stmt = $pdo->prepare("SELECT * FROM backup_jobs WHERE id = ?");
+                $stmt->execute([$id]);
+                $job = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$job) throw new Exception('Backup job not found');
+            }
             
             // Perform backup
             $result = performBackup($pdo, $job);
@@ -294,9 +308,14 @@ function performBackup($pdo, $job) {
         // Generate filename
         $filename = 'arctic_wolves_backup_' . date('Ymd_His') . '.sql.gz';
         $temp_dir = __DIR__ . '/tmp/';
+        $backups_dir = __DIR__ . '/backups/';
         
         if (!is_dir($temp_dir)) {
             mkdir($temp_dir, 0755, true);
+        }
+        
+        if (!is_dir($backups_dir)) {
+            mkdir($backups_dir, 0755, true);
         }
         
         $sql_file = $temp_dir . 'backup_' . time() . '.sql';
@@ -337,6 +356,17 @@ function performBackup($pdo, $job) {
         $success_destinations = [];
         $errors = [];
         
+        // Handle local backup (for quick backup from system tools)
+        if ($job['destination_type'] === 'local') {
+            $local_backup_path = $backups_dir . $filename;
+            if (rename($gz_file, $local_backup_path)) {
+                $success_destinations[] = 'Local: /backups/' . $filename;
+                $gz_file = $local_backup_path; // Update path for potential cleanup later
+            } else {
+                $errors[] = 'Local: Failed to save backup file';
+            }
+        }
+        
         // Upload to Nextcloud if configured
         if ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both') {
             try {
@@ -372,31 +402,36 @@ function performBackup($pdo, $job) {
             }
         }
         
-        // Clean up temp file
-        @unlink($gz_file);
+        // Clean up temp file (but keep local backups)
+        if ($job['destination_type'] !== 'local' && file_exists($gz_file)) {
+            @unlink($gz_file);
+        }
         
-        // Record backup history
-        $backup_status = empty($errors) ? 'success' : 'failed';
-        $destinations = implode(', ', $success_destinations);
-        $error_msg = empty($errors) ? null : implode('; ', $errors);
-        
-        $stmt = $pdo->prepare("
-            INSERT INTO backup_history (backup_job_id, filename, file_size, destination, status, error_message)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([$job['id'], $filename, $file_size, $destinations, $backup_status, $error_msg]);
-        
-        // Update last_backup time
-        $stmt = $pdo->prepare("UPDATE backup_jobs SET last_backup = NOW() WHERE id = ?");
-        $stmt->execute([$job['id']]);
-        
-        // Clean old backups based on retention
-        cleanOldBackups($pdo, $job);
+        // Record backup history (only for scheduled jobs with ID)
+        if ($job['id'] > 0) {
+            $backup_status = empty($errors) ? 'success' : 'failed';
+            $destinations = implode(', ', $success_destinations);
+            $error_msg = empty($errors) ? null : implode('; ', $errors);
+            
+            $stmt = $pdo->prepare("
+                INSERT INTO backup_history (backup_job_id, filename, file_size, destination, status, error_message)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$job['id'], $filename, $file_size, $destinations, $backup_status, $error_msg]);
+            
+            // Update last_backup time
+            $stmt = $pdo->prepare("UPDATE backup_jobs SET last_backup = NOW() WHERE id = ?");
+            $stmt->execute([$job['id']]);
+            
+            // Clean old backups based on retention
+            cleanOldBackups($pdo, $job);
+        }
         
         if (empty($errors)) {
+            $dest_message = !empty($success_destinations) ? implode(', ', $success_destinations) : 'Backup created';
             return [
                 'success' => true,
-                'message' => 'Backup completed successfully. Destinations: ' . $destinations
+                'message' => 'Backup completed successfully. ' . $dest_message
             ];
         } else {
             return [

@@ -291,6 +291,40 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                     <p class="form-help"><i class="fas fa-info-circle"></i> Recommended size: 1050x600 pixels (3.5" x 2" at 300 DPI). Supports PNG, JPG, WebP.</p>
                 </div>
                 
+                <!-- Logo Upload Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title"><i class="fas fa-image"></i> Custom Logo</h4>
+                    <div class="background-upload-grid">
+                        <div class="file-upload-zone" id="logoDropZone">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <p class="upload-text">Drag & drop custom logo or click to browse</p>
+                            <span class="upload-hint">Company logo image (PNG recommended, transparent background)</span>
+                            <input type="file" id="logo-input" accept="image/*" style="display: none;" onchange="previewLogo(this)">
+                            <div class="upload-buttons">
+                                <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('logo-input').click()">
+                                    <i class="fas fa-folder-open"></i> Choose File
+                                </button>
+                                <button type="button" class="btn-secondary btn-small" onclick="removeLogo()" id="remove-logo-btn" style="display: none;">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                                <button type="button" class="btn-secondary btn-small" onclick="resetToDefaultLogo()">
+                                    <i class="fas fa-undo"></i> Use Default
+                                </button>
+                            </div>
+                            <div id="logo-preview" class="upload-preview"></div>
+                        </div>
+                        <div class="logo-defaults-info">
+                            <h5><i class="fas fa-info-circle"></i> Current Logo</h5>
+                            <div id="current-logo-display">
+                                <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Current Logo" style="max-width: 150px; max-height: 80px;">
+                            </div>
+                            <p class="form-help">The logo appears on both front and back of the card. Recommended: PNG with transparent background, max 200x100px.</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Card Style Options Section -->
                 <div class="form-section">
                     <h4 class="form-section-title"><i class="fas fa-palette"></i> Card Style Options</h4>
@@ -302,6 +336,14 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                                 <option value="square">Square Corners</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="default-settings-actions">
+                        <button type="button" class="btn btn-secondary" onclick="setCurrentAsDefault()">
+                            <i class="fas fa-save"></i> Save Current Settings as Default
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="loadDefaultSettings()">
+                            <i class="fas fa-undo"></i> Load Default Settings
+                        </button>
                     </div>
                 </div>
                 
@@ -783,6 +825,141 @@ function removeBackground(side) {
     showNotification(`${side.charAt(0).toUpperCase() + side.slice(1)} background removed!`, 'success');
 }
 
+// Default logo URL
+const defaultLogoUrl = 'https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png';
+let customLogoImage = null;
+
+// Preview custom logo
+function previewLogo(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+        showNotification('Please select a valid image file (PNG, JPG, WebP)', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        customLogoImage = e.target.result;
+        document.getElementById('logo-preview').innerHTML = `<img src="${customLogoImage}" alt="Custom Logo">`;
+        document.getElementById('current-logo-display').innerHTML = `<img src="${customLogoImage}" alt="Current Logo" style="max-width: 150px; max-height: 80px;">`;
+        document.getElementById('remove-logo-btn').style.display = 'inline-flex';
+        
+        // Update all logo images on the card
+        updateCardLogos(customLogoImage);
+        
+        showNotification('Custom logo uploaded!', 'success');
+    };
+    reader.readAsDataURL(file);
+}
+
+// Remove custom logo and revert to default
+function removeLogo() {
+    customLogoImage = null;
+    document.getElementById('logo-preview').innerHTML = '';
+    document.getElementById('logo-input').value = '';
+    document.getElementById('remove-logo-btn').style.display = 'none';
+    
+    // Revert to default logo
+    document.getElementById('current-logo-display').innerHTML = `<img src="${defaultLogoUrl}" alt="Current Logo" style="max-width: 150px; max-height: 80px;">`;
+    updateCardLogos(defaultLogoUrl);
+    
+    showNotification('Custom logo removed. Using default logo.', 'success');
+}
+
+// Reset to default logo
+function resetToDefaultLogo() {
+    removeLogo();
+}
+
+// Update all logo images on the business card
+function updateCardLogos(logoSrc) {
+    // Update front card logo
+    const frontLogo = document.querySelector('#card-front .card-logo img');
+    if (frontLogo) {
+        frontLogo.src = logoSrc;
+    }
+    
+    // Update back card logo
+    const backLogo = document.querySelector('#card-back .back-logo img');
+    if (backLogo) {
+        backLogo.src = logoSrc;
+    }
+}
+
+// Initialize logo drop zone
+document.addEventListener('DOMContentLoaded', function() {
+    initDragAndDrop('logoDropZone', 'logo-input', 'logo');
+});
+
+// Save current settings as default (store in localStorage)
+function setCurrentAsDefault() {
+    const settings = {
+        cornerStyle: document.getElementById('corner-style-select')?.value || 'round',
+        customLogo: customLogoImage,
+        frontBackground: frontBackgroundImage,
+        backBackground: backBackgroundImage
+    };
+    
+    try {
+        localStorage.setItem('businessCardDefaults', JSON.stringify(settings));
+        showNotification('Settings saved as default!', 'success');
+    } catch (e) {
+        showNotification('Could not save settings. Storage may be full.', 'error');
+    }
+}
+
+// Load default settings from localStorage
+function loadDefaultSettings() {
+    try {
+        const savedSettings = localStorage.getItem('businessCardDefaults');
+        if (!savedSettings) {
+            showNotification('No saved defaults found.', 'info');
+            return;
+        }
+        
+        const settings = JSON.parse(savedSettings);
+        
+        // Apply corner style
+        if (settings.cornerStyle) {
+            document.getElementById('corner-style-select').value = settings.cornerStyle;
+            updateCornerStyle();
+        }
+        
+        // Apply custom logo
+        if (settings.customLogo) {
+            customLogoImage = settings.customLogo;
+            document.getElementById('logo-preview').innerHTML = `<img src="${customLogoImage}" alt="Custom Logo">`;
+            document.getElementById('current-logo-display').innerHTML = `<img src="${customLogoImage}" alt="Current Logo" style="max-width: 150px; max-height: 80px;">`;
+            document.getElementById('remove-logo-btn').style.display = 'inline-flex';
+            updateCardLogos(customLogoImage);
+        }
+        
+        // Apply front background
+        if (settings.frontBackground) {
+            frontBackgroundImage = settings.frontBackground;
+            document.getElementById('front-bg-preview').innerHTML = `<img src="${frontBackgroundImage}" alt="Front Background">`;
+            document.getElementById('front-overlay').style.backgroundImage = `url(${frontBackgroundImage})`;
+            document.getElementById('remove-front-bg').style.display = 'inline-flex';
+        }
+        
+        // Apply back background
+        if (settings.backBackground) {
+            backBackgroundImage = settings.backBackground;
+            document.getElementById('back-bg-preview').innerHTML = `<img src="${backBackgroundImage}" alt="Back Background">`;
+            document.getElementById('back-overlay').style.backgroundImage = `url(${backBackgroundImage})`;
+            document.getElementById('remove-back-bg').style.display = 'inline-flex';
+        }
+        
+        showNotification('Default settings loaded!', 'success');
+    } catch (e) {
+        showNotification('Could not load settings.', 'error');
+    }
+}
+
 // Toggle export dropdown menu
 function toggleExportMenu() {
     const menu = document.getElementById('export-menu');
@@ -1017,6 +1194,47 @@ function exportCardSide(side) {
     max-height: 100px;
     border-radius: 8px;
     object-fit: cover;
+}
+
+/* Logo Defaults Info Section */
+.logo-defaults-info {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.logo-defaults-info h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-white);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo-defaults-info h5 i {
+    color: var(--primary-light);
+}
+
+#current-logo-display {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+/* Default Settings Actions */
+.default-settings-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
 }
 
 .form-help {
