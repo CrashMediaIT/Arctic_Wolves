@@ -1707,7 +1707,7 @@ table tbody tr:last-child td {
 
 .page-tab {
     flex: 1;
-    padding: 18px var(--space-6);
+    padding: var(--space-5) var(--space-6);
     background: transparent;
     border: none;
     border-bottom: 3px solid transparent;
