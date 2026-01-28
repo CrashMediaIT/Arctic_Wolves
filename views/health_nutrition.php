@@ -225,15 +225,15 @@ $is_demo_nutrition = false;
                         SELECT 
                             DATE(ml.logged_at) as date,
                             np.name as plan_name,
-                            SUM(ml.calories) as calories_logged,
+                            COALESCE(SUM(ml.calories), 0) as calories_logged,
                             np.target_calories,
                             COUNT(DISTINCT ml.id) as meals_completed,
                             (SELECT COUNT(*) FROM nutrition_plan_meals WHERE nutrition_plan_id = np.id) as total_meals
                         FROM meal_logs ml
                         INNER JOIN nutrition_plans np ON ml.nutrition_plan_id = np.id
                         WHERE np.user_id = ?
-                        GROUP BY DATE(ml.logged_at), np.id
-                        ORDER BY ml.logged_at DESC
+                        GROUP BY DATE(ml.logged_at), np.id, np.name, np.target_calories
+                        ORDER BY DATE(ml.logged_at) DESC
                         LIMIT 10
                     ";
                     $meal_history_stmt = $pdo->prepare($meal_history_query);

@@ -339,19 +339,16 @@ if ($current_program && $current_program['total_workouts'] > 0) {
                         SELECT 
                             DATE(awf.feedback_date) as date,
                             wp.name,
-                            CONCAT(FLOOR(awf.duration_minutes / 60), ' min') as duration,
-                            (SELECT COUNT(*) FROM athlete_workout_feedback awf2 
-                             WHERE awf2.assignment_id = awf.assignment_id 
-                             AND DATE(awf2.feedback_date) = DATE(awf.feedback_date) 
-                             AND awf2.status = 'completed') as exercises_completed,
+                            CONCAT(COALESCE(SUM(awf.duration_minutes), 0), ' min') as duration,
+                            COUNT(CASE WHEN awf.status = 'completed' THEN 1 END) as exercises_completed,
                             (SELECT COUNT(DISTINCT wpe.id) FROM workout_plan_exercises wpe 
                              WHERE wpe.workout_plan_id = wp.id) as total_exercises
                         FROM athlete_workout_feedback awf
                         INNER JOIN athlete_workout_assignments awa ON awf.assignment_id = awa.id
                         INNER JOIN workout_plans wp ON awa.workout_plan_id = wp.id
                         WHERE awa.athlete_id = ?
-                        GROUP BY DATE(awf.feedback_date), wp.id
-                        ORDER BY awf.feedback_date DESC
+                        GROUP BY DATE(awf.feedback_date), wp.id, wp.name
+                        ORDER BY DATE(awf.feedback_date) DESC
                         LIMIT 10
                     ";
                     $history_stmt = $pdo->prepare($history_query);
