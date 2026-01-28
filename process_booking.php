@@ -37,6 +37,97 @@ $domain  = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
 $action  = $_POST['action'] ?? '';
 
 // 4. HANDLE DIFFERENT BOOKING ACTIONS
+
+// CANCEL BOOKING
+if ($action === 'cancel_booking' || $action === 'cancel') {
+    header('Content-Type: application/json');
+    
+    try {
+        $booking_id = intval($_POST['booking_id'] ?? 0);
+        
+        if ($booking_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid booking ID']);
+            exit();
+        }
+        
+        // Get booking details and verify ownership
+        $stmt = $pdo->prepare("
+            SELECT b.*, s.session_date, s.title as session_title
+            FROM bookings b
+            JOIN sessions s ON b.session_id = s.id
+            WHERE b.id = ? AND b.user_id = ?
+        ");
+        $stmt->execute([$booking_id, $user_id]);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$booking) {
+            echo json_encode(['success' => false, 'message' => 'Booking not found or access denied']);
+            exit();
+        }
+        
+        // Check if booking is already cancelled
+        if ($booking['status'] === 'cancelled') {
+            echo json_encode(['success' => false, 'message' => 'Booking is already cancelled']);
+            exit();
+        }
+        
+        // Check if session has already occurred
+        $session_date = new DateTime($booking['session_date']);
+        $now = new DateTime();
+        
+        if ($session_date < $now) {
+            echo json_encode(['success' => false, 'message' => 'Cannot cancel past sessions']);
+            exit();
+        }
+        
+        // Check cancellation policy (e.g., must cancel 24 hours before)
+        $hours_until_session = ($session_date->getTimestamp() - $now->getTimestamp()) / 3600;
+        $min_cancellation_hours = 24; // Can be made configurable
+        
+        if ($hours_until_session < $min_cancellation_hours) {
+            // Allow cancellation but note that refund may not be available
+            $refund_eligible = false;
+            $message = 'Booking cancelled. Note: Cancellations within 24 hours may not be eligible for refund.';
+        } else {
+            $refund_eligible = true;
+            $message = 'Booking cancelled successfully. You may request a refund if payment was made.';
+        }
+        
+        // Update booking status to cancelled
+        $stmt = $pdo->prepare("
+            UPDATE bookings 
+            SET status = 'cancelled', 
+                payment_status = CASE 
+                    WHEN payment_status = 'paid' THEN 'paid' 
+                    ELSE 'cancelled' 
+                END
+            WHERE id = ? AND user_id = ?
+        ");
+        $stmt->execute([$booking_id, $user_id]);
+        
+        // Log the cancellation
+        if (function_exists('logSecurityEvent')) {
+            logSecurityEvent($pdo, 'booking_cancelled', 
+                "User cancelled booking ID: $booking_id for session: {$booking['session_title']}", 
+                $user_id
+            );
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => $message,
+            'refund_eligible' => $refund_eligible,
+            'booking_id' => $booking_id
+        ]);
+        exit();
+        
+    } catch (Exception $e) {
+        error_log("Booking cancellation error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to cancel booking: ' . $e->getMessage()]);
+        exit();
+    }
+}
+
 if ($action === 'book_private_session') {
     // Book a new private session (create session + booking)
     try {
