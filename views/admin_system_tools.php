@@ -36,65 +36,48 @@ try {
 }
 ?>
 
-<div class="system-tools-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-cog"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">System Tools</h1>
-            <p class="page-description">Configure system settings, integrations, database, and maintenance</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-cog"></i> System Tools</h1>
+        <p class="page-description">Configure system settings, integrations, database, and maintenance</p>
     </div>
 </div>
 
-<div class="system-tools-content">
-    <!-- System Tools Tabs - Modern Navigation -->
-    <div class="system-tools-tabs-wrapper">
-        <div class="system-tools-tabs">
-            <a href="?page=system_tools&tab=settings" class="tools-tab-link <?php echo $activeTab === 'settings' ? 'active' : ''; ?>">
-                <i class="fas fa-sliders-h"></i>
-                <span>Settings</span>
-            </a>
-            <a href="?page=system_tools&tab=mileage" class="tools-tab-link <?php echo $activeTab === 'mileage' ? 'active' : ''; ?>">
-                <i class="fas fa-car"></i>
-                <span>Mileage</span>
-            </a>
-            <a href="?page=system_tools&tab=smtp" class="tools-tab-link <?php echo $activeTab === 'smtp' ? 'active' : ''; ?>">
-                <i class="fas fa-envelope"></i>
-                <span>SMTP</span>
-            </a>
-            <a href="?page=system_tools&tab=nextcloud" class="tools-tab-link <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>">
-                <i class="fas fa-cloud"></i>
-                <span>Nextcloud</span>
-            </a>
-            <a href="?page=system_tools&tab=payments" class="tools-tab-link <?php echo $activeTab === 'payments' ? 'active' : ''; ?>">
-                <i class="fas fa-credit-card"></i>
-                <span>Payments</span>
-            </a>
-            <a href="?page=system_tools&tab=theme" class="tools-tab-link <?php echo $activeTab === 'theme' ? 'active' : ''; ?>">
-                <i class="fas fa-palette"></i>
-                <span>Theme</span>
-            </a>
-            <a href="?page=system_tools&tab=database" class="tools-tab-link <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
-                <i class="fas fa-database"></i>
-                <span>Database</span>
-            </a>
-            <a href="?page=system_tools&tab=production" class="tools-tab-link <?php echo $activeTab === 'production' ? 'active' : ''; ?>">
-                <i class="fas fa-rocket"></i>
-                <span>Production</span>
-            </a>
-            <a href="?page=system_tools&tab=updates" class="tools-tab-link <?php echo $activeTab === 'updates' ? 'active' : ''; ?>">
-                <i class="fas fa-download"></i>
-                <span>Updates</span>
-            </a>
-            <a href="system_health_validator.php" class="tools-tab-link">
-                <i class="fas fa-heartbeat"></i>
-                <span>Health</span>
-            </a>
-        </div>
-    </div>
+<!-- System Tools Tabs -->
+<div class="page-tabs" style="flex-wrap: wrap;">
+    <a href="?page=system_tools&tab=settings" class="page-tab <?php echo $activeTab === 'settings' ? 'active' : ''; ?>">
+        <i class="fas fa-sliders-h"></i> Settings
+    </a>
+    <a href="?page=system_tools&tab=mileage" class="page-tab <?php echo $activeTab === 'mileage' ? 'active' : ''; ?>">
+        <i class="fas fa-car"></i> Mileage
+    </a>
+    <a href="?page=system_tools&tab=smtp" class="page-tab <?php echo $activeTab === 'smtp' ? 'active' : ''; ?>">
+        <i class="fas fa-envelope"></i> SMTP
+    </a>
+    <a href="?page=system_tools&tab=nextcloud" class="page-tab <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>">
+        <i class="fas fa-cloud"></i> Nextcloud
+    </a>
+    <a href="?page=system_tools&tab=payments" class="page-tab <?php echo $activeTab === 'payments' ? 'active' : ''; ?>">
+        <i class="fas fa-credit-card"></i> Payments
+    </a>
+    <a href="?page=system_tools&tab=theme" class="page-tab <?php echo $activeTab === 'theme' ? 'active' : ''; ?>">
+        <i class="fas fa-palette"></i> Theme
+    </a>
+    <a href="?page=system_tools&tab=database" class="page-tab <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
+        <i class="fas fa-database"></i> Database
+    </a>
+    <a href="?page=system_tools&tab=production" class="page-tab <?php echo $activeTab === 'production' ? 'active' : ''; ?>">
+        <i class="fas fa-rocket"></i> Production
+    </a>
+    <a href="?page=system_tools&tab=updates" class="page-tab <?php echo $activeTab === 'updates' ? 'active' : ''; ?>">
+        <i class="fas fa-download"></i> Updates
+    </a>
+    <a href="system_health_validator.php" class="page-tab">
+        <i class="fas fa-heartbeat"></i> Health
+    </a>
+</div>
 
+<div class="page-tab-content">
     <!-- Success/Error Messages -->
     <?php if (isset($_GET['success'])): ?>
     <div class="alert alert-success" style="margin-bottom: 24px;">
