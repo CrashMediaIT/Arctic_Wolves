@@ -444,10 +444,10 @@ function startTimer() {
             document.getElementById('timer-label').textContent = 'Time Worked Today';
         }
         
-        // Convert elapsed to hours, minutes, seconds - ensuring positive values
-        const hours = Math.floor(Math.abs(elapsed) / 3600);
-        const minutes = Math.floor((Math.abs(elapsed) % 3600) / 60);
-        const seconds = Math.abs(elapsed) % 60;
+        // Convert elapsed to hours, minutes, seconds (elapsed is guaranteed non-negative)
+        const hours = Math.floor(elapsed / 3600);
+        const minutes = Math.floor((elapsed % 3600) / 60);
+        const seconds = elapsed % 60;
         
         document.getElementById('shift-timer').textContent = 
             String(hours).padStart(2, '0') + ':' + 
