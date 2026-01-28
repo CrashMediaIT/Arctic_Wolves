@@ -17,28 +17,6 @@ if (!in_array($activeTab, $validTabs)) {
             <p class="page-description">Organize and manage system categories, skills, and classifications</p>
         </div>
     </div>
-    <div class="page-header-stats">
-        <div class="header-stat">
-            <span class="stat-value" id="total-skills-count">-</span>
-            <span class="stat-label">Skills</span>
-        </div>
-        <div class="header-stat">
-            <span class="stat-value" id="total-drills-count">-</span>
-            <span class="stat-label">Drill Types</span>
-        </div>
-        <div class="header-stat">
-            <span class="stat-value" id="total-positions-count">-</span>
-            <span class="stat-label">Positions</span>
-        </div>
-        <div class="header-stat">
-            <span class="stat-value" id="total-equipment-count">-</span>
-            <span class="stat-label">Equipment</span>
-        </div>
-        <div class="header-stat">
-            <span class="stat-value" id="total-merchandise-count">-</span>
-            <span class="stat-label">Merchandise</span>
-        </div>
-    </div>
 </div>
 
 <div class="categories-content">
@@ -404,34 +382,6 @@ if (!in_array($activeTab, $validTabs)) {
     margin: 0;
 }
 
-.page-header-stats {
-    display: flex;
-    gap: 24px;
-}
-
-.header-stat {
-    text-align: center;
-    padding: 12px 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    min-width: 90px;
-}
-
-.header-stat .stat-value {
-    display: block;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--primary-light);
-}
-
-.header-stat .stat-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
 /* Category Tabs Wrapper */
 .category-tabs-wrapper {
     margin-bottom: 24px;
@@ -657,11 +607,6 @@ if (!in_array($activeTab, $validTabs)) {
         text-align: left;
     }
     
-    .page-header-stats {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
     .category-tabs {
         flex-direction: column;
     }
@@ -840,9 +785,6 @@ if (!in_array($activeTab, $validTabs)) {
 <script>
 // Handle edit and delete actions for all category types
 document.addEventListener('DOMContentLoaded', function() {
-    // Update stats counts in the header
-    updateStatsCounts();
-    
     // Handle edit buttons for all category types
     document.querySelectorAll('[data-action="edit"]').forEach(button => {
         button.addEventListener('click', function() {
@@ -953,25 +895,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
-
-function updateStatsCounts() {
-    // Count items in each tab
-    const skillsCount = document.querySelectorAll('#skills-tab .category-item').length;
-    const drillsCount = document.querySelectorAll('#drills-tab .category-item').length;
-    const positionsCount = document.querySelectorAll('#positions-tab .category-item').length;
-    const equipmentCount = document.querySelectorAll('#equipment-tab .category-item').length;
-    
-    // Update the header stats
-    const skillsEl = document.getElementById('total-skills-count');
-    const drillsEl = document.getElementById('total-drills-count');
-    const positionsEl = document.getElementById('total-positions-count');
-    const equipmentEl = document.getElementById('total-equipment-count');
-    
-    if (skillsEl) skillsEl.textContent = skillsCount;
-    if (drillsEl) drillsEl.textContent = drillsCount;
-    if (positionsEl) positionsEl.textContent = positionsCount;
-    if (equipmentEl) equipmentEl.textContent = equipmentCount;
-}
 
 // Show notification helper
 function showNotification(message, type) {

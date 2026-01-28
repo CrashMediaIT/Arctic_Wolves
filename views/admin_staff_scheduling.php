@@ -76,16 +76,6 @@ foreach ($allSchedules as $schedule) {
             <p class="page-description">Manage front desk staff schedules, PINs, and time tracking</p>
         </div>
     </div>
-    <div class="page-header-stats">
-        <div class="header-stat">
-            <span class="stat-value"><?= count($staffMembers) ?></span>
-            <span class="stat-label">Staff Members</span>
-        </div>
-        <div class="header-stat">
-            <span class="stat-value"><?= count($allSchedules) ?></span>
-            <span class="stat-label">Upcoming Shifts</span>
-        </div>
-    </div>
 </div>
 
 <style>
