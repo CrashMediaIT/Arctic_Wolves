@@ -4,6 +4,14 @@ require 'db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 
+// Detect POS subdomain (pos.arcticwolves.ca) - redirect to kiosk login
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$isPosSubdomain = (strpos($host, 'pos.') === 0);
+if ($isPosSubdomain) {
+    header("Location: pos_kiosk.php");
+    exit();
+}
+
 // Generate CSRF token for this session
 CSRFProtection::generateToken();
 generateCSRFToken();
