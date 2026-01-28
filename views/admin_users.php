@@ -122,15 +122,10 @@ foreach ($users as $u) {
 }
 ?>
 
-<div class="users-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-users-cog"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">User Management</h1>
-            <p class="page-description">Manage all system users, roles, and permissions</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-users-cog"></i> User Management</h1>
+        <p class="page-description">Manage all system users, roles, and permissions</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
@@ -492,79 +487,7 @@ function closeModal(modalId) {
 </script>
 
 <style>
-/* Users Page Enhanced Styles */
-.users-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-}
-
-.page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-
-.page-header-text h1 {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-
-.page-header-text p {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.page-header-stats {
-    display: flex;
-    gap: 20px;
-}
-
-.header-stat {
-    text-align: center;
-    padding: 12px 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    min-width: 90px;
-}
-
-.header-stat .stat-value {
-    display: block;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--primary-light);
-}
-
-.header-stat .stat-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Action Bar Enhanced */
+/* Users Page - Action Bar Enhanced */
 .action-bar-enhanced {
     display: flex;
     justify-content: space-between;
@@ -1016,21 +939,6 @@ input:checked + .toggle-slider:before {
 }
 
 @media (max-width: 768px) {
-    .users-page-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .page-header-content {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .page-header-stats {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
     .action-bar-enhanced {
         flex-direction: column;
         align-items: stretch;

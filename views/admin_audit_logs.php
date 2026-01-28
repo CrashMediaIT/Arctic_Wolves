@@ -96,88 +96,10 @@ $csrf_token = generateCsrfToken();
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
-    
-    .audit-page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 20px;
-        margin-bottom: 32px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid #1e293b;
-    }
-    
-    .page-header-content {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-    }
-    
-    .page-header-icon {
-        width: 56px;
-        height: 56px;
-        background: linear-gradient(135deg, var(--primary), #5a0080);
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        color: #fff;
-        box-shadow: 0 8px 24px rgba(112, 0, 164, 0.3);
-    }
-    
-    .page-header-text h1 {
-        font-size: 28px;
-        font-weight: 800;
-        margin: 0 0 4px 0;
-        letter-spacing: -0.5px;
-    }
-    
-    .page-header-text p {
-        font-size: 14px;
-        color: #94a3b8;
-        margin: 0;
-    }
-    
-    .page-header-stats {
-        display: flex;
-        gap: 16px;
-    }
-    
-    .header-stat {
-        text-align: center;
-        padding: 12px 18px;
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 12px;
-        min-width: 85px;
-    }
-    
-    .header-stat .stat-value {
-        display: block;
-        font-size: 22px;
-        font-weight: 700;
-        color: #a855f7;
-    }
-    
-    .header-stat .stat-label {
-        font-size: 10px;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .header-stat.insert .stat-value { color: #10b981; }
-    .header-stat.update .stat-value { color: #3b82f6; }
-    .header-stat.delete .stat-value { color: #ef4444; }
-    
+    /* Filters Card */
     .filters-card {
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
         border-radius: 14px;
         padding: 20px 24px;
         margin-bottom: 24px;
@@ -199,7 +121,7 @@ $csrf_token = generateCsrfToken();
         display: block;
         font-size: 11px;
         font-weight: 700;
-        color: #64748b;
+        color: var(--text-dim);
         margin-bottom: 8px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -208,10 +130,10 @@ $csrf_token = generateCsrfToken();
     .filter-select {
         width: 100%;
         padding: 12px 16px;
-        background: #06080b;
-        border: 1px solid #1e293b;
+        background: var(--bg-main);
+        border: 1px solid var(--border);
         border-radius: 10px;
-        color: #fff;
+        color: var(--text-white);
         font-size: 13px;
         cursor: pointer;
         transition: all 0.3s;
@@ -244,15 +166,15 @@ $csrf_token = generateCsrfToken();
     }
     
     .btn-filter:hover {
-        background: #5a0080;
+        background: var(--primary-hover);
         transform: translateY(-2px);
     }
     
     .btn-reset {
         padding: 12px 24px;
         background: transparent;
-        color: #94a3b8;
-        border: 1px solid #1e293b;
+        color: var(--text-dim);
+        border: 1px solid var(--border);
         border-radius: 10px;
         font-weight: 600;
         cursor: pointer;
@@ -511,21 +433,6 @@ $csrf_token = generateCsrfToken();
     }
     
     @media (max-width: 768px) {
-        .audit-page-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .page-header-content {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .page-header-stats {
-            width: 100%;
-            justify-content: space-between;
-        }
-        
         .filters-form {
             flex-direction: column;
         }
@@ -541,31 +448,26 @@ $csrf_token = generateCsrfToken();
     }
 </style>
 
-<div class="audit-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-history"></i>
-        </div>
-        <div class="page-header-text">
-            <h1>Audit Logs</h1>
-            <p>Track all system changes with comprehensive audit trail and restore capabilities</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-history"></i> Audit Logs</h1>
+        <p class="page-description">Track all system changes with comprehensive audit trail and restore capabilities</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
             <span class="stat-value"><?= number_format($total_logs) ?></span>
             <span class="stat-label">Total Logs</span>
         </div>
-        <div class="header-stat insert">
-            <span class="stat-value"><?= $insert_count ?></span>
+        <div class="header-stat" style="--stat-color: var(--success);">
+            <span class="stat-value" style="color: var(--success);"><?= $insert_count ?></span>
             <span class="stat-label">Inserts</span>
         </div>
-        <div class="header-stat update">
-            <span class="stat-value"><?= $update_count ?></span>
+        <div class="header-stat" style="--stat-color: var(--info);">
+            <span class="stat-value" style="color: var(--info);"><?= $update_count ?></span>
             <span class="stat-label">Updates</span>
         </div>
-        <div class="header-stat delete">
-            <span class="stat-value"><?= $delete_count ?></span>
+        <div class="header-stat" style="--stat-color: var(--error);">
+            <span class="stat-value" style="color: var(--error);"><?= $delete_count ?></span>
             <span class="stat-label">Deletes</span>
         </div>
     </div>
