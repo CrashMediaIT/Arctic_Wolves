@@ -1977,41 +1977,33 @@ function removeSessionDate(button) {
 
 // Package type toggle
 function togglePackageTypeFields() {
-    var packageType = document.getElementById('package-type-select').value;
-    var sessionsRow = document.getElementById('sessions-count-row');
-    var creditRow = document.getElementById('store-credit-row');
-    var sessionSelector = document.getElementById('session-selector-section');
+    var packageType = document.getElementById('package-type-select');
+    if (!packageType) return;
     
-    if (packageType === 'sessions_only') {
-        sessionsRow.style.display = 'block';
-        creditRow.style.display = 'none';
-        sessionSelector.style.display = 'block';
-    } else if (packageType === 'credit_only') {
-        sessionsRow.style.display = 'none';
-        creditRow.style.display = 'block';
-        sessionSelector.style.display = 'none';
-    } else { // mixed
-        sessionsRow.style.display = 'block';
-        creditRow.style.display = 'block';
-        sessionSelector.style.display = 'block';
+    var creditsRow = document.getElementById('credits-count-row');
+    
+    // Simple toggle: for bundled packages, credits are optional
+    // For credit packages, credits are required
+    if (creditsRow) {
+        var creditsInput = creditsRow.querySelector('input[name="credits"]');
+        if (creditsInput) {
+            creditsInput.required = (packageType.value === 'credits');
+        }
     }
 }
 
 // Discount type toggle
 function toggleDiscountTypeFields() {
-    var discountType = document.getElementById('discount-type-select').value;
-    var valueLabel = document.getElementById('discount-value-label');
-    var storeCreditRow = document.getElementById('store-credit-discount-row');
+    var discountType = document.getElementById('discount-type-select');
+    if (!discountType) return;
     
-    if (discountType === 'percentage') {
-        valueLabel.textContent = 'Percentage (%)';
-        storeCreditRow.style.display = 'none';
-    } else if (discountType === 'fixed') {
-        valueLabel.textContent = 'Amount ($)';
-        storeCreditRow.style.display = 'none';
-    } else { // store_credit
-        valueLabel.textContent = 'Value (ignored for credit)';
-        storeCreditRow.style.display = 'block';
+    var valueLabel = document.getElementById('discount-value-label');
+    if (!valueLabel) return;
+    
+    if (discountType.value === 'percentage') {
+        valueLabel.textContent = 'Percentage (%) *';
+    } else {
+        valueLabel.textContent = 'Amount ($) *';
     }
 }
 

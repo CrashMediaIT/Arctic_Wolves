@@ -50,6 +50,7 @@ try {
             $age_group = trim($_POST['age_group'] ?? '');
             $skill_level = trim($_POST['skill_level'] ?? '');
             $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            $package_type = trim($_POST['package_type'] ?? 'credits');
             
             if (empty($name) || $price < 0) {
                 throw new Exception('Invalid package data: name is required and price must be positive');
@@ -57,15 +58,15 @@ try {
             
             $pdo->beginTransaction();
             
-            // Only insert columns that exist in the packages table schema
+            // Insert package with package_type
             $stmt = $pdo->prepare("
                 INSERT INTO packages (name, description, price, credits, valid_days, 
-                                     age_group, skill_level, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                     age_group, skill_level, is_active, package_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active
+                $age_group ?: null, $skill_level ?: null, $is_active, $package_type
             ]);
             
             $package_id = $pdo->lastInsertId();
@@ -93,6 +94,7 @@ try {
             $age_group = trim($_POST['age_group'] ?? '');
             $skill_level = trim($_POST['skill_level'] ?? '');
             $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+            $package_type = trim($_POST['package_type'] ?? 'credits');
             
             if (empty($name) || $price < 0 || $package_id <= 0) {
                 throw new Exception('Invalid package data');
@@ -101,12 +103,12 @@ try {
             $stmt = $pdo->prepare("
                 UPDATE packages 
                 SET name = ?, description = ?, price = ?, credits = ?, 
-                    valid_days = ?, age_group = ?, skill_level = ?, is_active = ?
+                    valid_days = ?, age_group = ?, skill_level = ?, is_active = ?, package_type = ?
                 WHERE id = ?
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active, $package_id
+                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $package_id
             ]);
             
             if ($isAjax) {
