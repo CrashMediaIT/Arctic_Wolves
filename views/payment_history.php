@@ -61,9 +61,8 @@ $payments = array_slice($payments, 0, 200);
 
 // Get user credits history
 $credits_stmt = $pdo->prepare("
-    SELECT c.*, r.refund_type
+    SELECT c.*
     FROM user_credits c
-    LEFT JOIN refunds r ON c.refund_id = r.id
     WHERE c.user_id = ?
     ORDER BY c.created_at DESC
 ");
