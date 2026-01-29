@@ -365,7 +365,7 @@
             const action = btn.getAttribute('data-action');
             
             // Skip if already handled by specific handlers above
-            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel'].includes(action)) {
+            if (['add', 'edit', 'delete', 'export', 'upload', 'save', 'cancel', 'switch-tab'].includes(action)) {
                 return;
             }
             
@@ -1105,10 +1105,10 @@
                     return;
                 }
                 
-                const tabContainer = this.closest('.products-content, .content-wrapper, .page-content') || document;
+                const tabContainer = this.closest('.products-content, .content-wrapper, .page-content, .page-tab-content') || document;
                 
-                // Remove active class from all tabs
-                tabContainer.querySelectorAll('.tab-btn').forEach(tab => {
+                // Remove active class from all tabs (support both .tab-btn and .page-tab)
+                tabContainer.querySelectorAll('.tab-btn, .page-tab').forEach(tab => {
                     tab.classList.remove('active');
                 });
                 
