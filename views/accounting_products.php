@@ -392,8 +392,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             $storeCredit = $package['store_credit'] ?? 0;
                         ?>
                         <div class="product-card <?= $isActive ? 'featured' : '' ?>">
-                            <?php if ($isActive): ?><div class="product-badge">Active</div><?php endif; ?>
-                            <?php if ($showOnLanding): ?><div class="product-badge landing" style="right: 80px;">Public</div><?php endif; ?>
+                            <?php if ($showOnLanding): ?><div class="product-badge landing">Public</div><?php endif; ?>
                             <div class="product-header">
                                 <h4><?= htmlspecialchars($package['name']) ?></h4>
                                 <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
@@ -659,6 +658,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     padding: 28px;
     position: relative;
     transition: all 0.3s;
+    display: block; /* Override .session-card flex layout */
 }
 
 .product-card:hover {
@@ -1446,7 +1446,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Session</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-session-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal(&quot;edit-session-modal&quot;)">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1462,7 +1462,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Package</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-package-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal(&quot;edit-package-modal&quot;)">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1478,7 +1478,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Discount</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-discount-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal(&quot;edit-discount-modal&quot;)">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1653,17 +1653,30 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.page-tab[data-action="switch-tab"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopImmediatePropagation(); // Prevent app.js handler from also running
+            
             var tabName = this.getAttribute('data-tab');
+            if (!tabName) return;
             
             document.querySelectorAll('.tab-content').forEach(function(tab) {
                 tab.classList.remove('active');
+                tab.style.display = 'none';
             });
             document.querySelectorAll('.page-tab').forEach(function(tabBtn) {
                 tabBtn.classList.remove('active');
             });
             
-            document.getElementById(tabName + '-tab').classList.add('active');
+            var targetContent = document.getElementById(tabName + '-tab');
+            if (targetContent) {
+                targetContent.classList.add('active');
+                targetContent.style.display = 'block';
+            }
             this.classList.add('active');
+            
+            // Update URL without page reload
+            var url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            window.history.replaceState({}, '', url);
         });
     });
     
@@ -1774,15 +1787,234 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             var modalId = this.getAttribute('data-modal');
             var itemId = this.getAttribute('data-id');
+            var itemType = this.getAttribute('data-type');
             var modal = document.getElementById(modalId);
             
-            if (modal) {
-                var idField = modal.querySelector('input[name$="_id"]');
-                if (idField) idField.value = itemId;
-                modal.classList.add('active');
-            }
+            if (!modal) return;
+            
+            var modalBody = modal.querySelector('.modal-body');
+            
+            // Show loading state
+            modalBody.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px;">' +
+                '<i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
+                'Loading details...</p>';
+            modal.classList.add('active');
+            
+            // Determine the action based on type
+            var action = 'get_' + itemType.replace('merch-product', 'discount').replace('-', '_');
+            if (itemType === 'session') action = 'get_session';
+            else if (itemType === 'package') action = 'get_package';
+            else if (itemType === 'discount') action = 'get_discount';
+            
+            // Fetch the data
+            fetch('process_admin_action.php?action=' + action + '&id=' + itemId)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        populateEditModal(modalBody, itemType, data.data, itemId);
+                    } else {
+                        modalBody.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 40px;">' +
+                            '<i class="fas fa-exclamation-circle" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
+                            'Error: ' + (data.message || 'Could not load data') + '</p>';
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Fetch error:', err);
+                    modalBody.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 40px;">' +
+                        '<i class="fas fa-exclamation-circle" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
+                        'Error loading data. Please try again.</p>';
+                });
         });
     });
+    
+    // Function to populate edit modal with fetched data
+    function populateEditModal(container, type, data, itemId) {
+        var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        
+        if (type === 'session') {
+            container.innerHTML = 
+                '<form method="POST" action="process_admin_action.php" id="edit-session-form">' +
+                '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
+                '<input type="hidden" name="action" value="update_training_session">' +
+                '<input type="hidden" name="id" value="' + itemId + '">' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Session Name *</label>' +
+                    '<input type="text" name="name" class="form-input" required value="' + escapeHtml(data.name || '') + '">' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Description</label>' +
+                    '<textarea name="description" class="form-textarea" rows="3">' + escapeHtml(data.description || '') + '</textarea>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Price ($)</label>' +
+                        '<input type="number" name="price" class="form-input" step="0.01" min="0" value="' + (data.price || 0) + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Duration (minutes)</label>' +
+                        '<input type="number" name="duration" class="form-input" min="15" max="480" value="' + (data.duration_minutes || 60) + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Max Participants</label>' +
+                        '<input type="number" name="max_participants" class="form-input" min="1" value="' + (data.max_participants || '') + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Status</label>' +
+                        '<select name="is_active" class="form-input">' +
+                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
+                            '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
+                        '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
+                    '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-session-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
+                    '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>' +
+                '</div>' +
+                '</form>';
+            attachFormSubmitHandler(container.querySelector('form'));
+        } else if (type === 'package') {
+            container.innerHTML = 
+                '<form method="POST" action="process_admin_action.php" id="edit-package-form">' +
+                '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
+                '<input type="hidden" name="action" value="update_package">' +
+                '<input type="hidden" name="id" value="' + itemId + '">' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Package Name *</label>' +
+                    '<input type="text" name="name" class="form-input" required value="' + escapeHtml(data.name || '') + '">' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Description</label>' +
+                    '<textarea name="description" class="form-textarea" rows="3">' + escapeHtml(data.description || '') + '</textarea>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Price ($)</label>' +
+                        '<input type="number" name="price" class="form-input" step="0.01" min="0" value="' + (data.price || 0) + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Credits/Sessions</label>' +
+                        '<input type="number" name="credits" class="form-input" min="0" value="' + (data.credits || 0) + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Valid Days</label>' +
+                        '<input type="number" name="valid_days" class="form-input" min="1" value="' + (data.valid_days || '') + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Status</label>' +
+                        '<select name="is_active" class="form-input">' +
+                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
+                            '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
+                        '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
+                    '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-package-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
+                    '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>' +
+                '</div>' +
+                '</form>';
+            attachFormSubmitHandler(container.querySelector('form'));
+        } else if (type === 'discount') {
+            container.innerHTML = 
+                '<form method="POST" action="process_admin_action.php" id="edit-discount-form">' +
+                '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
+                '<input type="hidden" name="action" value="update_discount">' +
+                '<input type="hidden" name="id" value="' + itemId + '">' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Discount Code *</label>' +
+                    '<input type="text" name="code" class="form-input" required value="' + escapeHtml(data.code || '') + '">' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Description</label>' +
+                    '<textarea name="description" class="form-textarea" rows="2">' + escapeHtml(data.description || '') + '</textarea>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Discount Type</label>' +
+                        '<select name="discount_type" class="form-input">' +
+                            '<option value="percentage"' + (data.discount_type === 'percentage' ? ' selected' : '') + '>Percentage</option>' +
+                            '<option value="fixed"' + (data.discount_type === 'fixed' ? ' selected' : '') + '>Fixed Amount</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Discount Value</label>' +
+                        '<input type="number" name="discount_value" class="form-input" step="0.01" min="0" value="' + (data.discount_value || 0) + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Max Uses (0 = unlimited)</label>' +
+                        '<input type="number" name="max_uses" class="form-input" min="0" value="' + (data.max_uses || 0) + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Status</label>' +
+                        '<select name="is_active" class="form-input">' +
+                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
+                            '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
+                        '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
+                    '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-discount-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
+                    '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>' +
+                '</div>' +
+                '</form>';
+            attachFormSubmitHandler(container.querySelector('form'));
+        }
+    }
+    
+    // Helper function to escape HTML
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    
+    // Helper function to attach form submit handler
+    function attachFormSubmitHandler(form) {
+        if (!form) return;
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(form);
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var originalText = submitBtn ? submitBtn.innerHTML : '';
+            
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                submitBtn.disabled = true;
+            }
+            
+            fetch(form.getAttribute('action'), {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(function(err) {
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+                console.error(err);
+                alert('Error saving changes. Please try again.');
+            });
+        });
+    }
     
     // Convert forms to AJAX submissions
     document.querySelectorAll('.modal form').forEach(function(form) {

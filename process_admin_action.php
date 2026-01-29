@@ -22,6 +22,104 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'admin') {
     exit();
 }
 
+// Handle GET requests for fetching data
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $action = $_GET['action'] ?? '';
+    
+    // Fetch training session data
+    if ($action === 'get_session') {
+        header('Content-Type: application/json');
+        try {
+            $sessionId = intval($_GET['id'] ?? 0);
+            if ($sessionId <= 0) {
+                throw new Exception('Invalid session ID');
+            }
+            
+            $stmt = $pdo->prepare("
+                SELECT tst.*, u.first_name as coach_first_name, u.last_name as coach_last_name,
+                       l.name as location_name
+                FROM training_session_templates tst
+                LEFT JOIN users u ON tst.coach_id = u.id
+                LEFT JOIN locations l ON tst.location_id = l.id
+                WHERE tst.id = ?
+            ");
+            $stmt->execute([$sessionId]);
+            $session = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$session) {
+                throw new Exception('Session not found');
+            }
+            
+            // Fetch session dates
+            $datesStmt = $pdo->prepare("
+                SELECT tsd.*, t.name as team_name
+                FROM training_session_dates tsd
+                LEFT JOIN teams t ON tsd.team_id = t.id
+                WHERE tsd.template_id = ?
+                ORDER BY tsd.session_date ASC
+            ");
+            $datesStmt->execute([$sessionId]);
+            $session['dates'] = $datesStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'data' => $session]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit();
+    }
+    
+    // Fetch package data
+    if ($action === 'get_package') {
+        header('Content-Type: application/json');
+        try {
+            $packageId = intval($_GET['id'] ?? 0);
+            if ($packageId <= 0) {
+                throw new Exception('Invalid package ID');
+            }
+            
+            $stmt = $pdo->prepare("SELECT * FROM packages WHERE id = ?");
+            $stmt->execute([$packageId]);
+            $package = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$package) {
+                throw new Exception('Package not found');
+            }
+            
+            echo json_encode(['success' => true, 'data' => $package]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit();
+    }
+    
+    // Fetch discount data
+    if ($action === 'get_discount') {
+        header('Content-Type: application/json');
+        try {
+            $discountId = intval($_GET['id'] ?? 0);
+            if ($discountId <= 0) {
+                throw new Exception('Invalid discount ID');
+            }
+            
+            $stmt = $pdo->prepare("SELECT * FROM discount_codes WHERE id = ?");
+            $stmt->execute([$discountId]);
+            $discount = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$discount) {
+                throw new Exception('Discount not found');
+            }
+            
+            echo json_encode(['success' => true, 'data' => $discount]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit();
+    }
+}
+
 // Validate CSRF token for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();
@@ -373,6 +471,141 @@ if ($action == 'toggle_session_status') {
             exit();
         }
         header("Location: dashboard.php?page=products&tab=sessions&status=error");
+    }
+    exit();
+}
+
+// Update training session
+if ($action == 'update_training_session') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $sessionId = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $price = floatval($_POST['price'] ?? 0);
+        $duration = intval($_POST['duration'] ?? 60);
+        $maxParticipants = !empty($_POST['max_participants']) ? intval($_POST['max_participants']) : null;
+        $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        
+        if ($sessionId <= 0) {
+            throw new Exception('Invalid session ID');
+        }
+        if (empty($name)) {
+            throw new Exception('Session name is required');
+        }
+        
+        $stmt = $pdo->prepare("
+            UPDATE training_session_templates 
+            SET name = ?, description = ?, price = ?, duration_minutes = ?, max_participants = ?, is_active = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$name, $description, $price, $duration, $maxParticipants, $isActive, $sessionId]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=updated");
+    } catch (Exception $e) {
+        error_log("Update training session error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=error");
+    }
+    exit();
+}
+
+// Update package
+if ($action == 'update_package') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $packageId = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $price = floatval($_POST['price'] ?? 0);
+        $credits = intval($_POST['credits'] ?? 0);
+        $validDays = !empty($_POST['valid_days']) ? intval($_POST['valid_days']) : null;
+        $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        
+        if ($packageId <= 0) {
+            throw new Exception('Invalid package ID');
+        }
+        if (empty($name)) {
+            throw new Exception('Package name is required');
+        }
+        
+        $stmt = $pdo->prepare("
+            UPDATE packages 
+            SET name = ?, description = ?, price = ?, credits = ?, valid_days = ?, is_active = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$name, $description, $price, $credits, $validDays, $isActive, $packageId]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Package updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=packages&status=updated");
+    } catch (Exception $e) {
+        error_log("Update package error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=packages&status=error");
+    }
+    exit();
+}
+
+// Update discount code
+if ($action == 'update_discount') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $discountId = intval($_POST['id'] ?? 0);
+        $code = trim($_POST['code'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $discountType = $_POST['discount_type'] ?? 'percentage';
+        $discountValue = floatval($_POST['discount_value'] ?? 0);
+        $maxUses = intval($_POST['max_uses'] ?? 0);
+        $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        
+        if ($discountId <= 0) {
+            throw new Exception('Invalid discount ID');
+        }
+        if (empty($code)) {
+            throw new Exception('Discount code is required');
+        }
+        
+        $stmt = $pdo->prepare("
+            UPDATE discount_codes 
+            SET code = ?, description = ?, discount_type = ?, discount_value = ?, max_uses = ?, is_active = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$code, $description, $discountType, $discountValue, $maxUses, $isActive, $discountId]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Discount updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=discounts&status=updated");
+    } catch (Exception $e) {
+        error_log("Update discount error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=discounts&status=error");
     }
     exit();
 }

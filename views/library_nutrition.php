@@ -819,6 +819,13 @@ foreach ($nutritionPlans as $plan) {
                         <input type="number" name="target_fat_g" id="edit-plan-fat" class="form-input">
                     </div>
                 </div>
+                
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-utensils"></i> Plan Meals</h4>
+                    <div id="edit-plan-meals">
+                        <!-- Meals will be populated via JavaScript -->
+                    </div>
+                </div>
             </div>
             
             <div class="modal-footer">
@@ -830,6 +837,24 @@ foreach ($nutritionPlans as $plan) {
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- View Meal Plan Modal -->
+<div id="view-plan-modal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-eye"></i> View Meal Plan</h2>
+            <button type="button" class="modal-close" onclick="closeModal('view-plan-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Content will be populated via JavaScript -->
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('view-plan-modal')">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
     </div>
 </div>
 
@@ -929,7 +954,68 @@ document.querySelectorAll('[data-action="edit-plan"]').forEach(button => {
         document.getElementById('edit-plan-protein').value = this.dataset.protein;
         document.getElementById('edit-plan-carbs').value = this.dataset.carbs;
         document.getElementById('edit-plan-fat').value = this.dataset.fat;
+        
+        // Populate meals
+        const meals = JSON.parse(this.dataset.meals || '[]');
+        const container = document.getElementById('edit-plan-meals');
+        container.innerHTML = '';
+        
+        if (meals.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-dim);">No meals added to this plan yet.</p>';
+        } else {
+            meals.forEach((meal, i) => {
+                container.innerHTML += '<div class="selected-meal-item" style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">' +
+                    '<span style="flex: 1;"><strong>' + (meal.food_name || meal.name || 'Meal') + '</strong>' +
+                    (meal.calories ? ' - ' + meal.calories + ' cal' : '') + '</span>' +
+                    '<span class="type-badge">' + (meal.meal_type || 'meal') + '</span>' +
+                    '</div>';
+            });
+        }
+        
         openModal('edit-plan-modal');
+    });
+});
+
+// View plan handler
+document.querySelectorAll('[data-action="view-plan"]').forEach(button => {
+    button.addEventListener('click', function() {
+        const planId = this.dataset.id;
+        const planCard = this.closest('.plan-card');
+        const planName = planCard ? planCard.querySelector('h4').textContent : 'Meal Plan';
+        
+        // Find the meals data from the edit button on the same card
+        const editBtn = planCard ? planCard.querySelector('[data-action="edit-plan"]') : null;
+        const meals = editBtn ? JSON.parse(editBtn.dataset.meals || '[]') : [];
+        
+        let mealsHtml = '<div style="padding: 20px;">';
+        mealsHtml += '<h3 style="margin-bottom: 16px;"><i class="fas fa-utensils"></i> ' + planName + '</h3>';
+        
+        if (meals.length === 0) {
+            mealsHtml += '<p style="color: var(--text-dim);">No meals in this plan yet.</p>';
+        } else {
+            mealsHtml += '<div style="display: grid; gap: 12px;">';
+            meals.forEach(meal => {
+                mealsHtml += '<div style="padding: 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px;">' +
+                    '<strong>' + (meal.food_name || meal.name || 'Meal') + '</strong>' +
+                    '<div style="display: flex; gap: 16px; margin-top: 8px; color: var(--text-dim); font-size: 13px;">' +
+                    (meal.calories ? '<span><i class="fas fa-fire"></i> ' + meal.calories + ' cal</span>' : '') +
+                    (meal.protein_g ? '<span><i class="fas fa-drumstick-bite"></i> ' + meal.protein_g + 'g protein</span>' : '') +
+                    (meal.carbs_g ? '<span><i class="fas fa-bread-slice"></i> ' + meal.carbs_g + 'g carbs</span>' : '') +
+                    (meal.fat_g ? '<span><i class="fas fa-cheese"></i> ' + meal.fat_g + 'g fat</span>' : '') +
+                    '</div>' +
+                    '</div>';
+            });
+            mealsHtml += '</div>';
+        }
+        mealsHtml += '</div>';
+        
+        // Use the view modal or create a simple alert
+        if (document.getElementById('view-plan-modal')) {
+            document.getElementById('view-plan-modal').querySelector('.modal-body').innerHTML = mealsHtml;
+            openModal('view-plan-modal');
+        } else {
+            alert('Meals in this plan:\\n\\n' + meals.map(m => '• ' + (m.food_name || m.name || 'Meal')).join('\\n'));
+        }
     });
 });
 
