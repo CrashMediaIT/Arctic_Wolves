@@ -274,21 +274,16 @@ try {
     .not-clocked-in {
         text-align: center;
         padding: 60px 20px;
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%);
+        background: var(--bg-card, #16161F);
         border-radius: 16px;
-        border: 2px dashed rgba(239, 68, 68, 0.3);
+        border: 1px solid var(--border, #2D2D3F);
     }
     
-    .not-clocked-in i {
-        font-size: 72px;
-        color: #f59e0b;
+    .not-clocked-in i.fa-clock {
+        font-size: 48px;
+        color: var(--primary, #6B46C1);
         margin-bottom: 24px;
-        animation: pulse-icon 2s infinite;
-    }
-    
-    @keyframes pulse-icon {
-        0%, 100% { transform: scale(1); opacity: 0.8; }
-        50% { transform: scale(1.05); opacity: 1; }
+        display: block;
     }
     
     .not-clocked-in h3 {
@@ -301,6 +296,23 @@ try {
     .not-clocked-in p {
         color: var(--text-dim);
         margin-bottom: 30px;
+        font-size: 15px;
+    }
+    
+    .not-clocked-in .action-btn.clock-in {
+        background: var(--primary, #6B46C1);
+        color: #fff;
+        padding: 16px 40px;
+        font-size: 15px;
+        display: inline-flex;
+        width: auto;
+    }
+    
+    .not-clocked-in .action-btn.clock-in:hover {
+        background: var(--primary-hover, #7C3AED);
+    }
+    
+    .not-clocked-in .action-btn.clock-in i {
         font-size: 15px;
     }
     
@@ -361,7 +373,7 @@ try {
                 <i class="fas fa-clock"></i>
                 <h3>Not Clocked In</h3>
                 <p>Click the button below to start your shift</p>
-                <button class="action-btn clock-in" onclick="clockIn()" style="width: auto; padding: 16px 40px;">
+                <button class="action-btn clock-in" onclick="clockIn()">
                     <i class="fas fa-play-circle"></i> Clock In
                 </button>
             </div>
