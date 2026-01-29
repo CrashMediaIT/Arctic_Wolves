@@ -189,6 +189,7 @@ $allowed_pages = [
     // Packages and Payments
     'packages'                => 'views/packages.php',
     'payment_history'         => 'views/payment_history.php',
+    'session_payment'         => 'views/session_payment.php',
     'refunds'                 => 'views/refunds.php',
     
     // Other
@@ -565,6 +566,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>">
                 <i class="fa-solid fa-heart-pulse icon"></i> Health
+            </a>
+            <a href="?page=payment_history" class="nav-link <?= $page=='payment_history'?'active':'' ?>">
+                <i class="fa-solid fa-receipt icon"></i> Purchase History
             </a>
         </nav>
     </div>

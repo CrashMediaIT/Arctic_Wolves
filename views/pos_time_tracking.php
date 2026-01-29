@@ -418,6 +418,30 @@ const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
 let shiftData = <?= $activeShift ? json_encode($activeShift) : 'null' ?>;
 let timerInterval = null;
 
+// Helper function to parse MySQL datetime string
+function parseMySQLDateTime(datetimeStr) {
+    if (!datetimeStr) return null;
+    // MySQL format: YYYY-MM-DD HH:MM:SS
+    // Split into date and time parts
+    const parts = datetimeStr.split(' ');
+    if (parts.length !== 2) return new Date(datetimeStr);
+    
+    const dateParts = parts[0].split('-');
+    const timeParts = parts[1].split(':');
+    
+    if (dateParts.length !== 3 || timeParts.length < 2) return new Date(datetimeStr);
+    
+    // Create date using local timezone (year, month-1, day, hour, minute, second)
+    return new Date(
+        parseInt(dateParts[0], 10),
+        parseInt(dateParts[1], 10) - 1, // Month is 0-indexed
+        parseInt(dateParts[2], 10),
+        parseInt(timeParts[0], 10),
+        parseInt(timeParts[1], 10),
+        timeParts[2] ? parseInt(timeParts[2], 10) : 0
+    );
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     updateCurrentTime();
@@ -441,9 +465,11 @@ function startTimer() {
     
     // Function to update timer display
     function updateTimer() {
-        if (!shiftData) return;
+        if (!shiftData || !shiftData.clock_in) return;
         
-        const clockIn = new Date(shiftData.clock_in.replace(' ', 'T'));
+        const clockIn = parseMySQLDateTime(shiftData.clock_in);
+        if (!clockIn || isNaN(clockIn.getTime())) return;
+        
         const now = new Date();
         let elapsed = Math.floor((now - clockIn) / 1000);
         
@@ -453,17 +479,21 @@ function startTimer() {
         // Check if currently on lunch break - timer should be paused
         if (shiftData.lunch_start && !shiftData.lunch_end) {
             // Currently on lunch - calculate worked time up to lunch start (paused)
-            const lunchStart = new Date(shiftData.lunch_start.replace(' ', 'T'));
-            elapsed = Math.floor((lunchStart - clockIn) / 1000);
-            if (elapsed < 0) elapsed = 0;
+            const lunchStart = parseMySQLDateTime(shiftData.lunch_start);
+            if (lunchStart && !isNaN(lunchStart.getTime())) {
+                elapsed = Math.floor((lunchStart - clockIn) / 1000);
+                if (elapsed < 0) elapsed = 0;
+            }
             document.getElementById('timer-label').textContent = 'Paused - On Lunch Break';
         } else if (shiftData.lunch_start && shiftData.lunch_end) {
             // Lunch completed - subtract lunch duration from total
-            const lunchStart = new Date(shiftData.lunch_start.replace(' ', 'T'));
-            const lunchEnd = new Date(shiftData.lunch_end.replace(' ', 'T'));
-            const lunchSeconds = Math.floor((lunchEnd - lunchStart) / 1000);
-            elapsed -= lunchSeconds;
-            if (elapsed < 0) elapsed = 0;
+            const lunchStart = parseMySQLDateTime(shiftData.lunch_start);
+            const lunchEnd = parseMySQLDateTime(shiftData.lunch_end);
+            if (lunchStart && lunchEnd && !isNaN(lunchStart.getTime()) && !isNaN(lunchEnd.getTime())) {
+                const lunchSeconds = Math.floor((lunchEnd - lunchStart) / 1000);
+                elapsed -= lunchSeconds;
+                if (elapsed < 0) elapsed = 0;
+            }
             document.getElementById('timer-label').textContent = 'Time Worked Today';
         } else {
             document.getElementById('timer-label').textContent = 'Time Worked Today';
