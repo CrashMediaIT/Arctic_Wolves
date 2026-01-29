@@ -783,8 +783,8 @@ function showNotification(message, type) {
         div.style.background = 'rgba(239, 68, 68, 0.95)';
         div.style.color = '#fff';
     }
-    // Escape message to prevent XSS
-    var escapedMessage = message.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // Escape message to prevent XSS (including single quotes)
+    var escapedMessage = message.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + escapedMessage + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
     document.body.appendChild(div);
     setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
@@ -822,7 +822,8 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             try {
                 return JSON.parse(text);
             } catch (e) {
-                console.error('Invalid JSON response:', text);
+                // Don't log full response for security - it may contain sensitive info
+                console.error('Invalid JSON response received');
                 throw new Error('Server returned invalid response');
             }
         })
