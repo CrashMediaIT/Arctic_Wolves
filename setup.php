@@ -149,6 +149,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
+            // Add fk_expense_payee foreign key constraint if it doesn't exist
+            // This is done separately to ensure idempotent schema setup
+            try {
+                // Check if the constraint already exists
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as cnt FROM information_schema.TABLE_CONSTRAINTS 
+                    WHERE CONSTRAINT_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = 'expenses' 
+                    AND CONSTRAINT_NAME = 'fk_expense_payee'
+                ");
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($result['cnt'] == 0) {
+                    // Constraint doesn't exist, add it
+                    $pdo->exec("ALTER TABLE `expenses` ADD CONSTRAINT `fk_expense_payee` FOREIGN KEY (`payee_id`) REFERENCES `payees`(`id`) ON DELETE SET NULL");
+                }
+            } catch (PDOException $e) {
+                // Constraint might already exist or payees table might not exist yet, which is fine
+                // Log but don't fail setup
+                error_log("Note: Could not add fk_expense_payee constraint: " . $e->getMessage());
+            }
+            
             header("Location: setup.php?step=2");
             exit();
         } catch (PDOException $e) {
