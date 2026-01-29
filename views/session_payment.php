@@ -6,6 +6,15 @@
 
 require_once __DIR__ . '/../security.php';
 
+// Get system settings for currency
+$settings = [];
+try {
+    $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+} catch (PDOException $e) {
+    error_log("Failed to load settings: " . $e->getMessage());
+}
+$currency = $settings['currency'] ?? 'CAD';
+
 $booking_id = isset($_GET['booking_id']) ? intval($_GET['booking_id']) : 0;
 
 // Verify booking belongs to current user and is pending
@@ -57,8 +66,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay_now']) && $bookin
         
         \Stripe\Stripe::setApiKey($stripe_secret);
         
-        $amount = floatval($booking['amount_due']) * 100; // Convert to cents
+        $amount = floatval($booking['amount_due']);
+        
+        // Validate amount is positive
+        if ($amount <= 0) {
+            throw new Exception("Invalid payment amount.");
+        }
+        
+        $amount_cents = intval($amount * 100); // Convert to cents
         $currency = $settings['currency'] ?? 'CAD';
+        
+        // Get base URL from settings or construct safely
+        $base_url = $settings['base_url'] ?? '';
+        if (empty($base_url)) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $base_url = $protocol . '://' . $_SERVER['HTTP_HOST'];
+        }
+        $base_url = rtrim($base_url, '/');
         
         // Create Stripe Checkout Session
         $checkout_session = \Stripe\Checkout\Session::create([
@@ -70,13 +94,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay_now']) && $bookin
                         'name' => $booking['session_title'],
                         'description' => 'Session on ' . date('M j, Y', strtotime($booking['session_date'])),
                     ],
-                    'unit_amount' => $amount,
+                    'unit_amount' => $amount_cents,
                 ],
                 'quantity' => 1,
             ]],
             'mode' => 'payment',
-            'success_url' => 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/dashboard.php?page=sessions_upcoming&payment=success&booking_id=' . $booking_id,
-            'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/dashboard.php?page=session_payment&booking_id=' . $booking_id . '&payment=cancelled',
+            'success_url' => $base_url . '/dashboard.php?page=sessions_upcoming&payment=success&booking_id=' . $booking_id,
+            'cancel_url' => $base_url . '/dashboard.php?page=session_payment&booking_id=' . $booking_id . '&payment=cancelled',
             'metadata' => [
                 'booking_id' => $booking_id,
                 'user_id' => $user_id,
@@ -342,7 +366,7 @@ $payment_cancelled = isset($_GET['payment']) && $_GET['payment'] === 'cancelled'
                 
                 <div class="amount-row">
                     <div class="amount-label">Amount Due</div>
-                    <div class="amount-value">$<?= number_format($booking['amount_due'], 2) ?> CAD</div>
+                    <div class="amount-value">$<?= number_format($booking['amount_due'], 2) ?> <?= htmlspecialchars($currency) ?></div>
                 </div>
                 
                 <form method="POST">

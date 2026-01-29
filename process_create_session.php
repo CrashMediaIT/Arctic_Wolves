@@ -38,6 +38,18 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
     }
     
     try {
+        // Start transaction for data consistency
+        $pdo->beginTransaction();
+        
+        // Get base URL from settings
+        $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $base_url = $settings['base_url'] ?? '';
+        if (empty($base_url)) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $base_url = $protocol . '://' . $_SERVER['HTTP_HOST'];
+        }
+        $base_url = rtrim($base_url, '/');
+        
         // Get session type details for title and price
         $stmt = $pdo->prepare("SELECT name, price FROM session_types WHERE id = ?");
         $stmt->execute([$session_type_id]);
@@ -94,10 +106,22 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
                 ");
                 $stmt->execute([$athlete_id, $session_id, $price]);
                 
-                // Send email notification to athlete about the session assignment
+                // Create in-app notification (critical - do this before email which can fail)
                 $formattedDate = date('l, F j, Y', strtotime($session_date));
                 $formattedTime = date('g:i A', strtotime($session_time));
                 
+                $stmt = $pdo->prepare("
+                    INSERT INTO notifications (user_id, type, title, message, link, created_at)
+                    VALUES (?, 'session_assigned', ?, ?, ?, NOW())
+                ");
+                $stmt->execute([
+                    $athlete_id,
+                    'Session Assigned - Payment Required',
+                    "You have been assigned to '{$title}' on $formattedDate at $formattedTime. Please complete payment.",
+                    "dashboard.php?page=sessions_upcoming"
+                ]);
+                
+                // Send email notification (non-critical - logged if fails)
                 try {
                     sendEmail($athlete['email'], 'notification', [
                         'name' => $athlete['first_name'],
@@ -108,34 +132,25 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
                                     "Location: " . ($location['name'] ?? '') . "\n" .
                                     "Price: $" . number_format($price, 2) . "\n\n" .
                                     "Please log in to your dashboard to complete payment before the session.",
-                        'link' => 'https://arcticwolves.ca/dashboard.php?page=sessions_upcoming'
+                        'link' => $base_url . '/dashboard.php?page=sessions_upcoming'
                     ]);
                 } catch (Exception $e) {
                     error_log("Failed to send session assignment email to {$athlete['email']}: " . $e->getMessage());
                 }
-                
-                // Create in-app notification
-                try {
-                    $stmt = $pdo->prepare("
-                        INSERT INTO notifications (user_id, type, title, message, link, created_at)
-                        VALUES (?, 'session_assigned', ?, ?, ?, NOW())
-                    ");
-                    $stmt->execute([
-                        $athlete_id,
-                        'Session Assigned - Payment Required',
-                        "You have been assigned to '{$title}' on $formattedDate at $formattedTime. Please complete payment.",
-                        "dashboard.php?page=sessions_upcoming"
-                    ]);
-                } catch (Exception $e) {
-                    error_log("Failed to create notification: " . $e->getMessage());
-                }
             }
         }
+        
+        // Commit transaction
+        $pdo->commit();
         
         header("Location: dashboard.php?page=coach_calendar&status=session_created");
         exit();
         
     } catch (PDOException $e) {
+        // Rollback transaction on error
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log("Create private session error: " . $e->getMessage());
         header("Location: dashboard.php?page=coach_calendar&error=creation_failed");
         exit();
