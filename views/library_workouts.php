@@ -1,183 +1,985 @@
 <?php
 /**
- * Workout Templates Library
- * View and assign workout templates to athletes
+ * Strength & Conditioning Library
+ * Three tabs: Exercise Library, Workout Plans, Create Workout Plan
  */
 
 require_once __DIR__ . '/../security.php';
 
 // Check if user has permission to view library
-if (!in_array($user_role, ['coach', 'coach_plus', 'admin'])) {
+if (!in_array($user_role, ['health_coach', 'coach', 'coach_plus', 'admin'])) {
     header('Location: dashboard.php?page=home');
     exit;
 }
 
-// Get workout categories
-$categories = $pdo->query("SELECT * FROM workout_plan_categories ORDER BY display_order")->fetchAll();
-
-// Get filter
-$category_filter = isset($_GET['category']) ? intval($_GET['category']) : null;
-
-// Get workout templates
-$query = "
-    SELECT wt.*, wpc.name as category_name, u.first_name, u.last_name,
-           (SELECT COUNT(*) FROM workout_template_items WHERE template_id = wt.id) as exercise_count
-    FROM workout_templates wt
-    LEFT JOIN workout_plan_categories wpc ON wt.category_id = wpc.id
-    LEFT JOIN users u ON wt.created_by = u.id
-";
-
-if ($category_filter) {
-    $query .= " WHERE wt.category_id = ?";
-    $stmt = $pdo->prepare($query . " ORDER BY wt.created_at DESC");
-    $stmt->execute([$category_filter]);
-} else {
-    $stmt = $pdo->query($query . " ORDER BY wt.created_at DESC");
+// Determine active tab
+$activeTab = $_GET['tab'] ?? 'exercises';
+$validTabs = ['exercises', 'plans', 'create'];
+if (!in_array($activeTab, $validTabs)) {
+    $activeTab = 'exercises';
 }
 
-$templates = $stmt->fetchAll();
+// Fetch all exercises for Exercise Library tab
+$exercises = $pdo->query("
+    SELECT el.*, u.first_name, u.last_name 
+    FROM exercise_library el
+    LEFT JOIN users u ON el.created_by = u.id
+    ORDER BY el.name ASC
+")->fetchAll();
+
+// Fetch all workout plans with assigned athlete count
+$workoutPlans = $pdo->query("
+    SELECT wp.*, u.first_name, u.last_name,
+           (SELECT COUNT(*) FROM workout_plan_exercises WHERE workout_plan_id = wp.id) as exercise_count,
+           (SELECT COUNT(*) FROM athlete_workout_assignments WHERE workout_plan_id = wp.id AND status = 'active') as assigned_count
+    FROM workout_plans wp
+    LEFT JOIN users u ON wp.created_by = u.id
+    ORDER BY wp.created_at DESC
+")->fetchAll();
+
+// For edit modal - fetch exercises for each plan
+$planExercises = [];
+foreach ($workoutPlans as $plan) {
+    $stmt = $pdo->prepare("
+        SELECT wpe.*, el.name as exercise_name, el.description as exercise_description
+        FROM workout_plan_exercises wpe
+        JOIN exercise_library el ON wpe.exercise_id = el.id
+        WHERE wpe.workout_plan_id = ?
+        ORDER BY wpe.exercise_order ASC
+    ");
+    $stmt->execute([$plan['id']]);
+    $planExercises[$plan['id']] = $stmt->fetchAll();
+}
+
+// Fetch assigned athletes for each plan
+$assignedAthletes = [];
+foreach ($workoutPlans as $plan) {
+    $stmt = $pdo->prepare("
+        SELECT awa.*, u.first_name, u.last_name
+        FROM athlete_workout_assignments awa
+        JOIN users u ON awa.athlete_id = u.id
+        WHERE awa.workout_plan_id = ? AND awa.status = 'active'
+    ");
+    $stmt->execute([$plan['id']]);
+    $assignedAthletes[$plan['id']] = $stmt->fetchAll();
+}
 ?>
-
-<style>
-/* Templates Grid - View-specific styles */
-.templates-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
-}
-.template-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    transition: all 0.3s;
-}
-.template-card:hover {
-    border-color: var(--primary);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-}
-.template-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-white);
-    margin-bottom: 10px;
-}
-.template-category {
-    display: inline-block;
-    background: rgba(107, 70, 193, 0.15);
-    color: var(--primary);
-    padding: 4px 12px;
-    border-radius: 15px;
-    font-size: 11px;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-.template-meta {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-}
-.template-description {
-    color: var(--text-dim);
-    font-size: 14px;
-    margin: 12px 0;
-    line-height: 1.6;
-}
-.btn-assign {
-    width: 100%;
-    padding: 12px;
-    background: var(--primary);
-    color: #fff;
-    text-align: center;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 13px;
-    display: block;
-    transition: all 0.3s;
-    border: none;
-    cursor: pointer;
-}
-.btn-assign:hover {
-    background: rgba(107, 70, 193, 0.9);
-    transform: translateY(-2px);
-}
-</style>
 
 <div class="page-header">
     <div class="page-header-content">
-        <h1 class="page-title"><i class="fas fa-dumbbell"></i> Strength & Conditioning Library</h1>
-        <p class="page-description">Create and manage workout templates for athletes</p>
-    </div>
-    <div class="page-header-actions">
-        <a href="?page=library&action=create_workout" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Create Template
-        </a>
+        <h1 class="page-title"><i class="fas fa-dumbbell"></i> Strength & Conditioning</h1>
+        <p class="page-description">Manage exercises, workout plans, and athlete assignments</p>
     </div>
 </div>
 
-<div class="filter-box">
-    <div class="filter-box-header">
-        <i class="fas fa-filter"></i> Filter by Category
-    </div>
-    <div class="filter-box-content">
-        <button type="button" class="btn btn-secondary <?= !$category_filter ? 'active' : '' ?>" 
-                onclick="window.location.href='?page=library_workouts'">
-            All Categories
-        </button>
-        <?php foreach ($categories as $cat): ?>
-            <button type="button" class="btn btn-secondary <?= $category_filter === $cat['id'] ? 'active' : '' ?>" 
-                    onclick="window.location.href='?page=library_workouts&category=<?= $cat['id'] ?>'">
-                <?= htmlspecialchars($cat['name']) ?>
-            </button>
-        <?php endforeach; ?>
-    </div>
+<!-- Tab Navigation -->
+<div class="page-tabs">
+    <button type="button" class="page-tab <?= $activeTab === 'exercises' ? 'active' : '' ?>" data-tab="exercises" data-action="switch-tab">
+        <i class="fas fa-running"></i> Exercise Library
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'plans' ? 'active' : '' ?>" data-tab="plans" data-action="switch-tab">
+        <i class="fas fa-clipboard-list"></i> Workout Plans
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'create' ? 'active' : '' ?>" data-tab="create" data-action="switch-tab">
+        <i class="fas fa-plus-circle"></i> Create Workout Plan
+    </button>
 </div>
 
-<?php if (empty($templates)): ?>
-    <div class="empty-state-card">
-        <i class="fas fa-dumbbell"></i>
-        <h4>No Templates Found</h4>
-        <p>Create your first workout template to get started</p>
-    </div>
-<?php else: ?>
-    <div class="templates-grid">
-        <?php foreach ($templates as $template): ?>
-            <div class="template-card">
-                <?php if ($template['category_name']): ?>
-                    <span class="template-category"><?= htmlspecialchars($template['category_name']) ?></span>
-                <?php endif; ?>
-                
-                <h3 class="template-title"><?= htmlspecialchars($template['name']) ?></h3>
-                
-                <div class="template-meta">
-                    <i class="fas fa-list"></i>
-                    <?= $template['exercise_count'] ?> exercises
-                </div>
-                
-                <?php if ($template['first_name']): ?>
-                    <div class="template-meta">
-                        <i class="fas fa-user"></i>
-                        Created by <?= htmlspecialchars($template['first_name'] . ' ' . $template['last_name']) ?>
-                    </div>
-                <?php endif; ?>
-                
-                <div class="template-meta">
-                    <i class="fas fa-calendar"></i>
-                    <?= date('M d, Y', strtotime($template['created_at'])) ?>
-                </div>
-                
-                <?php if ($template['description']): ?>
-                    <div class="template-description">
-                        <?= nl2br(htmlspecialchars($template['description'])) ?>
-                    </div>
-                <?php endif; ?>
-                
-                <a href="?page=library&action=assign_workout&template_id=<?= $template['id'] ?>" class="btn-assign">
-                    <i class="fas fa-user-plus"></i> Assign to Athlete
-                </a>
+<div class="page-tab-content">
+    <!-- Exercise Library Tab -->
+    <div class="tab-content <?= $activeTab === 'exercises' ? 'active' : '' ?>" id="exercises-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-running"></i> Exercise Library</h3>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-exercise-modal">
+                    <i class="fas fa-plus"></i> Add Exercise
+                </button>
             </div>
-        <?php endforeach; ?>
+            <div class="card-body">
+                <p class="info-text">
+                    <i class="fas fa-info-circle"></i>
+                    Create and manage exercises that can be used in workout plans. Include details like reps, sets, and weight requirements.
+                </p>
+                <div class="exercise-grid">
+                    <?php if (count($exercises) > 0): ?>
+                        <?php foreach ($exercises as $exercise): ?>
+                        <div class="exercise-card">
+                            <?php if ($exercise['image_url']): ?>
+                            <div class="exercise-image">
+                                <img src="<?= htmlspecialchars($exercise['image_url']) ?>" alt="<?= htmlspecialchars($exercise['name']) ?>">
+                            </div>
+                            <?php else: ?>
+                            <div class="exercise-image placeholder">
+                                <i class="fas fa-dumbbell"></i>
+                            </div>
+                            <?php endif; ?>
+                            <div class="exercise-content">
+                                <h4><?= htmlspecialchars($exercise['name']) ?></h4>
+                                <p class="exercise-description"><?= htmlspecialchars($exercise['description'] ?: 'No description') ?></p>
+                                <?php if ($exercise['category']): ?>
+                                <span class="exercise-category"><?= htmlspecialchars($exercise['category']) ?></span>
+                                <?php endif; ?>
+                                <?php if ($exercise['difficulty_level']): ?>
+                                <span class="exercise-difficulty <?= strtolower($exercise['difficulty_level']) ?>"><?= htmlspecialchars($exercise['difficulty_level']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="exercise-actions">
+                                <button type="button" class="btn-icon" title="Edit"
+                                        data-action="edit-exercise"
+                                        data-id="<?= $exercise['id'] ?>"
+                                        data-name="<?= htmlspecialchars($exercise['name']) ?>"
+                                        data-description="<?= htmlspecialchars($exercise['description'] ?? '') ?>"
+                                        data-category="<?= htmlspecialchars($exercise['category'] ?? '') ?>"
+                                        data-equipment="<?= htmlspecialchars($exercise['equipment_needed'] ?? '') ?>"
+                                        data-difficulty="<?= htmlspecialchars($exercise['difficulty_level'] ?? '') ?>"
+                                        data-video="<?= htmlspecialchars($exercise['video_url'] ?? '') ?>"
+                                        data-image="<?= htmlspecialchars($exercise['image_url'] ?? '') ?>">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn-icon btn-icon-danger" title="Delete"
+                                        data-action="delete-exercise"
+                                        data-id="<?= $exercise['id'] ?>"
+                                        data-name="<?= htmlspecialchars($exercise['name']) ?>">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="empty-state">
+                            <i class="fas fa-dumbbell"></i>
+                            <h4>No Exercises Found</h4>
+                            <p>Create your first exercise to start building workout plans.</p>
+                            <button type="button" class="btn btn-primary" data-action="add" data-modal="add-exercise-modal">
+                                <i class="fas fa-plus"></i> Add Exercise
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     </div>
-<?php endif; ?>
+
+    <!-- Workout Plans Tab -->
+    <div class="tab-content <?= $activeTab === 'plans' ? 'active' : '' ?>" id="plans-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-clipboard-list"></i> Workout Plans</h3>
+            </div>
+            <div class="card-body">
+                <p class="info-text">
+                    <i class="fas fa-info-circle"></i>
+                    View all workout plans. Click to see assigned athletes and edit plan details.
+                </p>
+                <div class="plans-grid">
+                    <?php if (count($workoutPlans) > 0): ?>
+                        <?php foreach ($workoutPlans as $plan): ?>
+                        <div class="plan-card">
+                            <div class="plan-header">
+                                <h4><?= htmlspecialchars($plan['name']) ?></h4>
+                                <div class="plan-meta">
+                                    <span><i class="fas fa-dumbbell"></i> <?= $plan['exercise_count'] ?> exercises</span>
+                                    <span><i class="fas fa-users"></i> <?= $plan['assigned_count'] ?> athletes</span>
+                                </div>
+                            </div>
+                            <p class="plan-description"><?= htmlspecialchars($plan['description'] ?: 'No description') ?></p>
+                            
+                            <?php if (!empty($assignedAthletes[$plan['id']])): ?>
+                            <div class="assigned-athletes">
+                                <span class="athletes-label">Assigned to:</span>
+                                <?php foreach ($assignedAthletes[$plan['id']] as $athlete): ?>
+                                <span class="athlete-badge"><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="plan-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" 
+                                        data-action="view-plan"
+                                        data-id="<?= $plan['id'] ?>">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm"
+                                        data-action="edit-plan"
+                                        data-id="<?= $plan['id'] ?>"
+                                        data-name="<?= htmlspecialchars($plan['name']) ?>"
+                                        data-description="<?= htmlspecialchars($plan['description'] ?? '') ?>"
+                                        data-exercises='<?= json_encode($planExercises[$plan['id']] ?? []) ?>'>
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm"
+                                        data-action="delete-plan"
+                                        data-id="<?= $plan['id'] ?>"
+                                        data-name="<?= htmlspecialchars($plan['name']) ?>">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="empty-state">
+                            <i class="fas fa-clipboard-list"></i>
+                            <h4>No Workout Plans Found</h4>
+                            <p>Create a workout plan to start assigning to athletes.</p>
+                            <button type="button" class="btn btn-primary" data-action="switch-tab" data-tab="create">
+                                <i class="fas fa-plus"></i> Create Workout Plan
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Workout Plan Tab -->
+    <div class="tab-content <?= $activeTab === 'create' ? 'active' : '' ?>" id="create-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-plus-circle"></i> Create Workout Plan</h3>
+            </div>
+            <div class="card-body">
+                <form id="create-plan-form" method="POST" action="process_workout.php" enctype="multipart/form-data">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="create_plan">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Plan Name *</label>
+                            <input type="text" name="name" class="form-input" required placeholder="e.g., Beginner Strength Program">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Difficulty Level</label>
+                            <select name="difficulty_level" class="form-input">
+                                <option value="">Select Difficulty</option>
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-textarea" rows="3" placeholder="Describe the workout plan goals and structure"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Plan Image</label>
+                        <input type="file" name="image" class="form-input" accept="image/*">
+                    </div>
+                    
+                    <div class="form-section">
+                        <h4 class="section-title"><i class="fas fa-list"></i> Select Exercises</h4>
+                        <p class="info-text" style="margin-bottom: 16px;">
+                            <i class="fas fa-info-circle"></i>
+                            Add exercises to this workout plan. You can customize sets, reps, and weights for each.
+                        </p>
+                        
+                        <div class="selected-exercises" id="selected-exercises">
+                            <!-- Selected exercises will appear here -->
+                        </div>
+                        
+                        <button type="button" class="btn btn-secondary" id="add-exercise-to-plan">
+                            <i class="fas fa-plus"></i> Add Exercise
+                        </button>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Create Workout Plan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Strength & Conditioning Styles */
+.info-text {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+    padding: var(--space-4);
+    background: rgba(107, 70, 193, 0.1);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.info-text i { color: var(--primary-light); }
+
+/* Exercise Grid */
+.exercise-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-4);
+}
+
+.exercise-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: all var(--transition-normal);
+}
+
+.exercise-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.exercise-image {
+    height: 160px;
+    background: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.exercise-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.exercise-image.placeholder {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+}
+
+.exercise-image.placeholder i {
+    font-size: 48px;
+    color: rgba(255,255,255,0.3);
+}
+
+.exercise-content {
+    padding: var(--space-4);
+}
+
+.exercise-content h4 {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-2);
+}
+
+.exercise-description {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-3);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.exercise-category {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(107, 70, 193, 0.15);
+    color: var(--primary-light);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    margin-right: var(--space-2);
+}
+
+.exercise-difficulty {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.exercise-difficulty.beginner { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.exercise-difficulty.intermediate { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.exercise-difficulty.advanced { background: rgba(239, 68, 68, 0.15); color: var(--error); }
+
+.exercise-actions {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-main);
+    border-top: 1px solid var(--border);
+}
+
+/* Plans Grid */
+.plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: var(--space-4);
+}
+
+.plan-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+    transition: all var(--transition-normal);
+}
+
+.plan-card:hover {
+    border-color: var(--primary);
+}
+
+.plan-header {
+    margin-bottom: var(--space-3);
+}
+
+.plan-header h4 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-2);
+}
+
+.plan-meta {
+    display: flex;
+    gap: var(--space-4);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+.plan-meta i { color: var(--primary-light); margin-right: var(--space-1); }
+
+.plan-description {
+    font-size: var(--font-size-sm);
+    color: var(--text-dim);
+    margin-bottom: var(--space-4);
+}
+
+.assigned-athletes {
+    margin-bottom: var(--space-4);
+    padding: var(--space-3);
+    background: var(--bg-main);
+    border-radius: var(--radius-lg);
+}
+
+.athletes-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: var(--space-2);
+}
+
+.athlete-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(107, 70, 193, 0.2);
+    color: var(--primary-light);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    margin-right: var(--space-2);
+    margin-bottom: var(--space-1);
+}
+
+.plan-actions {
+    display: flex;
+    gap: var(--space-2);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+}
+
+/* Form Styles */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+}
+
+.form-section {
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border);
+}
+
+.section-title {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.section-title i { color: var(--primary-light); }
+
+.form-actions {
+    margin-top: var(--space-6);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+
+.selected-exercises {
+    margin-bottom: var(--space-4);
+}
+
+.selected-exercise-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-3);
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-2);
+}
+
+/* Button Icons */
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-normal);
+}
+
+.btn-icon:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-white);
+}
+
+.btn-icon-danger:hover {
+    background: var(--error);
+    border-color: var(--error);
+}
+
+/* Empty State */
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--space-10) var(--space-6);
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-xl);
+}
+
+.empty-state i {
+    font-size: 48px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-4);
+    display: block;
+}
+
+.empty-state h4 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-2);
+}
+
+.empty-state p {
+    font-size: var(--font-size-base);
+    color: var(--text-muted);
+    margin-bottom: var(--space-5);
+}
+</style>
+
+<!-- Add Exercise Modal -->
+<div id="add-exercise-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-dumbbell"></i> Add Exercise</h2>
+            <button type="button" class="modal-close" onclick="closeModal('add-exercise-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_workout.php" enctype="multipart/form-data">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_exercise">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Exercise Name *</label>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Barbell Squat">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Describe the exercise and proper form"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select name="category" class="form-input">
+                            <option value="">Select Category</option>
+                            <option value="Upper Body">Upper Body</option>
+                            <option value="Lower Body">Lower Body</option>
+                            <option value="Core">Core</option>
+                            <option value="Cardio">Cardio</option>
+                            <option value="Full Body">Full Body</option>
+                            <option value="Flexibility">Flexibility</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Difficulty Level</label>
+                        <select name="difficulty_level" class="form-input">
+                            <option value="">Select Difficulty</option>
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Equipment Needed</label>
+                    <input type="text" name="equipment_needed" class="form-input" placeholder="e.g., Barbell, Dumbbells, Bench">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Exercise Image</label>
+                    <input type="file" name="image" class="form-input" accept="image/*">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Video URL</label>
+                    <input type="url" name="video_url" class="form-input" placeholder="https://youtube.com/...">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-exercise-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Add Exercise
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Exercise Modal -->
+<div id="edit-exercise-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Exercise</h2>
+            <button type="button" class="modal-close" onclick="closeModal('edit-exercise-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_workout.php" enctype="multipart/form-data">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_exercise">
+            <input type="hidden" name="id" id="edit-exercise-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Exercise Name *</label>
+                    <input type="text" name="name" id="edit-exercise-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-exercise-description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select name="category" id="edit-exercise-category" class="form-input">
+                            <option value="">Select Category</option>
+                            <option value="Upper Body">Upper Body</option>
+                            <option value="Lower Body">Lower Body</option>
+                            <option value="Core">Core</option>
+                            <option value="Cardio">Cardio</option>
+                            <option value="Full Body">Full Body</option>
+                            <option value="Flexibility">Flexibility</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Difficulty Level</label>
+                        <select name="difficulty_level" id="edit-exercise-difficulty" class="form-input">
+                            <option value="">Select Difficulty</option>
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Equipment Needed</label>
+                    <input type="text" name="equipment_needed" id="edit-exercise-equipment" class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Exercise Image</label>
+                    <input type="file" name="image" class="form-input" accept="image/*">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Video URL</label>
+                    <input type="url" name="video_url" id="edit-exercise-video" class="form-input">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-exercise-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Exercise
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Workout Plan Modal -->
+<div id="edit-plan-modal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Workout Plan</h2>
+            <button type="button" class="modal-close" onclick="closeModal('edit-plan-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_workout.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_plan">
+            <input type="hidden" name="id" id="edit-plan-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Plan Name *</label>
+                    <input type="text" name="name" id="edit-plan-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-plan-description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-list"></i> Plan Exercises</h4>
+                    <div id="edit-plan-exercises">
+                        <!-- Exercises will be populated via JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-plan-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Plan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Exercise Selector Modal -->
+<div id="exercise-selector-modal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-dumbbell"></i> Select Exercise</h2>
+            <button type="button" class="modal-close" onclick="closeModal('exercise-selector-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="exercise-selector-grid">
+                <?php foreach ($exercises as $exercise): ?>
+                <div class="exercise-selector-item" 
+                     data-id="<?= $exercise['id'] ?>"
+                     data-name="<?= htmlspecialchars($exercise['name']) ?>"
+                     onclick="selectExerciseForPlan(<?= $exercise['id'] ?>, '<?= htmlspecialchars(addslashes($exercise['name'])) ?>')">
+                    <div class="exercise-selector-icon">
+                        <i class="fas fa-dumbbell"></i>
+                    </div>
+                    <div class="exercise-selector-info">
+                        <h5><?= htmlspecialchars($exercise['name']) ?></h5>
+                        <span><?= htmlspecialchars($exercise['category'] ?? 'No category') ?></span>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('[data-action="switch-tab"]').forEach(button => {
+    button.addEventListener('click', function() {
+        const tabName = this.getAttribute('data-tab');
+        
+        document.querySelectorAll('.page-tab').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        
+        this.classList.add('active');
+        document.getElementById(tabName + '-tab').classList.add('active');
+        
+        const url = new URL(window.location);
+        url.searchParams.set('tab', tabName);
+        window.history.replaceState({}, '', url);
+    });
+});
+
+// Modal handlers
+document.querySelectorAll('[data-action="add"][data-modal]').forEach(button => {
+    button.addEventListener('click', function() {
+        openModal(this.getAttribute('data-modal'));
+    });
+});
+
+// Edit exercise handler
+document.querySelectorAll('[data-action="edit-exercise"]').forEach(button => {
+    button.addEventListener('click', function() {
+        document.getElementById('edit-exercise-id').value = this.dataset.id;
+        document.getElementById('edit-exercise-name').value = this.dataset.name;
+        document.getElementById('edit-exercise-description').value = this.dataset.description;
+        document.getElementById('edit-exercise-category').value = this.dataset.category;
+        document.getElementById('edit-exercise-equipment').value = this.dataset.equipment;
+        document.getElementById('edit-exercise-difficulty').value = this.dataset.difficulty;
+        document.getElementById('edit-exercise-video').value = this.dataset.video;
+        openModal('edit-exercise-modal');
+    });
+});
+
+// Delete exercise handler
+document.querySelectorAll('[data-action="delete-exercise"]').forEach(button => {
+    button.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const name = this.dataset.name;
+        if (confirm('Are you sure you want to delete "' + name + '"?')) {
+            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+            fetch('process_workout.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'action=delete_exercise&id=' + id + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) location.reload();
+                else alert('Error: ' + data.message);
+            });
+        }
+    });
+});
+
+// Edit plan handler
+document.querySelectorAll('[data-action="edit-plan"]').forEach(button => {
+    button.addEventListener('click', function() {
+        document.getElementById('edit-plan-id').value = this.dataset.id;
+        document.getElementById('edit-plan-name').value = this.dataset.name;
+        document.getElementById('edit-plan-description').value = this.dataset.description;
+        
+        // Populate exercises
+        const exercises = JSON.parse(this.dataset.exercises || '[]');
+        const container = document.getElementById('edit-plan-exercises');
+        container.innerHTML = '';
+        
+        exercises.forEach((ex, i) => {
+            container.innerHTML += '<div class="selected-exercise-item">' +
+                '<span>' + ex.exercise_name + '</span>' +
+                '<input type="hidden" name="exercises[' + i + '][id]" value="' + ex.exercise_id + '">' +
+                '<input type="number" name="exercises[' + i + '][sets]" class="form-input" placeholder="Sets" value="' + (ex.sets || '') + '">' +
+                '<input type="text" name="exercises[' + i + '][reps]" class="form-input" placeholder="Reps" value="' + (ex.reps || '') + '">' +
+                '<input type="number" name="exercises[' + i + '][rest]" class="form-input" placeholder="Rest (sec)" value="' + (ex.rest_seconds || '') + '">' +
+                '</div>';
+        });
+        
+        openModal('edit-plan-modal');
+    });
+});
+
+// Delete plan handler
+document.querySelectorAll('[data-action="delete-plan"]').forEach(button => {
+    button.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const name = this.dataset.name;
+        if (confirm('Are you sure you want to delete "' + name + '"? This will also remove all athlete assignments.')) {
+            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+            fetch('process_workout.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'action=delete_plan&id=' + id + '&csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) location.reload();
+                else alert('Error: ' + data.message);
+            });
+        }
+    });
+});
+
+// Add exercise to plan (Create tab)
+let exerciseCount = 0;
+document.getElementById('add-exercise-to-plan').addEventListener('click', function() {
+    openModal('exercise-selector-modal');
+});
+
+function selectExerciseForPlan(id, name) {
+    const container = document.getElementById('selected-exercises');
+    const index = exerciseCount++;
+    
+    container.innerHTML += '<div class="selected-exercise-item">' +
+        '<span>' + name + '</span>' +
+        '<input type="hidden" name="exercises[' + index + '][id]" value="' + id + '">' +
+        '<input type="number" name="exercises[' + index + '][sets]" class="form-input" placeholder="Sets" min="1">' +
+        '<input type="text" name="exercises[' + index + '][reps]" class="form-input" placeholder="Reps">' +
+        '<input type="number" name="exercises[' + index + '][rest]" class="form-input" placeholder="Rest (sec)" min="0">' +
+        '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>' +
+        '</div>';
+    
+    closeModal('exercise-selector-modal');
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// Convert forms to AJAX
+document.querySelectorAll('.modal form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        submitBtn.disabled = true;
+        
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(err => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            console.error(err);
+        });
+    });
+});
+</script>

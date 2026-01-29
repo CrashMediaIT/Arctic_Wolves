@@ -1,16 +1,16 @@
 <?php
 // Determine which tab should be active based on URL parameter
 $activeTab = $_GET['tab'] ?? 'skills';
-$validTabs = ['skills', 'drills', 'positions', 'equipment', 'merchandise'];
+$validTabs = ['skills', 'drills', 'merchandise'];
 if (!in_array($activeTab, $validTabs)) {
     $activeTab = 'skills';
 }
 ?>
-<!-- Admin Categories Management View -->
+<!-- Admin Categories Management View - Recreated -->
 <div class="page-header">
     <div class="page-header-content">
-        <h1 class="page-title"><i class="fas fa-tags"></i> Category Management</h1>
-        <p class="page-description">Organize and manage system categories, skills, and classifications</p>
+        <h1 class="page-title"><i class="fas fa-folder-tree"></i> Category Management</h1>
+        <p class="page-description">Manage skills for evaluations, drill types for training, and merchandise categories for the shop</p>
     </div>
 </div>
 
@@ -22,14 +22,8 @@ if (!in_array($activeTab, $validTabs)) {
     <button type="button" class="page-tab <?= $activeTab === 'drills' ? 'active' : '' ?>" data-tab="drills" data-action="switch-tab">
         <i class="fas fa-hockey-puck"></i> Drill Types
     </button>
-    <button type="button" class="page-tab <?= $activeTab === 'positions' ? 'active' : '' ?>" data-tab="positions" data-action="switch-tab">
-        <i class="fas fa-user-tag"></i> Positions
-    </button>
-    <button type="button" class="page-tab <?= $activeTab === 'equipment' ? 'active' : '' ?>" data-tab="equipment" data-action="switch-tab">
-        <i class="fas fa-toolbox"></i> Equipment
-    </button>
     <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
-        <i class="fas fa-tags"></i> Merchandise
+        <i class="fas fa-shopping-bag"></i> Merchandise
     </button>
 </div>
 
@@ -38,35 +32,42 @@ if (!in_array($activeTab, $validTabs)) {
     <div class="tab-content <?= $activeTab === 'skills' ? 'active' : '' ?>" id="skills-tab">
         <div class="card">
             <div class="card-header">
-                <h3><i class="fas fa-star"></i> Skill Categories</h3>
-                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-skill-modal"><i class="fas fa-plus"></i> Add Skill</button>
+                <h3><i class="fas fa-star"></i> Evaluation Skills</h3>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-skill-modal">
+                    <i class="fas fa-plus"></i> Add Skill
+                </button>
             </div>
             <div class="card-body">
-                <div class="categories-list">
+                <p class="info-text">
+                    <i class="fas fa-info-circle"></i>
+                    Skills defined here are used in athlete evaluation forms to assess player development.
+                </p>
+                <div class="categories-grid">
                     <?php
                     // Fetch all skills from database
-                    // Performance optimization suggestion: Consider adding index on eval_skills.created_at for faster ordering
                     $stmt = $pdo->prepare("SELECT es.id, es.name, es.description, ec.name as category_name 
                                           FROM eval_skills es 
                                           LEFT JOIN eval_categories ec ON es.category_id = ec.id 
-                                          ORDER BY es.created_at DESC");
+                                          ORDER BY es.name ASC");
                     $stmt->execute();
                     $skills = $stmt->fetchAll();
                     
                     if (count($skills) > 0):
                         foreach ($skills as $skill):
                     ?>
-                    <div class="category-item">
-                        <div class="category-icon"><i class="fas fa-star"></i></div>
-                        <div class="category-info">
+                    <div class="category-card">
+                        <div class="category-card-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="category-card-content">
                             <h4><?= htmlspecialchars($skill['name']) ?></h4>
                             <p><?= htmlspecialchars($skill['description'] ?: 'No description') ?></p>
                             <?php if ($skill['category_name']): ?>
-                            <small style="color: var(--text-dim);">Category: <?= htmlspecialchars($skill['category_name']) ?></small>
+                            <span class="category-tag"><?= htmlspecialchars($skill['category_name']) ?></span>
                             <?php endif; ?>
                         </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Edit" 
+                        <div class="category-card-actions">
+                            <button type="button" class="btn-icon" title="Edit" 
                                     data-action="edit" 
                                     data-id="<?= $skill['id'] ?>" 
                                     data-type="skill" 
@@ -74,7 +75,7 @@ if (!in_array($activeTab, $validTabs)) {
                                     data-description="<?= htmlspecialchars($skill['description'] ?? '') ?>">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon" title="Delete" 
+                            <button type="button" class="btn-icon btn-icon-danger" title="Delete" 
                                     data-action="delete" 
                                     data-id="<?= $skill['id'] ?>" 
                                     data-type="skill" 
@@ -87,7 +88,14 @@ if (!in_array($activeTab, $validTabs)) {
                         endforeach;
                     else:
                     ?>
-                    <p class="placeholder-text">No skills found. Click "Add Skill" to create your first skill.</p>
+                    <div class="empty-state">
+                        <i class="fas fa-star"></i>
+                        <h4>No Skills Found</h4>
+                        <p>Create your first skill to use in athlete evaluations.</p>
+                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-skill-modal">
+                            <i class="fas fa-plus"></i> Add Skill
+                        </button>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -96,30 +104,38 @@ if (!in_array($activeTab, $validTabs)) {
 
     <!-- Drill Types Tab -->
     <div class="tab-content <?= $activeTab === 'drills' ? 'active' : '' ?>" id="drills-tab">
-        <div class="content-card">
+        <div class="card">
             <div class="card-header">
-                <h3><i class="fas fa-hockey-puck"></i> Drill Type Categories</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-drill-type-modal"><i class="fas fa-plus"></i> Add Type</button>
+                <h3><i class="fas fa-hockey-puck"></i> Drill Types</h3>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-drill-type-modal">
+                    <i class="fas fa-plus"></i> Add Drill Type
+                </button>
             </div>
             <div class="card-body">
-                <div class="categories-list">
+                <p class="info-text">
+                    <i class="fas fa-info-circle"></i>
+                    Drill types help categorize and organize training drills by the skills they develop.
+                </p>
+                <div class="categories-grid">
                     <?php
                     // Fetch all drill categories from database
-                    $stmt = $pdo->prepare("SELECT id, name, description FROM drill_categories ORDER BY created_at DESC");
+                    $stmt = $pdo->prepare("SELECT id, name, description FROM drill_categories ORDER BY name ASC");
                     $stmt->execute();
                     $drill_types = $stmt->fetchAll();
                     
                     if (count($drill_types) > 0):
                         foreach ($drill_types as $type):
                     ?>
-                    <div class="category-item">
-                        <div class="category-icon"><i class="fas fa-hockey-puck"></i></div>
-                        <div class="category-info">
+                    <div class="category-card">
+                        <div class="category-card-icon drill-type">
+                            <i class="fas fa-hockey-puck"></i>
+                        </div>
+                        <div class="category-card-content">
                             <h4><?= htmlspecialchars($type['name']) ?></h4>
                             <p><?= htmlspecialchars($type['description'] ?: 'No description') ?></p>
                         </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Edit" 
+                        <div class="category-card-actions">
+                            <button type="button" class="btn-icon" title="Edit" 
                                     data-action="edit" 
                                     data-id="<?= $type['id'] ?>" 
                                     data-type="drill_type" 
@@ -127,7 +143,7 @@ if (!in_array($activeTab, $validTabs)) {
                                     data-description="<?= htmlspecialchars($type['description'] ?? '') ?>">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon" title="Delete" 
+                            <button type="button" class="btn-icon btn-icon-danger" title="Delete" 
                                     data-action="delete" 
                                     data-id="<?= $type['id'] ?>" 
                                     data-type="drill_type" 
@@ -140,146 +156,35 @@ if (!in_array($activeTab, $validTabs)) {
                         endforeach;
                     else:
                     ?>
-                    <p class="placeholder-text">No drill types found. Click "Add Type" to create your first drill type.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Positions Tab -->
-    <div class="tab-content <?= $activeTab === 'positions' ? 'active' : '' ?>" id="positions-tab">
-        <div class="content-card">
-            <div class="card-header">
-                <h3><i class="fas fa-user-tag"></i> Player Positions</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-position-modal"><i class="fas fa-plus"></i> Add Position</button>
-            </div>
-            <div class="card-body">
-                <div class="categories-list">
-                    <?php
-                    // Fetch all positions from database
-                    $stmt = $pdo->prepare("SELECT id, name, abbreviation, description, position_type FROM player_positions ORDER BY position_type, name");
-                    $stmt->execute();
-                    $positions = $stmt->fetchAll();
-                    
-                    if (count($positions) > 0):
-                        foreach ($positions as $position):
-                    ?>
-                    <div class="category-item">
-                        <div class="category-icon"><i class="fas fa-user-tag"></i></div>
-                        <div class="category-info">
-                            <h4><?= htmlspecialchars($position['name']) ?> 
-                                <?php if ($position['abbreviation']): ?>
-                                    <span style="color: var(--text-dim); font-weight: 400;">(<?= htmlspecialchars($position['abbreviation']) ?>)</span>
-                                <?php endif; ?>
-                            </h4>
-                            <p><?= htmlspecialchars($position['description'] ?: 'No description') ?></p>
-                            <?php if ($position['position_type']): ?>
-                            <small style="color: var(--text-dim);">Type: <?= ucfirst($position['position_type']) ?></small>
-                            <?php endif; ?>
-                        </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Edit" 
-                                    data-action="edit" 
-                                    data-id="<?= $position['id'] ?>" 
-                                    data-type="position"
-                                    data-name="<?= htmlspecialchars($position['name']) ?>"
-                                    data-abbreviation="<?= htmlspecialchars($position['abbreviation']) ?>"
-                                    data-description="<?= htmlspecialchars($position['description']) ?>"
-                                    data-position-type="<?= htmlspecialchars($position['position_type']) ?>">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-icon" title="Delete" 
-                                    data-action="delete" 
-                                    data-id="<?= $position['id'] ?>" 
-                                    data-type="position" 
-                                    data-name="<?= htmlspecialchars($position['name']) ?>">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                    <div class="empty-state">
+                        <i class="fas fa-hockey-puck"></i>
+                        <h4>No Drill Types Found</h4>
+                        <p>Create drill types to organize your training drills.</p>
+                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-drill-type-modal">
+                            <i class="fas fa-plus"></i> Add Drill Type
+                        </button>
                     </div>
-                    <?php 
-                        endforeach;
-                    else:
-                    ?>
-                    <p class="placeholder-text">No positions found. Click "Add Position" to create your first position.</p>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Equipment Tab -->
-    <div class="tab-content <?= $activeTab === 'equipment' ? 'active' : '' ?>" id="equipment-tab">
-        <div class="content-card">
-            <div class="card-header">
-                <h3><i class="fas fa-toolbox"></i> Equipment Categories</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-equipment-modal"><i class="fas fa-plus"></i> Add Equipment</button>
-            </div>
-            <div class="card-body">
-                <p class="info-text" style="margin-bottom: 16px; padding: 12px; background: rgba(107, 70, 193, 0.1); border-radius: 8px; color: var(--text-secondary); font-size: 13px;">
-                    <i class="fas fa-info-circle" style="color: var(--primary-light); margin-right: 8px;"></i>
-                    Equipment categories defined here will be available when creating drills. Add equipment items that coaches commonly use during practice.
-                </p>
-                <div class="categories-list">
-                    <?php
-                    // Fetch all equipment categories from database
-                    // Equipment used for drills is stored in the equipment table with equipment_type = 'category'
-                    $stmt = $pdo->prepare("SELECT id, name, notes as description FROM equipment WHERE equipment_type = 'category' ORDER BY name ASC");
-                    $stmt->execute();
-                    $equipment_items = $stmt->fetchAll();
-                    
-                    if (count($equipment_items) > 0):
-                        foreach ($equipment_items as $equip):
-                    ?>
-                    <div class="category-item">
-                        <div class="category-icon"><i class="fas fa-toolbox"></i></div>
-                        <div class="category-info">
-                            <h4><?= htmlspecialchars($equip['name']) ?></h4>
-                            <p><?= htmlspecialchars($equip['description'] ?: 'No description') ?></p>
-                        </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Edit" 
-                                    data-action="edit" 
-                                    data-id="<?= $equip['id'] ?>" 
-                                    data-type="equipment" 
-                                    data-name="<?= htmlspecialchars($equip['name']) ?>"
-                                    data-description="<?= htmlspecialchars($equip['description'] ?? '') ?>">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-icon" title="Delete" 
-                                    data-action="delete" 
-                                    data-id="<?= $equip['id'] ?>" 
-                                    data-type="equipment" 
-                                    data-name="<?= htmlspecialchars($equip['name']) ?>">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <?php 
-                        endforeach;
-                    else:
-                    ?>
-                    <p class="placeholder-text">No equipment found. Click "Add Equipment" to create your first equipment category.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Merchandise Tab -->
+    <!-- Merchandise Categories Tab -->
     <div class="tab-content <?= $activeTab === 'merchandise' ? 'active' : '' ?>" id="merchandise-tab">
-        <div class="content-card">
+        <div class="card">
             <div class="card-header">
-                <h3><i class="fas fa-tags"></i> Merchandise Categories</h3>
-                <button class="btn-primary" data-action="add" data-modal="add-merchandise-modal"><i class="fas fa-plus"></i> Add Category</button>
+                <h3><i class="fas fa-shopping-bag"></i> Merchandise Categories</h3>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-merchandise-modal">
+                    <i class="fas fa-plus"></i> Add Category
+                </button>
             </div>
             <div class="card-body">
-                <p class="info-text" style="margin-bottom: 16px; padding: 12px; background: rgba(107, 70, 193, 0.1); border-radius: 8px; color: var(--text-secondary); font-size: 13px;">
-                    <i class="fas fa-info-circle" style="color: var(--primary-light); margin-right: 8px;"></i>
-                    Merchandise categories organize your store products. Categories are displayed in the POS terminal and shop.
+                <p class="info-text">
+                    <i class="fas fa-info-circle"></i>
+                    Merchandise categories organize products in the online shop and POS system.
                 </p>
-                <div class="categories-list">
+                <div class="categories-grid">
                     <?php
                     // Fetch all merchandise categories from database
                     $stmt = $pdo->prepare("SELECT id, name, description, is_active FROM merchandise_categories ORDER BY sort_order, name ASC");
@@ -289,14 +194,21 @@ if (!in_array($activeTab, $validTabs)) {
                     if (count($merchandise_categories) > 0):
                         foreach ($merchandise_categories as $merch):
                     ?>
-                    <div class="category-item <?= !$merch['is_active'] ? 'inactive' : '' ?>">
-                        <div class="category-icon"><i class="fas fa-tag"></i></div>
-                        <div class="category-info">
-                            <h4><?= htmlspecialchars($merch['name']) ?> <?= !$merch['is_active'] ? '<span class="status-badge inactive">Inactive</span>' : '' ?></h4>
+                    <div class="category-card <?= !$merch['is_active'] ? 'inactive' : '' ?>">
+                        <div class="category-card-icon merchandise">
+                            <i class="fas fa-tag"></i>
+                        </div>
+                        <div class="category-card-content">
+                            <h4>
+                                <?= htmlspecialchars($merch['name']) ?>
+                                <?php if (!$merch['is_active']): ?>
+                                <span class="status-badge inactive">Inactive</span>
+                                <?php endif; ?>
+                            </h4>
                             <p><?= htmlspecialchars($merch['description'] ?: 'No description') ?></p>
                         </div>
-                        <div class="category-actions">
-                            <button class="btn-icon" title="Edit" 
+                        <div class="category-card-actions">
+                            <button type="button" class="btn-icon" title="Edit" 
                                     data-action="edit" 
                                     data-id="<?= $merch['id'] ?>" 
                                     data-type="merchandise" 
@@ -304,7 +216,7 @@ if (!in_array($activeTab, $validTabs)) {
                                     data-description="<?= htmlspecialchars($merch['description'] ?? '') ?>">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon" title="Delete" 
+                            <button type="button" class="btn-icon btn-icon-danger" title="Delete" 
                                     data-action="delete" 
                                     data-id="<?= $merch['id'] ?>" 
                                     data-type="merchandise" 
@@ -317,7 +229,14 @@ if (!in_array($activeTab, $validTabs)) {
                         endforeach;
                     else:
                     ?>
-                    <p class="placeholder-text">No merchandise categories found. Click "Add Category" to create your first category.</p>
+                    <div class="empty-state">
+                        <i class="fas fa-shopping-bag"></i>
+                        <h4>No Merchandise Categories Found</h4>
+                        <p>Create categories to organize products in your shop.</p>
+                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-merchandise-modal">
+                            <i class="fas fa-plus"></i> Add Category
+                        </button>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -326,117 +245,45 @@ if (!in_array($activeTab, $validTabs)) {
 </div>
 
 <style>
-/* Categories Page Enhanced Styles */
-.categories-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-}
-
-.page-header-content {
+/* Categories Page Styles - Following Style Guide */
+.info-text {
     display: flex;
     align-items: center;
-    gap: 20px;
-}
-
-.page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-
-.page-header-text h1 {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-
-.page-header-text p {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-/* Category Tabs Wrapper */
-.category-tabs-wrapper {
-    margin-bottom: 24px;
-}
-
-.category-tabs {
-    display: flex;
-    gap: 8px;
-    padding: 6px;
-    background: var(--bg-card);
-    border-radius: 12px;
-    border: 1px solid var(--border);
-}
-
-.category-tabs .tab-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 14px 20px;
-    background: transparent;
-    border: none;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.category-tabs .tab-btn:hover {
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+    padding: var(--space-4);
     background: rgba(107, 70, 193, 0.1);
-    color: var(--text-primary);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
 }
 
-.category-tabs .tab-btn.active {
-    background: var(--primary);
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
-}
-
-.category-tabs .tab-btn .tab-icon {
+.info-text i {
+    color: var(--primary-light);
     font-size: 16px;
 }
 
-.categories-list {
+/* Category Cards Grid */
+.categories-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
+    gap: var(--space-4);
 }
 
-.category-item {
+/* Individual Category Card */
+.category-card {
     display: flex;
     align-items: flex-start;
-    gap: 16px;
-    padding: 20px;
-    background: var(--bg-card);
+    gap: var(--space-4);
+    padding: var(--space-5);
+    background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    transition: all 0.3s ease;
+    border-radius: var(--radius-xl);
+    transition: all var(--transition-normal);
     position: relative;
-    overflow: hidden;
 }
 
-.category-item::before {
+.category-card::before {
     content: '';
     position: absolute;
     top: 0;
@@ -444,163 +291,175 @@ if (!in_array($activeTab, $validTabs)) {
     width: 4px;
     height: 100%;
     background: var(--primary);
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--transition-normal);
 }
 
-.category-item:hover {
+.category-card:hover {
     border-color: var(--primary);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-lg);
 }
 
-.category-item:hover::before {
+.category-card:hover::before {
     opacity: 1;
 }
 
-.category-icon {
+.category-card.inactive {
+    opacity: 0.6;
+}
+
+/* Category Card Icon */
+.category-card-icon {
     width: 48px;
     height: 48px;
     background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
-    color: #fff;
+    color: var(--text-white);
     flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.25);
+    box-shadow: var(--shadow-primary);
 }
 
-.category-info {
+.category-card-icon.drill-type {
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+}
+
+.category-card-icon.merchandise {
+    background: linear-gradient(135deg, #10B981, #059669);
+}
+
+/* Category Card Content */
+.category-card-content {
     flex: 1;
     min-width: 0;
 }
 
-.category-info h4 {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 6px;
+.category-card-content h4 {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-2);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
+    flex-wrap: wrap;
 }
 
-.category-info h4 span {
-    font-weight: 400;
-    font-size: 13px;
-}
-
-.category-info p {
-    font-size: 13px;
+.category-card-content p {
+    font-size: var(--font-size-sm);
     color: var(--text-muted);
     line-height: 1.5;
-    margin: 0 0 8px 0;
+    margin: 0;
 }
 
-.category-info small {
+.category-tag {
     display: inline-block;
+    margin-top: var(--space-2);
     padding: 4px 10px;
-    background: rgba(107, 70, 193, 0.1);
+    background: rgba(107, 70, 193, 0.15);
     color: var(--primary-light);
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
 }
 
-.category-actions {
+/* Category Card Actions */
+.category-card-actions {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--space-2);
 }
 
-.category-actions .btn-icon {
+.btn-icon {
     width: 36px;
     height: 36px;
     padding: 0;
     background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     color: var(--text-secondary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all var(--transition-normal);
 }
 
-.category-actions .btn-icon:hover {
+.btn-icon:hover {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--text-white);
 }
 
-.category-actions .btn-icon[title="Delete"]:hover {
+.btn-icon-danger:hover {
     background: var(--error);
     border-color: var(--error);
 }
 
-/* Content Card Enhancements */
-.content-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
 }
 
-.content-card .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    background: linear-gradient(180deg, rgba(107, 70, 193, 0.08) 0%, transparent 100%);
-    border-bottom: 1px solid var(--border);
+.status-badge.inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
 }
 
-.content-card .card-header h3 {
-    font-size: 18px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 0;
-}
-
-.content-card .card-header h3 i {
-    color: var(--primary-light);
-}
-
-.content-card .card-body {
-    padding: 24px;
-}
-
-/* Empty State Enhancement */
-.placeholder-text {
+/* Empty State */
+.empty-state {
+    grid-column: 1 / -1;
     text-align: center;
-    padding: 48px 24px;
+    padding: var(--space-10) var(--space-6);
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-xl);
+}
+
+.empty-state i {
+    font-size: 48px;
     color: var(--text-muted);
-    font-size: 14px;
+    margin-bottom: var(--space-4);
+    display: block;
+}
+
+.empty-state h4 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-white);
+    margin-bottom: var(--space-2);
+}
+
+.empty-state p {
+    font-size: var(--font-size-base);
+    color: var(--text-muted);
+    margin-bottom: var(--space-5);
 }
 
 @media (max-width: 768px) {
-    .categories-page-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .page-header-content {
-        flex-direction: column;
-        align-items: flex-start;
-        text-align: left;
-    }
-    
-    .category-tabs {
-        flex-direction: column;
-    }
-    
-    .categories-list {
+    .categories-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .category-card {
+        flex-wrap: wrap;
+    }
+    
+    .category-card-actions {
+        flex-direction: row;
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: var(--space-3);
     }
 }
 </style>
@@ -609,8 +468,8 @@ if (!in_array($activeTab, $validTabs)) {
 <div id="add-skill-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title">Add Skill Category</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-skill-modal')">&times;</button>
+            <h2 class="modal-title"><i class="fas fa-star"></i> Add Skill</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-skill-modal')">&times;</button>
         </div>
         <form id="add-skill-form" method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -619,23 +478,59 @@ if (!in_array($activeTab, $validTabs)) {
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Skill Name *</label>
-                    <input type="text" name="name" class="form-input" required>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Skating, Passing, Shooting">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Icon (Font Awesome class)</label>
-                    <input type="text" name="icon" class="form-input" placeholder="e.g., fa-skating">
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Describe what this skill evaluates"></textarea>
                 </div>
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-skill-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Skill</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-skill-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Create Skill
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Skill Modal -->
+<div id="edit-skill-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Skill</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('edit-skill-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="type" value="skill">
+            <input type="hidden" name="id" id="edit-skill-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Skill Name *</label>
+                    <input type="text" name="name" id="edit-skill-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-skill-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-skill-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Skill
+                </button>
             </div>
         </form>
     </div>
@@ -645,8 +540,8 @@ if (!in_array($activeTab, $validTabs)) {
 <div id="add-drill-type-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title">Add Drill Type</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-drill-type-modal')">&times;</button>
+            <h2 class="modal-title"><i class="fas fa-hockey-puck"></i> Add Drill Type</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-drill-type-modal')">&times;</button>
         </div>
         <form id="add-drill-type-form" method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
@@ -655,123 +550,137 @@ if (!in_array($activeTab, $validTabs)) {
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Drill Type Name *</label>
-                    <input type="text" name="name" class="form-input" required>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Skating, Shooting, Passing">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Icon (Font Awesome class)</label>
-                    <input type="text" name="icon" class="form-input" placeholder="e.g., fa-hockey-puck">
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Describe what this drill type focuses on"></textarea>
                 </div>
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-drill-type-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Drill Type</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-drill-type-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Create Drill Type
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Add Position Modal -->
-<div id="add-position-modal" class="modal">
+<!-- Edit Drill Type Modal -->
+<div id="edit-drill-type-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title">Add Player Position</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-position-modal')">&times;</button>
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Drill Type</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('edit-drill-type-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="create_position">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="type" value="drill_type">
+            <input type="hidden" name="id" id="edit-drill-type-id">
             
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Position Name *</label>
-                    <input type="text" name="name" class="form-input" required placeholder="e.g., Center, Left Wing">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Abbreviation</label>
-                    <input type="text" name="abbreviation" class="form-input" placeholder="e.g., C, LW, RW">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Position Type</label>
-                    <select name="position_type" class="form-input">
-                        <option value="">Select Type</option>
-                        <option value="forward">Forward</option>
-                        <option value="defense">Defense</option>
-                        <option value="goalie">Goalie</option>
-                    </select>
+                    <label class="form-label">Drill Type Name *</label>
+                    <input type="text" name="name" id="edit-drill-type-name" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3"></textarea>
+                    <textarea name="description" id="edit-drill-type-description" class="form-textarea" rows="3"></textarea>
                 </div>
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-position-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Position</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-drill-type-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Drill Type
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Edit Position Modal -->
-<div id="edit-position-modal" class="modal">
+<!-- Add Merchandise Category Modal -->
+<div id="add-merchandise-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title">Edit Player Position</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-position-modal')">&times;</button>
+            <h2 class="modal-title"><i class="fas fa-shopping-bag"></i> Add Merchandise Category</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-merchandise-modal')">&times;</button>
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="update_position">
-            <input type="hidden" name="id" id="edit-position-id">
+            <input type="hidden" name="action" value="add_merchandise_category">
             
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Position Name *</label>
-                    <input type="text" name="name" id="edit-position-name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Abbreviation</label>
-                    <input type="text" name="abbreviation" id="edit-position-abbreviation" class="form-input">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Position Type</label>
-                    <select name="position_type" id="edit-position-type" class="form-input">
-                        <option value="">Select Type</option>
-                        <option value="forward">Forward</option>
-                        <option value="defense">Defense</option>
-                        <option value="goalie">Goalie</option>
-                    </select>
+                    <label class="form-label">Category Name *</label>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Apparel, Equipment, Accessories">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea name="description" id="edit-position-description" class="form-textarea" rows="3"></textarea>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Brief description of this category"></textarea>
                 </div>
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-position-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Position</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-merchandise-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Category
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Merchandise Category Modal -->
+<div id="edit-merchandise-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Merchandise Category</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('edit-merchandise-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="edit_merchandise_category">
+            <input type="hidden" name="id" id="edit-merchandise-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Category Name *</label>
+                    <input type="text" name="name" id="edit-merchandise-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-merchandise-description" class="form-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('edit-merchandise-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Category
+                </button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-// Initialize immediately since this view is loaded dynamically after DOM is ready
+// Initialize event handlers
 (function() {
     // Handle edit buttons for all category types
     document.querySelectorAll('[data-action="edit"]').forEach(button => {
@@ -781,88 +690,56 @@ if (!in_array($activeTab, $validTabs)) {
             const name = this.getAttribute('data-name') || '';
             const description = this.getAttribute('data-description') || '';
             
-            if (type === 'position') {
-                const abbreviation = this.getAttribute('data-abbreviation') || '';
-                const positionType = this.getAttribute('data-position-type') || '';
-                
-                document.getElementById('edit-position-id').value = id;
-                document.getElementById('edit-position-name').value = name;
-                document.getElementById('edit-position-abbreviation').value = abbreviation;
-                document.getElementById('edit-position-description').value = description;
-                document.getElementById('edit-position-type').value = positionType;
-                
-                document.getElementById('edit-position-modal').classList.add('active');
-            } else if (type === 'skill') {
+            if (type === 'skill') {
                 document.getElementById('edit-skill-id').value = id;
                 document.getElementById('edit-skill-name').value = name;
                 document.getElementById('edit-skill-description').value = description;
-                
                 document.getElementById('edit-skill-modal').classList.add('active');
             } else if (type === 'drill_type') {
                 document.getElementById('edit-drill-type-id').value = id;
                 document.getElementById('edit-drill-type-name').value = name;
                 document.getElementById('edit-drill-type-description').value = description;
-                
                 document.getElementById('edit-drill-type-modal').classList.add('active');
-            } else if (type === 'equipment') {
-                document.getElementById('edit-equipment-id').value = id;
-                document.getElementById('edit-equipment-name').value = name;
-                document.getElementById('edit-equipment-description').value = description;
-                
-                document.getElementById('edit-equipment-modal').classList.add('active');
+            } else if (type === 'merchandise') {
+                document.getElementById('edit-merchandise-id').value = id;
+                document.getElementById('edit-merchandise-name').value = name;
+                document.getElementById('edit-merchandise-description').value = description;
+                document.getElementById('edit-merchandise-modal').classList.add('active');
             }
         });
     });
     
-    // Handle delete buttons with CSRF token
+    // Handle delete buttons
     document.querySelectorAll('[data-action="delete"]').forEach(button => {
         button.addEventListener('click', function() {
             const id = this.getAttribute('data-id');
             const type = this.getAttribute('data-type');
             const name = this.getAttribute('data-name');
             
-            if (confirm(`Are you sure you want to delete "${name}"?`)) {
+            if (confirm('Are you sure you want to delete "' + name + '"? This action cannot be undone.')) {
                 const csrfInput = document.querySelector('input[name="csrf_token"]');
                 const csrfToken = csrfInput ? csrfInput.value : '';
-                
-                let actionName = 'delete';
-                let actionType = type;
-                
-                if (type === 'position') {
-                    actionName = 'delete_position';
-                }
                 
                 fetch('process_admin_action.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: `action=${actionName}&id=${id}&type=${actionType}&csrf_token=${csrfToken}`
+                    body: 'action=delete&id=' + encodeURIComponent(id) + '&type=' + encodeURIComponent(type) + '&csrf_token=' + encodeURIComponent(csrfToken)
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        location.reload();
+                        showNotification('Deleted successfully!', 'success');
+                        setTimeout(function() { location.reload(); }, 1000);
                     } else {
-                        alert('Error: ' + (data.message || 'Unknown error'));
+                        showNotification('Error: ' + (data.message || 'Unknown error'), 'error');
                     }
                 })
-                .catch(error => {
+                .catch(function(error) {
                     console.error('Error:', error);
-                    // Try redirect-based deletion as fallback
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = 'process_admin_action.php';
-                    
-                    form.innerHTML = `
-                        <input type="hidden" name="action" value="${actionName}">
-                        <input type="hidden" name="id" value="${id}">
-                        <input type="hidden" name="type" value="${actionType}">
-                        <input type="hidden" name="csrf_token" value="${csrfToken}">
-                    `;
-                    
-                    document.body.appendChild(form);
-                    form.submit();
+                    showNotification('An error occurred', 'error');
                 });
             }
         });
@@ -881,7 +758,7 @@ if (!in_array($activeTab, $validTabs)) {
             this.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
             
-            // Update URL without page reload (for bookmarking)
+            // Update URL without page reload
             const url = new URL(window.location);
             url.searchParams.set('tab', tabName);
             window.history.replaceState({}, '', url);
@@ -949,7 +826,7 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             }
             
             if (data.success) {
-                showNotification(data.message || 'Created successfully!', 'success');
+                showNotification(data.message || 'Operation completed successfully!', 'success');
                 if (modal) closeModal(modal.id);
                 setTimeout(function() { location.reload(); }, 1500);
             } else {
@@ -983,192 +860,3 @@ function openModal(modalId) {
     }
 }
 </script>
-
-<!-- Edit Skill Modal -->
-<div id="edit-skill-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title">Edit Skill</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-skill-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_admin_action.php">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" name="type" value="skill">
-            <input type="hidden" name="id" id="edit-skill-id">
-            
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Skill Name *</label>
-                    <input type="text" name="name" id="edit-skill-name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" id="edit-skill-description" class="form-textarea" rows="3"></textarea>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-skill-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Skill</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Edit Drill Type Modal -->
-<div id="edit-drill-type-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title">Edit Drill Type</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-drill-type-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_admin_action.php">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" name="type" value="drill_type">
-            <input type="hidden" name="id" id="edit-drill-type-id">
-            
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Drill Type Name *</label>
-                    <input type="text" name="name" id="edit-drill-type-name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" id="edit-drill-type-description" class="form-textarea" rows="3"></textarea>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-drill-type-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Drill Type</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Add Equipment Modal -->
-<div id="add-equipment-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title">Add Equipment Category</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-equipment-modal')">&times;</button>
-        </div>
-        <form id="add-equipment-form" method="POST" action="process_admin_action.php">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="create_equipment">
-            
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Equipment Name *</label>
-                    <input type="text" name="name" class="form-input" required placeholder="e.g., Pucks, Cones, Nets">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3" placeholder="Brief description of this equipment"></textarea>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Create Equipment</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Edit Equipment Modal -->
-<div id="edit-equipment-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title">Edit Equipment</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-equipment-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_admin_action.php">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="edit">
-            <input type="hidden" name="type" value="equipment">
-            <input type="hidden" name="id" id="edit-equipment-id">
-            
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Equipment Name *</label>
-                    <input type="text" name="name" id="edit-equipment-name" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" id="edit-equipment-description" class="form-textarea" rows="3"></textarea>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-equipment-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Equipment</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Add Merchandise Category Modal -->
-<div id="add-merchandise-modal" class="modal">
-    <div class="modal-content">
-        <form method="POST" action="process_admin_action.php">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-            <input type="hidden" name="action" value="add_merchandise_category">
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-merchandise-modal')">&times;</button>
-            <div class="modal-header">
-                <h3><i class="fas fa-tag"></i> Add Merchandise Category</h3>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Category Name *</label>
-                    <input type="text" name="name" class="form-input" required placeholder="e.g., Apparel, Equipment, Accessories">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-textarea" rows="3" placeholder="Brief description of this category"></textarea>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('add-merchandise-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Add Category</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Edit Merchandise Category Modal -->
-<div id="edit-merchandise-modal" class="modal">
-    <div class="modal-content">
-        <form method="POST" action="process_admin_action.php">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-            <input type="hidden" name="action" value="edit_merchandise_category">
-            <input type="hidden" name="id" id="edit-merchandise-id">
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-merchandise-modal')">&times;</button>
-            <div class="modal-header">
-                <h3><i class="fas fa-tag"></i> Edit Merchandise Category</h3>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Category Name *</label>
-                    <input type="text" name="name" id="edit-merchandise-name" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" id="edit-merchandise-description" class="form-textarea" rows="3"></textarea>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-merchandise-modal')"><i class="fas fa-times"></i> Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Category</button>
-            </div>
-        </form>
-    </div>
-</div>
