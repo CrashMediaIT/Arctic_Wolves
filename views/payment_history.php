@@ -18,21 +18,46 @@ if ($is_parent && isset($_GET['athlete_id'])) {
     }
 }
 
-// Get payment history
-$payments_stmt = $pdo->prepare("
-    SELECT b.*, s.title as session_title, s.session_date, s.session_time,
-           p.name as package_name,
-           u.first_name, u.last_name
+// Get session booking history (from bookings table)
+$bookings_stmt = $pdo->prepare("
+    SELECT b.id, b.session_id, b.user_id, b.booking_date as created_at, b.payment_status, 
+           b.amount, b.amount_paid, b.original_price, b.discount_code,
+           COALESCE(0, 0) as credit_applied,
+           s.title as session_title, s.session_date, s.session_time,
+           NULL as package_name, 'session' as payment_type,
+           NULL as booked_for_user_id, NULL as first_name, NULL as last_name
     FROM bookings b
     LEFT JOIN sessions s ON b.session_id = s.id
-    LEFT JOIN packages p ON b.package_id = p.id
-    LEFT JOIN users u ON b.booked_for_user_id = u.id
-    WHERE b.user_id = ? AND b.status = 'paid'
-    ORDER BY b.created_at DESC
-    LIMIT 200
+    WHERE b.user_id = ? AND b.payment_status = 'paid'
+    ORDER BY b.booking_date DESC
+    LIMIT 100
 ");
-$payments_stmt->execute([$viewing_user_id]);
-$payments = $payments_stmt->fetchAll();
+$bookings_stmt->execute([$viewing_user_id]);
+$session_payments = $bookings_stmt->fetchAll();
+
+// Get package purchase history (from user_packages table)
+$packages_stmt = $pdo->prepare("
+    SELECT up.id, up.user_id, up.purchase_date as created_at, up.payment_status,
+           up.amount_paid, up.amount_paid as amount, up.amount_paid as original_price,
+           NULL as discount_code, COALESCE(0, 0) as credit_applied,
+           NULL as session_title, NULL as session_date, NULL as session_time,
+           p.name as package_name, 'package' as payment_type,
+           NULL as booked_for_user_id, NULL as first_name, NULL as last_name
+    FROM user_packages up
+    LEFT JOIN packages p ON up.package_id = p.id
+    WHERE up.user_id = ? AND up.payment_status = 'paid'
+    ORDER BY up.purchase_date DESC
+    LIMIT 100
+");
+$packages_stmt->execute([$viewing_user_id]);
+$package_payments = $packages_stmt->fetchAll();
+
+// Combine and sort all payments by date
+$payments = array_merge($session_payments, $package_payments);
+usort($payments, function($a, $b) {
+    return strtotime($b['created_at']) - strtotime($a['created_at']);
+});
+$payments = array_slice($payments, 0, 200);
 
 // Get user credits history
 $credits_stmt = $pdo->prepare("

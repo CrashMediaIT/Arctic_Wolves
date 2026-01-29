@@ -469,6 +469,45 @@ try {
             ]);
             exit;
             
+        case 'update_landing':
+            // Update Programs settings (4 programs)
+            for ($i = 1; $i <= 4; $i++) {
+                $prefix = "landing_program_{$i}_";
+                $title = trim($_POST[$prefix . 'title'] ?? '');
+                $image = trim($_POST[$prefix . 'image'] ?? '');
+                $tags = trim($_POST[$prefix . 'tags'] ?? '');
+                $description = trim($_POST[$prefix . 'description'] ?? '');
+                
+                // Validate image URL if provided - must be http or https
+                if (!empty($image)) {
+                    if (!filter_var($image, FILTER_VALIDATE_URL)) {
+                        throw new Exception("Invalid URL for Program $i image");
+                    }
+                    $parsed = parse_url($image);
+                    if (!isset($parsed['scheme']) || !in_array($parsed['scheme'], ['http', 'https'])) {
+                        throw new Exception("Program $i image URL must use http or https scheme");
+                    }
+                }
+                
+                updateSetting($pdo, $prefix . 'title', $title);
+                updateSetting($pdo, $prefix . 'image', $image);
+                updateSetting($pdo, $prefix . 'tags', $tags);
+                updateSetting($pdo, $prefix . 'description', $description);
+            }
+            
+            // Update Standards settings (4 standards)
+            for ($i = 1; $i <= 4; $i++) {
+                $prefix = "landing_standard_{$i}_";
+                $label = trim($_POST[$prefix . 'label'] ?? '');
+                $value = trim($_POST[$prefix . 'value'] ?? '');
+                
+                updateSetting($pdo, $prefix . 'label', $label);
+                updateSetting($pdo, $prefix . 'value', $value);
+            }
+            
+            header('Location: dashboard.php?page=admin_settings&success=1');
+            exit;
+            
         default:
             throw new Exception('Invalid action');
     }

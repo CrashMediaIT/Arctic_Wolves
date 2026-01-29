@@ -1,3 +1,81 @@
+<?php
+// Fetch landing page settings from database with fallback to defaults
+$landing_settings = [];
+if (isset($pdo)) {
+    try {
+        $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'landing_%'");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $landing_settings[$row['setting_key']] = $row['setting_value'];
+        }
+    } catch (PDOException $e) {
+        // Fallback to empty array if database error
+        $landing_settings = [];
+    }
+}
+
+// Helper function to get landing setting with fallback
+function getLandingSetting($settings, $key, $default = '') {
+    return (!empty($settings[$key])) ? $settings[$key] : $default;
+}
+
+// Default program data
+$default_programs = [
+    1 => [
+        'title' => 'Player Dev',
+        'image' => 'https://images.unsplash.com/photo-1580748141549-71748ddf0bdc?q=80&w=800',
+        'tags' => 'Power Skating, Shooting',
+        'description' => 'Forwards & Defense: Explosive edgework and shot mechanics.'
+    ],
+    2 => [
+        'title' => 'Goalie Elite',
+        'image' => 'https://images.unsplash.com/photo-1543326727-b5bf833b6c7a?q=80&w=800',
+        'tags' => 'Positioning, Tracking',
+        'description' => 'Crease management, angle control, and rebound psychology.'
+    ],
+    3 => [
+        'title' => 'Conditioning',
+        'image' => 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=800',
+        'tags' => 'Strength, Power',
+        'description' => 'Dryland training for endurance and explosive 60-minute power.'
+    ],
+    4 => [
+        'title' => 'Nutrition',
+        'image' => 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=800',
+        'tags' => 'Protein, Recovery',
+        'description' => 'Meal planning to fuel muscle growth and accelerate recovery.'
+    ]
+];
+
+// Default standards data
+$default_standards = [
+    1 => ['label' => 'Ice Ratio', 'value' => '4:1 Player/Coach'],
+    2 => ['label' => 'Technology', 'value' => 'Video Analysis'],
+    3 => ['label' => 'Facility', 'value' => 'Pro-Grade Gym'],
+    4 => ['label' => 'Methodology', 'value' => 'Periodization']
+];
+
+// Build program data with fallbacks
+$programs = [];
+for ($i = 1; $i <= 4; $i++) {
+    $prefix = "landing_program_{$i}_";
+    $programs[$i] = [
+        'title' => getLandingSetting($landing_settings, $prefix . 'title', $default_programs[$i]['title']),
+        'image' => getLandingSetting($landing_settings, $prefix . 'image', $default_programs[$i]['image']),
+        'tags' => getLandingSetting($landing_settings, $prefix . 'tags', $default_programs[$i]['tags']),
+        'description' => getLandingSetting($landing_settings, $prefix . 'description', $default_programs[$i]['description'])
+    ];
+}
+
+// Build standards data with fallbacks
+$standards = [];
+for ($i = 1; $i <= 4; $i++) {
+    $prefix = "landing_standard_{$i}_";
+    $standards[$i] = [
+        'label' => getLandingSetting($landing_settings, $prefix . 'label', $default_standards[$i]['label']),
+        'value' => getLandingSetting($landing_settings, $prefix . 'value', $default_standards[$i]['value'])
+    ];
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,10 +104,12 @@
             </div>
             
             <div class="nav-menu">
-                <a href="#programs">Programs</a>
+                <a href="index.php">Home</a>
                 <a href="sessions_public.php">Sessions</a>
                 <a href="shop.php">Shop</a>
-                <a href="#standards">Standards</a>
+                <a href="shop_cart.php" style="position: relative;">
+                    <i class="fas fa-shopping-cart"></i>
+                </a>
                 <a href="login.php" class="nav-btn">Athlete Login</a>
             </div>
         </nav>
@@ -66,41 +146,21 @@
 
             <div class="programs-grid">
                 
+                <?php foreach ($programs as $program): ?>
                 <div class="game-card">
-                    <div class="card-img" style="background-image: url('https://images.unsplash.com/photo-1580748141549-71748ddf0bdc?q=80&w=800');"></div>
+                    <div class="card-img" style="background-image: url('<?= htmlspecialchars($program['image']) ?>');"></div>
                     <div class="card-body">
-                        <h3>Player Dev</h3>
-                        <div class="tags"><span>Power Skating</span><span>Shooting</span></div>
-                        <p>Forwards & Defense: Explosive edgework and shot mechanics.</p>
+                        <h3><?= htmlspecialchars($program['title']) ?></h3>
+                        <div class="tags"><?php 
+                            $tags = array_filter(array_map('trim', explode(',', $program['tags'])), function($tag) { return $tag !== ''; });
+                            foreach ($tags as $tag) {
+                                echo '<span>' . htmlspecialchars($tag) . '</span>';
+                            }
+                        ?></div>
+                        <p><?= htmlspecialchars($program['description']) ?></p>
                     </div>
                 </div>
-
-                <div class="game-card">
-                    <div class="card-img" style="background-image: url('https://images.unsplash.com/photo-1543326727-b5bf833b6c7a?q=80&w=800');"></div>
-                    <div class="card-body">
-                        <h3>Goalie Elite</h3>
-                        <div class="tags"><span>Positioning</span><span>Tracking</span></div>
-                        <p>Crease management, angle control, and rebound psychology.</p>
-                    </div>
-                </div>
-
-                <div class="game-card">
-                    <div class="card-img" style="background-image: url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=800');"></div>
-                    <div class="card-body">
-                        <h3>Conditioning</h3>
-                        <div class="tags"><span>Strength</span><span>Power</span></div>
-                        <p>Dryland training for endurance and explosive 60-minute power.</p>
-                    </div>
-                </div>
-
-                <div class="game-card">
-                    <div class="card-img" style="background-image: url('https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=800');"></div>
-                    <div class="card-body">
-                        <h3>Nutrition</h3>
-                        <div class="tags"><span>Protein</span><span>Recovery</span></div>
-                        <p>Meal planning to fuel muscle growth and accelerate recovery.</p>
-                    </div>
-                </div>
+                <?php endforeach; ?>
 
             </div>
 
@@ -118,22 +178,12 @@
                 <span class="eyebrow">Elite Standards</span>
                 <h2>The Science Behind The Sport</h2>
                 <div class="spec-table">
+                    <?php foreach ($standards as $standard): ?>
                     <div class="spec-row">
-                        <span class="spec-label">Ice Ratio</span>
-                        <span class="spec-value">4:1 Player/Coach</span>
+                        <span class="spec-label"><?= htmlspecialchars($standard['label']) ?></span>
+                        <span class="spec-value"><?= htmlspecialchars($standard['value']) ?></span>
                     </div>
-                    <div class="spec-row">
-                        <span class="spec-label">Technology</span>
-                        <span class="spec-value">Video Analysis</span>
-                    </div>
-                    <div class="spec-row">
-                        <span class="spec-label">Facility</span>
-                        <span class="spec-value">Pro-Grade Gym</span>
-                    </div>
-                    <div class="spec-row">
-                        <span class="spec-label">Methodology</span>
-                        <span class="spec-value">Periodization</span>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
             <div class="panel-visual">

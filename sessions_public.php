@@ -485,10 +485,12 @@ $viewMode = $_GET['view'] ?? 'list';
             </a>
             
             <div class="nav-menu">
-                <a href="index.php#programs">Programs</a>
+                <a href="index.php">Home</a>
                 <a href="sessions_public.php" style="color: var(--primary);">Sessions</a>
                 <a href="shop.php">Shop</a>
-                <a href="index.php#standards">Standards</a>
+                <a href="shop_cart.php" style="position: relative;">
+                    <i class="fas fa-shopping-cart"></i>
+                </a>
                 <a href="login.php" class="nav-btn">Athlete Login</a>
             </div>
         </nav>

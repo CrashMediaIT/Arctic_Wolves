@@ -613,10 +613,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             </div>
             
             <div class="nav-menu">
-                <a href="index.php#programs">Programs</a>
+                <a href="index.php">Home</a>
                 <a href="sessions_public.php">Sessions</a>
                 <a href="shop.php" style="color: var(--primary);">Shop</a>
-                <a href="index.php#standards">Standards</a>
                 <a href="shop_cart.php" style="position: relative;">
                     <i class="fas fa-shopping-cart"></i>
                     <span id="nav-cart-count" style="position: absolute; top: -8px; right: -8px; background: var(--primary); width: 18px; height: 18px; border-radius: 50%; font-size: 10px; display: <?= $cartCount > 0 ? 'flex' : 'none' ?>; align-items: center; justify-content: center;"><?= $cartCount ?></span>
