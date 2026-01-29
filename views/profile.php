@@ -816,13 +816,13 @@ $errors = [
                     
                     <div class="form-group">
                         <label>New PIN (4 digits) *</label>
-                        <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="new-password">
+                        <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
                         <small class="form-hint">Must be exactly 4 digits</small>
                     </div>
 
                     <div class="form-group">
                         <label>Confirm PIN *</label>
-                        <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="new-password">
+                        <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
                     </div>
 
                     <div class="form-group">
@@ -1037,15 +1037,44 @@ document.addEventListener('DOMContentLoaded', function() {
             const submitBtn = document.getElementById('pin-submit-btn');
             const originalBtnText = submitBtn.innerHTML;
             
+            // Helper function for PIN notifications
+            function showPinNotification(message, type) {
+                var existing = document.querySelector('.pin-notification');
+                if (existing) existing.remove();
+                
+                var div = document.createElement('div');
+                div.className = 'pin-notification';
+                div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; font-family: Inter, sans-serif; font-size: 14px;';
+                div.style.background = type === 'success' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)';
+                div.style.color = '#fff';
+                
+                var icon = document.createElement('i');
+                icon.className = 'fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle');
+                div.appendChild(icon);
+                
+                var text = document.createElement('span');
+                text.textContent = message;
+                div.appendChild(text);
+                
+                var closeBtn = document.createElement('button');
+                closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.onclick = function() { div.remove(); };
+                div.appendChild(closeBtn);
+                
+                document.body.appendChild(div);
+                setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+            }
+            
             // Validate PINs match
             if (formData.get('new_pin') !== formData.get('confirm_pin')) {
-                alert('PINs do not match');
+                showPinNotification('PINs do not match', 'error');
                 return;
             }
             
             // Validate PIN format
             if (!/^\d{4}$/.test(formData.get('new_pin'))) {
-                alert('PIN must be exactly 4 digits');
+                showPinNotification('PIN must be exactly 4 digits', 'error');
                 return;
             }
             
@@ -1062,17 +1091,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.disabled = false;
                 
                 if (data.success) {
-                    alert('PIN updated successfully!');
+                    showPinNotification('PIN updated successfully!', 'success');
                     pinForm.reset();
                 } else {
-                    alert('Error: ' + (data.message || 'Failed to update PIN'));
+                    showPinNotification('Error: ' + (data.message || 'Failed to update PIN'), 'error');
                 }
             })
             .catch(error => {
                 submitBtn.innerHTML = originalBtnText;
                 submitBtn.disabled = false;
                 console.error('Error:', error);
-                alert('An error occurred. Please try again.');
+                showPinNotification('An error occurred. Please try again.', 'error');
             });
         });
     }
