@@ -2898,9 +2898,12 @@ CREATE TABLE IF NOT EXISTS `payees` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Link expenses to payees
+-- First add the column (idempotent with IF NOT EXISTS)
 ALTER TABLE `expenses`
-ADD COLUMN IF NOT EXISTS `payee_id` INT DEFAULT NULL AFTER `vendor_name`,
-ADD CONSTRAINT `fk_expense_payee` FOREIGN KEY (`payee_id`) REFERENCES `payees`(`id`) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS `payee_id` INT DEFAULT NULL AFTER `vendor_name`;
+
+-- Note: The foreign key constraint fk_expense_payee is added via setup.php
+-- to ensure idempotent behavior (constraint is only added if it doesn't exist)
 
 -- =====================================================
 -- BATCH PAYMENTS
