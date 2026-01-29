@@ -160,8 +160,9 @@ $sessions = $pdo->query("
                 <div class="form-group">
                     <label>Package Type <span class="required">*</span></label>
                     <select name="package_type" id="packageType" required onchange="togglePackageFields()">
-                        <option value="credits">Credit Package</option>
-                        <option value="bundled">Bundled Package</option>
+                        <option value="credits">Session Credits (set number of sessions)</option>
+                        <option value="dollar_value">Dollar Value (store credit amount)</option>
+                        <option value="bundled">Bundled Sessions (pick from sessions library)</option>
                     </select>
                 </div>
             </div>
@@ -178,14 +179,26 @@ $sessions = $pdo->query("
                 </div>
                 
                 <div class="form-group" id="creditsGroup">
-                    <label>Number of Credits <span class="required">*</span></label>
+                    <label>Number of Sessions <span class="required">*</span></label>
                     <input type="number" name="credits" id="packageCredits" min="1">
+                    <small style="color: #94a3b8; font-size: 12px;">How many sessions can be booked with this package</small>
+                </div>
+                
+                <div class="form-group" id="storeCreditsGroup" style="display: none;">
+                    <label>Store Credit Value ($) <span class="required">*</span></label>
+                    <input type="number" name="store_credit" id="packageStoreCredit" step="0.01" min="0">
+                    <small style="color: #94a3b8; font-size: 12px;">Dollar amount of store credit included</small>
                 </div>
                 
                 <div class="form-group">
                     <label>Valid for (days)</label>
                     <input type="number" name="valid_days" id="packageValidDays" value="365" min="1">
                 </div>
+            </div>
+            
+            <div id="bundledNote" style="display: none; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+                <i class="fas fa-info-circle" style="color: #8B5CF6;"></i>
+                <span style="color: #94a3b8;">After creating this package, use the <strong style="color: #e2e8f0;">Manage Sessions</strong> button to select specific sessions from your sessions library.</span>
             </div>
             
             <div class="form-row">
@@ -646,13 +659,33 @@ function togglePackageFields() {
     const type = document.getElementById('packageType').value;
     const creditsGroup = document.getElementById('creditsGroup');
     const creditsInput = document.getElementById('packageCredits');
+    const storeCreditsGroup = document.getElementById('storeCreditsGroup');
+    const storeCreditsInput = document.getElementById('packageStoreCredit');
+    const bundledNote = document.getElementById('bundledNote');
     
+    // Credits/Sessions package
     if (type === 'credits') {
         creditsGroup.style.display = 'block';
         creditsInput.required = true;
-    } else {
+        storeCreditsGroup.style.display = 'none';
+        if (storeCreditsInput) storeCreditsInput.required = false;
+        bundledNote.style.display = 'none';
+    } 
+    // Dollar value package
+    else if (type === 'dollar_value') {
         creditsGroup.style.display = 'none';
         creditsInput.required = false;
+        storeCreditsGroup.style.display = 'block';
+        if (storeCreditsInput) storeCreditsInput.required = true;
+        bundledNote.style.display = 'none';
+    }
+    // Bundled sessions package
+    else {
+        creditsGroup.style.display = 'none';
+        creditsInput.required = false;
+        storeCreditsGroup.style.display = 'none';
+        if (storeCreditsInput) storeCreditsInput.required = false;
+        bundledNote.style.display = 'block';
     }
 }
 

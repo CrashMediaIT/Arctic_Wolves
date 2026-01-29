@@ -448,7 +448,10 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(updateCurrentTime, 1000);
     
     if (shiftData) {
+        console.log('Timer: Starting with shiftData', shiftData);
         startTimer();
+    } else {
+        console.log('Timer: No active shift data');
     }
     
     loadWeeklyStats();
@@ -465,10 +468,16 @@ function startTimer() {
     
     // Function to update timer display
     function updateTimer() {
-        if (!shiftData || !shiftData.clock_in) return;
+        if (!shiftData || !shiftData.clock_in) {
+            console.log('Timer: No shift data or clock_in', shiftData);
+            return;
+        }
         
         const clockIn = parseMySQLDateTime(shiftData.clock_in);
-        if (!clockIn || isNaN(clockIn.getTime())) return;
+        if (!clockIn || isNaN(clockIn.getTime())) {
+            console.log('Timer: Invalid clockIn date', shiftData.clock_in, clockIn);
+            return;
+        }
         
         const now = new Date();
         let elapsed = Math.floor((now - clockIn) / 1000);
