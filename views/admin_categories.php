@@ -92,9 +92,6 @@ if (!in_array($activeTab, $validTabs)) {
                         <i class="fas fa-star"></i>
                         <h4>No Skills Found</h4>
                         <p>Create your first skill to use in athlete evaluations.</p>
-                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-skill-modal">
-                            <i class="fas fa-plus"></i> Add Skill
-                        </button>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -160,9 +157,6 @@ if (!in_array($activeTab, $validTabs)) {
                         <i class="fas fa-hockey-puck"></i>
                         <h4>No Drill Types Found</h4>
                         <p>Create drill types to organize your training drills.</p>
-                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-drill-type-modal">
-                            <i class="fas fa-plus"></i> Add Drill Type
-                        </button>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -233,9 +227,6 @@ if (!in_array($activeTab, $validTabs)) {
                         <i class="fas fa-shopping-bag"></i>
                         <h4>No Merchandise Categories Found</h4>
                         <p>Create categories to organize products in your shop.</p>
-                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-merchandise-modal">
-                            <i class="fas fa-plus"></i> Add Category
-                        </button>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -617,7 +608,7 @@ if (!in_array($activeTab, $validTabs)) {
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="add_merchandise_category">
+            <input type="hidden" name="action" value="create_merchandise_category">
             
             <div class="modal-body">
                 <div class="form-group">
@@ -652,7 +643,8 @@ if (!in_array($activeTab, $validTabs)) {
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="edit_merchandise_category">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="type" value="merchandise">
             <input type="hidden" name="id" id="edit-merchandise-id">
             
             <div class="modal-body">
@@ -791,8 +783,8 @@ function showNotification(message, type) {
         div.style.background = 'rgba(239, 68, 68, 0.95)';
         div.style.color = '#fff';
     }
-    // Escape message to prevent XSS
-    var escapedMessage = message.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // Escape message to prevent XSS (including single quotes)
+    var escapedMessage = message.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + escapedMessage + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
     document.body.appendChild(div);
     setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
@@ -818,8 +810,24 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) {
+            // Check if response is ok
+            if (!response.ok) {
+                throw new Error('Server responded with status: ' + response.status);
+            }
+            return response.text();
+        })
+        .then(function(text) {
+            // Try to parse as JSON
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                // Don't log full response for security - it may contain sensitive info
+                console.error('Invalid JSON response received');
+                throw new Error('Server returned invalid response');
+            }
+        })
+        .then(function(data) {
             if (submitBtn) {
                 submitBtn.innerHTML = originalBtnText;
                 submitBtn.disabled = false;
@@ -839,7 +847,7 @@ document.querySelectorAll('.modal form').forEach(function(form) {
                 submitBtn.innerHTML = originalBtnText;
                 submitBtn.disabled = false;
             }
-            showNotification('An error occurred', 'error');
+            showNotification('Error: ' + error.message, 'error');
         });
     });
 });
@@ -848,6 +856,8 @@ function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.remove('active');
+        modal.style.display = '';
+        document.body.style.overflow = '';
         var form = modal.querySelector('form');
         if (form) form.reset();
     }
@@ -856,7 +866,9 @@ function closeModal(modalId) {
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
+        modal.style.display = 'flex';
         modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 }
 </script>
