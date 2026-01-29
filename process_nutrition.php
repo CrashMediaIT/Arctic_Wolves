@@ -201,6 +201,25 @@ try {
                 throw new Exception('Please select at least one athlete');
             }
             
+            // Verify nutrition plan exists
+            $plan_check = $pdo->prepare("SELECT id FROM nutrition_plans WHERE id = ?");
+            $plan_check->execute([$nutrition_plan_id]);
+            if (!$plan_check->fetch()) {
+                throw new Exception('Invalid nutrition plan');
+            }
+            
+            // Verify athletes exist and are active athletes
+            $placeholders = implode(',', array_fill(0, count($athlete_ids), '?'));
+            $verify_stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders) AND role = 'athlete' AND is_active = 1");
+            $verify_stmt->execute($athlete_ids);
+            $valid_athletes = $verify_stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            // Filter to only valid athlete IDs
+            $athlete_ids = array_intersect($athlete_ids, $valid_athletes);
+            if (empty($athlete_ids)) {
+                throw new Exception('No valid athletes selected');
+            }
+            
             // Validate date format
             if (!empty($start_date)) {
                 $d = DateTime::createFromFormat('Y-m-d', $start_date);

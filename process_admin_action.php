@@ -1277,6 +1277,19 @@ if ($action == 'create_user') {
     // Use first coach as primary assigned_coach_id for backward compatibility
     $primary_coach_id = !empty($assigned_coach_ids) ? $assigned_coach_ids[0] : null;
     $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
+    
+    // Validate required fields
+    if (empty($first_name) || empty($last_name) || empty($email) || empty($password)) {
+        header("Location: dashboard.php?page=all_users&status=error&msg=required_fields");
+        exit();
+    }
+    
+    // Validate role against allowlist
+    $valid_roles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff'];
+    if (!in_array($role, $valid_roles)) {
+        header("Location: dashboard.php?page=all_users&status=error&msg=invalid_role");
+        exit();
+    }
 
     try {
         // Hash the password
@@ -1335,6 +1348,19 @@ if ($action == 'update_user') {
     // Use first coach as primary assigned_coach_id for backward compatibility
     $primary_coach_id = !empty($assigned_coach_ids) ? $assigned_coach_ids[0] : null;
     $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
+    
+    // Validate required fields
+    if (empty($first_name) || empty($last_name) || empty($email)) {
+        header("Location: dashboard.php?page=all_users&status=error&msg=required_fields");
+        exit();
+    }
+    
+    // Validate role against allowlist
+    $valid_roles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff'];
+    if (!in_array($role, $valid_roles)) {
+        header("Location: dashboard.php?page=all_users&status=error&msg=invalid_role");
+        exit();
+    }
 
     try {
         // Check if password is being updated
