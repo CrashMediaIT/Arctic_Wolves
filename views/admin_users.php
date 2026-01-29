@@ -1337,73 +1337,78 @@ document.getElementById('reset-password-form').addEventListener('submit', functi
 </div>
 
 <script>
-// Handle reset PIN button click
-document.querySelectorAll('[data-action="reset-pin"]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        var userId = this.getAttribute('data-id');
-        var userName = this.getAttribute('data-name') || 'this user';
-        
-        var modal = document.getElementById('reset-pin-modal');
-        if (modal) {
-            modal.querySelector('input[name="user_id"]').value = userId;
-            modal.querySelector('.reset-pin-user-name').textContent = userName;
-            // Clear previous values
-            modal.querySelector('input[name="new_pin"]').value = '';
-            modal.querySelector('input[name="confirm_pin"]').value = '';
-            modal.classList.add('active');
-        }
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle reset PIN button click
+    document.querySelectorAll('[data-action="reset-pin"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var userId = this.getAttribute('data-id');
+            var userName = this.getAttribute('data-name') || 'this user';
+            
+            var modal = document.getElementById('reset-pin-modal');
+            if (modal) {
+                modal.querySelector('input[name="user_id"]').value = userId;
+                modal.querySelector('.reset-pin-user-name').textContent = userName;
+                // Clear previous values
+                modal.querySelector('input[name="new_pin"]').value = '';
+                modal.querySelector('input[name="confirm_pin"]').value = '';
+                modal.classList.add('active');
+            }
+        });
     });
-});
 
-// Handle reset PIN form submission
-document.getElementById('reset-pin-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    var newPin = this.querySelector('input[name="new_pin"]').value;
-    var confirmPin = this.querySelector('input[name="confirm_pin"]').value;
-    
-    if (newPin !== confirmPin) {
-        showNotification('PINs do not match', 'error');
-        return;
+    // Handle reset PIN form submission
+    var resetPinForm = document.getElementById('reset-pin-form');
+    if (resetPinForm) {
+        resetPinForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var newPin = this.querySelector('input[name="new_pin"]').value;
+            var confirmPin = this.querySelector('input[name="confirm_pin"]').value;
+            
+            if (newPin !== confirmPin) {
+                showNotification('PINs do not match', 'error');
+                return;
+            }
+            
+            if (!/^\d{4}$/.test(newPin)) {
+                showNotification('PIN must be exactly 4 digits', 'error');
+                return;
+            }
+            
+            var formData = new FormData(this);
+            var submitBtn = this.querySelector('button[type="submit"]');
+            var originalBtnText = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            submitBtn.disabled = true;
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+                
+                if (data.success) {
+                    showNotification(data.message || 'PIN set successfully!', 'success');
+                    closeModal('reset-pin-modal');
+                } else {
+                    showNotification('Error: ' + (data.message || 'Failed to set PIN'), 'error');
+                }
+            })
+            .catch(function(error) {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+                console.error('Error:', error);
+                showNotification('An error occurred. Please try again.', 'error');
+            });
+        });
     }
-    
-    if (!/^\d{4}$/.test(newPin)) {
-        showNotification('PIN must be exactly 4 digits', 'error');
-        return;
-    }
-    
-    var formData = new FormData(this);
-    var submitBtn = this.querySelector('button[type="submit"]');
-    var originalBtnText = submitBtn.innerHTML;
-    
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    submitBtn.disabled = true;
-    
-    fetch(this.action, {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        submitBtn.innerHTML = originalBtnText;
-        submitBtn.disabled = false;
-        
-        if (data.success) {
-            showNotification(data.message || 'PIN set successfully!', 'success');
-            closeModal('reset-pin-modal');
-        } else {
-            showNotification('Error: ' + (data.message || 'Failed to set PIN'), 'error');
-        }
-    })
-    .catch(function(error) {
-        submitBtn.innerHTML = originalBtnText;
-        submitBtn.disabled = false;
-        console.error('Error:', error);
-        showNotification('An error occurred. Please try again.', 'error');
-    });
-});
+}); // End DOMContentLoaded
 </script>
 
 <!-- Manage User Modal (Profile Image, Team, Notifications) -->
