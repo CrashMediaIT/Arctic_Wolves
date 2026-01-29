@@ -637,15 +637,17 @@ try {
 
     <!-- Payments Tab -->
     <div class="tab-content <?php echo $activeTab === 'payments' ? 'active' : ''; ?>" id="payments-tab">
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-credit-card"></i> Stripe Payment Configuration</h3>
-            </div>
-            <div class="card-body">
-                <form id="payments-form" method="POST" action="process_settings.php" data-form-type="payments">
-                    <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="update_payments">
-                    <input type="hidden" name="redirect_page" value="system_tools">
+        <form id="payments-form" method="POST" action="process_settings.php" data-form-type="payments">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_payments">
+            <input type="hidden" name="redirect_page" value="system_tools">
+            
+            <!-- Stripe Payment Configuration Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-credit-card"></i> Stripe Payment Configuration</h3>
+                </div>
+                <div class="card-body">
                     <div class="settings-list">
                         <div class="setting-item">
                             <div class="setting-info">
@@ -685,24 +687,15 @@ try {
                         <i class="fas fa-info-circle"></i>
                         <p>To obtain Stripe API keys, visit the <a href="https://dashboard.stripe.com/apikeys" target="_blank" style="color: #8B5CF6;">Stripe Dashboard → API Keys</a>. Use test keys (pk_test_/sk_test_) for development and live keys (pk_live_/sk_live_) for production.</p>
                     </div>
-                </form>
+                </div>
             </div>
-        </div>
-        
-        <!-- Tax Settings Card -->
-        <div class="card" style="margin-top: 24px;">
-            <div class="card-header">
-                <h3><i class="fas fa-percentage"></i> Tax Settings</h3>
-            </div>
-            <div class="card-body">
-                <form id="tax-form" method="POST" action="process_settings.php" data-form-type="payments">
-                    <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="update_payments">
-                    <input type="hidden" name="redirect_page" value="system_tools">
-                    <!-- Include Stripe fields as hidden to prevent clearing them -->
-                    <input type="hidden" name="stripe_publishable_key" value="<?php echo htmlspecialchars($settings['stripe_publishable_key'] ?? ''); ?>">
-                    <input type="hidden" name="stripe_secret_key" value="">
-                    <input type="hidden" name="currency" value="<?php echo htmlspecialchars($settings['currency'] ?? 'CAD'); ?>">
+            
+            <!-- Tax Settings Card -->
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <h3><i class="fas fa-percentage"></i> Tax Settings</h3>
+                </div>
+                <div class="card-body">
                     <div class="settings-list">
                         <div class="setting-item">
                             <div class="setting-info">
@@ -728,9 +721,9 @@ try {
                             <i class="fas fa-save"></i> Save Payment & Tax Settings
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
-        </div>
+        </form>
     </div>
 
     <!-- Theme Tab -->
