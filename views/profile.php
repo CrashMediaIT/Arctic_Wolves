@@ -1110,6 +1110,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <style>
 /* Profile Page Enhanced Styles */
+
+.profile-content {
+    max-height: calc(100vh - 350px);
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
 .profile-page-header {
     background: linear-gradient(135deg, rgba(107, 70, 193, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%);
     border: 1px solid var(--border);
