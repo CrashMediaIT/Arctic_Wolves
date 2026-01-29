@@ -926,7 +926,8 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             submitBtn.disabled = true;
         }
         
-        fetch(form.action, {
+        // Use getAttribute to avoid conflict with input[name="action"]
+        fetch(form.getAttribute('action'), {
             method: 'POST',
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }

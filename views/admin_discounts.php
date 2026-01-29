@@ -458,7 +458,7 @@ document.getElementById('discountForm').addEventListener('submit', function(e) {
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     submitBtn.disabled = true;
     
-    fetch(form.action, {
+    fetch(form.getAttribute('action'), {
         method: 'POST',
         body: formData,
         headers: { 'X-Requested-With': 'XMLHttpRequest' }

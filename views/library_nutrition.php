@@ -1000,7 +1000,8 @@ document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         submitBtn.disabled = true;
         
-        fetch(this.action, {
+        // Use getAttribute to avoid conflict with input[name="action"]
+        fetch(this.getAttribute('action'), {
             method: 'POST',
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }

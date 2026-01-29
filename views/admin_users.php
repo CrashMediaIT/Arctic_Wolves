@@ -1266,7 +1266,7 @@ document.getElementById('reset-password-form').addEventListener('submit', functi
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     submitBtn.disabled = true;
     
-    fetch(this.action, {
+    fetch(this.getAttribute('action'), {
         method: 'POST',
         body: formData,
         headers: { 'X-Requested-With': 'XMLHttpRequest' }

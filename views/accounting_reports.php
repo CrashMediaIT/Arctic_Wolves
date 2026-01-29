@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.append('date_to', '<?= date("Y-m-d") ?>');
             }
             
-            fetch(form.action, {
+            fetch(form.getAttribute('action'), {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
