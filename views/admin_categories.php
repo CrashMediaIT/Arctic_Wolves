@@ -855,6 +855,8 @@ function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.remove('active');
+        modal.style.display = '';
+        document.body.style.overflow = '';
         var form = modal.querySelector('form');
         if (form) form.reset();
     }
@@ -863,7 +865,9 @@ function closeModal(modalId) {
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
+        modal.style.display = 'flex';
         modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 }
 </script>
