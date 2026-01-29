@@ -152,7 +152,7 @@ for ($i = 1; $i <= 4; $i++) {
                     <div class="card-body">
                         <h3><?= htmlspecialchars($program['title']) ?></h3>
                         <div class="tags"><?php 
-                            $tags = array_map('trim', explode(',', $program['tags']));
+                            $tags = array_filter(array_map('trim', explode(',', $program['tags'])), function($tag) { return $tag !== ''; });
                             foreach ($tags as $tag) {
                                 echo '<span>' . htmlspecialchars($tag) . '</span>';
                             }

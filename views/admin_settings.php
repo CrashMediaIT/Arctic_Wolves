@@ -842,7 +842,7 @@ function getSetting($settings, $key, $default = '') {
         <button type="submit" class="btn-primary">
             <i class="fas fa-save"></i> Save Landing Page Settings
         </button>
-        <button type="button" class="btn-secondary" onclick="if(confirm('This will reset all landing page content to defaults. Continue?')) { document.querySelectorAll('#tab-landing input, #tab-landing textarea').forEach(el => el.value = ''); }">
+        <button type="button" class="btn-secondary" onclick="if(confirm('This will clear all custom landing page content. After clearing, click Save to apply the changes and use default values.')) { document.querySelectorAll('#tab-landing input, #tab-landing textarea').forEach(el => el.value = ''); }">
             <i class="fas fa-undo"></i> Reset to Defaults
         </button>
     </form>

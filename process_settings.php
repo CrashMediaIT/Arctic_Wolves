@@ -478,9 +478,15 @@ try {
                 $tags = trim($_POST[$prefix . 'tags'] ?? '');
                 $description = trim($_POST[$prefix . 'description'] ?? '');
                 
-                // Validate image URL if provided
-                if (!empty($image) && !filter_var($image, FILTER_VALIDATE_URL)) {
-                    throw new Exception("Invalid URL for Program $i image");
+                // Validate image URL if provided - must be http or https
+                if (!empty($image)) {
+                    if (!filter_var($image, FILTER_VALIDATE_URL)) {
+                        throw new Exception("Invalid URL for Program $i image");
+                    }
+                    $parsed = parse_url($image);
+                    if (!isset($parsed['scheme']) || !in_array($parsed['scheme'], ['http', 'https'])) {
+                        throw new Exception("Program $i image URL must use http or https scheme");
+                    }
                 }
                 
                 updateSetting($pdo, $prefix . 'title', $title);
