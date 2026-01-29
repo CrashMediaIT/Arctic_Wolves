@@ -232,8 +232,12 @@ CREATE TABLE IF NOT EXISTS `drill_categories` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `description` TEXT DEFAULT NULL,
+    `position_type` ENUM('player', 'goalie', 'both') DEFAULT 'both' COMMENT 'Drill category applies to: player, goalie, or both',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add position_type column to existing drill_categories table if it doesn't exist
+-- ALTER TABLE `drill_categories` ADD COLUMN IF NOT EXISTS `position_type` ENUM('player', 'goalie', 'both') DEFAULT 'both' AFTER `description`;
 
 -- Drills
 CREATE TABLE IF NOT EXISTS `drills` (
