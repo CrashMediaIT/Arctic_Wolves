@@ -170,7 +170,7 @@ $filterCategory = $_GET['category'] ?? '';
                 </select>
                 <?php endif; ?>
             </div>
-            <button type="button" class="btn btn-primary" data-action="add" data-modal="add-product-modal">
+            <button type="button" class="btn btn-primary" onclick="openModal('add-product-modal')">
                 <i class="fas fa-plus"></i> Add Product
             </button>
         </div>
