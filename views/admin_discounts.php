@@ -233,7 +233,7 @@ $discounts = $pdo->query("
     <h1 class="page-title">
         <i class="fas fa-tags"></i> Manage Discount Codes
     </h1>
-    <button onclick="openCreateModal()" class="btn-create">
+    <button type="button" onclick="openCreateModal()" class="btn-create">
         <i class="fas fa-plus"></i> Create Discount Code
     </button>
 </div>
@@ -321,7 +321,7 @@ $discounts = $pdo->query("
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title" id="modalTitle">Create Discount Code</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal()">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal()">&times;</button>
         </div>
         
         <form method="POST" action="process_admin_action.php" id="discountForm">

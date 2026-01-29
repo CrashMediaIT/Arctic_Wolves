@@ -170,7 +170,7 @@ $filterCategory = $_GET['category'] ?? '';
                 </select>
                 <?php endif; ?>
             </div>
-            <button class="btn btn-primary" onclick="openModal('add-product-modal')">
+            <button type="button" class="btn btn-primary" onclick="openModal('add-product-modal')">
                 <i class="fas fa-plus"></i> Add Product
             </button>
         </div>
@@ -283,7 +283,7 @@ $filterCategory = $_GET['category'] ?? '';
     <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-plus"></i> Add Merchandise Product</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('add-product-modal')">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-product-modal')">&times;</button>
         </div>
         <form method="POST" action="process_merchandise_products.php" enctype="multipart/form-data" id="add-product-form">
             <?php echo csrfTokenInput(); ?>
@@ -385,7 +385,7 @@ $filterCategory = $_GET['category'] ?? '';
     <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Merchandise Product</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-product-modal')">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('edit-product-modal')">&times;</button>
         </div>
         <form method="POST" action="process_merchandise_products.php" enctype="multipart/form-data" id="edit-product-form">
             <?php echo csrfTokenInput(); ?>
@@ -468,7 +468,7 @@ $filterCategory = $_GET['category'] ?? '';
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-warehouse"></i> Manage Inventory - <span id="inventory-product-name"></span></h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('inventory-modal')">&times;</button>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('inventory-modal')">&times;</button>
         </div>
         <form method="POST" action="process_merchandise_products.php" id="inventory-form">
             <?php echo csrfTokenInput(); ?>
