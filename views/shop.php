@@ -146,10 +146,18 @@ try {
     $products = [];
 }
 
-// Helper function to build query string preserving page param
+// Helper function to build query string with only allowed parameters
 function buildShopUrl($params = []) {
+    // Only allow specific parameters to be carried over
+    $allowedParams = ['page', 'category', 'subcategory', 'search', 'sort', 'shop_page'];
+    $filtered = [];
+    foreach ($params as $key => $value) {
+        if (in_array($key, $allowedParams)) {
+            $filtered[$key] = $value;
+        }
+    }
     $base = ['page' => 'shop'];
-    return '?' . http_build_query(array_merge($base, $params));
+    return '?' . http_build_query(array_merge($base, $filtered));
 }
 ?>
 
@@ -266,7 +274,7 @@ function buildShopUrl($params = []) {
                                 <div class="product-category"><?= htmlspecialchars($product['parent_category_name'] ? $product['parent_category_name'] . ' / ' . $product['category_name'] : $product['category_name']) ?></div>
                             <?php endif; ?>
                             
-                            <a href="shop_product.php?id=<?= $product['id'] ?>" class="product-name" target="_blank"><?= htmlspecialchars($product['name']) ?></a>
+                            <a href="shop_product.php?id=<?= $product['id'] ?>" class="product-name" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($product['name']) ?></a>
                             
                             <div class="product-price">$<?= number_format($product['price'], 2) ?></div>
                             
@@ -281,7 +289,7 @@ function buildShopUrl($params = []) {
                                 </div>
                             <?php endif; ?>
                             
-                            <a href="shop_product.php?id=<?= $product['id'] ?>" class="view-product-btn" target="_blank" <?= !$inStock ? 'disabled' : '' ?>>
+                            <a href="shop_product.php?id=<?= $product['id'] ?>" class="view-product-btn <?= !$inStock ? 'disabled-link' : '' ?>" target="_blank" rel="noopener noreferrer">
                                 <i class="fas fa-eye"></i> View Details
                             </a>
                         </div>
@@ -620,6 +628,13 @@ function buildShopUrl($params = []) {
 
 .view-product-btn:hover {
     background: var(--primary-hover);
+}
+
+.view-product-btn.disabled-link {
+    background: var(--border);
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.6;
 }
 
 .shop-empty-state {

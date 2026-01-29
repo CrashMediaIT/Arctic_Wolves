@@ -49,6 +49,12 @@ if ($page === 'home' && $isFrontDesk) {
     $page = 'front_desk_home';
 }
 
+// Redirect old admin_settings route to system_tools with landing tab
+if ($page === 'admin_settings') {
+    header("Location: dashboard.php?page=system_tools&tab=landing");
+    exit();
+}
+
 // FULL ROUTING TABLE - PARENT AND CHILD PAGES
 $allowed_pages = [
     // Main Menu
