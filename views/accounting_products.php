@@ -1446,7 +1446,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Session</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-session-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal(&quot;edit-session-modal&quot;)">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1462,7 +1462,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Package</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-package-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal(&quot;edit-package-modal&quot;)">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1478,7 +1478,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Discount</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-discount-modal')">&times;</button>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal(&quot;edit-discount-modal&quot;)">&times;</button>
         </div>
         <div class="modal-body">
             <p style="color: var(--text-dim); text-align: center; padding: 40px;">
@@ -1869,7 +1869,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
-                    '<button type="button" class="btn btn-secondary" onclick="closeModal(\\'edit-session-modal\\')"><i class="fas fa-times"></i> Cancel</button>' +
+                    '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-session-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
                     '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>' +
                 '</div>' +
                 '</form>';
@@ -1912,7 +1912,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
-                    '<button type="button" class="btn btn-secondary" onclick="closeModal(\\'edit-package-modal\\')"><i class="fas fa-times"></i> Cancel</button>' +
+                    '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-package-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
                     '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>' +
                 '</div>' +
                 '</form>';
@@ -1958,7 +1958,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
-                    '<button type="button" class="btn btn-secondary" onclick="closeModal(\\'edit-discount-modal\\')"><i class="fas fa-times"></i> Cancel</button>' +
+                    '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-discount-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
                     '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>' +
                 '</div>' +
                 '</form>';
