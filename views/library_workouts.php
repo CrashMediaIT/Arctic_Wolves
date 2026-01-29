@@ -784,6 +784,24 @@ foreach ($workoutPlans as $plan) {
     </div>
 </div>
 
+<!-- View Workout Plan Modal -->
+<div id="view-plan-modal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-eye"></i> View Workout Plan</h2>
+            <button type="button" class="modal-close" onclick="closeModal('view-plan-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Content will be populated via JavaScript -->
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('view-plan-modal')">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Exercise Selector Modal -->
 <div id="exercise-selector-modal" class="modal">
     <div class="modal-content modal-lg">
@@ -895,6 +913,48 @@ document.querySelectorAll('[data-action="edit-plan"]').forEach(button => {
         });
         
         openModal('edit-plan-modal');
+    });
+});
+
+// View plan handler
+document.querySelectorAll('[data-action="view-plan"]').forEach(button => {
+    button.addEventListener('click', function() {
+        const planId = this.dataset.id;
+        const planCard = this.closest('.plan-card');
+        const planName = planCard ? planCard.querySelector('h4').textContent : 'Workout Plan';
+        
+        // Find the exercises data from the edit button on the same card
+        const editBtn = planCard ? planCard.querySelector('[data-action="edit-plan"]') : null;
+        const exercises = editBtn ? JSON.parse(editBtn.dataset.exercises || '[]') : [];
+        
+        let exercisesHtml = '<div style="padding: 20px;">';
+        exercisesHtml += '<h3 style="margin-bottom: 16px;"><i class="fas fa-dumbbell"></i> ' + planName + '</h3>';
+        
+        if (exercises.length === 0) {
+            exercisesHtml += '<p style="color: var(--text-dim);">No exercises in this plan yet.</p>';
+        } else {
+            exercisesHtml += '<div style="display: grid; gap: 12px;">';
+            exercises.forEach((ex, i) => {
+                exercisesHtml += '<div style="padding: 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px;">' +
+                    '<strong>' + (i + 1) + '. ' + (ex.exercise_name || 'Exercise') + '</strong>' +
+                    '<div style="display: flex; gap: 16px; margin-top: 8px; color: var(--text-dim); font-size: 13px;">' +
+                    (ex.sets ? '<span><i class="fas fa-layer-group"></i> ' + ex.sets + ' sets</span>' : '') +
+                    (ex.reps ? '<span><i class="fas fa-redo"></i> ' + ex.reps + ' reps</span>' : '') +
+                    (ex.rest_seconds ? '<span><i class="fas fa-clock"></i> ' + ex.rest_seconds + 's rest</span>' : '') +
+                    '</div>' +
+                    '</div>';
+            });
+            exercisesHtml += '</div>';
+        }
+        exercisesHtml += '</div>';
+        
+        // Use the view modal
+        if (document.getElementById('view-plan-modal')) {
+            document.getElementById('view-plan-modal').querySelector('.modal-body').innerHTML = exercisesHtml;
+            openModal('view-plan-modal');
+        } else {
+            alert('Exercises in this plan:\\n\\n' + exercises.map((ex, i) => (i+1) + '. ' + (ex.exercise_name || 'Exercise')).join('\\n'));
+        }
     });
 });
 
