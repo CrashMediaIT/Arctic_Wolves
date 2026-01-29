@@ -274,22 +274,34 @@ try {
     .not-clocked-in {
         text-align: center;
         padding: 60px 20px;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%);
+        border-radius: 16px;
+        border: 2px dashed rgba(239, 68, 68, 0.3);
     }
     
     .not-clocked-in i {
-        font-size: 64px;
-        color: var(--text-dim);
-        margin-bottom: 20px;
+        font-size: 72px;
+        color: #f59e0b;
+        margin-bottom: 24px;
+        animation: pulse-icon 2s infinite;
+    }
+    
+    @keyframes pulse-icon {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.05); opacity: 1; }
     }
     
     .not-clocked-in h3 {
-        font-size: 20px;
-        margin-bottom: 10px;
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: var(--text-white);
     }
     
     .not-clocked-in p {
         color: var(--text-dim);
-        margin-bottom: 25px;
+        margin-bottom: 30px;
+        font-size: 15px;
     }
     
     @media (max-width: 900px) {
@@ -415,7 +427,8 @@ function updateCurrentTime() {
 function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
     
-    timerInterval = setInterval(function() {
+    // Function to update timer display
+    function updateTimer() {
         if (!shiftData) return;
         
         const clockIn = new Date(shiftData.clock_in.replace(' ', 'T'));
@@ -453,7 +466,13 @@ function startTimer() {
             String(hours).padStart(2, '0') + ':' + 
             String(minutes).padStart(2, '0') + ':' + 
             String(seconds).padStart(2, '0');
-    }, 1000);
+    }
+    
+    // Run immediately to show timer without delay
+    updateTimer();
+    
+    // Then update every second
+    timerInterval = setInterval(updateTimer, 1000);
 }
 
 function loadWeeklyStats() {

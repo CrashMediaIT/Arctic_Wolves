@@ -771,8 +771,8 @@ if (!in_array($activeTab, $validTabs)) {
 </div>
 
 <script>
-// Handle edit and delete actions for all category types
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize immediately since this view is loaded dynamically after DOM is ready
+(function() {
     // Handle edit buttons for all category types
     document.querySelectorAll('[data-action="edit"]').forEach(button => {
         button.addEventListener('click', function() {
@@ -897,7 +897,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-});
+})();
 
 // Show notification helper
 function showNotification(message, type) {

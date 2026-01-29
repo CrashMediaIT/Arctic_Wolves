@@ -800,6 +800,45 @@ $errors = [
                 </form>
             </div>
         </div>
+
+        <!-- PIN Management Section -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-th"></i> PIN Settings</h3>
+            </div>
+            <div class="card-body">
+                <p style="color: var(--text-dim); margin-bottom: 20px;">
+                    <i class="fas fa-info-circle"></i> Your PIN is used for quick login to the POS system and time tracking kiosk.
+                </p>
+                <form id="pin-form">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="action" value="update_pin">
+                    
+                    <div class="form-group">
+                        <label>New PIN (4 digits) *</label>
+                        <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+                        <small class="form-hint">Must be exactly 4 digits</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Confirm PIN *</label>
+                        <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Current Password *</label>
+                        <input type="password" name="current_password" class="form-input" required>
+                        <small class="form-hint">Required to verify your identity</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="pin-submit-btn">
+                            <i class="fas fa-fingerprint"></i> Update PIN
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Notifications Tab -->
@@ -987,6 +1026,85 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // Handle PIN form submission
+    const pinForm = document.getElementById('pin-form');
+    if (pinForm) {
+        pinForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = document.getElementById('pin-submit-btn');
+            const originalBtnText = submitBtn.innerHTML;
+            
+            // Helper function for PIN notifications
+            function showPinNotification(message, type) {
+                var existing = document.querySelector('.pin-notification');
+                if (existing) existing.remove();
+                
+                var div = document.createElement('div');
+                div.className = 'pin-notification';
+                div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; font-family: Inter, sans-serif; font-size: 14px;';
+                div.style.background = type === 'success' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)';
+                div.style.color = '#fff';
+                
+                var icon = document.createElement('i');
+                icon.className = 'fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle');
+                div.appendChild(icon);
+                
+                var text = document.createElement('span');
+                text.textContent = message;
+                div.appendChild(text);
+                
+                var closeBtn = document.createElement('button');
+                closeBtn.style.cssText = 'margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.onclick = function() { div.remove(); };
+                div.appendChild(closeBtn);
+                
+                document.body.appendChild(div);
+                setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+            }
+            
+            // Validate PINs match
+            if (formData.get('new_pin') !== formData.get('confirm_pin')) {
+                showPinNotification('PINs do not match', 'error');
+                return;
+            }
+            
+            // Validate PIN format
+            if (!/^\d{4}$/.test(formData.get('new_pin'))) {
+                showPinNotification('PIN must be exactly 4 digits', 'error');
+                return;
+            }
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitBtn.disabled = true;
+            
+            fetch('process_profile_update.php', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+                
+                if (data.success) {
+                    showPinNotification('PIN updated successfully!', 'success');
+                    pinForm.reset();
+                } else {
+                    showPinNotification('Error: ' + (data.message || 'Failed to update PIN'), 'error');
+                }
+            })
+            .catch(error => {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+                console.error('Error:', error);
+                showPinNotification('An error occurred. Please try again.', 'error');
+            });
+        });
+    }
 });
 </script>
 

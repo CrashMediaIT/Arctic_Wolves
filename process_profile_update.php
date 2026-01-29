@@ -557,6 +557,57 @@ if ($action == 'confirm_email_change') {
     }
 }
 
+// =========================================================
+// ACTION 12: SET/CHANGE PIN
+// =========================================================
+if ($action == 'update_pin') {
+    header('Content-Type: application/json');
+    
+    $new_pin = $_POST['new_pin'] ?? '';
+    $confirm_pin = $_POST['confirm_pin'] ?? '';
+    $current_password = $_POST['current_password'] ?? '';
+    
+    // Validate PIN format (4 digits)
+    if (!preg_match('/^\d{4}$/', $new_pin)) {
+        echo json_encode(['success' => false, 'message' => 'PIN must be exactly 4 digits']);
+        exit();
+    }
+    
+    if ($new_pin !== $confirm_pin) {
+        echo json_encode(['success' => false, 'message' => 'PINs do not match']);
+        exit();
+    }
+    
+    try {
+        // Verify current password
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$current_user_id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user || !password_verify($current_password, $user['password'])) {
+            echo json_encode(['success' => false, 'message' => 'Current password is incorrect']);
+            exit();
+        }
+        
+        // Hash the PIN
+        $pinHash = password_hash($new_pin, PASSWORD_DEFAULT);
+        
+        // Insert or update PIN
+        $stmt = $pdo->prepare("
+            INSERT INTO staff_pins (user_id, pin_hash, is_active) 
+            VALUES (?, ?, 1) AS new_values
+            ON DUPLICATE KEY UPDATE pin_hash = new_values.pin_hash, is_active = 1
+        ");
+        $stmt->execute([$current_user_id, $pinHash]);
+        
+        echo json_encode(['success' => true, 'message' => 'PIN updated successfully']);
+    } catch (PDOException $e) {
+        error_log("PIN update error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error']);
+    }
+    exit();
+}
+
 // Fallback
 header("Location: dashboard.php");
 exit();
