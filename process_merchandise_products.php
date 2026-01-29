@@ -9,7 +9,15 @@ require 'file_upload_validator.php';
 setSecurityHeaders();
 
 // Check admin access
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Admin access required']);
+        exit();
+    }
     http_response_code(403);
     die('Access denied.');
 }
@@ -51,7 +59,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 checkCsrfToken();
 
 $action = $_POST['action'] ?? '';
-$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 /**
  * Handle image upload for merchandise products

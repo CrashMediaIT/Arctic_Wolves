@@ -9,7 +9,15 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 // 1. STRICT SECURITY CHECK: Admins Only
+$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'admin') {
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Admin access required']);
+        exit();
+    }
     header("Location: dashboard.php"); 
     exit();
 }
