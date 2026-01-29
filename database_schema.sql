@@ -779,22 +779,23 @@ CREATE TABLE IF NOT EXISTS `age_groups` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert default age groups (U7 to U21)
+-- min_age and max_age represent typical birth year ranges for hockey
 INSERT INTO `age_groups` (`name`, `min_age`, `max_age`, `description`, `display_order`) VALUES
-('U7', 5, 6, 'Under 7 years old', 1),
-('U8', 6, 7, 'Under 8 years old', 2),
-('U9', 7, 8, 'Under 9 years old', 3),
-('U10', 8, 9, 'Under 10 years old', 4),
-('U11', 9, 10, 'Under 11 years old', 5),
-('U12', 10, 11, 'Under 12 years old', 6),
-('U13', 11, 12, 'Under 13 years old', 7),
-('U14', 12, 13, 'Under 14 years old', 8),
-('U15', 13, 14, 'Under 15 years old', 9),
-('U16', 14, 15, 'Under 16 years old', 10),
-('U17', 15, 16, 'Under 17 years old', 11),
-('U18', 16, 17, 'Under 18 years old', 12),
-('U19', 17, 18, 'Under 19 years old', 13),
-('U20', 18, 19, 'Under 20 years old', 14),
-('U21', 19, 20, 'Under 21 years old', 15)
+('U7', NULL, 6, 'Under 7 years old - ages 6 and under', 1),
+('U8', NULL, 7, 'Under 8 years old - ages 7 and under', 2),
+('U9', NULL, 8, 'Under 9 years old - ages 8 and under', 3),
+('U10', NULL, 9, 'Under 10 years old - ages 9 and under', 4),
+('U11', NULL, 10, 'Under 11 years old - ages 10 and under', 5),
+('U12', NULL, 11, 'Under 12 years old - ages 11 and under', 6),
+('U13', NULL, 12, 'Under 13 years old - ages 12 and under', 7),
+('U14', NULL, 13, 'Under 14 years old - ages 13 and under', 8),
+('U15', NULL, 14, 'Under 15 years old - ages 14 and under', 9),
+('U16', NULL, 15, 'Under 16 years old - ages 15 and under', 10),
+('U17', NULL, 16, 'Under 17 years old - ages 16 and under', 11),
+('U18', NULL, 17, 'Under 18 years old - ages 17 and under', 12),
+('U19', NULL, 18, 'Under 19 years old - ages 18 and under', 13),
+('U20', NULL, 19, 'Under 20 years old - ages 19 and under', 14),
+('U21', NULL, 20, 'Under 21 years old - ages 20 and under', 15)
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 
 -- Athlete notes from coaches
