@@ -26,10 +26,12 @@
             </div>
             
             <div class="nav-menu">
-                <a href="#programs">Programs</a>
+                <a href="index.php">Home</a>
                 <a href="sessions_public.php">Sessions</a>
                 <a href="shop.php">Shop</a>
-                <a href="#standards">Standards</a>
+                <a href="shop_cart.php" style="position: relative;">
+                    <i class="fas fa-shopping-cart"></i>
+                </a>
                 <a href="login.php" class="nav-btn">Athlete Login</a>
             </div>
         </nav>

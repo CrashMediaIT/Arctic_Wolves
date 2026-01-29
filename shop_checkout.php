@@ -61,6 +61,7 @@ function calculateCartTotals($pdo) {
 }
 
 $cartData = calculateCartTotals($pdo);
+$cartCount = $cartData['item_count'];
 
 // Get Stripe settings
 $stripeSettings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stripe_publishable_key', 'stripe_secret_key')")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -401,10 +402,15 @@ $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty(
             </div>
             
             <div class="nav-menu">
-                <a href="index.php#programs">Programs</a>
+                <a href="index.php">Home</a>
                 <a href="sessions_public.php">Sessions</a>
                 <a href="shop.php">Shop</a>
-                <a href="index.php#standards">Standards</a>
+                <a href="shop_cart.php" style="position: relative;">
+                    <i class="fas fa-shopping-cart"></i>
+                    <?php if ($cartCount > 0): ?>
+                        <span style="position: absolute; top: -8px; right: -8px; background: var(--primary); width: 18px; height: 18px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center;"><?= $cartCount ?></span>
+                    <?php endif; ?>
+                </a>
                 <a href="login.php" class="nav-btn">Athlete Login</a>
             </div>
         </nav>
