@@ -415,6 +415,24 @@ CREATE TABLE IF NOT EXISTS `athlete_workout_assignments` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Athlete exercise custom settings (overrides for individual athlete assignments)
+CREATE TABLE IF NOT EXISTS `athlete_exercise_settings` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `assignment_id` INT NOT NULL,
+    `exercise_id` INT NOT NULL,
+    `custom_sets` INT DEFAULT NULL,
+    `custom_reps` VARCHAR(50) DEFAULT NULL,
+    `custom_weight` DECIMAL(10,2) DEFAULT NULL,
+    `custom_weight_unit` ENUM('lbs', 'kg') DEFAULT 'lbs',
+    `custom_rest_seconds` INT DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`assignment_id`) REFERENCES `athlete_workout_assignments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`exercise_id`) REFERENCES `exercise_library`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_assignment_exercise` (`assignment_id`, `exercise_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Athlete workout feedback
 CREATE TABLE IF NOT EXISTS `athlete_workout_feedback` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -502,6 +520,22 @@ CREATE TABLE IF NOT EXISTS `athlete_nutrition_assignments` (
     FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_athlete` (`athlete_id`),
     INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Athlete meal portion custom settings (overrides for individual athlete nutrition assignments)
+CREATE TABLE IF NOT EXISTS `athlete_meal_settings` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `assignment_id` INT NOT NULL,
+    `meal_id` INT NOT NULL,
+    `food_id` INT NOT NULL,
+    `custom_serving_quantity` DECIMAL(10,2) DEFAULT NULL,
+    `custom_portion_notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`assignment_id`) REFERENCES `athlete_nutrition_assignments`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`meal_id`) REFERENCES `nutrition_plan_meals`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`food_id`) REFERENCES `food_library`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_assignment_meal_food` (`assignment_id`, `meal_id`, `food_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Athlete nutrition feedback
@@ -1323,6 +1357,26 @@ CREATE TABLE IF NOT EXISTS `managed_athletes` (
     UNIQUE KEY `unique_coach_athlete` (`coach_id`, `athlete_id`),
     INDEX `idx_coach` (`coach_id`),
     INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Athlete Coaches (multiple coach assignments to athletes)
+-- This table supports assigning multiple coaches to a single athlete
+CREATE TABLE IF NOT EXISTS `athlete_coaches` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `athlete_id` INT NOT NULL,
+    `coach_id` INT NOT NULL,
+    `role_type` ENUM('primary', 'assistant', 'health', 'team') DEFAULT 'primary',
+    `assigned_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `assigned_by` INT DEFAULT NULL,
+    `status` ENUM('active', 'inactive') DEFAULT 'active',
+    `notes` TEXT DEFAULT NULL,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_athlete_coach` (`athlete_id`, `coach_id`),
+    INDEX `idx_athlete` (`athlete_id`),
+    INDEX `idx_coach` (`coach_id`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

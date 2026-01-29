@@ -64,6 +64,14 @@ foreach ($nutritionPlans as $plan) {
     $stmt->execute([$plan['id']]);
     $assignedAthletes[$plan['id']] = $stmt->fetchAll();
 }
+
+// Fetch all active athletes for assignment modal
+$allAthletes = $pdo->query("
+    SELECT id, first_name, last_name 
+    FROM users 
+    WHERE role = 'athlete' AND is_active = 1 
+    ORDER BY last_name, first_name
+")->fetchAll();
 ?>
 
 <div class="page-header">
@@ -214,6 +222,13 @@ foreach ($nutritionPlans as $plan) {
                                         data-action="view-plan"
                                         data-id="<?= $plan['id'] ?>">
                                     <i class="fas fa-eye"></i> View
+                                </button>
+                                <button type="button" class="btn btn-success btn-sm"
+                                        data-action="assign-athletes"
+                                        data-id="<?= $plan['id'] ?>"
+                                        data-name="<?= htmlspecialchars($plan['name']) ?>"
+                                        data-meals='<?= json_encode($planMeals[$plan['id']] ?? []) ?>'>
+                                    <i class="fas fa-users"></i> Assign Athletes
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm"
                                         data-action="edit-plan"
@@ -1107,6 +1122,176 @@ document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
             submitBtn.disabled = false;
             console.error(err);
         });
+    });
+});
+</script>
+
+<!-- Assign Athletes to Nutrition Plan Modal -->
+<div id="assign-nutrition-athletes-modal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-users"></i> Assign Athletes to Nutrition Plan</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('assign-nutrition-athletes-modal')">&times;</button>
+        </div>
+        <form id="assign-nutrition-athletes-form" method="POST" action="process_nutrition.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="assign_athletes">
+            <input type="hidden" name="nutrition_plan_id" id="assign-nutrition-plan-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nutrition Plan</label>
+                    <input type="text" id="assign-nutrition-plan-name" class="form-input" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Athletes <small>(Hold Ctrl/Cmd to select multiple)</small></label>
+                    <select name="athlete_ids[]" id="assign-nutrition-athlete-select" class="form-input" multiple size="8" style="min-height: 200px;">
+                        <?php foreach ($allAthletes as $athlete): ?>
+                            <option value="<?= $athlete['id'] ?>"><?= htmlspecialchars($athlete['last_name'] . ', ' . $athlete['first_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" class="form-input" value="<?= date('Y-m-d') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-textarea" rows="2" placeholder="Optional notes for this assignment"></textarea>
+                </div>
+                
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-balance-scale"></i> Custom Portion Settings (Optional)</h4>
+                    <p class="info-text" style="margin-bottom: 16px;">
+                        <i class="fas fa-info-circle"></i>
+                        Override default serving sizes for each meal. Leave blank to use plan defaults.
+                    </p>
+                    <div id="meal-settings-container">
+                        <!-- Meal settings will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('assign-nutrition-athletes-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Assign Athletes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.meal-setting-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr;
+    gap: 10px;
+    padding: 12px;
+    background: var(--bg-main);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    align-items: center;
+}
+.meal-setting-row label {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+}
+.meal-setting-row input {
+    padding: 6px 10px;
+    font-size: var(--font-size-sm);
+}
+.meal-settings-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr;
+    gap: 10px;
+    padding: 8px 12px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+</style>
+
+<script>
+// Assign Athletes to Nutrition Plan Modal Handler
+document.querySelectorAll('[data-action="assign-athletes"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const planId = this.dataset.id;
+        const planName = this.dataset.name;
+        const meals = JSON.parse(this.dataset.meals || '[]');
+        
+        document.getElementById('assign-nutrition-plan-id').value = planId;
+        document.getElementById('assign-nutrition-plan-name').value = planName;
+        
+        // Build meal settings form
+        const container = document.getElementById('meal-settings-container');
+        if (meals.length > 0) {
+            // Group meals by meal type
+            const mealsByType = {};
+            meals.forEach(meal => {
+                const type = meal.meal_type || 'meal';
+                if (!mealsByType[type]) mealsByType[type] = [];
+                mealsByType[type].push(meal);
+            });
+            
+            let html = '<div class="meal-settings-header"><span>Meal/Food</span><span>Serving Qty</span><span>Notes</span></div>';
+            let idx = 0;
+            Object.entries(mealsByType).forEach(([type, items]) => {
+                html += `<div style="font-weight: bold; margin: 10px 0 5px; text-transform: capitalize;">${type.replace('_', ' ')}</div>`;
+                items.forEach(item => {
+                    html += `
+                        <div class="meal-setting-row">
+                            <label>${item.food_name || item.meal_type || 'Item'}</label>
+                            <input type="hidden" name="meals[${idx}][meal_id]" value="${item.id}">
+                            <input type="hidden" name="meals[${idx}][food_id]" value="${item.food_id || ''}">
+                            <input type="number" name="meals[${idx}][custom_serving_quantity]" placeholder="1.0" class="form-input" step="0.25" min="0.25">
+                            <input type="text" name="meals[${idx}][custom_portion_notes]" placeholder="e.g., extra protein" class="form-input">
+                        </div>
+                    `;
+                    idx++;
+                });
+            });
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p class="info-text">No meals in this plan yet.</p>';
+        }
+        
+        openModal('assign-nutrition-athletes-modal');
+    });
+});
+
+// Form submission with AJAX
+document.getElementById('assign-nutrition-athletes-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    submitBtn.disabled = true;
+    
+    fetch(this.getAttribute('action'), {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        if (data.success) {
+            closeModal('assign-nutrition-athletes-modal');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        console.error(err);
+        alert('An error occurred. Please try again.');
     });
 });
 </script>

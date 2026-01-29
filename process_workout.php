@@ -227,6 +227,116 @@ try {
             echo json_encode(['success' => true, 'message' => 'Workout plan deleted successfully']);
             break;
             
+        case 'assign_athletes':
+            $workout_plan_id = intval($_POST['workout_plan_id'] ?? 0);
+            $athlete_ids = isset($_POST['athlete_ids']) && is_array($_POST['athlete_ids']) ? array_map('intval', array_filter($_POST['athlete_ids'])) : [];
+            $start_date = $_POST['start_date'] ?? date('Y-m-d');
+            $notes = trim($_POST['notes'] ?? '');
+            $exercises = $_POST['exercises'] ?? [];
+            
+            if (empty($workout_plan_id)) {
+                throw new Exception('Workout plan ID is required');
+            }
+            
+            if (empty($athlete_ids)) {
+                throw new Exception('Please select at least one athlete');
+            }
+            
+            // Verify workout plan exists
+            $plan_check = $pdo->prepare("SELECT id FROM workout_plans WHERE id = ?");
+            $plan_check->execute([$workout_plan_id]);
+            if (!$plan_check->fetch()) {
+                throw new Exception('Invalid workout plan');
+            }
+            
+            // Verify athletes exist and are active athletes
+            // For admin role, allow any athlete. For coaches, only athletes that are active.
+            $placeholders = implode(',', array_fill(0, count($athlete_ids), '?'));
+            $verify_stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders) AND role = 'athlete' AND is_active = 1");
+            $verify_stmt->execute($athlete_ids);
+            $valid_athletes = $verify_stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            // Filter to only valid athlete IDs
+            $athlete_ids = array_intersect($athlete_ids, $valid_athletes);
+            if (empty($athlete_ids)) {
+                throw new Exception('No valid athletes selected');
+            }
+            
+            // Validate date format
+            if (!empty($start_date)) {
+                $d = DateTime::createFromFormat('Y-m-d', $start_date);
+                if (!$d || $d->format('Y-m-d') !== $start_date) {
+                    $start_date = date('Y-m-d');
+                }
+            }
+            
+            $pdo->beginTransaction();
+            
+            foreach ($athlete_ids as $athlete_id) {
+                // Check if assignment already exists
+                $check_stmt = $pdo->prepare("
+                    SELECT id FROM athlete_workout_assignments 
+                    WHERE athlete_id = ? AND workout_plan_id = ?
+                ");
+                $check_stmt->execute([$athlete_id, $workout_plan_id]);
+                $existing = $check_stmt->fetch();
+                
+                if ($existing) {
+                    // Update existing assignment
+                    $update_stmt = $pdo->prepare("
+                        UPDATE athlete_workout_assignments 
+                        SET status = 'active', start_date = ?, notes = ?, assigned_by = ?, assigned_date = NOW()
+                        WHERE id = ?
+                    ");
+                    $update_stmt->execute([$start_date, $notes, $user_id, $existing['id']]);
+                    $assignment_id = $existing['id'];
+                } else {
+                    // Create new assignment
+                    $insert_stmt = $pdo->prepare("
+                        INSERT INTO athlete_workout_assignments 
+                        (athlete_id, workout_plan_id, assigned_by, start_date, notes, status, assigned_date) 
+                        VALUES (?, ?, ?, ?, ?, 'active', NOW())
+                    ");
+                    $insert_stmt->execute([$athlete_id, $workout_plan_id, $user_id, $start_date, $notes]);
+                    $assignment_id = $pdo->lastInsertId();
+                }
+                
+                // Save custom exercise settings if provided
+                if (!empty($exercises)) {
+                    foreach ($exercises as $ex) {
+                        $exercise_id = intval($ex['exercise_id'] ?? 0);
+                        if ($exercise_id <= 0) continue;
+                        
+                        $custom_sets = !empty($ex['custom_sets']) ? intval($ex['custom_sets']) : null;
+                        $custom_reps = !empty($ex['custom_reps']) ? trim($ex['custom_reps']) : null;
+                        $custom_weight = !empty($ex['custom_weight']) ? floatval($ex['custom_weight']) : null;
+                        $custom_weight_unit = in_array($ex['custom_weight_unit'] ?? '', ['lbs', 'kg']) ? $ex['custom_weight_unit'] : 'lbs';
+                        
+                        // Only save if at least one custom value is provided
+                        if ($custom_sets !== null || $custom_reps !== null || $custom_weight !== null) {
+                            $settings_stmt = $pdo->prepare("
+                                INSERT INTO athlete_exercise_settings 
+                                (assignment_id, exercise_id, custom_sets, custom_reps, custom_weight, custom_weight_unit)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                                ON DUPLICATE KEY UPDATE 
+                                custom_sets = VALUES(custom_sets),
+                                custom_reps = VALUES(custom_reps),
+                                custom_weight = VALUES(custom_weight),
+                                custom_weight_unit = VALUES(custom_weight_unit),
+                                updated_at = NOW()
+                            ");
+                            $settings_stmt->execute([$assignment_id, $exercise_id, $custom_sets, $custom_reps, $custom_weight, $custom_weight_unit]);
+                        }
+                    }
+                }
+            }
+            
+            $pdo->commit();
+            
+            $count = count($athlete_ids);
+            echo json_encode(['success' => true, 'message' => "Workout plan assigned to {$count} athlete(s) successfully"]);
+            break;
+            
         default:
             throw new Exception('Invalid action');
     }

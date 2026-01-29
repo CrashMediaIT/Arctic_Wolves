@@ -63,6 +63,14 @@ foreach ($workoutPlans as $plan) {
     $stmt->execute([$plan['id']]);
     $assignedAthletes[$plan['id']] = $stmt->fetchAll();
 }
+
+// Fetch all active athletes for assignment modal
+$allAthletes = $pdo->query("
+    SELECT id, first_name, last_name 
+    FROM users 
+    WHERE role = 'athlete' AND is_active = 1 
+    ORDER BY last_name, first_name
+")->fetchAll();
 ?>
 
 <div class="page-header">
@@ -198,6 +206,13 @@ foreach ($workoutPlans as $plan) {
                                         data-action="view-plan"
                                         data-id="<?= $plan['id'] ?>">
                                     <i class="fas fa-eye"></i> View
+                                </button>
+                                <button type="button" class="btn btn-success btn-sm"
+                                        data-action="assign-athletes"
+                                        data-id="<?= $plan['id'] ?>"
+                                        data-name="<?= htmlspecialchars($plan['name']) ?>"
+                                        data-exercises='<?= json_encode($planExercises[$plan['id']] ?? []) ?>'>
+                                    <i class="fas fa-users"></i> Assign Athletes
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm"
                                         data-action="edit-plan"
@@ -1041,6 +1056,167 @@ document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
             submitBtn.disabled = false;
             console.error(err);
         });
+    });
+});
+</script>
+
+<!-- Assign Athletes Modal -->
+<div id="assign-athletes-modal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-users"></i> Assign Athletes to Workout Plan</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('assign-athletes-modal')">&times;</button>
+        </div>
+        <form id="assign-athletes-form" method="POST" action="process_workout.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="assign_athletes">
+            <input type="hidden" name="workout_plan_id" id="assign-workout-plan-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Workout Plan</label>
+                    <input type="text" id="assign-workout-plan-name" class="form-input" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Athletes <small>(Hold Ctrl/Cmd to select multiple)</small></label>
+                    <select name="athlete_ids[]" id="assign-athlete-select" class="form-input" multiple size="8" style="min-height: 200px;">
+                        <?php foreach ($allAthletes as $athlete): ?>
+                            <option value="<?= $athlete['id'] ?>"><?= htmlspecialchars($athlete['last_name'] . ', ' . $athlete['first_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" class="form-input" value="<?= date('Y-m-d') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-textarea" rows="2" placeholder="Optional notes for this assignment"></textarea>
+                </div>
+                
+                <div class="form-section">
+                    <h4 class="section-title"><i class="fas fa-sliders-h"></i> Custom Exercise Settings (Optional)</h4>
+                    <p class="info-text" style="margin-bottom: 16px;">
+                        <i class="fas fa-info-circle"></i>
+                        Override default sets, reps, and weights for each exercise. Leave blank to use plan defaults.
+                    </p>
+                    <div id="exercise-settings-container">
+                        <!-- Exercise settings will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('assign-athletes-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Assign Athletes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.exercise-setting-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+    background: var(--bg-main);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    align-items: center;
+}
+.exercise-setting-row label {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+}
+.exercise-setting-row input {
+    padding: 6px 10px;
+    font-size: var(--font-size-sm);
+}
+.exercise-settings-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 8px 12px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+</style>
+
+<script>
+// Assign Athletes Modal Handler
+document.querySelectorAll('[data-action="assign-athletes"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const planId = this.dataset.id;
+        const planName = this.dataset.name;
+        const exercises = JSON.parse(this.dataset.exercises || '[]');
+        
+        document.getElementById('assign-workout-plan-id').value = planId;
+        document.getElementById('assign-workout-plan-name').value = planName;
+        
+        // Build exercise settings form
+        const container = document.getElementById('exercise-settings-container');
+        if (exercises.length > 0) {
+            let html = '<div class="exercise-settings-header"><span>Exercise</span><span>Sets</span><span>Reps</span><span>Weight</span><span>Unit</span></div>';
+            exercises.forEach((ex, idx) => {
+                html += `
+                    <div class="exercise-setting-row">
+                        <label>${ex.exercise_name || 'Exercise'}</label>
+                        <input type="hidden" name="exercises[${idx}][exercise_id]" value="${ex.exercise_id}">
+                        <input type="number" name="exercises[${idx}][custom_sets]" placeholder="${ex.sets || 'Sets'}" class="form-input" min="1">
+                        <input type="text" name="exercises[${idx}][custom_reps]" placeholder="${ex.reps || 'Reps'}" class="form-input">
+                        <input type="number" name="exercises[${idx}][custom_weight]" placeholder="Weight" class="form-input" step="0.5" min="0">
+                        <select name="exercises[${idx}][custom_weight_unit]" class="form-input">
+                            <option value="lbs">lbs</option>
+                            <option value="kg">kg</option>
+                        </select>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p class="info-text">No exercises in this plan yet.</p>';
+        }
+        
+        openModal('assign-athletes-modal');
+    });
+});
+
+// Form submission with AJAX
+document.getElementById('assign-athletes-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    submitBtn.disabled = true;
+    
+    fetch(this.getAttribute('action'), {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        if (data.success) {
+            closeModal('assign-athletes-modal');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        console.error(err);
+        alert('An error occurred. Please try again.');
     });
 });
 </script>
