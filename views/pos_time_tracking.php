@@ -274,21 +274,16 @@ try {
     .not-clocked-in {
         text-align: center;
         padding: 60px 20px;
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%);
+        background: var(--bg-card, #16161F);
         border-radius: 16px;
-        border: 2px dashed rgba(239, 68, 68, 0.3);
+        border: 1px solid var(--border, #2D2D3F);
     }
     
-    .not-clocked-in i {
-        font-size: 72px;
-        color: #f59e0b;
+    .not-clocked-in i.fa-clock {
+        font-size: 48px;
+        color: var(--primary, #6B46C1);
         margin-bottom: 24px;
-        animation: pulse-icon 2s infinite;
-    }
-    
-    @keyframes pulse-icon {
-        0%, 100% { transform: scale(1); opacity: 0.8; }
-        50% { transform: scale(1.05); opacity: 1; }
+        display: block;
     }
     
     .not-clocked-in h3 {
@@ -301,6 +296,23 @@ try {
     .not-clocked-in p {
         color: var(--text-dim);
         margin-bottom: 30px;
+        font-size: 15px;
+    }
+    
+    .not-clocked-in .action-btn.clock-in {
+        background: var(--primary, #6B46C1);
+        color: #fff;
+        padding: 16px 40px;
+        font-size: 15px;
+        display: inline-flex;
+        width: auto;
+    }
+    
+    .not-clocked-in .action-btn.clock-in:hover {
+        background: var(--primary-hover, #7C3AED);
+    }
+    
+    .not-clocked-in .action-btn.clock-in i {
         font-size: 15px;
     }
     
@@ -361,7 +373,7 @@ try {
                 <i class="fas fa-clock"></i>
                 <h3>Not Clocked In</h3>
                 <p>Click the button below to start your shift</p>
-                <button class="action-btn clock-in" onclick="clockIn()" style="width: auto; padding: 16px 40px;">
+                <button class="action-btn clock-in" onclick="clockIn()">
                     <i class="fas fa-play-circle"></i> Clock In
                 </button>
             </div>
@@ -406,6 +418,30 @@ const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
 let shiftData = <?= $activeShift ? json_encode($activeShift) : 'null' ?>;
 let timerInterval = null;
 
+// Helper function to parse MySQL datetime string
+function parseMySQLDateTime(datetimeStr) {
+    if (!datetimeStr) return null;
+    // MySQL format: YYYY-MM-DD HH:MM:SS
+    // Split into date and time parts
+    const parts = datetimeStr.split(' ');
+    if (parts.length !== 2) return new Date(datetimeStr);
+    
+    const dateParts = parts[0].split('-');
+    const timeParts = parts[1].split(':');
+    
+    if (dateParts.length !== 3 || timeParts.length < 2) return new Date(datetimeStr);
+    
+    // Create date using local timezone (year, month-1, day, hour, minute, second)
+    return new Date(
+        parseInt(dateParts[0], 10),
+        parseInt(dateParts[1], 10) - 1, // Month is 0-indexed
+        parseInt(dateParts[2], 10),
+        parseInt(timeParts[0], 10),
+        parseInt(timeParts[1], 10),
+        timeParts[2] ? parseInt(timeParts[2], 10) : 0
+    );
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     updateCurrentTime();
@@ -429,9 +465,11 @@ function startTimer() {
     
     // Function to update timer display
     function updateTimer() {
-        if (!shiftData) return;
+        if (!shiftData || !shiftData.clock_in) return;
         
-        const clockIn = new Date(shiftData.clock_in.replace(' ', 'T'));
+        const clockIn = parseMySQLDateTime(shiftData.clock_in);
+        if (!clockIn || isNaN(clockIn.getTime())) return;
+        
         const now = new Date();
         let elapsed = Math.floor((now - clockIn) / 1000);
         
@@ -441,17 +479,21 @@ function startTimer() {
         // Check if currently on lunch break - timer should be paused
         if (shiftData.lunch_start && !shiftData.lunch_end) {
             // Currently on lunch - calculate worked time up to lunch start (paused)
-            const lunchStart = new Date(shiftData.lunch_start.replace(' ', 'T'));
-            elapsed = Math.floor((lunchStart - clockIn) / 1000);
-            if (elapsed < 0) elapsed = 0;
+            const lunchStart = parseMySQLDateTime(shiftData.lunch_start);
+            if (lunchStart && !isNaN(lunchStart.getTime())) {
+                elapsed = Math.floor((lunchStart - clockIn) / 1000);
+                if (elapsed < 0) elapsed = 0;
+            }
             document.getElementById('timer-label').textContent = 'Paused - On Lunch Break';
         } else if (shiftData.lunch_start && shiftData.lunch_end) {
             // Lunch completed - subtract lunch duration from total
-            const lunchStart = new Date(shiftData.lunch_start.replace(' ', 'T'));
-            const lunchEnd = new Date(shiftData.lunch_end.replace(' ', 'T'));
-            const lunchSeconds = Math.floor((lunchEnd - lunchStart) / 1000);
-            elapsed -= lunchSeconds;
-            if (elapsed < 0) elapsed = 0;
+            const lunchStart = parseMySQLDateTime(shiftData.lunch_start);
+            const lunchEnd = parseMySQLDateTime(shiftData.lunch_end);
+            if (lunchStart && lunchEnd && !isNaN(lunchStart.getTime()) && !isNaN(lunchEnd.getTime())) {
+                const lunchSeconds = Math.floor((lunchEnd - lunchStart) / 1000);
+                elapsed -= lunchSeconds;
+                if (elapsed < 0) elapsed = 0;
+            }
             document.getElementById('timer-label').textContent = 'Time Worked Today';
         } else {
             document.getElementById('timer-label').textContent = 'Time Worked Today';

@@ -363,7 +363,203 @@ document.addEventListener('DOMContentLoaded', function() {
             $recentGoals = [];
             $skillsMetrics = ['total_skills' => 0, 'avg_score' => 0, 'last_evaluation' => null];
         }
+        
+        // Get pending payments for assigned sessions
+        $pendingPayments = [];
+        try {
+            $pendingStmt = $pdo->prepare("
+                SELECT b.id as booking_id, b.amount_due, b.created_at as assigned_at,
+                       s.id as session_id, s.title as session_title, 
+                       s.session_date, s.start_time, s.duration_minutes,
+                       COALESCE(l.name, s.arena) as location_name
+                FROM bookings b
+                JOIN sessions s ON b.session_id = s.id
+                LEFT JOIN locations l ON s.location_id = l.id
+                WHERE b.user_id = ? 
+                  AND b.status = 'pending' 
+                  AND b.payment_status = 'pending'
+                  AND s.session_date >= CURDATE()
+                ORDER BY s.session_date ASC, s.start_time ASC
+                LIMIT 5
+            ");
+            $pendingStmt->execute([$user_id]);
+            $pendingPayments = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Pending payments fetch error: " . $e->getMessage());
+        }
         ?>
+        
+        <?php if (!empty($pendingPayments)): ?>
+        <!-- Pending Payments Alert Widget -->
+        <div class="pending-payments-widget">
+            <div class="widget-header">
+                <div class="widget-icon warning">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="widget-title">
+                    <h3>Payment Required</h3>
+                    <p>You have <?php echo count($pendingPayments); ?> session(s) awaiting payment</p>
+                </div>
+            </div>
+            <div class="pending-sessions-list">
+                <?php foreach ($pendingPayments as $payment): ?>
+                <div class="pending-session-item">
+                    <div class="session-info">
+                        <span class="session-name"><?php echo htmlspecialchars($payment['session_title']); ?></span>
+                        <span class="session-date">
+                            <i class="fas fa-calendar"></i> 
+                            <?php echo date('M j, Y', strtotime($payment['session_date'])); ?> 
+                            at <?php echo date('g:i A', strtotime($payment['start_time'])); ?>
+                        </span>
+                        <span class="session-location">
+                            <i class="fas fa-map-marker-alt"></i> 
+                            <?php echo htmlspecialchars($payment['location_name'] ?? 'TBD'); ?>
+                        </span>
+                    </div>
+                    <div class="payment-action">
+                        <span class="amount-due">$<?php echo number_format($payment['amount_due'], 2); ?></span>
+                        <a href="?page=session_payment&booking_id=<?php echo $payment['booking_id']; ?>" class="btn btn-warning btn-sm">
+                            <i class="fas fa-credit-card"></i> Pay Now
+                        </a>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="widget-footer">
+                <a href="?page=sessions_upcoming" class="view-all-link">
+                    <i class="fas fa-list"></i> View All Sessions
+                </a>
+            </div>
+        </div>
+        
+        <style>
+        .pending-payments-widget {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .pending-payments-widget .widget-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .pending-payments-widget .widget-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .pending-payments-widget .widget-icon.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+        .pending-payments-widget .widget-title h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 4px 0;
+        }
+        .pending-payments-widget .widget-title p {
+            font-size: 14px;
+            color: #f59e0b;
+            margin: 0;
+        }
+        .pending-sessions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .pending-session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .pending-session-item .session-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .pending-session-item .session-name {
+            font-weight: 600;
+            color: #fff;
+        }
+        .pending-session-item .session-date,
+        .pending-session-item .session-location {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        .pending-session-item .session-date i,
+        .pending-session-item .session-location i {
+            color: var(--primary);
+            margin-right: 6px;
+        }
+        .pending-session-item .payment-action {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .pending-session-item .amount-due {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f59e0b;
+        }
+        .btn-warning {
+            background: #f59e0b;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-warning:hover {
+            background: #d97706;
+        }
+        .pending-payments-widget .widget-footer {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(245, 158, 11, 0.2);
+            text-align: center;
+        }
+        .pending-payments-widget .view-all-link {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .pending-payments-widget .view-all-link:hover {
+            color: #fff;
+        }
+        @media (max-width: 600px) {
+            .pending-session-item {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+            .pending-session-item .payment-action {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+        </style>
+        <?php endif; ?>
         
         <!-- Performance Metrics Section - Active Data -->
         <div class="performance-metrics-section">

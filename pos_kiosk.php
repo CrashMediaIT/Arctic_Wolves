@@ -44,13 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if (strlen($pin) !== 4 || !ctype_digit($pin)) {
             $error = "Please enter a valid 4-digit PIN.";
         } else {
-            // Find staff member by PIN
+            // Find staff member by PIN (allow admin, coach, health_coach, front_desk_staff)
             try {
                 $stmt = $pdo->prepare("
                     SELECT u.id, u.first_name, u.last_name, u.role, sp.pin_hash
                     FROM users u
                     INNER JOIN staff_pins sp ON u.id = sp.user_id
-                    WHERE u.role = 'front_desk_staff' 
+                    WHERE u.role IN ('admin', 'coach', 'health_coach', 'front_desk_staff') 
                     AND u.is_active = 1 
                     AND sp.is_active = 1
                 ");

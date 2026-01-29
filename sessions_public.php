@@ -487,6 +487,7 @@ $viewMode = $_GET['view'] ?? 'list';
             <div class="nav-menu">
                 <a href="index.php#programs">Programs</a>
                 <a href="sessions_public.php" style="color: var(--primary);">Sessions</a>
+                <a href="shop.php">Shop</a>
                 <a href="index.php#standards">Standards</a>
                 <a href="login.php" class="nav-btn">Athlete Login</a>
             </div>

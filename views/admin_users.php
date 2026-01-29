@@ -311,6 +311,11 @@ foreach ($users as $u) {
                                             <button class="btn-icon" data-action="reset-password" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['full_name']); ?>" title="Reset Password">
                                                 <i class="fas fa-lock"></i>
                                             </button>
+                                            <?php if (in_array($user['role'], ['admin', 'coach', 'health_coach', 'front_desk_staff'])): ?>
+                                            <button class="btn-icon" data-action="reset-pin" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['full_name']); ?>" title="Set/Reset PIN">
+                                                <i class="fas fa-th"></i>
+                                            </button>
+                                            <?php endif; ?>
                                             <?php if ($user['id'] != $user_id): ?>
                                                 <button class="btn-icon <?php echo $user['is_verified'] ? 'danger' : 'success'; ?>" data-action="toggle-status" data-id="<?php echo $user['id']; ?>" data-type="user" title="<?php echo $user['is_verified'] ? 'Disable' : 'Enable'; ?>">
                                                     <i class="fas fa-<?php echo $user['is_verified'] ? 'ban' : 'check'; ?>"></i>
@@ -1283,6 +1288,113 @@ document.getElementById('reset-password-form').addEventListener('submit', functi
             setTimeout(function() { location.reload(); }, 1500);
         } else {
             showNotification('Error: ' + (data.message || 'Failed to reset password'), 'error');
+        }
+    })
+    .catch(function(error) {
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    });
+});
+</script>
+
+<!-- Reset PIN Modal -->
+<div id="reset-pin-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Set/Reset PIN</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('reset-pin-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_action.php" id="reset-pin-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="admin_reset_pin">
+            <input type="hidden" name="user_id" value="">
+            
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                    Set or reset POS/Kiosk PIN for <strong class="reset-pin-user-name" style="color: var(--text-white);"></strong>
+                </p>
+                
+                <div class="form-group">
+                    <label class="form-label">New PIN (4 digits) *</label>
+                    <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+                    <small style="color: var(--text-dim);">Must be exactly 4 digits</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Confirm PIN *</label>
+                    <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('reset-pin-modal')">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-th"></i> Set PIN</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Handle reset PIN button click
+document.querySelectorAll('[data-action="reset-pin"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var userId = this.getAttribute('data-id');
+        var userName = this.getAttribute('data-name') || 'this user';
+        
+        var modal = document.getElementById('reset-pin-modal');
+        if (modal) {
+            modal.querySelector('input[name="user_id"]').value = userId;
+            modal.querySelector('.reset-pin-user-name').textContent = userName;
+            // Clear previous values
+            modal.querySelector('input[name="new_pin"]').value = '';
+            modal.querySelector('input[name="confirm_pin"]').value = '';
+            modal.classList.add('active');
+        }
+    });
+});
+
+// Handle reset PIN form submission
+document.getElementById('reset-pin-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var newPin = this.querySelector('input[name="new_pin"]').value;
+    var confirmPin = this.querySelector('input[name="confirm_pin"]').value;
+    
+    if (newPin !== confirmPin) {
+        showNotification('PINs do not match', 'error');
+        return;
+    }
+    
+    if (!/^\d{4}$/.test(newPin)) {
+        showNotification('PIN must be exactly 4 digits', 'error');
+        return;
+    }
+    
+    var formData = new FormData(this);
+    var submitBtn = this.querySelector('button[type="submit"]');
+    var originalBtnText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    submitBtn.disabled = true;
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            showNotification(data.message || 'PIN set successfully!', 'success');
+            closeModal('reset-pin-modal');
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to set PIN'), 'error');
         }
     })
     .catch(function(error) {

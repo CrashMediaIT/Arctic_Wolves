@@ -1215,6 +1215,67 @@ if ($action == 'reset_user_password') {
     exit();
 }
 
+// =========================================================
+// MODULE 8.6: ADMIN RESET USER PIN
+// =========================================================
+if ($action == 'admin_reset_pin') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_reset = intval($_POST['user_id']);
+        $new_pin = $_POST['new_pin'] ?? '';
+        $confirm_pin = $_POST['confirm_pin'] ?? '';
+        
+        // Validate PIN format (4 digits)
+        if (!preg_match('/^\d{4}$/', $new_pin)) {
+            echo json_encode(['success' => false, 'message' => 'PIN must be exactly 4 digits']);
+            exit();
+        }
+        
+        if ($new_pin !== $confirm_pin) {
+            echo json_encode(['success' => false, 'message' => 'PINs do not match']);
+            exit();
+        }
+        
+        // Check user exists and has a valid role for PINs
+        $stmt = $pdo->prepare("SELECT first_name, last_name, role FROM users WHERE id = ?");
+        $stmt->execute([$user_id_to_reset]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user) {
+            echo json_encode(['success' => false, 'message' => 'User not found']);
+            exit();
+        }
+        
+        // Verify user has a role that supports PIN login
+        $allowed_roles = ['admin', 'coach', 'health_coach', 'front_desk_staff'];
+        if (!in_array($user['role'], $allowed_roles)) {
+            echo json_encode(['success' => false, 'message' => 'User role does not support PIN login']);
+            exit();
+        }
+        
+        // Hash the PIN
+        $pin_hash = password_hash($new_pin, PASSWORD_DEFAULT);
+        
+        // Insert or update PIN
+        $stmt = $pdo->prepare("
+            INSERT INTO staff_pins (user_id, pin_hash, is_active) 
+            VALUES (?, ?, 1)
+            ON DUPLICATE KEY UPDATE pin_hash = ?, is_active = 1
+        ");
+        $stmt->execute([$user_id_to_reset, $pin_hash, $pin_hash]);
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => "PIN set successfully for {$user['first_name']} {$user['last_name']}"
+        ]);
+    } catch (PDOException $e) {
+        error_log("Admin reset PIN error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
 if ($action == 'toggle_session_status') {
     header('Content-Type: application/json');
     
