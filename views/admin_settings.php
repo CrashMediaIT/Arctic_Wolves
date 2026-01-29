@@ -332,6 +332,9 @@ function getSetting($settings, $key, $default = '') {
     <button class="tab" onclick="switchTab('updates')">
         <i class="fas fa-download"></i> Updates
     </button>
+    <button class="tab" onclick="switchTab('landing')">
+        <i class="fas fa-home"></i> Landing Page
+    </button>
 </div>
 
 <!-- General Settings Tab -->
@@ -753,6 +756,96 @@ function getSetting($settings, $key, $default = '') {
             Files removed from the repository will be deleted from your installation.
         </div>
     </div>
+</div>
+
+<!-- Landing Page Settings Tab -->
+<div id="tab-landing" class="tab-content">
+    <form method="POST" action="process_settings.php">
+        <?= csrfTokenInput() ?>
+        <input type="hidden" name="action" value="update_landing">
+        
+        <!-- Programs Section -->
+        <div class="settings-card">
+            <div class="card-header">
+                <h3 class="card-title">Programs Section</h3>
+                <p class="card-description">Edit the training programs displayed on the landing page. Leave fields empty to use default values.</p>
+            </div>
+            
+            <?php for ($i = 1; $i <= 4; $i++): 
+                $program_prefix = "landing_program_{$i}_";
+            ?>
+            <div style="border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: var(--primary); margin-bottom: 15px;">Program <?= $i ?></h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Title</label>
+                        <input type="text" name="<?= $program_prefix ?>title" class="form-input" 
+                               value="<?= htmlspecialchars(getSetting($settings, $program_prefix . 'title', '')) ?>"
+                               placeholder="<?= ['Player Dev', 'Goalie Elite', 'Conditioning', 'Nutrition'][$i-1] ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Image URL</label>
+                        <input type="url" name="<?= $program_prefix ?>image" class="form-input" 
+                               value="<?= htmlspecialchars(getSetting($settings, $program_prefix . 'image', '')) ?>"
+                               placeholder="https://...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tags (comma-separated)</label>
+                    <input type="text" name="<?= $program_prefix ?>tags" class="form-input" 
+                           value="<?= htmlspecialchars(getSetting($settings, $program_prefix . 'tags', '')) ?>"
+                           placeholder="<?= ['Power Skating, Shooting', 'Positioning, Tracking', 'Strength, Power', 'Protein, Recovery'][$i-1] ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="<?= $program_prefix ?>description" class="form-textarea" rows="2"
+                              placeholder="<?= ['Forwards & Defense: Explosive edgework and shot mechanics.', 'Crease management, angle control, and rebound psychology.', 'Dryland training for endurance and explosive 60-minute power.', 'Meal planning to fuel muscle growth and accelerate recovery.'][$i-1] ?>"><?= htmlspecialchars(getSetting($settings, $program_prefix . 'description', '')) ?></textarea>
+                </div>
+            </div>
+            <?php endfor; ?>
+        </div>
+        
+        <!-- Standards Section -->
+        <div class="settings-card">
+            <div class="card-header">
+                <h3 class="card-title">Standards Section</h3>
+                <p class="card-description">Edit the elite standards displayed on the landing page. Leave fields empty to use default values.</p>
+            </div>
+            
+            <?php 
+            $default_standards = [
+                ['label' => 'Ice Ratio', 'value' => '4:1 Player/Coach'],
+                ['label' => 'Technology', 'value' => 'Video Analysis'],
+                ['label' => 'Facility', 'value' => 'Pro-Grade Gym'],
+                ['label' => 'Methodology', 'value' => 'Periodization']
+            ];
+            for ($i = 1; $i <= 4; $i++): 
+                $standard_prefix = "landing_standard_{$i}_";
+            ?>
+            <div class="form-grid" style="margin-bottom: 15px; padding: 15px; border: 1px solid var(--border); border-radius: 8px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Label <?= $i ?></label>
+                    <input type="text" name="<?= $standard_prefix ?>label" class="form-input" 
+                           value="<?= htmlspecialchars(getSetting($settings, $standard_prefix . 'label', '')) ?>"
+                           placeholder="<?= $default_standards[$i-1]['label'] ?>">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Value <?= $i ?></label>
+                    <input type="text" name="<?= $standard_prefix ?>value" class="form-input" 
+                           value="<?= htmlspecialchars(getSetting($settings, $standard_prefix . 'value', '')) ?>"
+                           placeholder="<?= $default_standards[$i-1]['value'] ?>">
+                </div>
+            </div>
+            <?php endfor; ?>
+        </div>
+        
+        <button type="submit" class="btn-primary">
+            <i class="fas fa-save"></i> Save Landing Page Settings
+        </button>
+        <button type="button" class="btn-secondary" onclick="if(confirm('This will reset all landing page content to defaults. Continue?')) { document.querySelectorAll('#tab-landing input, #tab-landing textarea').forEach(el => el.value = ''); }">
+            <i class="fas fa-undo"></i> Reset to Defaults
+        </button>
+    </form>
 </div>
 
 <script>
