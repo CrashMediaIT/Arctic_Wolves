@@ -725,6 +725,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=business_cards" class="nav-link <?= $page=='business_cards'?'active':'' ?>">
                 <i class="fa-solid fa-id-card icon"></i> Business Cards
             </a>
+            <a href="?page=admin_settings" class="nav-link <?= $page=='admin_settings'?'active':'' ?>">
+                <i class="fa-solid fa-cog icon"></i> Site Settings
+            </a>
         </nav>
     </div>
     <?php endif; ?>
