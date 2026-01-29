@@ -800,6 +800,45 @@ $errors = [
                 </form>
             </div>
         </div>
+
+        <!-- PIN Management Section -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-th"></i> PIN Settings</h3>
+            </div>
+            <div class="card-body">
+                <p style="color: var(--text-dim); margin-bottom: 20px;">
+                    <i class="fas fa-info-circle"></i> Your PIN is used for quick login to the POS system and time tracking kiosk.
+                </p>
+                <form id="pin-form">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                    <input type="hidden" name="action" value="update_pin">
+                    
+                    <div class="form-group">
+                        <label>New PIN (4 digits) *</label>
+                        <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="new-password">
+                        <small class="form-hint">Must be exactly 4 digits</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Confirm PIN *</label>
+                        <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="new-password">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Current Password *</label>
+                        <input type="password" name="current_password" class="form-input" required>
+                        <small class="form-hint">Required to verify your identity</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="pin-submit-btn">
+                            <i class="fas fa-fingerprint"></i> Update PIN
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Notifications Tab -->
@@ -987,6 +1026,56 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // Handle PIN form submission
+    const pinForm = document.getElementById('pin-form');
+    if (pinForm) {
+        pinForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = document.getElementById('pin-submit-btn');
+            const originalBtnText = submitBtn.innerHTML;
+            
+            // Validate PINs match
+            if (formData.get('new_pin') !== formData.get('confirm_pin')) {
+                alert('PINs do not match');
+                return;
+            }
+            
+            // Validate PIN format
+            if (!/^\d{4}$/.test(formData.get('new_pin'))) {
+                alert('PIN must be exactly 4 digits');
+                return;
+            }
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitBtn.disabled = true;
+            
+            fetch('process_profile_update.php', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+                
+                if (data.success) {
+                    alert('PIN updated successfully!');
+                    pinForm.reset();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to update PIN'));
+                }
+            })
+            .catch(error => {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+    }
 });
 </script>
 
