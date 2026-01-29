@@ -16,13 +16,13 @@ if (!in_array($activeTab, $validTabs)) {
 
 <!-- Category Tabs -->
 <div class="page-tabs">
-    <button type="button" class="page-tab <?= $activeTab === 'skills' ? 'active' : '' ?>" data-tab="skills" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'skills' ? 'active' : '' ?>" data-tab="skills" data-action="switch-tab" data-tab-handled="true">
         <i class="fas fa-star"></i> Skills
     </button>
-    <button type="button" class="page-tab <?= $activeTab === 'drills' ? 'active' : '' ?>" data-tab="drills" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'drills' ? 'active' : '' ?>" data-tab="drills" data-action="switch-tab" data-tab-handled="true">
         <i class="fas fa-hockey-puck"></i> Drill Types
     </button>
-    <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab" data-tab-handled="true">
         <i class="fas fa-shopping-bag"></i> Merchandise
     </button>
 </div>
@@ -116,12 +116,28 @@ if (!in_array($activeTab, $validTabs)) {
                 <div class="categories-grid">
                     <?php
                     // Fetch all drill categories from database
-                    $stmt = $pdo->prepare("SELECT id, name, description FROM drill_categories ORDER BY name ASC");
+                    $stmt = $pdo->prepare("SELECT id, name, description, position_type FROM drill_categories ORDER BY name ASC");
                     $stmt->execute();
                     $drill_types = $stmt->fetchAll();
                     
                     if (count($drill_types) > 0):
                         foreach ($drill_types as $type):
+                            // Format position type for display
+                            $positionLabel = '';
+                            $positionIcon = '';
+                            switch ($type['position_type'] ?? 'both') {
+                                case 'player':
+                                    $positionLabel = 'Player';
+                                    $positionIcon = 'fa-skating';
+                                    break;
+                                case 'goalie':
+                                    $positionLabel = 'Goalie';
+                                    $positionIcon = 'fa-shield-alt';
+                                    break;
+                                default:
+                                    $positionLabel = 'All Positions';
+                                    $positionIcon = 'fa-users';
+                            }
                     ?>
                     <div class="category-card">
                         <div class="category-card-icon drill-type">
@@ -130,6 +146,9 @@ if (!in_array($activeTab, $validTabs)) {
                         <div class="category-card-content">
                             <h4><?= htmlspecialchars($type['name']) ?></h4>
                             <p><?= htmlspecialchars($type['description'] ?: 'No description') ?></p>
+                            <span class="category-tag position-<?= htmlspecialchars($type['position_type'] ?? 'both') ?>">
+                                <i class="fas <?= $positionIcon ?>"></i> <?= $positionLabel ?>
+                            </span>
                         </div>
                         <div class="category-card-actions">
                             <button type="button" class="btn-icon" title="Edit" 
@@ -137,7 +156,8 @@ if (!in_array($activeTab, $validTabs)) {
                                     data-id="<?= $type['id'] ?>" 
                                     data-type="drill_type" 
                                     data-name="<?= htmlspecialchars($type['name']) ?>"
-                                    data-description="<?= htmlspecialchars($type['description'] ?? '') ?>">
+                                    data-description="<?= htmlspecialchars($type['description'] ?? '') ?>"
+                                    data-position-type="<?= htmlspecialchars($type['position_type'] ?? 'both') ?>">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button type="button" class="btn-icon btn-icon-danger" title="Delete" 
@@ -181,7 +201,7 @@ if (!in_array($activeTab, $validTabs)) {
                 <div class="categories-grid">
                     <?php
                     // Fetch all merchandise categories from database
-                    $stmt = $pdo->prepare("SELECT id, name, description, is_active FROM merchandise_categories ORDER BY sort_order, name ASC");
+                    $stmt = $pdo->prepare("SELECT id, name, description, is_active FROM merchandise_categories ORDER BY display_order, name ASC");
                     $stmt->execute();
                     $merchandise_categories = $stmt->fetchAll();
                     
@@ -407,6 +427,34 @@ if (!in_array($activeTab, $validTabs)) {
     color: var(--error);
 }
 
+/* Position Type Badges */
+.category-tag.position-player {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+.category-tag.position-goalie {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+}
+
+.category-tag.position-both {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+
+.category-tag i {
+    margin-right: 4px;
+}
+
+/* Form Help Text */
+.form-help {
+    display: block;
+    margin-top: 4px;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
 /* Empty State */
 .empty-state {
     grid-column: 1 / -1;
@@ -545,6 +593,16 @@ if (!in_array($activeTab, $validTabs)) {
                 </div>
                 
                 <div class="form-group">
+                    <label class="form-label">Position Category *</label>
+                    <select name="position_type" class="form-input" required>
+                        <option value="both">All Positions (Player & Goalie)</option>
+                        <option value="player">Player Only</option>
+                        <option value="goalie">Goalie Only</option>
+                    </select>
+                    <small class="form-help">Select which position(s) this drill type applies to</small>
+                </div>
+                
+                <div class="form-group">
                     <label class="form-label">Description</label>
                     <textarea name="description" class="form-textarea" rows="3" placeholder="Describe what this drill type focuses on"></textarea>
                 </div>
@@ -579,6 +637,16 @@ if (!in_array($activeTab, $validTabs)) {
                 <div class="form-group">
                     <label class="form-label">Drill Type Name *</label>
                     <input type="text" name="name" id="edit-drill-type-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Position Category *</label>
+                    <select name="position_type" id="edit-drill-type-position" class="form-input" required>
+                        <option value="both">All Positions (Player & Goalie)</option>
+                        <option value="player">Player Only</option>
+                        <option value="goalie">Goalie Only</option>
+                    </select>
+                    <small class="form-help">Select which position(s) this drill type applies to</small>
                 </div>
                 
                 <div class="form-group">
@@ -691,6 +759,9 @@ if (!in_array($activeTab, $validTabs)) {
                 document.getElementById('edit-drill-type-id').value = id;
                 document.getElementById('edit-drill-type-name').value = name;
                 document.getElementById('edit-drill-type-description').value = description;
+                // Set position type dropdown
+                const positionType = this.getAttribute('data-position-type') || 'both';
+                document.getElementById('edit-drill-type-position').value = positionType;
                 document.getElementById('edit-drill-type-modal').classList.add('active');
             } else if (type === 'merchandise') {
                 document.getElementById('edit-merchandise-id').value = id;

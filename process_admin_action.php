@@ -2105,10 +2105,23 @@ if ($action == 'create_drill_type') {
     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
     
     try {
-        $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description) VALUES (?, ?)");
+        // Validate name field
+        $name = trim($_POST['name'] ?? '');
+        if (empty($name)) {
+            throw new Exception('Drill type name is required');
+        }
+        
+        // Validate position_type
+        $validPositions = ['player', 'goalie', 'both'];
+        $positionType = isset($_POST['position_type']) && in_array($_POST['position_type'], $validPositions) 
+            ? $_POST['position_type'] 
+            : 'both';
+        
+        $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description, position_type) VALUES (?, ?, ?)");
         $stmt->execute([
-            trim($_POST['name']),
-            trim($_POST['description'] ?? '')
+            $name,
+            trim($_POST['description'] ?? ''),
+            $positionType
         ]);
         
         if ($isAjax) {
@@ -2117,11 +2130,11 @@ if ($action == 'create_drill_type') {
             exit();
         }
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_added");
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         error_log("Create drill type error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Failed to create drill type']);
+            echo json_encode(['success' => false, 'message' => $e->getMessage() ?: 'Failed to create drill type']);
             exit();
         }
         header("Location: dashboard.php?page=categories&tab=drills&status=error");
@@ -2131,15 +2144,29 @@ if ($action == 'create_drill_type') {
 
 if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'drill_type') {
     try {
-        $stmt = $pdo->prepare("UPDATE drill_categories SET name = ?, description = ? WHERE id = ?");
+        // Validate id and name
+        $id = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        if ($id <= 0 || empty($name)) {
+            throw new Exception('Invalid drill type data');
+        }
+        
+        // Validate position_type
+        $validPositions = ['player', 'goalie', 'both'];
+        $positionType = isset($_POST['position_type']) && in_array($_POST['position_type'], $validPositions) 
+            ? $_POST['position_type'] 
+            : 'both';
+        
+        $stmt = $pdo->prepare("UPDATE drill_categories SET name = ?, description = ?, position_type = ? WHERE id = ?");
         $stmt->execute([
-            trim($_POST['name']),
+            $name,
             trim($_POST['description'] ?? ''),
-            intval($_POST['id'])
+            $positionType,
+            $id
         ]);
         
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_updated");
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         error_log("Edit drill type error: " . $e->getMessage());
         header("Location: dashboard.php?page=categories&tab=drills&status=error");
     }

@@ -1092,6 +1092,11 @@
     function initializeTabNavigation() {
         // Handle tab buttons with data-action="switch-tab"
         document.querySelectorAll('[data-action="switch-tab"]').forEach(btn => {
+            // Skip if this button already has a page-specific handler
+            if (btn.hasAttribute('data-tab-handled')) {
+                return;
+            }
+            
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 
@@ -1105,7 +1110,16 @@
                     return;
                 }
                 
-                const tabContainer = this.closest('.products-content, .content-wrapper, .page-content, .page-tab-content') || document;
+                // Try to find container, including .page-tabs parent for sibling .page-tab-content
+                let tabContainer = this.closest('.products-content, .content-wrapper, .page-content, .page-tab-content');
+                if (!tabContainer) {
+                    // Check if button is in .page-tabs which is a sibling of .page-tab-content
+                    const pageTabs = this.closest('.page-tabs');
+                    if (pageTabs && pageTabs.nextElementSibling && pageTabs.nextElementSibling.classList.contains('page-tab-content')) {
+                        tabContainer = pageTabs.parentElement;
+                    }
+                }
+                tabContainer = tabContainer || document;
                 
                 // Remove active class from all tabs (support both .tab-btn and .page-tab)
                 tabContainer.querySelectorAll('.tab-btn, .page-tab').forEach(tab => {
