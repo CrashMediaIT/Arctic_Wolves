@@ -803,7 +803,7 @@ document.getElementById('expenseForm').addEventListener('submit', function(e) {
     var originalText = submitBtn.innerHTML;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
     submitBtn.disabled = true;
-    fetch(this.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fetch(this.getAttribute('action'), { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
     .then(function(r) { return r.json(); })
     .then(function(data) { submitBtn.innerHTML = originalText; submitBtn.disabled = false; if (data.success) { showNotification(data.message || 'Expense added successfully!', 'success'); setTimeout(function() { location.reload(); }, 1500); } else { showNotification('Error: ' + (data.message || 'Failed to add expense'), 'error'); } })
     .catch(function() { submitBtn.innerHTML = originalText; submitBtn.disabled = false; showNotification('An error occurred', 'error'); });

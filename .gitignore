@@ -46,3 +46,4 @@ Thumbs.db
 
 # Linting config (development only)
 .stylelintrc.json
+.env
