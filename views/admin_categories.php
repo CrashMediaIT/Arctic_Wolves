@@ -810,8 +810,23 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) {
+            // Check if response is ok
+            if (!response.ok) {
+                throw new Error('Server responded with status: ' + response.status);
+            }
+            return response.text();
+        })
+        .then(function(text) {
+            // Try to parse as JSON
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Invalid JSON response:', text);
+                throw new Error('Server returned invalid response');
+            }
+        })
+        .then(function(data) {
             if (submitBtn) {
                 submitBtn.innerHTML = originalBtnText;
                 submitBtn.disabled = false;
@@ -831,7 +846,7 @@ document.querySelectorAll('.modal form').forEach(function(form) {
                 submitBtn.innerHTML = originalBtnText;
                 submitBtn.disabled = false;
             }
-            showNotification('An error occurred', 'error');
+            showNotification('Error: ' + error.message, 'error');
         });
     });
 });

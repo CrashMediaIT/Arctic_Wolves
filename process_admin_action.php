@@ -4,8 +4,8 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 
-// ENABLE DEBUGGING
-ini_set('display_errors', 1); 
+// Disable error display for AJAX (errors go to logs only)
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 // 1. STRICT SECURITY CHECK: Admins Only
