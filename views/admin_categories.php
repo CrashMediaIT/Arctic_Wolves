@@ -16,13 +16,13 @@ if (!in_array($activeTab, $validTabs)) {
 
 <!-- Category Tabs -->
 <div class="page-tabs">
-    <button type="button" class="page-tab <?= $activeTab === 'skills' ? 'active' : '' ?>" data-tab="skills" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'skills' ? 'active' : '' ?>" data-tab="skills" data-action="switch-tab" data-tab-handled="true">
         <i class="fas fa-star"></i> Skills
     </button>
-    <button type="button" class="page-tab <?= $activeTab === 'drills' ? 'active' : '' ?>" data-tab="drills" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'drills' ? 'active' : '' ?>" data-tab="drills" data-action="switch-tab" data-tab-handled="true">
         <i class="fas fa-hockey-puck"></i> Drill Types
     </button>
-    <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab">
+    <button type="button" class="page-tab <?= $activeTab === 'merchandise' ? 'active' : '' ?>" data-tab="merchandise" data-action="switch-tab" data-tab-handled="true">
         <i class="fas fa-shopping-bag"></i> Merchandise
     </button>
 </div>
@@ -181,7 +181,7 @@ if (!in_array($activeTab, $validTabs)) {
                 <div class="categories-grid">
                     <?php
                     // Fetch all merchandise categories from database
-                    $stmt = $pdo->prepare("SELECT id, name, description, is_active FROM merchandise_categories ORDER BY sort_order, name ASC");
+                    $stmt = $pdo->prepare("SELECT id, name, description, is_active FROM merchandise_categories ORDER BY display_order, name ASC");
                     $stmt->execute();
                     $merchandise_categories = $stmt->fetchAll();
                     
