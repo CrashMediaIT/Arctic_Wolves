@@ -792,6 +792,9 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 .type-badge.sessions_only { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
 .type-badge.credit_only { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
 .type-badge.mixed { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
+.type-badge.credits { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+.type-badge.dollar_value { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.type-badge.bundled { background: rgba(139, 92, 246, 0.15); color: #8B5CF6; }
 
 .discount-type-badge {
     display: inline-block;
@@ -1278,17 +1281,35 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                         <div class="form-group">
                             <label class="form-label">Package Type *</label>
                             <select name="package_type" class="form-input" id="package-type-select" onchange="togglePackageTypeFields()">
-                                <option value="credits">Credit Package</option>
-                                <option value="bundled">Bundled Package</option>
+                                <option value="credits">Session Credits (set number of sessions)</option>
+                                <option value="dollar_value">Dollar Value (store credit amount)</option>
+                                <option value="bundled">Bundled Sessions (pick from sessions library)</option>
                             </select>
                         </div>
                     </div>
                     
                     <div class="form-row" id="credits-count-row">
                         <div class="form-group">
-                            <label class="form-label">Number of Credits *</label>
-                            <input type="number" name="credits" class="form-input" min="1" value="1" placeholder="Number of session credits">
+                            <label class="form-label">Number of Sessions *</label>
+                            <input type="number" name="credits" class="form-input" min="1" value="1" placeholder="Number of sessions">
                             <small class="form-help-text" style="color: var(--text-dim);">How many sessions can be booked with this package.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row" id="dollar-value-row" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Store Credit Value ($) *</label>
+                            <input type="number" name="store_credit" class="form-input" min="0" step="0.01" value="0" placeholder="Dollar value">
+                            <small class="form-help-text" style="color: var(--text-dim);">Dollar amount of store credit included in this package.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row" id="bundled-sessions-row" style="display: none;">
+                        <div class="form-group">
+                            <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px;">
+                                <i class="fas fa-info-circle" style="color: #8B5CF6;"></i>
+                                <span style="color: var(--text-dim);">After creating this package, use the <strong style="color: var(--text-white);">Manage Sessions</strong> button to select specific sessions from your sessions library.</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -1989,6 +2010,24 @@ function togglePackageTypeFields() {
         if (creditsInput) {
             creditsInput.required = (packageType.value === 'credits');
         }
+        // Show/hide based on package type
+        creditsRow.style.display = (packageType.value === 'credits') ? 'block' : 'none';
+    }
+    
+    // Dollar value row
+    var dollarValueRow = document.getElementById('dollar-value-row');
+    if (dollarValueRow) {
+        dollarValueRow.style.display = (packageType.value === 'dollar_value') ? 'block' : 'none';
+        var storeCreditsInput = dollarValueRow.querySelector('input[name="store_credit"]');
+        if (storeCreditsInput) {
+            storeCreditsInput.required = (packageType.value === 'dollar_value');
+        }
+    }
+    
+    // Bundled sessions row
+    var bundledSessionsRow = document.getElementById('bundled-sessions-row');
+    if (bundledSessionsRow) {
+        bundledSessionsRow.style.display = (packageType.value === 'bundled') ? 'block' : 'none';
     }
 }
 

@@ -778,6 +778,25 @@ CREATE TABLE IF NOT EXISTS `age_groups` (
     INDEX `idx_display_order` (`display_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Insert default age groups (U7 to U21)
+INSERT INTO `age_groups` (`name`, `min_age`, `max_age`, `description`, `display_order`) VALUES
+('U7', 5, 6, 'Under 7 years old', 1),
+('U8', 6, 7, 'Under 8 years old', 2),
+('U9', 7, 8, 'Under 9 years old', 3),
+('U10', 8, 9, 'Under 10 years old', 4),
+('U11', 9, 10, 'Under 11 years old', 5),
+('U12', 10, 11, 'Under 12 years old', 6),
+('U13', 11, 12, 'Under 13 years old', 7),
+('U14', 12, 13, 'Under 14 years old', 8),
+('U15', 13, 14, 'Under 15 years old', 9),
+('U16', 14, 15, 'Under 16 years old', 10),
+('U17', 15, 16, 'Under 17 years old', 11),
+('U18', 16, 17, 'Under 18 years old', 12),
+('U19', 17, 18, 'Under 19 years old', 13),
+('U20', 18, 19, 'Under 20 years old', 14),
+('U21', 19, 20, 'Under 21 years old', 15)
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+
 -- Athlete notes from coaches
 CREATE TABLE IF NOT EXISTS `athlete_notes` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -1564,9 +1583,28 @@ CREATE TABLE IF NOT EXISTS `skill_levels` (
     `name` VARCHAR(100) NOT NULL,
     `description` TEXT DEFAULT NULL,
     `level_order` INT DEFAULT 0,
+    `display_order` INT DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_order` (`level_order`)
+    INDEX `idx_order` (`level_order`),
+    INDEX `idx_display_order` (`display_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default skill levels
+INSERT INTO `skill_levels` (`name`, `description`, `level_order`, `display_order`) VALUES
+('C', 'C Level - Entry recreational level', 1, 1),
+('B', 'B Level - Intermediate recreational', 2, 2),
+('BB', 'BB Level - Advanced recreational', 3, 3),
+('A', 'A Level - Competitive entry level', 4, 4),
+('AA', 'AA Level - Competitive intermediate', 5, 5),
+('AAA', 'AAA Level - Competitive elite', 6, 6),
+('Jr C', 'Junior C - Junior entry level', 7, 7),
+('Jr B', 'Junior B - Junior intermediate level', 8, 8),
+('Jr A', 'Junior A - Junior elite level', 9, 9),
+('Recreational', 'Recreational - Casual play', 10, 10),
+('House League', 'House League - Organized recreational', 11, 11),
+('Pro', 'Professional Level', 12, 12),
+('All Levels', 'Suitable for all skill levels', 13, 13)
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 
 -- System notifications (global announcements)
 CREATE TABLE IF NOT EXISTS `system_notifications` (
@@ -2754,7 +2792,7 @@ CREATE TABLE IF NOT EXISTS `session_date_athletes` (
 ALTER TABLE `packages`
 ADD COLUMN IF NOT EXISTS `store_credit` DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Store credit value included in package',
 ADD COLUMN IF NOT EXISTS `show_on_landing` TINYINT(1) DEFAULT 0 COMMENT 'Whether to show on landing page',
-ADD COLUMN IF NOT EXISTS `package_type` ENUM('sessions_only', 'credit_only', 'mixed') DEFAULT 'sessions_only' COMMENT 'Type of package content';
+ADD COLUMN IF NOT EXISTS `package_type` VARCHAR(50) DEFAULT 'credits' COMMENT 'Type of package: credits, bundled, dollar_value';
 
 -- Package Sessions - Link packages to specific sessions
 CREATE TABLE IF NOT EXISTS `package_sessions` (
