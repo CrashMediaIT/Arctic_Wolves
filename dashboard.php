@@ -135,7 +135,6 @@ $allowed_pages = [
     'audit_log'               => 'views/admin_audit_logs.php',
     'cron_jobs'               => 'views/admin_cron_jobs.php',
     'system_tools'            => 'views/admin_system_tools.php',
-    'admin_settings'          => 'views/admin_settings.php',
     'admin_database_tools'    => 'views/admin_database_tools.php',
     'admin_database_backup'   => 'views/admin_database_backup.php',
     'admin_database_restore'  => 'views/admin_database_restore.php',
@@ -202,6 +201,9 @@ $allowed_pages = [
     'library_workouts'        => 'views/library_workouts.php',
     'library_nutrition'       => 'views/library_nutrition.php',
     'health_coach_roster'     => 'views/health_coach_roster.php',
+    
+    // Shop
+    'shop'                    => 'views/shop.php',
     
     // Profile and Settings
     'profile'                 => 'views/profile.php',
@@ -567,7 +569,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>">
                 <i class="fa-solid fa-heart-pulse icon"></i> Health
             </a>
-            <a href="shop.php" class="nav-link" target="_blank" rel="noopener noreferrer">
+            <a href="?page=shop" class="nav-link <?= $page=='shop'?'active':'' ?>">
                 <i class="fa-solid fa-store icon"></i> Shop
             </a>
             <a href="?page=payment_history" class="nav-link <?= $page=='payment_history'?'active':'' ?>">
@@ -724,9 +726,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=business_cards" class="nav-link <?= $page=='business_cards'?'active':'' ?>">
                 <i class="fa-solid fa-id-card icon"></i> Business Cards
-            </a>
-            <a href="?page=admin_settings" class="nav-link <?= $page=='admin_settings'?'active':'' ?>">
-                <i class="fa-solid fa-cog icon"></i> Site Settings
             </a>
         </nav>
     </div>

@@ -72,6 +72,9 @@ try {
     <a href="?page=system_tools&tab=updates" class="page-tab <?php echo $activeTab === 'updates' ? 'active' : ''; ?>">
         <i class="fas fa-download"></i> Updates
     </a>
+    <a href="?page=system_tools&tab=landing" class="page-tab <?php echo $activeTab === 'landing' ? 'active' : ''; ?>">
+        <i class="fas fa-home"></i> Landing Page
+    </a>
     <a href="system_health_validator.php" class="page-tab">
         <i class="fas fa-heartbeat"></i> Health
     </a>
@@ -1075,6 +1078,131 @@ try {
                 </div>
             </div>
         </div>
+    </div>
+    
+    <!-- Landing Page Settings Tab -->
+    <div class="tab-content <?php echo $activeTab === 'landing' ? 'active' : ''; ?>" id="landing-tab">
+        <form method="POST" action="process_settings.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_landing">
+            
+            <!-- Programs Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-columns"></i> Programs Section</h3>
+                </div>
+                <div class="card-body">
+                    <div class="info-box" style="margin-bottom: 24px;">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Edit the training programs displayed on the public landing page. Leave fields empty to use default values.</p>
+                    </div>
+                    
+                    <?php 
+                    $default_programs = [
+                        ['title' => 'Player Dev', 'tags' => 'Power Skating, Shooting', 'description' => 'Forwards & Defense: Explosive edgework and shot mechanics.'],
+                        ['title' => 'Goalie Elite', 'tags' => 'Positioning, Tracking', 'description' => 'Crease management, angle control, and rebound psychology.'],
+                        ['title' => 'Conditioning', 'tags' => 'Strength, Power', 'description' => 'Dryland training for endurance and explosive 60-minute power.'],
+                        ['title' => 'Nutrition', 'tags' => 'Protein, Recovery', 'description' => 'Meal planning to fuel muscle growth and accelerate recovery.']
+                    ];
+                    for ($i = 1; $i <= 4; $i++): 
+                        $program_prefix = "landing_program_{$i}_";
+                    ?>
+                    <div class="card" style="margin-bottom: 20px; border: 1px solid var(--border);">
+                        <div class="card-header" style="padding: 12px 20px; background: var(--bg-main);">
+                            <h4 style="font-size: 14px; margin: 0; color: var(--primary);"><i class="fas fa-cube"></i> Program <?php echo $i; ?></h4>
+                        </div>
+                        <div class="card-body" style="padding: 20px;">
+                            <div class="settings-list">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Title</h4>
+                                        <p>Default: <?php echo htmlspecialchars($default_programs[$i-1]['title']); ?></p>
+                                    </div>
+                                    <input type="text" name="<?php echo $program_prefix; ?>title" class="form-input" 
+                                           value="<?php echo htmlspecialchars($settings[$program_prefix . 'title'] ?? ''); ?>"
+                                           placeholder="<?php echo htmlspecialchars($default_programs[$i-1]['title']); ?>">
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Image URL</h4>
+                                        <p>Full URL to the program image</p>
+                                    </div>
+                                    <input type="url" name="<?php echo $program_prefix; ?>image" class="form-input" 
+                                           value="<?php echo htmlspecialchars($settings[$program_prefix . 'image'] ?? ''); ?>"
+                                           placeholder="https://...">
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Tags (comma-separated)</h4>
+                                        <p>Default: <?php echo htmlspecialchars($default_programs[$i-1]['tags']); ?></p>
+                                    </div>
+                                    <input type="text" name="<?php echo $program_prefix; ?>tags" class="form-input" 
+                                           value="<?php echo htmlspecialchars($settings[$program_prefix . 'tags'] ?? ''); ?>"
+                                           placeholder="<?php echo htmlspecialchars($default_programs[$i-1]['tags']); ?>">
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Description</h4>
+                                        <p>Default: <?php echo htmlspecialchars($default_programs[$i-1]['description']); ?></p>
+                                    </div>
+                                    <textarea name="<?php echo $program_prefix; ?>description" class="form-input" rows="2"
+                                              placeholder="<?php echo htmlspecialchars($default_programs[$i-1]['description']); ?>"><?php echo htmlspecialchars($settings[$program_prefix . 'description'] ?? ''); ?></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endfor; ?>
+                </div>
+            </div>
+            
+            <!-- Standards Section -->
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <h3><i class="fas fa-medal"></i> Standards Section</h3>
+                </div>
+                <div class="card-body">
+                    <div class="info-box" style="margin-bottom: 24px;">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Edit the elite standards displayed on the landing page. Leave fields empty to use default values.</p>
+                    </div>
+                    
+                    <?php 
+                    $default_standards = [
+                        ['label' => 'Ice Ratio', 'value' => '4:1 Player/Coach'],
+                        ['label' => 'Technology', 'value' => 'Video Analysis'],
+                        ['label' => 'Facility', 'value' => 'Pro-Grade Gym'],
+                        ['label' => 'Methodology', 'value' => 'Periodization']
+                    ];
+                    for ($i = 1; $i <= 4; $i++): 
+                        $standard_prefix = "landing_standard_{$i}_";
+                    ?>
+                    <div class="setting-item" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; padding: 15px; background: var(--bg-main); border-radius: 8px; margin-bottom: 12px;">
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 8px;">Label <?php echo $i; ?> (Default: <?php echo htmlspecialchars($default_standards[$i-1]['label']); ?>)</label>
+                            <input type="text" name="<?php echo $standard_prefix; ?>label" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings[$standard_prefix . 'label'] ?? ''); ?>"
+                                   placeholder="<?php echo htmlspecialchars($default_standards[$i-1]['label']); ?>">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 8px;">Value <?php echo $i; ?> (Default: <?php echo htmlspecialchars($default_standards[$i-1]['value']); ?>)</label>
+                            <input type="text" name="<?php echo $standard_prefix; ?>value" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings[$standard_prefix . 'value'] ?? ''); ?>"
+                                   placeholder="<?php echo htmlspecialchars($default_standards[$i-1]['value']); ?>">
+                        </div>
+                    </div>
+                    <?php endfor; ?>
+                </div>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 24px;">
+                <button type="submit" class="btn btn-primary" data-action="save">
+                    <i class="fas fa-save"></i> Save Landing Page Settings
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="if(confirm('This will clear all custom landing page content. After clearing, click Save to apply the changes and use default values.')) { document.querySelectorAll('#landing-tab input, #landing-tab textarea').forEach(el => el.value = ''); }">
+                    <i class="fas fa-undo"></i> Reset to Defaults
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
