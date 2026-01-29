@@ -739,16 +739,27 @@ if (!in_array($activeTab, $validTabs)) {
     
     // Tab switching
     document.querySelectorAll('[data-action="switch-tab"]').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation(); // Prevent app.js handler from also running
+            
             const tabName = this.getAttribute('data-tab');
+            if (!tabName) return;
             
             // Remove active from all tab buttons and contents
             document.querySelectorAll('.page-tab').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+                content.style.display = 'none';
+            });
             
             // Add active to clicked button and corresponding content
             this.classList.add('active');
-            document.getElementById(tabName + '-tab').classList.add('active');
+            const targetContent = document.getElementById(tabName + '-tab');
+            if (targetContent) {
+                targetContent.classList.add('active');
+                targetContent.style.display = 'block';
+            }
             
             // Update URL without page reload
             const url = new URL(window.location);
@@ -759,7 +770,10 @@ if (!in_array($activeTab, $validTabs)) {
     
     // Handle add buttons to open modals
     document.querySelectorAll('[data-action="add"][data-modal]').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation(); // Prevent app.js handler from also running
+            
             const modalId = this.getAttribute('data-modal');
             if (modalId) {
                 openModal(modalId);

@@ -392,8 +392,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                             $storeCredit = $package['store_credit'] ?? 0;
                         ?>
                         <div class="product-card <?= $isActive ? 'featured' : '' ?>">
-                            <?php if ($isActive): ?><div class="product-badge">Active</div><?php endif; ?>
-                            <?php if ($showOnLanding): ?><div class="product-badge landing" style="right: 80px;">Public</div><?php endif; ?>
+                            <?php if ($showOnLanding): ?><div class="product-badge landing">Public</div><?php endif; ?>
                             <div class="product-header">
                                 <h4><?= htmlspecialchars($package['name']) ?></h4>
                                 <span class="product-status <?= $isActive ? 'active' : 'inactive' ?>"><?= $isActive ? 'Active' : 'Inactive' ?></span>
@@ -659,6 +658,7 @@ $activeTab = $_GET['tab'] ?? 'sessions';
     padding: 28px;
     position: relative;
     transition: all 0.3s;
+    display: block; /* Override .session-card flex layout */
 }
 
 .product-card:hover {
@@ -1653,17 +1653,30 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.page-tab[data-action="switch-tab"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopImmediatePropagation(); // Prevent app.js handler from also running
+            
             var tabName = this.getAttribute('data-tab');
+            if (!tabName) return;
             
             document.querySelectorAll('.tab-content').forEach(function(tab) {
                 tab.classList.remove('active');
+                tab.style.display = 'none';
             });
             document.querySelectorAll('.page-tab').forEach(function(tabBtn) {
                 tabBtn.classList.remove('active');
             });
             
-            document.getElementById(tabName + '-tab').classList.add('active');
+            var targetContent = document.getElementById(tabName + '-tab');
+            if (targetContent) {
+                targetContent.classList.add('active');
+                targetContent.style.display = 'block';
+            }
             this.classList.add('active');
+            
+            // Update URL without page reload
+            var url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            window.history.replaceState({}, '', url);
         });
     });
     
