@@ -92,9 +92,6 @@ if (!in_array($activeTab, $validTabs)) {
                         <i class="fas fa-star"></i>
                         <h4>No Skills Found</h4>
                         <p>Create your first skill to use in athlete evaluations.</p>
-                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-skill-modal">
-                            <i class="fas fa-plus"></i> Add Skill
-                        </button>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -160,9 +157,6 @@ if (!in_array($activeTab, $validTabs)) {
                         <i class="fas fa-hockey-puck"></i>
                         <h4>No Drill Types Found</h4>
                         <p>Create drill types to organize your training drills.</p>
-                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-drill-type-modal">
-                            <i class="fas fa-plus"></i> Add Drill Type
-                        </button>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -233,9 +227,6 @@ if (!in_array($activeTab, $validTabs)) {
                         <i class="fas fa-shopping-bag"></i>
                         <h4>No Merchandise Categories Found</h4>
                         <p>Create categories to organize products in your shop.</p>
-                        <button type="button" class="btn btn-primary" data-action="add" data-modal="add-merchandise-modal">
-                            <i class="fas fa-plus"></i> Add Category
-                        </button>
                     </div>
                     <?php endif; ?>
                 </div>

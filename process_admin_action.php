@@ -1772,6 +1772,104 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
     exit();
 }
 
+// === MERCHANDISE CATEGORIES MANAGEMENT ===
+// Manages merchandise categories for shop organization
+if ($action == 'add_merchandise_category') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        
+        if (empty($name)) {
+            throw new Exception('Category name is required');
+        }
+        
+        $stmt = $pdo->prepare("INSERT INTO merchandise_categories (name, description, is_active) VALUES (?, ?, 1)");
+        $stmt->execute([$name, $description]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Merchandise category created successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=merchandise&status=category_added");
+    } catch (Exception $e) {
+        error_log("Create merchandise category error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=merchandise&status=error");
+    }
+    exit();
+}
+
+if ($action == 'edit_merchandise_category') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $id = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        
+        if ($id <= 0 || empty($name)) {
+            throw new Exception('Invalid category data');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE merchandise_categories SET name = ?, description = ? WHERE id = ?");
+        $stmt->execute([$name, $description, $id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Merchandise category updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=merchandise&status=category_updated");
+    } catch (Exception $e) {
+        error_log("Edit merchandise category error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=merchandise&status=error");
+    }
+    exit();
+}
+
+if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'merchandise') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $id = intval($_POST['id'] ?? 0);
+        
+        if ($id <= 0) {
+            throw new Exception('Invalid category ID');
+        }
+        
+        $stmt = $pdo->prepare("DELETE FROM merchandise_categories WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Merchandise category deleted successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=merchandise&status=category_deleted");
+    } catch (Exception $e) {
+        error_log("Delete merchandise category error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=merchandise&status=error");
+    }
+    exit();
+}
+
 // === POSITIONS MANAGEMENT ===
 // Manages player positions (Forward, Defense, Goalie variations)
 if ($action == 'create_position') {
