@@ -949,8 +949,8 @@ function closeModal(id) {
     document.getElementById(id).classList.remove('active');
 }
 
-// Convert forms to AJAX
-document.querySelectorAll('.modal form').forEach(form => {
+// Convert forms to AJAX (includes modal forms and create plan form)
+document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
