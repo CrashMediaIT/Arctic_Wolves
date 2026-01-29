@@ -1268,7 +1268,14 @@ if ($action == 'create_user') {
     $is_verified = intval($_POST['is_verified'] ?? 1);
     $password = $_POST['password'];
     $birth_date = !empty($_POST['birth_date']) ? $_POST['birth_date'] : null;
-    $assigned_coach_id = !empty($_POST['assigned_coach_id']) ? intval($_POST['assigned_coach_id']) : null;
+    // Support multiple coaches - get array of coach IDs
+    $assigned_coach_ids = isset($_POST['assigned_coach_ids']) && is_array($_POST['assigned_coach_ids']) ? array_map('intval', array_filter($_POST['assigned_coach_ids'])) : [];
+    // For backward compatibility, also check for single assigned_coach_id
+    if (empty($assigned_coach_ids) && !empty($_POST['assigned_coach_id'])) {
+        $assigned_coach_ids = [intval($_POST['assigned_coach_id'])];
+    }
+    // Use first coach as primary assigned_coach_id for backward compatibility
+    $primary_coach_id = !empty($assigned_coach_ids) ? $assigned_coach_ids[0] : null;
     $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
 
     try {
@@ -1281,9 +1288,21 @@ if ($action == 'create_user') {
             INSERT INTO users (email, password, first_name, last_name, role, phone, is_verified, force_pass_change, birth_date, assigned_coach_id, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$email, $hashed_password, $first_name, $last_name, $role, $phone, $is_verified, $force_pass_change, $birth_date, $assigned_coach_id]);
+        $stmt->execute([$email, $hashed_password, $first_name, $last_name, $role, $phone, $is_verified, $force_pass_change, $birth_date, $primary_coach_id]);
         
         $new_user_id = $pdo->lastInsertId();
+        
+        // Assign multiple coaches if this is an athlete
+        if ($role === 'athlete' && !empty($assigned_coach_ids)) {
+            $insert_coach_stmt = $pdo->prepare("
+                INSERT INTO athlete_coaches (athlete_id, coach_id, role_type, assigned_by, status) 
+                VALUES (?, ?, 'primary', ?, 'active')
+                ON DUPLICATE KEY UPDATE status = 'active', assigned_by = ?
+            ");
+            foreach ($assigned_coach_ids as $coach_id) {
+                $insert_coach_stmt->execute([$new_user_id, $coach_id, $_SESSION['user_id'], $_SESSION['user_id']]);
+            }
+        }
         
         // Assign team if provided
         if ($team_id && $role === 'athlete') {
@@ -1307,7 +1326,14 @@ if ($action == 'update_user') {
     $role = $_POST['role'];
     $password = trim($_POST['password'] ?? '');
     $birth_date = !empty($_POST['birth_date']) ? $_POST['birth_date'] : null;
-    $assigned_coach_id = !empty($_POST['assigned_coach_id']) ? intval($_POST['assigned_coach_id']) : null;
+    // Support multiple coaches - get array of coach IDs
+    $assigned_coach_ids = isset($_POST['assigned_coach_ids']) && is_array($_POST['assigned_coach_ids']) ? array_map('intval', array_filter($_POST['assigned_coach_ids'])) : [];
+    // For backward compatibility, also check for single assigned_coach_id
+    if (empty($assigned_coach_ids) && !empty($_POST['assigned_coach_id'])) {
+        $assigned_coach_ids = [intval($_POST['assigned_coach_id'])];
+    }
+    // Use first coach as primary assigned_coach_id for backward compatibility
+    $primary_coach_id = !empty($assigned_coach_ids) ? $assigned_coach_ids[0] : null;
     $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
 
     try {
@@ -1319,14 +1345,32 @@ if ($action == 'update_user') {
                 SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, password = ?, birth_date = ?, assigned_coach_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $hashed_password, $birth_date, $assigned_coach_id, $user_id_to_update]);
+            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $hashed_password, $birth_date, $primary_coach_id, $user_id_to_update]);
         } else {
             $stmt = $pdo->prepare("
                 UPDATE users 
                 SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, birth_date = ?, assigned_coach_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $birth_date, $assigned_coach_id, $user_id_to_update]);
+            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $birth_date, $primary_coach_id, $user_id_to_update]);
+        }
+        
+        // Update multiple coach assignments if this is an athlete
+        if ($role === 'athlete') {
+            // First, deactivate all existing coach assignments for this athlete
+            $pdo->prepare("UPDATE athlete_coaches SET status = 'inactive' WHERE athlete_id = ?")->execute([$user_id_to_update]);
+            
+            // Then add/reactivate the new coach assignments
+            if (!empty($assigned_coach_ids)) {
+                $insert_coach_stmt = $pdo->prepare("
+                    INSERT INTO athlete_coaches (athlete_id, coach_id, role_type, assigned_by, status) 
+                    VALUES (?, ?, 'primary', ?, 'active')
+                    ON DUPLICATE KEY UPDATE status = 'active', assigned_by = ?
+                ");
+                foreach ($assigned_coach_ids as $coach_id) {
+                    $insert_coach_stmt->execute([$user_id_to_update, $coach_id, $_SESSION['user_id'], $_SESSION['user_id']]);
+                }
+            }
         }
         
         // Handle team assignment if provided
@@ -1668,7 +1712,14 @@ if ($action == 'admin_update_assignments') {
     
     try {
         $user_id_to_update = intval($_POST['user_id'] ?? 0);
-        $assigned_coach_id = !empty($_POST['assigned_coach_id']) ? intval($_POST['assigned_coach_id']) : null;
+        // Support multiple coaches - get array of coach IDs
+        $assigned_coach_ids = isset($_POST['assigned_coach_ids']) && is_array($_POST['assigned_coach_ids']) ? array_map('intval', array_filter($_POST['assigned_coach_ids'])) : [];
+        // For backward compatibility, also check for single assigned_coach_id
+        if (empty($assigned_coach_ids) && !empty($_POST['assigned_coach_id'])) {
+            $assigned_coach_ids = [intval($_POST['assigned_coach_id'])];
+        }
+        // Use first coach as primary assigned_coach_id for backward compatibility
+        $primary_coach_id = !empty($assigned_coach_ids) ? $assigned_coach_ids[0] : null;
         $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
         $jersey_number = !empty($_POST['jersey_number']) ? intval($_POST['jersey_number']) : null;
         $position = trim($_POST['position'] ?? '');
@@ -1678,8 +1729,24 @@ if ($action == 'admin_update_assignments') {
             exit();
         }
         
-        // Update assigned coach
-        $pdo->prepare("UPDATE users SET assigned_coach_id = ? WHERE id = ?")->execute([$assigned_coach_id, $user_id_to_update]);
+        // Update primary assigned coach for backward compatibility
+        $pdo->prepare("UPDATE users SET assigned_coach_id = ? WHERE id = ?")->execute([$primary_coach_id, $user_id_to_update]);
+        
+        // Update multiple coach assignments
+        // First, deactivate all existing coach assignments for this athlete
+        $pdo->prepare("UPDATE athlete_coaches SET status = 'inactive' WHERE athlete_id = ?")->execute([$user_id_to_update]);
+        
+        // Then add/reactivate the new coach assignments
+        if (!empty($assigned_coach_ids)) {
+            $insert_coach_stmt = $pdo->prepare("
+                INSERT INTO athlete_coaches (athlete_id, coach_id, role_type, assigned_by, status) 
+                VALUES (?, ?, 'primary', ?, 'active')
+                ON DUPLICATE KEY UPDATE status = 'active', assigned_by = ?
+            ");
+            foreach ($assigned_coach_ids as $coach_id) {
+                $insert_coach_stmt->execute([$user_id_to_update, $coach_id, $_SESSION['user_id'], $_SESSION['user_id']]);
+            }
+        }
         
         // Handle team assignment
         if ($team_id) {

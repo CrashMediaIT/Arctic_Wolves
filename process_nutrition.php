@@ -186,6 +186,93 @@ try {
             echo json_encode(['success' => true, 'message' => 'Nutrition plan deleted successfully']);
             break;
             
+        case 'assign_athletes':
+            $nutrition_plan_id = intval($_POST['nutrition_plan_id'] ?? 0);
+            $athlete_ids = isset($_POST['athlete_ids']) && is_array($_POST['athlete_ids']) ? array_map('intval', array_filter($_POST['athlete_ids'])) : [];
+            $start_date = $_POST['start_date'] ?? date('Y-m-d');
+            $notes = trim($_POST['notes'] ?? '');
+            $meals = $_POST['meals'] ?? [];
+            
+            if (empty($nutrition_plan_id)) {
+                throw new Exception('Nutrition plan ID is required');
+            }
+            
+            if (empty($athlete_ids)) {
+                throw new Exception('Please select at least one athlete');
+            }
+            
+            // Validate date format
+            if (!empty($start_date)) {
+                $d = DateTime::createFromFormat('Y-m-d', $start_date);
+                if (!$d || $d->format('Y-m-d') !== $start_date) {
+                    $start_date = date('Y-m-d');
+                }
+            }
+            
+            $pdo->beginTransaction();
+            
+            foreach ($athlete_ids as $athlete_id) {
+                // Check if assignment already exists
+                $check_stmt = $pdo->prepare("
+                    SELECT id FROM athlete_nutrition_assignments 
+                    WHERE athlete_id = ? AND nutrition_plan_id = ?
+                ");
+                $check_stmt->execute([$athlete_id, $nutrition_plan_id]);
+                $existing = $check_stmt->fetch();
+                
+                if ($existing) {
+                    // Update existing assignment
+                    $update_stmt = $pdo->prepare("
+                        UPDATE athlete_nutrition_assignments 
+                        SET status = 'active', start_date = ?, notes = ?, assigned_by = ?, assigned_date = NOW()
+                        WHERE id = ?
+                    ");
+                    $update_stmt->execute([$start_date, $notes, $user_id, $existing['id']]);
+                    $assignment_id = $existing['id'];
+                } else {
+                    // Create new assignment
+                    $insert_stmt = $pdo->prepare("
+                        INSERT INTO athlete_nutrition_assignments 
+                        (athlete_id, nutrition_plan_id, assigned_by, start_date, notes, status, assigned_date) 
+                        VALUES (?, ?, ?, ?, ?, 'active', NOW())
+                    ");
+                    $insert_stmt->execute([$athlete_id, $nutrition_plan_id, $user_id, $start_date, $notes]);
+                    $assignment_id = $pdo->lastInsertId();
+                }
+                
+                // Save custom meal settings if provided
+                if (!empty($meals)) {
+                    foreach ($meals as $meal) {
+                        $meal_id = intval($meal['meal_id'] ?? 0);
+                        $food_id = intval($meal['food_id'] ?? 0);
+                        if ($meal_id <= 0) continue;
+                        
+                        $custom_serving_quantity = !empty($meal['custom_serving_quantity']) ? floatval($meal['custom_serving_quantity']) : null;
+                        $custom_portion_notes = !empty($meal['custom_portion_notes']) ? trim($meal['custom_portion_notes']) : null;
+                        
+                        // Only save if at least one custom value is provided
+                        if ($custom_serving_quantity !== null || $custom_portion_notes !== null) {
+                            $settings_stmt = $pdo->prepare("
+                                INSERT INTO athlete_meal_settings 
+                                (assignment_id, meal_id, food_id, custom_serving_quantity, custom_portion_notes)
+                                VALUES (?, ?, ?, ?, ?)
+                                ON DUPLICATE KEY UPDATE 
+                                custom_serving_quantity = VALUES(custom_serving_quantity),
+                                custom_portion_notes = VALUES(custom_portion_notes),
+                                updated_at = NOW()
+                            ");
+                            $settings_stmt->execute([$assignment_id, $meal_id, $food_id ?: 0, $custom_serving_quantity, $custom_portion_notes]);
+                        }
+                    }
+                }
+            }
+            
+            $pdo->commit();
+            
+            $count = count($athlete_ids);
+            echo json_encode(['success' => true, 'message' => "Nutrition plan assigned to {$count} athlete(s) successfully"]);
+            break;
+            
         default:
             throw new Exception('Invalid action');
     }

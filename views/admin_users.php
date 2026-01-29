@@ -13,9 +13,24 @@ try {
     $teams_stmt = $pdo->query("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
     $teams = $teams_stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Fetch coaches for assignment dropdown
-    $coaches_stmt = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as name FROM users WHERE role IN ('coach', 'team_coach', 'health_coach') AND is_verified = 1 ORDER BY first_name");
+    // Fetch coaches for assignment dropdown (includes admin, coach, team_coach, health_coach)
+    $coaches_stmt = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as name, role FROM users WHERE role IN ('admin', 'coach', 'team_coach', 'health_coach') AND is_verified = 1 ORDER BY first_name");
     $coaches = $coaches_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fetch existing athlete-coach assignments (for multiple coach support)
+    $athlete_coaches_map = [];
+    try {
+        $ac_stmt = $pdo->query("SELECT athlete_id, coach_id FROM athlete_coaches WHERE status = 'active'");
+        while ($row = $ac_stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!isset($athlete_coaches_map[$row['athlete_id']])) {
+                $athlete_coaches_map[$row['athlete_id']] = [];
+            }
+            $athlete_coaches_map[$row['athlete_id']][] = $row['coach_id'];
+        }
+    } catch (PDOException $e) {
+        // Table may not exist yet, silently continue
+        $athlete_coaches_map = [];
+    }
     
     // Build query
     $where = [];
@@ -1023,16 +1038,25 @@ input:checked + .toggle-slider:before {
                 </div>
                 
                 <div class="form-row athlete-coach-fields" style="display: none;">
-                    <div class="form-group">
-                        <label class="form-label">Assign Coach</label>
-                        <select name="assigned_coach_id" class="form-input">
-                            <option value="">No Coach</option>
-                            <?php foreach ($coaches as $coach): ?>
-                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name']); ?></option>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label">Assign Coaches <small>(Hold Ctrl/Cmd to select multiple)</small></label>
+                        <select name="assigned_coach_ids[]" class="form-input" multiple size="5" style="min-height: 120px;">
+                            <?php foreach ($coaches as $coach): 
+                                $roleLabel = '';
+                                switch($coach['role']) {
+                                    case 'admin': $roleLabel = ' (Admin)'; break;
+                                    case 'health_coach': $roleLabel = ' (Health Coach)'; break;
+                                    case 'team_coach': $roleLabel = ' (Team Coach)'; break;
+                                    case 'coach': $roleLabel = ' (Coach)'; break;
+                                }
+                            ?>
+                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name'] . $roleLabel); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+                </div>
+                
+                <div class="form-row athlete-coach-fields" style="display: none;">
                     <div class="form-group">
                         <label class="form-label">Assign Team</label>
                         <select name="team_id" class="form-input">
@@ -1127,16 +1151,25 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                 </div>
                 
                 <div class="form-row edit-athlete-coach-fields" style="display: none;">
-                    <div class="form-group">
-                        <label class="form-label">Assign Coach</label>
-                        <select name="assigned_coach_id" id="edit-user-coach-id" class="form-input">
-                            <option value="">No Coach</option>
-                            <?php foreach ($coaches as $coach): ?>
-                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name']); ?></option>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label">Assign Coaches <small>(Hold Ctrl/Cmd to select multiple)</small></label>
+                        <select name="assigned_coach_ids[]" id="edit-user-coach-ids" class="form-input" multiple size="5" style="min-height: 120px;">
+                            <?php foreach ($coaches as $coach): 
+                                $roleLabel = '';
+                                switch($coach['role']) {
+                                    case 'admin': $roleLabel = ' (Admin)'; break;
+                                    case 'health_coach': $roleLabel = ' (Health Coach)'; break;
+                                    case 'team_coach': $roleLabel = ' (Team Coach)'; break;
+                                    case 'coach': $roleLabel = ' (Coach)'; break;
+                                }
+                            ?>
+                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name'] . $roleLabel); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+                </div>
+                
+                <div class="form-row edit-athlete-coach-fields" style="display: none;">
                     <div class="form-group">
                         <label class="form-label">Assign Team</label>
                         <select name="team_id" id="edit-user-team-id" class="form-input">
@@ -1467,11 +1500,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="hidden" name="user_id" class="manage-form-user-id" value="">
                     
                     <div class="form-group">
-                        <label class="form-label">Assigned Coach</label>
-                        <select name="assigned_coach_id" class="form-input" id="manage-coach-select">
-                            <option value="">No Coach Assigned</option>
-                            <?php foreach ($coaches as $coach): ?>
-                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name']); ?></option>
+                        <label class="form-label">Assigned Coaches <small>(Hold Ctrl/Cmd to select multiple)</small></label>
+                        <select name="assigned_coach_ids[]" class="form-input" id="manage-coach-select" multiple size="5" style="min-height: 120px;">
+                            <?php foreach ($coaches as $coach): 
+                                $roleLabel = '';
+                                switch($coach['role']) {
+                                    case 'admin': $roleLabel = ' (Admin)'; break;
+                                    case 'health_coach': $roleLabel = ' (Health Coach)'; break;
+                                    case 'team_coach': $roleLabel = ' (Team Coach)'; break;
+                                    case 'coach': $roleLabel = ' (Coach)'; break;
+                                }
+                            ?>
+                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name'] . $roleLabel); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
