@@ -509,7 +509,6 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                     <i class="fas fa-tshirt"></i>
                     <h4>No Merchandise Products</h4>
                     <p>Create your first merchandise product to start selling in the shop and POS.</p>
-                    <button class="btn btn-primary" data-action="add" data-modal="add-merchandise-product-modal"><i class="fas fa-plus"></i> Add Product</button>
                 </div>
                 <?php else: ?>
                 <div class="table-container">

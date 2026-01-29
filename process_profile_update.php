@@ -592,13 +592,13 @@ if ($action == 'update_pin') {
         // Hash the PIN
         $pinHash = password_hash($new_pin, PASSWORD_DEFAULT);
         
-        // Insert or update PIN
+        // Insert or update PIN (compatible with older MySQL versions)
         $stmt = $pdo->prepare("
             INSERT INTO staff_pins (user_id, pin_hash, is_active) 
-            VALUES (?, ?, 1) AS new_values
-            ON DUPLICATE KEY UPDATE pin_hash = new_values.pin_hash, is_active = 1
+            VALUES (?, ?, 1)
+            ON DUPLICATE KEY UPDATE pin_hash = ?, is_active = 1
         ");
-        $stmt->execute([$current_user_id, $pinHash]);
+        $stmt->execute([$current_user_id, $pinHash, $pinHash]);
         
         echo json_encode(['success' => true, 'message' => 'PIN updated successfully']);
     } catch (PDOException $e) {
