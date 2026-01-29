@@ -1774,7 +1774,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
 
 // === MERCHANDISE CATEGORIES MANAGEMENT ===
 // Manages merchandise categories for shop organization
-if ($action == 'add_merchandise_category') {
+if ($action == 'create_merchandise_category') {
     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
     
     try {
@@ -1806,7 +1806,7 @@ if ($action == 'add_merchandise_category') {
     exit();
 }
 
-if ($action == 'edit_merchandise_category') {
+if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'merchandise') {
     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
     
     try {

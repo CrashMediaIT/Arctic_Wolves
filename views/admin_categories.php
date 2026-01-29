@@ -608,7 +608,7 @@ if (!in_array($activeTab, $validTabs)) {
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="add_merchandise_category">
+            <input type="hidden" name="action" value="create_merchandise_category">
             
             <div class="modal-body">
                 <div class="form-group">
@@ -643,7 +643,8 @@ if (!in_array($activeTab, $validTabs)) {
         </div>
         <form method="POST" action="process_admin_action.php">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="edit_merchandise_category">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="type" value="merchandise">
             <input type="hidden" name="id" id="edit-merchandise-id">
             
             <div class="modal-body">
