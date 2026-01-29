@@ -567,7 +567,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=health" class="nav-link <?= in_array($page, ['health','strength_conditioning','nutrition'])?'active':'' ?>">
                 <i class="fa-solid fa-heart-pulse icon"></i> Health
             </a>
-            <a href="shop.php" class="nav-link" target="_blank">
+            <a href="shop.php" class="nav-link" target="_blank" rel="noopener noreferrer">
                 <i class="fa-solid fa-store icon"></i> Shop
             </a>
             <a href="?page=payment_history" class="nav-link <?= $page=='payment_history'?'active':'' ?>">
