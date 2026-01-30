@@ -96,18 +96,49 @@ try {
     $payments = [];
 }
 
-// Fetch billing statistics
+// Fetch billing statistics (includes invoices, POS transactions, and shop orders)
 try {
-    $statsQuery = "SELECT 
-        COALESCE(SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END), 0) as total_paid,
+    // Invoice stats
+    $invoiceStatsQuery = "SELECT 
+        COALESCE(SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END), 0) as invoice_paid,
         COALESCE(SUM(CASE WHEN status IN ('sent', 'pending') THEN total_amount ELSE 0 END), 0) as total_pending,
         COALESCE(SUM(CASE WHEN status = 'overdue' THEN total_amount ELSE 0 END), 0) as total_overdue,
         COUNT(*) as total_invoices
         FROM invoices";
-    $statsResult = $pdo->query($statsQuery);
-    $stats = $statsResult->fetch(PDO::FETCH_ASSOC);
+    $invoiceStatsResult = $pdo->query($invoiceStatsQuery);
+    $invoiceStats = $invoiceStatsResult->fetch(PDO::FETCH_ASSOC);
+    
+    // POS transactions revenue (Stripe + cash)
+    $posStatsQuery = "SELECT 
+        COALESCE(SUM(total), 0) as pos_collected,
+        COALESCE(SUM(CASE WHEN payment_method = 'card' THEN total ELSE 0 END), 0) as pos_card,
+        COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total ELSE 0 END), 0) as pos_cash
+        FROM pos_transactions 
+        WHERE status = 'completed'";
+    $posStatsResult = $pdo->query($posStatsQuery);
+    $posStats = $posStatsResult->fetch(PDO::FETCH_ASSOC);
+    
+    // Shop orders revenue (Stripe payments)
+    $shopStatsQuery = "SELECT 
+        COALESCE(SUM(total), 0) as shop_collected
+        FROM shop_orders 
+        WHERE payment_status = 'paid'";
+    $shopStatsResult = $pdo->query($shopStatsQuery);
+    $shopStats = $shopStatsResult->fetch(PDO::FETCH_ASSOC);
+    
+    // Combine all collected revenue
+    $stats = [
+        'total_paid' => ($invoiceStats['invoice_paid'] ?? 0) + ($posStats['pos_collected'] ?? 0) + ($shopStats['shop_collected'] ?? 0),
+        'total_pending' => $invoiceStats['total_pending'] ?? 0,
+        'total_overdue' => $invoiceStats['total_overdue'] ?? 0,
+        'total_invoices' => $invoiceStats['total_invoices'] ?? 0,
+        'pos_collected' => $posStats['pos_collected'] ?? 0,
+        'pos_card' => $posStats['pos_card'] ?? 0,
+        'pos_cash' => $posStats['pos_cash'] ?? 0,
+        'shop_collected' => $shopStats['shop_collected'] ?? 0
+    ];
 } catch (PDOException $e) {
-    $stats = ['total_paid' => 0, 'total_pending' => 0, 'total_overdue' => 0, 'total_invoices' => 0];
+    $stats = ['total_paid' => 0, 'total_pending' => 0, 'total_overdue' => 0, 'total_invoices' => 0, 'pos_collected' => 0, 'pos_card' => 0, 'pos_cash' => 0, 'shop_collected' => 0];
 }
 
 // Fetch users for invoice creation dropdown
@@ -190,6 +221,38 @@ for ($y = date('Y'); $y >= date('Y') - 5; $y--) {
             <div class="stat-info">
                 <span class="stat-value"><?= $stats['total_invoices'] ?></span>
                 <span class="stat-label">Total Invoices</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Revenue Breakdown Cards -->
+    <div class="billing-stats revenue-breakdown" style="margin-top: 16px;">
+        <div class="billing-stat-card pos-card">
+            <div class="stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;"><i class="fas fa-cash-register"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">$<?= number_format($stats['pos_collected'] ?? 0, 2) ?></span>
+                <span class="stat-label">POS Revenue</span>
+            </div>
+        </div>
+        <div class="billing-stat-card stripe-card">
+            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;"><i class="fas fa-credit-card"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">$<?= number_format($stats['pos_card'] ?? 0, 2) ?></span>
+                <span class="stat-label">POS Card/Stripe</span>
+            </div>
+        </div>
+        <div class="billing-stat-card cash-card">
+            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i class="fas fa-money-bill"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">$<?= number_format($stats['pos_cash'] ?? 0, 2) ?></span>
+                <span class="stat-label">POS Cash</span>
+            </div>
+        </div>
+        <div class="billing-stat-card shop-card">
+            <div class="stat-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;"><i class="fas fa-shopping-bag"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">$<?= number_format($stats['shop_collected'] ?? 0, 2) ?></span>
+                <span class="stat-label">Shop Revenue</span>
             </div>
         </div>
     </div>

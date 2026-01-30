@@ -192,16 +192,32 @@ try {
     $transactions = array_slice($transactions, 0, 10);
     
     // Get revenue data for chart (based on chart period)
+    // Combines payments, POS transactions (Stripe + cash), and shop orders
     $chartDays = intval($chartPeriod);
     $stmt = $pdo->prepare("
-        SELECT DATE(payment_date) as date, SUM(amount) as daily_revenue
-        FROM payments
-        WHERE (payment_status = 'completed' OR status = 'completed')
-        AND payment_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-        GROUP BY DATE(payment_date)
+        SELECT date, SUM(daily_revenue) as daily_revenue FROM (
+            SELECT DATE(payment_date) as date, SUM(amount) as daily_revenue
+            FROM payments
+            WHERE (payment_status = 'completed' OR status = 'completed')
+            AND payment_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY DATE(payment_date)
+            UNION ALL
+            SELECT DATE(created_at) as date, SUM(total) as daily_revenue
+            FROM pos_transactions
+            WHERE status = 'completed'
+            AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY DATE(created_at)
+            UNION ALL
+            SELECT DATE(created_at) as date, SUM(total) as daily_revenue
+            FROM shop_orders
+            WHERE payment_status = 'paid'
+            AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY DATE(created_at)
+        ) AS combined_revenue
+        GROUP BY date
         ORDER BY date ASC
     ");
-    $stmt->execute([$chartDays]);
+    $stmt->execute([$chartDays, $chartDays, $chartDays]);
     $revenueChartData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get expense data for chart
@@ -216,21 +232,40 @@ try {
     $expenseChartData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Year-over-year data (current year vs last year monthly)
+    // Combines payments, POS transactions (Stripe + cash), and shop orders
     $currentYear = date('Y');
     $lastYear = $currentYear - 1;
     
-    $stmt = $pdo->prepare("
-        SELECT MONTH(payment_date) as month, SUM(amount) as monthly_revenue
-        FROM payments
-        WHERE (payment_status = 'completed' OR status = 'completed')
-        AND YEAR(payment_date) = ?
-        GROUP BY MONTH(payment_date)
+    // Helper function to get yearly revenue data from all sources
+    $getYearlyRevenueQuery = "
+        SELECT month, SUM(monthly_revenue) as monthly_revenue FROM (
+            SELECT MONTH(payment_date) as month, SUM(amount) as monthly_revenue
+            FROM payments
+            WHERE (payment_status = 'completed' OR status = 'completed')
+            AND YEAR(payment_date) = ?
+            GROUP BY MONTH(payment_date)
+            UNION ALL
+            SELECT MONTH(created_at) as month, SUM(total) as monthly_revenue
+            FROM pos_transactions
+            WHERE status = 'completed'
+            AND YEAR(created_at) = ?
+            GROUP BY MONTH(created_at)
+            UNION ALL
+            SELECT MONTH(created_at) as month, SUM(total) as monthly_revenue
+            FROM shop_orders
+            WHERE payment_status = 'paid'
+            AND YEAR(created_at) = ?
+            GROUP BY MONTH(created_at)
+        ) AS combined_yearly_revenue
+        GROUP BY month
         ORDER BY month ASC
-    ");
-    $stmt->execute([$currentYear]);
+    ";
+    
+    $stmt = $pdo->prepare($getYearlyRevenueQuery);
+    $stmt->execute([$currentYear, $currentYear, $currentYear]);
     $currentYearData = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     
-    $stmt->execute([$lastYear]);
+    $stmt->execute([$lastYear, $lastYear, $lastYear]);
     $lastYearData = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     
     // Calculate projection for remaining months (simple linear projection)
