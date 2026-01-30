@@ -258,20 +258,18 @@ try {
             
             $changeGiven = $cashReceived - $total;
             
-            $pdo->beginTransaction();
-            
             // Generate transaction number
             $transactionNumber = 'POS-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
             
-            // Record cash payment in Stripe for unified reporting
+            // Record cash payment in Stripe for unified reporting (before database transaction)
             $stripePaymentRecordId = null;
             if (!empty($stripeSecret)) {
                 try {
-                    // Load Stripe
+                    // Load Stripe (use require for consistency with card payment)
                     if (file_exists(__DIR__ . '/vendor/autoload.php')) {
-                        require_once __DIR__ . '/vendor/autoload.php';
+                        require __DIR__ . '/vendor/autoload.php';
                     } elseif (file_exists(__DIR__ . '/stripe-php/init.php')) {
-                        require_once __DIR__ . '/stripe-php/init.php';
+                        require __DIR__ . '/stripe-php/init.php';
                     }
                     
                     \Stripe\Stripe::setApiKey($stripeSecret);
@@ -292,10 +290,8 @@ try {
                         ],
                         'metadata' => [
                             'transaction_number' => $transactionNumber,
-                            'staff_id' => $_SESSION['user_id'],
-                            'payment_type' => 'cash',
-                            'cash_received' => $cashReceived,
-                            'change_given' => $changeGiven
+                            'staff_id' => strval($_SESSION['user_id']),
+                            'payment_type' => 'cash'
                         ]
                     ];
                     
@@ -321,6 +317,9 @@ try {
                     error_log("Stripe integration error for cash transaction: " . $e->getMessage());
                 }
             }
+            
+            // Start database transaction after Stripe API call
+            $pdo->beginTransaction();
             
             // Create POS transaction record with Stripe PaymentRecord ID
             $stmt = $pdo->prepare("

@@ -577,6 +577,223 @@ try {
         border-color: var(--primary);
     }
     
+    /* Cash Payment Modal */
+    .pos-cash-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.8);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .pos-cash-modal.active {
+        display: flex;
+    }
+    
+    .pos-cash-content {
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        padding: 30px;
+        width: 90%;
+        max-width: 450px;
+        position: relative;
+    }
+    
+    .pos-cash-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+    
+    .pos-cash-header i {
+        font-size: 28px;
+        color: #10b981;
+    }
+    
+    .pos-cash-header h3 {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    .pos-cash-totals {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .pos-cash-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 15px;
+    }
+    
+    .pos-cash-row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .pos-cash-row.total-row {
+        font-size: 22px;
+        font-weight: 700;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        margin-top: 12px;
+    }
+    
+    .pos-cash-row.total-row .cash-value {
+        color: var(--primary);
+    }
+    
+    .pos-cash-input-group {
+        margin-bottom: 20px;
+    }
+    
+    .pos-cash-input-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text);
+    }
+    
+    .pos-cash-input-group label i {
+        margin-right: 8px;
+        color: #10b981;
+    }
+    
+    .pos-cash-input {
+        width: 100%;
+        padding: 16px 20px;
+        background: var(--bg);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 24px;
+        font-weight: 700;
+        text-align: center;
+        transition: 0.2s;
+    }
+    
+    .pos-cash-input:focus {
+        outline: none;
+        border-color: #10b981;
+    }
+    
+    .pos-cash-input.error {
+        border-color: #ef4444;
+    }
+    
+    .pos-quick-amounts {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .pos-quick-btn {
+        padding: 14px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    
+    .pos-quick-btn:hover {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: #10b981;
+        color: #10b981;
+    }
+    
+    .pos-change-display {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+        border: 2px solid #10b981;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 24px;
+    }
+    
+    .pos-change-display.insufficient {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+        border-color: #ef4444;
+    }
+    
+    .pos-change-label {
+        font-size: 14px;
+        color: var(--text-dim);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .pos-change-value {
+        font-size: 36px;
+        font-weight: 800;
+        color: #10b981;
+    }
+    
+    .pos-change-display.insufficient .pos-change-value {
+        color: #ef4444;
+    }
+    
+    .pos-cash-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    
+    .pos-cash-cancel {
+        padding: 16px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    
+    .pos-cash-cancel:hover {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+    
+    .pos-cash-confirm {
+        padding: 16px;
+        background: #10b981;
+        border: none;
+        border-radius: 12px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .pos-cash-confirm:hover:not(:disabled) {
+        background: #059669;
+    }
+    
+    .pos-cash-confirm:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
     @media (max-width: 1000px) {
         .pos-container {
             grid-template-columns: 1fr;
@@ -585,6 +802,10 @@ try {
         
         .pos-products {
             min-height: 400px;
+        }
+        
+        .pos-quick-amounts {
+            grid-template-columns: repeat(2, 1fr);
         }
     }
 </style>
@@ -709,6 +930,58 @@ try {
         <div class="pos-size-actions">
             <button class="pos-size-cancel" onclick="closeSizeModal()">Cancel</button>
             <button class="pos-size-add" onclick="addToCartWithSize()">Add to Cart</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cash Payment Modal -->
+<div class="pos-cash-modal" id="cash-modal">
+    <div class="pos-cash-content">
+        <button class="modal-close pos-modal-close" onclick="closeCashModal()" aria-label="Close modal">&times;</button>
+        
+        <div class="pos-cash-header">
+            <i class="fas fa-money-bill-wave"></i>
+            <h3>Cash Payment</h3>
+        </div>
+        
+        <div class="pos-cash-totals">
+            <div class="pos-cash-row">
+                <span>Subtotal</span>
+                <span id="cash-modal-subtotal">$0.00</span>
+            </div>
+            <div class="pos-cash-row">
+                <span><?= htmlspecialchars($taxName) ?> (<?= $taxRate ?>%)</span>
+                <span id="cash-modal-tax">$0.00</span>
+            </div>
+            <div class="pos-cash-row total-row">
+                <span>Total Due</span>
+                <span class="cash-value" id="cash-modal-total">$0.00</span>
+            </div>
+        </div>
+        
+        <div class="pos-cash-input-group">
+            <label><i class="fas fa-hand-holding-usd"></i> Cash Received</label>
+            <input type="number" class="pos-cash-input" id="cash-received-input" 
+                   placeholder="0.00" step="0.01" min="0" 
+                   oninput="calculateChange()">
+        </div>
+        
+        <div class="pos-quick-amounts" id="quick-amounts">
+            <!-- Quick amount buttons will be populated by JavaScript -->
+        </div>
+        
+        <div class="pos-change-display" id="change-display">
+            <div class="pos-change-label">Change to Give</div>
+            <div class="pos-change-value" id="change-amount">$0.00</div>
+        </div>
+        
+        <div class="pos-cash-actions">
+            <button class="pos-cash-cancel" onclick="closeCashModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="pos-cash-confirm" id="confirm-cash-btn" onclick="processCashPayment()" disabled>
+                <i class="fas fa-check"></i> Complete Sale
+            </button>
         </div>
     </div>
 </div>
@@ -935,24 +1208,127 @@ function processCardPayment() {
 }
 
 function openCashModal() {
-    // For now, process cash payment directly
     if (cart.length === 0) return;
     
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const tax = subtotal * (taxRate / 100);
     const total = subtotal + tax;
     
-    const received = prompt('Total: $' + total.toFixed(2) + '\n\nEnter amount received:');
-    if (received === null) return;
+    // Update modal display values
+    document.getElementById('cash-modal-subtotal').textContent = '$' + subtotal.toFixed(2);
+    document.getElementById('cash-modal-tax').textContent = '$' + tax.toFixed(2);
+    document.getElementById('cash-modal-total').textContent = '$' + total.toFixed(2);
     
-    const receivedAmount = parseFloat(received);
-    if (isNaN(receivedAmount) || receivedAmount < total) {
-        alert('Insufficient amount');
+    // Reset input and change display
+    const cashInput = document.getElementById('cash-received-input');
+    cashInput.value = '';
+    cashInput.classList.remove('error');
+    
+    document.getElementById('change-amount').textContent = '$0.00';
+    document.getElementById('change-display').classList.remove('insufficient');
+    document.getElementById('confirm-cash-btn').disabled = true;
+    
+    // Generate quick amount buttons (round up to common denominations)
+    const quickAmountsDiv = document.getElementById('quick-amounts');
+    quickAmountsDiv.innerHTML = '';
+    
+    // Calculate quick amounts: exact, round to next $5, $10, $20, etc.
+    const quickAmounts = [
+        { label: 'Exact', value: total },
+        { label: '$' + Math.ceil(total / 5) * 5, value: Math.ceil(total / 5) * 5 },
+        { label: '$' + Math.ceil(total / 10) * 10, value: Math.ceil(total / 10) * 10 },
+        { label: '$' + Math.ceil(total / 20) * 20, value: Math.ceil(total / 20) * 20 }
+    ];
+    
+    // Remove duplicates and filter valid amounts
+    const uniqueAmounts = [];
+    quickAmounts.forEach(amt => {
+        if (amt.value >= total && !uniqueAmounts.find(a => a.value === amt.value)) {
+            uniqueAmounts.push(amt);
+        }
+    });
+    
+    // Add common bills if higher than total
+    [50, 100].forEach(bill => {
+        if (bill >= total && !uniqueAmounts.find(a => a.value === bill)) {
+            uniqueAmounts.push({ label: '$' + bill, value: bill });
+        }
+    });
+    
+    // Show first 4 quick amounts
+    uniqueAmounts.slice(0, 4).forEach(amt => {
+        const btn = document.createElement('button');
+        btn.className = 'pos-quick-btn';
+        btn.textContent = amt.label;
+        btn.onclick = function() {
+            document.getElementById('cash-received-input').value = amt.value.toFixed(2);
+            calculateChange();
+        };
+        quickAmountsDiv.appendChild(btn);
+    });
+    
+    // Show modal
+    document.getElementById('cash-modal').classList.add('active');
+    
+    // Focus on input
+    setTimeout(() => cashInput.focus(), 100);
+}
+
+function closeCashModal() {
+    document.getElementById('cash-modal').classList.remove('active');
+}
+
+function calculateChange() {
+    const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const tax = subtotal * (taxRate / 100);
+    const total = subtotal + tax;
+    
+    const cashInput = document.getElementById('cash-received-input');
+    const received = parseFloat(cashInput.value) || 0;
+    const change = received - total;
+    
+    const changeDisplay = document.getElementById('change-display');
+    const changeAmount = document.getElementById('change-amount');
+    const confirmBtn = document.getElementById('confirm-cash-btn');
+    
+    if (received === 0) {
+        changeAmount.textContent = '$0.00';
+        changeDisplay.classList.remove('insufficient');
+        cashInput.classList.remove('error');
+        confirmBtn.disabled = true;
+    } else if (received < total) {
+        changeAmount.textContent = '-$' + Math.abs(change).toFixed(2);
+        changeDisplay.classList.add('insufficient');
+        cashInput.classList.add('error');
+        confirmBtn.disabled = true;
+    } else {
+        changeAmount.textContent = '$' + change.toFixed(2);
+        changeDisplay.classList.remove('insufficient');
+        cashInput.classList.remove('error');
+        confirmBtn.disabled = false;
+    }
+}
+
+function processCashPayment() {
+    const cashInput = document.getElementById('cash-received-input');
+    const receivedAmount = parseFloat(cashInput.value) || 0;
+    
+    const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const tax = subtotal * (taxRate / 100);
+    const total = subtotal + tax;
+    
+    if (receivedAmount < total) {
+        alert('Insufficient payment amount');
         return;
     }
     
     const change = receivedAmount - total;
     const customerUserId = document.getElementById('customer-user-id')?.value || '';
+    
+    // Disable button and show loading
+    const confirmBtn = document.getElementById('confirm-cash-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     
     fetch('process_pos.php', {
         method: 'POST',
@@ -970,17 +1346,33 @@ function openCashModal() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Payment successful!\nTransaction #' + data.transaction_number + '\nChange: $' + change.toFixed(2));
-            cart = [];
-            renderCart();
-            document.getElementById('customer-user-id').value = '';
+            // Show success in a nicer way using the change display
+            const changeDisplay = document.getElementById('change-display');
+            const changeAmount = document.getElementById('change-amount');
+            changeDisplay.innerHTML = `
+                <div class="pos-change-label" style="color: #10b981;">✓ Payment Successful</div>
+                <div class="pos-change-value">Transaction #${data.transaction_number}</div>
+                <div style="font-size: 18px; margin-top: 10px;">Change: $${change.toFixed(2)}</div>
+            `;
+            
+            // Reset cart and close modal after delay
+            setTimeout(() => {
+                cart = [];
+                renderCart();
+                document.getElementById('customer-user-id').value = '';
+                closeCashModal();
+            }, 2000);
         } else {
             alert('Payment failed: ' + (data.message || 'Unknown error'));
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
         }
     })
     .catch(error => {
         console.error('Error:', error);
         alert('An error occurred. Please try again.');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
     });
 }
 
