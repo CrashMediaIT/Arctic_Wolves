@@ -22,9 +22,10 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
 
 // Get available sessions for booking - combine regular sessions and training session templates
 $available_sessions_query = "
-    SELECT s.id, s.title as session_type_name, s.description, s.session_date, s.session_time,
+    SELECT CONCAT('session_', s.id) as unique_id, s.id, s.title as session_type_name, s.description, 
+           s.session_date, s.session_time,
            s.duration_minutes, COALESCE(s.price, st.default_price, 0) as session_price,
-           s.max_participants, 'session' as source_type,
+           s.max_participants, 'session' as source_type, NULL as date_id,
            CONCAT(c.first_name, ' ', c.last_name) as coach_name,
            l.name as location_name,
            COUNT(DISTINCT b.id) as registered_count
@@ -33,18 +34,18 @@ $available_sessions_query = "
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN locations l ON s.location_id = l.id
     LEFT JOIN bookings b ON b.session_id = s.id
-    WHERE s.session_date > NOW() 
+    WHERE s.session_date >= CURDATE() 
       AND s.status = 'scheduled'
       AND (s.max_participants IS NULL OR s.max_participants > (SELECT COUNT(*) FROM bookings WHERE session_id = s.id))
     GROUP BY s.id
     
     UNION ALL
     
-    SELECT tst.id, tst.name as session_type_name, tst.description, 
+    SELECT CONCAT('template_', tst.id, '_', tsd.id) as unique_id, tst.id, tst.name as session_type_name, tst.description, 
            DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as session_time,
            tst.duration_minutes, COALESCE(tst.price, 0) as session_price,
            COALESCE(tsd.max_participants, tst.max_participants) as max_participants,
-           'template' as source_type,
+           'template' as source_type, tsd.id as date_id,
            CONCAT(c.first_name, ' ', c.last_name) as coach_name,
            l.name as location_name,
            0 as registered_count
@@ -53,7 +54,7 @@ $available_sessions_query = "
     LEFT JOIN users c ON tst.coach_id = c.id
     LEFT JOIN locations l ON tst.location_id = l.id
     WHERE tst.is_active = 1
-      AND tsd.session_date > NOW()
+      AND tsd.session_date >= NOW()
     
     ORDER BY session_date
     LIMIT 20

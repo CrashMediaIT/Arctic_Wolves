@@ -12,8 +12,8 @@ try {
     if ($user_role === 'athlete' || $user_role === 'parent') {
         // Get upcoming sessions - including both regular sessions and training session templates
         $stmt = $pdo->prepare("
-            SELECT s.id, s.title as session_name, st.name as session_type_name, st.duration,
-                   s.session_date, s.session_time as start_time, 'session' as source_type
+            SELECT CONCAT('session_', s.id) as unique_id, s.id, s.title as session_name, st.name as session_type_name, st.duration,
+                   s.session_date, s.session_time as start_time, 'session' as source_type, NULL as date_id
             FROM sessions s
             LEFT JOIN session_types st ON s.session_type_id = st.id
             WHERE s.session_date >= CURDATE()
@@ -21,12 +21,12 @@ try {
             
             UNION ALL
             
-            SELECT tst.id, tst.name as session_name, tst.name as session_type_name, tst.duration_minutes as duration,
-                   DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as start_time, 'template' as source_type
+            SELECT CONCAT('template_', tst.id, '_', tsd.id) as unique_id, tst.id, tst.name as session_name, tst.name as session_type_name, tst.duration_minutes as duration,
+                   DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as start_time, 'template' as source_type, tsd.id as date_id
             FROM training_session_templates tst
             INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
             WHERE tst.is_active = 1
-              AND tsd.session_date >= NOW()
+              AND DATE(tsd.session_date) >= CURDATE()
             
             ORDER BY session_date ASC, start_time ASC
             LIMIT 5
@@ -69,8 +69,8 @@ try {
     } elseif (in_array($user_role, ['coach', 'health_coach', 'team_coach', 'admin'])) {
         // Get upcoming sessions (next 7 days) - including both regular sessions and training session templates
         $stmt = $pdo->prepare("
-            SELECT s.id, s.title as session_name, st.name as session_type_name, st.duration,
-                   s.session_date, s.session_time as start_time, 'session' as source_type,
+            SELECT CONCAT('session_', s.id) as unique_id, s.id, s.title as session_name, st.name as session_type_name, st.duration,
+                   s.session_date, s.session_time as start_time, 'session' as source_type, NULL as date_id,
                    COUNT(DISTINCT sa.athlete_id) as attendee_count
             FROM sessions s
             LEFT JOIN session_types st ON s.session_type_id = st.id
@@ -81,14 +81,14 @@ try {
             
             UNION ALL
             
-            SELECT tst.id, tst.name as session_name, tst.name as session_type_name, tst.duration_minutes as duration,
-                   DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as start_time, 'template' as source_type,
+            SELECT CONCAT('template_', tst.id, '_', tsd.id) as unique_id, tst.id, tst.name as session_name, tst.name as session_type_name, tst.duration_minutes as duration,
+                   DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as start_time, 'template' as source_type, tsd.id as date_id,
                    0 as attendee_count
             FROM training_session_templates tst
             INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
             WHERE tst.is_active = 1
-              AND tsd.session_date >= NOW()
-              AND tsd.session_date <= DATE_ADD(NOW(), INTERVAL 7 DAY)
+              AND DATE(tsd.session_date) >= CURDATE()
+              AND DATE(tsd.session_date) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
             
             ORDER BY session_date ASC, start_time ASC
             LIMIT 10
