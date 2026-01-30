@@ -64,11 +64,11 @@ foreach ($workoutPlans as $plan) {
     $assignedAthletes[$plan['id']] = $stmt->fetchAll();
 }
 
-// Fetch all active athletes for assignment modal
+// Fetch all active users for assignment modal (all roles can receive workout assignments)
 $allAthletes = $pdo->query("
-    SELECT id, first_name, last_name 
+    SELECT id, first_name, last_name, role 
     FROM users 
-    WHERE role = 'athlete' AND is_active = 1 
+    WHERE is_active = 1 
     ORDER BY last_name, first_name
 ")->fetchAll();
 ?>
@@ -76,7 +76,7 @@ $allAthletes = $pdo->query("
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-dumbbell"></i> Strength & Conditioning</h1>
-        <p class="page-description">Manage exercises, workout plans, and athlete assignments</p>
+        <p class="page-description">Manage exercises, workout plans, and user assignments</p>
     </div>
 </div>
 

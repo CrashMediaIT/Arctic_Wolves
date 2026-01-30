@@ -65,11 +65,11 @@ foreach ($nutritionPlans as $plan) {
     $assignedAthletes[$plan['id']] = $stmt->fetchAll();
 }
 
-// Fetch all active athletes for assignment modal
+// Fetch all active users for assignment modal (all roles can receive nutrition assignments)
 $allAthletes = $pdo->query("
-    SELECT id, first_name, last_name 
+    SELECT id, first_name, last_name, role 
     FROM users 
-    WHERE role = 'athlete' AND is_active = 1 
+    WHERE is_active = 1 
     ORDER BY last_name, first_name
 ")->fetchAll();
 ?>
@@ -77,7 +77,7 @@ $allAthletes = $pdo->query("
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-utensils"></i> Nutrition</h1>
-        <p class="page-description">Manage meals, nutrition plans, and athlete dietary assignments</p>
+        <p class="page-description">Manage meals, nutrition plans, and user dietary assignments</p>
     </div>
 </div>
 

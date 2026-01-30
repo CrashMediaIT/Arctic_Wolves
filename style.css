@@ -23,8 +23,10 @@ body { background: var(--bg-main); color: var(--text-white); line-height: 1.6; o
 header { background: rgba(6, 8, 11, 0.95); backdrop-filter: blur(12px); padding: 12px 0; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2000; }
 .nav-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
 
-.logo-text { font-weight: 900; font-size: 24px; letter-spacing: -1px; }
+.logo-text { font-weight: 900; font-size: 24px; letter-spacing: -1px; color: #fff; }
 .logo-text span { color: var(--primary); }
+.logo-area { color: #fff; text-decoration: none; }
+.logo-area .logo-text { color: #fff; }
 .header-affiliation { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-top: -4px; }
 .header-affiliation a { color: var(--accent); text-decoration: none; }
 

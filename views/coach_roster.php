@@ -14,7 +14,7 @@ $athletes_query = "
     FROM users u
     LEFT JOIN athlete_programs ap ON ap.athlete_id = u.id AND ap.status = 'active'
     LEFT JOIN programs p ON ap.program_id = p.id
-    WHERE u.role = 'athlete' AND u.is_active = 1
+    WHERE u.is_active = 1
     AND EXISTS (SELECT 1 FROM bookings b JOIN sessions s ON b.session_id = s.id WHERE s.coach_id = ? AND b.user_id = u.id)
 ";
 

@@ -44,15 +44,15 @@ function isValidDate($date) {
  * Helper function to check if user can manage this athlete
  */
 function canManageAthlete($pdo, $user_id, $user_role, $athlete_id) {
-    // Admins can manage any athlete
+    // Admins can manage any user
     if ($user_role === 'admin') {
         return true;
     }
     
-    // Health coaches can only manage athletes assigned to or created by them
+    // Health coaches can only manage users assigned to or created by them (any role can receive assignments)
     $check_stmt = $pdo->prepare("
         SELECT id FROM users 
-        WHERE id = ? AND role = 'athlete' AND is_active = 1
+        WHERE id = ? AND is_active = 1
         AND (assigned_coach_id = ? OR created_by_coach_id = ?)
     ");
     $check_stmt->execute([$athlete_id, $user_id, $user_id]);

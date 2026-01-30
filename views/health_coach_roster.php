@@ -23,11 +23,11 @@ if ($is_admin) {
                CONCAT(coach.first_name, ' ', coach.last_name) as assigned_coach_name
         FROM users u
         LEFT JOIN users coach ON u.assigned_coach_id = coach.id
-        WHERE u.role = 'athlete' AND u.is_active = 1
+        WHERE u.is_active = 1
     ";
     $params = [];
 } else {
-    // Health coaches see athletes assigned to them or created by them
+    // Health coaches see users assigned to them or created by them (any role can receive health assignments)
     $athletes_query = "
         SELECT u.id, u.first_name, u.last_name, u.email, u.date_of_birth, u.position,
                u.assigned_coach_id, u.created_by_coach_id,
@@ -36,7 +36,7 @@ if ($is_admin) {
                CONCAT(coach.first_name, ' ', coach.last_name) as assigned_coach_name
         FROM users u
         LEFT JOIN users coach ON u.assigned_coach_id = coach.id
-        WHERE u.role = 'athlete' AND u.is_active = 1
+        WHERE u.is_active = 1
         AND (u.assigned_coach_id = ? OR u.created_by_coach_id = ?)
     ";
     $params = [$user_id, $user_id];

@@ -480,8 +480,30 @@ function getExpenseData($parameters) {
     $date_from = $parameters['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
     $date_to = $parameters['date_to'] ?? date('Y-m-d');
     
-    // Return empty array since expense tracking may not be implemented
-    return [['message' => 'Expense tracking data', 'period' => $date_from . ' to ' . $date_to]];
+    // Fetch expenses from database
+    $stmt = $pdo->prepare("
+        SELECT e.*, p.name as payee_name, ec.name as category_name
+        FROM expenses e
+        LEFT JOIN payees p ON e.payee_id = p.id
+        LEFT JOIN expense_categories ec ON e.category_id = ec.id
+        WHERE e.expense_date BETWEEN ? AND ?
+        ORDER BY e.expense_date DESC
+    ");
+    $stmt->execute([$date_from, $date_to]);
+    $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Calculate totals
+    $totalAmount = 0;
+    foreach ($expenses as $expense) {
+        $totalAmount += floatval($expense['total_amount'] ?? $expense['amount'] ?? 0);
+    }
+    
+    return [
+        'period' => $date_from . ' to ' . $date_to,
+        'total_amount' => $totalAmount,
+        'expense_count' => count($expenses),
+        'expenses' => $expenses
+    ];
 }
 
 function getProfitLossData($parameters) {
@@ -492,13 +514,18 @@ function getProfitLossData($parameters) {
     // Get revenue
     $stmt = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) as revenue FROM payments WHERE payment_date BETWEEN ? AND ?");
     $stmt->execute([$date_from, $date_to]);
-    $revenue = $stmt->fetch(PDO::FETCH_ASSOC)['revenue'];
+    $revenue = floatval($stmt->fetch(PDO::FETCH_ASSOC)['revenue']);
+    
+    // Get expenses
+    $expenseStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(total_amount, amount)), 0) as total_expenses FROM expenses WHERE expense_date BETWEEN ? AND ?");
+    $expenseStmt->execute([$date_from, $date_to]);
+    $expenses = floatval($expenseStmt->fetch(PDO::FETCH_ASSOC)['total_expenses']);
     
     return [
         'period' => $date_from . ' to ' . $date_to,
         'revenue' => $revenue,
-        'expenses' => 0,
-        'profit' => $revenue
+        'expenses' => $expenses,
+        'profit' => $revenue - $expenses
     ];
 }
 
