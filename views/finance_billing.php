@@ -108,11 +108,17 @@ try {
     $invoiceStatsResult = $pdo->query($invoiceStatsQuery);
     $invoiceStats = $invoiceStatsResult->fetch(PDO::FETCH_ASSOC);
     
-    // POS transactions revenue (Stripe + cash)
+    // POS transactions revenue (Stripe + cash) - handles card, cash, and mixed payment methods
     $posStatsQuery = "SELECT 
         COALESCE(SUM(total), 0) as pos_collected,
-        COALESCE(SUM(CASE WHEN payment_method = 'card' THEN total ELSE 0 END), 0) as pos_card,
-        COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total ELSE 0 END), 0) as pos_cash
+        COALESCE(SUM(CASE 
+            WHEN payment_method = 'card' THEN total 
+            WHEN payment_method = 'mixed' THEN COALESCE(card_amount, 0) 
+            ELSE 0 END), 0) as pos_card,
+        COALESCE(SUM(CASE 
+            WHEN payment_method = 'cash' THEN total 
+            WHEN payment_method = 'mixed' THEN COALESCE(cash_amount, 0) 
+            ELSE 0 END), 0) as pos_cash
         FROM pos_transactions 
         WHERE status = 'completed'";
     $posStatsResult = $pdo->query($posStatsQuery);

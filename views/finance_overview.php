@@ -236,7 +236,8 @@ try {
     $currentYear = date('Y');
     $lastYear = $currentYear - 1;
     
-    // Helper function to get yearly revenue data from all sources
+    // Query to get yearly revenue data from all sources (payments, POS, shop orders)
+    // Note: The year parameter must be passed 3 times (once per UNION clause)
     $getYearlyRevenueQuery = "
         SELECT month, SUM(monthly_revenue) as monthly_revenue FROM (
             SELECT MONTH(payment_date) as month, SUM(amount) as monthly_revenue
