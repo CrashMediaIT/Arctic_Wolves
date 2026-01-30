@@ -208,16 +208,16 @@ try {
                 throw new Exception('Invalid nutrition plan');
             }
             
-            // Verify athletes exist and are active athletes
+            // Verify users exist and are active (allow any role to receive nutrition assignments)
             $placeholders = implode(',', array_fill(0, count($athlete_ids), '?'));
-            $verify_stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders) AND role = 'athlete' AND is_active = 1");
+            $verify_stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders) AND is_active = 1");
             $verify_stmt->execute($athlete_ids);
             $valid_athletes = $verify_stmt->fetchAll(PDO::FETCH_COLUMN);
             
-            // Filter to only valid athlete IDs
+            // Filter to only valid user IDs
             $athlete_ids = array_intersect($athlete_ids, $valid_athletes);
             if (empty($athlete_ids)) {
-                throw new Exception('No valid athletes selected');
+                throw new Exception('No valid users selected');
             }
             
             // Validate date format

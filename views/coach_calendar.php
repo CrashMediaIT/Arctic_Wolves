@@ -60,41 +60,19 @@ $locations = $pdo->query("SELECT * FROM locations WHERE is_active = 1 ORDER BY n
 $practice_plans = $pdo->query("SELECT id, name FROM practice_plans ORDER BY created_at DESC LIMIT 50")->fetchAll();
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
 
-// Get athletes assigned to this coach
-$assigned_athletes_stmt = $pdo->prepare("SELECT u.id, u.first_name, u.last_name FROM users u WHERE u.role = 'athlete' AND u.is_active = 1 AND (u.assigned_coach_id = ? OR u.created_by_coach_id = ?) ORDER BY u.last_name, u.first_name");
+// Get users assigned to this coach (any role can receive session assignments)
+$assigned_athletes_stmt = $pdo->prepare("SELECT u.id, u.first_name, u.last_name, u.role FROM users u WHERE u.is_active = 1 AND (u.assigned_coach_id = ? OR u.created_by_coach_id = ?) ORDER BY u.last_name, u.first_name");
 $assigned_athletes_stmt->execute([$user_id, $user_id]);
 $assigned_athletes = $assigned_athletes_stmt->fetchAll();
 
-// Demo data if needed
+// No demo data - show actual data from database only
 $is_demo_data = false;
-if (count($sessions) === 0) {
-    $today = new DateTime();
-    $sessions = [
-        ['id' => 'demo-1', 'session_type_name' => 'Power Skating', 'session_date' => (clone $today)->modify('+1 day')->setTime(10, 0)->format('Y-m-d H:i:s'), 'duration_minutes' => 60, 'coach_name' => 'Coach Smith', 'coach_user_id' => 1, 'location_name' => 'Main Arena', 'description' => 'Speed training', 'practice_plan_name' => null, 'practice_plan_id' => null, 'registered_count' => 8],
-        ['id' => 'demo-2', 'session_type_name' => 'Stick Handling', 'session_date' => (clone $today)->modify('+2 days')->setTime(14, 0)->format('Y-m-d H:i:s'), 'duration_minutes' => 90, 'coach_name' => 'Coach Johnson', 'coach_user_id' => 2, 'location_name' => 'Training Center', 'description' => 'Puck control', 'practice_plan_name' => 'Basic Stick Handling', 'practice_plan_id' => 1, 'registered_count' => 5],
-        ['id' => 'demo-3', 'session_type_name' => 'Game Simulation', 'session_date' => (clone $today)->modify('+3 days')->setTime(16, 0)->format('Y-m-d H:i:s'), 'duration_minutes' => 120, 'coach_name' => 'Coach Williams', 'coach_user_id' => 3, 'location_name' => 'Main Arena', 'description' => 'Scrimmage', 'practice_plan_name' => 'Game Day Prep', 'practice_plan_id' => 2, 'registered_count' => 15]
-    ];
-    $is_demo_data = true;
-}
-if (count($locations) === 0) {
-    $locations = [['id' => 'demo-loc-1', 'name' => 'Main Arena'], ['id' => 'demo-loc-2', 'name' => 'Training Center']];
-}
-if (count($practice_plans) === 0) {
-    $practice_plans = [['id' => 'demo-plan-1', 'name' => 'Basic Skating'], ['id' => 'demo-plan-2', 'name' => 'Power Skating']];
-}
-if (count($session_types) === 0) {
-    $session_types = [['id' => 'demo-type-1', 'name' => 'Private Lesson'], ['id' => 'demo-type-2', 'name' => 'Skills Training']];
-}
 ?>
 
 <div class="page-header">
     <h1 class="page-title"><i class="fas fa-calendar"></i> Calendar</h1>
     <p class="page-description">View and manage all company sessions</p>
 </div>
-
-<?php if ($is_demo_data): ?>
-<div class="demo-data-notice"><i class="fas fa-info-circle"></i> <span>Showing demo data.</span></div>
-<?php endif; ?>
 
 <div class="calendar-content">
     <div class="filter-box">
@@ -161,7 +139,6 @@ if (count($session_types) === 0) {
             <?php foreach ($sessions as $session): 
                 $dt = strtotime($session['session_date']);
                 $end = $dt + ($session['duration_minutes'] ?? 60) * 60;
-                $is_demo = strpos($session['id'], 'demo-') === 0;
                 $is_mine = ($session['coach_user_id'] == $user_id);
             ?>
             <div class="session-card <?= $is_mine ? 'my-session' : '' ?>" data-session-id="<?= $session['id'] ?>" data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? 'Session') ?>" data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $dt) ?>" data-session-end-time="<?= date('g:i A', $end) ?>" data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-session-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>" data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-session-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>">
@@ -428,7 +405,7 @@ function openSessionDetailModal(cardEl) {
 function closeSessionDetailModal() { document.getElementById('sessionDetailModal').classList.remove('active'); }
 function openAssignPlanModal(sessionId, currentPlanId) {
     // Validate sessionId is numeric to prevent XSS
-    if (!/^\d+$/.test(sessionId) && !sessionId.startsWith('demo-')) {
+    if (!/^\d+$/.test(sessionId)) {
         alert('Invalid session ID.');
         return;
     }
@@ -446,13 +423,10 @@ document.querySelectorAll('.session-modal-overlay').forEach(overlay => {
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.querySelectorAll('.session-modal-overlay.active').forEach(m => m.classList.remove('active')); });
 document.getElementById('assignPlanForm')?.addEventListener('submit', function(e) {
     const sessionId = document.getElementById('assignPlanSessionId').value;
-    if (sessionId.startsWith('demo-')) { e.preventDefault(); alert('Demo Mode: Cannot assign plans to demo sessions.'); closeAssignPlanModal(); return; }
     // Validate sessionId is numeric
     if (!/^\d+$/.test(sessionId)) { e.preventDefault(); alert('Invalid session ID.'); return; }
 });
 document.getElementById('privateSessionForm')?.addEventListener('submit', function(e) {
-    const sessionTypeId = this.querySelector('[name="session_type_id"]').value;
-    if (sessionTypeId.startsWith('demo-')) { e.preventDefault(); alert('Demo Mode: Cannot create sessions with demo data.'); return; }
-    // Athlete selection is now optional - no validation required
+    // Form validation is handled by HTML5 required attributes
 });
 </script>
