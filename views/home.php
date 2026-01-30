@@ -10,14 +10,25 @@
 // Fetch real data from database
 try {
     if ($user_role === 'athlete' || $user_role === 'parent') {
-        // Get upcoming sessions
+        // Get upcoming sessions - including both regular sessions and training session templates
         $stmt = $pdo->prepare("
-            SELECT s.*, st.name as session_type_name, st.duration
+            SELECT s.id, s.title as session_name, st.name as session_type_name, st.duration,
+                   s.session_date, s.session_time as start_time, 'session' as source_type
             FROM sessions s
             LEFT JOIN session_types st ON s.session_type_id = st.id
             WHERE s.session_date >= CURDATE()
             AND s.status = 'scheduled'
-            ORDER BY s.session_date ASC, s.start_time ASC
+            
+            UNION ALL
+            
+            SELECT tst.id, tst.name as session_name, tst.name as session_type_name, tst.duration_minutes as duration,
+                   DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as start_time, 'template' as source_type
+            FROM training_session_templates tst
+            INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+            WHERE tst.is_active = 1
+              AND tsd.session_date >= NOW()
+            
+            ORDER BY session_date ASC, start_time ASC
             LIMIT 5
         ");
         $stmt->execute();
@@ -56,9 +67,10 @@ try {
         $stmt->execute([$user_id]);
         $coachNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } elseif (in_array($user_role, ['coach', 'health_coach', 'team_coach', 'admin'])) {
-        // Get upcoming sessions (next 7 days) instead of just today
+        // Get upcoming sessions (next 7 days) - including both regular sessions and training session templates
         $stmt = $pdo->prepare("
-            SELECT s.*, st.name as session_type_name, st.duration,
+            SELECT s.id, s.title as session_name, st.name as session_type_name, st.duration,
+                   s.session_date, s.session_time as start_time, 'session' as source_type,
                    COUNT(DISTINCT sa.athlete_id) as attendee_count
             FROM sessions s
             LEFT JOIN session_types st ON s.session_type_id = st.id
@@ -66,7 +78,19 @@ try {
             WHERE s.session_date >= CURDATE() AND s.session_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
             AND s.status = 'scheduled'
             GROUP BY s.id
-            ORDER BY s.session_date ASC, s.start_time ASC
+            
+            UNION ALL
+            
+            SELECT tst.id, tst.name as session_name, tst.name as session_type_name, tst.duration_minutes as duration,
+                   DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as start_time, 'template' as source_type,
+                   0 as attendee_count
+            FROM training_session_templates tst
+            INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+            WHERE tst.is_active = 1
+              AND tsd.session_date >= NOW()
+              AND tsd.session_date <= DATE_ADD(NOW(), INTERVAL 7 DAY)
+            
+            ORDER BY session_date ASC, start_time ASC
             LIMIT 10
         ");
         $stmt->execute();

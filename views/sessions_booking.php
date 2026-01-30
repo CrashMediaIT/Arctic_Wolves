@@ -20,15 +20,14 @@ $coaches = $pdo->query($coaches_query)->fetchAll();
 // Get session types
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
 
-// Get available sessions for booking
+// Get available sessions for booking - combine regular sessions and training session templates
 $available_sessions_query = "
-    SELECT s.*, 
+    SELECT s.id, s.title as session_type_name, s.description, s.session_date, s.session_time,
+           s.duration_minutes, COALESCE(s.price, st.default_price, 0) as session_price,
+           s.max_participants, 'session' as source_type,
            CONCAT(c.first_name, ' ', c.last_name) as coach_name,
-           st.name as session_type_name,
-           COALESCE(s.price, st.default_price, 0) as session_price,
            l.name as location_name,
-           COUNT(DISTINCT b.id) as registered_count,
-           s.max_participants
+           COUNT(DISTINCT b.id) as registered_count
     FROM sessions s
     LEFT JOIN users c ON s.coach_id = c.id
     LEFT JOIN session_types st ON s.session_type_id = st.id
@@ -36,9 +35,27 @@ $available_sessions_query = "
     LEFT JOIN bookings b ON b.session_id = s.id
     WHERE s.session_date > NOW() 
       AND s.status = 'scheduled'
-      AND s.max_participants > (SELECT COUNT(*) FROM bookings WHERE session_id = s.id)
+      AND (s.max_participants IS NULL OR s.max_participants > (SELECT COUNT(*) FROM bookings WHERE session_id = s.id))
     GROUP BY s.id
-    ORDER BY s.session_date
+    
+    UNION ALL
+    
+    SELECT tst.id, tst.name as session_type_name, tst.description, 
+           DATE(tsd.session_date) as session_date, TIME(tsd.session_date) as session_time,
+           tst.duration_minutes, COALESCE(tst.price, 0) as session_price,
+           COALESCE(tsd.max_participants, tst.max_participants) as max_participants,
+           'template' as source_type,
+           CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+           l.name as location_name,
+           0 as registered_count
+    FROM training_session_templates tst
+    INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+    LEFT JOIN users c ON tst.coach_id = c.id
+    LEFT JOIN locations l ON tst.location_id = l.id
+    WHERE tst.is_active = 1
+      AND tsd.session_date > NOW()
+    
+    ORDER BY session_date
     LIMIT 20
 ";
 $available_sessions = $pdo->query($available_sessions_query)->fetchAll();
