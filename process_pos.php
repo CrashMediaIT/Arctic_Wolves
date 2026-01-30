@@ -263,12 +263,71 @@ try {
             // Generate transaction number
             $transactionNumber = 'POS-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
             
-            // Create POS transaction record
+            // Record cash payment in Stripe for unified reporting
+            $stripePaymentRecordId = null;
+            if (!empty($stripeSecret)) {
+                try {
+                    // Load Stripe
+                    if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+                        require_once __DIR__ . '/vendor/autoload.php';
+                    } elseif (file_exists(__DIR__ . '/stripe-php/init.php')) {
+                        require_once __DIR__ . '/stripe-php/init.php';
+                    }
+                    
+                    \Stripe\Stripe::setApiKey($stripeSecret);
+                    
+                    // Create a PaymentRecord in Stripe for the cash transaction
+                    // This enables unified reporting of all transactions (card + cash) in Stripe Dashboard
+                    $paymentRecordParams = [
+                        'amount_requested' => [
+                            'value' => intval($total * 100),
+                            'currency' => $currency
+                        ],
+                        'payment_method_details' => [
+                            'type' => 'custom',
+                            'custom' => [
+                                'display_name' => 'Cash',
+                                'type' => 'cash'
+                            ]
+                        ],
+                        'metadata' => [
+                            'transaction_number' => $transactionNumber,
+                            'staff_id' => $_SESSION['user_id'],
+                            'payment_type' => 'cash',
+                            'cash_received' => $cashReceived,
+                            'change_given' => $changeGiven
+                        ]
+                    ];
+                    
+                    // Add customer details if available
+                    if ($customerName || $customerEmail) {
+                        $paymentRecordParams['customer_details'] = [];
+                        if ($customerName) {
+                            $paymentRecordParams['customer_details']['name'] = $customerName;
+                        }
+                        if ($customerEmail) {
+                            $paymentRecordParams['customer_details']['email'] = $customerEmail;
+                        }
+                    }
+                    
+                    $paymentRecord = \Stripe\PaymentRecord::reportPayment($paymentRecordParams);
+                    $stripePaymentRecordId = $paymentRecord->id;
+                    
+                } catch (\Stripe\Exception\ApiErrorException $e) {
+                    // Log Stripe error but continue with cash transaction
+                    // Cash transactions should still work even if Stripe reporting fails
+                    error_log("Stripe PaymentRecord error for cash transaction: " . $e->getMessage());
+                } catch (Exception $e) {
+                    error_log("Stripe integration error for cash transaction: " . $e->getMessage());
+                }
+            }
+            
+            // Create POS transaction record with Stripe PaymentRecord ID
             $stmt = $pdo->prepare("
                 INSERT INTO pos_transactions (
                     transaction_number, staff_id, customer_user_id, customer_name, customer_email,
-                    subtotal, tax_amount, total, payment_method, cash_amount, change_given, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'cash', ?, ?, 'completed')
+                    subtotal, tax_amount, total, payment_method, cash_amount, change_given, status, stripe_payment_intent
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'cash', ?, ?, 'completed', ?)
             ");
             $stmt->execute([
                 $transactionNumber,
@@ -280,7 +339,8 @@ try {
                 $taxAmount,
                 $total,
                 $cashReceived,
-                $changeGiven
+                $changeGiven,
+                $stripePaymentRecordId
             ]);
             
             $transactionId = $pdo->lastInsertId();
