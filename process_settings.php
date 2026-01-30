@@ -541,7 +541,7 @@ function encryptPassword($password) {
     // Use a key from environment or generate a persistent one
     $key_file = __DIR__ . '/.nextcloud_key';
     if (!file_exists($key_file)) {
-        $key = bin2hex(openssl_random_bytes(32));
+        $key = bin2hex(random_bytes(32));
         file_put_contents($key_file, $key);
         chmod($key_file, 0600);
     } else {
@@ -549,7 +549,7 @@ function encryptPassword($password) {
     }
     
     $key_hash = hash('sha256', $key, true);
-    $iv = openssl_random_bytes(16);
+    $iv = random_bytes(16);
     $encrypted = openssl_encrypt($password, 'AES-256-CBC', $key_hash, 0, $iv);
     return base64_encode($iv . '::' . $encrypted);
 }
