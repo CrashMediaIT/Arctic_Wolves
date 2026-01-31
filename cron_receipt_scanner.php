@@ -202,27 +202,23 @@ function parseReceiptOCR($ocr_text) {
  * Create expense from receipt data
  */
 function createExpenseFromReceipt($pdo, $data, $receipt_file) {
-    // Get default category for cloud receipts
-    $category_stmt = $pdo->query("SELECT id FROM expense_categories WHERE name = 'Cloud Receipts' LIMIT 1");
-    $category = $category_stmt->fetch();
+    // expenses table uses VARCHAR 'category' field, not category_id FK
+    $category_name = 'Cloud Receipts';
     
-    if (!$category) {
-        // Create category if doesn't exist
-        $pdo->exec("INSERT INTO expense_categories (name, description) VALUES ('Cloud Receipts', 'Auto-imported from Nextcloud')");
-        $category_id = $pdo->lastInsertId();
-    } else {
-        $category_id = $category['id'];
+    // Build description including vendor info
+    $description = 'Auto-imported from Nextcloud';
+    if (!empty($data['vendor'])) {
+        $description = $data['vendor'] . ' - ' . $description;
     }
     
     $stmt = $pdo->prepare("
-        INSERT INTO expenses (category_id, vendor_name, description, amount, tax_amount, total_amount, expense_date, receipt_file, payment_method, created_by)
-        VALUES (?, ?, ?, ?, 0, ?, ?, ?, 'Unknown', 0)
+        INSERT INTO expenses (user_id, category, description, amount, expense_date, receipt_url, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
     ");
     $stmt->execute([
-        $category_id,
-        $data['vendor'],
-        'Auto-imported from Nextcloud',
-        $data['amount'],
+        1, // Default to admin user (user_id 1)
+        $category_name,
+        $description,
         $data['amount'],
         $data['date'],
         $receipt_file

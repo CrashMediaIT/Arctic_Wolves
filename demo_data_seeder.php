@@ -871,12 +871,10 @@ class DemoDataSeeder {
     private function seedExpenses() {
         echo "Seeding Expenses...\n";
         
-        if (empty($this->demo_ids['expense_categories'])) {
-            echo "  ⚠ Skipping expenses - no categories available\n";
-            return;
-        }
-        
         $coach_id = $this->demo_ids['users']['coach'][0] ?? 1;
+        
+        // Use category names as the expenses table has VARCHAR category, not category_id FK
+        $categories = ['Equipment', 'Facility', 'Travel', 'Supplies', 'Other'];
         
         $expenses = [
             ['Demo Equipment Purchase', 150.00, date('Y-m-d', strtotime('-10 days'))],
@@ -885,13 +883,13 @@ class DemoDataSeeder {
         ];
         
         foreach ($expenses as $expense) {
-            $category_id = $this->demo_ids['expense_categories'][array_rand($this->demo_ids['expense_categories'])];
+            $category_name = $categories[array_rand($categories)];
             
             $stmt = $this->pdo->prepare("
-                INSERT INTO expenses (description, amount, expense_date, category_id, submitted_by, is_demo, created_at)
-                VALUES (?, ?, ?, ?, ?, 1, NOW())
+                INSERT INTO expenses (description, amount, expense_date, category, user_id, status, created_at)
+                VALUES (?, ?, ?, ?, ?, 'pending', NOW())
             ");
-            $stmt->execute(array_merge($expense, [$category_id, $coach_id]));
+            $stmt->execute(array_merge($expense, [$category_name, $coach_id]));
             $this->demo_ids['expenses'][] = $this->pdo->lastInsertId();
         }
         
