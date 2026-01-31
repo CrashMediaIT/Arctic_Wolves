@@ -211,12 +211,17 @@ function createExpenseFromReceipt($pdo, $data, $receipt_file) {
         $description = $data['vendor'] . ' - ' . $description;
     }
     
+    // Get the first admin user ID dynamically
+    $admin_stmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+    $admin = $admin_stmt->fetch(PDO::FETCH_ASSOC);
+    $user_id = $admin ? $admin['id'] : 1; // Fallback to ID 1 if no admin found
+    
     $stmt = $pdo->prepare("
         INSERT INTO expenses (user_id, category, description, amount, expense_date, receipt_url, status)
         VALUES (?, ?, ?, ?, ?, ?, 'pending')
     ");
     $stmt->execute([
-        1, // Default to admin user (user_id 1)
+        $user_id,
         $category_name,
         $description,
         $data['amount'],

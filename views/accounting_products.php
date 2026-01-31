@@ -1868,7 +1868,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to populate manage dates modal
     function populateManageDatesModal(container, data, sessionId) {
-        var csrfToken = document.querySelector('input[name="csrf_token"]').value;
         var dates = data.dates || [];
         
         var html = '<div class="manage-dates-content">' +
