@@ -520,6 +520,92 @@ if ($action == 'update_training_session') {
     exit();
 }
 
+// Add session date to existing session template
+if ($action == 'add_session_date') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $templateId = intval($_POST['template_id'] ?? 0);
+        $sessionDate = trim($_POST['session_date'] ?? '');
+        $teamId = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
+        
+        if ($templateId <= 0) {
+            throw new Exception('Invalid session template ID');
+        }
+        if (empty($sessionDate)) {
+            throw new Exception('Session date is required');
+        }
+        
+        // Verify template exists
+        $stmt = $pdo->prepare("SELECT id FROM training_session_templates WHERE id = ?");
+        $stmt->execute([$templateId]);
+        if (!$stmt->fetch()) {
+            throw new Exception('Session template not found');
+        }
+        
+        // Insert the new date
+        $stmt = $pdo->prepare("
+            INSERT INTO training_session_dates (template_id, session_date, team_id, is_active)
+            VALUES (?, ?, ?, 1)
+        ");
+        $stmt->execute([$templateId, $sessionDate, $teamId]);
+        $newDateId = $pdo->lastInsertId();
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session date added successfully!', 'date_id' => $newDateId]);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=date_added");
+    } catch (Exception $e) {
+        error_log("Add session date error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=error");
+    }
+    exit();
+}
+
+// Remove session date from session template
+if ($action == 'remove_session_date') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $dateId = intval($_POST['date_id'] ?? 0);
+        
+        if ($dateId <= 0) {
+            throw new Exception('Invalid session date ID');
+        }
+        
+        // Delete the date (CASCADE will handle related records)
+        $stmt = $pdo->prepare("DELETE FROM training_session_dates WHERE id = ?");
+        $stmt->execute([$dateId]);
+        
+        if ($stmt->rowCount() === 0) {
+            throw new Exception('Session date not found');
+        }
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Session date removed successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=date_removed");
+    } catch (Exception $e) {
+        error_log("Remove session date error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=products&tab=sessions&status=error");
+    }
+    exit();
+}
+
 // Update package
 if ($action == 'update_package') {
     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
