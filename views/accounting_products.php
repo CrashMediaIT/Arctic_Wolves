@@ -1890,18 +1890,18 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             dates.forEach(function(date) {
                 var dateObj = new Date(date.session_date);
-                var formattedDate = dateObj.toLocaleDateString('en-US', { 
+                var formattedDate = dateObj.toLocaleString('en-US', { 
                     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
                     hour: 'numeric', minute: '2-digit'
                 });
                 var teamName = date.team_name ? date.team_name : 'All Athletes';
-                var statusClass = date.is_active == 1 ? 'active' : 'inactive';
+                var statusClass = Number(date.is_active) === 1 ? 'active' : 'inactive';
                 
                 html += '<div class="session-date-item" data-date-id="' + date.id + '" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">' +
                     '<div class="date-info">' +
                         '<strong style="color: var(--text-color);">' + formattedDate + '</strong>' +
                         '<span style="color: var(--text-dim); font-size: 13px; margin-left: 12px;"><i class="fas fa-users"></i> ' + escapeHtml(teamName) + '</span>' +
-                        '<span class="status-badge ' + statusClass + '" style="margin-left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 12px;">' + (date.is_active == 1 ? 'Active' : 'Inactive') + '</span>' +
+                        '<span class="status-badge ' + statusClass + '" style="margin-left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 12px;">' + (Number(date.is_active) === 1 ? 'Active' : 'Inactive') + '</span>' +
                     '</div>' +
                     '<button type="button" class="btn-action danger" onclick="removeSessionDate(' + date.id + ', this)" title="Remove Date"><i class="fas fa-trash"></i></button>' +
                 '</div>';
