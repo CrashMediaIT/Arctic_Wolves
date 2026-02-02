@@ -2041,6 +2041,77 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
     
+    // Handle manage-sessions buttons for package sessions
+    document.querySelectorAll('[data-action="manage-sessions"][data-modal]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var modalId = this.getAttribute('data-modal');
+            var itemId = this.getAttribute('data-id');
+            var modal = document.getElementById(modalId);
+            
+            if (!modal) return;
+            
+            var modalBody = modal.querySelector('.modal-body');
+            
+            // Show loading state
+            modalBody.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px;">' +
+                '<i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
+                'Loading package sessions...</p>';
+            modal.classList.add('active');
+            
+            // Fetch package data including sessions
+            fetch('process_admin_action.php?action=get_package&id=' + itemId)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        populateManageSessionsModal(modalBody, data.data, itemId);
+                    } else {
+                        modalBody.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 40px;">' +
+                            '<i class="fas fa-exclamation-circle" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
+                            'Error: ' + (data.message || 'Could not load package sessions') + '</p>';
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Fetch error:', err);
+                    modalBody.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 40px;">' +
+                        '<i class="fas fa-exclamation-circle" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
+                        'Error loading package sessions. Please try again.</p>';
+                });
+        });
+    });
+    
+    // Function to populate manage sessions modal for packages
+    function populateManageSessionsModal(container, data, packageId) {
+        var sessions = data.sessions || [];
+        
+        var html = '<div class="manage-sessions-content">' +
+            '<h4 style="margin-bottom: 16px; color: var(--text-white);">' + escapeHtml(data.name || 'Package') + '</h4>' +
+            '<p style="color: var(--text-dim); margin-bottom: 16px;">Credits: ' + (data.credits || 0) + ' sessions</p>';
+        
+        if (sessions.length === 0) {
+            html += '<p style="color: var(--text-dim); text-align: center; padding: 20px;">' +
+                '<i class="fas fa-list" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>' +
+                'No specific sessions linked to this package.</p>';
+        } else {
+            html += '<div class="sessions-list" style="max-height: 400px; overflow-y: auto;">';
+            sessions.forEach(function(session) {
+                html += '<div class="session-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">' +
+                    '<div>' +
+                        '<strong style="color: var(--text-white);">' + escapeHtml(session.session_name || session.session_description || 'Session') + '</strong>' +
+                        '<span style="margin-left: 8px; color: var(--text-dim); font-size: 12px;">x' + (session.num_sessions || 1) + '</span>' +
+                    '</div>' +
+                '</div>';
+            });
+            html += '</div>';
+        }
+        
+        html += '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px;">' +
+            '<button type="button" class="btn btn-secondary" onclick="closeModal(\'manage-package-sessions-modal\')"><i class="fas fa-times"></i> Close</button>' +
+        '</div></div>';
+        
+        container.innerHTML = html;
+    }
+    
     // Function to populate edit modal with fetched data
     function populateEditModal(container, type, data, itemId) {
         var csrfToken = document.querySelector('input[name="csrf_token"]').value;

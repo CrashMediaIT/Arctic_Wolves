@@ -481,11 +481,10 @@ function getExpenseData($parameters) {
     $date_to = $parameters['date_to'] ?? date('Y-m-d');
     
     // Fetch expenses from database
+    // Note: expenses table uses VARCHAR 'category' field directly, not a foreign key
     $stmt = $pdo->prepare("
-        SELECT e.*, p.name as payee_name, ec.name as category_name
+        SELECT e.*, e.category as category_name
         FROM expenses e
-        LEFT JOIN payees p ON e.payee_id = p.id
-        LEFT JOIN expense_categories ec ON e.category_id = ec.id
         WHERE e.expense_date BETWEEN ? AND ?
         ORDER BY e.expense_date DESC
     ");
