@@ -86,6 +86,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 throw new Exception('Package not found');
             }
             
+            // Fetch package sessions
+            $sessionsStmt = $pdo->prepare("
+                SELECT ps.*, tst.name as session_name
+                FROM package_sessions ps
+                LEFT JOIN training_session_templates tst ON ps.session_type_id = tst.id
+                WHERE ps.package_id = ?
+                ORDER BY ps.id ASC
+            ");
+            $sessionsStmt->execute([$packageId]);
+            $package['sessions'] = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
+            
             echo json_encode(['success' => true, 'data' => $package]);
         } catch (Exception $e) {
             http_response_code(400);
