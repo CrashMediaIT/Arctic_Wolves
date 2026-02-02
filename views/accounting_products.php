@@ -1827,12 +1827,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Handle manage-dates buttons for session dates
+    // Handle manage-dates buttons for session date management
     document.querySelectorAll('[data-action="manage-dates"][data-modal]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             var modalId = this.getAttribute('data-modal');
-            var itemId = this.getAttribute('data-id');
+            var sessionId = this.getAttribute('data-id');
             var modal = document.getElementById(modalId);
             
             if (!modal) return;
@@ -1845,12 +1845,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Loading session dates...</p>';
             modal.classList.add('active');
             
-            // Fetch session data including dates
-            fetch('process_admin_action.php?action=get_session&id=' + itemId)
+            // Fetch the session data including dates
+            fetch('process_admin_action.php?action=get_session&id=' + sessionId)
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        populateManageDatesModal(modalBody, data.data, itemId);
+                        populateManageDatesModal(modalBody, data.data, sessionId);
                     } else {
                         modalBody.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 40px;">' +
                             '<i class="fas fa-exclamation-circle" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
@@ -1866,39 +1866,180 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Function to populate manage dates modal
-    function populateManageDatesModal(container, data, sessionId) {
-        var dates = data.dates || [];
+    // Function to populate the manage dates modal
+    function populateManageDatesModal(container, sessionData, sessionId) {
+        var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        var teams = <?= json_encode($teams) ?>;
+        var dates = sessionData.dates || [];
         
-        var html = '<div class="manage-dates-content">' +
-            '<h4 style="margin-bottom: 16px; color: var(--text-white);">' + escapeHtml(data.name || 'Session') + '</h4>';
+        var teamOptions = '<option value="">All Athletes</option>';
+        teams.forEach(function(team) {
+            teamOptions += '<option value="' + team.id + '">' + escapeHtml(team.name) + '</option>';
+        });
+        
+        var html = '<div class="manage-dates-container">' +
+            '<h4 style="margin-bottom: 16px; color: var(--text-color);"><i class="fas fa-calendar-alt"></i> ' + escapeHtml(sessionData.name) + '</h4>';
+        
+        // Existing dates list
+        html += '<div class="existing-dates-section" style="margin-bottom: 24px;">' +
+            '<h5 style="margin-bottom: 12px; color: var(--text-dim);">Current Session Dates</h5>' +
+            '<div id="session-dates-list" style="max-height: 250px; overflow-y: auto;">';
         
         if (dates.length === 0) {
-            html += '<p style="color: var(--text-dim); text-align: center; padding: 20px;">' +
-                '<i class="fas fa-calendar-times" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>' +
-                'No dates scheduled for this session.</p>';
+            html += '<p style="color: var(--text-dim); font-style: italic; padding: 12px;">No dates scheduled for this session yet.</p>';
         } else {
-            html += '<div class="dates-list" style="max-height: 400px; overflow-y: auto;">';
             dates.forEach(function(date) {
-                var formattedDate = date.session_date ? new Date(date.session_date).toLocaleString() : 'N/A';
-                var statusClass = date.is_active == 1 ? 'active' : 'inactive';
-                html += '<div class="date-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">' +
-                    '<div>' +
-                        '<strong style="color: var(--text-white);">' + formattedDate + '</strong>' +
-                        (date.team_name ? '<span style="margin-left: 8px; color: var(--text-dim); font-size: 12px;">' + escapeHtml(date.team_name) + '</span>' : '') +
+                var dateObj = new Date(date.session_date);
+                var formattedDate = dateObj.toLocaleString('en-US', { 
+                    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+                    hour: 'numeric', minute: '2-digit'
+                });
+                var teamName = date.team_name ? date.team_name : 'All Athletes';
+                var statusClass = Number(date.is_active) === 1 ? 'active' : 'inactive';
+                
+                html += '<div class="session-date-item" data-date-id="' + date.id + '" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">' +
+                    '<div class="date-info">' +
+                        '<strong style="color: var(--text-color);">' + formattedDate + '</strong>' +
+                        '<span style="color: var(--text-dim); font-size: 13px; margin-left: 12px;"><i class="fas fa-users"></i> ' + escapeHtml(teamName) + '</span>' +
+                        '<span class="status-badge ' + statusClass + '" style="margin-left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 12px;">' + (Number(date.is_active) === 1 ? 'Active' : 'Inactive') + '</span>' +
                     '</div>' +
-                    '<span class="status-badge ' + statusClass + '" style="padding: 4px 8px; border-radius: 4px; font-size: 11px;">' + (date.is_active == 1 ? 'Active' : 'Inactive') + '</span>' +
+                    '<button type="button" class="btn-action danger" onclick="removeSessionDate(' + date.id + ', this)" title="Remove Date"><i class="fas fa-trash"></i></button>' +
                 '</div>';
             });
-            html += '</div>';
         }
         
-        html += '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px;">' +
+        html += '</div></div>';
+        
+        // Add new date form
+        html += '<div class="add-date-section" style="border-top: 1px solid var(--border); padding-top: 20px;">' +
+            '<h5 style="margin-bottom: 12px; color: var(--text-dim);">Add New Date</h5>' +
+            '<form id="add-session-date-form" onsubmit="submitAddSessionDate(event, ' + sessionId + ')">' +
+                '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
+                '<input type="hidden" name="action" value="add_session_date">' +
+                '<input type="hidden" name="template_id" value="' + sessionId + '">' +
+                '<div class="form-row" style="display: flex; gap: 12px; flex-wrap: wrap;">' +
+                    '<div class="form-group" style="flex: 1; min-width: 200px;">' +
+                        '<label class="form-label">Date & Time *</label>' +
+                        '<input type="datetime-local" name="session_date" class="form-input" required>' +
+                    '</div>' +
+                    '<div class="form-group" style="flex: 1; min-width: 150px;">' +
+                        '<label class="form-label">Team (Optional)</label>' +
+                        '<select name="team_id" class="form-input">' + teamOptions + '</select>' +
+                    '</div>' +
+                    '<div class="form-group" style="flex: 0 0 auto; align-self: end;">' +
+                        '<button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Date</button>' +
+                    '</div>' +
+                '</div>' +
+            '</form>' +
+        '</div>';
+        
+        // Footer
+        html += '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
             '<button type="button" class="btn btn-secondary" onclick="closeModal(\'manage-dates-modal\')"><i class="fas fa-times"></i> Close</button>' +
-        '</div></div>';
+        '</div>';
+        
+        html += '</div>';
         
         container.innerHTML = html;
     }
+    
+    // Function to submit add session date form
+    window.submitAddSessionDate = function(event, sessionId) {
+        event.preventDefault();
+        var form = document.getElementById('add-session-date-form');
+        var formData = new FormData(form);
+        var submitBtn = form.querySelector('button[type="submit"]');
+        var originalText = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+        submitBtn.disabled = true;
+        
+        fetch('process_admin_action.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            if (data.success) {
+                showNotification(data.message || 'Date added successfully!', 'success');
+                // Reload the modal content to show the new date
+                var modal = document.getElementById('manage-dates-modal');
+                var modalBody = modal.querySelector('.modal-body');
+                modalBody.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px;">' +
+                    '<i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
+                    'Refreshing dates...</p>';
+                
+                fetch('process_admin_action.php?action=get_session&id=' + sessionId)
+                    .then(function(response) { return response.json(); })
+                    .then(function(sessionData) {
+                        if (sessionData.success) {
+                            populateManageDatesModal(modalBody, sessionData.data, sessionId);
+                        }
+                    });
+            } else {
+                showNotification(data.message || 'Error adding date', 'error');
+            }
+        })
+        .catch(function(err) {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            console.error(err);
+            showNotification('Error adding date. Please try again.', 'error');
+        });
+    };
+    
+    // Function to remove a session date
+    window.removeSessionDate = function(dateId, btn) {
+        if (!confirm('Are you sure you want to remove this session date? This action cannot be undone.')) {
+            return;
+        }
+        
+        var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        var formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        formData.append('action', 'remove_session_date');
+        formData.append('date_id', dateId);
+        
+        var originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+        
+        fetch('process_admin_action.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showNotification(data.message || 'Date removed successfully!', 'success');
+                // Remove the date item from DOM
+                var dateItem = btn.closest('.session-date-item');
+                if (dateItem) {
+                    dateItem.remove();
+                }
+                // Check if list is now empty
+                var datesList = document.getElementById('session-dates-list');
+                if (datesList && datesList.querySelectorAll('.session-date-item').length === 0) {
+                    datesList.innerHTML = '<p style="color: var(--text-dim); font-style: italic; padding: 12px;">No dates scheduled for this session yet.</p>';
+                }
+            } else {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                showNotification(data.message || 'Error removing date', 'error');
+            }
+        })
+        .catch(function(err) {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            console.error(err);
+            showNotification('Error removing date. Please try again.', 'error');
+        });
+    };
     
     // Handle manage-sessions buttons for package sessions
     document.querySelectorAll('[data-action="manage-sessions"][data-modal]').forEach(function(btn) {
