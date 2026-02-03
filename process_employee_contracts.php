@@ -2,14 +2,14 @@
 /**
  * Process Employee Contract Actions
  * Handles contract creation, e-signature requests, and signed document processing
- * Uses Stirling PDF API for PDF generation and signature handling
+ * Uses DocuSeal API for e-signature handling
  */
 
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
-require_once 'lib/stirling_pdf.php';
+require_once 'lib/docuseal.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -71,15 +71,20 @@ try {
                 }
             }
             
-            // If onboarding ID is provided, get employee details
+            // If onboarding ID is provided and employee details are empty, use onboarding data as fallback
             if ($onboardingId) {
                 $stmt = $pdo->prepare("SELECT * FROM employee_onboarding WHERE id = ?");
                 $stmt->execute([$onboardingId]);
                 $onboarding = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($onboarding) {
-                    $employeeName = $onboarding['first_name'] . ' ' . $onboarding['last_name'];
-                    $employeeEmail = $onboarding['email'];
+                    // Only use onboarding data as fallback if user didn't provide values
+                    if (empty($employeeName)) {
+                        $employeeName = $onboarding['first_name'] . ' ' . $onboarding['last_name'];
+                    }
+                    if (empty($employeeEmail)) {
+                        $employeeEmail = $onboarding['email'];
+                    }
                 }
             }
             
@@ -127,6 +132,7 @@ try {
          */
         case 'send_for_signature':
             $contractId = intval($_POST['contract_id'] ?? 0);
+            $docusealTemplateId = intval($_POST['docuseal_template_id'] ?? 0);
             
             if ($contractId <= 0) {
                 throw new Exception('Invalid contract ID');
@@ -134,7 +140,7 @@ try {
             
             // Get contract
             $stmt = $pdo->prepare("
-                SELECT ec.*, ct.template_file_path, ct.name as template_name
+                SELECT ec.*, ct.docuseal_template_id as template_docuseal_id, ct.name as template_name
                 FROM employee_contracts ec
                 LEFT JOIN contract_templates ct ON ec.template_id = ct.id
                 WHERE ec.id = ?
@@ -150,46 +156,36 @@ try {
                 throw new Exception('Contract has already been sent or signed');
             }
             
-            // Get Stirling PDF settings
-            $settings = getStirlingPdfSettings($pdo);
+            // Get DocuSeal settings
+            $settings = getDocuSealSettings($pdo);
             
-            // Generate PDF from template (if template exists)
-            $pdfContent = null;
-            if (!empty($contract['template_file_path']) && file_exists($contract['template_file_path'])) {
-                $contractData = json_decode($contract['contract_data'], true) ?? [];
-                $result = generateContractPdf($pdo, $settings, $contract['template_file_path'], $contractData);
-                
-                if (!$result['success']) {
-                    throw new Exception('Failed to generate contract PDF: ' . $result['message']);
-                }
-                
-                $pdfContent = $result['pdf_content'];
-            } else {
-                // Use a simple placeholder PDF or throw error
-                // For now, create a simple text-based PDF notification
-                throw new Exception('Contract template file not found. Please upload a template first.');
+            if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+                throw new Exception('DocuSeal is not enabled. Please configure it in System Tools.');
             }
             
-            // Create e-signature request
+            // Use template DocuSeal ID from POST or from linked template
+            $templateId = $docusealTemplateId > 0 ? $docusealTemplateId : ($contract['template_docuseal_id'] ?? 0);
+            
+            if ($templateId <= 0) {
+                throw new Exception('No DocuSeal template selected. Please select a template or configure the DocuSeal template ID.');
+            }
+            
+            // Parse contract data for pre-filling
+            $contractData = json_decode($contract['contract_data'], true) ?? [];
+            
+            // Create e-signature request via DocuSeal
             $esignResult = createEsignatureRequest(
                 $pdo,
                 $contractId,
+                $templateId,
                 $contract['employee_email'],
                 $contract['employee_name'],
-                $pdfContent
+                $contractData
             );
             
             if (!$esignResult['success']) {
                 throw new Exception('Failed to create e-signature request: ' . $esignResult['message']);
             }
-            
-            // Send email with signing link
-            $emailSent = sendEsignatureRequestEmail(
-                $contract['employee_email'],
-                $contract['employee_name'],
-                $esignResult['signing_url'],
-                $contract['contract_title']
-            );
             
             // Audit log
             $auditStmt = $pdo->prepare("
@@ -200,15 +196,15 @@ try {
             $auditStmt->execute([
                 $user_id,
                 $contractId,
-                json_encode(['action' => 'sent_for_signature', 'email_sent' => $emailSent]),
+                json_encode(['action' => 'sent_for_signature', 'docuseal_template_id' => $templateId]),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
             
             echo json_encode([
                 'success' => true,
-                'message' => 'Contract sent for signature' . ($emailSent ? ' and email notification sent' : ''),
-                'signing_url' => $esignResult['signing_url'],
-                'expires_at' => $esignResult['expires_at']
+                'message' => 'Contract sent for signature via DocuSeal. The employee will receive an email with signing instructions.',
+                'signing_url' => $esignResult['signing_url'] ?? null,
+                'expires_at' => $esignResult['expires_at'] ?? null
             ]);
             break;
             

@@ -28,17 +28,26 @@ if ($prefill_onboarding_id > 0) {
     }
 }
 
-// Get Stirling PDF settings to check if configured
-$stirling_enabled = false;
+// Get DocuSeal settings to check if configured
+$docuseal_enabled = false;
+$docuseal_templates = [];
 try {
-    $settingsQuery = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('stirling_pdf_url', 'stirling_pdf_enabled')");
-    $stirling_settings = [];
+    $settingsQuery = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('docuseal_url', 'docuseal_enabled', 'docuseal_api_key')");
+    $docuseal_settings = [];
     while ($row = $settingsQuery->fetch(PDO::FETCH_ASSOC)) {
-        $stirling_settings[$row['setting_key']] = $row['setting_value'];
+        $docuseal_settings[$row['setting_key']] = $row['setting_value'];
     }
-    $stirling_enabled = !empty($stirling_settings['stirling_pdf_url']) && ($stirling_settings['stirling_pdf_enabled'] ?? '0') === '1';
+    $docuseal_enabled = !empty($docuseal_settings['docuseal_url']) && 
+                        !empty($docuseal_settings['docuseal_api_key']) && 
+                        ($docuseal_settings['docuseal_enabled'] ?? '0') === '1';
+    
+    // Fetch templates from DocuSeal if enabled
+    if ($docuseal_enabled) {
+        require_once __DIR__ . '/../lib/docuseal.php';
+        $docuseal_templates = listDocuSealTemplates($pdo, $docuseal_settings);
+    }
 } catch (PDOException $e) {
-    $stirling_enabled = false;
+    $docuseal_enabled = false;
 }
 
 // Get contract templates
@@ -121,18 +130,18 @@ $statusColors = [
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-file-signature"></i> Employee Contracts</h1>
-        <p class="page-description">Create and manage employee contracts with e-signature workflow. Contracts are generated using Stirling PDF and stored in Nextcloud.</p>
+        <p class="page-description">Create and manage employee contracts with e-signature workflow using DocuSeal. Signed contracts are automatically stored in Nextcloud.</p>
     </div>
 </div>
 
-<?php if (!$stirling_enabled): ?>
+<?php if (!$docuseal_enabled): ?>
 <!-- Configuration Warning -->
 <div class="alert alert-warning" style="margin-bottom: 24px;">
     <i class="fas fa-exclamation-triangle"></i>
     <div>
-        <strong>Stirling PDF Not Configured</strong>
-        <p style="margin: 4px 0 0 0;">E-signature functionality requires Stirling PDF to be configured. 
-        <a href="?page=system_tools&tab=stirling_pdf" style="color: inherit; text-decoration: underline;">Configure Stirling PDF Settings</a></p>
+        <strong>DocuSeal Not Configured</strong>
+        <p style="margin: 4px 0 0 0;">E-signature functionality requires DocuSeal to be configured. 
+        <a href="?page=system_tools&tab=docuseal" style="color: inherit; text-decoration: underline;">Configure DocuSeal Settings</a></p>
     </div>
 </div>
 <?php else: ?>
@@ -141,7 +150,7 @@ $statusColors = [
     <i class="fas fa-info-circle"></i>
     <div>
         <strong>E-Signature Workflow</strong>
-        <p style="margin: 4px 0 0 0;">Create contracts from templates, send for e-signature via email. Once signed, contracts are automatically saved to Nextcloud in the HR/Employee Contract folder organized by year, month, and employee name.</p>
+        <p style="margin: 4px 0 0 0;">Create contracts, select a DocuSeal template, and send for e-signature. DocuSeal handles the signing process and once signed, contracts are automatically saved to Nextcloud in the HR/Employee Contract folder organized by year, month, and employee name.</p>
     </div>
 </div>
 <?php endif; ?>
@@ -226,9 +235,9 @@ $statusColors = [
                                     <?php endif; ?>
                                     
                                     <?php if ($contract['status'] === 'signed' && !empty($contract['nextcloud_path'])): ?>
-                                    <a href="#" class="btn-icon" title="View in Nextcloud" onclick="alert('Nextcloud path: <?= htmlspecialchars($contract['nextcloud_path']) ?>')">
+                                    <span class="btn-icon nextcloud-path-btn" title="<?= htmlspecialchars($contract['nextcloud_path']) ?>" data-path="<?= htmlspecialchars($contract['nextcloud_path']) ?>">
                                         <i class="fas fa-cloud"></i>
-                                    </a>
+                                    </span>
                                     <?php endif; ?>
                                     
                                     <?php if ($contract['status'] !== 'signed' && $contract['status'] !== 'cancelled'): ?>
@@ -321,11 +330,11 @@ $statusColors = [
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Contract Template</label>
+                        <label>Local Template Reference</label>
                         <select name="template_id" class="form-input">
-                            <option value="">-- No Template (Custom) --</option>
+                            <option value="">-- No Local Template --</option>
                             <?php foreach ($templates as $template): ?>
-                            <option value="<?= $template['id'] ?>">
+                            <option value="<?= $template['id'] ?>" data-docuseal-id="<?= $template['docuseal_template_id'] ?? '' ?>">
                                 <?= htmlspecialchars($template['name']) ?>
                                 (<?= ucfirst($template['template_type']) ?>)
                             </option>
@@ -337,11 +346,33 @@ $statusColors = [
                         <input type="text" name="contract_title" class="form-input" value="Employment Contract" required>
                     </div>
                 </div>
+                
+                <?php if ($docuseal_enabled && !empty($docuseal_templates)): ?>
+                <div class="form-group">
+                    <label>DocuSeal Template *</label>
+                    <select name="docuseal_template_id" id="docuseal-template" class="form-input" required>
+                        <option value="">-- Select DocuSeal Template --</option>
+                        <?php foreach ($docuseal_templates as $dsTemplate): ?>
+                        <option value="<?= $dsTemplate['id'] ?>">
+                            <?= htmlspecialchars($dsTemplate['name']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small style="color: var(--text-secondary); margin-top: 4px; display: block;">
+                        Select the DocuSeal template to use for e-signature. Templates are created and managed in DocuSeal.
+                    </small>
+                </div>
+                <?php elseif ($docuseal_enabled): ?>
+                <div class="alert alert-warning" style="margin-top: 16px;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>No templates found in DocuSeal. Please create a template in DocuSeal first.</span>
+                </div>
+                <?php endif; ?>
             </div>
             
             <div class="form-section">
                 <h4><i class="fas fa-edit"></i> Contract Data</h4>
-                <p class="form-hint">Enter values for the contract template fields.</p>
+                <p class="form-hint">Enter values for the contract template fields. These will be pre-filled in the DocuSeal document.</p>
                 
                 <div class="form-row">
                     <div class="form-group">
@@ -517,6 +548,30 @@ $statusColors = [
 
 .text-error:hover {
     background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.nextcloud-path-btn {
+    position: relative;
+    cursor: help;
+}
+
+.nextcloud-path-btn:hover::after {
+    content: attr(data-path);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 100;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 </style>
 

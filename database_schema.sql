@@ -2718,7 +2718,8 @@ CREATE TABLE IF NOT EXISTS `contract_templates` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT DEFAULT NULL,
-    `template_file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to PDF template file',
+    `docuseal_template_id` INT DEFAULT NULL COMMENT 'DocuSeal template ID for API integration',
+    `template_file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to PDF template file (local backup)',
     `template_type` ENUM('employment', 'contractor', 'nda', 'other') DEFAULT 'employment',
     `variables` JSON DEFAULT NULL COMMENT 'List of template variables for form filling',
     `is_active` TINYINT(1) DEFAULT 1,
@@ -2727,7 +2728,8 @@ CREATE TABLE IF NOT EXISTS `contract_templates` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_type` (`template_type`),
-    INDEX `idx_active` (`is_active`)
+    INDEX `idx_active` (`is_active`),
+    INDEX `idx_docuseal` (`docuseal_template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Employee Contracts (for e-signature workflow)
@@ -2735,15 +2737,17 @@ CREATE TABLE IF NOT EXISTS `employee_contracts` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `onboarding_id` INT DEFAULT NULL COMMENT 'Link to onboarding record if applicable',
     `user_id` INT DEFAULT NULL COMMENT 'Link to user if already created',
-    `template_id` INT DEFAULT NULL COMMENT 'Template used to generate contract',
+    `template_id` INT DEFAULT NULL COMMENT 'Local template reference',
+    `docuseal_template_id` INT DEFAULT NULL COMMENT 'DocuSeal template ID used',
+    `docuseal_submission_id` INT DEFAULT NULL COMMENT 'DocuSeal submission ID',
     `employee_name` VARCHAR(255) NOT NULL,
     `employee_email` VARCHAR(255) NOT NULL,
     `contract_title` VARCHAR(255) DEFAULT 'Employment Contract',
     `contract_data` JSON DEFAULT NULL COMMENT 'Data used to fill the contract template',
     `status` ENUM('draft', 'pending_signature', 'signed', 'expired', 'cancelled') DEFAULT 'draft',
-    `signing_token` VARCHAR(64) DEFAULT NULL COMMENT 'Unique token for signing URL',
+    `signing_url` VARCHAR(500) DEFAULT NULL COMMENT 'DocuSeal signing URL',
+    `signing_token` VARCHAR(64) DEFAULT NULL COMMENT 'Legacy: Unique token for signing URL',
     `signing_token_expires` DATETIME DEFAULT NULL,
-    `temp_file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Temporary path for unsigned contract',
     `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to signed contract in Nextcloud',
     `sent_at` TIMESTAMP NULL DEFAULT NULL,
     `signed_at` TIMESTAMP NULL DEFAULT NULL,
@@ -2758,7 +2762,7 @@ CREATE TABLE IF NOT EXISTS `employee_contracts` (
     INDEX `idx_onboarding` (`onboarding_id`),
     INDEX `idx_user` (`user_id`),
     INDEX `idx_status` (`status`),
-    INDEX `idx_signing_token` (`signing_token`),
+    INDEX `idx_docuseal_submission` (`docuseal_submission_id`),
     INDEX `idx_template` (`template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
