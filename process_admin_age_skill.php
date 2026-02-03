@@ -7,8 +7,40 @@ require_once 'security.php';
 // Set security headers
 setSecurityHeaders();
 
+// Check if this is an AJAX request
+$isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+          strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+// Helper function to respond with JSON or redirect
+function respond($success, $message, $redirectPage = 'admin_age_skill', $successCode = '', $additionalParams = '') {
+    global $isAjax;
+    
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => $success, 'message' => $message]);
+        exit();
+    } else {
+        $url = "dashboard.php?page=" . urlencode($redirectPage);
+        if ($additionalParams) {
+            $url .= "&" . $additionalParams;
+        }
+        if ($success && $successCode) {
+            $url .= "&success=" . urlencode($successCode);
+        } else if (!$success) {
+            $url .= "&error=" . urlencode($message);
+        }
+        header("Location: " . $url);
+        exit();
+    }
+}
+
 // Check authentication
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Not authenticated']);
+        exit();
+    }
     header("Location: login.php");
     exit();
 }
@@ -17,14 +49,12 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_sessions');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: dashboard.php?page=admin_age_skill");
-    exit();
+    respond(false, 'Invalid request method');
 }
 
 // Validate CSRF token
 if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
-    header("Location: dashboard.php?page=admin_age_skill&error=invalid_token");
-    exit();
+    respond(false, 'Invalid security token');
 }
 
 $action = $_POST['action'] ?? '';
@@ -44,7 +74,7 @@ try {
             
             logSecurityEvent($pdo, 'age_group_created', "Created age group: $name", $_SESSION['user_id']);
             
-            header("Location: dashboard.php?page=admin_age_skill&success=age_group_created");
+            respond(true, "Age group '$name' created successfully!", 'admin_age_skill', 'age_group_created');
             break;
             
         case 'delete_age_group':
@@ -60,7 +90,7 @@ try {
                 logSecurityEvent($pdo, 'age_group_deleted', "Deleted age group: {$ag['name']}", $_SESSION['user_id']);
             }
             
-            header("Location: dashboard.php?page=admin_age_skill&success=age_group_deleted");
+            respond(true, 'Age group deleted successfully!', 'admin_age_skill', 'age_group_deleted');
             break;
             
         case 'create_skill_level':
@@ -74,7 +104,7 @@ try {
             
             logSecurityEvent($pdo, 'skill_level_created', "Created skill level: $name", $_SESSION['user_id']);
             
-            header("Location: dashboard.php?page=admin_age_skill&success=skill_level_created");
+            respond(true, "Skill level '$name' created successfully!", 'categories', 'skill_level_created', 'tab=skill_levels');
             break;
             
         case 'delete_skill_level':
@@ -90,7 +120,7 @@ try {
                 logSecurityEvent($pdo, 'skill_level_deleted', "Deleted skill level: {$sl['name']}", $_SESSION['user_id']);
             }
             
-            header("Location: dashboard.php?page=admin_age_skill&success=skill_level_deleted");
+            respond(true, 'Skill level deleted successfully!', 'categories', 'skill_level_deleted', 'tab=skill_levels');
             break;
             
         case 'update_tax_settings':
@@ -109,17 +139,17 @@ try {
             
             logSecurityEvent($pdo, 'tax_settings_updated', "Updated tax settings: $tax_name = $tax_rate%", $_SESSION['user_id']);
             
-            header("Location: dashboard.php?page=admin_settings&success=tax_updated");
+            respond(true, 'Tax settings updated successfully!', 'admin_settings', 'tax_updated');
             break;
             
         default:
-            header("Location: dashboard.php?page=admin_age_skill&error=invalid_action");
+            respond(false, 'Invalid action');
             break;
     }
     
 } catch (PDOException $e) {
     logSecurityEvent($pdo, 'age_skill_error', "Error in age/skill management: " . $e->getMessage(), $_SESSION['user_id']);
-    header("Location: dashboard.php?page=admin_age_skill&error=" . urlencode($e->getMessage()));
+    respond(false, $e->getMessage());
 }
 
 exit();
