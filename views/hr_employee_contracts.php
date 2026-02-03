@@ -1,7 +1,7 @@
 <?php
 /**
  * HR Employee Contracts View
- * Manage employee contracts with e-signature workflow using DocuSeal API
+ * Manage employee contracts with e-signature workflow using OpenSign API
  */
 
 // Pagination settings
@@ -28,26 +28,26 @@ if ($prefill_onboarding_id > 0) {
     }
 }
 
-// Get DocuSeal settings to check if configured
-$docuseal_enabled = false;
-$docuseal_templates = [];
+// Get OpenSign settings to check if configured
+$opensign_enabled = false;
+$opensign_templates = [];
 try {
-    $settingsQuery = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('docuseal_url', 'docuseal_enabled', 'docuseal_api_key')");
-    $docuseal_settings = [];
+    $settingsQuery = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('opensign_url', 'opensign_enabled', 'opensign_api_key')");
+    $opensign_settings = [];
     while ($row = $settingsQuery->fetch(PDO::FETCH_ASSOC)) {
-        $docuseal_settings[$row['setting_key']] = $row['setting_value'];
+        $opensign_settings[$row['setting_key']] = $row['setting_value'];
     }
-    $docuseal_enabled = !empty($docuseal_settings['docuseal_url']) && 
-                        !empty($docuseal_settings['docuseal_api_key']) && 
-                        ($docuseal_settings['docuseal_enabled'] ?? '0') === '1';
+    $opensign_enabled = !empty($opensign_settings['opensign_url']) && 
+                        !empty($opensign_settings['opensign_api_key']) && 
+                        ($opensign_settings['opensign_enabled'] ?? '0') === '1';
     
-    // Fetch templates from DocuSeal if enabled
-    if ($docuseal_enabled) {
-        require_once __DIR__ . '/../lib/docuseal.php';
-        $docuseal_templates = listDocuSealTemplates($pdo, $docuseal_settings);
+    // Fetch templates from OpenSign if enabled
+    if ($opensign_enabled) {
+        require_once __DIR__ . '/../lib/opensign.php';
+        $opensign_templates = listOpenSignTemplates($pdo, $opensign_settings);
     }
 } catch (PDOException $e) {
-    $docuseal_enabled = false;
+    $opensign_enabled = false;
 }
 
 // Get contract templates
@@ -130,18 +130,18 @@ $statusColors = [
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-file-signature"></i> Employee Contracts</h1>
-        <p class="page-description">Create and manage employee contracts with e-signature workflow using DocuSeal. Signed contracts are automatically stored in Nextcloud.</p>
+        <p class="page-description">Create and manage employee contracts with e-signature workflow using OpenSign. Signed contracts are automatically stored in Nextcloud.</p>
     </div>
 </div>
 
-<?php if (!$docuseal_enabled): ?>
+<?php if (!$opensign_enabled): ?>
 <!-- Configuration Warning -->
 <div class="alert alert-warning" style="margin-bottom: 24px;">
     <i class="fas fa-exclamation-triangle"></i>
     <div>
-        <strong>DocuSeal Not Configured</strong>
-        <p style="margin: 4px 0 0 0;">E-signature functionality requires DocuSeal to be configured. 
-        <a href="?page=system_tools&tab=docuseal" style="color: inherit; text-decoration: underline;">Configure DocuSeal Settings</a></p>
+        <strong>OpenSign Not Configured</strong>
+        <p style="margin: 4px 0 0 0;">E-signature functionality requires OpenSign to be configured. 
+        <a href="?page=system_tools&tab=opensign" style="color: inherit; text-decoration: underline;">Configure OpenSign Settings</a></p>
     </div>
 </div>
 <?php else: ?>
@@ -150,7 +150,7 @@ $statusColors = [
     <i class="fas fa-info-circle"></i>
     <div>
         <strong>E-Signature Workflow</strong>
-        <p style="margin: 4px 0 0 0;">Create contracts, select a DocuSeal template, and send for e-signature. DocuSeal handles the signing process and once signed, contracts are automatically saved to Nextcloud in the HR/Employee Contract folder organized by year, month, and employee name.</p>
+        <p style="margin: 4px 0 0 0;">Create contracts, select an OpenSign template, and send for e-signature. OpenSign handles the signing process and once signed, contracts are automatically saved to Nextcloud in the HR/Employee Contract folder organized by year, month, and employee name.</p>
     </div>
 </div>
 <?php endif; ?>
@@ -334,7 +334,7 @@ $statusColors = [
                         <select name="template_id" class="form-input">
                             <option value="">-- No Local Template --</option>
                             <?php foreach ($templates as $template): ?>
-                            <option value="<?= $template['id'] ?>" data-docuseal-id="<?= $template['docuseal_template_id'] ?? '' ?>">
+                            <option value="<?= $template['id'] ?>" data-opensign-id="<?= $template['opensign_template_id'] ?? '' ?>">
                                 <?= htmlspecialchars($template['name']) ?>
                                 (<?= ucfirst($template['template_type']) ?>)
                             </option>
@@ -347,32 +347,32 @@ $statusColors = [
                     </div>
                 </div>
                 
-                <?php if ($docuseal_enabled && !empty($docuseal_templates)): ?>
+                <?php if ($opensign_enabled && !empty($opensign_templates)): ?>
                 <div class="form-group">
-                    <label>DocuSeal Template *</label>
-                    <select name="docuseal_template_id" id="docuseal-template" class="form-input" required>
-                        <option value="">-- Select DocuSeal Template --</option>
-                        <?php foreach ($docuseal_templates as $dsTemplate): ?>
-                        <option value="<?= $dsTemplate['id'] ?>">
-                            <?= htmlspecialchars($dsTemplate['name']) ?>
+                    <label>OpenSign Template *</label>
+                    <select name="opensign_template_id" id="opensign-template" class="form-input" required>
+                        <option value="">-- Select OpenSign Template --</option>
+                        <?php foreach ($opensign_templates as $osTemplate): ?>
+                        <option value="<?= $osTemplate['id'] ?>">
+                            <?= htmlspecialchars($osTemplate['name']) ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
                     <small style="color: var(--text-secondary); margin-top: 4px; display: block;">
-                        Select the DocuSeal template to use for e-signature. Templates are created and managed in DocuSeal.
+                        Select the OpenSign template to use for e-signature. Templates are created and managed in OpenSign.
                     </small>
                 </div>
-                <?php elseif ($docuseal_enabled): ?>
+                <?php elseif ($opensign_enabled): ?>
                 <div class="alert alert-warning" style="margin-top: 16px;">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <span>No templates found in DocuSeal. Please create a template in DocuSeal first.</span>
+                    <span>No templates found in OpenSign. Please create a template in OpenSign first.</span>
                 </div>
                 <?php endif; ?>
             </div>
             
             <div class="form-section">
                 <h4><i class="fas fa-edit"></i> Contract Data</h4>
-                <p class="form-hint">Enter values for the contract template fields. These will be pre-filled in the DocuSeal document.</p>
+                <p class="form-hint">Enter values for the contract template fields. These will be pre-filled in the OpenSign document.</p>
                 
                 <div class="form-row">
                     <div class="form-group">
@@ -484,7 +484,7 @@ $statusColors = [
             <i class="fas fa-info-circle"></i>
             <div>
                 <strong>Template Management</strong>
-                <p style="margin: 4px 0 0 0;">Templates are created and managed in <strong>DocuSeal</strong>. Create your contract templates with fillable fields in DocuSeal, then link them here by updating the <code>docuseal_template_id</code> in the local template records. When sending for signature, select the DocuSeal template to use.</p>
+                <p style="margin: 4px 0 0 0;">Templates are created and managed in <strong>OpenSign</strong>. Create your contract templates with fillable fields in OpenSign, then link them here by updating the <code>opensign_template_id</code> in the local template records. When sending for signature, select the OpenSign template to use.</p>
             </div>
         </div>
     </div>

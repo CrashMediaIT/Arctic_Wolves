@@ -1,11 +1,11 @@
 <?php
 /**
- * DocuSeal Webhook Handler
- * Receives webhook callbacks from DocuSeal when documents are signed
+ * OpenSign Webhook Handler
+ * Receives webhook callbacks from OpenSign when documents are signed
  */
 
 require_once 'db_config.php';
-require_once 'lib/docuseal.php';
+require_once 'lib/opensign.php';
 
 // Set JSON response header
 header('Content-Type: application/json');
@@ -20,16 +20,16 @@ if (!$webhookData) {
     exit;
 }
 
-// Get DocuSeal settings
-$settings = getDocuSealSettings($pdo);
+// Get OpenSign settings
+$settings = getOpenSignSettings($pdo);
 
 // Verify webhook signature if secret is configured
-if (!empty($settings['docuseal_webhook_secret'])) {
-    $signature = $_SERVER['HTTP_X_DOCUSEAL_SIGNATURE'] ?? '';
-    $expectedSignature = hash_hmac('sha256', $rawInput, $settings['docuseal_webhook_secret']);
+if (!empty($settings['opensign_webhook_secret'])) {
+    $signature = $_SERVER['HTTP_X_OPENSIGN_SIGNATURE'] ?? '';
+    $expectedSignature = hash_hmac('sha256', $rawInput, $settings['opensign_webhook_secret']);
     
     if (!hash_equals($expectedSignature, $signature)) {
-        error_log("DocuSeal webhook signature verification failed");
+        error_log("OpenSign webhook signature verification failed");
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Invalid signature']);
         exit;
@@ -37,10 +37,10 @@ if (!empty($settings['docuseal_webhook_secret'])) {
 }
 
 // Log the webhook event
-error_log("DocuSeal webhook received: " . ($webhookData['event_type'] ?? 'unknown'));
+error_log("OpenSign webhook received: " . ($webhookData['event_type'] ?? 'unknown'));
 
 // Process the webhook
-$result = processDocuSealWebhook($pdo, $webhookData);
+$result = processOpenSignWebhook($pdo, $webhookData);
 
 if ($result['success']) {
     echo json_encode(['success' => true, 'message' => 'Webhook processed']);
