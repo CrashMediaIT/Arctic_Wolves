@@ -493,7 +493,7 @@ $coaches = $coaches_stmt->fetchAll();
     align-items: flex-start;
     gap: var(--space-4);
     padding: var(--space-5);
-    background: var(--bg-secondary);
+    background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
     transition: all var(--transition-normal);
@@ -674,7 +674,7 @@ $coaches = $coaches_stmt->fetchAll();
     grid-column: 1 / -1;
     text-align: center;
     padding: var(--space-10) var(--space-6);
-    background: var(--bg-secondary);
+    background: var(--bg-main);
     border: 1px dashed var(--border);
     border-radius: var(--radius-xl);
 }
