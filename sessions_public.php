@@ -52,19 +52,20 @@ if (isset($_GET['register'])) {
     exit();
 }
 
-// Fetch public sessions (templates with show_on_landing = 1)
+// Fetch public sessions (templates with show_on_landing = 1 AND regular sessions with show_on_landing = 1)
 $sessions = [];
 $packages = [];
 
 if ($db_connected) {
-    // Fetch upcoming sessions that are marked for landing page
+    // Fetch upcoming sessions from training_session_templates that are marked for landing page
     try {
         $sessionsStmt = $pdo->query("
             SELECT tst.*, 
                    CONCAT(u.first_name, ' ', u.last_name) as coach_name,
                    l.name as location_name,
                    tsd.session_date as next_date,
-                   COUNT(DISTINCT tsd2.id) as total_dates
+                   COUNT(DISTINCT tsd2.id) as total_dates,
+                   'template' as source_type
             FROM training_session_templates tst
             LEFT JOIN users u ON tst.coach_id = u.id
             LEFT JOIN locations l ON tst.location_id = l.id
@@ -75,12 +76,59 @@ if ($db_connected) {
             GROUP BY tst.id
             HAVING next_date IS NOT NULL
             ORDER BY next_date ASC
-            LIMIT 10
+            LIMIT 20
         ");
         $sessions = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         error_log("Public sessions fetch error: " . $e->getMessage());
         $sessions = [];
+    }
+    
+    // Also fetch upcoming sessions from the regular sessions table marked for landing page
+    try {
+        $regularSessionsStmt = $pdo->query("
+            SELECT s.id, 
+                   s.title as name,
+                   s.description,
+                   s.session_date,
+                   s.session_time,
+                   s.duration_minutes,
+                   s.price,
+                   s.max_participants,
+                   s.session_type_id,
+                   s.location_id,
+                   s.coach_id,
+                   CONCAT(s.session_date, ' ', COALESCE(s.session_time, '00:00:00')) as next_date,
+                   CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+                   l.name as location_name,
+                   1 as total_dates,
+                   'session' as source_type
+            FROM sessions s
+            LEFT JOIN users u ON s.coach_id = u.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            WHERE s.show_on_landing = 1 
+              AND s.status = 'scheduled'
+              AND CONCAT(s.session_date, ' ', COALESCE(s.session_time, '00:00:00')) > NOW()
+            ORDER BY s.session_date ASC, s.session_time ASC
+            LIMIT 20
+        ");
+        $regularSessions = $regularSessionsStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Merge regular sessions with template sessions
+        $sessions = array_merge($sessions, $regularSessions);
+        
+        // Sort combined sessions by date
+        usort($sessions, function($a, $b) {
+            $dateA = strtotime($a['next_date'] ?? '');
+            $dateB = strtotime($b['next_date'] ?? '');
+            return $dateA - $dateB;
+        });
+        
+        // Limit to 10 total
+        $sessions = array_slice($sessions, 0, 10);
+    } catch (PDOException $e) {
+        error_log("Public regular sessions fetch error: " . $e->getMessage());
+        // Don't reset $sessions here, keep template sessions if regular fetch fails
     }
     
     // Fetch packages marked for landing page

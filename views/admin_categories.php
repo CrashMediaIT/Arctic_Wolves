@@ -1,10 +1,14 @@
 <?php
 // Determine which tab should be active based on URL parameter
 $activeTab = $_GET['tab'] ?? 'skills';
-$validTabs = ['skills', 'drills', 'merchandise', 'teams', 'locations'];
+$validTabs = ['skills', 'drills', 'merchandise', 'teams', 'locations', 'skill_levels'];
 if (!in_array($activeTab, $validTabs)) {
     $activeTab = 'skills';
 }
+
+// Fetch skill levels for the Skill Levels tab
+$skill_levels_stmt = $pdo->query("SELECT * FROM skill_levels ORDER BY display_order ASC, name ASC");
+$skill_levels = $skill_levels_stmt->fetchAll();
 
 // Get Google Maps API key from system settings for Locations tab
 $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
@@ -38,7 +42,7 @@ $coaches = $coaches_stmt->fetchAll();
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-layer-group"></i> Resource Management</h1>
-        <p class="page-description">Manage skills, drill types, merchandise categories, teams, and training locations</p>
+        <p class="page-description">Manage skills, drill types, merchandise categories, teams, training locations, and skill levels</p>
     </div>
 </div>
 
@@ -58,6 +62,9 @@ $coaches = $coaches_stmt->fetchAll();
     </button>
     <button type="button" class="page-tab <?= $activeTab === 'locations' ? 'active' : '' ?>" data-tab="locations" data-action="switch-tab" data-tab-handled="true">
         <i class="fas fa-map-marker-alt"></i> Locations
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'skill_levels' ? 'active' : '' ?>" data-tab="skill_levels" data-action="switch-tab" data-tab-handled="true">
+        <i class="fas fa-chart-line"></i> Skill Levels
     </button>
 </div>
 
@@ -453,6 +460,56 @@ $coaches = $coaches_stmt->fetchAll();
                         <i class="fas fa-map-marker-alt"></i>
                         <h4>No Locations Found</h4>
                         <p>Add your first training location to get started.</p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Skill Levels Tab -->
+    <div class="tab-content <?= $activeTab === 'skill_levels' ? 'active' : '' ?>" id="skill_levels-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-line"></i> Skill Levels</h3>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-skill-level-modal">
+                    <i class="fas fa-plus"></i> Add Skill Level
+                </button>
+            </div>
+            <div class="card-body">
+                <p class="info-text">
+                    <i class="fas fa-info-circle"></i>
+                    Skill levels are used to categorize sessions and filter by athlete proficiency (e.g., Beginner, Intermediate, Advanced).
+                </p>
+                <div class="categories-grid">
+                    <?php if (count($skill_levels) > 0): ?>
+                        <?php foreach ($skill_levels as $sl): ?>
+                    <div class="category-card">
+                        <div class="category-card-icon" style="background: rgba(107, 70, 193, 0.2);">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="category-card-content">
+                            <h4><?= htmlspecialchars($sl['name']) ?></h4>
+                            <p><?= htmlspecialchars($sl['description'] ?: 'No description') ?></p>
+                            <span class="category-tag" style="background: rgba(107, 70, 193, 0.2); color: #a78bfa;">
+                                Order: <?= $sl['display_order'] ?>
+                            </span>
+                        </div>
+                        <div class="category-card-actions">
+                            <button type="button" class="btn-icon btn-icon-danger" title="Delete" 
+                                    data-action="delete-skill-level" 
+                                    data-id="<?= $sl['id'] ?>" 
+                                    data-name="<?= htmlspecialchars($sl['name']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                    <div class="empty-state">
+                        <i class="fas fa-chart-line"></i>
+                        <h4>No Skill Levels Found</h4>
+                        <p>Add your first skill level to get started.</p>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -1237,6 +1294,49 @@ $coaches = $coaches_stmt->fetchAll();
     </div>
 </div>
 
+<!-- Add Skill Level Modal -->
+<div id="add-skill-level-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-chart-line"></i> Add Skill Level</h3>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-skill-level-modal')">&times;</button>
+        </div>
+        <form action="process_admin_age_skill.php" method="POST">
+            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+            <input type="hidden" name="action" value="create_skill_level">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="skill-level-name">Name *</label>
+                    <input type="text" id="skill-level-name" name="name" class="form-input" required placeholder="e.g., Beginner, Intermediate, Advanced">
+                </div>
+                <div class="form-group">
+                    <label for="skill-level-description">Description</label>
+                    <textarea id="skill-level-description" name="description" class="form-input" rows="3" placeholder="Brief description of this skill level"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="skill-level-order">Display Order</label>
+                    <input type="number" id="skill-level-order" name="display_order" class="form-input" value="0" placeholder="Lower numbers appear first">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-skill-level-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Skill Level
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Skill Level Form (hidden) -->
+<form id="delete-skill-level-form" action="process_admin_age_skill.php" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+    <input type="hidden" name="action" value="delete_skill_level">
+    <input type="hidden" id="delete-skill-level-id" name="id" value="">
+</form>
+
 <script>
 // Initialize event handlers
 (function() {
@@ -1371,6 +1471,19 @@ $coaches = $coaches_stmt->fetchAll();
             const modalId = this.getAttribute('data-modal');
             if (modalId) {
                 openModal(modalId);
+            }
+        });
+    });
+    
+    // Handle delete skill level buttons
+    document.querySelectorAll('[data-action="delete-skill-level"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const name = this.getAttribute('data-name');
+            
+            if (confirm('Are you sure you want to delete skill level "' + name + '"? Sessions using it will have the field set to NULL.')) {
+                document.getElementById('delete-skill-level-id').value = id;
+                document.getElementById('delete-skill-level-form').submit();
             }
         });
     });
