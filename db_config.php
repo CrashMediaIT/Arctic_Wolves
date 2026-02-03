@@ -45,53 +45,77 @@ foreach ($possible_paths as $path) {
 }
 
 // 3. DB CONNECTION PARAMETERS
-// Defaults provided for development
-$host = $_ENV['DB_HOST'] ?? 'localhost';
-$db   = $_ENV['DB_NAME'] ?? 'arctic_wolves';
-$user = $_ENV['DB_USER'] ?? 'root';
-$pass = $_ENV['DB_PASS'] ?? '';
+// Configuration must be loaded from environment file created during setup
+// Only use fallback defaults if no env file exists (pre-setup state)
+$db_config_valid = true;
+
+if ($env_loaded) {
+    // Use configuration from the env file set up during setup.php
+    $host = $_ENV['DB_HOST'] ?? '';
+    $db   = $_ENV['DB_NAME'] ?? '';
+    $user = $_ENV['DB_USER'] ?? '';
+    $pass = $_ENV['DB_PASS'] ?? '';
+    
+    // Validate that required configuration is present
+    if (empty($host) || empty($db) || empty($user)) {
+        $db_config_valid = false;
+        $db_error = "Database configuration incomplete. Please run setup.php to configure the database.";
+        error_log("[DB CONFIG ERROR] Environment file found but missing required DB_HOST, DB_NAME, or DB_USER");
+    }
+} else {
+    // No environment file found - system not set up yet
+    // Use minimal defaults that will likely fail, prompting user to run setup
+    $host = 'localhost';
+    $db   = 'arctic_wolves';
+    $user = 'root';
+    $pass = '';
+}
 
 // 4. CREATE PDO CONNECTION WITH COMPREHENSIVE ERROR HANDLING
 $pdo = null;
 $db_connected = false;
-$db_error = '';
+if (!isset($db_error)) {
+    $db_error = '';
+}
 
-try {
-    // Create PDO instance with all recommended settings
-    $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-    $options = [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false,
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
-        PDO::ATTR_PERSISTENT => true,  // Connection pooling
-        PDO::ATTR_TIMEOUT => 5  // 5 second timeout
-    ];
-    
-    $pdo = new PDO($dsn, $user, $pass, $options);
-    
-    // Test the connection with a simple query
-    $pdo->query("SELECT 1");
-    
-    // Connection successful
-    $db_connected = true;
-    
-} catch (PDOException $e) {
-    // Connection failed - set safe defaults
-    $db_connected = false;
-    $pdo = null;
-    $db_error = $e->getMessage();
-    
-    // Log error securely (don't expose to user)
-    error_log("[DB ERROR] " . $e->getMessage());
-    
-    // Set user-friendly error message
-    if (defined('DEBUG_MODE') && DEBUG_MODE) {
-        // In debug mode, show detailed error
-        $db_error_display = $e->getMessage();
-    } else {
-        // In production, show generic error
-        $db_error_display = "Database connection failed. Please check your configuration.";
+if ($db_config_valid) {
+    try {
+        // Create PDO instance with all recommended settings
+        $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
+            PDO::ATTR_PERSISTENT => true,  // Connection pooling
+            PDO::ATTR_TIMEOUT => 5  // 5 second timeout
+        ];
+        
+        $pdo = new PDO($dsn, $user, $pass, $options);
+        
+        // Test the connection with a simple query
+        $pdo->query("SELECT 1");
+        
+        // Connection successful
+        $db_connected = true;
+        
+    } catch (PDOException $e) {
+        // Connection failed - set safe defaults
+        $db_connected = false;
+        $pdo = null;
+        $db_error = $e->getMessage();
+        
+        // Log error securely (don't expose to user)
+        error_log("[DB ERROR] " . $e->getMessage());
+        
+        // Set user-friendly error message
+        if (defined('DEBUG_MODE') && DEBUG_MODE) {
+            // In debug mode, show detailed error
+            $db_error_display = $e->getMessage();
+        } else {
+            // In production, show generic error
+            $db_error_display = "Database connection failed. Please check your configuration.";
+        }
     }
 }
 
