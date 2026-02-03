@@ -2714,12 +2714,12 @@ CREATE TABLE IF NOT EXISTS `onboarding_documents` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Contract Templates for E-Signature
--- Note: docuseal_template_id references external DocuSeal system, not a local database table
+-- Note: opensign_template_id references external OpenSign system, not a local database table
 CREATE TABLE IF NOT EXISTS `contract_templates` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT DEFAULT NULL,
-    `docuseal_template_id` INT DEFAULT NULL COMMENT 'External: DocuSeal template ID for API integration (not a local FK)',
+    `opensign_template_id` INT DEFAULT NULL COMMENT 'External: OpenSign template ID for API integration (not a local FK)',
     `template_file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Optional: Local PDF backup file path for reference',
     `template_type` ENUM('employment', 'contractor', 'nda', 'other') DEFAULT 'employment',
     `variables` JSON DEFAULT NULL COMMENT 'List of template variables for form filling',
@@ -2730,24 +2730,24 @@ CREATE TABLE IF NOT EXISTS `contract_templates` (
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_type` (`template_type`),
     INDEX `idx_active` (`is_active`),
-    INDEX `idx_docuseal` (`docuseal_template_id`)
+    INDEX `idx_opensign` (`opensign_template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Employee Contracts (for e-signature workflow)
--- Note: docuseal_template_id and docuseal_submission_id reference external DocuSeal system
+-- Note: opensign_template_id and opensign_submission_id reference external OpenSign system
 CREATE TABLE IF NOT EXISTS `employee_contracts` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `onboarding_id` INT DEFAULT NULL COMMENT 'Link to onboarding record if applicable',
     `user_id` INT DEFAULT NULL COMMENT 'Link to user if already created',
     `template_id` INT DEFAULT NULL COMMENT 'Local template reference',
-    `docuseal_template_id` INT DEFAULT NULL COMMENT 'External: DocuSeal template ID used (not a local FK)',
-    `docuseal_submission_id` INT DEFAULT NULL COMMENT 'External: DocuSeal submission ID for tracking (not a local FK)',
+    `opensign_template_id` INT DEFAULT NULL COMMENT 'External: OpenSign template ID used (not a local FK)',
+    `opensign_submission_id` INT DEFAULT NULL COMMENT 'External: OpenSign submission ID for tracking (not a local FK)',
     `employee_name` VARCHAR(255) NOT NULL,
     `employee_email` VARCHAR(255) NOT NULL,
     `contract_title` VARCHAR(255) DEFAULT 'Employment Contract',
     `contract_data` JSON DEFAULT NULL COMMENT 'Data used to fill the contract template',
     `status` ENUM('draft', 'pending_signature', 'signed', 'expired', 'cancelled') DEFAULT 'draft',
-    `signing_url` VARCHAR(500) DEFAULT NULL COMMENT 'DocuSeal signing URL',
+    `signing_url` VARCHAR(500) DEFAULT NULL COMMENT 'OpenSign signing URL',
     `signing_token` VARCHAR(64) DEFAULT NULL COMMENT 'Legacy: Unique token for signing URL',
     `signing_token_expires` DATETIME DEFAULT NULL,
     `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to signed contract in Nextcloud',
@@ -2764,7 +2764,7 @@ CREATE TABLE IF NOT EXISTS `employee_contracts` (
     INDEX `idx_onboarding` (`onboarding_id`),
     INDEX `idx_user` (`user_id`),
     INDEX `idx_status` (`status`),
-    INDEX `idx_docuseal_submission` (`docuseal_submission_id`),
+    INDEX `idx_opensign_submission` (`opensign_submission_id`),
     INDEX `idx_template` (`template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
