@@ -122,16 +122,27 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
 <div class="business-cards-page-header">
     <div class="page-header-content">
         <div class="page-header-icon">
-            <i class="fas fa-id-card"></i>
+            <i class="fas fa-bullhorn"></i>
         </div>
         <div class="page-header-text">
-            <h1 class="page-title">Business Card Generator</h1>
-            <p class="page-description">Create professional business cards for team members</p>
+            <h1 class="page-title">Marketing</h1>
+            <p class="page-description">Create business cards and email signatures for team members</p>
         </div>
     </div>
 </div>
 
-<div class="business-cards-content">
+<!-- Marketing Section Tabs -->
+<div class="marketing-tabs">
+    <button class="marketing-tab active" onclick="switchMarketingTab('business-cards')" id="tab-business-cards">
+        <i class="fas fa-id-card"></i> Business Cards
+    </button>
+    <button class="marketing-tab" onclick="switchMarketingTab('email-signatures')" id="tab-email-signatures">
+        <i class="fas fa-envelope"></i> Email Signatures
+    </button>
+</div>
+
+<!-- Business Cards Section -->
+<div class="business-cards-content marketing-section" id="section-business-cards">
     <!-- Step 1: User Selection -->
     <div class="card" id="user-selection-section">
         <div class="card-header">
@@ -140,7 +151,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
         <div class="card-body">
             <!-- Filter and Search -->
             <form method="GET" action="" class="filter-form" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-                <input type="hidden" name="page" value="business_cards">
+                <input type="hidden" name="page" value="marketing">
                 <?php if ($selected_user): ?>
                     <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($selected_user['id']); ?>">
                 <?php endif; ?>
@@ -454,7 +465,159 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
     </div>
 </div>
 
-<!-- html2canvas Library for PNG Export -->
+<!-- Email Signatures Section -->
+<div class="email-signatures-content marketing-section" id="section-email-signatures" style="display: none;">
+    <!-- Step 1: User Selection for Email Signature -->
+    <div class="card" id="email-user-selection-section">
+        <div class="card-header">
+            <h3><i class="fas fa-user-check"></i> Step 1: Select a User</h3>
+        </div>
+        <div class="card-body">
+            <!-- Users Grid (reusing the same data) -->
+            <div class="users-grid">
+                <?php if (count($users) > 0): ?>
+                    <?php foreach ($users as $user): ?>
+                        <div class="user-card <?php echo ($selected_user && $selected_user['id'] == $user['id']) ? 'selected' : ''; ?>" 
+                             onclick="selectEmailSignatureUser(<?php echo $user['id']; ?>)"
+                             data-user-id="<?php echo $user['id']; ?>"
+                             data-first-name="<?php echo htmlspecialchars($user['first_name']); ?>"
+                             data-last-name="<?php echo htmlspecialchars($user['last_name']); ?>"
+                             data-email="<?php echo htmlspecialchars($user['email']); ?>"
+                             data-phone="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>"
+                             data-role="<?php echo htmlspecialchars($user['role']); ?>">
+                            <div class="user-avatar-large">
+                                <?php 
+                                    $initials = strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1));
+                                    echo htmlspecialchars($initials);
+                                ?>
+                            </div>
+                            <div class="user-info">
+                                <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
+                                <div class="user-email"><?php echo htmlspecialchars($user['email']); ?></div>
+                                <span class="role-badge <?php echo $user['role']; ?>">
+                                    <?php echo ucfirst(str_replace('_', ' ', $user['role'])); ?>
+                                </span>
+                            </div>
+                            <div class="select-indicator">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="placeholder-text">No users found.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Email Signature Form -->
+    <div class="card" id="email-form-section" style="display: none;">
+        <div class="card-header">
+            <h3><i class="fas fa-edit"></i> Step 2: Customize Email Signature</h3>
+        </div>
+        <div class="card-body">
+            <form id="email-signature-form">
+                <!-- Contact Information Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title"><i class="fas fa-user"></i> Contact Information</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" name="es_full_name" id="es_full_name" class="form-input" required
+                                   placeholder="John Doe" oninput="updateEmailSignaturePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Job Title *</label>
+                            <input type="text" name="es_job_title" id="es_job_title" class="form-input" required
+                                   placeholder="Head Coach" oninput="updateEmailSignaturePreview()">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Email Address *</label>
+                            <input type="email" name="es_email" id="es_email" class="form-input" required
+                                   placeholder="john@arcticwolves.ca" oninput="updateEmailSignaturePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" name="es_phone" id="es_phone" class="form-input"
+                                   placeholder="(555) 123-4567" oninput="updateEmailSignaturePreview()">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Company Information Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title"><i class="fas fa-building"></i> Company Information</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Company Name</label>
+                            <input type="text" name="es_company_name" id="es_company_name" class="form-input"
+                                   value="Arctic Wolves Hockey" oninput="updateEmailSignaturePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Website URL</label>
+                            <input type="url" name="es_website" id="es_website" class="form-input"
+                                   value="https://arcticwolves.ca" oninput="updateEmailSignaturePreview()">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Logo Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title"><i class="fas fa-image"></i> Logo</h4>
+                    <div class="form-group">
+                        <label class="form-label">Logo URL *</label>
+                        <input type="url" name="es_logo_url" id="es_logo_url" class="form-input" required
+                               value="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" 
+                               placeholder="https://example.com/logo.png" oninput="updateEmailSignaturePreview()">
+                        <p class="form-help"><i class="fas fa-info-circle"></i> Enter a publicly accessible URL for your logo. The logo should be hosted online for email compatibility.</p>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" onclick="updateEmailSignaturePreview()">
+                        <i class="fas fa-eye"></i> Update Preview
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Step 3: Email Signature Preview & Code -->
+    <div class="card" id="email-preview-section" style="display: none;">
+        <div class="card-header">
+            <h3><i class="fas fa-envelope-open-text"></i> Step 3: Email Signature Preview</h3>
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="copyEmailSignatureHTML()">
+                    <i class="fas fa-copy"></i> Copy HTML Code
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Email Signature Preview Container -->
+            <div class="email-signature-preview-container">
+                <h4 class="preview-label"><i class="fas fa-eye"></i> Preview</h4>
+                <div class="email-signature-preview" id="email-signature-preview">
+                    <!-- The signature will be rendered here -->
+                </div>
+            </div>
+            
+            <!-- HTML Code Section -->
+            <div class="email-signature-code-container">
+                <h4 class="preview-label"><i class="fas fa-code"></i> HTML Code</h4>
+                <p class="code-instructions">Copy this HTML code and paste it into your email client's signature settings.</p>
+                <div class="code-wrapper">
+                    <pre id="email-signature-code"></pre>
+                </div>
+            </div>
+            
+            <div class="preview-instructions">
+                <p><i class="fas fa-info-circle"></i> Copy the HTML code above and paste it into your email client's signature settings. The signature uses inline styles for maximum email client compatibility.</p>
+            </div>
+        </div>
+    </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <!-- QR Code Library -->
@@ -1135,6 +1298,200 @@ function exportCardSide(side) {
         });
     });
 }
+
+// =====================================================
+// Marketing Tab Switching Functions
+// =====================================================
+
+// Switch between marketing tabs (Business Cards / Email Signatures)
+function switchMarketingTab(tab) {
+    // Hide all sections
+    document.querySelectorAll('.marketing-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.marketing-tab').forEach(tabBtn => {
+        tabBtn.classList.remove('active');
+    });
+    
+    // Show selected section and activate tab
+    const section = document.getElementById('section-' + tab);
+    const tabBtn = document.getElementById('tab-' + tab);
+    
+    if (section) {
+        section.style.display = 'flex';
+    }
+    if (tabBtn) {
+        tabBtn.classList.add('active');
+    }
+}
+
+// =====================================================
+// Email Signature Functions
+// =====================================================
+
+// Selected user data for email signature
+let emailSignatureUser = null;
+
+// Select user for email signature
+function selectEmailSignatureUser(userId) {
+    // Find the user card and get data
+    const userCard = document.querySelector(`#section-email-signatures .user-card[data-user-id="${userId}"]`);
+    if (!userCard) return;
+    
+    // Remove selection from all cards
+    document.querySelectorAll('#section-email-signatures .user-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Add selection to clicked card
+    userCard.classList.add('selected');
+    
+    // Get user data from data attributes
+    const firstName = userCard.dataset.firstName;
+    const lastName = userCard.dataset.lastName;
+    const email = userCard.dataset.email;
+    const phone = userCard.dataset.phone;
+    const role = userCard.dataset.role;
+    
+    emailSignatureUser = {
+        id: userId,
+        firstName: firstName,
+        lastName: lastName,
+        fullName: firstName + ' ' + lastName,
+        email: email,
+        phone: phone,
+        role: role
+    };
+    
+    // Populate the form fields
+    document.getElementById('es_full_name').value = emailSignatureUser.fullName;
+    document.getElementById('es_job_title').value = capitalizeRole(role);
+    document.getElementById('es_email').value = email;
+    document.getElementById('es_phone').value = phone || '';
+    
+    // Show the form and preview sections
+    document.getElementById('email-form-section').style.display = 'block';
+    document.getElementById('email-preview-section').style.display = 'block';
+    
+    // Update the preview
+    updateEmailSignaturePreview();
+}
+
+// Capitalize role string
+function capitalizeRole(role) {
+    return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+// Update email signature preview
+function updateEmailSignaturePreview() {
+    const fullName = document.getElementById('es_full_name').value || 'Full Name';
+    const jobTitle = document.getElementById('es_job_title').value || 'Job Title';
+    const email = document.getElementById('es_email').value || 'email@example.com';
+    const phone = document.getElementById('es_phone').value || '';
+    const companyName = document.getElementById('es_company_name').value || 'Arctic Wolves Hockey';
+    const website = document.getElementById('es_website').value || 'https://arcticwolves.ca';
+    const logoUrl = document.getElementById('es_logo_url').value || 'https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png';
+    
+    // Generate the email signature HTML with inline styles for email compatibility
+    const signatureHTML = generateEmailSignatureHTML(fullName, jobTitle, email, phone, companyName, website, logoUrl);
+    
+    // Update preview
+    document.getElementById('email-signature-preview').innerHTML = signatureHTML;
+    
+    // Update code display (HTML escaped for display)
+    const codeElement = document.getElementById('email-signature-code');
+    codeElement.textContent = signatureHTML;
+}
+
+// Generate clean, modern email signature HTML with inline styles
+function generateEmailSignatureHTML(fullName, jobTitle, email, phone, companyName, website, logoUrl) {
+    // Build phone row only if phone is provided
+    const phoneRow = phone ? `
+                    <tr>
+                        <td style="padding: 2px 0; font-family: Arial, sans-serif; font-size: 13px; color: #666666;">
+                            <span style="color: #6B46C1;">&#128222;</span>&nbsp;&nbsp;${escapeHtml(phone)}
+                        </td>
+                    </tr>` : '';
+    
+    const html = `<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, sans-serif; max-width: 500px;">
+    <tr>
+        <td style="padding-right: 20px; vertical-align: top; border-right: 3px solid #6B46C1;">
+            <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(companyName)}" width="80" height="80" style="display: block; width: 80px; height: auto;">
+        </td>
+        <td style="padding-left: 20px; vertical-align: top;">
+            <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="padding-bottom: 4px;">
+                        <span style="font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; color: #1a1a2e;">${escapeHtml(fullName)}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 12px;">
+                        <span style="font-family: Arial, sans-serif; font-size: 13px; font-weight: 600; color: #6B46C1; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(jobTitle)}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 8px; border-top: 1px solid #e0e0e0; padding-top: 12px;">
+                        <span style="font-family: Arial, sans-serif; font-size: 14px; font-weight: 600; color: #1a1a2e;">${escapeHtml(companyName)}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <table cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="padding: 2px 0; font-family: Arial, sans-serif; font-size: 13px; color: #666666;">
+                                    <span style="color: #6B46C1;">&#9993;</span>&nbsp;&nbsp;<a href="mailto:${escapeHtml(email)}" style="color: #666666; text-decoration: none;">${escapeHtml(email)}</a>
+                                </td>
+                            </tr>${phoneRow}
+                            <tr>
+                                <td style="padding: 2px 0; font-family: Arial, sans-serif; font-size: 13px; color: #666666;">
+                                    <span style="color: #6B46C1;">&#127760;</span>&nbsp;&nbsp;<a href="${escapeHtml(website)}" style="color: #6B46C1; text-decoration: none;">${escapeHtml(website.replace(/^https?:\/\//, ''))}</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>`;
+    
+    return html;
+}
+
+// Escape HTML entities for safe display
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Copy email signature HTML to clipboard
+function copyEmailSignatureHTML() {
+    const codeElement = document.getElementById('email-signature-code');
+    const htmlCode = codeElement.textContent;
+    
+    navigator.clipboard.writeText(htmlCode).then(() => {
+        showNotification('HTML code copied to clipboard!', 'success');
+    }).catch(err => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = htmlCode;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showNotification('HTML code copied to clipboard!', 'success');
+        } catch (e) {
+            showNotification('Failed to copy. Please select and copy manually.', 'error');
+        }
+        document.body.removeChild(textArea);
+    });
+}
 </script>
 
 <style>
@@ -1796,5 +2153,129 @@ function exportCardSide(side) {
         right: auto;
         left: 0;
     }
+    
+    .marketing-tabs {
+        flex-direction: column;
+    }
+    
+    .marketing-tab {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* =====================================================
+   Marketing Tabs Styles
+   ===================================================== */
+.marketing-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 8px;
+    background: var(--bg-card, #16161F);
+    border-radius: 12px;
+    border: 1px solid var(--border, #2D2D3F);
+}
+
+.marketing-tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-secondary, #A8A8B8);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    justify-content: center;
+}
+
+.marketing-tab:hover {
+    background: rgba(107, 70, 193, 0.1);
+    color: var(--text-primary, #fff);
+}
+
+.marketing-tab.active {
+    background: linear-gradient(135deg, var(--primary, #6B46C1), #8B5CF6);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(107, 70, 193, 0.3);
+}
+
+.marketing-tab i {
+    font-size: 16px;
+}
+
+.marketing-section {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* =====================================================
+   Email Signature Styles
+   ===================================================== */
+.email-signatures-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.email-signature-preview-container {
+    margin-bottom: 32px;
+}
+
+.preview-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-label i {
+    color: var(--primary-light, #8B5CF6);
+}
+
+.email-signature-preview {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border, #2D2D3F);
+    overflow: hidden;
+}
+
+.email-signature-code-container {
+    margin-top: 24px;
+}
+
+.code-instructions {
+    font-size: 13px;
+    color: var(--text-dim, #6B6B7B);
+    margin-bottom: 12px;
+}
+
+.code-wrapper {
+    background: var(--bg-main, #0D0D14);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+.code-wrapper pre {
+    margin: 0;
+    padding: 0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary, #A8A8B8);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.6;
 }
 </style>
