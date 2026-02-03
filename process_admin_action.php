@@ -166,7 +166,7 @@ if ($action == 'create_location') {
             echo json_encode(['success' => true, 'message' => 'Location created successfully!']);
             exit();
         }
-        header("Location: dashboard.php?page=admin_locations&status=added");
+        header("Location: dashboard.php?page=categories&tab=locations&status=added");
     } catch (Exception $e) {
         error_log("Create location error: " . $e->getMessage());
         if ($isAjax) {
@@ -174,7 +174,7 @@ if ($action == 'create_location') {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
             exit();
         }
-        header("Location: dashboard.php?page=admin_locations&status=error");
+        header("Location: dashboard.php?page=categories&tab=locations&status=error");
     }
     exit();
 }
@@ -2377,6 +2377,202 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'merchandi
             exit();
         }
         header("Location: dashboard.php?page=categories&tab=merchandise&status=error");
+    }
+    exit();
+}
+
+// === TEAMS MANAGEMENT ===
+// Manages teams for session assignments and athlete rosters
+if ($action == 'create_team') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    $name = trim($_POST['name'] ?? '');
+    $age_group = trim($_POST['age_group'] ?? '');
+    $skill_level = trim($_POST['skill_level'] ?? '');
+    $division = trim($_POST['division'] ?? '');
+    $season = trim($_POST['season'] ?? '');
+    $coach_id = !empty($_POST['coach_id']) ? intval($_POST['coach_id']) : null;
+    $assistant_coach_id = !empty($_POST['assistant_coach_id']) ? intval($_POST['assistant_coach_id']) : null;
+    
+    if (empty($name)) {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Team name is required']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=teams&status=error&message=team_name_required");
+        exit();
+    }
+    
+    try {
+        $stmt = $pdo->prepare("INSERT INTO teams (name, age_group, skill_level, division, season, coach_id, assistant_coach_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+        $stmt->execute([$name, $age_group ?: null, $skill_level ?: null, $division ?: null, $season ?: null, $coach_id, $assistant_coach_id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Team created successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=teams&status=success&message=team_created");
+    } catch (PDOException $e) {
+        error_log("Error creating team: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to create team']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=teams&status=error");
+    }
+    exit();
+}
+
+if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $id = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $age_group = trim($_POST['age_group'] ?? '');
+        $skill_level = trim($_POST['skill_level'] ?? '');
+        $division = trim($_POST['division'] ?? '');
+        $season = trim($_POST['season'] ?? '');
+        $coach_id = !empty($_POST['coach_id']) ? intval($_POST['coach_id']) : null;
+        $assistant_coach_id = !empty($_POST['assistant_coach_id']) ? intval($_POST['assistant_coach_id']) : null;
+        $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        
+        if ($id <= 0 || empty($name)) {
+            throw new Exception('Team ID and name are required');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE teams SET name = ?, age_group = ?, skill_level = ?, division = ?, season = ?, coach_id = ?, assistant_coach_id = ?, is_active = ? WHERE id = ?");
+        $stmt->execute([$name, $age_group ?: null, $skill_level ?: null, $division ?: null, $season ?: null, $coach_id, $assistant_coach_id, $is_active, $id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Team updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=teams&status=team_updated");
+    } catch (Exception $e) {
+        error_log("Edit team error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=teams&status=error");
+    }
+    exit();
+}
+
+if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'team') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $id = intval($_POST['id'] ?? 0);
+        
+        if ($id <= 0) {
+            throw new Exception('Invalid team ID');
+        }
+        
+        // Check if team has sessions
+        $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM sessions WHERE team_id = ?");
+        $check_stmt->execute([$id]);
+        if ($check_stmt->fetchColumn() > 0) {
+            throw new Exception('Cannot delete team with assigned sessions');
+        }
+        
+        $stmt = $pdo->prepare("DELETE FROM teams WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Team deleted successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=teams&status=team_deleted");
+    } catch (Exception $e) {
+        error_log("Delete team error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=teams&status=error");
+    }
+    exit();
+}
+
+// === LOCATIONS EDIT/DELETE VIA GENERIC TYPE ===
+if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'location') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $id = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $city = trim($_POST['city'] ?? '');
+        $google_place_id = trim($_POST['google_place_id'] ?? '');
+        $image_url = trim($_POST['image_url'] ?? '');
+        
+        if ($id <= 0 || empty($name) || empty($city)) {
+            throw new Exception('Location ID, name, and city are required');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE locations SET name = ?, city = ?, google_place_id = ?, image_url = ? WHERE id = ?");
+        $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null, $id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Location updated successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=locations&status=location_updated");
+    } catch (Exception $e) {
+        error_log("Edit location error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=locations&status=error");
+    }
+    exit();
+}
+
+if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'location') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    try {
+        $id = intval($_POST['id'] ?? 0);
+        
+        if ($id <= 0) {
+            throw new Exception('Invalid location ID');
+        }
+        
+        // Check if location has sessions
+        $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM sessions s INNER JOIN locations l ON s.arena = l.name WHERE l.id = ?");
+        $check_stmt->execute([$id]);
+        if ($check_stmt->fetchColumn() > 0) {
+            throw new Exception('Cannot delete location with assigned sessions');
+        }
+        
+        $stmt = $pdo->prepare("DELETE FROM locations WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Location deleted successfully!']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=locations&status=location_deleted");
+    } catch (Exception $e) {
+        error_log("Delete location error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=locations&status=error");
     }
     exit();
 }

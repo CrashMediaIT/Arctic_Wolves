@@ -716,7 +716,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
                 <i class="fa-solid fa-users icon"></i> All Users
             </a>
             <a href="?page=categories" class="nav-link <?= $page=='categories'?'active':'' ?>">
-                <i class="fa-solid fa-folder-tree icon"></i> Categories
+                <i class="fa-solid fa-layer-group icon"></i> Resource Management
             </a>
             <a href="?page=eval_framework" class="nav-link <?= $page=='eval_framework'?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-check icon"></i> Eval Framework
