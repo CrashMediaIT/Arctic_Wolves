@@ -141,11 +141,102 @@ if ($filter_location !== 'all') {
     $params[] = $filter_location;
 }
 
-$sessions_query .= $show_history ? " ORDER BY s.session_date DESC LIMIT 50" : " ORDER BY s.session_date LIMIT 50";
+// Apply ordering and limit
+// For history mode, apply final limit since we don't merge with templates
+// For upcoming mode, we'll apply limit after merging with template sessions
+$sessions_query .= $show_history ? " ORDER BY s.session_date DESC LIMIT 50" : " ORDER BY s.session_date";
 
 $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute($params);
 $sessions = $sessions_stmt->fetchAll();
+
+// Also fetch sessions from training_session_templates that have show_on_landing = 1
+// These are sessions created via the Products tab
+if (!$show_history) {
+    $template_sessions_query = "
+        SELECT 
+            tst.id,
+            tst.name as title,
+            tst.description,
+            tst.session_type_id,
+            tst.duration_minutes,
+            tst.price,
+            tst.max_participants,
+            tst.coach_id,
+            tst.location_id,
+            tst.session_type,
+            tsd.session_date as session_date,
+            TIME(tsd.session_date) as session_time,
+            tsd.id as template_date_id,
+            tsd.team_id,
+            CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+            st.name as session_type_name,
+            st.id as skill_id,
+            l.name as location_name,
+            pp.name as practice_plan_name,
+            pp.description as practice_plan_description,
+            tst.practice_plan_id,
+            'scheduled' as status,
+            'template' as source_type
+        FROM training_session_templates tst
+        INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+        LEFT JOIN users c ON tst.coach_id = c.id
+        LEFT JOIN session_types st ON tst.session_type_id = st.id
+        LEFT JOIN locations l ON tst.location_id = l.id
+        LEFT JOIN practice_plans pp ON tst.practice_plan_id = pp.id
+        WHERE tst.is_active = 1
+          AND tst.show_on_landing = 1
+          AND tsd.session_date >= NOW()
+    ";
+    
+    $template_params = [];
+    
+    // Apply period filter for template sessions
+    if ($filter_period === 'week') {
+        $template_sessions_query .= " AND tsd.session_date <= DATE_ADD(CURDATE(), INTERVAL 1 WEEK)";
+    } elseif ($filter_period === 'next_week') {
+        $template_sessions_query .= " AND tsd.session_date > DATE_ADD(CURDATE(), INTERVAL 1 WEEK) AND tsd.session_date <= DATE_ADD(CURDATE(), INTERVAL 2 WEEK)";
+    } elseif ($filter_period === 'month') {
+        $template_sessions_query .= " AND tsd.session_date <= DATE_ADD(CURDATE(), INTERVAL 1 MONTH)";
+    }
+    
+    // Apply coach filter for template sessions
+    if ($filter_coach !== 'all') {
+        $template_sessions_query .= " AND tst.coach_id = ?";
+        $template_params[] = $filter_coach;
+    }
+    
+    // Apply skill/session type filter for template sessions
+    if ($filter_skill !== 'all') {
+        $template_sessions_query .= " AND tst.session_type_id = ?";
+        $template_params[] = $filter_skill;
+    }
+    
+    // Apply location filter for template sessions
+    if ($filter_location !== 'all') {
+        $template_sessions_query .= " AND tst.location_id = ?";
+        $template_params[] = $filter_location;
+    }
+    
+    $template_sessions_query .= " ORDER BY tsd.session_date";
+    
+    $template_stmt = $pdo->prepare($template_sessions_query);
+    $template_stmt->execute($template_params);
+    $template_sessions = $template_stmt->fetchAll();
+    
+    // Merge template sessions with regular sessions
+    $sessions = array_merge($sessions, $template_sessions);
+    
+    // Sort combined sessions by date using strtotime for reliable chronological ordering
+    usort($sessions, function($a, $b) {
+        $dateA = strtotime($a['session_date'] ?? '');
+        $dateB = strtotime($b['session_date'] ?? '');
+        return $dateA - $dateB;
+    });
+    
+    // Limit to 50 total
+    $sessions = array_slice($sessions, 0, 50);
+}
 
 // Get coaches for filter - based on user role
 if ($user_role === 'athlete') {
