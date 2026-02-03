@@ -338,6 +338,50 @@ function sendEmail($to, $type, $data) {
         </div>";
     }
     
+    // 9. E-SIGNATURE REQUEST
+    elseif ($type == 'esignature_request') {
+        $name = htmlspecialchars($data['name'] ?? 'Employee');
+        $signing_url = $data['signing_url'] ?? '#';
+        $contract_title = htmlspecialchars($data['contract_title'] ?? 'Employment Contract');
+        
+        $subject = "Action Required: Sign Your " . $contract_title;
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            <h2 style='color: #6B46C1; margin-top: 0;'>📝 Contract Ready for Signature</h2>
+            <p style='color: #ccc;'>Hi $name,</p>
+            <p style='color: #ccc;'>Your <strong style='color: #fff;'>$contract_title</strong> is ready for your electronic signature.</p>
+            <div style='background: #1e293b; padding: 20px; margin: 25px 0; border-radius: 6px; border-left: 4px solid #6B46C1;'>
+                <p style='color: #e2e8f0; margin: 0 0 15px 0;'>Please review and sign your contract by clicking the button below:</p>
+                <a href='$signing_url' style='display: inline-block; background: #6B46C1; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Review & Sign Contract</a>
+            </div>
+            <p style='color: #94a3b8; font-size: 13px;'>This signing link will expire in 7 days. If you have any questions, please contact HR.</p>
+            <p style='color: #ef4444; font-size: 12px; margin-top: 20px;'>⚠️ If you did not expect this email, please contact us immediately.</p>
+            $footer
+        </div>";
+    }
+    
+    // 10. CONTRACT SIGNED CONFIRMATION
+    elseif ($type == 'contract_signed') {
+        $name = htmlspecialchars($data['name'] ?? 'Employee');
+        $contract_title = htmlspecialchars($data['contract_title'] ?? 'Employment Contract');
+        
+        $subject = "✅ Contract Signed: " . $contract_title;
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            <h2 style='color: #00ff88; margin-top: 0;'>✔ Contract Successfully Signed</h2>
+            <p style='color: #ccc;'>Hi $name,</p>
+            <p style='color: #ccc;'>Thank you! Your <strong style='color: #fff;'>$contract_title</strong> has been successfully signed.</p>
+            <div style='background: #1e293b; padding: 20px; margin: 25px 0; border-radius: 6px; border: 1px solid #333;'>
+                <p style='color: #e2e8f0; margin: 0;'><strong>Contract:</strong> $contract_title</p>
+                <p style='color: #e2e8f0; margin: 10px 0 0 0;'><strong>Signed On:</strong> " . date('F j, Y') . "</p>
+            </div>
+            <p style='color: #94a3b8; font-size: 13px;'>A copy of your signed contract has been securely stored. You can access it through your employee portal or contact HR for a copy.</p>
+            $footer
+        </div>";
+    }
+    
     // --- SENDING ---
     $mailer = new SmtpMailer();
     try {

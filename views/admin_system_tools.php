@@ -57,6 +57,9 @@ try {
     <a href="?page=system_tools&tab=nextcloud" class="page-tab <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>">
         <i class="fas fa-cloud"></i> Nextcloud
     </a>
+    <a href="?page=system_tools&tab=stirling_pdf" class="page-tab <?php echo $activeTab === 'stirling_pdf' ? 'active' : ''; ?>">
+        <i class="fas fa-file-pdf"></i> Stirling PDF
+    </a>
     <a href="?page=system_tools&tab=payments" class="page-tab <?php echo $activeTab === 'payments' ? 'active' : ''; ?>">
         <i class="fas fa-credit-card"></i> Payments
     </a>
@@ -636,6 +639,123 @@ try {
                 </form>
             </div>
         </div>
+    </div>
+
+    <!-- Stirling PDF Tab -->
+    <div class="tab-content <?php echo $activeTab === 'stirling_pdf' ? 'active' : ''; ?>" id="stirling-pdf-tab">
+        <form id="stirling-pdf-form" method="POST" action="process_settings.php" data-form-type="stirling_pdf">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_stirling_pdf">
+            <input type="hidden" name="redirect_page" value="system_tools">
+            
+            <!-- Stirling PDF Configuration Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-file-pdf"></i> Stirling PDF Configuration</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Stirling PDF is used for generating employee contracts and processing e-signatures. <a href="https://github.com/Stirling-Tools/Stirling-PDF" target="_blank" style="color: inherit;">Learn more</a></span>
+                    </div>
+                    
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Enable Stirling PDF</h4>
+                                <p>Enable PDF generation and e-signature features</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="stirling_pdf_enabled" 
+                                       <?php echo !empty($settings['stirling_pdf_enabled']) ? 'checked' : ''; ?>>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Stirling PDF API URL</h4>
+                                <p>The base URL of your Stirling PDF instance (e.g., https://pdf.example.com)</p>
+                            </div>
+                            <input type="url" name="stirling_pdf_url" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stirling_pdf_url'] ?? ''); ?>"
+                                   placeholder="https://stirling-pdf.example.com">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>API Key (Optional)</h4>
+                                <p>API key for authentication if your Stirling PDF instance requires it</p>
+                            </div>
+                            <input type="password" name="stirling_pdf_api_key" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stirling_pdf_api_key'] ?? ''); ?>"
+                                   placeholder="Enter API key (leave blank if not required)">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Webhook URL (Optional)</h4>
+                                <p>URL to receive callbacks when contracts are signed</p>
+                            </div>
+                            <input type="url" name="stirling_pdf_webhook_url" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stirling_pdf_webhook_url'] ?? ''); ?>"
+                                   placeholder="https://your-app.com/webhook/contract-signed">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test Connection & Save -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-plug"></i> Connection Test</h3>
+                </div>
+                <div class="card-body">
+                    <div class="flex-row" style="display: flex; gap: 12px; align-items: center;">
+                        <button type="button" id="test-stirling-pdf" class="btn-secondary">
+                            <i class="fas fa-plug"></i> Test Connection
+                        </button>
+                        <span id="stirling-pdf-status"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- E-Signature Settings Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-signature"></i> E-Signature Settings</h3>
+                </div>
+                <div class="card-body">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Signing Link Expiry (Days)</h4>
+                                <p>How long signing links remain valid</p>
+                            </div>
+                            <input type="number" name="stirling_pdf_link_expiry" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stirling_pdf_link_expiry'] ?? '7'); ?>"
+                                   min="1" max="30" style="width: 100px;">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Auto-send Confirmation Email</h4>
+                                <p>Automatically send confirmation when contract is signed</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="stirling_pdf_auto_confirm" 
+                                       <?php echo ($settings['stirling_pdf_auto_confirm'] ?? '1') === '1' ? 'checked' : ''; ?>>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Stirling PDF Settings</button>
+            </div>
+        </form>
     </div>
 
     <!-- Payments Tab -->
@@ -1928,6 +2048,47 @@ function updateStripeLibrary() {
         console.error('Error:', error);
     });
 }
+
+// Test Stirling PDF Connection
+document.getElementById('test-stirling-pdf')?.addEventListener('click', function() {
+    const btn = this;
+    const statusSpan = document.getElementById('stirling-pdf-status');
+    const url = document.querySelector('input[name="stirling_pdf_url"]').value;
+    const apiKey = document.querySelector('input[name="stirling_pdf_api_key"]').value;
+    
+    if (!url) {
+        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Please enter a Stirling PDF URL first</span>';
+        return;
+    }
+    
+    btn.disabled = true;
+    statusSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing connection...';
+    
+    const formData = new FormData();
+    formData.append('action', 'test_stirling_pdf');
+    formData.append('stirling_pdf_url', url);
+    formData.append('stirling_pdf_api_key', apiKey);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.success) {
+            statusSpan.innerHTML = '<span style="color: #00ff88;"><i class="fas fa-check-circle"></i> Connection successful!</span>';
+        } else {
+            statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> ' + (data.message || 'Connection failed') + '</span>';
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Error testing connection</span>';
+        console.error('Error:', error);
+    });
+});
 </script>
 
 <style>

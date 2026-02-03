@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 $action = $_POST['action'] ?? '';
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_stirling_pdf'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -506,6 +506,59 @@ try {
             }
             
             header('Location: dashboard.php?page=admin_settings&success=1');
+            exit;
+            
+        case 'update_stirling_pdf':
+            $stirling_pdf_enabled = isset($_POST['stirling_pdf_enabled']) ? '1' : '0';
+            $stirling_pdf_url = trim($_POST['stirling_pdf_url'] ?? '');
+            $stirling_pdf_api_key = trim($_POST['stirling_pdf_api_key'] ?? '');
+            $stirling_pdf_webhook_url = trim($_POST['stirling_pdf_webhook_url'] ?? '');
+            $stirling_pdf_link_expiry = intval($_POST['stirling_pdf_link_expiry'] ?? 7);
+            $stirling_pdf_auto_confirm = isset($_POST['stirling_pdf_auto_confirm']) ? '1' : '0';
+            
+            // Validate URL if provided
+            if (!empty($stirling_pdf_url) && !filter_var($stirling_pdf_url, FILTER_VALIDATE_URL)) {
+                throw new Exception('Invalid Stirling PDF URL format');
+            }
+            
+            // Validate webhook URL if provided
+            if (!empty($stirling_pdf_webhook_url) && !filter_var($stirling_pdf_webhook_url, FILTER_VALIDATE_URL)) {
+                throw new Exception('Invalid webhook URL format');
+            }
+            
+            // Validate link expiry
+            if ($stirling_pdf_link_expiry < 1 || $stirling_pdf_link_expiry > 30) {
+                $stirling_pdf_link_expiry = 7;
+            }
+            
+            updateSetting($pdo, 'stirling_pdf_enabled', $stirling_pdf_enabled);
+            updateSetting($pdo, 'stirling_pdf_url', $stirling_pdf_url);
+            if (!empty($stirling_pdf_api_key)) {
+                updateSetting($pdo, 'stirling_pdf_api_key', $stirling_pdf_api_key);
+            }
+            updateSetting($pdo, 'stirling_pdf_webhook_url', $stirling_pdf_webhook_url);
+            updateSetting($pdo, 'stirling_pdf_link_expiry', $stirling_pdf_link_expiry);
+            updateSetting($pdo, 'stirling_pdf_auto_confirm', $stirling_pdf_auto_confirm);
+            
+            // Redirect back to the appropriate page
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=stirling_pdf&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
+            exit;
+            
+        case 'test_stirling_pdf':
+            require_once __DIR__ . '/lib/stirling_pdf.php';
+            
+            $settings = [
+                'stirling_pdf_url' => trim($_POST['stirling_pdf_url'] ?? ''),
+                'stirling_pdf_api_key' => trim($_POST['stirling_pdf_api_key'] ?? '')
+            ];
+            
+            $result = testStirlingPdfConnection($settings);
+            echo json_encode($result);
             exit;
             
         default:

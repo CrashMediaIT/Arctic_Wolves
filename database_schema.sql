@@ -2713,6 +2713,62 @@ CREATE TABLE IF NOT EXISTS `onboarding_documents` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Contract Templates for E-Signature
+CREATE TABLE IF NOT EXISTS `contract_templates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `template_file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to PDF template file',
+    `template_type` ENUM('employment', 'contractor', 'nda', 'other') DEFAULT 'employment',
+    `variables` JSON DEFAULT NULL COMMENT 'List of template variables for form filling',
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_type` (`template_type`),
+    INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Employee Contracts (for e-signature workflow)
+CREATE TABLE IF NOT EXISTS `employee_contracts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `onboarding_id` INT DEFAULT NULL COMMENT 'Link to onboarding record if applicable',
+    `user_id` INT DEFAULT NULL COMMENT 'Link to user if already created',
+    `template_id` INT DEFAULT NULL COMMENT 'Template used to generate contract',
+    `employee_name` VARCHAR(255) NOT NULL,
+    `employee_email` VARCHAR(255) NOT NULL,
+    `contract_title` VARCHAR(255) DEFAULT 'Employment Contract',
+    `contract_data` JSON DEFAULT NULL COMMENT 'Data used to fill the contract template',
+    `status` ENUM('draft', 'pending_signature', 'signed', 'expired', 'cancelled') DEFAULT 'draft',
+    `signing_token` VARCHAR(64) DEFAULT NULL COMMENT 'Unique token for signing URL',
+    `signing_token_expires` DATETIME DEFAULT NULL,
+    `temp_file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Temporary path for unsigned contract',
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to signed contract in Nextcloud',
+    `sent_at` TIMESTAMP NULL DEFAULT NULL,
+    `signed_at` TIMESTAMP NULL DEFAULT NULL,
+    `signed_date` DATE DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`onboarding_id`) REFERENCES `employee_onboarding`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`template_id`) REFERENCES `contract_templates`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_onboarding` (`onboarding_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_signing_token` (`signing_token`),
+    INDEX `idx_template` (`template_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default contract template
+INSERT INTO `contract_templates` (`name`, `description`, `template_type`, `variables`, `is_active`) VALUES
+('Standard Employment Contract', 'Standard employee contract for full-time and part-time staff', 'employment', '["employee_name", "employee_address", "start_date", "position", "salary", "pay_frequency"]', 1),
+('Independent Contractor Agreement', 'Agreement for independent contractors', 'contractor', '["contractor_name", "contractor_address", "start_date", "services", "rate", "payment_terms"]', 1),
+('Non-Disclosure Agreement', 'Standard NDA for employees and contractors', 'nda', '["party_name", "party_address", "effective_date"]', 1)
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+
 -- Insert default CRA tax rates for 2026 (Canada)
 INSERT INTO `cra_tax_rates` (`tax_year`, `rate_type`, `province`, `bracket_min`, `bracket_max`, `rate_percentage`, `max_pensionable_earnings`, `max_insurable_earnings`, `basic_exemption`, `effective_date`, `notes`) VALUES
 -- CPP 2026 rates
