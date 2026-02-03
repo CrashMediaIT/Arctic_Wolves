@@ -1520,14 +1520,18 @@ function initPlacesSearch() {
 }
 
 function searchPlaces(query, prefix) {
-    // Simulated Places API results - replace with actual Google Places API
+    // TODO: PRODUCTION REQUIRED - Replace this simulated implementation with actual Google Places API
+    // This is placeholder code for development/demo purposes only.
+    // In production, use Google Places Text Search API:
+    // https://developers.google.com/maps/documentation/places/web-service/search-text
+    // The API key should be configured in System Tools > Google Maps API
     const results = [
         {
-            place_id: 'ChIJ' + Math.random().toString(36).substr(2, 9),
+            place_id: 'SIMULATED_' + Date.now(), // Simulated - will not work with Google Maps
             name: query + ' Arena',
             formatted_address: '123 Main St, ' + query + ', BC',
             photos: [{
-                getUrl: () => 'https://via.placeholder.com/400x300?text=' + encodeURIComponent(query)
+                getUrl: () => '' // Placeholder - real implementation would use Places Photos API
             }]
         }
     ];
