@@ -7,6 +7,7 @@
 
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/notifications.php';
 
 // Only run via CLI or with secret key
 if (php_sapi_name() !== 'cli') {
@@ -58,9 +59,17 @@ try {
     
     $sent_count = 0;
     $failed_count = 0;
+    $skipped_count = 0;
     
     foreach ($bookings as $booking) {
         try {
+            // Check if user has session_reminders preference enabled
+            if (!isUserPreferenceEnabled($pdo, $booking['user_id'], 'session_reminders')) {
+                $skipped_count++;
+                echo "- Skipped {$booking['first_name']} {$booking['last_name']} (notifications disabled)\n";
+                continue;
+            }
+            
             // Format time for display
             $time_formatted = date('g:i A', strtotime($booking['session_time']));
             $location_info = $booking['location_name'] ?? 'TBD';
@@ -96,7 +105,7 @@ try {
         }
     }
     
-    echo "\n✓ Sent $sent_count reminder(s), $failed_count failed.\n";
+    echo "\n✓ Sent $sent_count reminder(s), $failed_count failed, $skipped_count skipped (notifications disabled).\n";
     echo "[" . date('Y-m-d H:i:s') . "] Session Reminders Cron: Completed.\n";
     exit(0);
     
