@@ -59,8 +59,6 @@ if ($env_loaded) {
     // Validate that required configuration is present
     if (empty($host) || empty($db) || empty($user)) {
         $db_config_valid = false;
-        $db_connected = false;
-        $pdo = null;
         $db_error = "Database configuration incomplete. Please run setup.php to configure the database.";
         error_log("[DB CONFIG ERROR] Environment file found but missing required DB_HOST, DB_NAME, or DB_USER");
     }
