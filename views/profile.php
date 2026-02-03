@@ -992,7 +992,17 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 console.log('Response status:', response.status);
-                return response.json();
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.text().then(text => {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Invalid JSON response:', text);
+                        throw new Error('Invalid JSON response from server');
+                    }
+                });
             })
             .then(data => {
                 console.log('Response data:', data);
@@ -1012,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     // Revert the toggle if save failed
                     toggleElement.checked = !toggleElement.checked;
-                    alert('Failed to save preference: ' + (data.message || 'Unknown error'));
+                    alert('Failed to save preference: ' + (data.message || data.error || 'Unknown error'));
                 }
             })
             .catch(error => {
@@ -1022,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error saving preference:', error);
                 // Revert the toggle on error
                 toggleElement.checked = !toggleElement.checked;
-                alert('Error saving preference. Please try again.');
+                alert('Error saving preference: ' + error.message);
             });
         });
     });
@@ -1462,6 +1472,7 @@ document.addEventListener('DOMContentLoaded', function() {
     transition: 0.3s;
     border-radius: 30px;
     z-index: 1;
+    pointer-events: none; /* Allow clicks to pass through to the checkbox input */
 }
 
 .profile-content .toggle-slider:before,
@@ -1477,6 +1488,7 @@ document.addEventListener('DOMContentLoaded', function() {
     border-radius: 50%;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     transform: translateX(0);
+    pointer-events: none; /* Allow clicks to pass through to the checkbox input */
 }
 
 .profile-content .toggle-switch input:checked + .toggle-slider,
