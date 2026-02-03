@@ -1458,7 +1458,7 @@ document.addEventListener('DOMContentLoaded', function() {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #2D2D3F;
+    background-color: var(--border, #2D2D3F);
     transition: 0.3s;
     border-radius: 30px;
     z-index: 1;
@@ -1481,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .profile-content .toggle-switch input:checked + .toggle-slider,
 .preferences-list .toggle-switch input:checked + .toggle-slider {
-    background: linear-gradient(135deg, #6B46C1, #7C3AED);
+    background: linear-gradient(135deg, var(--primary, #6B46C1), var(--primary-hover, #7C3AED));
 }
 
 .profile-content .toggle-switch input:checked + .toggle-slider:before,
@@ -1497,12 +1497,12 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Override hover states to not interfere with toggle visual */
 .profile-content .toggle-slider:hover,
 .preferences-list .toggle-slider:hover {
-    background-color: #3A3A4F;
+    background-color: var(--border-light, #3A3A4F);
 }
 
 .profile-content .toggle-switch input:checked + .toggle-slider:hover,
 .preferences-list .toggle-switch input:checked + .toggle-slider:hover {
-    background: linear-gradient(135deg, #7C3AED, #8B5CF6);
+    background: linear-gradient(135deg, var(--primary-hover, #7C3AED), var(--primary-light, #8B5CF6));
 }
 
 /* Card Enhancements */
