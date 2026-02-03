@@ -1426,8 +1426,9 @@ document.addEventListener('DOMContentLoaded', function() {
     margin: 0;
 }
 
-/* Toggle Switch - Enhanced */
-.toggle-switch {
+/* Toggle Switch - Enhanced with higher specificity for profile page */
+.profile-content .toggle-switch,
+.preferences-list .toggle-switch {
     position: relative;
     display: inline-block;
     width: 56px;
@@ -1436,7 +1437,8 @@ document.addEventListener('DOMContentLoaded', function() {
     cursor: pointer;
 }
 
-.toggle-switch input {
+.profile-content .toggle-switch input,
+.preferences-list .toggle-switch input {
     opacity: 0;
     width: 100%;
     height: 100%;
@@ -1448,20 +1450,22 @@ document.addEventListener('DOMContentLoaded', function() {
     margin: 0;
 }
 
-.toggle-slider {
+.profile-content .toggle-slider,
+.preferences-list .toggle-slider {
     position: absolute;
     cursor: pointer;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--border);
+    background-color: var(--border, #2D2D3F);
     transition: 0.3s;
     border-radius: 30px;
     z-index: 1;
 }
 
-.toggle-slider:before {
+.profile-content .toggle-slider:before,
+.preferences-list .toggle-slider:before {
     position: absolute;
     content: "";
     height: 24px;
@@ -1472,18 +1476,33 @@ document.addEventListener('DOMContentLoaded', function() {
     transition: 0.3s;
     border-radius: 50%;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transform: translateX(0);
 }
 
-.toggle-switch input:checked + .toggle-slider {
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+.profile-content .toggle-switch input:checked + .toggle-slider,
+.preferences-list .toggle-switch input:checked + .toggle-slider {
+    background: linear-gradient(135deg, var(--primary, #6B46C1), var(--primary-hover, #7C3AED));
 }
 
-.toggle-switch input:checked + .toggle-slider:before {
+.profile-content .toggle-switch input:checked + .toggle-slider:before,
+.preferences-list .toggle-switch input:checked + .toggle-slider:before {
     transform: translateX(26px);
 }
 
-.toggle-switch:hover .toggle-slider {
+.profile-content .toggle-switch:hover .toggle-slider,
+.preferences-list .toggle-switch:hover .toggle-slider {
     box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
+}
+
+/* Override hover states to not interfere with toggle visual */
+.profile-content .toggle-slider:hover,
+.preferences-list .toggle-slider:hover {
+    background-color: var(--border-light, #3A3A4F);
+}
+
+.profile-content .toggle-switch input:checked + .toggle-slider:hover,
+.preferences-list .toggle-switch input:checked + .toggle-slider:hover {
+    background: linear-gradient(135deg, var(--primary-hover, #7C3AED), var(--primary-light, #8B5CF6));
 }
 
 /* Card Enhancements */
