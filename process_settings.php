@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 $action = $_POST['action'] ?? '';
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -506,6 +506,50 @@ try {
             }
             
             header('Location: dashboard.php?page=admin_settings&success=1');
+            exit;
+            
+        case 'update_docuseal':
+            $docuseal_enabled = isset($_POST['docuseal_enabled']) ? '1' : '0';
+            $docuseal_url = trim($_POST['docuseal_url'] ?? '');
+            $docuseal_api_key = trim($_POST['docuseal_api_key'] ?? '');
+            $docuseal_webhook_secret = trim($_POST['docuseal_webhook_secret'] ?? '');
+            $docuseal_auto_confirm = isset($_POST['docuseal_auto_confirm']) ? '1' : '0';
+            $docuseal_verify_ssl = isset($_POST['docuseal_verify_ssl']) ? '1' : '0';
+            
+            // Validate URL if provided
+            if (!empty($docuseal_url) && !filter_var($docuseal_url, FILTER_VALIDATE_URL)) {
+                throw new Exception('Invalid DocuSeal URL format');
+            }
+            
+            updateSetting($pdo, 'docuseal_enabled', $docuseal_enabled);
+            updateSetting($pdo, 'docuseal_url', $docuseal_url);
+            if (!empty($docuseal_api_key)) {
+                updateSetting($pdo, 'docuseal_api_key', $docuseal_api_key);
+            }
+            updateSetting($pdo, 'docuseal_webhook_secret', $docuseal_webhook_secret);
+            updateSetting($pdo, 'docuseal_auto_confirm', $docuseal_auto_confirm);
+            updateSetting($pdo, 'docuseal_verify_ssl', $docuseal_verify_ssl);
+            
+            // Redirect back to the appropriate page
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=docuseal&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
+            exit;
+            
+        case 'test_docuseal':
+            require_once __DIR__ . '/lib/docuseal.php';
+            
+            $settings = [
+                'docuseal_url' => trim($_POST['docuseal_url'] ?? ''),
+                'docuseal_api_key' => trim($_POST['docuseal_api_key'] ?? ''),
+                'docuseal_verify_ssl' => '1'
+            ];
+            
+            $result = testDocuSealConnection($settings);
+            echo json_encode($result);
             exit;
             
         default:

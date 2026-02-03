@@ -130,6 +130,7 @@ $allowed_pages = [
     'termination'             => 'views/hr_termination.php',
     'payroll'                 => 'views/hr_payroll.php',
     'onboarding'              => 'views/hr_onboarding.php',
+    'employee_contracts'      => 'views/hr_employee_contracts.php',
     'hr_time_tracking'        => 'views/hr_time_tracking.php',
     
     // Administration (Admin)
@@ -699,6 +700,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=onboarding" class="nav-link <?= $page=='onboarding'?'active':'' ?>">
                 <i class="fa-solid fa-user-plus icon"></i> Onboarding
+            </a>
+            <a href="?page=employee_contracts" class="nav-link <?= $page=='employee_contracts'?'active':'' ?>">
+                <i class="fa-solid fa-file-signature icon"></i> Contracts
             </a>
             <a href="?page=termination" class="nav-link <?= $page=='termination'?'active':'' ?>">
                 <i class="fa-solid fa-user-slash icon"></i> Termination

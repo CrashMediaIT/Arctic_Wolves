@@ -160,6 +160,9 @@ $perkTypes = [
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <?php endif; ?>
+                                        <a href="?page=employee_contracts&tab=new&onboarding_id=<?= $ob['id'] ?>" class="btn-icon" title="Create Contract">
+                                            <i class="fas fa-file-signature"></i>
+                                        </a>
                                         <?php if(!empty($ob['nextcloud_folder'])): ?>
                                         <a href="<?= htmlspecialchars($ob['nextcloud_folder']) ?>" target="_blank" class="btn-icon" title="Open in Nextcloud">
                                             <i class="fas fa-external-link-alt"></i>
