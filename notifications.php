@@ -12,12 +12,19 @@ require_once __DIR__ . '/mailer.php';
  * Defaults: email_notifications=1, session_reminders=1, goal_updates=1, marketing_emails=0
  */
 function isUserPreferenceEnabled($pdo, $user_id, $preference_key) {
+    // Valid preference keys with their defaults
     $defaults = [
         'email_notifications' => 1,
         'session_reminders' => 1,
         'goal_updates' => 1,
         'marketing_emails' => 0
     ];
+    
+    // Validate preference_key to prevent invalid queries
+    if (!isset($defaults[$preference_key])) {
+        error_log("Invalid preference key requested: " . $preference_key);
+        return true; // Default to enabled for unknown keys
+    }
     
     try {
         $stmt = $pdo->prepare("SELECT preference_value FROM user_preferences WHERE user_id = ? AND preference_key = ?");
@@ -28,11 +35,11 @@ function isUserPreferenceEnabled($pdo, $user_id, $preference_key) {
             return (int)$result['preference_value'] === 1;
         }
         // Return default if no preference is set
-        return isset($defaults[$preference_key]) ? (bool)$defaults[$preference_key] : true;
+        return (bool)$defaults[$preference_key];
     } catch (PDOException $e) {
         error_log("Preference check error: " . $e->getMessage());
         // Default to enabled on error (except marketing)
-        return isset($defaults[$preference_key]) ? (bool)$defaults[$preference_key] : true;
+        return (bool)$defaults[$preference_key];
     }
 }
 
