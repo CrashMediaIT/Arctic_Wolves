@@ -8,6 +8,42 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/mailer.php';
 
 /**
+ * Check if a user has a specific preference enabled
+ * Defaults: email_notifications=1, session_reminders=1, goal_updates=1, marketing_emails=0
+ */
+function isUserPreferenceEnabled($pdo, $user_id, $preference_key) {
+    // Valid preference keys with their defaults
+    $defaults = [
+        'email_notifications' => 1,
+        'session_reminders' => 1,
+        'goal_updates' => 1,
+        'marketing_emails' => 0
+    ];
+    
+    // Validate preference_key to prevent invalid queries
+    if (!isset($defaults[$preference_key])) {
+        error_log("Invalid preference key requested: " . $preference_key);
+        return true; // Default to enabled for unknown keys
+    }
+    
+    try {
+        $stmt = $pdo->prepare("SELECT preference_value FROM user_preferences WHERE user_id = ? AND preference_key = ?");
+        $stmt->execute([$user_id, $preference_key]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($result) {
+            return (int)$result['preference_value'] === 1;
+        }
+        // Return default if no preference is set
+        return (bool)$defaults[$preference_key];
+    } catch (PDOException $e) {
+        error_log("Preference check error: " . $e->getMessage());
+        // Default to enabled on error (except marketing)
+        return (bool)$defaults[$preference_key];
+    }
+}
+
+/**
  * Create a notification and optionally send email
  */
 function createNotification($pdo, $user_id, $type, $title, $message, $link = null, $send_email = true) {
@@ -19,13 +55,13 @@ function createNotification($pdo, $user_id, $type, $title, $message, $link = nul
         ");
         $stmt->execute([$user_id, $type, $title, $message, $link]);
         
-        // Check if user has email notifications enabled
-        if ($send_email) {
-            $user_stmt = $pdo->prepare("SELECT email, first_name, email_notifications FROM users WHERE id = ?");
+        // Check if user has email notifications enabled (from user_preferences table)
+        if ($send_email && isUserPreferenceEnabled($pdo, $user_id, 'email_notifications')) {
+            $user_stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
             $user_stmt->execute([$user_id]);
             $user = $user_stmt->fetch();
             
-            if ($user && $user['email_notifications'] == 1) {
+            if ($user) {
                 // Send email notification
                 sendEmail($user['email'], 'notification', [
                     'name' => $user['first_name'],
