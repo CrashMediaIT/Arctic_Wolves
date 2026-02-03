@@ -57,8 +57,8 @@ try {
     <a href="?page=system_tools&tab=nextcloud" class="page-tab <?php echo $activeTab === 'nextcloud' ? 'active' : ''; ?>">
         <i class="fas fa-cloud"></i> Nextcloud
     </a>
-    <a href="?page=system_tools&tab=docuseal" class="page-tab <?php echo $activeTab === 'docuseal' ? 'active' : ''; ?>">
-        <i class="fas fa-file-signature"></i> DocuSeal
+    <a href="?page=system_tools&tab=opensign" class="page-tab <?php echo $activeTab === 'opensign' ? 'active' : ''; ?>">
+        <i class="fas fa-file-signature"></i> OpenSign
     </a>
     <a href="?page=system_tools&tab=payments" class="page-tab <?php echo $activeTab === 'payments' ? 'active' : ''; ?>">
         <i class="fas fa-credit-card"></i> Payments
@@ -641,64 +641,64 @@ try {
         </div>
     </div>
 
-    <!-- DocuSeal Tab -->
-    <div class="tab-content <?php echo $activeTab === 'docuseal' ? 'active' : ''; ?>" id="docuseal-tab">
-        <form id="docuseal-form" method="POST" action="process_settings.php" data-form-type="docuseal">
+    <!-- OpenSign Tab -->
+    <div class="tab-content <?php echo $activeTab === 'opensign' ? 'active' : ''; ?>" id="opensign-tab">
+        <form id="opensign-form" method="POST" action="process_settings.php" data-form-type="opensign">
             <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="update_docuseal">
+            <input type="hidden" name="action" value="update_opensign">
             <input type="hidden" name="redirect_page" value="system_tools">
             
-            <!-- DocuSeal Configuration Card -->
+            <!-- OpenSign Configuration Card -->
             <div class="card">
                 <div class="card-header">
-                    <h3><i class="fas fa-file-signature"></i> DocuSeal Configuration</h3>
+                    <h3><i class="fas fa-file-signature"></i> OpenSign Configuration</h3>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info" style="margin-bottom: 20px;">
                         <i class="fas fa-info-circle"></i>
-                        <span>DocuSeal is used for e-signature workflows on employee contracts. Create templates in DocuSeal and link them here. <a href="https://www.docuseal.co/docs" target="_blank" style="color: inherit;">Learn more</a></span>
+                        <span>OpenSign is used for e-signature workflows on employee contracts. Create templates in OpenSign and link them here. <a href="https://www.opensignlabs.com/docs" target="_blank" style="color: inherit;">Learn more</a></span>
                     </div>
                     
                     <div class="settings-list">
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>Enable DocuSeal</h4>
+                                <h4>Enable OpenSign</h4>
                                 <p>Enable e-signature features for employee contracts</p>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="docuseal_enabled" 
-                                       <?php echo !empty($settings['docuseal_enabled']) ? 'checked' : ''; ?>>
+                                <input type="checkbox" name="opensign_enabled" 
+                                       <?php echo !empty($settings['opensign_enabled']) ? 'checked' : ''; ?>>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
                         
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>DocuSeal URL</h4>
-                                <p>The base URL of your DocuSeal instance (e.g., https://docuseal.example.com or https://api.docuseal.co)</p>
+                                <h4>OpenSign URL</h4>
+                                <p>The base URL of your OpenSign instance (e.g., https://opensign.example.com or https://api.opensignlabs.com)</p>
                             </div>
-                            <input type="url" name="docuseal_url" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['docuseal_url'] ?? ''); ?>"
-                                   placeholder="https://api.docuseal.co">
+                            <input type="url" name="opensign_url" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['opensign_url'] ?? ''); ?>"
+                                   placeholder="https://api.opensignlabs.com">
                         </div>
                         
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>API Key</h4>
-                                <p>Your DocuSeal API authentication key (found in Settings > API)</p>
+                                <p>Your OpenSign API authentication key (found in Settings > API)</p>
                             </div>
-                            <input type="password" name="docuseal_api_key" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['docuseal_api_key'] ?? ''); ?>"
-                                   placeholder="Enter your DocuSeal API key">
+                            <input type="password" name="opensign_api_key" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['opensign_api_key'] ?? ''); ?>"
+                                   placeholder="Enter your OpenSign API key">
                         </div>
                         
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>Webhook Secret (Optional)</h4>
-                                <p>Secret key for verifying webhook callbacks from DocuSeal</p>
+                                <p>Secret key for verifying webhook callbacks from OpenSign</p>
                             </div>
-                            <input type="password" name="docuseal_webhook_secret" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['docuseal_webhook_secret'] ?? ''); ?>"
+                            <input type="password" name="opensign_webhook_secret" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['opensign_webhook_secret'] ?? ''); ?>"
                                    placeholder="Webhook secret for signature verification">
                         </div>
                         
@@ -708,8 +708,8 @@ try {
                                 <p>Enable SSL certificate verification for secure connections (recommended for production)</p>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="docuseal_verify_ssl" 
-                                       <?php echo ($settings['docuseal_verify_ssl'] ?? '1') === '1' ? 'checked' : ''; ?>>
+                                <input type="checkbox" name="opensign_verify_ssl" 
+                                       <?php echo ($settings['opensign_verify_ssl'] ?? '1') === '1' ? 'checked' : ''; ?>>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -724,10 +724,10 @@ try {
                 </div>
                 <div class="card-body">
                     <div class="flex-row" style="display: flex; gap: 12px; align-items: center;">
-                        <button type="button" id="test-docuseal" class="btn-secondary">
+                        <button type="button" id="test-opensign" class="btn-secondary">
                             <i class="fas fa-plug"></i> Test Connection
                         </button>
-                        <span id="docuseal-status"></span>
+                        <span id="opensign-status"></span>
                     </div>
                 </div>
             </div>
@@ -742,11 +742,11 @@ try {
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>Auto-send Confirmation Email</h4>
-                                <p>Send confirmation email from Arctic Wolves when contract is signed (in addition to DocuSeal notifications)</p>
+                                <p>Send confirmation email from Arctic Wolves when contract is signed (in addition to OpenSign notifications)</p>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="docuseal_auto_confirm" 
-                                       <?php echo ($settings['docuseal_auto_confirm'] ?? '1') === '1' ? 'checked' : ''; ?>>
+                                <input type="checkbox" name="opensign_auto_confirm" 
+                                       <?php echo ($settings['opensign_auto_confirm'] ?? '1') === '1' ? 'checked' : ''; ?>>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -755,7 +755,7 @@ try {
             </div>
             
             <div class="form-actions">
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save DocuSeal Settings</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save OpenSign Settings</button>
             </div>
         </form>
     </div>
@@ -2051,20 +2051,20 @@ function updateStripeLibrary() {
     });
 }
 
-// Test DocuSeal Connection
-document.getElementById('test-docuseal')?.addEventListener('click', function() {
+// Test OpenSign Connection
+document.getElementById('test-opensign')?.addEventListener('click', function() {
     const btn = this;
-    const statusSpan = document.getElementById('docuseal-status');
-    const url = document.querySelector('input[name="docuseal_url"]').value;
-    const apiKey = document.querySelector('input[name="docuseal_api_key"]').value;
+    const statusSpan = document.getElementById('opensign-status');
+    const url = document.querySelector('input[name="opensign_url"]').value;
+    const apiKey = document.querySelector('input[name="opensign_api_key"]').value;
     
     if (!url) {
-        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Please enter a DocuSeal URL first</span>';
+        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Please enter an OpenSign URL first</span>';
         return;
     }
     
     if (!apiKey) {
-        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Please enter your DocuSeal API key</span>';
+        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Please enter your OpenSign API key</span>';
         return;
     }
     
@@ -2072,9 +2072,9 @@ document.getElementById('test-docuseal')?.addEventListener('click', function() {
     statusSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing connection...';
     
     const formData = new FormData();
-    formData.append('action', 'test_docuseal');
-    formData.append('docuseal_url', url);
-    formData.append('docuseal_api_key', apiKey);
+    formData.append('action', 'test_opensign');
+    formData.append('opensign_url', url);
+    formData.append('opensign_api_key', apiKey);
     formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
     
     fetch('process_settings.php', {

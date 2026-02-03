@@ -1,12 +1,12 @@
 <?php
 /**
- * DocuSeal API Client
+ * OpenSign API Client
  * 
- * Provides functions for connecting to DocuSeal API for document
+ * Provides functions for connecting to OpenSign API for document
  * e-signature workflows.
  * 
- * DocuSeal is an open-source document signing solution.
- * API Documentation: https://www.docuseal.co/docs/api
+ * OpenSign is an open-source document signing solution.
+ * API Documentation: https://www.opensignlabs.com/docs/api
  * 
  * Features:
  * - Template management
@@ -18,15 +18,15 @@
 require_once __DIR__ . '/../db_config.php';
 
 /**
- * Get DocuSeal settings from database
+ * Get OpenSign settings from database
  */
-function getDocuSealSettings($pdo) {
+function getOpenSignSettings($pdo) {
     $keys = [
-        'docuseal_url',
-        'docuseal_api_key',
-        'docuseal_enabled',
-        'docuseal_webhook_secret',
-        'docuseal_verify_ssl'
+        'opensign_url',
+        'opensign_api_key',
+        'opensign_enabled',
+        'opensign_webhook_secret',
+        'opensign_verify_ssl'
     ];
     
     $placeholders = implode(',', array_fill(0, count($keys), '?'));
@@ -39,8 +39,8 @@ function getDocuSealSettings($pdo) {
     }
     
     // Default to SSL verification enabled for security
-    if (!isset($settings['docuseal_verify_ssl'])) {
-        $settings['docuseal_verify_ssl'] = '1';
+    if (!isset($settings['opensign_verify_ssl'])) {
+        $settings['opensign_verify_ssl'] = '1';
     }
     
     return $settings;
@@ -51,37 +51,37 @@ function getDocuSealSettings($pdo) {
  * @param array $settings Settings array
  * @return bool True if SSL should be verified
  */
-function shouldVerifyDocuSealSsl($settings) {
-    return ($settings['docuseal_verify_ssl'] ?? '1') === '1';
+function shouldVerifyOpenSignSsl($settings) {
+    return ($settings['opensign_verify_ssl'] ?? '1') === '1';
 }
 
 /**
- * Make an API request to DocuSeal
+ * Make an API request to OpenSign
  * 
- * @param array $settings DocuSeal settings
+ * @param array $settings OpenSign settings
  * @param string $endpoint API endpoint (e.g., '/templates', '/submissions')
  * @param string $method HTTP method (GET, POST, PUT, DELETE)
  * @param array|null $data Request body data
  * @return array Response with success status
  */
-function docuSealApiRequest($settings, $endpoint, $method = 'GET', $data = null) {
-    if (empty($settings['docuseal_url'])) {
-        return ['success' => false, 'message' => 'DocuSeal URL is not configured'];
+function openSignApiRequest($settings, $endpoint, $method = 'GET', $data = null) {
+    if (empty($settings['opensign_url'])) {
+        return ['success' => false, 'message' => 'OpenSign URL is not configured'];
     }
     
-    if (empty($settings['docuseal_api_key'])) {
-        return ['success' => false, 'message' => 'DocuSeal API key is not configured'];
+    if (empty($settings['opensign_api_key'])) {
+        return ['success' => false, 'message' => 'OpenSign API key is not configured'];
     }
     
-    $url = rtrim($settings['docuseal_url'], '/') . '/api' . $endpoint;
+    $url = rtrim($settings['opensign_url'], '/') . '/api' . $endpoint;
     
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, shouldVerifyDocuSealSsl($settings));
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, shouldVerifyOpenSignSsl($settings));
     
     $headers = [
-        'X-Auth-Token: ' . $settings['docuseal_api_key'],
+        'X-Auth-Token: ' . $settings['opensign_api_key'],
         'Content-Type: application/json',
         'Accept: application/json'
     ];
@@ -130,18 +130,18 @@ function docuSealApiRequest($settings, $endpoint, $method = 'GET', $data = null)
 }
 
 /**
- * Test connection to DocuSeal API
+ * Test connection to OpenSign API
  * 
  * @param array $settings API settings
  * @return array Result with success status and message
  */
-function testDocuSealConnection($settings) {
-    if (empty($settings['docuseal_url'])) {
-        return ['success' => false, 'message' => 'DocuSeal URL is not configured'];
+function testOpenSignConnection($settings) {
+    if (empty($settings['opensign_url'])) {
+        return ['success' => false, 'message' => 'OpenSign URL is not configured'];
     }
     
     // Try to list templates to verify connection
-    $result = docuSealApiRequest($settings, '/templates', 'GET');
+    $result = openSignApiRequest($settings, '/templates', 'GET');
     
     if ($result['success']) {
         $templateCount = is_array($result['data']) ? count($result['data']) : 0;
@@ -156,32 +156,32 @@ function testDocuSealConnection($settings) {
 }
 
 /**
- * List all templates from DocuSeal
+ * List all templates from OpenSign
  * 
  * @param PDO $pdo Database connection
- * @param array $settings DocuSeal settings
+ * @param array $settings OpenSign settings
  * @return array List of templates
  */
-function listDocuSealTemplates($pdo, $settings) {
-    $result = docuSealApiRequest($settings, '/templates', 'GET');
+function listOpenSignTemplates($pdo, $settings) {
+    $result = openSignApiRequest($settings, '/templates', 'GET');
     
     if ($result['success']) {
         return $result['data'] ?? [];
     }
     
-    error_log("Failed to list DocuSeal templates: " . $result['message']);
+    error_log("Failed to list OpenSign templates: " . $result['message']);
     return [];
 }
 
 /**
- * Get a specific template from DocuSeal
+ * Get a specific template from OpenSign
  * 
- * @param array $settings DocuSeal settings
+ * @param array $settings OpenSign settings
  * @param int $templateId Template ID
  * @return array|null Template data or null if not found
  */
-function getDocuSealTemplate($settings, $templateId) {
-    $result = docuSealApiRequest($settings, '/templates/' . intval($templateId), 'GET');
+function getOpenSignTemplate($settings, $templateId) {
+    $result = openSignApiRequest($settings, '/templates/' . intval($templateId), 'GET');
     
     if ($result['success']) {
         return $result['data'];
@@ -191,16 +191,16 @@ function getDocuSealTemplate($settings, $templateId) {
 }
 
 /**
- * Create a submission (signature request) in DocuSeal
+ * Create a submission (signature request) in OpenSign
  * 
  * @param PDO $pdo Database connection
- * @param array $settings DocuSeal settings
- * @param int $templateId DocuSeal template ID
+ * @param array $settings OpenSign settings
+ * @param int $templateId OpenSign template ID
  * @param array $submitters Array of submitter information
  * @param array $fields Optional pre-filled field values
  * @return array Result with submission data
  */
-function createDocuSealSubmission($pdo, $settings, $templateId, $submitters, $fields = []) {
+function createOpenSignSubmission($pdo, $settings, $templateId, $submitters, $fields = []) {
     $submissionData = [
         'template_id' => $templateId,
         'submitters' => $submitters
@@ -214,7 +214,7 @@ function createDocuSealSubmission($pdo, $settings, $templateId, $submitters, $fi
     // Send notification email
     $submissionData['send_email'] = true;
     
-    $result = docuSealApiRequest($settings, '/submissions', 'POST', $submissionData);
+    $result = openSignApiRequest($settings, '/submissions', 'POST', $submissionData);
     
     if ($result['success']) {
         return [
@@ -228,14 +228,14 @@ function createDocuSealSubmission($pdo, $settings, $templateId, $submitters, $fi
 }
 
 /**
- * Get submission status from DocuSeal
+ * Get submission status from OpenSign
  * 
- * @param array $settings DocuSeal settings
+ * @param array $settings OpenSign settings
  * @param int $submissionId Submission ID
  * @return array Submission data with status
  */
-function getDocuSealSubmission($settings, $submissionId) {
-    $result = docuSealApiRequest($settings, '/submissions/' . intval($submissionId), 'GET');
+function getOpenSignSubmission($settings, $submissionId) {
+    $result = openSignApiRequest($settings, '/submissions/' . intval($submissionId), 'GET');
     
     if ($result['success']) {
         return [
@@ -250,12 +250,12 @@ function getDocuSealSubmission($settings, $submissionId) {
 /**
  * Get submitters for a submission
  * 
- * @param array $settings DocuSeal settings
+ * @param array $settings OpenSign settings
  * @param int $submissionId Submission ID
  * @return array Submitter data
  */
-function getDocuSealSubmitters($settings, $submissionId) {
-    $result = docuSealApiRequest($settings, '/submitters?submission_id=' . intval($submissionId), 'GET');
+function getOpenSignSubmitters($settings, $submissionId) {
+    $result = openSignApiRequest($settings, '/submitters?submission_id=' . intval($submissionId), 'GET');
     
     if ($result['success']) {
         return $result['data'] ?? [];
@@ -265,15 +265,15 @@ function getDocuSealSubmitters($settings, $submissionId) {
 }
 
 /**
- * Download signed document from DocuSeal
+ * Download signed document from OpenSign
  * 
- * @param array $settings DocuSeal settings
+ * @param array $settings OpenSign settings
  * @param int $submissionId Submission ID
  * @return array Result with document content
  */
-function downloadDocuSealDocument($settings, $submissionId) {
+function downloadOpenSignDocument($settings, $submissionId) {
     // Get submission to find the document URL
-    $submission = getDocuSealSubmission($settings, $submissionId);
+    $submission = getOpenSignSubmission($settings, $submissionId);
     
     if (!$submission['success']) {
         return $submission;
@@ -296,9 +296,9 @@ function downloadDocuSealDocument($settings, $submissionId) {
     $ch = curl_init($documentUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, shouldVerifyDocuSealSsl($settings));
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, shouldVerifyOpenSignSsl($settings));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'X-Auth-Token: ' . $settings['docuseal_api_key']
+        'X-Auth-Token: ' . $settings['opensign_api_key']
     ]);
     
     $content = curl_exec($ch);
@@ -323,24 +323,24 @@ function downloadDocuSealDocument($settings, $submissionId) {
 
 /**
  * Create an e-signature request for a contract
- * Creates a DocuSeal submission and stores the reference
+ * Creates an OpenSign submission and stores the reference
  * 
  * @param PDO $pdo Database connection
  * @param int $contractId Contract ID from database
- * @param int $docusealTemplateId DocuSeal template ID
+ * @param int $opensignTemplateId OpenSign template ID
  * @param string $recipientEmail Recipient email address
  * @param string $recipientName Recipient name
  * @param array $prefillData Pre-filled form data
  * @return array Result with success status and signing URL
  */
-function createEsignatureRequest($pdo, $contractId, $docusealTemplateId, $recipientEmail, $recipientName, $prefillData = []) {
-    $settings = getDocuSealSettings($pdo);
+function createEsignatureRequest($pdo, $contractId, $opensignTemplateId, $recipientEmail, $recipientName, $prefillData = []) {
+    $settings = getOpenSignSettings($pdo);
     
-    if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
-        return ['success' => false, 'message' => 'DocuSeal is not enabled'];
+    if (empty($settings['opensign_enabled']) || $settings['opensign_enabled'] !== '1') {
+        return ['success' => false, 'message' => 'OpenSign is not enabled'];
     }
     
-    // Create submitter array for DocuSeal
+    // Create submitter array for OpenSign
     $submitters = [
         [
             'email' => $recipientEmail,
@@ -349,7 +349,7 @@ function createEsignatureRequest($pdo, $contractId, $docusealTemplateId, $recipi
         ]
     ];
     
-    // Convert prefill data to DocuSeal fields format
+    // Convert prefill data to OpenSign fields format
     $fields = [];
     foreach ($prefillData as $key => $value) {
         if (!empty($value)) {
@@ -360,8 +360,8 @@ function createEsignatureRequest($pdo, $contractId, $docusealTemplateId, $recipi
         }
     }
     
-    // Create submission in DocuSeal
-    $result = createDocuSealSubmission($pdo, $settings, $docusealTemplateId, $submitters, $fields);
+    // Create submission in OpenSign
+    $result = createOpenSignSubmission($pdo, $settings, $opensignTemplateId, $submitters, $fields);
     
     if (!$result['success']) {
         return $result;
@@ -369,7 +369,7 @@ function createEsignatureRequest($pdo, $contractId, $docusealTemplateId, $recipi
     
     $submission = $result['submission'];
     
-    // DocuSeal API returns different response formats:
+    // OpenSign API returns different response formats:
     // - When creating submissions: returns array of submitter objects with submission_id
     // - When getting submissions: returns object with id field
     // Handle both formats for compatibility
@@ -380,7 +380,7 @@ function createEsignatureRequest($pdo, $contractId, $docusealTemplateId, $recipi
         // Response is array of submitters (from POST /submissions)
         $submissionId = $submission[0]['submission_id'] ?? null;
         if (isset($submission[0]['slug'])) {
-            $signingUrl = rtrim($settings['docuseal_url'], '/') . '/s/' . $submission[0]['slug'];
+            $signingUrl = rtrim($settings['opensign_url'], '/') . '/s/' . $submission[0]['slug'];
         }
     } elseif (isset($submission['id'])) {
         // Response is submission object (from GET /submissions/:id)
@@ -389,11 +389,11 @@ function createEsignatureRequest($pdo, $contractId, $docusealTemplateId, $recipi
     
     $expiresAt = date('Y-m-d H:i:s', strtotime('+7 days'));
     
-    // Update contract record with DocuSeal submission info
+    // Update contract record with OpenSign submission info
     try {
         $stmt = $pdo->prepare("
             UPDATE employee_contracts 
-            SET docuseal_submission_id = ?, 
+            SET opensign_submission_id = ?, 
                 signing_url = ?,
                 signing_token_expires = ?,
                 status = 'pending_signature',
@@ -411,19 +411,19 @@ function createEsignatureRequest($pdo, $contractId, $docusealTemplateId, $recipi
         ];
         
     } catch (PDOException $e) {
-        error_log("Failed to update contract with DocuSeal submission: " . $e->getMessage());
+        error_log("Failed to update contract with OpenSign submission: " . $e->getMessage());
         return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
     }
 }
 
 /**
- * Process webhook callback from DocuSeal when a document is signed
+ * Process webhook callback from OpenSign when a document is signed
  * 
  * @param PDO $pdo Database connection
  * @param array $webhookData Webhook payload
  * @return array Result with success status
  */
-function processDocuSealWebhook($pdo, $webhookData) {
+function processOpenSignWebhook($pdo, $webhookData) {
     $eventType = $webhookData['event_type'] ?? '';
     $submissionId = $webhookData['data']['submission_id'] ?? null;
     
@@ -431,8 +431,8 @@ function processDocuSealWebhook($pdo, $webhookData) {
         return ['success' => false, 'message' => 'Invalid webhook event'];
     }
     
-    // Find the contract by DocuSeal submission ID
-    $stmt = $pdo->prepare("SELECT * FROM employee_contracts WHERE docuseal_submission_id = ?");
+    // Find the contract by OpenSign submission ID
+    $stmt = $pdo->prepare("SELECT * FROM employee_contracts WHERE opensign_submission_id = ?");
     $stmt->execute([$submissionId]);
     $contract = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -441,8 +441,8 @@ function processDocuSealWebhook($pdo, $webhookData) {
     }
     
     // Get settings and download the signed document
-    $settings = getDocuSealSettings($pdo);
-    $downloadResult = downloadDocuSealDocument($settings, $submissionId);
+    $settings = getOpenSignSettings($pdo);
+    $downloadResult = downloadOpenSignDocument($settings, $submissionId);
     
     if (!$downloadResult['success']) {
         error_log("Failed to download signed document: " . $downloadResult['message']);
@@ -585,7 +585,7 @@ function getContractStatus($pdo, $contractId) {
 }
 
 /**
- * Check and update contract status from DocuSeal
+ * Check and update contract status from OpenSign
  * 
  * @param PDO $pdo Database connection
  * @param int $contractId Contract ID
@@ -594,12 +594,12 @@ function getContractStatus($pdo, $contractId) {
 function refreshContractStatus($pdo, $contractId) {
     $contract = getContractStatus($pdo, $contractId);
     
-    if (!$contract || empty($contract['docuseal_submission_id'])) {
+    if (!$contract || empty($contract['opensign_submission_id'])) {
         return ['success' => false, 'message' => 'Contract or submission not found'];
     }
     
-    $settings = getDocuSealSettings($pdo);
-    $submissionResult = getDocuSealSubmission($settings, $contract['docuseal_submission_id']);
+    $settings = getOpenSignSettings($pdo);
+    $submissionResult = getOpenSignSubmission($settings, $contract['opensign_submission_id']);
     
     if (!$submissionResult['success']) {
         return $submissionResult;
@@ -608,21 +608,21 @@ function refreshContractStatus($pdo, $contractId) {
     $submission = $submissionResult['submission'];
     $status = $submission['status'] ?? 'pending';
     
-    // Map DocuSeal status to our contract status
+    // Map OpenSign status to our contract status
     $contractStatus = $contract['status'];
     if ($status === 'completed' && $contract['status'] !== 'signed') {
         // Document was signed - trigger the webhook processing
         $webhookData = [
             'event_type' => 'submission.completed',
-            'data' => ['submission_id' => $contract['docuseal_submission_id']]
+            'data' => ['submission_id' => $contract['opensign_submission_id']]
         ];
-        processDocuSealWebhook($pdo, $webhookData);
+        processOpenSignWebhook($pdo, $webhookData);
         $contractStatus = 'signed';
     }
     
     return [
         'success' => true,
-        'docuseal_status' => $status,
+        'opensign_status' => $status,
         'contract_status' => $contractStatus
     ];
 }
@@ -648,7 +648,7 @@ function listContractTemplates($pdo) {
 }
 
 /**
- * Send e-signature request email (for cases where DocuSeal email is disabled)
+ * Send e-signature request email (for cases where OpenSign email is disabled)
  * 
  * @param string $toEmail Recipient email
  * @param string $recipientName Recipient name
