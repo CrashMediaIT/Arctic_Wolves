@@ -46,7 +46,9 @@ foreach ($possible_paths as $path) {
 
 // 3. DB CONNECTION PARAMETERS
 // Defaults provided for development
-$host = $_ENV['DB_HOST'] ?? 'localhost';
+// Use 127.0.0.1 instead of localhost to force TCP/IP connection
+// This avoids "No such file or directory" socket errors
+$host = $_ENV['DB_HOST'] ?? '127.0.0.1';
 $db   = $_ENV['DB_NAME'] ?? 'arctic_wolves';
 $user = $_ENV['DB_USER'] ?? 'root';
 $pass = $_ENV['DB_PASS'] ?? '';
