@@ -108,7 +108,7 @@ if ($db_connected) {
             LEFT JOIN locations l ON s.location_id = l.id
             WHERE s.show_on_landing = 1 
               AND s.status = 'scheduled'
-              AND CONCAT(s.session_date, ' ', COALESCE(s.session_time, '00:00:00')) > NOW()
+              AND (s.session_date > CURDATE() OR (s.session_date = CURDATE() AND COALESCE(s.session_time, '00:00:00') > CURTIME()))
             ORDER BY s.session_date ASC, s.session_time ASC
             LIMIT 20
         ");

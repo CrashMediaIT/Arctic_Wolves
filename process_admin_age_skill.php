@@ -12,7 +12,7 @@ $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
 // Helper function to respond with JSON or redirect
-function respond($success, $message, $redirectPage = 'admin_age_skill', $successCode = '') {
+function respond($success, $message, $redirectPage = 'admin_age_skill', $successCode = '', $additionalParams = '') {
     global $isAjax;
     
     if ($isAjax) {
@@ -20,13 +20,16 @@ function respond($success, $message, $redirectPage = 'admin_age_skill', $success
         echo json_encode(['success' => $success, 'message' => $message]);
         exit();
     } else {
-        if ($success && $successCode) {
-            header("Location: dashboard.php?page={$redirectPage}&success={$successCode}");
-        } else if (!$success) {
-            header("Location: dashboard.php?page={$redirectPage}&error=" . urlencode($message));
-        } else {
-            header("Location: dashboard.php?page={$redirectPage}");
+        $url = "dashboard.php?page=" . urlencode($redirectPage);
+        if ($additionalParams) {
+            $url .= "&" . $additionalParams;
         }
+        if ($success && $successCode) {
+            $url .= "&success=" . urlencode($successCode);
+        } else if (!$success) {
+            $url .= "&error=" . urlencode($message);
+        }
+        header("Location: " . $url);
         exit();
     }
 }
@@ -101,7 +104,7 @@ try {
             
             logSecurityEvent($pdo, 'skill_level_created', "Created skill level: $name", $_SESSION['user_id']);
             
-            respond(true, "Skill level '$name' created successfully!", 'categories&tab=skill_levels', 'skill_level_created');
+            respond(true, "Skill level '$name' created successfully!", 'categories', 'skill_level_created', 'tab=skill_levels');
             break;
             
         case 'delete_skill_level':
@@ -117,7 +120,7 @@ try {
                 logSecurityEvent($pdo, 'skill_level_deleted', "Deleted skill level: {$sl['name']}", $_SESSION['user_id']);
             }
             
-            respond(true, 'Skill level deleted successfully!', 'categories&tab=skill_levels', 'skill_level_deleted');
+            respond(true, 'Skill level deleted successfully!', 'categories', 'skill_level_deleted', 'tab=skill_levels');
             break;
             
         case 'update_tax_settings':
