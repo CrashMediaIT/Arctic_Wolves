@@ -141,7 +141,10 @@ if ($filter_location !== 'all') {
     $params[] = $filter_location;
 }
 
-$sessions_query .= $show_history ? " ORDER BY s.session_date DESC LIMIT 50" : " ORDER BY s.session_date LIMIT 50";
+// Apply ordering and limit
+// For history mode, apply final limit since we don't merge with templates
+// For upcoming mode, we'll apply limit after merging with template sessions
+$sessions_query .= $show_history ? " ORDER BY s.session_date DESC LIMIT 50" : " ORDER BY s.session_date";
 
 $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute($params);
@@ -215,7 +218,7 @@ if (!$show_history) {
         $template_params[] = $filter_location;
     }
     
-    $template_sessions_query .= " ORDER BY tsd.session_date LIMIT 50";
+    $template_sessions_query .= " ORDER BY tsd.session_date";
     
     $template_stmt = $pdo->prepare($template_sessions_query);
     $template_stmt->execute($template_params);
@@ -224,11 +227,11 @@ if (!$show_history) {
     // Merge template sessions with regular sessions
     $sessions = array_merge($sessions, $template_sessions);
     
-    // Sort combined sessions by date
+    // Sort combined sessions by date using strtotime for reliable chronological ordering
     usort($sessions, function($a, $b) {
-        $dateA = $a['session_date'] ?? '';
-        $dateB = $b['session_date'] ?? '';
-        return strcmp($dateA, $dateB);
+        $dateA = strtotime($a['session_date'] ?? '');
+        $dateB = strtotime($b['session_date'] ?? '');
+        return $dateA - $dateB;
     });
     
     // Limit to 50 total
