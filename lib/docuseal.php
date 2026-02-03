@@ -368,12 +368,23 @@ function createEsignatureRequest($pdo, $contractId, $docusealTemplateId, $recipi
     }
     
     $submission = $result['submission'];
-    $submissionId = is_array($submission) && isset($submission[0]) ? $submission[0]['submission_id'] : ($submission['id'] ?? null);
     
-    // Get the signing URL from submitters
+    // DocuSeal API returns different response formats:
+    // - When creating submissions: returns array of submitter objects with submission_id
+    // - When getting submissions: returns object with id field
+    // Handle both formats for compatibility
+    $submissionId = null;
     $signingUrl = null;
-    if (is_array($submission) && isset($submission[0]['slug'])) {
-        $signingUrl = rtrim($settings['docuseal_url'], '/') . '/s/' . $submission[0]['slug'];
+    
+    if (is_array($submission) && isset($submission[0])) {
+        // Response is array of submitters (from POST /submissions)
+        $submissionId = $submission[0]['submission_id'] ?? null;
+        if (isset($submission[0]['slug'])) {
+            $signingUrl = rtrim($settings['docuseal_url'], '/') . '/s/' . $submission[0]['slug'];
+        }
+    } elseif (isset($submission['id'])) {
+        // Response is submission object (from GET /submissions/:id)
+        $submissionId = $submission['id'];
     }
     
     $expiresAt = date('Y-m-d H:i:s', strtotime('+7 days'));
@@ -512,8 +523,9 @@ function uploadSignedContract($pdo, $settings, $pdfContent, $employeeName, $date
     try {
         $connection = connectNextcloud($settings);
         
-        // Get base HR directory
-        $hrDir = $settings['nextcloud_hr_dir'] ?? '/Arctic_Wolves/HR';
+        // Get base HR directory from settings, default to a generic path
+        // The nextcloud_hr_dir setting should be configured in System Tools > Nextcloud
+        $hrDir = $settings['nextcloud_hr_dir'] ?? '/HR';
         $contractsDir = $hrDir . '/Employee Contract';
         
         // Sanitize employee name for filename

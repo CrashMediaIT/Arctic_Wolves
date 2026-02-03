@@ -2714,12 +2714,13 @@ CREATE TABLE IF NOT EXISTS `onboarding_documents` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Contract Templates for E-Signature
+-- Note: docuseal_template_id references external DocuSeal system, not a local database table
 CREATE TABLE IF NOT EXISTS `contract_templates` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
     `description` TEXT DEFAULT NULL,
-    `docuseal_template_id` INT DEFAULT NULL COMMENT 'DocuSeal template ID for API integration',
-    `template_file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to PDF template file (local backup)',
+    `docuseal_template_id` INT DEFAULT NULL COMMENT 'External: DocuSeal template ID for API integration (not a local FK)',
+    `template_file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Optional: Local PDF backup file path for reference',
     `template_type` ENUM('employment', 'contractor', 'nda', 'other') DEFAULT 'employment',
     `variables` JSON DEFAULT NULL COMMENT 'List of template variables for form filling',
     `is_active` TINYINT(1) DEFAULT 1,
@@ -2733,13 +2734,14 @@ CREATE TABLE IF NOT EXISTS `contract_templates` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Employee Contracts (for e-signature workflow)
+-- Note: docuseal_template_id and docuseal_submission_id reference external DocuSeal system
 CREATE TABLE IF NOT EXISTS `employee_contracts` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `onboarding_id` INT DEFAULT NULL COMMENT 'Link to onboarding record if applicable',
     `user_id` INT DEFAULT NULL COMMENT 'Link to user if already created',
     `template_id` INT DEFAULT NULL COMMENT 'Local template reference',
-    `docuseal_template_id` INT DEFAULT NULL COMMENT 'DocuSeal template ID used',
-    `docuseal_submission_id` INT DEFAULT NULL COMMENT 'DocuSeal submission ID',
+    `docuseal_template_id` INT DEFAULT NULL COMMENT 'External: DocuSeal template ID used (not a local FK)',
+    `docuseal_submission_id` INT DEFAULT NULL COMMENT 'External: DocuSeal submission ID for tracking (not a local FK)',
     `employee_name` VARCHAR(255) NOT NULL,
     `employee_email` VARCHAR(255) NOT NULL,
     `contract_title` VARCHAR(255) DEFAULT 'Employment Contract',

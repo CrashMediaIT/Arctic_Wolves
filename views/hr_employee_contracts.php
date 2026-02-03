@@ -1,7 +1,7 @@
 <?php
 /**
  * HR Employee Contracts View
- * Manage employee contracts with e-signature workflow using Stirling PDF API
+ * Manage employee contracts with e-signature workflow using DocuSeal API
  */
 
 // Pagination settings
@@ -484,7 +484,7 @@ $statusColors = [
             <i class="fas fa-info-circle"></i>
             <div>
                 <strong>Template Management</strong>
-                <p style="margin: 4px 0 0 0;">Upload PDF template files to the <code>uploads/contract_templates/</code> folder and update the <code>template_file_path</code> in the database. Templates should have fillable form fields that match the variable names.</p>
+                <p style="margin: 4px 0 0 0;">Templates are created and managed in <strong>DocuSeal</strong>. Create your contract templates with fillable fields in DocuSeal, then link them here by updating the <code>docuseal_template_id</code> in the local template records. When sending for signature, select the DocuSeal template to use.</p>
             </div>
         </div>
     </div>

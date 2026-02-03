@@ -327,21 +327,21 @@ try {
                 throw new Exception('Contract is not pending signature');
             }
             
-            // Check if token is still valid
-            if (empty($contract['signing_token']) || strtotime($contract['signing_token_expires']) < time()) {
-                throw new Exception('Signing token has expired. Please create a new e-signature request.');
+            // Check if we have a DocuSeal signing URL
+            if (empty($contract['signing_url'])) {
+                throw new Exception('No signing URL available. The contract may need to be re-sent via DocuSeal.');
             }
             
-            // Generate signing URL
-            $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . 
-                       '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-            $signingUrl = $baseUrl . '/sign_contract.php?token=' . $contract['signing_token'];
+            // Check if signing link hasn't expired
+            if (!empty($contract['signing_token_expires']) && strtotime($contract['signing_token_expires']) < time()) {
+                throw new Exception('Signing link has expired. Please create a new e-signature request.');
+            }
             
-            // Resend email
+            // Resend email with DocuSeal signing URL
             $emailSent = sendEsignatureRequestEmail(
                 $contract['employee_email'],
                 $contract['employee_name'],
-                $signingUrl,
+                $contract['signing_url'],
                 $contract['contract_title']
             );
             
