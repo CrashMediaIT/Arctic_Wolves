@@ -1447,7 +1447,7 @@ function generateEmailSignatureHTML(fullName, jobTitle, email, phone, companyNam
                             </tr>${phoneRow}
                             <tr>
                                 <td style="padding: 2px 0; font-family: Arial, sans-serif; font-size: 13px; color: #666666;">
-                                    <span style="color: #6B46C1;">&#127760;</span>&nbsp;&nbsp;<a href="${escapeHtml(website)}" style="color: #6B46C1; text-decoration: none;">${escapeHtml(website.replace(/^https?:\/\//, ''))}</a>
+                                    <span style="color: #6B46C1;">&#127760;</span>&nbsp;&nbsp;<a href="${escapeHtml(website)}" style="color: #6B46C1; text-decoration: none;">${escapeHtml((website || '').replace(/^https?:\/\//, ''))}</a>
                                 </td>
                             </tr>
                         </table>
@@ -1463,8 +1463,11 @@ function generateEmailSignatureHTML(fullName, jobTitle, email, phone, companyNam
 
 // Escape HTML entities for safe display
 function escapeHtml(text) {
+    if (text === null || text === undefined) {
+        return '';
+    }
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = String(text);
     return div.innerHTML;
 }
 
