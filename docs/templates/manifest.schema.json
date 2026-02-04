@@ -1,0 +1,246 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arctic Wolves Update Package Manifest",
+    "description": "Schema for update package manifest.json files",
+    "type": "object",
+    "required": ["name", "version"],
+    "properties": {
+        "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+            "description": "Package name (alphanumeric with underscores, must start with letter)"
+        },
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Semantic version (e.g., 1.0.0)"
+        },
+        "description": {
+            "type": "string",
+            "description": "Description of the update"
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the package was created"
+        },
+        "author": {
+            "type": "string",
+            "description": "Package author"
+        },
+        "requires_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Required base version for upgrade"
+        },
+        "requires_validation": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to run system validation before import"
+        },
+        "database_migrations": {
+            "type": "array",
+            "description": "Array of database migration operations",
+            "items": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "create_table",
+                            "drop_table",
+                            "add_column",
+                            "drop_column",
+                            "rename_column",
+                            "rename_table",
+                            "modify_column",
+                            "data_migration",
+                            "add_index",
+                            "drop_index",
+                            "add_foreign_key",
+                            "drop_foreign_key"
+                        ],
+                        "description": "Type of database migration"
+                    },
+                    "table": {
+                        "type": "string",
+                        "description": "Table name (for most operations)"
+                    },
+                    "column_definition": {
+                        "type": "string",
+                        "description": "Column definition for add_column (e.g., 'name VARCHAR(255) NOT NULL')"
+                    },
+                    "column_name": {
+                        "type": "string",
+                        "description": "Column name for drop_column, modify_column"
+                    },
+                    "old_name": {
+                        "type": "string",
+                        "description": "Old name for rename operations"
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New name for rename operations"
+                    },
+                    "definition": {
+                        "type": "string",
+                        "description": "Column definition for rename_column"
+                    },
+                    "new_definition": {
+                        "type": "string",
+                        "description": "New definition for modify_column"
+                    },
+                    "after": {
+                        "type": "string",
+                        "description": "Column to add after (for add_column)"
+                    },
+                    "columns": {
+                        "oneOf": [
+                            {"type": "object"},
+                            {"type": "array", "items": {"type": "string"}}
+                        ],
+                        "description": "Column definitions for create_table or column list for indexes"
+                    },
+                    "indexes": {
+                        "type": "object",
+                        "description": "Index definitions for create_table"
+                    },
+                    "foreign_keys": {
+                        "type": "object",
+                        "description": "Foreign key definitions for create_table"
+                    },
+                    "index_name": {
+                        "type": "string",
+                        "description": "Index name for add_index, drop_index"
+                    },
+                    "unique": {
+                        "type": "boolean",
+                        "description": "Whether index should be unique"
+                    },
+                    "constraint_name": {
+                        "type": "string",
+                        "description": "Constraint name for foreign key operations"
+                    },
+                    "column": {
+                        "type": "string",
+                        "description": "Column for foreign key"
+                    },
+                    "ref_table": {
+                        "type": "string",
+                        "description": "Referenced table for foreign key"
+                    },
+                    "ref_column": {
+                        "type": "string",
+                        "description": "Referenced column for foreign key"
+                    },
+                    "on_delete": {
+                        "type": "string",
+                        "enum": ["CASCADE", "SET NULL", "RESTRICT", "NO ACTION"],
+                        "default": "CASCADE"
+                    },
+                    "on_update": {
+                        "type": "string",
+                        "enum": ["CASCADE", "SET NULL", "RESTRICT", "NO ACTION"],
+                        "default": "CASCADE"
+                    },
+                    "sql": {
+                        "type": "string",
+                        "description": "SQL statement for data_migration"
+                    }
+                }
+            }
+        },
+        "file_migrations": {
+            "type": "array",
+            "description": "Array of file move/rename operations",
+            "items": {
+                "type": "object",
+                "required": ["type", "old_path", "new_path"],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["move", "rename"]
+                    },
+                    "old_path": {
+                        "type": "string",
+                        "description": "Current file path"
+                    },
+                    "new_path": {
+                        "type": "string",
+                        "description": "New file path"
+                    }
+                }
+            }
+        },
+        "files": {
+            "type": "object",
+            "properties": {
+                "create": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Files to create (must exist in package files/ directory)"
+                },
+                "update": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Files to update (must exist in package files/ directory)"
+                },
+                "delete": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Files to delete from the system"
+                }
+            }
+        },
+        "directories": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Directories to create"
+        },
+        "navigation": {
+            "type": "object",
+            "properties": {
+                "add": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["url", "view", "label"],
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "Navigation URL (e.g., '?page=new_page')"
+                            },
+                            "view": {
+                                "type": "string",
+                                "description": "View file path"
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "Display label"
+                            },
+                            "icon": {
+                                "type": "string",
+                                "description": "FontAwesome icon class"
+                            },
+                            "parent": {
+                                "type": "string",
+                                "description": "Parent menu key"
+                            },
+                            "roles": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Allowed user roles"
+                            }
+                        }
+                    }
+                },
+                "remove": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Navigation items to remove"
+                }
+            }
+        }
+    }
+}

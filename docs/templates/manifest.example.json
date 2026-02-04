@@ -1,0 +1,73 @@
+{
+    "name": "sample_feature",
+    "version": "1.0.0",
+    "description": "Sample feature update package - Use this as a template for creating new update packages",
+    "created_at": "2026-02-04 12:00:00",
+    "author": "Arctic Wolves System",
+    "requires_validation": true,
+    "database_migrations": [
+        {
+            "type": "create_table",
+            "table": "sample_items",
+            "columns": {
+                "id": {"type": "INT AUTO_INCREMENT", "primary": true},
+                "name": {"type": "VARCHAR(255)", "nullable": false},
+                "description": {"type": "TEXT", "nullable": true},
+                "user_id": {"type": "INT", "nullable": false},
+                "is_active": {"type": "TINYINT(1)", "default": "1"},
+                "created_at": {"type": "TIMESTAMP", "default": "CURRENT_TIMESTAMP"},
+                "updated_at": {"type": "TIMESTAMP", "default": "CURRENT_TIMESTAMP"}
+            },
+            "indexes": {
+                "idx_user_id": {"columns": ["user_id"]},
+                "idx_active": {"columns": ["is_active"]}
+            },
+            "foreign_keys": {
+                "fk_sample_user": {
+                    "column": "user_id",
+                    "ref_table": "users",
+                    "ref_column": "id",
+                    "on_delete": "CASCADE",
+                    "on_update": "CASCADE"
+                }
+            }
+        },
+        {
+            "type": "add_column",
+            "table": "users",
+            "column_definition": "sample_preference VARCHAR(50) DEFAULT 'default'",
+            "after": "email"
+        },
+        {
+            "type": "add_index",
+            "table": "sample_items",
+            "index_name": "idx_name_active",
+            "columns": ["name", "is_active"],
+            "unique": false
+        }
+    ],
+    "file_migrations": [],
+    "files": {
+        "create": [
+            "views/sample_feature.php",
+            "js/sample_feature.js"
+        ],
+        "update": [],
+        "delete": []
+    },
+    "directories": [
+        "uploads/sample"
+    ],
+    "navigation": {
+        "add": [
+            {
+                "url": "?page=sample_feature",
+                "view": "views/sample_feature.php",
+                "label": "Sample Feature",
+                "icon": "fas fa-puzzle-piece",
+                "roles": ["admin", "coach"]
+            }
+        ],
+        "remove": []
+    }
+}
