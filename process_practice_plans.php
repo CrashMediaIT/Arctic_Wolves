@@ -548,6 +548,7 @@ function parseIHSPracticePlanPage($html, $url) {
     if (empty($plan['drills'])) {
         $images = $xpath->query('//img[contains(@src, "drill") or contains(@alt, "drill")]');
         $seenImageUrls = []; // Track seen image URLs to prevent duplicates
+        $drillNumber = 1; // Counter for default drill names
         
         for ($i = 0; $i < min($images->length, 20); $i++) {
             $img = $images->item($i);
@@ -568,7 +569,7 @@ function parseIHSPracticePlanPage($html, $url) {
             $seenImageUrls[$imgSrc] = true;
             
             $plan['drills'][] = [
-                'title' => !empty($imgAlt) ? $imgAlt : 'Drill ' . (count($plan['drills']) + 1),
+                'title' => !empty($imgAlt) ? $imgAlt : 'Drill ' . $drillNumber,
                 'description' => '',
                 'setup' => '',
                 'coaching_points' => '',
@@ -576,6 +577,7 @@ function parseIHSPracticePlanPage($html, $url) {
                 'rink_image' => $imgSrc,
                 'duration' => ''
             ];
+            $drillNumber++;
         }
     }
     
