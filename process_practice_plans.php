@@ -512,14 +512,32 @@ function parseIHSPracticePlanPage($html, $url) {
         '//div[contains(@class, "plan-item")]'
     ];
     
+    // Track seen drills to prevent duplicates (using title + image as key)
+    $seenDrills = [];
+    
     foreach ($drillPatterns as $pattern) {
         $drillNodes = $xpath->query($pattern);
         if ($drillNodes->length > 0) {
             for ($i = 0; $i < $drillNodes->length; $i++) {
                 $drillNode = $drillNodes->item($i);
+                
+                // Skip parent nodes that contain child drill elements
+                // This prevents extracting both parent and child as separate drills
+                $childDrillNodes = $xpath->query('.//div[contains(@class, "drill")] | .//article[contains(@class, "drill")]', $drillNode);
+                if ($childDrillNodes->length > 0) {
+                    continue; // Skip parent containers, process children instead
+                }
+                
                 $drill = extractDrillFromNode($drillNode, $xpath, $url);
                 if ($drill && !empty($drill['title'])) {
-                    $plan['drills'][] = $drill;
+                    // Create a unique key for deduplication based on title and image
+                    $drillKey = strtolower(trim($drill['title'])) . '|' . ($drill['rink_image'] ?? '');
+                    
+                    // Only add if we haven't seen this drill before
+                    if (!isset($seenDrills[$drillKey])) {
+                        $seenDrills[$drillKey] = true;
+                        $plan['drills'][] = $drill;
+                    }
                 }
             }
             break;
@@ -529,6 +547,8 @@ function parseIHSPracticePlanPage($html, $url) {
     // If no drills found with class patterns, try to find images with titles
     if (empty($plan['drills'])) {
         $images = $xpath->query('//img[contains(@src, "drill") or contains(@alt, "drill")]');
+        $seenImageUrls = []; // Track seen image URLs to prevent duplicates
+        
         for ($i = 0; $i < min($images->length, 20); $i++) {
             $img = $images->item($i);
             $imgSrc = $img->getAttribute('src');
@@ -541,8 +561,14 @@ function parseIHSPracticePlanPage($html, $url) {
                 $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
             }
             
+            // Skip duplicate images (same URL)
+            if (isset($seenImageUrls[$imgSrc])) {
+                continue;
+            }
+            $seenImageUrls[$imgSrc] = true;
+            
             $plan['drills'][] = [
-                'title' => !empty($imgAlt) ? $imgAlt : 'Drill ' . ($i + 1),
+                'title' => !empty($imgAlt) ? $imgAlt : 'Drill ' . (count($plan['drills']) + 1),
                 'description' => '',
                 'setup' => '',
                 'coaching_points' => '',
