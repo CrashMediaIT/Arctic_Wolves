@@ -11,7 +11,7 @@ try {
     $logoStmt = $pdo->prepare("
         SELECT COALESCE(
             MAX(CASE WHEN setting_name = 'center_ice_logo_url' AND setting_value != '' THEN setting_value END),
-            MAX(CASE WHEN setting_name = 'logo_url' THEN setting_value END)
+            MAX(CASE WHEN setting_name = 'logo_url' AND setting_value != '' THEN setting_value END)
         ) as logo_url 
         FROM theme_settings 
         WHERE setting_name IN ('center_ice_logo_url', 'logo_url')
@@ -277,6 +277,8 @@ if ($editDrillId) {
                         $equipStmt = $pdo->prepare("SELECT id, name FROM equipment WHERE equipment_type = 'category' ORDER BY name ASC");
                         $equipStmt->execute();
                         $equipmentCategories = $equipStmt->fetchAll();
+                        // Define hockey stick SVG icon with accessibility attributes
+                        $stickIconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" role="img" aria-label="Hockey stick" style="display: inline-block; vertical-align: middle; margin-right: 8px;"><path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/></svg>';
                         ?>
                         <div class="equipment-tags">
                             <?php if (count($equipmentCategories) > 0): ?>
@@ -285,17 +287,18 @@ if ($editDrillId) {
                                     $isChecked = in_array($equipValue, $currentEquipment) || in_array($equip['name'], $currentEquipment);
                                     // Get appropriate icon based on equipment name
                                     $icon = 'fa-tools';
+                                    $isStick = false;
                                     $nameLower = strtolower($equip['name']);
                                     if (strpos($nameLower, 'puck') !== false) $icon = 'fa-hockey-puck';
                                     elseif (strpos($nameLower, 'cone') !== false) $icon = 'fa-play';
                                     elseif (strpos($nameLower, 'net') !== false) $icon = 'fa-bullseye';
-                                    elseif (strpos($nameLower, 'stick') !== false) $icon = 'fa-slash';
+                                    elseif (strpos($nameLower, 'stick') !== false) $isStick = true;
                                     elseif (strpos($nameLower, 'tire') !== false) $icon = 'fa-circle-notch';
                                     elseif (strpos($nameLower, 'goal') !== false) $icon = 'fa-border-all';
                                 ?>
                                 <label class="checkbox-tag">
                                     <input type="checkbox" name="equipment[]" value="<?php echo htmlspecialchars($equipValue); ?>" <?php echo $isChecked ? 'checked' : ''; ?>>
-                                    <span><i class="fas <?php echo $icon; ?>"></i> <?php echo htmlspecialchars($equip['name']); ?></span>
+                                    <span><?php if ($isStick): ?><?php echo $stickIconSvg; ?><?php else: ?><i class="fas <?php echo $icon; ?>"></i> <?php endif; ?><?php echo htmlspecialchars($equip['name']); ?></span>
                                 </label>
                                 <?php endforeach; ?>
                             <?php else: ?>
@@ -314,7 +317,7 @@ if ($editDrillId) {
                                 </label>
                                 <label class="checkbox-tag">
                                     <input type="checkbox" name="equipment[]" value="sticks" <?php echo in_array('sticks', $currentEquipment) ? 'checked' : ''; ?>>
-                                    <span><i class="fas fa-slash"></i> Extra Sticks</span>
+                                    <span><?php echo $stickIconSvg; ?>Extra Sticks</span>
                                 </label>
                                 <p class="help-text" style="width: 100%; margin-top: 8px; font-size: 12px; color: var(--text-dim);">
                                     <i class="fas fa-info-circle"></i> <a href="?page=categories&tab=equipment" style="color: var(--primary-light);">Add more equipment categories</a> in the admin settings.

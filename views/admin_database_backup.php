@@ -1122,7 +1122,7 @@ function runBackupNow(jobId) {
     fetch('process_database_backup.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=run_backup&job_id=${jobId}&csrf_token=<?= $csrf_token ?>`
+        body: `action=manual_backup&id=${jobId}&csrf_token=<?= $csrf_token ?>`
     })
     .then(response => response.json())
     .then(data => {

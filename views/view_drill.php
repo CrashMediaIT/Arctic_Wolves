@@ -11,7 +11,7 @@ try {
     $logoStmt = $pdo->prepare("
         SELECT COALESCE(
             MAX(CASE WHEN setting_name = 'center_ice_logo_url' AND setting_value != '' THEN setting_value END),
-            MAX(CASE WHEN setting_name = 'logo_url' THEN setting_value END)
+            MAX(CASE WHEN setting_name = 'logo_url' AND setting_value != '' THEN setting_value END)
         ) as logo_url 
         FROM theme_settings 
         WHERE setting_name IN ('center_ice_logo_url', 'logo_url')
