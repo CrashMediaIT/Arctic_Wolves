@@ -2168,30 +2168,79 @@ if ($action == 'create_skill') {
 }
 
 if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'skill') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
-        $stmt = $pdo->prepare("UPDATE eval_skills SET name = ?, description = ? WHERE id = ?");
-        $stmt->execute([
-            trim($_POST['name']),
-            trim($_POST['description'] ?? ''),
-            intval($_POST['id'])
-        ]);
+        $id = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
         
+        if ($id <= 0 || empty($name)) {
+            throw new Exception('Skill ID and name are required');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE eval_skills SET name = ?, description = ? WHERE id = ?");
+        $stmt->execute([$name, $description, $id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Skill updated successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&status=skill_updated");
     } catch (PDOException $e) {
+        error_log("Edit skill database error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to update skill. Please try again.']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&status=error");
+    } catch (Exception $e) {
         error_log("Edit skill error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&status=error");
     }
     exit();
 }
 
 if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'skill') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
-        $stmt = $pdo->prepare("DELETE FROM eval_skills WHERE id = ?");
-        $stmt->execute([intval($_POST['id'])]);
+        $id = intval($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            throw new Exception('Invalid skill ID');
+        }
         
+        $stmt = $pdo->prepare("DELETE FROM eval_skills WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Skill deleted successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&status=skill_deleted");
     } catch (PDOException $e) {
+        error_log("Delete skill database error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete skill. Please try again.']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&status=error");
+    } catch (Exception $e) {
         error_log("Delete skill error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&status=error");
     }
     exit();
@@ -2240,6 +2289,8 @@ if ($action == 'create_drill_type') {
 }
 
 if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'drill_type') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
         // Validate id and name
         $id = intval($_POST['id'] ?? 0);
@@ -2262,22 +2313,65 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'drill_type'
             $id
         ]);
         
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Drill type updated successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_updated");
+    } catch (PDOException $e) {
+        error_log("Edit drill type database error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to update drill type. Please try again.']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=drills&status=error");
     } catch (Exception $e) {
         error_log("Edit drill type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=drills&status=error");
     }
     exit();
 }
 
 if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_type') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
-        $stmt = $pdo->prepare("DELETE FROM drill_categories WHERE id = ?");
-        $stmt->execute([intval($_POST['id'])]);
+        $id = intval($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            throw new Exception('Invalid drill type ID');
+        }
         
+        $stmt = $pdo->prepare("DELETE FROM drill_categories WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Drill type deleted successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_deleted");
     } catch (PDOException $e) {
+        error_log("Delete drill type database error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete drill type. Please try again.']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=drills&status=error");
+    } catch (Exception $e) {
         error_log("Delete drill type error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=drills&status=error");
     }
     exit();
@@ -2709,30 +2803,79 @@ if ($action == 'create_equipment') {
 }
 
 if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'equipment') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
-        $stmt = $pdo->prepare("UPDATE equipment SET name = ?, notes = ? WHERE id = ?");
-        $stmt->execute([
-            trim($_POST['name']),
-            trim($_POST['description'] ?? ''),
-            intval($_POST['id'])
-        ]);
+        $id = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
         
+        if ($id <= 0 || empty($name)) {
+            throw new Exception('Equipment ID and name are required');
+        }
+        
+        $stmt = $pdo->prepare("UPDATE equipment SET name = ?, notes = ? WHERE id = ?");
+        $stmt->execute([$name, $description, $id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Equipment updated successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_updated");
     } catch (PDOException $e) {
+        error_log("Edit equipment database error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to update equipment. Please try again.']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=equipment&status=error");
+    } catch (Exception $e) {
         error_log("Edit equipment error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     }
     exit();
 }
 
 if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'equipment') {
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     try {
-        $stmt = $pdo->prepare("DELETE FROM equipment WHERE id = ?");
-        $stmt->execute([intval($_POST['id'])]);
+        $id = intval($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            throw new Exception('Invalid equipment ID');
+        }
         
+        $stmt = $pdo->prepare("DELETE FROM equipment WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Equipment deleted successfully!']);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_deleted");
     } catch (PDOException $e) {
+        error_log("Delete equipment database error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to delete equipment. Please try again.']);
+            exit();
+        }
+        header("Location: dashboard.php?page=categories&tab=equipment&status=error");
+    } catch (Exception $e) {
         error_log("Delete equipment error: " . $e->getMessage());
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        }
         header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     }
     exit();

@@ -871,8 +871,8 @@ $errors = [
                             <h4>Email Notifications</h4>
                             <p>Receive email updates for important activities</p>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" name="email_notifications" <?php echo isPreferenceEnabled($userPreferences, 'email_notifications') ? 'checked' : ''; ?> data-action="toggle-pref">
+                        <label class="toggle-switch" for="pref-email-notifications">
+                            <input type="checkbox" id="pref-email-notifications" name="email_notifications" <?php echo isPreferenceEnabled($userPreferences, 'email_notifications') ? 'checked' : ''; ?> class="notification-pref-toggle">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -882,8 +882,8 @@ $errors = [
                             <h4>Session Reminders</h4>
                             <p>Get reminders before scheduled sessions</p>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" name="session_reminders" <?php echo isPreferenceEnabled($userPreferences, 'session_reminders') ? 'checked' : ''; ?> data-action="toggle-pref">
+                        <label class="toggle-switch" for="pref-session-reminders">
+                            <input type="checkbox" id="pref-session-reminders" name="session_reminders" <?php echo isPreferenceEnabled($userPreferences, 'session_reminders') ? 'checked' : ''; ?> class="notification-pref-toggle">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -893,8 +893,8 @@ $errors = [
                             <h4>Goal Updates</h4>
                             <p>Notifications when you achieve milestones</p>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" name="goal_updates" <?php echo isPreferenceEnabled($userPreferences, 'goal_updates') ? 'checked' : ''; ?> data-action="toggle-pref">
+                        <label class="toggle-switch" for="pref-goal-updates">
+                            <input type="checkbox" id="pref-goal-updates" name="goal_updates" <?php echo isPreferenceEnabled($userPreferences, 'goal_updates') ? 'checked' : ''; ?> class="notification-pref-toggle">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -904,8 +904,8 @@ $errors = [
                             <h4>Marketing Emails</h4>
                             <p>Receive updates about new features and promotions</p>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" name="marketing_emails" <?php echo isPreferenceEnabled($userPreferences, 'marketing_emails') ? 'checked' : ''; ?> data-action="toggle-pref">
+                        <label class="toggle-switch" for="pref-marketing-emails">
+                            <input type="checkbox" id="pref-marketing-emails" name="marketing_emails" <?php echo isPreferenceEnabled($userPreferences, 'marketing_emails') ? 'checked' : ''; ?> class="notification-pref-toggle">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -960,7 +960,7 @@ function toggleStatsEdit() {
     }
 }
 
-// Handle notification preference toggles
+// Handle notification preference toggles using event delegation for robustness
 document.addEventListener('DOMContentLoaded', function() {
     // Handle remove team form submissions
     document.querySelectorAll('.remove-team-form').forEach(form => {
@@ -971,30 +971,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Handle notification preference toggles
-    const toggles = document.querySelectorAll('[data-action="toggle-pref"]');
-    console.log('Found', toggles.length, 'notification toggles');
-    
-    toggles.forEach(toggle => {
-        // Add click event as well as change event for better compatibility
-        toggle.addEventListener('click', function(e) {
-            console.log('Toggle clicked:', this.name);
-        });
+    // Use event delegation on the preferences list container for better reliability
+    // This ensures the handlers work even if the tab is initially hidden
+    const preferencesContainer = document.querySelector('.preferences-list');
+    if (preferencesContainer) {
+        console.log('[Notification Prefs] Preferences container found, attaching event delegation');
         
-        toggle.addEventListener('change', function(e) {
+        preferencesContainer.addEventListener('change', function(e) {
+            const toggle = e.target;
+            
+            // Only handle our notification toggle checkboxes
+            if (!toggle.classList.contains('notification-pref-toggle')) {
+                return;
+            }
+            
             e.stopPropagation();
-            const prefName = this.name;
-            const prefValue = this.checked ? 1 : 0;
-            // Try to get CSRF token from multiple sources (notifications tab has its own hidden input)
-            const csrfToken = document.getElementById('notifications-csrf-token')?.value || document.querySelector('input[name="csrf_token"]')?.value;
-            const toggleElement = this;
-            const parentItem = this.closest('.preference-item');
+            const prefName = toggle.name;
+            const prefValue = toggle.checked ? 1 : 0;
             
-            console.log('Saving preference:', prefName, '=', prefValue);
+            // Get CSRF token from multiple sources
+            const csrfToken = document.getElementById('notifications-csrf-token')?.value || 
+                              document.querySelector('input[name="csrf_token"]')?.value ||
+                              document.querySelector('meta[name="csrf-token"]')?.content || '';
             
-            // Add saving indicator
+            const parentItem = toggle.closest('.preference-item');
+            
+            console.log('[Notification Prefs] Saving preference:', prefName, '=', prefValue);
+            
+            // Visual feedback - saving state
             if (parentItem) {
                 parentItem.style.opacity = '0.7';
+                parentItem.style.pointerEvents = 'none';
             }
             
             // Send AJAX request to save preference
@@ -1003,54 +1010,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `action=update_preference&preference=${prefName}&value=${prefValue}&csrf_token=${encodeURIComponent(csrfToken || '')}`
+                body: `action=update_preference&preference=${encodeURIComponent(prefName)}&value=${prefValue}&csrf_token=${encodeURIComponent(csrfToken)}`
             })
             .then(response => {
-                console.log('Response status:', response.status);
+                console.log('[Notification Prefs] Response status:', response.status);
                 if (!response.ok) {
                     throw new Error('Network response was not ok: ' + response.status);
                 }
                 return response.text().then(text => {
+                    console.log('[Notification Prefs] Raw response:', text);
                     try {
                         return JSON.parse(text);
-                    } catch (e) {
-                        console.error('Invalid JSON response:', text);
+                    } catch (parseErr) {
+                        console.error('[Notification Prefs] JSON parse error:', parseErr);
                         throw new Error('Invalid JSON response from server');
                     }
                 });
             })
             .then(data => {
-                console.log('Response data:', data);
+                console.log('[Notification Prefs] Response data:', data);
                 if (parentItem) {
                     parentItem.style.opacity = '1';
+                    parentItem.style.pointerEvents = '';
                 }
                 if (data.success) {
-                    // Show brief success indicator
+                    // Show success indicator with green border flash (1.5 seconds)
                     if (parentItem) {
-                        const originalBorder = parentItem.style.borderColor;
-                        parentItem.style.borderColor = '#10b981';
+                        parentItem.classList.add('preference-saved');
                         setTimeout(() => {
-                            parentItem.style.borderColor = originalBorder;
-                        }, 1000);
+                            parentItem.classList.remove('preference-saved');
+                        }, 1500);
                     }
-                    console.log('Preference saved successfully:', prefName, prefValue);
+                    console.log('[Notification Prefs] Preference saved successfully:', prefName, '=', prefValue);
                 } else {
                     // Revert the toggle if save failed
-                    toggleElement.checked = !toggleElement.checked;
+                    toggle.checked = !toggle.checked;
+                    console.error('[Notification Prefs] Save failed:', data.message || data.error);
                     alert('Failed to save preference: ' + (data.message || data.error || 'Unknown error'));
                 }
             })
             .catch(error => {
                 if (parentItem) {
                     parentItem.style.opacity = '1';
+                    parentItem.style.pointerEvents = '';
                 }
-                console.error('Error saving preference:', error);
+                console.error('[Notification Prefs] Error saving preference:', error);
                 // Revert the toggle on error
-                toggleElement.checked = !toggleElement.checked;
+                toggle.checked = !toggle.checked;
                 alert('Error saving preference: ' + error.message);
             });
         });
-    });
+    } else {
+        console.warn('[Notification Prefs] Preferences container not found - notification toggles will not work');
+    }
 
     // Handle PIN form submission
     const pinForm = document.getElementById('pin-form');
@@ -1474,6 +1486,12 @@ function togglePasswordVisibility(inputId, button) {
 .preference-item:hover {
     border-color: var(--primary);
     transform: translateX(4px);
+}
+
+/* Success indicator when preference is saved */
+.preference-item.preference-saved {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
 .preference-info {

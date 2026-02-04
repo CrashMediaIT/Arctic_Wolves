@@ -147,7 +147,9 @@ requirePermission($pdo, $user_id, $user_role, 'import_from_ihs');
             'no_data' => 'No data provided. Please paste your import data.',
             'invalid_json' => 'Invalid JSON format. Please check your data.',
             'missing_title' => 'Practice plan title is required.',
-            'import_failed' => 'Import failed. Please check your data format and try again.'
+            'import_failed' => 'Import failed. Please check your data format and try again.',
+            'csrf_token_missing' => 'Security token missing. Please refresh the page and try again.',
+            'csrf_token_invalid' => 'Security token expired. Please refresh the page and try again.'
         ];
         echo "<i class='fas fa-exclamation-triangle'></i> " . ($errors[$_GET['error']] ?? 'An error occurred.');
         ?>
