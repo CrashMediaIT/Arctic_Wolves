@@ -659,9 +659,7 @@ try {
                     <div class="setup-instructions" style="background: #0a0d12; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                         <h4 style="color: #fff; margin-bottom: 15px;"><i class="fas fa-server"></i> Option 1: Self-Hosted Installation (Recommended)</h4>
                         <ol style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
-                            <li><strong>Install Docker</strong> on your server if not already installed:
-                                <code style="display: block; background: #1e293b; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 12px;">curl -fsSL https://get.docker.com | sh</code>
-                            </li>
+                            <li><strong>Install Docker</strong> on your server if not already installed. Visit <a href="https://docs.docker.com/get-docker/" target="_blank" style="color: var(--primary-light);">Docker's official documentation</a> for platform-specific installation instructions.</li>
                             <li><strong>Run DocuSeal container:</strong>
                                 <code style="display: block; background: #1e293b; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 12px; overflow-x: auto;">docker run -d --name docuseal -p 3000:3000 -v docuseal_data:/data docuseal/docuseal</code>
                             </li>
