@@ -920,15 +920,15 @@ try {
                             <div class="color-picker-item">
                                 <label>Primary Color</label>
                                 <div class="color-input-group">
-                                    <input type="color" name="primary_color" id="primary_color" value="<?php echo htmlspecialchars($settings['primary_color'] ?? '#6B46C1'); ?>">
-                                    <input type="text" class="form-input" id="primary_color_text" value="<?php echo htmlspecialchars($settings['primary_color'] ?? '#6B46C1'); ?>" readonly>
+                                    <input type="color" name="primary_color" id="primary_color" value="<?php echo htmlspecialchars($settings['primary_color'] ?? '#7000a4'); ?>">
+                                    <input type="text" class="form-input" id="primary_color_text" value="<?php echo htmlspecialchars($settings['primary_color'] ?? '#7000a4'); ?>" readonly>
                                 </div>
                             </div>
                             <div class="color-picker-item">
-                                <label>Accent Color</label>
+                                <label>Secondary Color</label>
                                 <div class="color-input-group">
-                                    <input type="color" name="accent_color" id="accent_color" value="<?php echo htmlspecialchars($settings['accent_color'] ?? '#8B5CF6'); ?>">
-                                    <input type="text" class="form-input" id="accent_color_text" value="<?php echo htmlspecialchars($settings['accent_color'] ?? '#8B5CF6'); ?>" readonly>
+                                    <input type="color" name="secondary_color" id="secondary_color" value="<?php echo htmlspecialchars($settings['secondary_color'] ?? '#c0c0c0'); ?>">
+                                    <input type="text" class="form-input" id="secondary_color_text" value="<?php echo htmlspecialchars($settings['secondary_color'] ?? '#c0c0c0'); ?>" readonly>
                                 </div>
                             </div>
                             <div class="color-picker-item">
@@ -1546,10 +1546,10 @@ function toggleLogoInput() {
 
 function resetThemeToDefault() {
     if (confirm('Reset all theme settings to default values?')) {
-        document.getElementById('primary_color').value = '#6B46C1';
-        document.getElementById('primary_color_text').value = '#6B46C1';
-        document.getElementById('accent_color').value = '#8B5CF6';
-        document.getElementById('accent_color_text').value = '#8B5CF6';
+        document.getElementById('primary_color').value = '#7000a4';
+        document.getElementById('primary_color_text').value = '#7000a4';
+        document.getElementById('secondary_color').value = '#c0c0c0';
+        document.getElementById('secondary_color_text').value = '#c0c0c0';
         document.getElementById('bg_color').value = '#06080b';
         document.getElementById('bg_color_text').value = '#06080b';
     }

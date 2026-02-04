@@ -285,7 +285,7 @@ try {
             // Process colors
             $colors = [
                 'primary_color' => $_POST['primary_color'] ?? null,
-                'accent_color' => $_POST['accent_color'] ?? null,
+                'secondary_color' => $_POST['secondary_color'] ?? null,
                 'background_color' => $_POST['bg_color'] ?? null
             ];
             

@@ -69,6 +69,12 @@ if ($env_loaded) {
     $db   = 'arctic_wolves';
     $user = 'root';
     $pass = '';
+    
+    // Also set $_ENV so that other scripts can access credentials consistently
+    $_ENV['DB_HOST'] = $host;
+    $_ENV['DB_NAME'] = $db;
+    $_ENV['DB_USER'] = $user;
+    $_ENV['DB_PASS'] = $pass;
 }
 
 // 4. CREATE PDO CONNECTION WITH COMPREHENSIVE ERROR HANDLING
