@@ -2643,6 +2643,8 @@ CREATE TABLE IF NOT EXISTS `employee_onboarding` (
     `postal_code` VARCHAR(10) DEFAULT NULL,
     `notes` TEXT DEFAULT NULL,
     `nextcloud_folder` VARCHAR(500) DEFAULT NULL COMMENT 'Path to onboarding docs in Nextcloud',
+    `contract_sent` TINYINT(1) DEFAULT 0 COMMENT 'Whether employment contract was sent for signature',
+    `contract_id` INT DEFAULT NULL COMMENT 'Link to employee_contracts record if contract was created',
     `processed_by` INT DEFAULT NULL,
     `completed_at` TIMESTAMP NULL DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

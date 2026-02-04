@@ -260,6 +260,13 @@ if ($action === 'create') {
         
         $notes = trim($_POST['notes'] ?? '');
         
+        // Contract creation options
+        $createContract = isset($_POST['create_contract']) ? 1 : 0;
+        $docusealTemplateId = intval($_POST['docuseal_template_id'] ?? 0);
+        $contractTitle = trim($_POST['contract_title'] ?? 'Employment Contract');
+        $contractSalary = trim($_POST['contract_salary'] ?? '');
+        $contractPayFrequency = trim($_POST['contract_pay_frequency'] ?? '');
+        
         // Validation
         if (empty($firstName) || empty($lastName) || empty($email) || empty($role) || empty($startDate)) {
             throw new Exception('Required fields are missing');
@@ -456,6 +463,75 @@ if ($action === 'create') {
                 $pdo->prepare("UPDATE employee_onboarding SET nextcloud_folder = ? WHERE id = ?")->execute([$nextcloudFolder, $onboardingId]);
             }
             
+            // Create and send employment contract if requested
+            $contractCreated = false;
+            $contractSent = false;
+            $contractId = null;
+            
+            if ($createContract && $docusealTemplateId > 0) {
+                try {
+                    require_once 'lib/docuseal.php';
+                    
+                    // Build employee address for contract
+                    $employeeAddress = $streetAddress;
+                    if (!empty($unitNumber)) {
+                        $employeeAddress .= ', ' . $unitNumber;
+                    }
+                    $employeeAddress .= "\n" . $city . ', ' . $province . ' ' . $postalCode;
+                    
+                    // Prepare contract data
+                    $contractData = [
+                        'employee_name' => $firstName . ' ' . $lastName,
+                        'employee_address' => $employeeAddress,
+                        'start_date' => $startDate,
+                        'position' => ucfirst(str_replace('_', ' ', $role)),
+                        'salary' => $contractSalary,
+                        'pay_frequency' => $contractPayFrequency
+                    ];
+                    
+                    // Create contract record in database
+                    $contractStmt = $pdo->prepare("
+                        INSERT INTO employee_contracts 
+                        (onboarding_id, employee_name, employee_email, contract_title, 
+                         contract_data, status, created_by, created_at)
+                        VALUES (?, ?, ?, ?, ?, 'draft', ?, NOW())
+                    ");
+                    $contractStmt->execute([
+                        $onboardingId,
+                        $firstName . ' ' . $lastName,
+                        $email,
+                        $contractTitle,
+                        json_encode($contractData),
+                        $user_id
+                    ]);
+                    $contractId = $pdo->lastInsertId();
+                    $contractCreated = true;
+                    
+                    // Send the contract for e-signature via DocuSeal
+                    $esignResult = createEsignatureRequest(
+                        $pdo,
+                        $contractId,
+                        $docusealTemplateId,
+                        $email,
+                        $firstName . ' ' . $lastName,
+                        $contractData
+                    );
+                    
+                    if ($esignResult['success']) {
+                        $contractSent = true;
+                        
+                        // Update onboarding record to indicate contract was sent
+                        $pdo->prepare("UPDATE employee_onboarding SET contract_sent = 1, contract_id = ? WHERE id = ?")->execute([$contractId, $onboardingId]);
+                    } else {
+                        error_log("Failed to send contract for signature: " . $esignResult['message']);
+                    }
+                    
+                } catch (Exception $contractError) {
+                    error_log("Error creating/sending contract during onboarding: " . $contractError->getMessage());
+                    // Continue without contract - not critical to fail the entire onboarding
+                }
+            }
+            
             // Audit log
             $auditData = [
                 'action' => 'EMPLOYEE_ONBOARDING_CREATED',
@@ -468,7 +544,10 @@ if ($action === 'create') {
                 'equipment_count' => count(array_filter($equipment, function($e) { return !empty($e['name']); })),
                 'perks_count' => count(array_filter($perks, function($p) { return !empty($p['name']); })),
                 'documents_uploaded' => count($uploadedDocs),
-                'nextcloud_folder' => $nextcloudFolder
+                'nextcloud_folder' => $nextcloudFolder,
+                'contract_created' => $contractCreated,
+                'contract_sent' => $contractSent,
+                'contract_id' => $contractId
             ];
             
             $auditStmt = $pdo->prepare("
@@ -486,6 +565,11 @@ if ($action === 'create') {
             $successMsg = 'Onboarding started for ' . $firstName . ' ' . $lastName;
             if ($createAccount) {
                 $successMsg .= '. User account created with temporary password.';
+            }
+            if ($contractSent) {
+                $successMsg .= ' Employment contract sent for e-signature.';
+            } elseif ($contractCreated) {
+                $successMsg .= ' Contract created but could not be sent for signature.';
             }
             
             $_SESSION['flash_message'] = $successMsg;
