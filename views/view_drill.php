@@ -796,6 +796,53 @@ function drawObject(ctx, obj) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.value, 0, 0);
+    } else if (obj.type === 'freehand' || obj.type === 'freehand_arrow' || obj.type === 'freehand_dashed' || obj.type === 'freehand_skating') {
+        // Handle all freehand drawing types
+        if (obj.points && obj.points.length >= 2) {
+            const color = obj.color || '#333';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Set line dash for dashed types
+            if (obj.type === 'freehand_dashed') {
+                ctx.setLineDash([10, 6]);
+            }
+            
+            // Draw the path
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x, obj.points[0].y);
+            
+            for (let i = 1; i < obj.points.length - 1; i++) {
+                const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+                const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+            }
+            
+            const last = obj.points[obj.points.length - 1];
+            ctx.lineTo(last.x, last.y);
+            ctx.stroke();
+            
+            if (obj.type === 'freehand_dashed') {
+                ctx.setLineDash([]);
+            }
+            
+            // Draw arrow for arrow and skating types
+            if ((obj.type === 'freehand_arrow' || obj.type === 'freehand_skating') && obj.points.length >= 2) {
+                const secondLast = obj.points[obj.points.length - 2];
+                const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+                const headlen = 12;
+                
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(last.x, last.y);
+                ctx.lineTo(last.x - headlen * Math.cos(angle - Math.PI / 6), last.y - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(last.x - headlen * Math.cos(angle + Math.PI / 6), last.y - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
     }
     
     ctx.restore();

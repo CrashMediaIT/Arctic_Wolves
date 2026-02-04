@@ -14,8 +14,8 @@
 // Line-based drawing tools constant
 const LINE_TOOLS = ['line', 'arrow', 'dashed', 'squiggly', 'skating_forward', 'skating_backward', 'skating_lateral', 'skating_ccuts', 'skating_forward_puck', 'skating_backward_puck', 'pass', 'shot'];
 
-// Freehand drawing tools
-const FREEHAND_TOOLS = ['freehand'];
+// Freehand drawing tools - can be drawn in any shape/curve
+const FREEHAND_TOOLS = ['freehand', 'freehand_arrow', 'freehand_dashed', 'freehand_skating'];
 
 class DrillDesigner {
     constructor(canvasId) {
@@ -379,8 +379,11 @@ class DrillDesigner {
             // Pass and shot lines
             'Pass': 'pass',
             'Shot': 'shot',
-            // Freehand drawing
-            'Freehand Draw': 'freehand'
+            // Freehand drawing tools
+            'Freehand Draw': 'freehand',
+            'Freehand Arrow': 'freehand_arrow',
+            'Freehand Dashed': 'freehand_dashed',
+            'Freehand Skating Path': 'freehand_skating'
         };
         
         if (toolName === 'Clear All') {
@@ -454,8 +457,8 @@ class DrillDesigner {
                 this.selectedObject.y1 += dy;
                 this.selectedObject.x2 += dx;
                 this.selectedObject.y2 += dy;
-            } else if (this.selectedObject.type === 'freehand') {
-                // Move all points in freehand drawing (points array always exists for freehand objects)
+            } else if (FREEHAND_TOOLS.includes(this.selectedObject.type) && this.selectedObject.points) {
+                // Move all points in freehand drawing types
                 this.selectedObject.points.forEach(pt => {
                     pt.x += dx;
                     pt.y += dy;
@@ -521,8 +524,9 @@ class DrillDesigner {
             // Smooth the points before saving
             const smoothedPoints = this.smoothFreehandPoints(this.currentFreehandPoints);
             
+            // Store the freehand type (freehand, freehand_arrow, freehand_dashed, freehand_skating)
             this.objects.push({
-                type: 'freehand',
+                type: this.currentTool, // Store the actual tool type
                 points: smoothedPoints,
                 color: this.activeColor
             });
@@ -755,8 +759,8 @@ class DrillDesigner {
                 if (distToLine < 25) {
                     return obj;
                 }
-            } else if (obj.type === 'freehand' && obj.points && obj.points.length > 0) {
-                // Freehand drawing - check distance to any point in the path
+            } else if (FREEHAND_TOOLS.includes(obj.type) && obj.points && obj.points.length > 0) {
+                // Freehand drawing types - check distance to any point in the path
                 for (let p = 0; p < obj.points.length; p++) {
                     const pt = obj.points[p];
                     const dx = x - pt.x;
@@ -1265,6 +1269,12 @@ class DrillDesigner {
                 this.drawShotLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#c41e3a');
             } else if (obj.type === 'freehand') {
                 this.drawFreehand(obj.points, obj.color || '#333');
+            } else if (obj.type === 'freehand_arrow') {
+                this.drawFreehandArrow(obj.points, obj.color || '#333');
+            } else if (obj.type === 'freehand_dashed') {
+                this.drawFreehandDashed(obj.points, obj.color || '#333');
+            } else if (obj.type === 'freehand_skating') {
+                this.drawFreehandSkating(obj.points, obj.color || '#0033a0');
             } else if (obj.type === 'puck') {
                 this.drawPuck(obj.x, obj.y, obj.color);
             } else if (obj.type === 'pucks') {
@@ -1308,8 +1318,8 @@ class DrillDesigner {
                 this.ctx.beginPath();
                 this.ctx.arc(centerX, centerY, 12, 0, 2 * Math.PI);
                 this.ctx.stroke();
-            } else if (this.selectedObject.type === 'freehand') {
-                // For freehand, draw selection around bounding box (points array always exists for freehand objects)
+            } else if (FREEHAND_TOOLS.includes(this.selectedObject.type) && this.selectedObject.points) {
+                // For freehand types, draw selection around bounding box
                 const bounds = this.getFreehandBounds(this.selectedObject.points);
                 this.ctx.strokeRect(bounds.minX - 5, bounds.minY - 5, bounds.width + 10, bounds.height + 10);
             } else {
@@ -1320,8 +1330,8 @@ class DrillDesigner {
             }
             this.ctx.setLineDash([]);
             
-            // Draw rotate indicator only for rotatable objects (not line-based)
-            if (!LINE_TOOLS.includes(this.selectedObject.type) && this.selectedObject.rotation !== undefined) {
+            // Draw rotate indicator only for rotatable objects (not line-based or freehand)
+            if (!LINE_TOOLS.includes(this.selectedObject.type) && !FREEHAND_TOOLS.includes(this.selectedObject.type) && this.selectedObject.rotation !== undefined) {
                 this.ctx.fillStyle = '#00ff00';
                 this.ctx.beginPath();
                 this.ctx.arc(this.selectedObject.x + 18, this.selectedObject.y - 18, 6, 0, 2 * Math.PI);
@@ -1749,6 +1759,140 @@ class DrillDesigner {
         }
         
         ctx.stroke();
+    }
+    
+    // Freehand arrow - freehand line with arrow at the end
+    drawFreehandArrow(points, color) {
+        if (!points || points.length < 2) return;
+        
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = this.lineThickness;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // Draw the path
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length - 1; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        
+        if (points.length > 1) {
+            const last = points[points.length - 1];
+            ctx.lineTo(last.x, last.y);
+        }
+        
+        ctx.stroke();
+        
+        // Draw arrow head at the end
+        if (points.length >= 2) {
+            const last = points[points.length - 1];
+            const secondLast = points[points.length - 2];
+            const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+            const headlen = 12;
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(last.x - headlen * Math.cos(angle - Math.PI / 6), last.y - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(last.x - headlen * Math.cos(angle + Math.PI / 6), last.y - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+    
+    // Freehand dashed line
+    drawFreehandDashed(points, color) {
+        if (!points || points.length < 2) return;
+        
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = this.lineThickness;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.setLineDash([10, 6]);
+        
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length - 1; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        
+        if (points.length > 1) {
+            const last = points[points.length - 1];
+            ctx.lineTo(last.x, last.y);
+        }
+        
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    
+    // Freehand skating path - skating pattern with arrow at end
+    drawFreehandSkating(points, color) {
+        if (!points || points.length < 2) return;
+        
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = this.lineThickness + 1;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // Draw the path
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length - 1; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        
+        if (points.length > 1) {
+            const last = points[points.length - 1];
+            ctx.lineTo(last.x, last.y);
+        }
+        
+        ctx.stroke();
+        
+        // Draw arrow head at the end
+        if (points.length >= 2) {
+            const last = points[points.length - 1];
+            const secondLast = points[points.length - 2];
+            const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+            const headlen = 14;
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(last.x - headlen * Math.cos(angle - Math.PI / 6), last.y - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(last.x - headlen * Math.cos(angle + Math.PI / 6), last.y - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Draw small skating marks along the path (every N points)
+        const markInterval = Math.max(5, Math.floor(points.length / 8));
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        for (let i = markInterval; i < points.length - 2; i += markInterval) {
+            const pt = points[i];
+            const nextPt = points[i + 1] || pt;
+            const angle = Math.atan2(nextPt.y - pt.y, nextPt.x - pt.x);
+            const perpAngle = angle + Math.PI / 2;
+            
+            // Draw small perpendicular marks (like skate cuts on ice)
+            ctx.beginPath();
+            ctx.moveTo(pt.x - 4 * Math.cos(perpAngle), pt.y - 4 * Math.sin(perpAngle));
+            ctx.lineTo(pt.x + 4 * Math.cos(perpAngle), pt.y + 4 * Math.sin(perpAngle));
+            ctx.stroke();
+        }
     }
     
     // Get bounding box for freehand drawing

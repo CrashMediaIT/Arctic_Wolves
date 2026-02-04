@@ -94,6 +94,8 @@ if ($editDrillId) {
                         <button class="tool-btn" title="Arrow" data-tool="arrow"><i class="fas fa-long-arrow-alt-right"></i></button>
                         <button class="tool-btn" title="Add Text" data-tool="text"><i class="fas fa-font"></i></button>
                         <button class="tool-btn" title="Freehand Draw" data-tool="freehand"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="tool-btn" title="Freehand Arrow" data-tool="freehand_arrow"><i class="fas fa-pencil-alt"></i><i class="fas fa-arrow-right" style="font-size: 8px; margin-left: 2px;"></i></button>
+                        <button class="tool-btn" title="Freehand Dashed" data-tool="freehand_dashed"><i class="fas fa-pencil-alt"></i><i class="fas fa-ellipsis-h" style="font-size: 8px; margin-left: 2px;"></i></button>
                     </div>
                     <div class="tool-group">
                         <span class="tool-group-label">Skating Patterns</span>
@@ -103,6 +105,7 @@ if ($editDrillId) {
                         <button class="tool-btn" title="C-Cuts Skating" data-tool="skating_ccuts"><span class="tool-label" style="font-weight: bold;">C</span></button>
                         <button class="tool-btn" title="Forward Skating with Puck" data-tool="skating_forward_puck"><i class="fas fa-hockey-puck"></i><i class="fas fa-arrow-right" style="font-size: 8px; margin-left: 2px;"></i></button>
                         <button class="tool-btn" title="Backward Skating with Puck" data-tool="skating_backward_puck"><i class="fas fa-arrow-left" style="font-size: 8px; margin-right: 2px;"></i><i class="fas fa-hockey-puck"></i></button>
+                        <button class="tool-btn" title="Freehand Skating Path" data-tool="freehand_skating"><i class="fas fa-skating"></i></button>
                     </div>
                     <div class="tool-group">
                         <span class="tool-group-label">Pass/Shot</span>
