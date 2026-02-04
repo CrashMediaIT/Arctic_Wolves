@@ -88,6 +88,7 @@ $allowed_pages = [
     'drill_library'           => 'views/drills.php',
     'create_drill'            => 'views/drills.php',
     'import_drill'            => 'views/drills.php',
+    'view_drill'              => 'views/view_drill.php',
     
     'practice'                => 'views/practice.php',
     'practice_library'        => 'views/practice.php',

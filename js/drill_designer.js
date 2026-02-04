@@ -1,7 +1,18 @@
 /**
  * Drill Designer - Interactive Hockey Drill Drawing Tool
  * Allows coaches to create visual drill diagrams on an ice rink canvas
+ * 
+ * Features:
+ * - Click to rotate items
+ * - Delete individual items
+ * - Color picker for all items
+ * - Squiggly line for puck carrying
+ * - Improved hockey stick icon
+ * - Shareable drill links
  */
+
+// Line-based drawing tools constant
+const LINE_TOOLS = ['line', 'arrow', 'dashed', 'squiggly'];
 
 class DrillDesigner {
     constructor(canvasId) {
@@ -19,6 +30,22 @@ class DrillDesigner {
         this.dragStartPos = null;
         this.history = [];
         this.historyIndex = -1;
+        
+        // Active color for painting objects
+        this.activeColor = '#000000';
+        
+        // Color presets for quick selection
+        this.colorPresets = [
+            '#000000', // Black
+            '#c41e3a', // Red
+            '#0033a0', // Blue
+            '#00bfff', // Light Blue
+            '#ff6600', // Orange
+            '#10b981', // Green
+            '#8b5cf6', // Purple
+            '#f59e0b', // Yellow
+            '#ec4899'  // Pink
+        ];
         
         // Configurable branding
         this.brandingText = 'ARCTIC WOLVES';
@@ -48,6 +75,9 @@ class DrillDesigner {
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('click', this.handleClick.bind(this));
         
+        // Keyboard events for delete
+        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+        
         // Tool buttons
         document.querySelectorAll('.tool-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -62,10 +92,177 @@ class DrillDesigner {
         const undoBtn = document.querySelector('[data-drill-action="undo"]');
         const redoBtn = document.querySelector('[data-drill-action="redo"]');
         const exportBtn = document.querySelector('[data-drill-action="export"]');
+        const deleteBtn = document.querySelector('[data-drill-action="delete"]');
+        const rotateBtn = document.querySelector('[data-drill-action="rotate"]');
+        const shareBtn = document.querySelector('[data-drill-action="share"]');
         
         if (undoBtn) undoBtn.addEventListener('click', () => this.undo());
         if (redoBtn) redoBtn.addEventListener('click', () => this.redo());
         if (exportBtn) exportBtn.addEventListener('click', () => this.exportImage());
+        if (deleteBtn) deleteBtn.addEventListener('click', () => this.deleteSelected());
+        if (rotateBtn) rotateBtn.addEventListener('click', () => this.rotateSelected());
+        if (shareBtn) shareBtn.addEventListener('click', () => this.shareLink());
+        
+        // Color picker
+        const colorPicker = document.querySelector('[data-drill-action="color-picker"]');
+        if (colorPicker) {
+            colorPicker.addEventListener('input', (e) => {
+                this.activeColor = e.target.value;
+                this.updateActiveColorDisplay();
+            });
+            colorPicker.addEventListener('change', (e) => {
+                this.activeColor = e.target.value;
+                this.updateActiveColorDisplay();
+            });
+        }
+        
+        // Color presets
+        document.querySelectorAll('[data-color-preset]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const color = e.currentTarget.getAttribute('data-color-preset');
+                this.activeColor = color;
+                this.updateActiveColorDisplay();
+                
+                // Update color picker input if it exists
+                const colorPicker = document.querySelector('[data-drill-action="color-picker"]');
+                if (colorPicker) {
+                    colorPicker.value = color;
+                }
+                
+                // Update active state on preset buttons
+                document.querySelectorAll('[data-color-preset]').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+            });
+        });
+        
+        // Paint tool button
+        const paintBtn = document.querySelector('[data-tool="paint"]');
+        if (paintBtn) {
+            paintBtn.addEventListener('click', (e) => {
+                this.currentTool = 'paint';
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+            });
+        }
+    }
+    
+    handleKeyDown(e) {
+        // Delete selected object with Delete key only (Backspace is reserved for browser navigation)
+        if (e.key === 'Delete' && this.selectedObject) {
+            // Don't delete if user is typing in an input field
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            e.preventDefault();
+            this.deleteSelected();
+        }
+        
+        // Rotate with R key
+        if (e.key === 'r' || e.key === 'R') {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            if (this.selectedObject) {
+                e.preventDefault();
+                this.rotateSelected();
+            }
+        }
+    }
+    
+    updateActiveColorDisplay() {
+        const activeColorCircle = document.querySelector('.active-color-circle');
+        if (activeColorCircle) {
+            activeColorCircle.style.backgroundColor = this.activeColor;
+        }
+    }
+    
+    deleteSelected() {
+        if (this.selectedObject) {
+            const index = this.objects.indexOf(this.selectedObject);
+            if (index > -1) {
+                this.objects.splice(index, 1);
+                this.selectedObject = null;
+                this.redraw();
+                this.saveState();
+            }
+        }
+    }
+    
+    rotateSelected(degrees = 45) {
+        if (this.selectedObject) {
+            // All objects with a rotation property can be rotated
+            // Line-based objects (line, arrow, dashed, squiggly) don't have rotation
+            if (this.selectedObject.rotation !== undefined) {
+                this.selectedObject.rotation = ((this.selectedObject.rotation || 0) + degrees) % 360;
+                this.redraw();
+                this.saveState();
+            }
+        }
+    }
+    
+    applyColorToSelected() {
+        if (this.selectedObject) {
+            this.selectedObject.color = this.activeColor;
+            this.redraw();
+            this.saveState();
+        }
+    }
+    
+    shareLink() {
+        // Get the drill ID from the URL or form
+        const urlParams = new URLSearchParams(window.location.search);
+        const drillId = urlParams.get('edit');
+        
+        if (drillId) {
+            // Generate shareable URL with encoded drill ID
+            const shareUrl = window.location.origin + '/dashboard.php?page=view_drill&id=' + encodeURIComponent(drillId) + '&shared=true';
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                this.showNotification('Share link copied to clipboard!', 'success');
+            }).catch(() => {
+                // Fallback for older browsers - execCommand is deprecated but still works in many browsers
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = shareUrl;
+                    // Hide the textarea to prevent visual flashing
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    textArea.style.top = '0';
+                    textArea.style.opacity = '0';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    this.showNotification('Share link copied to clipboard!', 'success');
+                } catch (e) {
+                    this.showNotification('Please copy this link manually: ' + shareUrl, 'info');
+                }
+            });
+        } else {
+            this.showNotification('Please save the drill first to get a share link.', 'info');
+        }
+    }
+    
+    showNotification(message, type = 'info') {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'notification-toast';
+        alertDiv.innerHTML = '<i class="fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle') + '"></i> ' + message;
+        alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; min-width: 300px; padding: 15px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; animation: slideIn 0.3s ease;';
+        
+        if (type === 'error') {
+            alertDiv.style.background = 'rgba(239, 68, 68, 0.9)';
+            alertDiv.style.color = '#fff';
+        } else if (type === 'success') {
+            alertDiv.style.background = 'rgba(16, 185, 129, 0.9)';
+            alertDiv.style.color = '#fff';
+        } else {
+            alertDiv.style.background = 'rgba(59, 130, 246, 0.9)';
+            alertDiv.style.color = '#fff';
+        }
+        
+        document.body.appendChild(alertDiv);
+        setTimeout(() => alertDiv.remove(), 4000);
     }
     
     setTool(toolName) {
@@ -98,8 +295,12 @@ class DrillDesigner {
             'Tire': 'tire',
             'Stick': 'stick',
             'Draw Dashed Line': 'dashed',
+            'Squiggly Line (Puck Carry)': 'squiggly',
             'Arrow': 'arrow',
             'Add Text': 'text',
+            'Paint Color': 'paint',
+            'Delete Selected': 'delete',
+            'Rotate Item': 'rotate',
             'Number 0': 'num0',
             'Number 1': 'num1',
             'Number 2': 'num2',
@@ -120,6 +321,16 @@ class DrillDesigner {
         
         if (toolName === 'Fullscreen') {
             this.toggleFullscreen();
+            return;
+        }
+        
+        if (toolName === 'Delete Selected') {
+            this.deleteSelected();
+            return;
+        }
+        
+        if (toolName === 'Rotate Item') {
+            this.rotateSelected();
             return;
         }
         
@@ -150,7 +361,7 @@ class DrillDesigner {
                 this.isDragging = true;
                 this.dragStartPos = { x, y };
             }
-        } else if (this.currentTool === 'line' || this.currentTool === 'arrow' || this.currentTool === 'dashed') {
+        } else if (LINE_TOOLS.includes(this.currentTool)) {
             this.dragStartPos = { x, y };
         }
     }
@@ -182,14 +393,15 @@ class DrillDesigner {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        if (this.currentTool === 'line' || this.currentTool === 'arrow' || this.currentTool === 'dashed') {
+        if (LINE_TOOLS.includes(this.currentTool)) {
             if (this.dragStartPos) {
                 this.objects.push({
                     type: this.currentTool,
                     x1: this.dragStartPos.x,
                     y1: this.dragStartPos.y,
                     x2: x,
-                    y2: y
+                    y2: y,
+                    color: this.activeColor
                 });
                 this.dragStartPos = null;
                 this.redraw();
@@ -199,15 +411,50 @@ class DrillDesigner {
     }
     
     handleClick(e) {
-        // Tools that shouldn't add objects on click
-        const ignoreTools = ['select', 'line', 'arrow', 'dashed'];
-        if (ignoreTools.includes(this.currentTool)) {
+        // Line tools and select shouldn't add objects on click
+        if (this.currentTool === 'select' || LINE_TOOLS.includes(this.currentTool)) {
             return;
         }
         
         const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
+        
+        // Handle paint tool - click on object to change its color
+        if (this.currentTool === 'paint') {
+            const obj = this.findObjectAt(x, y);
+            if (obj) {
+                obj.color = this.activeColor;
+                this.redraw();
+                this.saveState();
+            }
+            return;
+        }
+        
+        // Handle rotate tool - click on object to rotate it
+        if (this.currentTool === 'rotate') {
+            const obj = this.findObjectAt(x, y);
+            if (obj) {
+                obj.rotation = ((obj.rotation || 0) + 45) % 360;
+                this.redraw();
+                this.saveState();
+            }
+            return;
+        }
+        
+        // Handle delete tool - click on object to delete it
+        if (this.currentTool === 'delete') {
+            const obj = this.findObjectAt(x, y);
+            if (obj) {
+                const index = this.objects.indexOf(obj);
+                if (index > -1) {
+                    this.objects.splice(index, 1);
+                    this.redraw();
+                    this.saveState();
+                }
+            }
+            return;
+        }
         
         // Handle text tool with prompt
         if (this.currentTool === 'text') {
@@ -218,7 +465,7 @@ class DrillDesigner {
                     x: x,
                     y: y,
                     text: text,
-                    color: '#000'
+                    color: this.activeColor
                 });
                 this.redraw();
                 this.saveState();
@@ -252,7 +499,8 @@ class DrillDesigner {
                 y: y,
                 color: pos.color,
                 label: pos.label,
-                isCoach: pos.isCoach || false
+                isCoach: pos.isCoach || false,
+                rotation: 0
             });
             this.redraw();
             this.saveState();
@@ -267,7 +515,8 @@ class DrillDesigner {
                 x: x,
                 y: y,
                 value: numberMatch[1],
-                color: '#000'
+                color: this.activeColor,
+                rotation: 0
             });
             this.redraw();
             this.saveState();
@@ -279,54 +528,62 @@ class DrillDesigner {
             this.objects.push({
                 type: 'puck',
                 x: x,
-                y: y
+                y: y,
+                color: this.activeColor || '#000000'
             });
         } else if (this.currentTool === 'pucks') {
             this.objects.push({
                 type: 'pucks',
                 x: x,
-                y: y
+                y: y,
+                color: this.activeColor || '#000000'
             });
         } else if (this.currentTool === 'cone') {
             this.objects.push({
                 type: 'cone',
                 x: x,
                 y: y,
-                color: '#ff6b00'
+                color: this.activeColor || '#ff6b00',
+                rotation: 0
             });
         } else if (this.currentTool === 'net') {
             this.objects.push({
                 type: 'net',
                 x: x,
                 y: y,
-                rotation: 0
+                rotation: 0,
+                color: this.activeColor || '#c41e3a'
             });
         } else if (this.currentTool === 'mininet') {
             this.objects.push({
                 type: 'mininet',
                 x: x,
                 y: y,
-                rotation: 0
+                rotation: 0,
+                color: this.activeColor || '#c41e3a'
             });
         } else if (this.currentTool === 'tire') {
             this.objects.push({
                 type: 'tire',
                 x: x,
-                y: y
+                y: y,
+                color: this.activeColor || '#333333'
             });
         } else if (this.currentTool === 'stick') {
             this.objects.push({
                 type: 'stick',
                 x: x,
                 y: y,
-                rotation: 0
+                rotation: 0,
+                color: this.activeColor || '#8B4513'
             });
         } else if (this.currentTool === 'player') {
             this.objects.push({
                 type: 'player',
                 x: x,
                 y: y,
-                color: '#00bfff'
+                color: this.activeColor || '#00bfff',
+                rotation: 0
             });
         }
         
@@ -337,17 +594,58 @@ class DrillDesigner {
     findObjectAt(x, y) {
         for (let i = this.objects.length - 1; i >= 0; i--) {
             const obj = this.objects[i];
-            // Check if the object is close to the click position using squared distance for efficiency
             const hitRadiusSquared = 400; // 20^2
+            
+            // Check if the object is close to the click position
             if (obj.x !== undefined && obj.y !== undefined) {
+                // Standard point-based objects
                 const dx = x - obj.x;
                 const dy = y - obj.y;
                 if (dx * dx + dy * dy < hitRadiusSquared) {
                     return obj;
                 }
+            } else if (LINE_TOOLS.includes(obj.type)) {
+                // Line-based objects - check distance to line segment
+                const distToLine = this.pointToLineDistance(x, y, obj.x1, obj.y1, obj.x2, obj.y2);
+                if (distToLine < 15) {
+                    return obj;
+                }
             }
         }
         return null;
+    }
+    
+    // Calculate distance from point to line segment
+    pointToLineDistance(px, py, x1, y1, x2, y2) {
+        const A = px - x1;
+        const B = py - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+        
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = -1;
+        
+        if (lenSq !== 0) {
+            param = dot / lenSq;
+        }
+        
+        let xx, yy;
+        
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        } else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        } else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
+        
+        const dx = px - xx;
+        const dy = py - yy;
+        return Math.sqrt(dx * dx + dy * dy);
     }
     
     drawRink() {
@@ -725,65 +1023,109 @@ class DrillDesigner {
         
         this.objects.forEach(obj => {
             if (obj.type === 'player') {
-                this.drawPlayer(obj.x, obj.y, obj.color, obj.label, obj.isCoach);
+                this.drawPlayer(obj.x, obj.y, obj.color, obj.label, obj.isCoach, obj.rotation);
             } else if (obj.type === 'cone') {
-                this.drawCone(obj.x, obj.y, obj.color);
+                this.drawCone(obj.x, obj.y, obj.color, obj.rotation);
             } else if (obj.type === 'line') {
-                this.drawLine(obj.x1, obj.y1, obj.x2, obj.y2, '#333');
+                this.drawLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#333');
             } else if (obj.type === 'dashed') {
-                this.drawDashedLine(obj.x1, obj.y1, obj.x2, obj.y2, '#333');
+                this.drawDashedLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#333');
+            } else if (obj.type === 'squiggly') {
+                this.drawSquigglyLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#333');
             } else if (obj.type === 'arrow') {
-                this.drawArrow(obj.x1, obj.y1, obj.x2, obj.y2, '#333');
+                this.drawArrow(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#333');
             } else if (obj.type === 'puck') {
-                this.drawPuck(obj.x, obj.y);
+                this.drawPuck(obj.x, obj.y, obj.color);
             } else if (obj.type === 'pucks') {
-                this.drawPuckGroup(obj.x, obj.y);
+                this.drawPuckGroup(obj.x, obj.y, obj.color);
             } else if (obj.type === 'net') {
-                this.drawNet(obj.x, obj.y, obj.rotation);
+                this.drawNet(obj.x, obj.y, obj.rotation, obj.color);
             } else if (obj.type === 'mininet') {
-                this.drawMiniNet(obj.x, obj.y, obj.rotation);
+                this.drawMiniNet(obj.x, obj.y, obj.rotation, obj.color);
             } else if (obj.type === 'tire') {
-                this.drawTire(obj.x, obj.y);
+                this.drawTire(obj.x, obj.y, obj.color);
             } else if (obj.type === 'stick') {
-                this.drawStick(obj.x, obj.y, obj.rotation);
+                this.drawStick(obj.x, obj.y, obj.rotation, obj.color);
             } else if (obj.type === 'text') {
-                this.drawText(obj.x, obj.y, obj.text, obj.color);
+                this.drawText(obj.x, obj.y, obj.text, obj.color, obj.rotation);
             } else if (obj.type === 'number') {
-                this.drawNumber(obj.x, obj.y, obj.value, obj.color);
+                this.drawNumber(obj.x, obj.y, obj.value, obj.color, obj.rotation);
             }
         });
         
         if (this.selectedObject) {
             this.ctx.strokeStyle = '#00ff00';
             this.ctx.lineWidth = 2;
-            this.ctx.beginPath();
-            this.ctx.arc(this.selectedObject.x, this.selectedObject.y, 22, 0, 2 * Math.PI);
-            this.ctx.stroke();
+            this.ctx.setLineDash([5, 3]);
+            
+            // Handle line-based objects differently
+            if (LINE_TOOLS.includes(this.selectedObject.type)) {
+                // For line objects, highlight the line endpoints
+                const centerX = (this.selectedObject.x1 + this.selectedObject.x2) / 2;
+                const centerY = (this.selectedObject.y1 + this.selectedObject.y2) / 2;
+                
+                // Draw selection circles at endpoints
+                this.ctx.beginPath();
+                this.ctx.arc(this.selectedObject.x1, this.selectedObject.y1, 8, 0, 2 * Math.PI);
+                this.ctx.stroke();
+                
+                this.ctx.beginPath();
+                this.ctx.arc(this.selectedObject.x2, this.selectedObject.y2, 8, 0, 2 * Math.PI);
+                this.ctx.stroke();
+                
+                // Draw center indicator
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, 12, 0, 2 * Math.PI);
+                this.ctx.stroke();
+            } else {
+                // Standard objects with x, y coordinates
+                this.ctx.beginPath();
+                this.ctx.arc(this.selectedObject.x, this.selectedObject.y, 22, 0, 2 * Math.PI);
+                this.ctx.stroke();
+            }
+            this.ctx.setLineDash([]);
+            
+            // Draw rotate indicator only for rotatable objects (not line-based)
+            if (!LINE_TOOLS.includes(this.selectedObject.type) && this.selectedObject.rotation !== undefined) {
+                this.ctx.fillStyle = '#00ff00';
+                this.ctx.beginPath();
+                this.ctx.arc(this.selectedObject.x + 18, this.selectedObject.y - 18, 6, 0, 2 * Math.PI);
+                this.ctx.fill();
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = 'bold 8px Inter, sans-serif';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('R', this.selectedObject.x + 18, this.selectedObject.y - 18);
+            }
         }
     }
     
-    drawPlayer(x, y, color, label, isCoach) {
+    drawPlayer(x, y, color, label, isCoach, rotation) {
         const ctx = this.ctx;
+        
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rotation || 0) * Math.PI / 180);
         
         if (isCoach) {
             // Draw coach as rectangle
             ctx.fillStyle = color;
-            ctx.fillRect(x - 10, y - 12, 20, 24);
+            ctx.fillRect(-10, -12, 20, 24);
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
-            ctx.strokeRect(x - 10, y - 12, 20, 24);
+            ctx.strokeRect(-10, -12, 20, 24);
             
             // Draw C label
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 12px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('C', x, y);
+            ctx.fillText('C', 0, 0);
         } else {
             // Draw player circle
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(x, y, 14, 0, 2 * Math.PI);
+            ctx.arc(0, 0, 14, 0, 2 * Math.PI);
             ctx.fill();
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
@@ -795,22 +1137,30 @@ class DrillDesigner {
                 ctx.font = 'bold 10px Inter, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(label, x, y);
+                ctx.fillText(label, 0, 0);
             }
         }
+        ctx.restore();
     }
     
-    drawCone(x, y, color) {
-        this.ctx.fillStyle = color;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, y - 15);
-        this.ctx.lineTo(x - 10, y + 10);
-        this.ctx.lineTo(x + 10, y + 10);
-        this.ctx.closePath();
-        this.ctx.fill();
-        this.ctx.strokeStyle = '#333';
-        this.ctx.lineWidth = 1;
-        this.ctx.stroke();
+    drawCone(x, y, color, rotation) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rotation || 0) * Math.PI / 180);
+        
+        ctx.fillStyle = color || '#ff6b00';
+        ctx.beginPath();
+        ctx.moveTo(0, -15);
+        ctx.lineTo(-10, 10);
+        ctx.lineTo(10, 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        ctx.restore();
     }
     
     drawLine(x1, y1, x2, y2, color) {
@@ -831,6 +1181,45 @@ class DrillDesigner {
         this.ctx.lineTo(x2, y2);
         this.ctx.stroke();
         this.ctx.setLineDash([]);
+    }
+    
+    drawSquigglyLine(x1, y1, x2, y2, color) {
+        // Draw a squiggly/wavy line for puck carrying
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        
+        // Number of waves based on line length
+        const waveLength = 15;
+        const amplitude = 6;
+        const numWaves = Math.max(2, Math.floor(distance / waveLength));
+        
+        ctx.save();
+        ctx.translate(x1, y1);
+        ctx.rotate(angle);
+        
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        
+        for (let i = 0; i < numWaves; i++) {
+            const segmentStart = (i / numWaves) * distance;
+            const segmentEnd = ((i + 1) / numWaves) * distance;
+            const midX = (segmentStart + segmentEnd) / 2;
+            const direction = (i % 2 === 0) ? 1 : -1;
+            
+            ctx.quadraticCurveTo(
+                midX, direction * amplitude,
+                segmentEnd, 0
+            );
+        }
+        
+        ctx.stroke();
+        ctx.restore();
     }
     
     drawArrow(x1, y1, x2, y2, color) {
@@ -856,17 +1245,17 @@ class DrillDesigner {
         this.ctx.fill();
     }
     
-    drawPuck(x, y) {
+    drawPuck(x, y, color) {
         const ctx = this.ctx;
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = color || '#000';
         ctx.beginPath();
         ctx.arc(x, y, 8, 0, 2 * Math.PI);
         ctx.fill();
     }
     
-    drawPuckGroup(x, y) {
+    drawPuckGroup(x, y, color) {
         const ctx = this.ctx;
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = color || '#000';
         // Draw cluster of pucks
         const positions = [
             { dx: 0, dy: -8 },
@@ -880,14 +1269,14 @@ class DrillDesigner {
         });
     }
     
-    drawNet(x, y, rotation) {
+    drawNet(x, y, rotation, color) {
         const ctx = this.ctx;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate((rotation || 0) * Math.PI / 180);
         
         // Net frame
-        ctx.strokeStyle = '#c41e3a';
+        ctx.strokeStyle = color || '#c41e3a';
         ctx.lineWidth = 3;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         
@@ -914,14 +1303,14 @@ class DrillDesigner {
         ctx.restore();
     }
     
-    drawMiniNet(x, y, rotation) {
+    drawMiniNet(x, y, rotation, color) {
         const ctx = this.ctx;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate((rotation || 0) * Math.PI / 180);
         
         // Mini net frame
-        ctx.strokeStyle = '#c41e3a';
+        ctx.strokeStyle = color || '#c41e3a';
         ctx.lineWidth = 2;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         
@@ -937,9 +1326,9 @@ class DrillDesigner {
         ctx.restore();
     }
     
-    drawTire(x, y) {
+    drawTire(x, y, color) {
         const ctx = this.ctx;
-        ctx.strokeStyle = '#333';
+        ctx.strokeStyle = color || '#333';
         ctx.lineWidth = 6;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.beginPath();
@@ -948,47 +1337,67 @@ class DrillDesigner {
         ctx.stroke();
     }
     
-    drawStick(x, y, rotation) {
+    drawStick(x, y, rotation, color) {
         const ctx = this.ctx;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate((rotation || 0) * Math.PI / 180);
         
-        ctx.strokeStyle = '#8B4513';
-        ctx.lineWidth = 4;
+        const stickColor = color || '#8B4513';
         
-        // Shaft
+        // Shaft (long part of the stick)
+        ctx.strokeStyle = stickColor;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(0, -20);
-        ctx.lineTo(0, 15);
+        ctx.moveTo(0, -22);
+        ctx.lineTo(0, 12);
         ctx.stroke();
         
-        // Blade
-        ctx.lineWidth = 3;
+        // Blade (curved hockey blade)
+        ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(0, 15);
-        ctx.lineTo(12, 18);
+        ctx.moveTo(0, 12);
+        ctx.quadraticCurveTo(8, 16, 14, 12);
+        ctx.stroke();
+        
+        // Tape on blade (darker)
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(2, 13);
+        ctx.quadraticCurveTo(8, 15, 12, 12);
         ctx.stroke();
         
         ctx.restore();
     }
     
-    drawText(x, y, text, color) {
+    drawText(x, y, text, color, rotation) {
         const ctx = this.ctx;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rotation || 0) * Math.PI / 180);
+        
         ctx.fillStyle = color || '#000';
         ctx.font = 'bold 14px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, x, y);
+        ctx.fillText(text, 0, 0);
+        
+        ctx.restore();
     }
     
-    drawNumber(x, y, value, color) {
+    drawNumber(x, y, value, color, rotation) {
         const ctx = this.ctx;
+        
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((rotation || 0) * Math.PI / 180);
         
         // Background circle
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.arc(x, y, 14, 0, 2 * Math.PI);
+        ctx.arc(0, 0, 14, 0, 2 * Math.PI);
         ctx.fill();
         ctx.strokeStyle = color || '#000';
         ctx.lineWidth = 2;
@@ -999,7 +1408,9 @@ class DrillDesigner {
         ctx.font = 'bold 16px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(value, x, y);
+        ctx.fillText(value, 0, 0);
+        
+        ctx.restore();
     }
     
     saveState() {
