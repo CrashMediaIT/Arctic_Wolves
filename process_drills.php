@@ -576,23 +576,22 @@ function parseIHSDrillPage($html, $url) {
     // IHS CDN base URL for drill images
     $ihsCdnBase = 'https://www.files.icehockeysystems.com';
     
-    // First, look for IHS-specific drill images from files.icehockeysystems.com with img-responsive class
+    // First, look for IHS-specific drill images from files.icehockeysystems.com/files/drills/ with img-responsive class
     $ihsImages = $xpath->query('//img[contains(@class, "img-responsive")]/@src');
     if ($ihsImages->length > 0) {
         foreach ($ihsImages as $imgNode) {
             $imageSrc = trim($imgNode->textContent);
-            // Prioritize images from files.icehockeysystems.com/files/drills/
-            if (strpos($imageSrc, 'files.icehockeysystems.com') !== false) {
-                // Ensure proper https:// prefix
-                if (strpos($imageSrc, '//') === 0) {
+            // Only accept images from the /files/drills/ path (actual drill rink images)
+            // This filters out logo images like /files/IHS-logo-blue-300px.png
+            if (strpos($imageSrc, '/files/drills/') !== false) {
+                // Handle relative paths by prepending CDN base
+                if (strpos($imageSrc, '/files/drills/') === 0) {
+                    $imageSrc = $ihsCdnBase . $imageSrc;
+                } elseif (strpos($imageSrc, '//') === 0) {
+                    // Handle protocol-relative URLs
                     $imageSrc = 'https:' . $imageSrc;
                 }
                 $drill['rink_image'] = $imageSrc;
-                break;
-            }
-            // Handle relative paths starting with /files/drills/
-            if (strpos($imageSrc, '/files/drills/') === 0) {
-                $drill['rink_image'] = $ihsCdnBase . $imageSrc;
                 break;
             }
         }
@@ -616,8 +615,15 @@ function parseIHSDrillPage($html, $url) {
             $images = $xpath->query($pattern);
             if ($images->length > 0) {
                 $imageSrc = trim($images->item(0)->textContent);
-                // Make sure it's an absolute URL
+                // Make sure it's an absolute URL and not a logo image
                 if (!empty($imageSrc)) {
+                    // Skip logo images - these are not drill rink diagrams
+                    // Logo images typically have 'logo' in the filename
+                    $lowerSrc = strtolower($imageSrc);
+                    if (strpos($lowerSrc, 'logo') !== false) {
+                        continue; // Skip logo images and try the next pattern
+                    }
+                    
                     // Handle relative paths starting with /files/drills/ (IHS CDN)
                     if (strpos($imageSrc, '/files/drills/') === 0) {
                         $imageSrc = $ihsCdnBase . $imageSrc;
