@@ -4,17 +4,25 @@ $editDrillId = $_GET['edit'] ?? null;
 $editingDrill = null;
 $isEditMode = false;
 
-// Fetch logo URL from theme settings for center ice display
+// Fetch center ice logo URL from theme settings for drill designer
+// Uses single query with COALESCE for efficiency
 $centerLogoUrl = '';
 try {
-    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
+    $logoStmt = $pdo->prepare("
+        SELECT COALESCE(
+            MAX(CASE WHEN setting_name = 'center_ice_logo_url' AND setting_value != '' THEN setting_value END),
+            MAX(CASE WHEN setting_name = 'logo_url' THEN setting_value END)
+        ) as logo_url 
+        FROM theme_settings 
+        WHERE setting_name IN ('center_ice_logo_url', 'logo_url')
+    ");
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
-    if ($logoResult && !empty($logoResult['setting_value'])) {
-        $centerLogoUrl = $logoResult['setting_value'];
+    if ($logoResult && !empty($logoResult['logo_url'])) {
+        $centerLogoUrl = $logoResult['logo_url'];
     }
 } catch (PDOException $e) {
-    error_log("Error fetching logo URL: " . $e->getMessage());
+    error_log("Error fetching center ice logo URL: " . $e->getMessage());
 }
 
 if ($editDrillId) {
@@ -81,7 +89,7 @@ if ($editDrillId) {
                         <button class="tool-btn" title="Mini Net" data-tool="mininet"><i class="fas fa-th-large"></i></button>
                         <button class="tool-btn" title="Tire" data-tool="tire"><i class="fas fa-circle-notch"></i></button>
                         <button class="tool-btn" title="Stick" data-tool="stick">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4A76A" stroke-width="2.5">
                                 <path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
@@ -94,6 +102,8 @@ if ($editDrillId) {
                         <button class="tool-btn" title="Arrow" data-tool="arrow"><i class="fas fa-long-arrow-alt-right"></i></button>
                         <button class="tool-btn" title="Add Text" data-tool="text"><i class="fas fa-font"></i></button>
                         <button class="tool-btn" title="Freehand Draw" data-tool="freehand"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="tool-btn" title="Freehand Arrow" data-tool="freehand_arrow"><i class="fas fa-pencil-alt"></i><i class="fas fa-arrow-right" style="font-size: 8px; margin-left: 2px;"></i></button>
+                        <button class="tool-btn" title="Freehand Dashed" data-tool="freehand_dashed"><i class="fas fa-pencil-alt"></i><i class="fas fa-ellipsis-h" style="font-size: 8px; margin-left: 2px;"></i></button>
                     </div>
                     <div class="tool-group">
                         <span class="tool-group-label">Skating Patterns</span>
@@ -103,6 +113,7 @@ if ($editDrillId) {
                         <button class="tool-btn" title="C-Cuts Skating" data-tool="skating_ccuts"><span class="tool-label" style="font-weight: bold;">C</span></button>
                         <button class="tool-btn" title="Forward Skating with Puck" data-tool="skating_forward_puck"><i class="fas fa-hockey-puck"></i><i class="fas fa-arrow-right" style="font-size: 8px; margin-left: 2px;"></i></button>
                         <button class="tool-btn" title="Backward Skating with Puck" data-tool="skating_backward_puck"><i class="fas fa-arrow-left" style="font-size: 8px; margin-right: 2px;"></i><i class="fas fa-hockey-puck"></i></button>
+                        <button class="tool-btn" title="Freehand Skating Path" data-tool="freehand_skating"><i class="fas fa-skating"></i></button>
                     </div>
                     <div class="tool-group">
                         <span class="tool-group-label">Pass/Shot</span>
@@ -489,6 +500,16 @@ if ($editDrillId) {
 
 .tool-btn i {
     font-size: 14px;
+}
+
+/* Stick icon special styling - golden color for visibility */
+.tool-btn[data-tool="stick"] svg {
+    stroke: #D4A76A;
+}
+
+.tool-btn[data-tool="stick"]:hover svg,
+.tool-btn[data-tool="stick"].active svg {
+    stroke: #fff;
 }
 
 .fullscreen-btn {

@@ -14,8 +14,8 @@
 // Line-based drawing tools constant
 const LINE_TOOLS = ['line', 'arrow', 'dashed', 'squiggly', 'skating_forward', 'skating_backward', 'skating_lateral', 'skating_ccuts', 'skating_forward_puck', 'skating_backward_puck', 'pass', 'shot'];
 
-// Freehand drawing tools
-const FREEHAND_TOOLS = ['freehand'];
+// Freehand drawing tools - can be drawn in any shape/curve
+const FREEHAND_TOOLS = ['freehand', 'freehand_arrow', 'freehand_dashed', 'freehand_skating'];
 
 class DrillDesigner {
     constructor(canvasId) {
@@ -379,8 +379,11 @@ class DrillDesigner {
             // Pass and shot lines
             'Pass': 'pass',
             'Shot': 'shot',
-            // Freehand drawing
-            'Freehand Draw': 'freehand'
+            // Freehand drawing tools
+            'Freehand Draw': 'freehand',
+            'Freehand Arrow': 'freehand_arrow',
+            'Freehand Dashed': 'freehand_dashed',
+            'Freehand Skating Path': 'freehand_skating'
         };
         
         if (toolName === 'Clear All') {
@@ -454,8 +457,8 @@ class DrillDesigner {
                 this.selectedObject.y1 += dy;
                 this.selectedObject.x2 += dx;
                 this.selectedObject.y2 += dy;
-            } else if (this.selectedObject.type === 'freehand') {
-                // Move all points in freehand drawing (points array always exists for freehand objects)
+            } else if (FREEHAND_TOOLS.includes(this.selectedObject.type) && this.selectedObject.points) {
+                // Move all points in freehand drawing types
                 this.selectedObject.points.forEach(pt => {
                     pt.x += dx;
                     pt.y += dy;
@@ -521,8 +524,9 @@ class DrillDesigner {
             // Smooth the points before saving
             const smoothedPoints = this.smoothFreehandPoints(this.currentFreehandPoints);
             
+            // Store the freehand type (freehand, freehand_arrow, freehand_dashed, freehand_skating)
             this.objects.push({
-                type: 'freehand',
+                type: this.currentTool, // Store the actual tool type
                 points: smoothedPoints,
                 color: this.activeColor
             });
@@ -755,8 +759,8 @@ class DrillDesigner {
                 if (distToLine < 25) {
                     return obj;
                 }
-            } else if (obj.type === 'freehand' && obj.points && obj.points.length > 0) {
-                // Freehand drawing - check distance to any point in the path
+            } else if (FREEHAND_TOOLS.includes(obj.type) && obj.points && obj.points.length > 0) {
+                // Freehand drawing types - check distance to any point in the path
                 for (let p = 0; p < obj.points.length; p++) {
                     const pt = obj.points[p];
                     const dx = x - pt.x;
@@ -965,6 +969,7 @@ class DrillDesigner {
         
         // Goal creases (proper semicircle shape)
         const creaseRadius = Math.min(w, h) * 0.08;
+        const cornerRadius = Math.min(w, h) * 0.1;
         
         // Left goal crease - semicircle
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)'; // Light blue fill
@@ -975,12 +980,12 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Left goal line
+        // Left goal line - extends all the way across (within rink bounds)
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * 0.03, h * 0.35);
-        ctx.lineTo(w * 0.03, h * 0.65);
+        ctx.moveTo(w * 0.03, cornerRadius + 4);
+        ctx.lineTo(w * 0.03, h - cornerRadius - 4);
         ctx.stroke();
         
         // Right goal crease - semicircle  
@@ -992,12 +997,12 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Right goal line
+        // Right goal line - extends all the way across (within rink bounds)
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * 0.97, h * 0.35);
-        ctx.lineTo(w * 0.97, h * 0.65);
+        ctx.moveTo(w * 0.97, cornerRadius + 4);
+        ctx.lineTo(w * 0.97, h - cornerRadius - 4);
         ctx.stroke();
         
         // Draw neutral zone faceoff dots with hash marks
@@ -1017,35 +1022,77 @@ class DrillDesigner {
     }
     
     // Helper function to draw hash marks around faceoff circles
+    // NHL regulation hash marks:
+    // - Two 2-foot parallel red lines on each side of the faceoff circle (4 pairs total)
+    // - Lines are 5'7" apart, perpendicular to the goal line (horizontal on rink)
+    // - Positioned at top and bottom of circle, on both sides
     drawHashMarks(ctx, cx, cy, radius) {
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
         
-        // Draw L-shaped hash marks at 4 positions around the circle
+        // NHL hash marks are 2 feet long - scale to canvas
+        // Assuming radius represents ~15 feet circle radius, 2 feet ≈ radius * (2/15)
+        const hashLength = radius * 0.3; // Approximately 2 feet scaled
+        
+        // Distance from circle to hash marks (small gap outside circle)
+        const gapFromCircle = 4;
+        
+        // NHL: hash marks are 5'7" apart - scale to canvas
+        // 5'7" ≈ 5.58 feet, so gap between pair of lines ≈ radius * (5.58/15)
+        const pairGap = radius * 0.4; // Approximately 5'7" scaled
+        
+        // Hash marks are at ~2 o'clock, ~4 o'clock, ~8 o'clock, ~10 o'clock positions
+        // They are horizontal lines (perpendicular to the goal line)
+        // The two lines in each pair are vertically separated by pairGap
+        
+        // For each side (left and right of circle), we draw 2 pairs of horizontal lines
+        // Top pair and bottom pair on each side
+        
         const positions = [
-            { angle: -Math.PI/4, dx: -1, dy: -1 },
-            { angle: Math.PI/4, dx: 1, dy: -1 },
-            { angle: 3*Math.PI/4, dx: 1, dy: 1 },
-            { angle: -3*Math.PI/4, dx: -1, dy: 1 }
+            // Left side of circle (facing the goal)
+            { 
+                side: -1, // left
+                topY: cy - radius * 0.55,  // upper pair position
+                bottomY: cy + radius * 0.55  // lower pair position
+            },
+            // Right side of circle (away from goal)
+            { 
+                side: 1,  // right
+                topY: cy - radius * 0.55,
+                bottomY: cy + radius * 0.55
+            }
         ];
         
-        const hashLength = 15;
-        const offset = radius + 5;
-        
         positions.forEach(pos => {
-            const x = cx + Math.cos(pos.angle) * offset;
-            const y = cy + Math.sin(pos.angle) * offset;
+            // Calculate x position (just outside the circle on this side)
+            const outerEdgeX = cx + pos.side * (radius + gapFromCircle);
+            const innerEdgeX = outerEdgeX + pos.side * hashLength;
             
-            // Horizontal part
+            // Draw top hash mark pair (two horizontal parallel lines)
+            // Upper line of top pair
             ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + pos.dx * hashLength, y);
+            ctx.moveTo(outerEdgeX, pos.topY - pairGap/2);
+            ctx.lineTo(innerEdgeX, pos.topY - pairGap/2);
             ctx.stroke();
             
-            // Vertical part  
+            // Lower line of top pair
             ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x, y + pos.dy * hashLength);
+            ctx.moveTo(outerEdgeX, pos.topY + pairGap/2);
+            ctx.lineTo(innerEdgeX, pos.topY + pairGap/2);
+            ctx.stroke();
+            
+            // Draw bottom hash mark pair (two horizontal parallel lines)
+            // Upper line of bottom pair
+            ctx.beginPath();
+            ctx.moveTo(outerEdgeX, pos.bottomY - pairGap/2);
+            ctx.lineTo(innerEdgeX, pos.bottomY - pairGap/2);
+            ctx.stroke();
+            
+            // Lower line of bottom pair
+            ctx.beginPath();
+            ctx.moveTo(outerEdgeX, pos.bottomY + pairGap/2);
+            ctx.lineTo(innerEdgeX, pos.bottomY + pairGap/2);
             ctx.stroke();
         });
     }
@@ -1254,6 +1301,12 @@ class DrillDesigner {
                 this.drawShotLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#c41e3a');
             } else if (obj.type === 'freehand') {
                 this.drawFreehand(obj.points, obj.color || '#333');
+            } else if (obj.type === 'freehand_arrow') {
+                this.drawFreehandArrow(obj.points, obj.color || '#333');
+            } else if (obj.type === 'freehand_dashed') {
+                this.drawFreehandDashed(obj.points, obj.color || '#333');
+            } else if (obj.type === 'freehand_skating') {
+                this.drawFreehandSkating(obj.points, obj.color || '#0033a0');
             } else if (obj.type === 'puck') {
                 this.drawPuck(obj.x, obj.y, obj.color);
             } else if (obj.type === 'pucks') {
@@ -1297,8 +1350,8 @@ class DrillDesigner {
                 this.ctx.beginPath();
                 this.ctx.arc(centerX, centerY, 12, 0, 2 * Math.PI);
                 this.ctx.stroke();
-            } else if (this.selectedObject.type === 'freehand') {
-                // For freehand, draw selection around bounding box (points array always exists for freehand objects)
+            } else if (FREEHAND_TOOLS.includes(this.selectedObject.type) && this.selectedObject.points) {
+                // For freehand types, draw selection around bounding box
                 const bounds = this.getFreehandBounds(this.selectedObject.points);
                 this.ctx.strokeRect(bounds.minX - 5, bounds.minY - 5, bounds.width + 10, bounds.height + 10);
             } else {
@@ -1309,8 +1362,8 @@ class DrillDesigner {
             }
             this.ctx.setLineDash([]);
             
-            // Draw rotate indicator only for rotatable objects (not line-based)
-            if (!LINE_TOOLS.includes(this.selectedObject.type) && this.selectedObject.rotation !== undefined) {
+            // Draw rotate indicator only for rotatable objects (not line-based or freehand)
+            if (!LINE_TOOLS.includes(this.selectedObject.type) && !FREEHAND_TOOLS.includes(this.selectedObject.type) && this.selectedObject.rotation !== undefined) {
                 this.ctx.fillStyle = '#00ff00';
                 this.ctx.beginPath();
                 this.ctx.arc(this.selectedObject.x + 18, this.selectedObject.y - 18, 6, 0, 2 * Math.PI);
@@ -1740,6 +1793,140 @@ class DrillDesigner {
         ctx.stroke();
     }
     
+    // Freehand arrow - freehand line with arrow at the end
+    drawFreehandArrow(points, color) {
+        if (!points || points.length < 2) return;
+        
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = this.lineThickness;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // Draw the path
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length - 1; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        
+        if (points.length > 1) {
+            const last = points[points.length - 1];
+            ctx.lineTo(last.x, last.y);
+        }
+        
+        ctx.stroke();
+        
+        // Draw arrow head at the end
+        if (points.length >= 2) {
+            const last = points[points.length - 1];
+            const secondLast = points[points.length - 2];
+            const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+            const headlen = 12;
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(last.x - headlen * Math.cos(angle - Math.PI / 6), last.y - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(last.x - headlen * Math.cos(angle + Math.PI / 6), last.y - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+    
+    // Freehand dashed line
+    drawFreehandDashed(points, color) {
+        if (!points || points.length < 2) return;
+        
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = this.lineThickness;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.setLineDash([10, 6]);
+        
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length - 1; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        
+        if (points.length > 1) {
+            const last = points[points.length - 1];
+            ctx.lineTo(last.x, last.y);
+        }
+        
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    
+    // Freehand skating path - skating pattern with arrow at end
+    drawFreehandSkating(points, color) {
+        if (!points || points.length < 2) return;
+        
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = this.lineThickness + 1;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // Draw the path
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        
+        for (let i = 1; i < points.length - 1; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        
+        if (points.length > 1) {
+            const last = points[points.length - 1];
+            ctx.lineTo(last.x, last.y);
+        }
+        
+        ctx.stroke();
+        
+        // Draw arrow head at the end
+        if (points.length >= 2) {
+            const last = points[points.length - 1];
+            const secondLast = points[points.length - 2];
+            const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+            const headlen = 14;
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(last.x - headlen * Math.cos(angle - Math.PI / 6), last.y - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(last.x - headlen * Math.cos(angle + Math.PI / 6), last.y - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Draw small skating marks along the path (every N points)
+        const markInterval = Math.max(5, Math.floor(points.length / 8));
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        for (let i = markInterval; i < points.length - 2; i += markInterval) {
+            const pt = points[i];
+            const nextPt = points[i + 1] || pt;
+            const angle = Math.atan2(nextPt.y - pt.y, nextPt.x - pt.x);
+            const perpAngle = angle + Math.PI / 2;
+            
+            // Draw small perpendicular marks (like skate cuts on ice)
+            ctx.beginPath();
+            ctx.moveTo(pt.x - 4 * Math.cos(perpAngle), pt.y - 4 * Math.sin(perpAngle));
+            ctx.lineTo(pt.x + 4 * Math.cos(perpAngle), pt.y + 4 * Math.sin(perpAngle));
+            ctx.stroke();
+        }
+    }
+    
     // Get bounding box for freehand drawing
     getFreehandBounds(points) {
         if (!points || points.length === 0) return { minX: 0, minY: 0, width: 0, height: 0 };
@@ -1787,30 +1974,74 @@ class DrillDesigner {
         ctx.translate(x, y);
         ctx.rotate((rotation || 0) * Math.PI / 180);
         
-        // Net frame
-        ctx.strokeStyle = color || '#c41e3a';
-        ctx.lineWidth = 3;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        const frameColor = color || '#c41e3a';
+        const netWidth = 48;
+        const netDepth = 16;
         
-        // Net shape
+        // Net back frame (curved like real hockey net)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = frameColor;
+        ctx.lineWidth = 3;
+        
+        // Draw the net frame - more realistic D-shape
         ctx.beginPath();
-        ctx.moveTo(-20, -15);
-        ctx.lineTo(-25, 15);
-        ctx.lineTo(25, 15);
-        ctx.lineTo(20, -15);
+        // Front opening (goal line)
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        // Right side going back
+        ctx.lineTo(netWidth/2 - 4, -netDepth);
+        // Curved back of net
+        ctx.quadraticCurveTo(0, -netDepth - 8, -netWidth/2 + 4, -netDepth);
+        // Left side coming forward
+        ctx.lineTo(-netWidth/2, 0);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
         
-        // Net mesh
-        ctx.strokeStyle = '#999';
-        ctx.lineWidth = 1;
-        for (let i = -15; i <= 15; i += 5) {
+        // Draw net mesh pattern (horizontal lines)
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 0.5;
+        for (let i = 1; i <= 3; i++) {
+            const meshY = -netDepth * (i / 4);
+            const meshWidth = netWidth/2 - (i * 2);
             ctx.beginPath();
-            ctx.moveTo(i - 2, -13);
-            ctx.lineTo(i, 13);
+            ctx.moveTo(-meshWidth, meshY);
+            ctx.quadraticCurveTo(0, meshY - 2, meshWidth, meshY);
             ctx.stroke();
         }
+        
+        // Draw vertical mesh lines
+        for (let i = -3; i <= 3; i++) {
+            const meshX = (netWidth/6) * i;
+            ctx.beginPath();
+            ctx.moveTo(meshX * 0.85, 0);
+            ctx.lineTo(meshX * 0.6, -netDepth);
+            ctx.stroke();
+        }
+        
+        // Red goal posts (front pillars)
+        ctx.strokeStyle = frameColor;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        
+        // Left post
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 2);
+        ctx.lineTo(-netWidth/2, -2);
+        ctx.stroke();
+        
+        // Right post
+        ctx.beginPath();
+        ctx.moveTo(netWidth/2, 2);
+        ctx.lineTo(netWidth/2, -2);
+        ctx.stroke();
+        
+        // Crossbar
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.stroke();
         
         ctx.restore();
     }
@@ -1821,18 +2052,39 @@ class DrillDesigner {
         ctx.translate(x, y);
         ctx.rotate((rotation || 0) * Math.PI / 180);
         
-        // Mini net frame
-        ctx.strokeStyle = color || '#c41e3a';
+        const frameColor = color || '#c41e3a';
+        const netWidth = 32;
+        const netDepth = 12;
+        
+        // Mini net - similar D-shape but smaller
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = frameColor;
         ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         
         ctx.beginPath();
-        ctx.moveTo(-12, -10);
-        ctx.lineTo(-15, 10);
-        ctx.lineTo(15, 10);
-        ctx.lineTo(12, -10);
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.lineTo(netWidth/2 - 3, -netDepth);
+        ctx.quadraticCurveTo(0, -netDepth - 5, -netWidth/2 + 3, -netDepth);
+        ctx.lineTo(-netWidth/2, 0);
         ctx.closePath();
         ctx.fill();
+        ctx.stroke();
+        
+        // Simple mesh
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/4, 0);
+        ctx.lineTo(-netWidth/5, -netDepth + 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -netDepth + 1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(netWidth/4, 0);
+        ctx.lineTo(netWidth/5, -netDepth + 2);
         ctx.stroke();
         
         ctx.restore();

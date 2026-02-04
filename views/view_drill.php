@@ -4,17 +4,25 @@ $drillId = $_GET['id'] ?? null;
 $isShared = isset($_GET['shared']);
 $drill = null;
 
-// Fetch logo URL from theme settings for center ice display
+// Fetch center ice logo URL from theme settings for drill display
+// Uses single query with COALESCE for efficiency
 $centerLogoUrl = '';
 try {
-    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
+    $logoStmt = $pdo->prepare("
+        SELECT COALESCE(
+            MAX(CASE WHEN setting_name = 'center_ice_logo_url' AND setting_value != '' THEN setting_value END),
+            MAX(CASE WHEN setting_name = 'logo_url' THEN setting_value END)
+        ) as logo_url 
+        FROM theme_settings 
+        WHERE setting_name IN ('center_ice_logo_url', 'logo_url')
+    ");
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
-    if ($logoResult && !empty($logoResult['setting_value'])) {
-        $centerLogoUrl = $logoResult['setting_value'];
+    if ($logoResult && !empty($logoResult['logo_url'])) {
+        $centerLogoUrl = $logoResult['logo_url'];
     }
 } catch (PDOException $e) {
-    error_log("Error fetching logo URL: " . $e->getMessage());
+    error_log("Error fetching center ice logo URL: " . $e->getMessage());
 }
 
 // Validate drillId is numeric to prevent injection
@@ -511,6 +519,12 @@ function drawViewRink(ctx, w, h) {
     ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
     ctx.stroke();
     
+    // Center dot
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    
     // Rink border
     const cornerRadius = Math.min(w, h) * 0.1;
     ctx.strokeStyle = '#0033a0';
@@ -527,6 +541,118 @@ function drawViewRink(ctx, w, h) {
     ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
     ctx.closePath();
     ctx.stroke();
+    
+    // Goal creases and goal lines
+    const creaseRadius = Math.min(w, h) * 0.08;
+    
+    // Left goal crease
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(w * 0.03, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Left goal line - extends full height within bounds
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.03, cornerRadius + 4);
+    ctx.lineTo(w * 0.03, h - cornerRadius - 4);
+    ctx.stroke();
+    
+    // Right goal crease
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(w * 0.97, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Right goal line - extends full height within bounds
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.97, cornerRadius + 4);
+    ctx.lineTo(w * 0.97, h - cornerRadius - 4);
+    ctx.stroke();
+    
+    // Faceoff circles with dots and hash marks
+    const faceoffRadius = Math.min(w, h) * 0.1;
+    const circles = [
+        { x: w * 0.15, y: h * 0.3 },
+        { x: w * 0.15, y: h * 0.7 },
+        { x: w * 0.85, y: h * 0.3 },
+        { x: w * 0.85, y: h * 0.7 }
+    ];
+    
+    circles.forEach(function(circle) {
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#c41e3a';
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Draw NHL-style hash marks
+        // Two 2-foot parallel lines on each side, 5'7" apart, perpendicular to goal line
+        drawHashMarksForCircle(ctx, circle.x, circle.y, faceoffRadius);
+    });
+}
+
+// Helper function to draw NHL hash marks around faceoff circles
+function drawHashMarksForCircle(ctx, cx, cy, radius) {
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    
+    // NHL hash marks are 2 feet long - scale to canvas
+    const hashLength = radius * 0.3;
+    
+    // Gap from circle edge
+    const gapFromCircle = 4;
+    
+    // NHL: hash marks are 5'7" apart
+    const pairGap = radius * 0.4;
+    
+    // Hash marks are on both sides (left and right), with top and bottom pairs
+    const positions = [
+        { side: -1, topY: cy - radius * 0.55, bottomY: cy + radius * 0.55 },
+        { side: 1, topY: cy - radius * 0.55, bottomY: cy + radius * 0.55 }
+    ];
+    
+    positions.forEach(function(pos) {
+        const outerEdgeX = cx + pos.side * (radius + gapFromCircle);
+        const innerEdgeX = outerEdgeX + pos.side * hashLength;
+        
+        // Top hash mark pair
+        ctx.beginPath();
+        ctx.moveTo(outerEdgeX, pos.topY - pairGap/2);
+        ctx.lineTo(innerEdgeX, pos.topY - pairGap/2);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(outerEdgeX, pos.topY + pairGap/2);
+        ctx.lineTo(innerEdgeX, pos.topY + pairGap/2);
+        ctx.stroke();
+        
+        // Bottom hash mark pair
+        ctx.beginPath();
+        ctx.moveTo(outerEdgeX, pos.bottomY - pairGap/2);
+        ctx.lineTo(innerEdgeX, pos.bottomY - pairGap/2);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(outerEdgeX, pos.bottomY + pairGap/2);
+        ctx.lineTo(innerEdgeX, pos.bottomY + pairGap/2);
+        ctx.stroke();
+    });
 }
 
 function drawObject(ctx, obj) {
@@ -616,14 +742,72 @@ function drawObject(ctx, obj) {
     } else if (obj.type === 'net') {
         ctx.translate(obj.x, obj.y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
-        ctx.strokeStyle = obj.color || '#c41e3a';
+        
+        const frameColor = obj.color || '#c41e3a';
+        const netWidth = 48;
+        const netDepth = 16;
+        
+        // Draw the net frame - D-shape like real hockey net
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = frameColor;
         ctx.lineWidth = 3;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        
         ctx.beginPath();
-        ctx.moveTo(-20, -15);
-        ctx.lineTo(-25, 15);
-        ctx.lineTo(25, 15);
-        ctx.lineTo(20, -15);
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.lineTo(netWidth/2 - 4, -netDepth);
+        ctx.quadraticCurveTo(0, -netDepth - 8, -netWidth/2 + 4, -netDepth);
+        ctx.lineTo(-netWidth/2, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw mesh lines
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 0.5;
+        for (let i = -2; i <= 2; i++) {
+            const meshX = (netWidth/5) * i;
+            ctx.beginPath();
+            ctx.moveTo(meshX * 0.85, 0);
+            ctx.lineTo(meshX * 0.6, -netDepth);
+            ctx.stroke();
+        }
+        
+        // Red posts and crossbar
+        ctx.strokeStyle = frameColor;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 2);
+        ctx.lineTo(-netWidth/2, -2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(netWidth/2, 2);
+        ctx.lineTo(netWidth/2, -2);
+        ctx.stroke();
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.stroke();
+    } else if (obj.type === 'mininet') {
+        ctx.translate(obj.x, obj.y);
+        ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+        
+        const frameColor = obj.color || '#c41e3a';
+        const netWidth = 32;
+        const netDepth = 12;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = frameColor;
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.lineTo(netWidth/2 - 3, -netDepth);
+        ctx.quadraticCurveTo(0, -netDepth - 5, -netWidth/2 + 3, -netDepth);
+        ctx.lineTo(-netWidth/2, 0);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -673,6 +857,53 @@ function drawObject(ctx, obj) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.value, 0, 0);
+    } else if (obj.type === 'freehand' || obj.type === 'freehand_arrow' || obj.type === 'freehand_dashed' || obj.type === 'freehand_skating') {
+        // Handle all freehand drawing types
+        if (obj.points && obj.points.length >= 2) {
+            const color = obj.color || '#333';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Set line dash for dashed types
+            if (obj.type === 'freehand_dashed') {
+                ctx.setLineDash([10, 6]);
+            }
+            
+            // Draw the path
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x, obj.points[0].y);
+            
+            for (let i = 1; i < obj.points.length - 1; i++) {
+                const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+                const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+            }
+            
+            const last = obj.points[obj.points.length - 1];
+            ctx.lineTo(last.x, last.y);
+            ctx.stroke();
+            
+            if (obj.type === 'freehand_dashed') {
+                ctx.setLineDash([]);
+            }
+            
+            // Draw arrow for arrow and skating types
+            if ((obj.type === 'freehand_arrow' || obj.type === 'freehand_skating') && obj.points.length >= 2) {
+                const secondLast = obj.points[obj.points.length - 2];
+                const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+                const headlen = 12;
+                
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(last.x, last.y);
+                ctx.lineTo(last.x - headlen * Math.cos(angle - Math.PI / 6), last.y - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(last.x - headlen * Math.cos(angle + Math.PI / 6), last.y - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
     }
     
     ctx.restore();
