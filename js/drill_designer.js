@@ -1029,7 +1029,6 @@ class DrillDesigner {
         ctx.lineWidth = 2;
         
         const hashLength = 18;
-        const hashWidth = 4;
         const gapFromCircle = 3;
         
         // Four L-shaped hash marks positioned at 2 o'clock, 4 o'clock, 8 o'clock, and 10 o'clock
@@ -1944,7 +1943,6 @@ class DrillDesigner {
         
         const frameColor = color || '#c41e3a';
         const netWidth = 48;
-        const netHeight = 28;
         const netDepth = 16;
         
         // Net back frame (curved like real hockey net)

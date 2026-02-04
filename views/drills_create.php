@@ -81,7 +81,7 @@ if ($editDrillId) {
                         <button class="tool-btn" title="Mini Net" data-tool="mininet"><i class="fas fa-th-large"></i></button>
                         <button class="tool-btn" title="Tire" data-tool="tire"><i class="fas fa-circle-notch"></i></button>
                         <button class="tool-btn" title="Stick" data-tool="stick">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFD700" stroke-width="2.5">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4A76A" stroke-width="2.5">
                                 <path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>

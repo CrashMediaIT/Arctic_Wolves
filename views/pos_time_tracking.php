@@ -467,10 +467,10 @@ if ($activeShift && !empty($activeShift['lunch_end'])) {
     if ($lunchEndTs === false) $lunchEndTs = null;
 }
 ?>
-const clockInTimestamp = <?= $clockInTs !== null ? ($clockInTs * 1000) : 'null' ?>;
-const lunchStartTimestamp = <?= $lunchStartTs !== null ? ($lunchStartTs * 1000) : 'null' ?>;
-const lunchEndTimestamp = <?= $lunchEndTs !== null ? ($lunchEndTs * 1000) : 'null' ?>;
-const hasActiveShift = <?= $activeShift ? 'true' : 'false' ?>;
+const clockInTimestamp = <?= json_encode($clockInTs !== null ? ($clockInTs * 1000) : null) ?>;
+const lunchStartTimestamp = <?= json_encode($lunchStartTs !== null ? ($lunchStartTs * 1000) : null) ?>;
+const lunchEndTimestamp = <?= json_encode($lunchEndTs !== null ? ($lunchEndTs * 1000) : null) ?>;
+const hasActiveShift = <?= json_encode((bool)$activeShift) ?>;
 
 console.log('POS Timer Debug:', { clockInTimestamp, lunchStartTimestamp, lunchEndTimestamp, hasActiveShift });
 
