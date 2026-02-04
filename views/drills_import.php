@@ -83,13 +83,16 @@ $status_messages = [
                 <div class="url-input-row">
                     <div class="url-input-group">
                         <i class="fas fa-link"></i>
-                        <input type="url" class="form-input" id="ihsUrlInput" placeholder="https://www.icehockeysystems.com/hockey-drills/..." required>
+                        <input type="url" class="form-input" id="ihsUrlInput" placeholder="https://www.icehockeysystems.com/hockey-drills/...">
                     </div>
                     <button type="button" class="btn-primary" id="fetchDrillBtn" onclick="fetchDrillFromUrl()">
                         <i class="fas fa-search"></i> Fetch Drill
                     </button>
+                    <button type="button" class="btn-secondary" onclick="showManualEntry()">
+                        <i class="fas fa-edit"></i> Manual Entry
+                    </button>
                 </div>
-                <p class="url-help-text"><i class="fas fa-info-circle"></i> Paste a drill URL from icehockeysystems.com</p>
+                <p class="url-help-text"><i class="fas fa-info-circle"></i> Paste a drill URL from icehockeysystems.com, or click "Manual Entry" to enter drill details directly</p>
             </div>
 
             <!-- Loading Indicator -->
@@ -115,14 +118,14 @@ $status_messages = [
                                 <i class="fas fa-hockey-puck placeholder-icon"></i>
                                 <span>No image available</span>
                             </div>
-                            <input type="hidden" name="rink_image_url" id="rinkImageUrl">
+                            <input type="text" name="rink_image_url" id="rinkImageUrl" class="form-input" placeholder="Image URL (optional)" style="margin-top: 10px;">
                         </div>
                         
                         <!-- Drill Details -->
                         <div class="preview-details-section">
                             <div class="form-group">
-                                <label class="form-label">Drill Title</label>
-                                <input type="text" name="drill_title" id="previewTitle" class="form-input" readonly>
+                                <label class="form-label">Drill Title <span class="required">*</span></label>
+                                <input type="text" name="drill_title" id="previewTitle" class="form-input" required>
                             </div>
                             
                             <div class="form-group">
@@ -139,7 +142,7 @@ $status_messages = [
                             
                             <div class="form-group">
                                 <label class="form-label">Description</label>
-                                <textarea name="description" id="previewDescription" class="form-textarea" rows="3" readonly></textarea>
+                                <textarea name="description" id="previewDescription" class="form-textarea" rows="3"></textarea>
                             </div>
                         </div>
                     </div>
@@ -148,17 +151,17 @@ $status_messages = [
                     <div class="preview-sections">
                         <div class="preview-section-item">
                             <label class="form-label"><i class="fas fa-cog"></i> Setup</label>
-                            <textarea name="setup" id="previewSetup" class="form-textarea" rows="3" readonly></textarea>
+                            <textarea name="setup" id="previewSetup" class="form-textarea" rows="3"></textarea>
                         </div>
                         
                         <div class="preview-section-item">
                             <label class="form-label"><i class="fas fa-bullseye"></i> Coaching Points</label>
-                            <textarea name="coaching_points" id="previewCoachingPoints" class="form-textarea" rows="3" readonly></textarea>
+                            <textarea name="coaching_points" id="previewCoachingPoints" class="form-textarea" rows="3"></textarea>
                         </div>
                         
                         <div class="preview-section-item">
                             <label class="form-label"><i class="fas fa-level-up-alt"></i> Progression</label>
-                            <textarea name="progression" id="previewProgression" class="form-textarea" rows="3" readonly></textarea>
+                            <textarea name="progression" id="previewProgression" class="form-textarea" rows="3"></textarea>
                         </div>
                     </div>
                     
@@ -301,6 +304,29 @@ function populatePreview(drill) {
     }
 }
 
+function showManualEntry() {
+    // Show the preview section with empty fields for manual entry
+    document.getElementById('drillPreviewSection').style.display = 'block';
+    document.getElementById('importIhsUrl').value = document.getElementById('ihsUrlInput').value || '';
+    
+    // Clear all fields
+    document.getElementById('previewTitle').value = '';
+    document.getElementById('previewDescription').value = '';
+    document.getElementById('previewSetup').value = '';
+    document.getElementById('previewCoachingPoints').value = '';
+    document.getElementById('previewProgression').value = '';
+    document.getElementById('previewCategory').value = '';
+    document.getElementById('rinkImageUrl').value = '';
+    
+    const imagePreview = document.getElementById('rinkImagePreview');
+    imagePreview.innerHTML = '<i class="fas fa-hockey-puck placeholder-icon"></i><span>Enter image URL below</span>';
+    
+    // Focus on the title field
+    document.getElementById('previewTitle').focus();
+    
+    showNotification('Enter drill details manually, then click Import to Library', 'info');
+}
+
 function clearPreview() {
     document.getElementById('drillPreviewSection').style.display = 'none';
     document.getElementById('ihsUrlInput').value = '';
@@ -314,6 +340,17 @@ function showNotification(message, type = 'info') {
     document.body.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 4000);
 }
+
+// Update image preview when URL changes
+document.getElementById('rinkImageUrl').addEventListener('change', function() {
+    const url = this.value.trim();
+    const imagePreview = document.getElementById('rinkImagePreview');
+    if (url) {
+        imagePreview.innerHTML = '<img src="' + url + '" alt="Rink diagram" onerror="this.parentElement.innerHTML=\'<i class=\\\'fas fa-exclamation-triangle placeholder-icon\\\'></i><span>Image failed to load</span>\'">';
+    } else {
+        imagePreview.innerHTML = '<i class="fas fa-hockey-puck placeholder-icon"></i><span>No image available</span>';
+    }
+});
 </script>
 
 <style>
@@ -570,6 +607,10 @@ function showNotification(message, type = 'info') {
 
 .form-label i {
     color: var(--primary, #7c3aed);
+}
+
+.form-label .required {
+    color: #ef4444;
 }
 
 .form-input,

@@ -230,6 +230,441 @@ if ($action === 'remove_share_token') {
     }
 }
 
+// =========================================================
+// FETCH IHS PRACTICE PLAN DATA (AJAX - returns JSON)
+// =========================================================
+if ($action === 'fetch_ihs_practice_plan') {
+    requirePermission($pdo, $user_id, $user_role, 'create_practice_plans');
+    
+    header('Content-Type: application/json');
+    
+    $ihs_url = trim($_POST['ihs_url'] ?? '');
+    
+    if (empty($ihs_url)) {
+        echo json_encode(['success' => false, 'message' => 'URL is required']);
+        exit();
+    }
+    
+    // Validate URL format
+    if (!filter_var($ihs_url, FILTER_VALIDATE_URL)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid URL format']);
+        exit();
+    }
+    
+    // Validate that URL is from icehockeysystems.com
+    $url_parts = parse_url($ihs_url);
+    $host = strtolower($url_parts['host'] ?? '');
+    
+    $allowed_domains = ['icehockeysystems.com', 'www.icehockeysystems.com'];
+    
+    if (!in_array($host, $allowed_domains)) {
+        echo json_encode(['success' => false, 'message' => 'Only URLs from icehockeysystems.com are supported']);
+        exit();
+    }
+    
+    try {
+        // Fetch the page content using cURL
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $ihs_url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        
+        $html = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+        
+        if ($http_code !== 200 || empty($html)) {
+            error_log("IHS Practice Plan Fetch Error: HTTP $http_code - $curl_error");
+            echo json_encode(['success' => false, 'message' => 'Failed to fetch page content. Please try manual entry.']);
+            exit();
+        }
+        
+        // Parse the HTML to extract practice plan information
+        $plan_data = parseIHSPracticePlanPage($html, $ihs_url);
+        
+        if (!$plan_data) {
+            echo json_encode(['success' => false, 'message' => 'Could not parse practice plan data from the page. Please try manual entry.']);
+            exit();
+        }
+        
+        echo json_encode(['success' => true, 'plan' => $plan_data]);
+        exit();
+        
+    } catch (Exception $e) {
+        error_log("IHS Practice Plan Fetch Error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'An error occurred while fetching the practice plan']);
+        exit();
+    }
+}
+
+// =========================================================
+// IMPORT IHS PRACTICE PLAN
+// =========================================================
+if ($action === 'import_ihs_practice_plan') {
+    requirePermission($pdo, $user_id, $user_role, 'create_practice_plans');
+    
+    $ihs_url = trim($_POST['ihs_url'] ?? '');
+    $title = trim($_POST['plan_title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $duration = trim($_POST['duration'] ?? '');
+    $age_group = trim($_POST['age_group'] ?? '');
+    $focus_area = trim($_POST['focus_area'] ?? '');
+    $drills_json = trim($_POST['drills_json'] ?? '[]');
+    
+    if (empty($title)) {
+        header("Location: dashboard.php?page=practice_import&error=title_required");
+        exit();
+    }
+    
+    try {
+        $drills = json_decode($drills_json, true) ?: [];
+        
+        $pdo->beginTransaction();
+        
+        // Build description with import source
+        $full_description = $description;
+        if (!empty($ihs_url)) {
+            $full_description .= "\n\n---\nImported from IHS: " . $ihs_url;
+        }
+        
+        // Parse duration to minutes
+        $duration_minutes = 60;
+        if (preg_match('/(\d+)/', $duration, $matches)) {
+            $duration_minutes = intval($matches[1]);
+        }
+        
+        // Create the practice plan
+        $stmt = $pdo->prepare("
+            INSERT INTO practice_plans (name, description, focus_area, age_group, duration_minutes, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$title, $full_description, $focus_area, $age_group, $duration_minutes, $user_id]);
+        $plan_id = $pdo->lastInsertId();
+        
+        // Create each drill and add to the practice plan
+        $drill_order = 0;
+        foreach ($drills as $drill) {
+            $drill_title = trim($drill['title'] ?? '');
+            if (empty($drill_title)) {
+                continue;
+            }
+            
+            // Build drill description
+            $drill_description = trim($drill['description'] ?? '');
+            if (!empty($drill['setup'])) {
+                $drill_description .= "\n\n## Setup\n" . $drill['setup'];
+            }
+            if (!empty($drill['coaching_points'])) {
+                $drill_description .= "\n\n## Coaching Points\n" . $drill['coaching_points'];
+            }
+            if (!empty($drill['progression'])) {
+                $drill_description .= "\n\n## Progression\n" . $drill['progression'];
+            }
+            
+            // Download and save the rink image if available
+            $custom_image = '';
+            $rink_image_url = trim($drill['rink_image'] ?? '');
+            if (!empty($rink_image_url) && filter_var($rink_image_url, FILTER_VALIDATE_URL)) {
+                $custom_image = downloadAndSaveDrillImage($rink_image_url, $user_id);
+            }
+            
+            // Determine category from drill title or use General
+            $category_id = null;
+            $category_keywords = [
+                'skating' => 'Skating',
+                'shooting' => 'Shooting',
+                'passing' => 'Passing',
+                'stickhandling' => 'Stickhandling',
+                'puck' => 'Puck Control',
+                'defensive' => 'Defensive',
+                'offensive' => 'Offensive',
+                'goalie' => 'Goalie',
+                'conditioning' => 'Conditioning',
+                'battle' => 'Battle Drills',
+                'warm' => 'Warm Up'
+            ];
+            
+            $category_name = 'General';
+            $lower_title = strtolower($drill_title);
+            foreach ($category_keywords as $keyword => $cat_name) {
+                if (strpos($lower_title, $keyword) !== false) {
+                    $category_name = $cat_name;
+                    break;
+                }
+            }
+            
+            // Look up or create category
+            $cat_stmt = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+            $cat_stmt->execute([$category_name]);
+            $cat = $cat_stmt->fetch();
+            if ($cat) {
+                $category_id = $cat['id'];
+            } else {
+                $cat_stmt = $pdo->prepare("INSERT INTO drill_categories (name) VALUES (?)");
+                $cat_stmt->execute([$category_name]);
+                $category_id = $pdo->lastInsertId();
+            }
+            
+            // Create the drill
+            $drill_stmt = $pdo->prepare("
+                INSERT INTO drills (title, description, category_id, custom_image, ihs_source_url, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $drill_stmt->execute([
+                $drill_title,
+                $drill_description,
+                $category_id,
+                $custom_image,
+                $ihs_url,
+                $user_id
+            ]);
+            $drill_id = $pdo->lastInsertId();
+            
+            // Parse drill duration
+            $drill_duration = null;
+            if (!empty($drill['duration'])) {
+                if (preg_match('/(\d+)/', $drill['duration'], $matches)) {
+                    $drill_duration = intval($matches[1]);
+                }
+            }
+            
+            // Add drill to practice plan
+            $plan_drill_stmt = $pdo->prepare("
+                INSERT INTO practice_plan_drills (practice_plan_id, drill_id, drill_order, duration_minutes, notes)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $plan_drill_stmt->execute([
+                $plan_id,
+                $drill_id,
+                $drill_order,
+                $drill_duration,
+                $drill['notes'] ?? ''
+            ]);
+            
+            $drill_order++;
+        }
+        
+        $pdo->commit();
+        
+        header("Location: dashboard.php?page=practice_library&status=plan_imported");
+        exit();
+        
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log("IHS Practice Plan Import Error: " . $e->getMessage());
+        header("Location: dashboard.php?page=practice_import&error=import_failed");
+        exit();
+    }
+}
+
+/**
+ * Parse IHS practice plan page HTML to extract practice plan information
+ */
+function parseIHSPracticePlanPage($html, $url) {
+    $plan = [
+        'title' => '',
+        'description' => '',
+        'duration' => '',
+        'age_group' => '',
+        'focus_area' => '',
+        'drills' => []
+    ];
+    
+    // Suppress HTML parsing warnings
+    libxml_use_internal_errors(true);
+    
+    $dom = new DOMDocument();
+    $dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
+    $xpath = new DOMXPath($dom);
+    
+    // Try to extract title from various possible locations
+    $titleNodes = $xpath->query('//h1');
+    if ($titleNodes->length > 0) {
+        $plan['title'] = trim($titleNodes->item(0)->textContent);
+    }
+    
+    // Try og:title as fallback
+    if (empty($plan['title'])) {
+        $ogTitle = $xpath->query('//meta[@property="og:title"]/@content');
+        if ($ogTitle->length > 0) {
+            $plan['title'] = trim($ogTitle->item(0)->textContent);
+        }
+    }
+    
+    // Extract meta description
+    $metaDesc = $xpath->query('//meta[@name="description"]/@content');
+    if ($metaDesc->length > 0) {
+        $plan['description'] = trim($metaDesc->item(0)->textContent);
+    }
+    
+    // Look for drill elements in the page
+    // Common patterns: .drill, .drill-item, .practice-drill, article, .card
+    $drillPatterns = [
+        '//div[contains(@class, "drill")]',
+        '//article[contains(@class, "drill")]',
+        '//div[contains(@class, "practice-item")]',
+        '//div[contains(@class, "plan-item")]'
+    ];
+    
+    foreach ($drillPatterns as $pattern) {
+        $drillNodes = $xpath->query($pattern);
+        if ($drillNodes->length > 0) {
+            for ($i = 0; $i < $drillNodes->length; $i++) {
+                $drillNode = $drillNodes->item($i);
+                $drill = extractDrillFromNode($drillNode, $xpath, $url);
+                if ($drill && !empty($drill['title'])) {
+                    $plan['drills'][] = $drill;
+                }
+            }
+            break;
+        }
+    }
+    
+    // If no drills found with class patterns, try to find images with titles
+    if (empty($plan['drills'])) {
+        $images = $xpath->query('//img[contains(@src, "drill") or contains(@alt, "drill")]');
+        for ($i = 0; $i < min($images->length, 20); $i++) {
+            $img = $images->item($i);
+            $imgSrc = $img->getAttribute('src');
+            $imgAlt = $img->getAttribute('alt');
+            
+            // Make absolute URL
+            if (!empty($imgSrc) && strpos($imgSrc, 'http') !== 0) {
+                $url_parts = parse_url($url);
+                $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+            }
+            
+            $plan['drills'][] = [
+                'title' => !empty($imgAlt) ? $imgAlt : 'Drill ' . ($i + 1),
+                'description' => '',
+                'setup' => '',
+                'coaching_points' => '',
+                'progression' => '',
+                'rink_image' => $imgSrc,
+                'duration' => ''
+            ];
+        }
+    }
+    
+    libxml_clear_errors();
+    
+    // Return plan if we have at least a title
+    if (!empty($plan['title']) || !empty($plan['drills'])) {
+        if (empty($plan['title'])) {
+            $plan['title'] = 'Imported Practice Plan';
+        }
+        return $plan;
+    }
+    
+    return null;
+}
+
+/**
+ * Extract drill information from a DOM node
+ */
+function extractDrillFromNode($node, $xpath, $baseUrl) {
+    $drill = [
+        'title' => '',
+        'description' => '',
+        'setup' => '',
+        'coaching_points' => '',
+        'progression' => '',
+        'rink_image' => '',
+        'duration' => ''
+    ];
+    
+    // Find title in node
+    $titles = $xpath->query('.//h1|.//h2|.//h3|.//h4|.//strong', $node);
+    if ($titles->length > 0) {
+        $drill['title'] = trim($titles->item(0)->textContent);
+    }
+    
+    // Find image in node
+    $images = $xpath->query('.//img', $node);
+    if ($images->length > 0) {
+        $imgSrc = $images->item(0)->getAttribute('src');
+        if (!empty($imgSrc)) {
+            if (strpos($imgSrc, 'http') !== 0) {
+                $url_parts = parse_url($baseUrl);
+                $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+            }
+            $drill['rink_image'] = $imgSrc;
+        }
+    }
+    
+    // Find description/text in node
+    $paragraphs = $xpath->query('.//p', $node);
+    $text = '';
+    for ($i = 0; $i < $paragraphs->length; $i++) {
+        $text .= trim($paragraphs->item($i)->textContent) . "\n";
+    }
+    $drill['description'] = trim($text);
+    
+    return $drill;
+}
+
+/**
+ * Download an image from URL and save it locally
+ */
+function downloadAndSaveDrillImage($image_url, $user_id) {
+    // Create upload directory if it doesn't exist
+    $upload_dir = __DIR__ . '/uploads/drills/';
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
+    
+    // Get the image extension
+    $path_info = pathinfo(parse_url($image_url, PHP_URL_PATH));
+    $extension = strtolower($path_info['extension'] ?? 'png');
+    
+    // Only allow safe image extensions
+    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    if (!in_array($extension, $allowed_extensions)) {
+        $extension = 'png';
+    }
+    
+    // Generate a unique filename
+    $filename = 'drill_' . $user_id . '_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+    $filepath = $upload_dir . $filename;
+    
+    // Download the image
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $image_url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    
+    $image_data = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200 && !empty($image_data)) {
+        // Validate it's actually an image
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->buffer($image_data);
+        
+        if (strpos($mime, 'image/') === 0) {
+            if (file_put_contents($filepath, $image_data)) {
+                return 'uploads/drills/' . $filename;
+            }
+        }
+    }
+    
+    return '';
+}
+
 // Fallback
 header("Location: dashboard.php?page=practice_plans");
 exit();

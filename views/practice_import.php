@@ -78,13 +78,16 @@ $status_messages = [
                 <div class="url-input-row">
                     <div class="url-input-group">
                         <i class="fas fa-link"></i>
-                        <input type="url" class="form-input" id="ihsUrlInput" placeholder="https://www.icehockeysystems.com/share/practice/..." required>
+                        <input type="url" class="form-input" id="ihsUrlInput" placeholder="https://www.icehockeysystems.com/share/practice/...">
                     </div>
                     <button type="button" class="btn-primary" id="fetchPlanBtn" onclick="fetchPracticePlanFromUrl()">
                         <i class="fas fa-search"></i> Fetch Practice Plan
                     </button>
+                    <button type="button" class="btn-secondary" onclick="showManualEntry()">
+                        <i class="fas fa-edit"></i> Manual Entry
+                    </button>
                 </div>
-                <p class="url-help-text"><i class="fas fa-info-circle"></i> Paste a practice plan share URL from icehockeysystems.com</p>
+                <p class="url-help-text"><i class="fas fa-info-circle"></i> Paste a practice plan share URL from icehockeysystems.com, or click "Manual Entry" to enter details directly</p>
             </div>
 
             <!-- Loading Indicator -->
@@ -95,7 +98,7 @@ $status_messages = [
 
             <!-- Practice Plan Preview Section (hidden until data is fetched) -->
             <div id="planPreviewSection" class="plan-preview-section" style="display: none;">
-                <h4 class="preview-title"><i class="fas fa-eye"></i> Practice Plan Preview</h4>
+                <h4 class="preview-title"><i class="fas fa-eye"></i> Practice Plan Details</h4>
                 
                 <form method="POST" action="process_practice_plans.php" id="importPlanForm">
                     <?= csrfTokenInput() ?>
@@ -105,14 +108,14 @@ $status_messages = [
                     
                     <div class="preview-header-section">
                         <div class="form-group">
-                            <label class="form-label">Practice Plan Title</label>
-                            <input type="text" name="plan_title" id="previewTitle" class="form-input" readonly>
+                            <label class="form-label">Practice Plan Title <span class="required">*</span></label>
+                            <input type="text" name="plan_title" id="previewTitle" class="form-input" required>
                         </div>
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Duration</label>
-                                <input type="text" name="duration" id="previewDuration" class="form-input" readonly>
+                                <label class="form-label">Duration (minutes)</label>
+                                <input type="text" name="duration" id="previewDuration" class="form-input" placeholder="60">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Age Group</label>
@@ -129,20 +132,25 @@ $status_messages = [
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Focus Area</label>
-                                <input type="text" name="focus_area" id="previewFocusArea" class="form-input">
+                                <input type="text" name="focus_area" id="previewFocusArea" class="form-input" placeholder="e.g., Skating, Passing, Team Play">
                             </div>
                         </div>
                         
                         <div class="form-group">
                             <label class="form-label">Description</label>
-                            <textarea name="description" id="previewDescription" class="form-textarea" rows="2" readonly></textarea>
+                            <textarea name="description" id="previewDescription" class="form-textarea" rows="2" placeholder="Practice plan description or goals"></textarea>
                         </div>
                     </div>
                     
                     <!-- Drills in Practice Plan -->
                     <div class="drills-preview-section">
-                        <h5 class="drills-header"><i class="fas fa-hockey-puck"></i> Drills in this Practice Plan <span id="drillCount">(0)</span></h5>
-                        <p class="drills-note">All drills will be imported to your drill library.</p>
+                        <h5 class="drills-header">
+                            <i class="fas fa-hockey-puck"></i> Drills in this Practice Plan <span id="drillCount">(0)</span>
+                            <button type="button" class="btn-secondary btn-small" onclick="addDrillManually()" style="margin-left: auto;">
+                                <i class="fas fa-plus"></i> Add Drill
+                            </button>
+                        </h5>
+                        <p class="drills-note">All drills will be imported to your drill library. You can add, remove, or edit drills below.</p>
                         
                         <div id="drillsList" class="drills-list">
                             <!-- Drills will be populated by JavaScript -->
@@ -272,23 +280,38 @@ function populatePlanPreview(plan) {
     const drills = plan.drills || [];
     
     document.getElementById('drillCount').textContent = '(' + drills.length + ')';
-    document.getElementById('drillsJson').value = JSON.stringify(drills);
+    updateDrillsJson(drills);
+    renderDrillsList(drills);
+}
+
+let currentDrills = [];
+
+function renderDrillsList(drills) {
+    currentDrills = drills;
+    const drillsList = document.getElementById('drillsList');
+    document.getElementById('drillCount').textContent = '(' + drills.length + ')';
     
     if (drills.length === 0) {
-        drillsList.innerHTML = '<p class="no-drills-message">No drills found in this practice plan.</p>';
+        drillsList.innerHTML = '<p class="no-drills-message">No drills added yet. Click "Add Drill" to add drills to this practice plan.</p>';
     } else {
         let html = '';
         drills.forEach((drill, index) => {
             html += `
-                <div class="drill-preview-item">
+                <div class="drill-preview-item" data-index="${index}">
                     <div class="drill-order">${index + 1}</div>
                     <div class="drill-image-preview">
-                        ${drill.rink_image ? `<img src="${drill.rink_image}" alt="Drill diagram">` : '<i class="fas fa-hockey-puck"></i>'}
+                        ${drill.rink_image ? `<img src="${escapeHtml(drill.rink_image)}" alt="Drill diagram" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-hockey-puck\\'></i>'">` : '<i class="fas fa-hockey-puck"></i>'}
                     </div>
                     <div class="drill-details">
-                        <h5>${escapeHtml(drill.title || 'Untitled Drill')}</h5>
-                        <p class="drill-duration">${drill.duration ? drill.duration + ' min' : ''}</p>
-                        <p class="drill-desc">${escapeHtml((drill.description || '').substring(0, 100))}${(drill.description || '').length > 100 ? '...' : ''}</p>
+                        <input type="text" class="form-input drill-title-input" value="${escapeHtml(drill.title || '')}" placeholder="Drill title" onchange="updateDrill(${index}, 'title', this.value)">
+                        <input type="text" class="form-input drill-duration-input" value="${escapeHtml(drill.duration || '')}" placeholder="Duration (min)" onchange="updateDrill(${index}, 'duration', this.value)">
+                        <textarea class="form-textarea drill-desc-input" placeholder="Description, setup, coaching points..." onchange="updateDrill(${index}, 'description', this.value)">${escapeHtml(drill.description || '')}</textarea>
+                        <input type="text" class="form-input drill-image-input" value="${escapeHtml(drill.rink_image || '')}" placeholder="Image URL" onchange="updateDrillImage(${index}, this.value)">
+                    </div>
+                    <div class="drill-actions">
+                        <button type="button" class="btn-icon" onclick="removeDrill(${index})" title="Remove drill">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -297,9 +320,89 @@ function populatePlanPreview(plan) {
     }
 }
 
+function updateDrill(index, field, value) {
+    if (currentDrills[index]) {
+        currentDrills[index][field] = value;
+        updateDrillsJson(currentDrills);
+    }
+}
+
+function updateDrillImage(index, value) {
+    if (currentDrills[index]) {
+        currentDrills[index].rink_image = value;
+        updateDrillsJson(currentDrills);
+        
+        // Update the image preview
+        const drillItem = document.querySelector(`.drill-preview-item[data-index="${index}"] .drill-image-preview`);
+        if (drillItem) {
+            if (value) {
+                drillItem.innerHTML = `<img src="${escapeHtml(value)}" alt="Drill diagram" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-exclamation-triangle\\'></i>'">`;
+            } else {
+                drillItem.innerHTML = '<i class="fas fa-hockey-puck"></i>';
+            }
+        }
+    }
+}
+
+function removeDrill(index) {
+    currentDrills.splice(index, 1);
+    updateDrillsJson(currentDrills);
+    renderDrillsList(currentDrills);
+}
+
+function addDrillManually() {
+    const newDrill = {
+        title: '',
+        description: '',
+        setup: '',
+        coaching_points: '',
+        progression: '',
+        rink_image: '',
+        duration: ''
+    };
+    currentDrills.push(newDrill);
+    updateDrillsJson(currentDrills);
+    renderDrillsList(currentDrills);
+    
+    // Focus on the new drill's title input
+    setTimeout(() => {
+        const inputs = document.querySelectorAll('.drill-title-input');
+        if (inputs.length > 0) {
+            inputs[inputs.length - 1].focus();
+        }
+    }, 100);
+}
+
+function updateDrillsJson(drills) {
+    document.getElementById('drillsJson').value = JSON.stringify(drills);
+}
+
+function showManualEntry() {
+    // Show the preview section with empty fields for manual entry
+    document.getElementById('planPreviewSection').style.display = 'block';
+    document.getElementById('importIhsUrl').value = document.getElementById('ihsUrlInput').value || '';
+    
+    // Clear all fields
+    document.getElementById('previewTitle').value = '';
+    document.getElementById('previewDescription').value = '';
+    document.getElementById('previewDuration').value = '60';
+    document.getElementById('previewFocusArea').value = '';
+    document.getElementById('previewAgeGroup').value = '';
+    
+    // Clear drills
+    currentDrills = [];
+    updateDrillsJson([]);
+    renderDrillsList([]);
+    
+    // Focus on the title field
+    document.getElementById('previewTitle').focus();
+    
+    showNotification('Enter practice plan details manually. Click "Add Drill" to add drills.', 'info');
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = text || '';
     return div.innerHTML;
 }
 
@@ -307,6 +410,7 @@ function clearPreview() {
     document.getElementById('planPreviewSection').style.display = 'none';
     document.getElementById('ihsUrlInput').value = '';
     currentPlanData = null;
+    currentDrills = [];
 }
 
 function showNotification(message, type = 'info') {
@@ -650,6 +754,9 @@ function showNotification(message, type = 'info') {
 .drill-details {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .drill-details h5 {
@@ -657,6 +764,30 @@ function showNotification(message, type = 'info') {
     font-weight: 700;
     color: var(--text-white, #fff);
     margin-bottom: 4px;
+}
+
+.drill-title-input {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 12px;
+}
+
+.drill-duration-input {
+    font-size: 12px;
+    padding: 6px 10px;
+    width: 120px;
+}
+
+.drill-desc-input {
+    font-size: 13px;
+    min-height: 60px;
+    resize: vertical;
+}
+
+.drill-image-input {
+    font-size: 11px;
+    padding: 6px 10px;
+    color: var(--text-dim, #64748b);
 }
 
 .drill-duration {
@@ -672,11 +803,40 @@ function showNotification(message, type = 'info') {
     line-height: 1.4;
 }
 
+.drill-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    color: #ef4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.btn-icon:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+}
+
 .no-drills-message {
     color: var(--text-dim, #64748b);
     font-size: 14px;
     text-align: center;
     padding: 20px;
+}
+
+.form-label .required {
+    color: #ef4444;
 }
 
 /* Import Actions */
