@@ -1,16 +1,16 @@
 <?php
 /**
- * Import Drill from IHS (Ice Hockey Systems)
- * Allows importing drills by pasting an IHS URL
- * Fetches drill images, description, setup, coaching points and progressions
+ * Import Practice Plan from IHS (Ice Hockey Systems)
+ * Allows importing practice plans by pasting an IHS URL
+ * Creates all drills from the practice plan in the drill library
  */
 
-// Fetch recently imported drills
-$recentImportsQuery = "SELECT d.*, u.first_name, u.last_name 
-    FROM drills d 
-    LEFT JOIN users u ON d.created_by = u.id 
-    WHERE d.ihs_source_url IS NOT NULL 
-    ORDER BY d.created_at DESC 
+// Fetch recently imported practice plans
+$recentImportsQuery = "SELECT pp.*, u.first_name, u.last_name 
+    FROM practice_plans pp 
+    LEFT JOIN users u ON pp.created_by = u.id 
+    WHERE pp.description LIKE '%Imported from IHS%'
+    ORDER BY pp.created_at DESC 
     LIMIT 10";
 $recentImports = $pdo->query($recentImportsQuery);
 
@@ -19,30 +19,24 @@ $error = $_GET['error'] ?? null;
 $status = $_GET['status'] ?? null;
 
 $error_messages = [
-    'url_required' => 'Please enter a valid IHS drill URL.',
+    'url_required' => 'Please enter a valid IHS practice plan URL.',
     'invalid_url' => 'The URL format is invalid. Please enter a valid URL.',
-    'already_imported' => 'This drill has already been imported to your library.',
+    'already_imported' => 'This practice plan has already been imported.',
     'import_failed' => 'Import failed. Please try again or contact support.',
-    'title_required' => 'Drill name is required for import.',
-    'permission_denied' => 'You do not have permission to import drills.',
+    'title_required' => 'Practice plan name is required for import.',
+    'permission_denied' => 'You do not have permission to import practice plans.',
     'untrusted_domain' => 'Only URLs from icehockeysystems.com are allowed for import.',
     'csrf_token_missing' => 'Security token missing. Please refresh the page and try again.',
     'csrf_token_invalid' => 'Security token expired. Please refresh the page and try again.',
-    'fetch_failed' => 'Unable to fetch drill data from the URL. Please check the URL and try again.',
-    'parse_failed' => 'Unable to parse drill data from the page. The page format may have changed.'
+    'fetch_failed' => 'Unable to fetch practice plan data from the URL. Please check the URL and try again.',
+    'parse_failed' => 'Unable to parse practice plan data from the page. The page format may have changed.'
 ];
 
 $status_messages = [
-    'drill_imported' => 'Drill successfully imported to your library!'
+    'plan_imported' => 'Practice plan successfully imported! All drills have been added to your library.'
 ];
 ?>
-<!-- Import Drill from IHS View -->
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-file-import"></i> Import from IHS
-    </h1>
-    <p class="page-description">Import drills from Ice Hockey Systems by pasting a drill URL</p>
-</div>
+<!-- Import Practice Plan from IHS View -->
 
 <?php if ($error && isset($error_messages[$error])): ?>
 <div class="alert alert-error">
@@ -63,12 +57,13 @@ $status_messages = [
     <div class="info-box">
         <i class="fas fa-info-circle"></i>
         <div>
-            <strong>How to Import a Drill from IHS:</strong>
+            <strong>How to Import a Practice Plan from IHS:</strong>
             <ol style="margin: 10px 0 0 20px; padding: 0;">
-                <li>Go to <a href="https://www.icehockeysystems.com" target="_blank" rel="noopener noreferrer">icehockeysystems.com</a> and find the drill you want to import</li>
-                <li>Copy the URL from your browser's address bar</li>
-                <li>Paste the URL below and click "Fetch Drill"</li>
-                <li>Review the drill details and click "Import to Library"</li>
+                <li>Go to <a href="https://www.icehockeysystems.com" target="_blank" rel="noopener noreferrer">icehockeysystems.com</a> and find the practice plan you want to import</li>
+                <li>Copy the share URL (e.g., https://www.icehockeysystems.com/share/practice/...)</li>
+                <li>Paste the URL below and click "Fetch Practice Plan"</li>
+                <li>Review the practice plan details and drills</li>
+                <li>Click "Import Practice Plan" - all drills will be created in your library</li>
             </ol>
         </div>
     </div>
@@ -83,82 +78,74 @@ $status_messages = [
                 <div class="url-input-row">
                     <div class="url-input-group">
                         <i class="fas fa-link"></i>
-                        <input type="url" class="form-input" id="ihsUrlInput" placeholder="https://www.icehockeysystems.com/hockey-drills/..." required>
+                        <input type="url" class="form-input" id="ihsUrlInput" placeholder="https://www.icehockeysystems.com/share/practice/..." required>
                     </div>
-                    <button type="button" class="btn-primary" id="fetchDrillBtn" onclick="fetchDrillFromUrl()">
-                        <i class="fas fa-search"></i> Fetch Drill
+                    <button type="button" class="btn-primary" id="fetchPlanBtn" onclick="fetchPracticePlanFromUrl()">
+                        <i class="fas fa-search"></i> Fetch Practice Plan
                     </button>
                 </div>
-                <p class="url-help-text"><i class="fas fa-info-circle"></i> Paste a drill URL from icehockeysystems.com</p>
+                <p class="url-help-text"><i class="fas fa-info-circle"></i> Paste a practice plan share URL from icehockeysystems.com</p>
             </div>
 
             <!-- Loading Indicator -->
             <div id="loadingIndicator" class="loading-indicator" style="display: none;">
                 <div class="spinner"></div>
-                <span>Fetching drill data...</span>
+                <span>Fetching practice plan data...</span>
             </div>
 
-            <!-- Drill Preview Section (hidden until data is fetched) -->
-            <div id="drillPreviewSection" class="drill-preview-section" style="display: none;">
-                <h4 class="preview-title"><i class="fas fa-eye"></i> Drill Preview</h4>
+            <!-- Practice Plan Preview Section (hidden until data is fetched) -->
+            <div id="planPreviewSection" class="plan-preview-section" style="display: none;">
+                <h4 class="preview-title"><i class="fas fa-eye"></i> Practice Plan Preview</h4>
                 
-                <form method="POST" action="process_drills.php" id="importDrillForm">
+                <form method="POST" action="process_practice_plans.php" id="importPlanForm">
                     <?= csrfTokenInput() ?>
-                    <input type="hidden" name="action" value="import_ihs_url">
+                    <input type="hidden" name="action" value="import_ihs_practice_plan">
                     <input type="hidden" name="ihs_url" id="importIhsUrl">
+                    <input type="hidden" name="drills_json" id="drillsJson">
                     
-                    <div class="preview-content">
-                        <!-- Rink Image Preview -->
-                        <div class="preview-image-section">
-                            <label class="form-label">Rink Diagram</label>
-                            <div class="rink-image-preview" id="rinkImagePreview">
-                                <i class="fas fa-hockey-puck placeholder-icon"></i>
-                                <span>No image available</span>
-                            </div>
-                            <input type="hidden" name="rink_image_url" id="rinkImageUrl">
+                    <div class="preview-header-section">
+                        <div class="form-group">
+                            <label class="form-label">Practice Plan Title</label>
+                            <input type="text" name="plan_title" id="previewTitle" class="form-input" readonly>
                         </div>
                         
-                        <!-- Drill Details -->
-                        <div class="preview-details-section">
+                        <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Drill Title</label>
-                                <input type="text" name="drill_title" id="previewTitle" class="form-input" readonly>
+                                <label class="form-label">Duration</label>
+                                <input type="text" name="duration" id="previewDuration" class="form-input" readonly>
                             </div>
-                            
                             <div class="form-group">
-                                <label class="form-label">Category</label>
-                                <select name="category" id="previewCategory" class="form-select">
-                                    <option value="">-- Select Category --</option>
-                                    <?php
-                                    $categories = $pdo->query("SELECT id, name FROM drill_categories ORDER BY name")->fetchAll();
-                                    foreach ($categories as $cat): ?>
-                                        <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
-                                    <?php endforeach; ?>
+                                <label class="form-label">Age Group</label>
+                                <select name="age_group" id="previewAgeGroup" class="form-select">
+                                    <option value="">-- Select --</option>
+                                    <option value="U8">U8</option>
+                                    <option value="U10">U10</option>
+                                    <option value="U12">U12</option>
+                                    <option value="U14">U14</option>
+                                    <option value="U16">U16</option>
+                                    <option value="U18">U18</option>
+                                    <option value="Adult">Adult</option>
                                 </select>
                             </div>
-                            
                             <div class="form-group">
-                                <label class="form-label">Description</label>
-                                <textarea name="description" id="previewDescription" class="form-textarea" rows="3" readonly></textarea>
+                                <label class="form-label">Focus Area</label>
+                                <input type="text" name="focus_area" id="previewFocusArea" class="form-input">
                             </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" id="previewDescription" class="form-textarea" rows="2" readonly></textarea>
                         </div>
                     </div>
                     
-                    <!-- Sections: Setup, Coaching Points, Progression -->
-                    <div class="preview-sections">
-                        <div class="preview-section-item">
-                            <label class="form-label"><i class="fas fa-cog"></i> Setup</label>
-                            <textarea name="setup" id="previewSetup" class="form-textarea" rows="3" readonly></textarea>
-                        </div>
+                    <!-- Drills in Practice Plan -->
+                    <div class="drills-preview-section">
+                        <h5 class="drills-header"><i class="fas fa-hockey-puck"></i> Drills in this Practice Plan <span id="drillCount">(0)</span></h5>
+                        <p class="drills-note">All drills will be imported to your drill library.</p>
                         
-                        <div class="preview-section-item">
-                            <label class="form-label"><i class="fas fa-bullseye"></i> Coaching Points</label>
-                            <textarea name="coaching_points" id="previewCoachingPoints" class="form-textarea" rows="3" readonly></textarea>
-                        </div>
-                        
-                        <div class="preview-section-item">
-                            <label class="form-label"><i class="fas fa-level-up-alt"></i> Progression</label>
-                            <textarea name="progression" id="previewProgression" class="form-textarea" rows="3" readonly></textarea>
+                        <div id="drillsList" class="drills-list">
+                            <!-- Drills will be populated by JavaScript -->
                         </div>
                     </div>
                     
@@ -167,7 +154,7 @@ $status_messages = [
                             <i class="fas fa-times"></i> Clear
                         </button>
                         <button type="submit" class="btn-primary">
-                            <i class="fas fa-download"></i> Import to Library
+                            <i class="fas fa-download"></i> Import Practice Plan & All Drills
                         </button>
                     </div>
                 </form>
@@ -178,7 +165,7 @@ $status_messages = [
     <!-- Recently Imported -->
     <div class="content-card">
         <div class="card-header">
-            <h3><i class="fas fa-history"></i> Recently Imported Drills</h3>
+            <h3><i class="fas fa-history"></i> Recently Imported Practice Plans</h3>
         </div>
         <div class="card-body">
             <div class="recent-imports-list">
@@ -186,29 +173,20 @@ $status_messages = [
                     <?php while($import = $recentImports->fetch()): ?>
                         <div class="import-history-item">
                             <div class="import-thumbnail">
-                                <?php if (!empty($import['custom_image'])): ?>
-                                    <img src="<?= htmlspecialchars($import['custom_image']) ?>" alt="Drill image">
-                                <?php else: ?>
-                                    <i class="fas fa-hockey-puck"></i>
-                                <?php endif; ?>
+                                <i class="fas fa-clipboard-list"></i>
                             </div>
                             <div class="import-info">
-                                <h4><?= htmlspecialchars($import['title'] ?? 'Imported Drill') ?></h4>
+                                <h4><?= htmlspecialchars($import['name'] ?? 'Imported Practice Plan') ?></h4>
                                 <span class="import-meta">
                                     Imported by <?= htmlspecialchars(($import['first_name'] ?? '') . ' ' . ($import['last_name'] ?? '')) ?> 
                                     on <?= date('M j, Y', strtotime($import['created_at'])) ?>
                                 </span>
-                                <?php if (!empty($import['ihs_source_url'])): ?>
-                                    <a href="<?= htmlspecialchars($import['ihs_source_url']) ?>" target="_blank" class="source-link">
-                                        <i class="fas fa-external-link-alt"></i> View Original
-                                    </a>
-                                <?php endif; ?>
                             </div>
-                            <a href="?page=view_drill&id=<?= $import['id'] ?>" class="btn-secondary btn-small"><i class="fas fa-eye"></i> View</a>
+                            <a href="?page=practice_library" class="btn-secondary btn-small"><i class="fas fa-eye"></i> View</a>
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <p class="placeholder-text">No imported drills yet. Import your first drill using the form above.</p>
+                    <p class="placeholder-text">No imported practice plans yet. Import your first plan using the form above.</p>
                 <?php endif; ?>
             </div>
         </div>
@@ -216,9 +194,9 @@ $status_messages = [
 </div>
 
 <script>
-let currentDrillData = null;
+let currentPlanData = null;
 
-async function fetchDrillFromUrl() {
+async function fetchPracticePlanFromUrl() {
     const urlInput = document.getElementById('ihsUrlInput');
     const url = urlInput.value.trim();
     
@@ -235,18 +213,18 @@ async function fetchDrillFromUrl() {
     
     // Show loading indicator
     document.getElementById('loadingIndicator').style.display = 'flex';
-    document.getElementById('drillPreviewSection').style.display = 'none';
-    document.getElementById('fetchDrillBtn').disabled = true;
+    document.getElementById('planPreviewSection').style.display = 'none';
+    document.getElementById('fetchPlanBtn').disabled = true;
     
     try {
-        const response = await fetch('process_drills.php', {
+        const response = await fetch('process_practice_plans.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: new URLSearchParams({
-                action: 'fetch_ihs_drill',
+                action: 'fetch_ihs_practice_plan',
                 ihs_url: url,
                 csrf_token: document.querySelector('input[name="csrf_token"]').value
             })
@@ -255,56 +233,80 @@ async function fetchDrillFromUrl() {
         const data = await response.json();
         
         if (data.success) {
-            currentDrillData = data.drill;
-            populatePreview(data.drill);
-            document.getElementById('drillPreviewSection').style.display = 'block';
+            currentPlanData = data.plan;
+            populatePlanPreview(data.plan);
+            document.getElementById('planPreviewSection').style.display = 'block';
             document.getElementById('importIhsUrl').value = url;
-            showNotification('Drill data fetched successfully!', 'success');
+            showNotification('Practice plan data fetched successfully!', 'success');
         } else {
-            showNotification(data.message || 'Failed to fetch drill data', 'error');
+            showNotification(data.message || 'Failed to fetch practice plan data', 'error');
         }
     } catch (error) {
         console.error('Fetch error:', error);
-        showNotification('An error occurred while fetching the drill', 'error');
+        showNotification('An error occurred while fetching the practice plan', 'error');
     } finally {
         document.getElementById('loadingIndicator').style.display = 'none';
-        document.getElementById('fetchDrillBtn').disabled = false;
+        document.getElementById('fetchPlanBtn').disabled = false;
     }
 }
 
-function populatePreview(drill) {
-    document.getElementById('previewTitle').value = drill.title || '';
-    document.getElementById('previewDescription').value = drill.description || '';
-    document.getElementById('previewSetup').value = drill.setup || '';
-    document.getElementById('previewCoachingPoints').value = drill.coaching_points || '';
-    document.getElementById('previewProgression').value = drill.progression || '';
+function populatePlanPreview(plan) {
+    document.getElementById('previewTitle').value = plan.title || '';
+    document.getElementById('previewDescription').value = plan.description || '';
+    document.getElementById('previewDuration').value = plan.duration || '';
+    document.getElementById('previewFocusArea').value = plan.focus_area || '';
     
-    // Set category if matched
-    if (drill.category) {
-        const categorySelect = document.getElementById('previewCategory');
-        for (let option of categorySelect.options) {
-            if (option.value.toLowerCase() === drill.category.toLowerCase()) {
+    // Set age group if matched
+    if (plan.age_group) {
+        const ageSelect = document.getElementById('previewAgeGroup');
+        for (let option of ageSelect.options) {
+            if (option.value.toLowerCase() === plan.age_group.toLowerCase()) {
                 option.selected = true;
                 break;
             }
         }
     }
     
-    // Display rink image
-    const imagePreview = document.getElementById('rinkImagePreview');
-    if (drill.rink_image) {
-        imagePreview.innerHTML = '<img src="' + drill.rink_image + '" alt="Rink diagram">';
-        document.getElementById('rinkImageUrl').value = drill.rink_image;
+    // Populate drills list
+    const drillsList = document.getElementById('drillsList');
+    const drills = plan.drills || [];
+    
+    document.getElementById('drillCount').textContent = '(' + drills.length + ')';
+    document.getElementById('drillsJson').value = JSON.stringify(drills);
+    
+    if (drills.length === 0) {
+        drillsList.innerHTML = '<p class="no-drills-message">No drills found in this practice plan.</p>';
     } else {
-        imagePreview.innerHTML = '<i class="fas fa-hockey-puck placeholder-icon"></i><span>No image available</span>';
-        document.getElementById('rinkImageUrl').value = '';
+        let html = '';
+        drills.forEach((drill, index) => {
+            html += `
+                <div class="drill-preview-item">
+                    <div class="drill-order">${index + 1}</div>
+                    <div class="drill-image-preview">
+                        ${drill.rink_image ? `<img src="${drill.rink_image}" alt="Drill diagram">` : '<i class="fas fa-hockey-puck"></i>'}
+                    </div>
+                    <div class="drill-details">
+                        <h5>${escapeHtml(drill.title || 'Untitled Drill')}</h5>
+                        <p class="drill-duration">${drill.duration ? drill.duration + ' min' : ''}</p>
+                        <p class="drill-desc">${escapeHtml((drill.description || '').substring(0, 100))}${(drill.description || '').length > 100 ? '...' : ''}</p>
+                    </div>
+                </div>
+            `;
+        });
+        drillsList.innerHTML = html;
     }
 }
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function clearPreview() {
-    document.getElementById('drillPreviewSection').style.display = 'none';
+    document.getElementById('planPreviewSection').style.display = 'none';
     document.getElementById('ihsUrlInput').value = '';
-    currentDrillData = null;
+    currentPlanData = null;
 }
 
 function showNotification(message, type = 'info') {
@@ -484,8 +486,8 @@ function showNotification(message, type = 'info') {
     to { transform: rotate(360deg); }
 }
 
-/* Drill Preview Section */
-.drill-preview-section {
+/* Practice Plan Preview Section */
+.plan-preview-section {
     border-top: 1px solid var(--border, #1e293b);
     padding-top: 24px;
     margin-top: 24px;
@@ -505,49 +507,15 @@ function showNotification(message, type = 'info') {
     color: var(--primary, #7c3aed);
 }
 
-.preview-content {
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 24px;
+.preview-header-section {
     margin-bottom: 24px;
 }
 
-.preview-image-section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.rink-image-preview {
-    width: 100%;
-    aspect-ratio: 4/3;
-    background: var(--bg-main, #06080b);
-    border: 1px solid var(--border, #1e293b);
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    color: var(--text-dim, #64748b);
-    overflow: hidden;
-}
-
-.rink-image-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-.rink-image-preview .placeholder-icon {
-    font-size: 48px;
-    opacity: 0.3;
-}
-
-.preview-details-section {
-    display: flex;
-    flex-direction: column;
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
+    margin-bottom: 16px;
 }
 
 /* Form Elements */
@@ -555,6 +523,7 @@ function showNotification(message, type = 'info') {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    margin-bottom: 16px;
 }
 
 .form-label {
@@ -596,18 +565,118 @@ function showNotification(message, type = 'info') {
     min-height: 80px;
 }
 
-/* Preview Sections */
-.preview-sections {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+/* Drills Preview Section */
+.drills-preview-section {
     margin-bottom: 24px;
 }
 
-.preview-section-item {
+.drills-header {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white, #fff);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.drills-header i {
+    color: var(--primary, #7c3aed);
+}
+
+.drills-header span {
+    color: var(--text-dim, #64748b);
+    font-weight: 400;
+}
+
+.drills-note {
+    font-size: 13px;
+    color: var(--text-dim, #64748b);
+    margin-bottom: 16px;
+}
+
+.drills-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.drill-preview-item {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-main, #06080b);
+    border: 1px solid var(--border, #1e293b);
+    border-radius: 8px;
+    align-items: flex-start;
+}
+
+.drill-order {
+    width: 32px;
+    height: 32px;
+    background: var(--primary, #7c3aed);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.drill-image-preview {
+    width: 100px;
+    height: 75px;
+    background: rgba(124, 58, 237, 0.1);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--primary, #7c3aed);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.drill-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.drill-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.drill-details h5 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-white, #fff);
+    margin-bottom: 4px;
+}
+
+.drill-duration {
+    font-size: 12px;
+    color: var(--primary, #7c3aed);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.drill-desc {
+    font-size: 13px;
+    color: var(--text-dim, #64748b);
+    line-height: 1.4;
+}
+
+.no-drills-message {
+    color: var(--text-dim, #64748b);
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
 }
 
 /* Import Actions */
@@ -702,13 +771,6 @@ function showNotification(message, type = 'info') {
     font-size: 20px;
     color: var(--primary, #7c3aed);
     flex-shrink: 0;
-    overflow: hidden;
-}
-
-.import-thumbnail img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
 }
 
 .import-info {
@@ -730,20 +792,6 @@ function showNotification(message, type = 'info') {
     font-size: 12px;
     color: var(--text-dim, #64748b);
     display: block;
-    margin-bottom: 4px;
-}
-
-.source-link {
-    font-size: 11px;
-    color: var(--primary, #7c3aed);
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.source-link:hover {
-    text-decoration: underline;
 }
 
 .placeholder-text {
@@ -798,11 +846,7 @@ function showNotification(message, type = 'info') {
 
 /* Responsive */
 @media (max-width: 768px) {
-    .preview-content {
-        grid-template-columns: 1fr;
-    }
-    
-    .preview-sections {
+    .form-row {
         grid-template-columns: 1fr;
     }
     
@@ -820,6 +864,15 @@ function showNotification(message, type = 'info') {
     
     .import-actions button {
         width: 100%;
+    }
+    
+    .drill-preview-item {
+        flex-direction: column;
+    }
+    
+    .drill-image-preview {
+        width: 100%;
+        height: 150px;
     }
 }
 </style>
