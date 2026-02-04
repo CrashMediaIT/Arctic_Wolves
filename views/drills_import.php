@@ -19,7 +19,9 @@ $error_messages = [
     'import_failed' => 'Import failed. Please try again or contact support.',
     'title_required' => 'Drill name is required for import.',
     'permission_denied' => 'You do not have permission to import drills.',
-    'untrusted_domain' => 'Only URLs from approved hockey drill websites are allowed (icehockeysystems.com, hockeyshare.com, hockeycoachingabcs.com).'
+    'untrusted_domain' => 'Only URLs from approved hockey drill websites are allowed (icehockeysystems.com, hockeyshare.com, hockeycoachingabcs.com).',
+    'csrf_token_missing' => 'Security token missing. Please refresh the page and try again.',
+    'csrf_token_invalid' => 'Security token expired. Please refresh the page and try again.'
 ];
 
 $status_messages = [

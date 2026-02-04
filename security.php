@@ -62,30 +62,81 @@ function validateCSRFToken($token) {
 }
 
 /**
+ * Helper function to safely redirect with CSRF error for non-AJAX requests
+ * Validates the referrer URL to prevent open redirect vulnerabilities
+ * 
+ * @param string $errorCode The error code to append to the redirect URL
+ */
+function handleCsrfErrorRedirect($errorCode) {
+    $referrer = $_SERVER['HTTP_REFERER'] ?? '';
+    
+    // Validate the referrer is from the same host to prevent open redirect
+    $isValidReferrer = false;
+    if (!empty($referrer)) {
+        $parsed = parse_url($referrer);
+        if ($parsed !== false && isset($parsed['host'])) {
+            $currentHost = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+            // Only allow redirects to the same host
+            if (strcasecmp($parsed['host'], $currentHost) === 0) {
+                $isValidReferrer = true;
+            }
+        }
+    }
+    
+    if ($isValidReferrer && $parsed !== false) {
+        // Build safe redirect URL using only the path and adding error parameter
+        $path = $parsed['path'] ?? '/dashboard.php';
+        $query = isset($parsed['query']) ? $parsed['query'] . '&' : '';
+        $redirectUrl = $path . '?' . $query . 'error=' . urlencode($errorCode);
+    } else {
+        // Fallback to dashboard with error
+        $redirectUrl = 'dashboard.php?error=' . urlencode($errorCode);
+    }
+    
+    header("Location: $redirectUrl");
+    exit();
+}
+
+/**
  * Check CSRF token and die if invalid
  * Used in process scripts where we want to exit on invalid token
+ * Handles both AJAX and regular form submissions appropriately
  */
 function checkCsrfToken() {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
     
+    // Detect if this is an AJAX request
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+              strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    
     // Check if token exists in POST
     if (!isset($_POST['csrf_token'])) {
         http_response_code(403);
-        die(json_encode([
-            'success' => false,
-            'error' => 'CSRF token missing. Please refresh and try again.'
-        ]));
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            die(json_encode([
+                'success' => false,
+                'error' => 'CSRF token missing. Please refresh and try again.'
+            ]));
+        } else {
+            handleCsrfErrorRedirect('csrf_token_missing');
+        }
     }
     
     // Validate token
     if (!validateCSRFToken($_POST['csrf_token'])) {
         http_response_code(403);
-        die(json_encode([
-            'success' => false,
-            'error' => 'Invalid CSRF token. Please refresh and try again.'
-        ]));
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            die(json_encode([
+                'success' => false,
+                'error' => 'Invalid CSRF token. Please refresh and try again.'
+            ]));
+        } else {
+            handleCsrfErrorRedirect('csrf_token_invalid');
+        }
     }
 }
 
