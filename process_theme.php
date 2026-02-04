@@ -125,9 +125,23 @@ try {
                 $result = handleFileUpload($_FILES['logo'], 'logo');
                 if ($result['success']) {
                     updateThemeSetting($pdo, 'logo_url', $result['url']);
+                    // Also update center_ice_logo_url if not separately set
+                    $stmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'center_ice_logo_url'");
+                    $stmt->execute();
+                    $existingCenterLogo = $stmt->fetchColumn();
+                    if (empty($existingCenterLogo)) {
+                        updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                    }
                 }
             } elseif (!empty($_POST['logo_url'])) {
                 updateThemeSetting($pdo, 'logo_url', $_POST['logo_url']);
+                // Also update center_ice_logo_url if not separately set
+                $stmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'center_ice_logo_url'");
+                $stmt->execute();
+                $existingCenterLogo = $stmt->fetchColumn();
+                if (empty($existingCenterLogo)) {
+                    updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['logo_url']);
+                }
             }
             
             // Handle favicon upload
@@ -302,10 +316,24 @@ try {
                 if ($result['success']) {
                     updateThemeSetting($pdo, 'logo_url', $result['url']);
                     updateThemeSetting($pdo, 'logo_method', 'upload');
+                    // Also update center_ice_logo_url if not separately set
+                    $stmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'center_ice_logo_url'");
+                    $stmt->execute();
+                    $existingCenterLogo = $stmt->fetchColumn();
+                    if (empty($existingCenterLogo)) {
+                        updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                    }
                 }
             } elseif (!empty($_POST['logo_url'])) {
                 updateThemeSetting($pdo, 'logo_url', $_POST['logo_url']);
                 updateThemeSetting($pdo, 'logo_method', 'url');
+                // Also update center_ice_logo_url if not separately set
+                $stmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'center_ice_logo_url'");
+                $stmt->execute();
+                $existingCenterLogo = $stmt->fetchColumn();
+                if (empty($existingCenterLogo)) {
+                    updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['logo_url']);
+                }
             }
             
             // Save logo method preference
