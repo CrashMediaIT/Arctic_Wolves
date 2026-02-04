@@ -280,9 +280,12 @@ try {
                 ]
             ]);
             
-            $response = @file_get_contents($test_url, false, $context);
+            $response = file_get_contents($test_url, false, $context);
             
             if ($response === false) {
+                $error = error_get_last();
+                $error_message = $error ? $error['message'] : 'Unknown error';
+                error_log("Google Maps API test failed: " . $error_message);
                 echo json_encode(['success' => false, 'message' => 'Failed to connect to Google Maps API. Please check your server network connection.']);
                 exit;
             }

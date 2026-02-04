@@ -1106,11 +1106,30 @@ try {
                 </div>
                 
                 <?php
-                // Load installed feature versions
-                require_once __DIR__ . '/../admin/feature_importer.php';
-                $feature_importer = new FeatureImporter($pdo, __DIR__ . '/..');
-                $installed_versions = $feature_importer->getInstalledVersions();
+                // Load installed feature versions with error handling
+                $installed_versions = [];
+                $feature_importer_error = null;
+                try {
+                    $feature_importer_file = __DIR__ . '/../admin/feature_importer.php';
+                    if (file_exists($feature_importer_file)) {
+                        require_once $feature_importer_file;
+                        $feature_importer = new FeatureImporter($pdo, __DIR__ . '/..');
+                        $installed_versions = $feature_importer->getInstalledVersions();
+                    } else {
+                        $feature_importer_error = 'Feature importer not found.';
+                    }
+                } catch (Exception $e) {
+                    $feature_importer_error = $e->getMessage();
+                    error_log("Feature importer error: " . $e->getMessage());
+                }
                 ?>
+                
+                <?php if ($feature_importer_error): ?>
+                <div class="info-box" style="margin-bottom: 24px; border-color: #f59e0b;">
+                    <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                    <p>Unable to load feature versions: <?php echo htmlspecialchars($feature_importer_error); ?></p>
+                </div>
+                <?php endif; ?>
                 
                 <?php if (!empty($installed_versions)): ?>
                 <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
@@ -1122,6 +1141,7 @@ try {
                             <th style="padding: 8px; text-align: left;">Installed</th>
                         </tr>
                         <?php 
+                        // Group by feature name and show most recent version
                         $grouped = [];
                         foreach ($installed_versions as $v) {
                             if (!isset($grouped[$v['feature_name']])) {
@@ -1843,12 +1863,10 @@ async function startUpdateImport() {
                 <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-check-circle"></i> Import Successful</h3>
                 <p style="margin: 0;">${data.message || 'Update package imported successfully'}</p>
                 ${data.backup_id ? '<p style="font-size: 12px; margin-top: 10px;">Backup ID: ' + data.backup_id + '</p>' : ''}
+                <button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 15px;">
+                    <i class="fas fa-sync"></i> Reload Page to See Changes
+                </button>
             `;
-            
-            // Reload page after success to show updated versions
-            setTimeout(() => {
-                window.location.reload();
-            }, 3000);
             
         } else {
             resultBanner.className = '';
