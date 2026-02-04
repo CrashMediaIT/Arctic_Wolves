@@ -34,6 +34,32 @@ try {
     error_log("Settings fetch error: " . $e->getMessage());
     $settings = [];
 }
+
+// Fetch theme settings from theme_settings table
+$theme_settings = [];
+try {
+    $theme_query = $pdo->query("SELECT setting_name, setting_value FROM theme_settings");
+    while ($row = $theme_query->fetch(PDO::FETCH_ASSOC)) {
+        $theme_settings[$row['setting_name']] = $row['setting_value'];
+    }
+} catch (PDOException $e) {
+    error_log("Theme settings fetch error: " . $e->getMessage());
+}
+
+// Theme defaults
+$theme_defaults = [
+    'primary_color' => '#7000a4',
+    'secondary_color' => '#c0c0c0',
+    'background_color' => '#06080b',
+    'logo_url' => '',
+    'logo_method' => 'url',
+    'use_logo_as_favicon' => '0'
+];
+foreach ($theme_defaults as $key => $value) {
+    if (!isset($theme_settings[$key])) {
+        $theme_settings[$key] = $value;
+    }
+}
 ?>
 
 <div class="page-header">
@@ -907,35 +933,47 @@ try {
                 <h3><i class="fas fa-palette"></i> Theme Customization</h3>
             </div>
             <div class="card-body">
-                <form id="theme-form" method="POST" action="process_theme.php" enctype="multipart/form-data" data-form-type="theme">
+                <form id="theme-form" method="POST" action="process_theme.php" enctype="multipart/form-data">
                     <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="update_theme">
+                    <input type="hidden" name="action" value="save_theme">
                     <input type="hidden" name="redirect_page" value="system_tools">
                     
                     <!-- Color Scheme Section -->
                     <div class="sync-options" style="margin-bottom: 24px;">
                         <h4><i class="fas fa-swatchbook"></i> Color Scheme</h4>
                         <p class="help-text" style="margin-bottom: 16px;">Customize the application's color palette</p>
-                        <div class="theme-colors">
+                        <div class="theme-colors" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                             <div class="color-picker-item">
-                                <label>Primary Color</label>
-                                <div class="color-input-group">
-                                    <input type="color" name="primary_color" id="primary_color" value="<?php echo htmlspecialchars($settings['primary_color'] ?? '#7000a4'); ?>">
-                                    <input type="text" class="form-input" id="primary_color_text" value="<?php echo htmlspecialchars($settings['primary_color'] ?? '#7000a4'); ?>" readonly>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dim);">Primary Color</label>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="color" name="primary_color" id="theme_primary_color" 
+                                           value="<?php echo htmlspecialchars($theme_settings['primary_color']); ?>"
+                                           style="width: 50px; height: 40px; border: none; border-radius: 6px; cursor: pointer;">
+                                    <input type="text" class="form-input" id="theme_primary_color_text" 
+                                           value="<?php echo htmlspecialchars($theme_settings['primary_color']); ?>" 
+                                           style="width: 100px; font-family: monospace;" readonly>
                                 </div>
                             </div>
                             <div class="color-picker-item">
-                                <label>Secondary Color</label>
-                                <div class="color-input-group">
-                                    <input type="color" name="secondary_color" id="secondary_color" value="<?php echo htmlspecialchars($settings['secondary_color'] ?? '#c0c0c0'); ?>">
-                                    <input type="text" class="form-input" id="secondary_color_text" value="<?php echo htmlspecialchars($settings['secondary_color'] ?? '#c0c0c0'); ?>" readonly>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dim);">Secondary Color</label>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="color" name="secondary_color" id="theme_secondary_color" 
+                                           value="<?php echo htmlspecialchars($theme_settings['secondary_color']); ?>"
+                                           style="width: 50px; height: 40px; border: none; border-radius: 6px; cursor: pointer;">
+                                    <input type="text" class="form-input" id="theme_secondary_color_text" 
+                                           value="<?php echo htmlspecialchars($theme_settings['secondary_color']); ?>" 
+                                           style="width: 100px; font-family: monospace;" readonly>
                                 </div>
                             </div>
                             <div class="color-picker-item">
-                                <label>Background Color</label>
-                                <div class="color-input-group">
-                                    <input type="color" name="bg_color" id="bg_color" value="<?php echo htmlspecialchars($settings['background_color'] ?? '#06080b'); ?>">
-                                    <input type="text" class="form-input" id="bg_color_text" value="<?php echo htmlspecialchars($settings['background_color'] ?? '#06080b'); ?>" readonly>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dim);">Background Color</label>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="color" name="background_color" id="theme_background_color" 
+                                           value="<?php echo htmlspecialchars($theme_settings['background_color']); ?>"
+                                           style="width: 50px; height: 40px; border: none; border-radius: 6px; cursor: pointer;">
+                                    <input type="text" class="form-input" id="theme_background_color_text" 
+                                           value="<?php echo htmlspecialchars($theme_settings['background_color']); ?>" 
+                                           style="width: 100px; font-family: monospace;" readonly>
                                 </div>
                             </div>
                         </div>
@@ -944,7 +982,7 @@ try {
                     <!-- Logo & Branding Section -->
                     <div class="sync-options" style="margin-bottom: 24px;">
                         <h4><i class="fas fa-image"></i> Logo & Branding</h4>
-                        <p class="help-text" style="margin-bottom: 16px;">Upload a logo or use a URL. The logo will also be used as the site favicon.</p>
+                        <p class="help-text" style="margin-bottom: 16px;">Upload a logo or provide a URL</p>
                         
                         <div class="settings-list">
                             <div class="setting-item">
@@ -952,57 +990,61 @@ try {
                                     <h4>Logo Source</h4>
                                     <p>Choose how to provide your logo</p>
                                 </div>
-                                <div class="logo-source-options" style="display: flex; gap: 20px;">
-                                    <label class="radio-item">
-                                        <input type="radio" name="logo_method" value="upload" <?php echo (($settings['logo_method'] ?? 'url') === 'upload') ? 'checked' : ''; ?> onchange="toggleLogoInput()">
+                                <div style="display: flex; gap: 20px;">
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                        <input type="radio" name="logo_method" value="upload" 
+                                               <?php echo ($theme_settings['logo_method'] === 'upload') ? 'checked' : ''; ?> 
+                                               onchange="toggleThemeLogoInput()">
                                         <span>Upload File</span>
                                     </label>
-                                    <label class="radio-item">
-                                        <input type="radio" name="logo_method" value="url" <?php echo (($settings['logo_method'] ?? 'url') === 'url') ? 'checked' : ''; ?> onchange="toggleLogoInput()">
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                        <input type="radio" name="logo_method" value="url" 
+                                               <?php echo ($theme_settings['logo_method'] === 'url') ? 'checked' : ''; ?> 
+                                               onchange="toggleThemeLogoInput()">
                                         <span>Use URL</span>
                                     </label>
                                 </div>
                             </div>
                             
-                            <div class="setting-item" id="logo-upload-row" style="<?php echo (($settings['logo_method'] ?? 'url') === 'url') ? 'display: none;' : ''; ?>">
+                            <div class="setting-item" id="theme-logo-upload-row" style="<?php echo ($theme_settings['logo_method'] === 'url') ? 'display: none;' : ''; ?>">
                                 <div class="setting-info">
                                     <h4>Upload Logo</h4>
-                                    <p>Recommended: PNG or SVG, 200x50px or higher</p>
+                                    <p>PNG, JPG, GIF, SVG (max 5MB)</p>
                                 </div>
                                 <input type="file" name="logo" class="form-input" accept="image/*" style="max-width: 300px;">
                             </div>
                             
-                            <div class="setting-item" id="logo-url-row" style="<?php echo (($settings['logo_method'] ?? 'url') === 'upload') ? 'display: none;' : ''; ?>">
+                            <div class="setting-item" id="theme-logo-url-row" style="<?php echo ($theme_settings['logo_method'] === 'upload') ? 'display: none;' : ''; ?>">
                                 <div class="setting-info">
                                     <h4>Logo URL</h4>
                                     <p>Direct URL to your logo image</p>
                                 </div>
                                 <input type="url" name="logo_url" class="form-input" 
-                                       value="<?php echo htmlspecialchars($settings['logo_url'] ?? ''); ?>"
+                                       value="<?php echo htmlspecialchars($theme_settings['logo_url']); ?>"
                                        placeholder="https://example.com/logo.png" style="min-width: 300px;">
                             </div>
                             
                             <div class="setting-item">
                                 <div class="setting-info">
                                     <h4>Use Logo as Favicon</h4>
-                                    <p>Automatically use the logo as the browser favicon (tab icon)</p>
+                                    <p>Use the logo as the browser tab icon</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" name="use_logo_as_favicon" 
-                                           <?php echo !empty($settings['use_logo_as_favicon']) ? 'checked' : ''; ?>
-                                           data-action="toggle-setting">
+                                           <?php echo !empty($theme_settings['use_logo_as_favicon']) && $theme_settings['use_logo_as_favicon'] !== '0' ? 'checked' : ''; ?>>
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
                             
-                            <?php if (!empty($settings['logo_url'])): ?>
+                            <?php if (!empty($theme_settings['logo_url'])): ?>
                             <div class="setting-item">
                                 <div class="setting-info">
-                                    <h4>Current Logo Preview</h4>
-                                    <p>This logo is currently in use</p>
+                                    <h4>Current Logo</h4>
+                                    <p>Preview of the current logo</p>
                                 </div>
-                                <div class="logo-preview" style="background: #0A0A0F; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
-                                    <img src="<?php echo htmlspecialchars($settings['logo_url']); ?>" alt="Current Logo" style="max-height: 60px; max-width: 200px;">
+                                <div style="background: #0A0A0F; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <img src="<?php echo htmlspecialchars($theme_settings['logo_url']); ?>" alt="Current Logo" 
+                                         style="max-height: 60px; max-width: 200px;" onerror="this.style.display='none'">
                                 </div>
                             </div>
                             <?php endif; ?>
@@ -1010,10 +1052,10 @@ try {
                     </div>
                     
                     <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="resetThemeToDefault()">
-                            <i class="fas fa-undo"></i> Reset to Default
+                        <button type="button" class="btn btn-secondary" onclick="resetThemeColors()">
+                            <i class="fas fa-undo"></i> Reset Colors
                         </button>
-                        <button type="submit" class="btn btn-primary" data-action="save">
+                        <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Theme
                         </button>
                     </div>
@@ -1029,51 +1071,68 @@ try {
                 <h3><i class="fas fa-database"></i> Database Tools</h3>
             </div>
             <div class="card-body">
-                <div class="db-tools-grid">
-                    <div class="db-tool-card">
-                        <i class="fas fa-download"></i>
-                        <h4>Backup Database</h4>
-                        <p>Create a full database backup</p>
-                        <button class="btn btn-primary" onclick="performDatabaseBackup()">
+                <!-- Database Status -->
+                <div id="db-status-message" style="display: none; margin-bottom: 20px;"></div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <!-- Backup Database -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center;">
+                        <div style="font-size: 36px; color: var(--primary); margin-bottom: 12px;">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <h4 style="margin-bottom: 8px; color: var(--text-white);">Backup Database</h4>
+                        <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 16px;">Create a full backup of all database tables</p>
+                        <button type="button" class="btn btn-primary" id="btn-backup-db" onclick="runDatabaseBackup(this)">
                             <i class="fas fa-download"></i> Backup Now
                         </button>
                     </div>
-                    <div class="db-tool-card">
-                        <i class="fas fa-upload"></i>
-                        <h4>Restore Database</h4>
-                        <p>Restore from backup file</p>
-                        <button class="btn btn-secondary" onclick="showRestoreModal()">
+                    
+                    <!-- Repair & Optimize -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center;">
+                        <div style="font-size: 36px; color: #10b981; margin-bottom: 12px;">
+                            <i class="fas fa-wrench"></i>
+                        </div>
+                        <h4 style="margin-bottom: 8px; color: var(--text-white);">Repair & Optimize</h4>
+                        <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 16px;">Check, repair and optimize all database tables</p>
+                        <button type="button" class="btn btn-secondary" id="btn-optimize-db" onclick="runDatabaseOptimize(this)">
+                            <i class="fas fa-wrench"></i> Optimize
+                        </button>
+                    </div>
+                    
+                    <!-- Clear Cache -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center;">
+                        <div style="font-size: 36px; color: #f59e0b; margin-bottom: 12px;">
+                            <i class="fas fa-broom"></i>
+                        </div>
+                        <h4 style="margin-bottom: 8px; color: var(--text-white);">Clear Cache</h4>
+                        <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 16px;">Clear temporary files and cached data</p>
+                        <button type="button" class="btn btn-secondary" id="btn-clear-cache" onclick="runClearCache(this)">
+                            <i class="fas fa-broom"></i> Clear Cache
+                        </button>
+                    </div>
+                    
+                    <!-- Restore Database -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center;">
+                        <div style="font-size: 36px; color: #ef4444; margin-bottom: 12px;">
+                            <i class="fas fa-upload"></i>
+                        </div>
+                        <h4 style="margin-bottom: 8px; color: var(--text-white);">Restore Database</h4>
+                        <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 16px;">Restore from a previous backup file</p>
+                        <a href="dashboard.php?page=database_restore" class="btn btn-secondary">
                             <i class="fas fa-upload"></i> Restore
-                        </button>
-                    </div>
-                    <div class="db-tool-card">
-                        <i class="fas fa-wrench"></i>
-                        <h4>Repair & Optimize</h4>
-                        <p>Repair damaged tables and optimize for performance</p>
-                        <button class="btn btn-secondary" onclick="repairOptimizeDatabase()">
-                            <i class="fas fa-wrench"></i> Repair & Optimize
-                        </button>
-                    </div>
-                    <div class="db-tool-card warning">
-                        <i class="fas fa-trash-alt"></i>
-                        <h4>Clear Cache</h4>
-                        <p>Clear all cached data and temporary files</p>
-                        <button class="btn btn-secondary" onclick="clearCache()">
-                            <i class="fas fa-trash-alt"></i> Clear Cache
-                        </button>
+                        </a>
                     </div>
                 </div>
                 
-                <!-- Database Status Info -->
+                <!-- Info Box -->
                 <div class="info-box" style="margin-top: 24px;">
                     <i class="fas fa-info-circle"></i>
                     <div>
-                        <p><strong>Repair & Optimize</strong> performs the following operations:</p>
-                        <ul style="margin: 8px 0; padding-left: 20px; color: var(--text-dim);">
-                            <li>CHECK TABLE - Identifies corrupted or damaged tables</li>
-                            <li>REPAIR TABLE - Fixes any corruption found</li>
-                            <li>OPTIMIZE TABLE - Defragments tables and reclaims unused space</li>
-                            <li>ANALYZE TABLE - Updates table statistics for better query performance</li>
+                        <p><strong>Database Maintenance</strong></p>
+                        <ul style="margin: 8px 0; padding-left: 20px; color: var(--text-dim); font-size: 13px;">
+                            <li><strong>Backup</strong> - Creates a SQL dump of all tables saved to the backups folder</li>
+                            <li><strong>Optimize</strong> - Runs CHECK, REPAIR, OPTIMIZE and ANALYZE on all tables</li>
+                            <li><strong>Clear Cache</strong> - Removes temporary files from cache and tmp directories</li>
                         </ul>
                     </div>
                 </div>
@@ -1538,141 +1597,144 @@ function testGoogleMapsAPI() {
 }
 
 // Theme functions
-function toggleLogoInput() {
-    const method = document.querySelector('input[name="logo_method"]:checked').value;
-    document.getElementById('logo-upload-row').style.display = method === 'upload' ? '' : 'none';
-    document.getElementById('logo-url-row').style.display = method === 'url' ? '' : 'none';
+function toggleThemeLogoInput() {
+    const method = document.querySelector('input[name="logo_method"]:checked');
+    if (!method) return;
+    
+    const uploadRow = document.getElementById('theme-logo-upload-row');
+    const urlRow = document.getElementById('theme-logo-url-row');
+    
+    if (uploadRow) uploadRow.style.display = method.value === 'upload' ? '' : 'none';
+    if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
 }
 
-function resetThemeToDefault() {
-    if (confirm('Reset all theme settings to default values?')) {
-        document.getElementById('primary_color').value = '#7000a4';
-        document.getElementById('primary_color_text').value = '#7000a4';
-        document.getElementById('secondary_color').value = '#c0c0c0';
-        document.getElementById('secondary_color_text').value = '#c0c0c0';
-        document.getElementById('bg_color').value = '#06080b';
-        document.getElementById('bg_color_text').value = '#06080b';
+function resetThemeColors() {
+    if (!confirm('Reset all theme colors to default values?')) return;
+    
+    const defaults = {
+        'theme_primary_color': '#7000a4',
+        'theme_secondary_color': '#c0c0c0',
+        'theme_background_color': '#06080b'
+    };
+    
+    for (const [id, value] of Object.entries(defaults)) {
+        const colorInput = document.getElementById(id);
+        const textInput = document.getElementById(id + '_text');
+        if (colorInput) colorInput.value = value;
+        if (textInput) textInput.value = value;
     }
 }
 
-// Color picker sync
-document.querySelectorAll('input[type="color"]').forEach(input => {
-    input.addEventListener('input', function() {
-        const textInput = this.nextElementSibling;
-        if (textInput && textInput.tagName === 'INPUT') {
-            textInput.value = this.value;
-        }
+// Sync color pickers with text inputs
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[type="color"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const textId = this.id + '_text';
+            const textInput = document.getElementById(textId);
+            if (textInput) textInput.value = this.value;
+        });
     });
 });
 
 // Database Tools functions
-function performDatabaseBackup() {
-    const btn = event.target.closest('button');
+function showDbStatus(message, type) {
+    const statusDiv = document.getElementById('db-status-message');
+    if (!statusDiv) return;
+    
+    const colors = {
+        success: { bg: 'rgba(16, 185, 129, 0.1)', border: '#10b981', text: '#10b981' },
+        error: { bg: 'rgba(239, 68, 68, 0.1)', border: '#ef4444', text: '#ef4444' },
+        info: { bg: 'rgba(59, 130, 246, 0.1)', border: '#3b82f6', text: '#3b82f6' }
+    };
+    const c = colors[type] || colors.info;
+    
+    statusDiv.style.cssText = `display: block; background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.text}; padding: 16px; border-radius: 8px;`;
+    statusDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i> ${message}`;
+    
+    if (type === 'success') {
+        setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+    }
+}
+
+function runDatabaseBackup(btn) {
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Backing up...';
     
-    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     
     fetch('process_database_backup.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `action=manual_backup&csrf_token=${encodeURIComponent(csrfToken)}`
     })
     .then(response => response.json())
     .then(data => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        
-        if (data.success) {
-            alert('✓ Database Backup Complete!\n\n' + (data.message || 'Backup created successfully.'));
-        } else {
-            alert('✗ Backup Failed\n\n' + (data.message || 'Unknown error'));
-        }
+        showDbStatus(data.message || (data.success ? 'Backup completed' : 'Backup failed'), data.success ? 'success' : 'error');
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error: Failed to create backup');
-        console.error('Error:', error);
+        showDbStatus('Network error: Failed to create backup', 'error');
+        console.error('Backup error:', error);
     });
 }
 
-function showRestoreModal() {
-    window.location.href = 'dashboard.php?page=database_restore';
-}
-
-function repairOptimizeDatabase() {
-    if (!confirm('This will repair and optimize all database tables. Continue?')) return;
+function runDatabaseOptimize(btn) {
+    if (!confirm('This will check, repair and optimize all database tables. Continue?')) return;
     
-    const btn = event.target.closest('button');
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Optimizing...';
     
-    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     
     fetch('process_database_backup.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `action=repair_optimize&csrf_token=${encodeURIComponent(csrfToken)}`
     })
     .then(response => response.json())
     .then(data => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        
-        if (data.success) {
-            alert('✓ Database Optimized!\n\n' + (data.message || 'All tables have been repaired and optimized.'));
-        } else {
-            alert('✗ Optimization Failed\n\n' + (data.message || 'Unknown error'));
-        }
+        showDbStatus(data.message || (data.success ? 'Optimization completed' : 'Optimization failed'), data.success ? 'success' : 'error');
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error: Failed to optimize database');
-        console.error('Error:', error);
+        showDbStatus('Network error: Failed to optimize database', 'error');
+        console.error('Optimize error:', error);
     });
 }
 
-function clearCache() {
-    if (!confirm('Clear all cached data? This may temporarily slow down the application.')) return;
+function runClearCache(btn) {
+    if (!confirm('Clear all cached data and temporary files?')) return;
     
-    const btn = event.target.closest('button');
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
     
-    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     
     fetch('process_database_backup.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `action=clear_cache&csrf_token=${encodeURIComponent(csrfToken)}`
     })
     .then(response => response.json())
     .then(data => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        
-        if (data.success) {
-            alert('✓ Cache Cleared!\n\n' + (data.message || 'All cached data has been cleared.'));
-        } else {
-            alert('✗ Clear Cache Failed\n\n' + (data.message || 'Unknown error'));
-        }
+        showDbStatus(data.message || (data.success ? 'Cache cleared' : 'Failed to clear cache'), data.success ? 'success' : 'error');
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('Error: Failed to clear cache');
-        console.error('Error:', error);
+        showDbStatus('Network error: Failed to clear cache', 'error');
+        console.error('Clear cache error:', error);
     });
 }
 
