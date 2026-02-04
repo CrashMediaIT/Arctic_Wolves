@@ -161,7 +161,7 @@ if ($editDrillId) {
                     <?php endif; ?>
                 </div>
                 <div class="canvas-help-text">
-                    <p><i class="fas fa-lightbulb"></i> <strong>Tips:</strong> Click Rotate or Delete tool then click items to edit. Press <kbd>R</kbd> to rotate selected, <kbd>Delete</kbd> to remove. Use Freehand for smooth paint-like lines.</p>
+                    <p><i class="fas fa-lightbulb"></i> <strong>Tips:</strong> Click Rotate/Delete tool then click items to edit. Select item + press <kbd>R</kbd> to rotate or <kbd>Delete</kbd> to remove. Use Freehand for smooth paint-like lines.</p>
                 </div>
             </div>
         </div>

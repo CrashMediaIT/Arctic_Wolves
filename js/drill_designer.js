@@ -407,8 +407,8 @@ class DrillDesigner {
                 this.selectedObject.y1 += dy;
                 this.selectedObject.x2 += dx;
                 this.selectedObject.y2 += dy;
-            } else if (this.selectedObject.type === 'freehand' && this.selectedObject.points) {
-                // Move all points in freehand drawing
+            } else if (this.selectedObject.type === 'freehand') {
+                // Move all points in freehand drawing (points array always exists for freehand objects)
                 this.selectedObject.points.forEach(pt => {
                     pt.x += dx;
                     pt.y += dy;
@@ -1227,8 +1227,8 @@ class DrillDesigner {
                 this.ctx.beginPath();
                 this.ctx.arc(centerX, centerY, 12, 0, 2 * Math.PI);
                 this.ctx.stroke();
-            } else if (this.selectedObject.type === 'freehand' && this.selectedObject.points) {
-                // For freehand, draw selection around bounding box
+            } else if (this.selectedObject.type === 'freehand') {
+                // For freehand, draw selection around bounding box (points array always exists for freehand objects)
                 const bounds = this.getFreehandBounds(this.selectedObject.points);
                 this.ctx.strokeRect(bounds.minX - 5, bounds.minY - 5, bounds.width + 10, bounds.height + 10);
             } else {
