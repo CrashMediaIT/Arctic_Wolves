@@ -1284,7 +1284,7 @@ function displayPlanDetails(plan, drills) {
                     <!-- Large Drill Diagram -->
                     <div class="view-drill-diagram" id="drill-diagram-${drill.drill_id}">
                         ${hasCustomImage 
-                            ? `<img src="${escapeHtml(drill.custom_image)}" alt="${escapeHtml(drill.title)} Diagram" onerror="this.parentElement.innerHTML='<div class=\\'no-diagram-placeholder\\'><i class=\\'fas fa-image\\'></i><span>Image failed to load</span></div>'">`
+                            ? `<img src="${escapeHtml(drill.custom_image)}" alt="${escapeHtml(drill.title)} Diagram" onerror="handleImageError(this)">`
                             : hasDiagramData 
                                 ? `<canvas id="drill-canvas-${drill.drill_id}" class="drill-view-canvas"></canvas>`
                                 : `<div class="no-diagram-placeholder"><i class="fas fa-hockey-puck"></i><span>No diagram available</span></div>`
@@ -1517,6 +1517,26 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function handleImageError(imgElement) {
+    // Safe DOM manipulation to replace failed image with placeholder
+    const container = imgElement.parentElement;
+    container.textContent = ''; // Clear the container safely
+    
+    const placeholder = document.createElement('div');
+    placeholder.className = 'no-diagram-placeholder';
+    
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-image';
+    icon.setAttribute('aria-hidden', 'true');
+    
+    const text = document.createElement('span');
+    text.textContent = 'Image failed to load';
+    
+    placeholder.appendChild(icon);
+    placeholder.appendChild(text);
+    container.appendChild(placeholder);
 }
 
 function closeViewPlanModal() {
