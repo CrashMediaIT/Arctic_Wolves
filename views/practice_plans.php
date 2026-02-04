@@ -33,6 +33,8 @@ $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 // Get practice plans
 $stmt = $pdo->prepare("
     SELECT pp.*, 
+           COALESCE(pp.title, pp.name) as title,
+           COALESCE(pp.total_duration, pp.duration_minutes, 60) as total_duration,
            u.first_name, u.last_name,
            COUNT(ppd.id) as drill_count
     FROM practice_plans pp
@@ -459,6 +461,222 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
             padding: 20px;
         }
     }
+    
+    /* View Plan Modal Styles */
+    .view-plan-info {
+        padding: 20px;
+        background: #06080b;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .view-plan-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .plan-detail-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .plan-detail-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #94a3b8;
+        font-size: 13px;
+    }
+    .plan-detail-item i {
+        color: var(--primary);
+    }
+    .plan-description-text {
+        color: #94a3b8;
+        line-height: 1.6;
+        margin: 0;
+    }
+    .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #fff;
+        margin: 0 0 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .section-title i {
+        color: var(--primary);
+    }
+    .view-plan-share {
+        background: #06080b;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .view-plan-drills {
+        background: #06080b;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 20px;
+    }
+    .view-plan-drills-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    .view-drill-card {
+        background: #0d1117;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .view-drill-card:hover {
+        border-color: var(--primary);
+    }
+    .view-drill-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        background: rgba(124, 58, 237, 0.05);
+        border-bottom: 1px solid #1e293b;
+    }
+    .view-drill-number {
+        width: 28px;
+        height: 28px;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+    .view-drill-title-section {
+        flex: 1;
+        margin-left: 12px;
+    }
+    .view-drill-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        margin: 0;
+    }
+    .view-drill-category {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 2px;
+    }
+    .view-drill-duration {
+        background: #1e293b;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+    .view-drill-body {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .view-drill-diagram {
+        background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
+        border: 2px solid #0033a0;
+        border-radius: 12px;
+        min-height: 300px;
+        max-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        width: 100%;
+    }
+    .view-drill-diagram img {
+        max-width: 100%;
+        max-height: 380px;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+    }
+    .view-drill-diagram canvas {
+        width: 100%;
+        height: 300px;
+    }
+    .view-drill-details {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .drill-detail-section {
+        margin-bottom: 8px;
+    }
+    .drill-detail-section h5 {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        margin: 0 0 6px 0;
+        letter-spacing: 0.5px;
+    }
+    .drill-detail-section p {
+        color: #94a3b8;
+        font-size: 13px;
+        line-height: 1.5;
+        margin: 0;
+    }
+    .view-drill-link {
+        margin-top: auto;
+    }
+    .btn-view-full {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: transparent;
+        border: 1px solid var(--primary);
+        color: var(--primary);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: 0.2s;
+    }
+    .btn-view-full:hover {
+        background: var(--primary);
+        color: #fff;
+    }
+    .no-diagram-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        color: #64748b;
+        font-size: 14px;
+        padding: 40px;
+    }
+    .no-diagram-placeholder i {
+        font-size: 64px;
+        opacity: 0.3;
+    }
+    @media (max-width: 768px) {
+        .view-drill-body {
+            grid-template-columns: 1fr;
+        }
+        .view-drill-diagram {
+            min-height: 200px;
+            max-height: 300px;
+        }
+        .view-drill-diagram canvas {
+            height: 200px;
+        }
+    }
 </style>
 
 <div class="practice-page-header">
@@ -732,6 +950,70 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
     </div>
 </div>
 
+<!-- View Plan Modal -->
+<div id="viewPlanModal" class="modal">
+    <div class="modal-content" style="max-width: 1000px;">
+        <div class="modal-header">
+            <h2 class="modal-title" id="viewPlanTitle">Practice Plan Details</h2>
+            <button class="close-modal" onclick="closeViewPlanModal()">&times;</button>
+        </div>
+        
+        <div id="viewPlanLoading" style="text-align: center; padding: 40px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: var(--primary);"></i>
+            <p style="margin-top: 15px; color: #94a3b8;">Loading practice plan...</p>
+        </div>
+        
+        <div id="viewPlanContent" style="display: none;">
+            <!-- Plan Info Section -->
+            <div class="view-plan-info">
+                <div class="view-plan-meta">
+                    <div class="plan-detail-badges" id="viewPlanBadges"></div>
+                    <div class="plan-detail-item">
+                        <i class="fas fa-clock"></i>
+                        <span id="viewPlanDuration">-</span> min total
+                    </div>
+                    <div class="plan-detail-item">
+                        <i class="fas fa-hockey-puck"></i>
+                        <span id="viewPlanDrillCount">-</span> drills
+                    </div>
+                    <div class="plan-detail-item">
+                        <i class="fas fa-user"></i>
+                        <span id="viewPlanCreator">-</span>
+                    </div>
+                </div>
+                
+                <div id="viewPlanDescriptionSection" style="display: none;">
+                    <h4 class="section-title"><i class="fas fa-align-left"></i> Description</h4>
+                    <p id="viewPlanDescription" class="plan-description-text"></p>
+                </div>
+            </div>
+            
+            <!-- Share URL Section -->
+            <div id="viewPlanShareSection" class="view-plan-share">
+                <h4 class="section-title"><i class="fas fa-share-alt"></i> Share This Plan</h4>
+                <div class="share-link-container">
+                    <input type="text" class="share-link-input" id="viewPlanShareUrl" readonly>
+                    <button class="btn" onclick="copyViewPlanShareLink()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Drills Section -->
+            <div class="view-plan-drills">
+                <h4 class="section-title"><i class="fas fa-list"></i> Drills in This Plan</h4>
+                <div id="viewPlanDrillsList" class="view-plan-drills-list"></div>
+            </div>
+        </div>
+        
+        <div class="modal-footer" style="border-top: 1px solid #1e293b; padding-top: 20px; margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="closeViewPlanModal()">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 let selectedDrills = [];
 
@@ -894,9 +1176,370 @@ function filterDrills() {
     });
 }
 
+// View Plan Modal Functions
+let currentViewPlanId = null;
+let viewPlanDrillCanvases = [];
+
 function viewPlan(id) {
-    // In a real implementation, this would show a detailed view
-    showNotification('View plan details (implement detailed view page)', 'info');
+    currentViewPlanId = id;
+    
+    // Show modal and loading state
+    document.getElementById('viewPlanModal').classList.add('active');
+    document.getElementById('viewPlanLoading').style.display = 'block';
+    document.getElementById('viewPlanContent').style.display = 'none';
+    
+    // Fetch plan details via AJAX
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('process_practice_plans.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: new URLSearchParams({
+            action: 'get_plan',
+            plan_id: id,
+            csrf_token: csrfToken
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayPlanDetails(data.plan, data.drills);
+        } else {
+            showNotification(data.message || 'Failed to load practice plan', 'error');
+            closeViewPlanModal();
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching plan:', error);
+        showNotification('Failed to load practice plan', 'error');
+        closeViewPlanModal();
+    });
+}
+
+function displayPlanDetails(plan, drills) {
+    // Update title
+    document.getElementById('viewPlanTitle').textContent = plan.name || plan.title || 'Practice Plan';
+    
+    // Update badges
+    let badgesHtml = '';
+    if (plan.age_group) {
+        badgesHtml += '<span class="badge">' + escapeHtml(plan.age_group) + '</span>';
+    }
+    if (plan.focus_area) {
+        badgesHtml += '<span class="badge badge-secondary">' + escapeHtml(plan.focus_area) + '</span>';
+    }
+    document.getElementById('viewPlanBadges').innerHTML = badgesHtml;
+    
+    // Update meta info
+    document.getElementById('viewPlanDuration').textContent = plan.total_duration || calculateTotalDuration(drills);
+    document.getElementById('viewPlanDrillCount').textContent = drills.length;
+    document.getElementById('viewPlanCreator').textContent = plan.creator_name || 'Unknown';
+    
+    // Update description
+    if (plan.description) {
+        document.getElementById('viewPlanDescriptionSection').style.display = 'block';
+        document.getElementById('viewPlanDescription').textContent = plan.description;
+    } else {
+        document.getElementById('viewPlanDescriptionSection').style.display = 'none';
+    }
+    
+    // Update share URL
+    if (plan.share_token) {
+        const baseUrl = window.location.origin + window.location.pathname.replace('dashboard.php', '');
+        const shareUrl = baseUrl + 'practice_plan_share.php?token=' + plan.share_token;
+        document.getElementById('viewPlanShareUrl').value = shareUrl;
+        document.getElementById('viewPlanShareSection').style.display = 'block';
+    } else {
+        document.getElementById('viewPlanShareSection').style.display = 'none';
+    }
+    
+    // Build drills list with large diagrams
+    let drillsHtml = '';
+    viewPlanDrillCanvases = [];
+    
+    drills.forEach((drill, index) => {
+        const drillNumber = index + 1;
+        const duration = drill.duration_minutes || 10;
+        const categoryName = drill.category_name || 'General';
+        const description = drill.description || 'No description available.';
+        const hasCustomImage = drill.custom_image && drill.custom_image.trim() !== '';
+        const hasDiagramData = drill.diagram_data && drill.diagram_data.trim() !== '' && drill.diagram_data !== '[]';
+        
+        drillsHtml += `
+            <div class="view-drill-card">
+                <div class="view-drill-header">
+                    <div style="display: flex; align-items: center;">
+                        <span class="view-drill-number">${drillNumber}</span>
+                        <div class="view-drill-title-section">
+                            <h4 class="view-drill-title">${escapeHtml(drill.title || 'Untitled Drill')}</h4>
+                            <div class="view-drill-category">${escapeHtml(categoryName)}</div>
+                        </div>
+                    </div>
+                    <span class="view-drill-duration"><i class="fas fa-clock"></i> ${duration} min</span>
+                </div>
+                <div class="view-drill-body">
+                    <!-- Large Drill Diagram -->
+                    <div class="view-drill-diagram" id="drill-diagram-${drill.drill_id}">
+                        ${hasCustomImage 
+                            ? `<img src="${escapeHtml(drill.custom_image)}" alt="${escapeHtml(drill.title)} Diagram" onerror="this.parentElement.innerHTML='<div class=\\'no-diagram-placeholder\\'><i class=\\'fas fa-image\\'></i><span>Image failed to load</span></div>'">`
+                            : hasDiagramData 
+                                ? `<canvas id="drill-canvas-${drill.drill_id}" class="drill-view-canvas"></canvas>`
+                                : `<div class="no-diagram-placeholder"><i class="fas fa-hockey-puck"></i><span>No diagram available</span></div>`
+                        }
+                    </div>
+                    
+                    <!-- Drill Details -->
+                    <div class="view-drill-details">
+                        <div class="drill-detail-section">
+                            <h5>Description</h5>
+                            <p>${escapeHtml(description)}</p>
+                        </div>
+                        ${drill.setup ? `<div class="drill-detail-section"><h5><i class="fas fa-cog"></i> Setup</h5><p>${escapeHtml(drill.setup)}</p></div>` : ''}
+                        ${drill.coaching_points ? `<div class="drill-detail-section"><h5><i class="fas fa-bullseye"></i> Coaching Points</h5><p>${escapeHtml(drill.coaching_points)}</p></div>` : ''}
+                        ${drill.progression ? `<div class="drill-detail-section"><h5><i class="fas fa-level-up-alt"></i> Progression</h5><p>${escapeHtml(drill.progression)}</p></div>` : ''}
+                        ${drill.notes ? `<div class="drill-detail-section"><h5><i class="fas fa-sticky-note"></i> Notes</h5><p>${escapeHtml(drill.notes)}</p></div>` : ''}
+                        <div class="view-drill-link">
+                            <a href="?page=view_drill&id=${drill.drill_id}" class="btn-view-full">
+                                <i class="fas fa-external-link-alt"></i> View Full Drill Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Store canvas data for rendering
+        if (!hasCustomImage && hasDiagramData) {
+            viewPlanDrillCanvases.push({
+                drillId: drill.drill_id,
+                diagramData: drill.diagram_data
+            });
+        }
+    });
+    
+    document.getElementById('viewPlanDrillsList').innerHTML = drillsHtml || '<p style="color: #64748b; text-align: center; padding: 40px;">No drills in this practice plan.</p>';
+    
+    // Hide loading, show content
+    document.getElementById('viewPlanLoading').style.display = 'none';
+    document.getElementById('viewPlanContent').style.display = 'block';
+    
+    // Render drill canvases after DOM is updated
+    setTimeout(() => {
+        viewPlanDrillCanvases.forEach(canvasData => {
+            renderDrillCanvas(canvasData.drillId, canvasData.diagramData);
+        });
+    }, 100);
+}
+
+function renderDrillCanvas(drillId, diagramDataStr) {
+    const canvas = document.getElementById('drill-canvas-' + drillId);
+    if (!canvas) return;
+    
+    const container = canvas.parentElement;
+    canvas.width = container.offsetWidth || 600;
+    canvas.height = 300;
+    
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    // Draw ice background
+    ctx.fillStyle = '#f0f7fa';
+    ctx.fillRect(0, 0, w, h);
+    
+    // Draw center branding (subtle)
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = '#7000a4';
+    ctx.font = 'bold 32px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('ARCTIC WOLVES', w/2, h/2);
+    ctx.restore();
+    
+    // Draw rink markings
+    // Center line
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2, h);
+    ctx.stroke();
+    
+    // Blue lines
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.25, 0);
+    ctx.lineTo(w * 0.25, h);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(w * 0.75, 0);
+    ctx.lineTo(w * 0.75, h);
+    ctx.stroke();
+    
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Center dot
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 4, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Draw diagram objects
+    try {
+        const objects = JSON.parse(diagramDataStr);
+        if (Array.isArray(objects)) {
+            // Scale factor for display - original drill designer canvas is 800x400
+            const DRILL_DESIGNER_WIDTH = 800;
+            const DRILL_DESIGNER_HEIGHT = 400;
+            const scaleX = w / DRILL_DESIGNER_WIDTH;
+            const scaleY = h / DRILL_DESIGNER_HEIGHT;
+            
+            objects.forEach(obj => {
+                drawDrillObject(ctx, obj, scaleX, scaleY);
+            });
+        }
+    } catch (e) {
+        console.log('Could not parse diagram data for drill ' + drillId);
+    }
+}
+
+function drawDrillObject(ctx, obj, scaleX, scaleY) {
+    ctx.save();
+    
+    const x = (obj.x || 0) * scaleX;
+    const y = (obj.y || 0) * scaleY;
+    const x1 = (obj.x1 || 0) * scaleX;
+    const y1 = (obj.y1 || 0) * scaleY;
+    const x2 = (obj.x2 || 0) * scaleX;
+    const y2 = (obj.y2 || 0) * scaleY;
+    
+    if (obj.type === 'player') {
+        ctx.translate(x, y);
+        ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+        ctx.fillStyle = obj.color || '#00bfff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 12, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        if (obj.label) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 9px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(obj.label, 0, 0);
+        }
+    } else if (obj.type === 'cone') {
+        ctx.translate(x, y);
+        ctx.fillStyle = obj.color || '#ff6b00';
+        ctx.beginPath();
+        ctx.moveTo(0, -12);
+        ctx.lineTo(-8, 8);
+        ctx.lineTo(8, 8);
+        ctx.closePath();
+        ctx.fill();
+    } else if (obj.type === 'puck') {
+        ctx.fillStyle = obj.color || '#000';
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+    } else if (obj.type === 'line') {
+        ctx.strokeStyle = obj.color || '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    } else if (obj.type === 'dashed') {
+        ctx.strokeStyle = obj.color || '#333';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    } else if (obj.type === 'arrow') {
+        ctx.strokeStyle = obj.color || '#333';
+        ctx.fillStyle = obj.color || '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - 12 * Math.cos(angle - Math.PI/6), y2 - 12 * Math.sin(angle - Math.PI/6));
+        ctx.lineTo(x2 - 12 * Math.cos(angle + Math.PI/6), y2 - 12 * Math.sin(angle + Math.PI/6));
+        ctx.closePath();
+        ctx.fill();
+    } else if (obj.type === 'net') {
+        ctx.translate(x, y);
+        ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+        ctx.strokeStyle = obj.color || '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(-16, -12);
+        ctx.lineTo(-20, 12);
+        ctx.lineTo(20, 12);
+        ctx.lineTo(16, -12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    } else if (obj.type === 'text') {
+        ctx.translate(x, y);
+        ctx.fillStyle = obj.color || '#000';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(obj.text || '', 0, 0);
+    }
+    
+    ctx.restore();
+}
+
+function calculateTotalDuration(drills) {
+    return drills.reduce((total, drill) => total + (parseInt(drill.duration_minutes) || 10), 0);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function closeViewPlanModal() {
+    document.getElementById('viewPlanModal').classList.remove('active');
+    currentViewPlanId = null;
+    viewPlanDrillCanvases = [];
+}
+
+function copyViewPlanShareLink() {
+    const input = document.getElementById('viewPlanShareUrl');
+    input.select();
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(() => {
+            showNotification('Share link copied to clipboard!', 'success');
+        }).catch(() => {
+            document.execCommand('copy');
+            showNotification('Share link copied to clipboard!', 'success');
+        });
+    } else {
+        document.execCommand('copy');
+        showNotification('Share link copied to clipboard!', 'success');
+    }
 }
 
 function editPlan(id) {

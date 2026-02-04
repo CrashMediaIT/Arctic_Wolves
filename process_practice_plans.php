@@ -115,6 +115,8 @@ if ($action === 'get_plan') {
         // Get the practice plan
         $stmt = $pdo->prepare("
             SELECT pp.*, 
+                   COALESCE(pp.title, pp.name) as title,
+                   COALESCE(pp.total_duration, pp.duration_minutes, 60) as total_duration,
                    CONCAT(u.first_name, ' ', u.last_name) as creator_name
             FROM practice_plans pp
             LEFT JOIN users u ON pp.created_by = u.id
@@ -131,7 +133,8 @@ if ($action === 'get_plan') {
         
         // Get the drills for this plan
         $drill_stmt = $pdo->prepare("
-            SELECT ppd.*, d.title, d.description, d.diagram_data, d.custom_image,
+            SELECT ppd.*, d.title, d.description, d.setup, d.coaching_points, d.progression,
+                   d.diagram_data, d.custom_image, d.video_url, d.ihs_source_url,
                    dc.name as category_name
             FROM practice_plan_drills ppd
             LEFT JOIN drills d ON ppd.drill_id = d.id

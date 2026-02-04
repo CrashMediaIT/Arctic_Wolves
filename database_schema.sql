@@ -212,9 +212,13 @@ CREATE TABLE IF NOT EXISTS `practice_plans` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `version` INT DEFAULT 1,
     `parent_plan_id` INT DEFAULT NULL,
+    `share_token` VARCHAR(64) DEFAULT NULL,
+    `total_duration` INT DEFAULT 60,
+    `title` VARCHAR(255) DEFAULT NULL,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`parent_plan_id`) REFERENCES `practice_plans`(`id`) ON DELETE SET NULL,
     INDEX `idx_focus_area` (`focus_area`),
+    INDEX `idx_share_token` (`share_token`),
     INDEX `idx_age_group` (`age_group`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

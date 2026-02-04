@@ -746,7 +746,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (drillId) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
-                viewDrill(drillId);
+                // Redirect to detailed drill view page
+                window.location.href = '?page=view_drill&id=' + drillId;
             });
         }
     });
