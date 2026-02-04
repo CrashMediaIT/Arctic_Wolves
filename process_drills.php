@@ -262,7 +262,7 @@ if ($action === 'import_ihs') {
 }
 
 // =========================================================
-// IMPORT FROM URL (Ice Hockey Systems URL)
+// IMPORT FROM URL (Ice Hockey Systems URL) - Legacy
 // =========================================================
 if ($action === 'import_from_url') {
     requirePermission($pdo, $user_id, $user_role, 'create_drills');
@@ -287,11 +287,7 @@ if ($action === 'import_from_url') {
     // List of allowed domains for drill imports
     $allowed_domains = [
         'icehockeysystems.com',
-        'www.icehockeysystems.com',
-        'hockeyshare.com',
-        'www.hockeyshare.com',
-        'hockeycoachingabcs.com',
-        'www.hockeycoachingabcs.com'
+        'www.icehockeysystems.com'
     ];
     
     if (!in_array($host, $allowed_domains)) {
@@ -382,6 +378,377 @@ if ($action === 'import_from_url') {
         header("Location: dashboard.php?page=import_drill&error=import_failed");
         exit();
     }
+}
+
+// =========================================================
+// FETCH IHS DRILL DATA (AJAX - returns JSON)
+// =========================================================
+if ($action === 'fetch_ihs_drill') {
+    requirePermission($pdo, $user_id, $user_role, 'create_drills');
+    
+    header('Content-Type: application/json');
+    
+    $ihs_url = trim($_POST['ihs_url'] ?? '');
+    
+    if (empty($ihs_url)) {
+        echo json_encode(['success' => false, 'message' => 'URL is required']);
+        exit();
+    }
+    
+    // Validate URL format
+    if (!filter_var($ihs_url, FILTER_VALIDATE_URL)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid URL format']);
+        exit();
+    }
+    
+    // Validate that URL is from icehockeysystems.com
+    $url_parts = parse_url($ihs_url);
+    $host = strtolower($url_parts['host'] ?? '');
+    
+    $allowed_domains = ['icehockeysystems.com', 'www.icehockeysystems.com'];
+    
+    if (!in_array($host, $allowed_domains)) {
+        echo json_encode(['success' => false, 'message' => 'Only URLs from icehockeysystems.com are supported']);
+        exit();
+    }
+    
+    try {
+        // Fetch the page content using cURL
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $ihs_url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        
+        $html = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+        
+        if ($http_code !== 200 || empty($html)) {
+            error_log("IHS Fetch Error: HTTP $http_code - $curl_error");
+            echo json_encode(['success' => false, 'message' => 'Failed to fetch page content']);
+            exit();
+        }
+        
+        // Parse the HTML to extract drill information
+        $drill_data = parseIHSDrillPage($html, $ihs_url);
+        
+        if (!$drill_data) {
+            echo json_encode(['success' => false, 'message' => 'Could not parse drill data from the page']);
+            exit();
+        }
+        
+        echo json_encode(['success' => true, 'drill' => $drill_data]);
+        exit();
+        
+    } catch (Exception $e) {
+        error_log("IHS Fetch Error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'An error occurred while fetching the drill']);
+        exit();
+    }
+}
+
+// =========================================================
+// IMPORT IHS DRILL FROM FETCHED DATA
+// =========================================================
+if ($action === 'import_ihs_url') {
+    requirePermission($pdo, $user_id, $user_role, 'create_drills');
+    
+    $ihs_url = trim($_POST['ihs_url'] ?? '');
+    $title = trim($_POST['drill_title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $category_name = trim($_POST['category'] ?? '');
+    $setup = trim($_POST['setup'] ?? '');
+    $coaching_points = trim($_POST['coaching_points'] ?? '');
+    $progression = trim($_POST['progression'] ?? '');
+    $rink_image_url = trim($_POST['rink_image_url'] ?? '');
+    
+    if (empty($title)) {
+        header("Location: dashboard.php?page=import_drill&error=title_required");
+        exit();
+    }
+    
+    // Check if this URL has already been imported
+    if (!empty($ihs_url)) {
+        $stmt = $pdo->prepare("SELECT id FROM drills WHERE ihs_source_url = ?");
+        $stmt->execute([$ihs_url]);
+        if ($stmt->fetch()) {
+            header("Location: dashboard.php?page=import_drill&error=already_imported");
+            exit();
+        }
+    }
+    
+    try {
+        // Build the full description with all sections
+        $full_description = $description;
+        
+        if (!empty($setup)) {
+            $full_description .= "\n\n## Setup\n" . $setup;
+        }
+        
+        if (!empty($coaching_points)) {
+            $full_description .= "\n\n## Coaching Points\n" . $coaching_points;
+        }
+        
+        if (!empty($progression)) {
+            $full_description .= "\n\n## Progression\n" . $progression;
+        }
+        
+        // Look up or create the category
+        $category_id = null;
+        if (!empty($category_name)) {
+            $stmt = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+            $stmt->execute([$category_name]);
+            $cat = $stmt->fetch();
+            if ($cat) {
+                $category_id = $cat['id'];
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO drill_categories (name) VALUES (?)");
+                $stmt->execute([$category_name]);
+                $category_id = $pdo->lastInsertId();
+            }
+        }
+        
+        // Download and save the rink image if available
+        $custom_image = '';
+        if (!empty($rink_image_url) && filter_var($rink_image_url, FILTER_VALIDATE_URL)) {
+            $custom_image = downloadAndSaveImage($rink_image_url, $user_id);
+        }
+        
+        // Insert the drill
+        $stmt = $pdo->prepare("
+            INSERT INTO drills (title, description, category_id, custom_image, ihs_source_url, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$title, $full_description, $category_id, $custom_image, $ihs_url, $user_id]);
+        
+        header("Location: dashboard.php?page=drill_library&status=drill_imported");
+        exit();
+        
+    } catch (PDOException $e) {
+        error_log("IHS Import Error: " . $e->getMessage());
+        header("Location: dashboard.php?page=import_drill&error=import_failed");
+        exit();
+    }
+}
+
+/**
+ * Parse IHS drill page HTML to extract drill information
+ */
+function parseIHSDrillPage($html, $url) {
+    $drill = [
+        'title' => '',
+        'description' => '',
+        'setup' => '',
+        'coaching_points' => '',
+        'progression' => '',
+        'rink_image' => '',
+        'category' => ''
+    ];
+    
+    // Suppress HTML parsing warnings
+    libxml_use_internal_errors(true);
+    
+    $dom = new DOMDocument();
+    $dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
+    $xpath = new DOMXPath($dom);
+    
+    // Try to extract title from various possible locations
+    // Common patterns: h1, .drill-title, .drill-name, meta og:title
+    $titleNodes = $xpath->query('//h1');
+    if ($titleNodes->length > 0) {
+        $drill['title'] = trim($titleNodes->item(0)->textContent);
+    }
+    
+    // Try og:title as fallback
+    if (empty($drill['title'])) {
+        $ogTitle = $xpath->query('//meta[@property="og:title"]/@content');
+        if ($ogTitle->length > 0) {
+            $drill['title'] = trim($ogTitle->item(0)->textContent);
+        }
+    }
+    
+    // Extract meta description
+    $metaDesc = $xpath->query('//meta[@name="description"]/@content');
+    if ($metaDesc->length > 0) {
+        $drill['description'] = trim($metaDesc->item(0)->textContent);
+    }
+    
+    // Try og:description as fallback
+    if (empty($drill['description'])) {
+        $ogDesc = $xpath->query('//meta[@property="og:description"]/@content');
+        if ($ogDesc->length > 0) {
+            $drill['description'] = trim($ogDesc->item(0)->textContent);
+        }
+    }
+    
+    // Try to find rink diagram image
+    // Look for images with common class names or alt text
+    $imagePatterns = [
+        '//img[contains(@class, "rink")]/@src',
+        '//img[contains(@class, "diagram")]/@src',
+        '//img[contains(@class, "drill")]/@src',
+        '//img[contains(@alt, "rink")]/@src',
+        '//img[contains(@alt, "drill")]/@src',
+        '//img[contains(@alt, "diagram")]/@src',
+        '//div[contains(@class, "drill")]//img/@src',
+        '//article//img/@src',
+        '//meta[@property="og:image"]/@content'
+    ];
+    
+    foreach ($imagePatterns as $pattern) {
+        $images = $xpath->query($pattern);
+        if ($images->length > 0) {
+            $imageSrc = trim($images->item(0)->textContent);
+            // Make sure it's an absolute URL
+            if (!empty($imageSrc)) {
+                if (strpos($imageSrc, 'http') !== 0) {
+                    $url_parts = parse_url($url);
+                    $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                    $imageSrc = $base . (strpos($imageSrc, '/') === 0 ? '' : '/') . $imageSrc;
+                }
+                $drill['rink_image'] = $imageSrc;
+                break;
+            }
+        }
+    }
+    
+    // Extract content sections (Setup, Coaching Points, Progression)
+    // These are often in divs with specific headers or classes
+    $sectionPatterns = [
+        'setup' => ['setup', 'set-up', 'organization', 'drill setup'],
+        'coaching_points' => ['coaching points', 'coaching-points', 'key points', 'teaching points', 'focus points'],
+        'progression' => ['progression', 'progressions', 'variations', 'drill progression']
+    ];
+    
+    foreach ($sectionPatterns as $field => $keywords) {
+        foreach ($keywords as $keyword) {
+            // Look for headers containing the keyword
+            $headers = $xpath->query('//*[self::h2 or self::h3 or self::h4 or self::strong or self::b][contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "' . $keyword . '")]');
+            if ($headers->length > 0) {
+                $header = $headers->item(0);
+                // Get the next sibling or parent's next content
+                $nextSibling = $header->nextSibling;
+                $content = '';
+                while ($nextSibling) {
+                    if ($nextSibling->nodeType === XML_ELEMENT_NODE) {
+                        $tagName = strtolower($nextSibling->nodeName);
+                        // Stop if we hit another header
+                        if (in_array($tagName, ['h2', 'h3', 'h4'])) {
+                            break;
+                        }
+                        $content .= trim($nextSibling->textContent) . "\n";
+                    }
+                    $nextSibling = $nextSibling->nextSibling;
+                }
+                if (!empty($content)) {
+                    $drill[$field] = trim($content);
+                    break;
+                }
+            }
+        }
+    }
+    
+    // Try to determine category from URL or page content
+    $category_keywords = [
+        'skating' => 'Skating',
+        'shooting' => 'Shooting',
+        'passing' => 'Passing',
+        'stickhandling' => 'Stickhandling',
+        'puck-control' => 'Puck Control',
+        'defensive' => 'Defensive',
+        'offensive' => 'Offensive',
+        'goalie' => 'Goalie',
+        'conditioning' => 'Conditioning',
+        'team' => 'Team Play',
+        'power-play' => 'Power Play',
+        'penalty-kill' => 'Penalty Kill',
+        'warm-up' => 'Warm Up',
+        'battle' => 'Battle Drills'
+    ];
+    
+    $lower_url = strtolower($url);
+    $lower_title = strtolower($drill['title']);
+    
+    foreach ($category_keywords as $keyword => $cat_name) {
+        if (strpos($lower_url, $keyword) !== false || strpos($lower_title, str_replace('-', ' ', $keyword)) !== false) {
+            $drill['category'] = $cat_name;
+            break;
+        }
+    }
+    
+    libxml_clear_errors();
+    
+    // Only return if we have at least a title
+    if (!empty($drill['title'])) {
+        return $drill;
+    }
+    
+    return null;
+}
+
+/**
+ * Download an image from URL and save it locally
+ */
+function downloadAndSaveImage($image_url, $user_id) {
+    // Create upload directory if it doesn't exist
+    $upload_dir = __DIR__ . '/uploads/drills/';
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0750, true);
+    }
+    
+    // Download the image first to validate its content
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $image_url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    
+    $image_data = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code !== 200 || empty($image_data)) {
+        return '';
+    }
+    
+    // Validate it's actually an image and determine the extension from content
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->buffer($image_data);
+    
+    // Map MIME types to extensions
+    $mime_to_ext = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp'
+    ];
+    
+    if (!isset($mime_to_ext[$mime])) {
+        // Not a supported image type
+        return '';
+    }
+    
+    $extension = $mime_to_ext[$mime];
+    
+    // Generate a unique filename using only random bytes for security
+    $filename = 'drill_' . bin2hex(random_bytes(16)) . '.' . $extension;
+    $filepath = $upload_dir . $filename;
+    
+    if (file_put_contents($filepath, $image_data)) {
+        return 'uploads/drills/' . $filename;
+    }
+    
+    return '';
 }
 
 // Fallback
