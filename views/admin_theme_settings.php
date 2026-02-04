@@ -1373,7 +1373,7 @@ document.getElementById('colorsForm').addEventListener('submit', async function(
     formData.append('action', 'save');
     
     try {
-        const response = await fetch('process_theme_settings.php', {
+        const response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
@@ -1404,7 +1404,7 @@ async function resetTheme() {
     formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
     
     try {
-        const response = await fetch('process_theme_settings.php', {
+        const response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
@@ -1469,7 +1469,7 @@ document.getElementById('brandingForm').addEventListener('submit', async functio
     formData.append('action', 'save_logo');
     
     try {
-        const response = await fetch('process_theme_settings.php', {
+        const response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
@@ -1497,7 +1497,7 @@ document.getElementById('heroForm').addEventListener('submit', async function(e)
     formData.append('action', 'save_hero');
     
     try {
-        const response = await fetch('process_theme_settings.php', {
+        const response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
@@ -1555,7 +1555,7 @@ document.getElementById('programForm').addEventListener('submit', async function
     formData.append('action', 'save_program');
     
     try {
-        const response = await fetch('process_theme_settings.php', {
+        const response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
@@ -1588,7 +1588,7 @@ async function deleteProgram(programId) {
     formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
     
     try {
-        const response = await fetch('process_theme_settings.php', {
+        const response = await fetch('process_theme.php', {
             method: 'POST',
             body: formData
         });
