@@ -183,11 +183,8 @@ function handleAthleteVideoUpload() {
     
     // Get the coach for this video
     if ($is_coach) {
-        // For coaches, they are their own coach for video uploads
-        $stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
-        $stmt->execute([$athlete_id]);
-        $athlete = $stmt->fetch();
-        $coach_id = $athlete['assigned_coach_id'] ?? $user_id;
+        // For coaches uploading for themselves, they are their own reviewer
+        $coach_id = $user_id;
     } else {
         // For athletes, validate that they have an assigned coach
         if (!$coach_id) {
