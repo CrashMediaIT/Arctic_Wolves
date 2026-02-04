@@ -322,11 +322,11 @@ function performBackup($pdo, $job) {
         $gz_file = $sql_file . '.gz';
         
         // Get database credentials from db_config.php
-        require __DIR__ . '/db_config.php';
-        $db_host = DB_HOST;
-        $db_name = DB_NAME;
-        $db_user = DB_USER;
-        $db_pass = DB_PASS;
+        // db_config.php uses variables, not constants
+        $db_host = $_ENV['DB_HOST'] ?? 'localhost';
+        $db_name = $_ENV['DB_NAME'] ?? 'arctic_wolves';
+        $db_user = $_ENV['DB_USER'] ?? 'root';
+        $db_pass = $_ENV['DB_PASS'] ?? '';
         
         // Create mysqldump command
         $command = sprintf(

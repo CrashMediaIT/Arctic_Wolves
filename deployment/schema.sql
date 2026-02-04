@@ -957,12 +957,18 @@ CREATE TABLE IF NOT EXISTS `expense_categories` (
 -- Feature version tracking
 CREATE TABLE IF NOT EXISTS `feature_versions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `feature_name` VARCHAR(100) NOT NULL,
-    `version` VARCHAR(20) NOT NULL,
+    `feature_name` VARCHAR(255) NOT NULL,
+    `version` VARCHAR(50) NOT NULL,
+    `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `applied_by` INT DEFAULT NULL,
     `description` TEXT DEFAULT NULL,
     `release_date` DATE DEFAULT NULL,
+    `database_changes` JSON DEFAULT NULL,
+    `file_changes` JSON DEFAULT NULL,
+    `manifest` JSON DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `unique_feature_version` (`feature_name`, `version`),
     INDEX `idx_feature` (`feature_name`),
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
