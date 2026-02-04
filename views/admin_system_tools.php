@@ -1094,59 +1094,120 @@ try {
     
     <!-- Updates Tab -->
     <div class="tab-content <?php echo $activeTab === 'updates' ? 'active' : ''; ?>" id="updates-tab">
-        <!-- System Updates Card -->
+        <!-- System Updates Card - Feature Importer -->
         <div class="card">
             <div class="card-header">
-                <h3><i class="fas fa-code-branch"></i> System Updates</h3>
+                <h3><i class="fas fa-file-import"></i> System Updates</h3>
             </div>
             <div class="card-body">
                 <div class="info-box" style="margin-bottom: 24px;">
                     <i class="fas fa-info-circle"></i>
-                    <p>Check for and apply updates from the Arctic Wolves GitHub repository. Updates include new features, bug fixes, and security patches.</p>
+                    <p>Upload and import update packages to apply new features, bug fixes, and security patches. Update packages are ZIP files containing a manifest and the files to be updated.</p>
                 </div>
                 
-                <div id="github-update-status" class="integration-status disconnected" style="margin-bottom: 24px;">
-                    <div class="status-icon">
-                        <i class="fas fa-sync"></i>
+                <?php
+                // Load installed feature versions with error handling
+                $installed_versions = [];
+                $feature_importer_error = null;
+                try {
+                    $feature_importer_file = __DIR__ . '/../admin/feature_importer.php';
+                    if (file_exists($feature_importer_file)) {
+                        require_once $feature_importer_file;
+                        $feature_importer = new FeatureImporter($pdo, __DIR__ . '/..');
+                        $installed_versions = $feature_importer->getInstalledVersions();
+                    } else {
+                        $feature_importer_error = 'Feature importer not found.';
+                    }
+                } catch (Exception $e) {
+                    $feature_importer_error = $e->getMessage();
+                    error_log("Feature importer error: " . $e->getMessage());
+                }
+                ?>
+                
+                <?php if ($feature_importer_error): ?>
+                <div class="info-box" style="margin-bottom: 24px; border-color: #f59e0b;">
+                    <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                    <p>Unable to load feature versions: <?php echo htmlspecialchars($feature_importer_error); ?></p>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($installed_versions)): ?>
+                <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <h4 style="color: var(--text-white); margin-bottom: 12px;"><i class="fas fa-history"></i> Installed Feature Versions</h4>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-dim);">
+                            <th style="padding: 8px; text-align: left;">Feature</th>
+                            <th style="padding: 8px; text-align: left;">Version</th>
+                            <th style="padding: 8px; text-align: left;">Installed</th>
+                        </tr>
+                        <?php 
+                        // Group by feature name and show most recent version
+                        $grouped = [];
+                        foreach ($installed_versions as $v) {
+                            if (!isset($grouped[$v['feature_name']])) {
+                                $grouped[$v['feature_name']] = $v;
+                            }
+                        }
+                        foreach ($grouped as $feature_name => $version): 
+                        ?>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 8px; color: var(--text-white);"><?php echo htmlspecialchars($feature_name); ?></td>
+                            <td style="padding: 8px; color: #10b981;"><?php echo htmlspecialchars($version['version']); ?></td>
+                            <td style="padding: 8px; color: var(--text-dim);"><?php echo date('M d, Y', strtotime($version['applied_at'])); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </table>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Upload Section -->
+                <div id="uploadSection" style="background: var(--bg-main); border: 2px dashed var(--border); border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('updateFileInput').click()">
+                    <div style="font-size: 48px; color: var(--primary); margin-bottom: 12px;">
+                        <i class="fas fa-cloud-upload-alt"></i>
                     </div>
-                    <div class="status-info">
-                        <h4>Update Status</h4>
-                        <p>Click "Check for Updates" to see available updates</p>
-                    </div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--text-white); margin-bottom: 8px;">Upload Update Package</div>
+                    <div style="font-size: 14px; color: var(--text-dim); margin-bottom: 20px;">Click to browse or drag and drop a ZIP file here</div>
+                    <button type="button" class="btn btn-primary" onclick="event.stopPropagation(); document.getElementById('updateFileInput').click();">
+                        <i class="fas fa-folder-open"></i> Browse Files
+                    </button>
+                    <input type="file" id="updateFileInput" accept=".zip" style="display: none;" onchange="handleUpdateFileSelect(event)">
                 </div>
                 
-                <form id="github-form" method="POST" action="process_settings.php" data-form-type="github">
-                    <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="update_github_settings">
-                    <div class="settings-list">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <h4>GitHub Personal Access Token (Optional)</h4>
-                                <p>Required only if the repository is private. Leave blank for public repos.<?php echo !empty($settings['github_token']) ? ' (currently set)' : ''; ?></p>
-                            </div>
-                            <input type="password" name="github_token" class="form-input" 
-                                   placeholder="<?php echo !empty($settings['github_token']) ? 'Leave blank to keep current token' : 'ghp_xxxxxxxxxxxxx'; ?>"
-                                   style="min-width: 300px;">
+                <!-- Selected File -->
+                <div id="selectedUpdateFile" style="display: none; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-top: 20px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="font-size: 32px; color: var(--primary);">
+                            <i class="fas fa-file-archive"></i>
                         </div>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="testGitHubConnection()">
-                            <i class="fas fa-vial"></i> Test Connection
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="checkForUpdates()">
-                            <i class="fas fa-sync"></i> Check for Updates
-                        </button>
-                        <button type="button" class="btn btn-primary" onclick="applyUpdates()" id="apply-updates-btn" disabled>
-                            <i class="fas fa-download"></i> Apply Updates
+                        <div style="flex: 1;">
+                            <div id="updateFileName" style="font-size: 16px; font-weight: 700; color: var(--text-white); margin-bottom: 4px;"></div>
+                            <div id="updateFileSize" style="font-size: 14px; color: var(--text-dim);"></div>
+                        </div>
+                        <button type="button" class="btn btn-danger" onclick="removeUpdateFile()">
+                            <i class="fas fa-times"></i> Remove
                         </button>
                     </div>
-                </form>
+                </div>
                 
-                <!-- Update Log -->
-                <div id="update-log" style="display: none; margin-top: 24px;">
-                    <h4 style="color: var(--text-white); margin-bottom: 12px;"><i class="fas fa-list"></i> Update Log</h4>
-                    <div id="update-log-content" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; color: var(--text-dim);"></div>
+                <!-- Import Button -->
+                <div style="margin-top: 20px;">
+                    <button type="button" class="btn btn-primary" id="importUpdateBtn" onclick="startUpdateImport()" disabled style="width: 100%;">
+                        <i class="fas fa-download"></i> Import Update Package
+                    </button>
+                </div>
+                
+                <!-- Result Banner -->
+                <div id="updateResultBanner" style="display: none; border-radius: 8px; padding: 20px; margin-top: 20px;"></div>
+                
+                <!-- Progress Section -->
+                <div id="updateProgressSection" style="display: none; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-top: 24px;">
+                    <div style="font-size: 16px; font-weight: 700; color: var(--text-white); margin-bottom: 12px;">
+                        <i class="fas fa-spinner fa-spin"></i> Importing Update...
+                    </div>
+                    <div style="background: var(--bg-dark); border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 20px;">
+                        <div id="updateProgressBar" style="background: var(--primary); height: 100%; width: 0; transition: width 0.3s;"></div>
+                    </div>
+                    <div id="updateLogContainer" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 16px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px;"></div>
                 </div>
             </div>
         </div>
@@ -1441,27 +1502,31 @@ function testGoogleMapsAPI() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
     
-    // Test by sending a request to Google's Geocoding API
-    // Note: API key will be visible in browser network logs - this is acceptable for testing
-    // In production, restrict the API key by HTTP referrer in Google Cloud Console
-    fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=Toronto,Canada&key=${encodeURIComponent(apiKey)}`)
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    // Test via server-side endpoint to avoid CORS issues
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=test_google_maps&google_maps_api_key=${encodeURIComponent(apiKey)}&csrf_token=${encodeURIComponent(csrfToken)}`
+    })
     .then(response => response.json())
     .then(data => {
         btn.disabled = false;
         btn.innerHTML = originalText;
         
-        if (data.status === 'OK' || data.status === 'ZERO_RESULTS') {
-            alert('✓ Google Maps API key is valid!\n\nThe API key is working correctly.');
-        } else if (data.status === 'REQUEST_DENIED') {
-            alert('✗ API Key Invalid or Restricted\n\n' + (data.error_message || 'Please check your API key and ensure the Geocoding API is enabled.'));
+        if (data.success) {
+            alert('✓ ' + data.message);
         } else {
-            alert('✗ API Test Result: ' + data.status + '\n\n' + (data.error_message || 'Please check your API key configuration.'));
+            alert('✗ ' + data.message);
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('✗ Failed to test Google Maps API\n\nPlease check your network connection and API key.');
+        alert('✗ Failed to test Google Maps API. Please try again.');
         console.error('Error:', error);
     });
 }
@@ -1673,177 +1738,174 @@ function syncToBackup() {
     });
 }
 
-// GitHub Update functions
-function testGitHubConnection() {
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-    
-    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-    
-    fetch('process_settings.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `action=test_github&csrf_token=${encodeURIComponent(csrfToken)}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        
-        const statusDiv = document.getElementById('github-update-status');
-        if (data.success) {
-            statusDiv.className = 'integration-status connected';
-            statusDiv.innerHTML = `
-                <div class="status-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="status-info">
-                    <h4>Connected to ${data.repo_name || 'Arctic_Wolves'}</h4>
-                    <p>Repository access confirmed. ${data.private ? '(Private repository)' : '(Public repository)'}</p>
-                </div>
-            `;
-            alert('✓ GitHub Connection Successful!');
-        } else {
-            statusDiv.className = 'integration-status disconnected';
-            statusDiv.innerHTML = `
-                <div class="status-icon"><i class="fas fa-times-circle"></i></div>
-                <div class="status-info">
-                    <h4>Connection Failed</h4>
-                    <p>${data.message || 'Could not connect to repository'}</p>
-                </div>
-            `;
-            alert('✗ GitHub Connection Failed\n\n' + (data.message || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        alert('Error testing GitHub connection');
-        console.error('Error:', error);
-    });
-}
+// Feature Importer Update functions
+let selectedUpdateFile = null;
 
-function checkForUpdates() {
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-    
-    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-    
-    fetch('process_settings.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `action=check_updates&csrf_token=${encodeURIComponent(csrfToken)}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+// Drag and drop for update upload section
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadSection = document.getElementById('uploadSection');
+    if (uploadSection) {
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.style.borderColor = 'var(--primary)';
+            uploadSection.style.background = 'rgba(112, 0, 164, 0.1)';
+        });
         
-        const statusDiv = document.getElementById('github-update-status');
-        const applyBtn = document.getElementById('apply-updates-btn');
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.style.borderColor = 'var(--border)';
+            uploadSection.style.background = 'var(--bg-main)';
+        });
         
-        if (data.success) {
-            if (data.has_updates) {
-                statusDiv.className = 'integration-status connected';
-                statusDiv.innerHTML = `
-                    <div class="status-icon"><i class="fas fa-arrow-circle-down"></i></div>
-                    <div class="status-info">
-                        <h4>Updates Available</h4>
-                        <p>Latest commit: ${data.latest_commit.message || 'No message'}<br>
-                        <small>By ${data.latest_commit.author || 'Unknown'} on ${new Date(data.latest_commit.date).toLocaleString()}</small></p>
-                    </div>
-                `;
-                applyBtn.disabled = false;
-            } else {
-                statusDiv.className = 'integration-status connected';
-                statusDiv.innerHTML = `
-                    <div class="status-icon"><i class="fas fa-check-circle"></i></div>
-                    <div class="status-info">
-                        <h4>System Up to Date</h4>
-                        <p>You are running the latest version.</p>
-                    </div>
-                `;
-                applyBtn.disabled = true;
-            }
-        } else {
-            statusDiv.className = 'integration-status disconnected';
-            statusDiv.innerHTML = `
-                <div class="status-icon"><i class="fas fa-exclamation-circle"></i></div>
-                <div class="status-info">
-                    <h4>Check Failed</h4>
-                    <p>${data.message || 'Could not check for updates'}</p>
-                </div>
-            `;
-            applyBtn.disabled = true;
-        }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        alert('Error checking for updates');
-        console.error('Error:', error);
-    });
-}
-
-function applyUpdates() {
-    if (!confirm('Apply all available updates? This will update system files.\n\nMake sure you have a backup before proceeding.')) return;
-    
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-    
-    const logDiv = document.getElementById('update-log');
-    const logContent = document.getElementById('update-log-content');
-    logDiv.style.display = 'block';
-    logContent.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying updates...\n';
-    
-    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-    
-    fetch('process_settings.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `action=apply_updates&csrf_token=${encodeURIComponent(csrfToken)}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        
-        if (data.success) {
-            logContent.innerHTML = `✓ ${data.message}\n\nUpdated: ${data.updated_count || 0} files\nDeleted: ${data.deleted_count || 0} files`;
-            if (data.errors && data.errors.length > 0) {
-                logContent.innerHTML += '\n\nWarnings:\n' + data.errors.join('\n');
-            }
-            document.getElementById('apply-updates-btn').disabled = true;
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.style.borderColor = 'var(--border)';
+            uploadSection.style.background = 'var(--bg-main)';
             
-            const statusDiv = document.getElementById('github-update-status');
-            statusDiv.className = 'integration-status connected';
-            statusDiv.innerHTML = `
-                <div class="status-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="status-info">
-                    <h4>Updates Applied Successfully</h4>
-                    <p>System has been updated to the latest version.</p>
-                </div>
-            `;
-        } else {
-            logContent.innerHTML = '✗ Update failed: ' + (data.message || 'Unknown error');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].name.endsWith('.zip')) {
+                handleUpdateFile(files[0]);
+            } else {
+                alert('Please select a ZIP file');
+            }
+        });
+    }
+});
+
+function handleUpdateFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        handleUpdateFile(file);
+    }
+}
+
+function handleUpdateFile(file) {
+    selectedUpdateFile = file;
+    
+    document.getElementById('updateFileName').textContent = file.name;
+    document.getElementById('updateFileSize').textContent = formatUpdateFileSize(file.size);
+    document.getElementById('selectedUpdateFile').style.display = 'block';
+    document.getElementById('importUpdateBtn').disabled = false;
+    document.getElementById('uploadSection').style.display = 'none';
+}
+
+function removeUpdateFile() {
+    selectedUpdateFile = null;
+    document.getElementById('selectedUpdateFile').style.display = 'none';
+    document.getElementById('importUpdateBtn').disabled = true;
+    document.getElementById('uploadSection').style.display = 'block';
+    document.getElementById('updateFileInput').value = '';
+    document.getElementById('updateResultBanner').style.display = 'none';
+}
+
+function formatUpdateFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+async function startUpdateImport() {
+    if (!selectedUpdateFile) {
+        alert('Please select a file first');
+        return;
+    }
+    
+    if (!confirm('Import this update package? This will apply changes to system files.\n\nMake sure you have a backup before proceeding.')) {
+        return;
+    }
+    
+    const importBtn = document.getElementById('importUpdateBtn');
+    const progressSection = document.getElementById('updateProgressSection');
+    const logContainer = document.getElementById('updateLogContainer');
+    const resultBanner = document.getElementById('updateResultBanner');
+    const progressBar = document.getElementById('updateProgressBar');
+    
+    // Reset UI
+    importBtn.disabled = true;
+    progressSection.style.display = 'block';
+    logContainer.innerHTML = '';
+    resultBanner.style.display = 'none';
+    progressBar.style.width = '10%';
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('action', 'import_feature');
+    formData.append('feature_package', selectedUpdateFile);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+    
+    try {
+        progressBar.style.width = '30%';
+        
+        const response = await fetch('process_feature_import.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        progressBar.style.width = '70%';
+        
+        const data = await response.json();
+        
+        progressBar.style.width = '100%';
+        
+        // Display log entries
+        if (data.log && Array.isArray(data.log)) {
+            data.log.forEach(entry => {
+                addUpdateLogEntry(entry, logContainer);
+            });
         }
-    })
-    .catch(error => {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        logContent.innerHTML = '✗ Error applying updates: ' + error.message;
+        
+        // Show result
+        if (data.success) {
+            resultBanner.className = '';
+            resultBanner.style.cssText = 'display: block; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; border-radius: 8px; padding: 20px; margin-top: 20px;';
+            resultBanner.innerHTML = `
+                <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-check-circle"></i> Import Successful</h3>
+                <p style="margin: 0;">${data.message || 'Update package imported successfully'}</p>
+                ${data.backup_id ? '<p style="font-size: 12px; margin-top: 10px;">Backup ID: ' + data.backup_id + '</p>' : ''}
+                <button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 15px;">
+                    <i class="fas fa-sync"></i> Reload Page to See Changes
+                </button>
+            `;
+            
+        } else {
+            resultBanner.className = '';
+            resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
+            resultBanner.innerHTML = `
+                <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Import Failed</h3>
+                <p style="margin: 0;">${data.error || 'An error occurred during import'}</p>
+            `;
+            importBtn.disabled = false;
+        }
+        
+    } catch (error) {
         console.error('Error:', error);
-    });
+        resultBanner.className = '';
+        resultBanner.style.cssText = 'display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 20px; margin-top: 20px;';
+        resultBanner.innerHTML = `
+            <h3 style="margin: 0 0 10px 0; font-size: 18px;"><i class="fas fa-times-circle"></i> Import Failed</h3>
+            <p style="margin: 0;">Network error or server not responding</p>
+        `;
+        importBtn.disabled = false;
+    }
+}
+
+function addUpdateLogEntry(entry, container) {
+    const logEntry = document.createElement('div');
+    logEntry.style.cssText = 'padding: 6px 0; display: flex; align-items: start; gap: 10px;';
+    
+    let color = 'var(--text-dim)';
+    if (entry.type === 'success') color = '#10b981';
+    else if (entry.type === 'warning') color = '#f59e0b';
+    else if (entry.type === 'error') color = '#ef4444';
+    
+    logEntry.innerHTML = `
+        <span style="color: var(--text-dim); flex-shrink: 0;">${entry.timestamp || new Date().toLocaleTimeString()}</span>
+        <span style="flex: 1; color: ${color};">${entry.message}</span>
+    `;
+    
+    container.appendChild(logEntry);
+    container.scrollTop = container.scrollHeight;
 }
 
 // Stripe Library Update functions

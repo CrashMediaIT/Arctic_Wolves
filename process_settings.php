@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 $action = $_POST['action'] ?? '';
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -259,6 +259,55 @@ try {
             updateSetting($pdo, 'google_maps_api_key', $api_key);
             
             header('Location: dashboard.php?page=system_tools&tab=mileage&success=1');
+            exit;
+            
+        case 'test_google_maps':
+            $api_key = trim($_POST['google_maps_api_key'] ?? '');
+            
+            if (empty($api_key)) {
+                echo json_encode(['success' => false, 'message' => 'Please enter a Google Maps API key first.']);
+                exit;
+            }
+            
+            // Test by sending a request to Google's Geocoding API server-side
+            $test_url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode('Toronto,Canada') . '&key=' . urlencode($api_key);
+            
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'timeout' => 10,
+                    'ignore_errors' => true
+                ]
+            ]);
+            
+            $response = file_get_contents($test_url, false, $context);
+            
+            if ($response === false) {
+                $error = error_get_last();
+                $error_message = $error ? $error['message'] : 'Unknown error';
+                error_log("Google Maps API test failed: " . $error_message);
+                echo json_encode(['success' => false, 'message' => 'Failed to connect to Google Maps API. Please check your server network connection.']);
+                exit;
+            }
+            
+            $data = json_decode($response, true);
+            
+            if (!$data) {
+                echo json_encode(['success' => false, 'message' => 'Invalid response from Google Maps API.']);
+                exit;
+            }
+            
+            $status = $data['status'] ?? 'UNKNOWN';
+            
+            if ($status === 'OK' || $status === 'ZERO_RESULTS') {
+                echo json_encode(['success' => true, 'message' => 'Google Maps API key is valid and working correctly.']);
+            } elseif ($status === 'REQUEST_DENIED') {
+                $error_msg = $data['error_message'] ?? 'Please check your API key and ensure the Geocoding API is enabled.';
+                echo json_encode(['success' => false, 'message' => 'API Key Invalid or Restricted: ' . $error_msg]);
+            } else {
+                $error_msg = $data['error_message'] ?? 'Please check your API key configuration.';
+                echo json_encode(['success' => false, 'message' => 'API Test Result: ' . $status . ' - ' . $error_msg]);
+            }
             exit;
             
         case 'update_mileage_rates':

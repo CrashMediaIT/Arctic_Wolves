@@ -1,75 +1,60 @@
-# GitHub Updates Feature Documentation
+# System Updates Feature Documentation
 
 ## Overview
-The GitHub Updates feature allows administrators to check for and apply updates directly from the Arctic Wolves GitHub repository. This feature supports both public and private repositories through GitHub authentication.
+The System Updates feature allows administrators to apply update packages that include new features, bug fixes, and security patches. Updates are applied via the Feature Importer system which supports intelligent database migrations, file changes, version tracking, and automatic rollback on errors.
 
 ## Location
-The Updates feature is available in the Admin Settings page under the "Updates" tab:
-- **Menu:** Admin → System Settings
-- **Tab:** Updates (rightmost tab)
+The Updates feature is available in the System Tools page under the "Updates" tab:
+- **Menu:** Admin → System Tools
+- **Tab:** Updates
 
 ## Features
 
-### 1. GitHub Authentication
-- Support for private repositories using GitHub Personal Access Token (PAT)
-- Test connection functionality to verify repository access
-- Secure token storage in system settings
+### 1. Update Package Import
+- Upload ZIP update packages containing new features and fixes
+- Supports drag-and-drop file upload
+- Validates package structure before applying
 
-### 2. Update Checking
-- Check for available updates from the repository
-- View latest commit information (message, date, author)
-- Compare current installation version with latest repository version
+### 2. Intelligent Database Migrations
+- Automatic table/column renames with code reference updates
+- Add, modify, or drop columns and tables
+- Data migrations with full transaction support
 
-### 3. Update Application
-- Download and update changed files from repository
-- **Automatically delete files that were removed from repository**
-- Preserve configuration files (db_config.php, .env, etc.)
-- Atomic updates with error reporting
+### 3. File Management
+- Create, update, or delete files automatically
+- Move/rename files with path reference updates
+- Preserve configuration files during updates
+
+### 4. Version Tracking
+- Track all installed feature versions
+- Prevent duplicate installations
+- Version compatibility checking
+
+### 5. Rollback Support
+- Automatic backup before changes
+- Full rollback on any error
+- Transaction-safe database changes
 
 ## Usage
 
-### Setup GitHub Authentication (For Private Repositories)
+### Applying Update Packages
 
-1. Navigate to Admin Settings → Updates tab
-2. Click "Generate token here" link or visit: https://github.com/settings/tokens/new
-3. Create a new Personal Access Token with the following settings:
-   - **Description:** Arctic Wolves Updater
-   - **Scope:** Select `repo` (Full control of private repositories)
-4. Copy the generated token (starts with `ghp_`)
-5. Paste the token into the "GitHub Personal Access Token" field
-6. Click "Test Connection" to verify access
-7. Click "Save GitHub Settings"
+1. Navigate to Admin → System Tools → Updates tab
+2. Click "Browse Files" or drag and drop a ZIP update package
+3. Review the package name and size displayed
+4. Click "Import Update Package"
+5. Confirm the backup warning
+6. Wait for the import to complete
+7. Review the import log for any warnings or errors
+8. The page will reload to show the updated feature versions
 
-### Checking for Updates
+### Update Package Structure
 
-1. Navigate to Admin Settings → Updates tab
-2. Click "Check for Updates" button
-3. Review the update status:
-   - **Up to date:** Your system is running the latest version
-   - **Updates Available:** Shows latest commit details
-
-### Applying Updates
-
-1. **IMPORTANT:** Backup your database before applying updates
-2. Backup any custom configuration files
-3. Click "Apply Updates" button
-4. Confirm the warning dialog
-5. Wait for the update process to complete (may take several minutes)
-6. Review the results:
-   - Number of files updated
-   - Number of files deleted
-   - Any errors encountered
-7. Reload the page to see changes
-
-## File Handling
-
-### Files Updated
-All files in the repository are synchronized with your local installation, including:
-- PHP application files
-- JavaScript and CSS files
-- View templates
-- Library files
-- Documentation
+Update packages are ZIP files containing:
+- `manifest.json` - Package definition with version, migrations, and file lists
+- `files/` - Directory containing new or updated files
+- `README.md` - Optional documentation
+- `CHANGELOG.md` - Optional change history
 
 ### Files Excluded from Updates
 The following files/directories are never modified by the updater to preserve your configuration:
@@ -81,84 +66,93 @@ The following files/directories are never modified by the updater to preserve yo
 - `vendor/` - Composer dependencies
 - `node_modules/` - NPM dependencies
 
-### Files Deleted
-**NEW:** Files that exist in your local installation but were removed from the repository will be automatically deleted. This ensures your installation stays in sync with the repository structure.
-
 ## Security Considerations
 
 1. **Access Control:** Only administrators can access the Updates feature
-2. **Token Security:** GitHub tokens are stored encrypted in the database
-3. **CSRF Protection:** All update actions are protected against CSRF attacks
-4. **File Validation:** Only files from the authorized repository can be updated
-5. **Backup Required:** Always backup before applying updates
+2. **CSRF Protection:** All update actions are protected against CSRF attacks
+3. **File Validation:** Package manifests are validated before execution
+4. **Transaction Safety:** Database changes use transactions with rollback on error
+5. **Automatic Backup:** Files are backed up before any changes
 
 ## Troubleshooting
 
-### "Repository not found or access denied"
-- Verify your GitHub token has the correct permissions
-- Check if the token has expired
-- Ensure the token has access to the CrashMediaIT/Arctic_Wolves repository
+### "manifest.json not found"
+- Verify the ZIP file contains a valid manifest.json at the root
+- Check the package was created correctly
 
-### "Failed to connect to GitHub"
-- Check your internet connection
-- Verify your server can access GitHub.com
-- Check for firewall or proxy restrictions
+### "Version already installed"
+- This version has already been applied
+- Check the installed versions table for duplicates
 
-### Update Failed with Errors
-- Review the error messages displayed
+### Import Failed with Errors
+- Review the import log for specific error messages
 - Check file permissions on the server
 - Ensure sufficient disk space
 - Verify PHP has write access to application directories
+- Check database connection and permissions
 
 ### Files Not Updating
-- Check the excluded paths list
-- Verify the files exist in the repository
+- Verify files exist in the package's files/ directory
+- Check the manifest file lists match the package contents
 - Check server file permissions
 
 ## Technical Details
 
 ### Implementation Files
-- **Library:** `/lib/github_updater.php` - Core update logic
-- **UI:** `/views/admin_settings.php` - Updates tab interface
-- **Controller:** `/process_settings.php` - Update action handler
+- **Library:** `/admin/feature_importer.php` - Core import logic
+- **Library:** `/lib/update_package_generator.php` - Package creation utility
+- **Library:** `/lib/database_migrator.php` - Database migration handler
+- **Library:** `/lib/code_updater.php` - Code reference updater
+- **UI:** `/views/admin_system_tools.php` - Updates tab interface
+- **Handler:** `/process_feature_import.php` - Import action handler
 
-### Database Settings
-The following settings are stored in the `system_settings` table:
-- `github_token` - GitHub Personal Access Token
-- `current_commit_sha` - Current installation version
-
-### API Endpoints
-The updater uses GitHub's API:
-- Repository info: `https://api.github.com/repos/{owner}/{repo}`
-- Commits: `https://api.github.com/repos/{owner}/{repo}/commits/{branch}`
-- File tree: `https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1`
-- Raw files: `https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}`
+### Database Tables
+The following table tracks installed features:
+- `feature_versions` - Records feature name, version, applied date, and changes
 
 ### Update Process Flow
-1. Authenticate with GitHub using stored token
-2. Fetch repository file tree
-3. Compare with local file list
-4. Download and update changed files
-5. Delete files not present in repository (excluding protected paths)
-6. Update current commit SHA
-7. Report results
+1. Upload and validate ZIP package
+2. Extract and parse manifest.json
+3. Check version compatibility
+4. Create backup of affected files
+5. Begin database transaction
+6. Execute database migrations
+7. Process file migrations (move/rename)
+8. Create, update, or delete files
+9. Update navigation routes if needed
+10. Record feature version
+11. Commit transaction
+12. Clean up temporary files
 
 ## Best Practices
 
 1. **Test in Staging:** Always test updates in a staging environment first
 2. **Backup First:** Create database and file backups before updating
-3. **Review Changes:** Check the GitHub repository for recent changes before updating
+3. **Review Package:** Check the package contents before importing
 4. **Monitor Errors:** Review any error messages carefully
 5. **Verify Functionality:** Test critical features after applying updates
 
-## Governance
-This feature supports the Arctic Wolves governance model by:
-- Ensuring all installations can stay up-to-date with the latest fixes
-- Providing audit trail through commit history
-- Enabling centralized update management
-- Supporting automated deployment workflows
+## Creating Update Packages
+
+Use the UpdatePackageGenerator class to create update packages:
+
+```php
+require_once 'lib/update_package_generator.php';
+
+$generator = new UpdatePackageGenerator();
+$generator->initPackage('MyFeature', '1.0.0', 'Description of the feature');
+
+// Add database changes
+$generator->addColumn('users', 'new_column VARCHAR(255) DEFAULT NULL');
+
+// Add files
+$generator->addFile('views/new_view.php', $file_content);
+
+// Generate package
+$zip_path = $generator->generatePackage();
+```
 
 ## Version Information
-- **Feature Added:** January 2026
+- **Feature Updated:** February 2026
 - **Repository:** CrashMediaIT/Arctic_Wolves
 - **Default Branch:** main
