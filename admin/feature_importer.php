@@ -41,10 +41,11 @@ class FeatureImporter {
     }
     
     /**
-     * Ensure feature_versions table exists
+     * Ensure feature_versions table exists with correct schema
      */
     private function ensureFeatureVersionsTable() {
         try {
+            // First, try to create the table if it doesn't exist
             $this->pdo->exec("
                 CREATE TABLE IF NOT EXISTS `feature_versions` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,8 +60,51 @@ class FeatureImporter {
                     INDEX `idx_feature_name` (`feature_name`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
+            
+            // Check if table exists but with old schema (created_at instead of applied_at)
+            // If so, add the applied_at column
+            $columns = $this->pdo->query("SHOW COLUMNS FROM `feature_versions`")->fetchAll(PDO::FETCH_COLUMN);
+            
+            // Helper function to safely add column
+            $addColumn = function($sql) {
+                try {
+                    $this->pdo->exec($sql);
+                } catch (PDOException $e) {
+                    // Column might already exist or other issue - log and continue
+                    error_log("Feature versions column add: " . $e->getMessage());
+                }
+            };
+            
+            if (!in_array('applied_at', $columns) && in_array('created_at', $columns)) {
+                // Old schema detected - add applied_at column based on created_at
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER `version`");
+                try {
+                    $this->pdo->exec("UPDATE `feature_versions` SET `applied_at` = `created_at` WHERE `applied_at` IS NULL");
+                } catch (PDOException $e) {
+                    error_log("Feature versions update: " . $e->getMessage());
+                }
+            } elseif (!in_array('applied_at', $columns)) {
+                // No applied_at column exists, add it
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER `version`");
+            }
+            
+            // Ensure other required columns exist
+            if (!in_array('applied_by', $columns)) {
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `applied_by` INT DEFAULT NULL AFTER `applied_at`");
+            }
+            if (!in_array('database_changes', $columns)) {
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `database_changes` JSON DEFAULT NULL");
+            }
+            if (!in_array('file_changes', $columns)) {
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `file_changes` JSON DEFAULT NULL");
+            }
+            if (!in_array('manifest', $columns)) {
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `manifest` JSON DEFAULT NULL");
+            }
+            
         } catch (PDOException $e) {
-            // Table might already exist, ignore
+            // Log error but don't fail - table operations may not all be possible
+            error_log("Feature versions table setup: " . $e->getMessage());
         }
     }
     
@@ -527,16 +571,29 @@ class FeatureImporter {
         $new_version = $manifest['version'];
         $requires_version = $manifest['requires_version'] ?? null;
         
-        // Check if feature already exists
-        $stmt = $this->pdo->prepare("
-            SELECT version, applied_at 
-            FROM feature_versions 
-            WHERE feature_name = ? 
-            ORDER BY applied_at DESC 
-            LIMIT 1
-        ");
-        $stmt->execute([$feature_name]);
-        $current = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Check if feature already exists - try with applied_at first, fallback to created_at
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT version, COALESCE(applied_at, created_at) as applied_at 
+                FROM feature_versions 
+                WHERE feature_name = ? 
+                ORDER BY COALESCE(applied_at, created_at) DESC 
+                LIMIT 1
+            ");
+            $stmt->execute([$feature_name]);
+            $current = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            // Fallback if applied_at column doesn't exist
+            $stmt = $this->pdo->prepare("
+                SELECT version, created_at as applied_at 
+                FROM feature_versions 
+                WHERE feature_name = ? 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            ");
+            $stmt->execute([$feature_name]);
+            $current = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
         
         if ($current) {
             $this->addLog("Current version: {$current['version']}", 'info');
@@ -746,13 +803,29 @@ class FeatureImporter {
      * Get installed feature versions
      */
     public function getInstalledVersions() {
-        $stmt = $this->pdo->query("
-            SELECT feature_name, version, applied_at, applied_by
-            FROM feature_versions
-            ORDER BY feature_name, applied_at DESC
-        ");
-        
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            // Try query with applied_at first
+            $stmt = $this->pdo->query("
+                SELECT feature_name, version, applied_at, applied_by, created_at
+                FROM feature_versions
+                ORDER BY feature_name, COALESCE(applied_at, created_at) DESC
+            ");
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            // Fallback if applied_at column doesn't exist yet
+            try {
+                $stmt = $this->pdo->query("
+                    SELECT feature_name, version, created_at as applied_at, NULL as applied_by, created_at
+                    FROM feature_versions
+                    ORDER BY feature_name, created_at DESC
+                ");
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (PDOException $e2) {
+                error_log("Failed to get installed versions: " . $e2->getMessage());
+                return [];
+            }
+        }
     }
     
     /**

@@ -321,12 +321,16 @@ function performBackup($pdo, $job) {
         $sql_file = $temp_dir . 'backup_' . time() . '.sql';
         $gz_file = $sql_file . '.gz';
         
-        // Get database credentials from db_config.php
-        require __DIR__ . '/db_config.php';
-        $db_host = DB_HOST;
-        $db_name = DB_NAME;
-        $db_user = DB_USER;
-        $db_pass = DB_PASS;
+        // Get database credentials from environment variables (set by db_config.php)
+        $db_host = $_ENV['DB_HOST'] ?? null;
+        $db_name = $_ENV['DB_NAME'] ?? null;
+        $db_user = $_ENV['DB_USER'] ?? null;
+        $db_pass = $_ENV['DB_PASS'] ?? '';
+        
+        // Validate required credentials are set
+        if (empty($db_host) || empty($db_name) || empty($db_user)) {
+            throw new Exception('Database credentials not configured. Please check your environment configuration.');
+        }
         
         // Create mysqldump command
         $command = sprintf(

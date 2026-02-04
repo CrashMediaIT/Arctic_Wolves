@@ -43,7 +43,7 @@ try {
     </div>
 </div>
 
-<!-- System Tools Tabs -->
+<!-- System Tools Tabs - Primary Row -->
 <div class="page-tabs" style="flex-wrap: wrap;">
     <a href="?page=system_tools&tab=settings" class="page-tab <?php echo $activeTab === 'settings' ? 'active' : ''; ?>">
         <i class="fas fa-sliders-h"></i> Settings
@@ -69,14 +69,18 @@ try {
     <a href="?page=system_tools&tab=database" class="page-tab <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
         <i class="fas fa-database"></i> Database
     </a>
-    <a href="?page=system_tools&tab=updates" class="page-tab <?php echo $activeTab === 'updates' ? 'active' : ''; ?>">
-        <i class="fas fa-download"></i> Updates
-    </a>
+</div>
+
+<!-- System Tools Tabs - Secondary Row (System Status) -->
+<div class="page-tabs page-tabs-secondary" style="flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
     <a href="?page=system_tools&tab=landing" class="page-tab <?php echo $activeTab === 'landing' ? 'active' : ''; ?>">
         <i class="fas fa-home"></i> Landing Page
     </a>
     <a href="system_health_validator.php" class="page-tab">
         <i class="fas fa-heartbeat"></i> Health
+    </a>
+    <a href="?page=system_tools&tab=updates" class="page-tab <?php echo $activeTab === 'updates' ? 'active' : ''; ?>">
+        <i class="fas fa-download"></i> Updates
     </a>
 </div>
 
@@ -1149,11 +1153,13 @@ try {
                             }
                         }
                         foreach ($grouped as $feature_name => $version): 
+                        // Use applied_at if available, fallback to created_at
+                        $install_date = $version['applied_at'] ?? $version['created_at'] ?? null;
                         ?>
                         <tr style="border-bottom: 1px solid var(--border);">
                             <td style="padding: 8px; color: var(--text-white);"><?php echo htmlspecialchars($feature_name); ?></td>
                             <td style="padding: 8px; color: #10b981;"><?php echo htmlspecialchars($version['version']); ?></td>
-                            <td style="padding: 8px; color: var(--text-dim);"><?php echo date('M d, Y', strtotime($version['applied_at'])); ?></td>
+                            <td style="padding: 8px; color: var(--text-dim);"><?php echo $install_date ? date('M d, Y', strtotime($install_date)) : 'N/A'; ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </table>
