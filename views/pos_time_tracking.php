@@ -478,13 +478,13 @@ function startTimer() {
     
     // Parse clock_in time once at the start
     if (!shiftData || !shiftData.clock_in) {
-        console.log('Timer: No shift data or clock_in', shiftData);
+        console.error('Timer: No shift data or clock_in', shiftData);
         return;
     }
     
     const clockIn = parseMySQLDateTime(shiftData.clock_in);
     if (!clockIn || isNaN(clockIn.getTime())) {
-        console.log('Timer: Invalid clockIn date', shiftData.clock_in, clockIn);
+        console.error('Timer: Invalid clockIn date', shiftData.clock_in, clockIn);
         return;
     }
     
