@@ -30,10 +30,10 @@ try {
     
     // Get recent backups from backup_history table
     $recent_backups_query = $pdo->query("
-        SELECT bh.*, bj.job_name, bj.storage_location
+        SELECT bh.*, bj.name as job_name, bj.destination_type as storage_location
         FROM backup_history bh
-        LEFT JOIN backup_jobs bj ON bh.job_id = bj.id
-        WHERE bh.status = 'completed'
+        LEFT JOIN backup_jobs bj ON bh.backup_job_id = bj.id
+        WHERE bh.status = 'success'
         ORDER BY bh.backup_date DESC
         LIMIT 20
     ");

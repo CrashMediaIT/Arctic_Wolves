@@ -54,7 +54,9 @@ $theme_defaults = [
     'background_color' => '#06080b',
     'logo_url' => '',
     'logo_method' => 'url',
-    'use_logo_as_favicon' => '0'
+    'use_logo_as_favicon' => '0',
+    'center_ice_logo_url' => '',
+    'center_ice_logo_method' => 'upload'
 ];
 foreach ($theme_defaults as $key => $value) {
     if (!isset($theme_settings[$key])) {
@@ -1055,6 +1057,76 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </div>
                     </div>
                     
+                    <!-- Center Ice Logo Section -->
+                    <div class="sync-options" style="margin-bottom: 24px;">
+                        <h4><i class="fas fa-hockey-puck"></i> Center Ice Logo</h4>
+                        <p class="help-text" style="margin-bottom: 16px;">This logo appears at center ice in the drill designer as a subtle watermark. Preview shown at 50% opacity; actual display uses 12% opacity.</p>
+                        
+                        <div class="settings-list">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Logo Source</h4>
+                                    <p>Choose how to provide your center ice logo</p>
+                                </div>
+                                <div style="display: flex; gap: 20px;">
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                        <input type="radio" name="center_ice_logo_method" value="upload" 
+                                               <?php echo ($theme_settings['center_ice_logo_method'] === 'upload') ? 'checked' : ''; ?> 
+                                               onchange="toggleCenterIceLogoInput()">
+                                        <span>Upload File</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                        <input type="radio" name="center_ice_logo_method" value="url" 
+                                               <?php echo ($theme_settings['center_ice_logo_method'] === 'url') ? 'checked' : ''; ?> 
+                                               onchange="toggleCenterIceLogoInput()">
+                                        <span>Use URL</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="setting-item" id="center-ice-logo-upload-row" style="<?php echo ($theme_settings['center_ice_logo_method'] === 'url') ? 'display: none;' : ''; ?>">
+                                <div class="setting-info">
+                                    <h4>Upload Center Ice Logo</h4>
+                                    <p>PNG, JPG, WEBP (max 2MB, 400x400px recommended)</p>
+                                </div>
+                                <input type="file" name="center_ice_logo" class="form-input" accept=".png,.jpg,.jpeg,.webp" style="max-width: 300px;">
+                            </div>
+                            
+                            <div class="setting-item" id="center-ice-logo-url-row" style="<?php echo ($theme_settings['center_ice_logo_method'] === 'upload') ? 'display: none;' : ''; ?>">
+                                <div class="setting-info">
+                                    <h4>Center Ice Logo URL</h4>
+                                    <p>Direct URL to your center ice logo image</p>
+                                </div>
+                                <input type="url" name="center_ice_logo_url_input" class="form-input" 
+                                       value="<?php echo htmlspecialchars($theme_settings['center_ice_logo_url']); ?>"
+                                       placeholder="https://example.com/center-ice-logo.png" style="min-width: 300px;">
+                            </div>
+                            
+                            <?php if (!empty($theme_settings['center_ice_logo_url'])): ?>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Current Center Ice Logo</h4>
+                                    <p>Preview of the center ice logo</p>
+                                </div>
+                                <div style="background: #0A0A0F; padding: 16px; border-radius: 8px; border: 1px solid var(--border); display: flex; align-items: center; gap: 16px;">
+                                    <img src="<?php echo htmlspecialchars($theme_settings['center_ice_logo_url']); ?>" alt="Current Center Ice Logo" 
+                                         style="max-height: 100px; max-width: 100px; opacity: 0.5;" onerror="this.style.display='none'">
+                                    <button type="button" class="btn btn-secondary" onclick="removeCenterIceLogo()" style="font-size: 12px; padding: 6px 12px;">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                            <?php else: ?>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>No Center Ice Logo Set</h4>
+                                    <p>Default text branding will be used in drill designer</p>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="resetThemeColors()">
                             <i class="fas fa-undo"></i> Reset Colors
@@ -1610,6 +1682,45 @@ function toggleThemeLogoInput() {
     
     if (uploadRow) uploadRow.style.display = method.value === 'upload' ? '' : 'none';
     if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
+}
+
+function toggleCenterIceLogoInput() {
+    const method = document.querySelector('input[name="center_ice_logo_method"]:checked');
+    if (!method) return;
+    
+    const uploadRow = document.getElementById('center-ice-logo-upload-row');
+    const urlRow = document.getElementById('center-ice-logo-url-row');
+    
+    if (uploadRow) uploadRow.style.display = method.value === 'upload' ? '' : 'none';
+    if (urlRow) urlRow.style.display = method.value === 'url' ? '' : 'none';
+}
+
+function removeCenterIceLogo() {
+    if (!confirm('Are you sure you want to remove the center ice logo?')) return;
+    
+    const formData = new FormData();
+    formData.append('action', 'remove_center_ice_logo');
+    formData.append('csrf_token', getCsrfToken());
+    
+    fetch('process_theme.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        // Check if redirect happened (success)
+        if (response.redirected || response.status === 200) {
+            location.reload();
+        } else {
+            throw new Error('Unexpected response');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to remove center ice logo');
+    });
 }
 
 function resetThemeColors() {

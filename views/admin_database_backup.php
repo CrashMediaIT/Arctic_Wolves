@@ -23,9 +23,9 @@ $jobs = $jobs_query->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch backup history
 $history_query = $pdo->query("
-    SELECT bh.*, bj.job_name
+    SELECT bh.*, bj.name as job_name
     FROM backup_history bh
-    LEFT JOIN backup_jobs bj ON bh.job_id = bj.id
+    LEFT JOIN backup_jobs bj ON bh.backup_job_id = bj.id
     ORDER BY bh.backup_date DESC
     LIMIT 100
 ");
