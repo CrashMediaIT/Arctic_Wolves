@@ -315,6 +315,70 @@ if ($editDrillId) {
                             <?php endif; ?>
                         </div>
                     </div>
+                    
+                    <!-- Video Section -->
+                    <div class="form-section-header" style="margin-top: 20px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
+                        <h4 style="font-size: 14px; font-weight: 700; color: var(--text-white); margin: 0;">
+                            <i class="fas fa-video" style="color: var(--primary); margin-right: 8px;"></i> Video (Optional)
+                        </h4>
+                        <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0;">Add a video to demonstrate this drill</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Video Type</label>
+                        <select name="video_type" id="videoTypeSelect" class="form-input" onchange="toggleVideoFields()">
+                            <option value="">No Video</option>
+                            <option value="youtube" <?php echo (isset($editingDrill['video_url']) && strpos($editingDrill['video_url'] ?? '', 'youtube') !== false) ? 'selected' : ''; ?>>YouTube Embed</option>
+                            <option value="upload" <?php echo (isset($editingDrill['video_upload_path']) && !empty($editingDrill['video_upload_path'])) ? 'selected' : ''; ?>>Upload Video File</option>
+                            <option value="url" <?php echo (isset($editingDrill['video_url']) && !empty($editingDrill['video_url']) && strpos($editingDrill['video_url'] ?? '', 'youtube') === false) ? 'selected' : ''; ?>>External URL</option>
+                        </select>
+                    </div>
+                    
+                    <div id="youtubeFields" class="video-type-fields" style="display: none;">
+                        <div class="form-group">
+                            <label>YouTube Video URL or Embed Code</label>
+                            <input type="text" name="youtube_url" id="youtubeUrl" class="form-input" 
+                                   placeholder="https://www.youtube.com/watch?v=... or paste embed code"
+                                   value="<?php echo htmlspecialchars((strpos($editingDrill['video_url'] ?? '', 'youtube') !== false) ? $editingDrill['video_url'] : ''); ?>">
+                            <p class="help-text" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
+                                <i class="fas fa-info-circle"></i> Paste a YouTube watch URL (e.g., https://youtube.com/watch?v=xxx) or the full embed iframe code
+                            </p>
+                        </div>
+                        <div id="youtubePreview" class="video-preview" style="display: none; margin-top: 12px;">
+                            <label>Preview</label>
+                            <div class="video-preview-container" style="background: var(--bg-main); border-radius: 8px; overflow: hidden; max-width: 560px;">
+                                <iframe id="youtubeIframe" width="100%" height="315" frameborder="0" allowfullscreen></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="uploadFields" class="video-type-fields" style="display: none;">
+                        <div class="form-group">
+                            <label>Upload Video File</label>
+                            <input type="file" name="video_file" id="videoFileInput" class="form-input" accept="video/mp4,video/webm,video/ogg">
+                            <p class="help-text" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
+                                <i class="fas fa-info-circle"></i> Supported formats: MP4, WebM, OGG. Max size: 100MB
+                            </p>
+                            <?php if (!empty($editingDrill['video_upload_path'])): ?>
+                            <div class="current-video" style="margin-top: 8px; padding: 8px; background: var(--bg-main); border-radius: 6px;">
+                                <i class="fas fa-file-video" style="color: var(--primary);"></i>
+                                <span style="color: var(--text-dim); font-size: 12px;">Current: <?php echo htmlspecialchars(basename($editingDrill['video_upload_path'])); ?></span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <div id="urlFields" class="video-type-fields" style="display: none;">
+                        <div class="form-group">
+                            <label>External Video URL</label>
+                            <input type="url" name="video_url" id="externalVideoUrl" class="form-input" 
+                                   placeholder="https://..."
+                                   value="<?php echo htmlspecialchars((strpos($editingDrill['video_url'] ?? '', 'youtube') === false && !empty($editingDrill['video_url'])) ? $editingDrill['video_url'] : ''); ?>">
+                            <p class="help-text" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
+                                <i class="fas fa-info-circle"></i> Link to a video hosted elsewhere (e.g., Vimeo, direct MP4 link)
+                            </p>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -832,6 +896,95 @@ function cancelDrillCreation() {
     
     window.location.href = '?page=drill_library';
 }
+
+// Video type toggle functionality
+function toggleVideoFields() {
+    const videoType = document.getElementById('videoTypeSelect').value;
+    
+    // Hide all video type fields
+    document.querySelectorAll('.video-type-fields').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // Show the selected type's fields
+    if (videoType === 'youtube') {
+        document.getElementById('youtubeFields').style.display = 'block';
+    } else if (videoType === 'upload') {
+        document.getElementById('uploadFields').style.display = 'block';
+    } else if (videoType === 'url') {
+        document.getElementById('urlFields').style.display = 'block';
+    }
+}
+
+// Parse YouTube URL and extract video ID
+function parseYouTubeUrl(url) {
+    if (!url) return null;
+    
+    // Check if it's an iframe embed code
+    if (url.includes('<iframe')) {
+        const srcMatch = url.match(/src="([^"]+)"/);
+        if (srcMatch) {
+            url = srcMatch[1];
+        }
+    }
+    
+    // Handle various YouTube URL formats
+    let videoId = null;
+    
+    // Standard watch URL: youtube.com/watch?v=VIDEO_ID
+    const watchMatch = url.match(/[?&]v=([^&]+)/);
+    if (watchMatch) {
+        videoId = watchMatch[1];
+    }
+    
+    // Short URL: youtu.be/VIDEO_ID
+    const shortMatch = url.match(/youtu\.be\/([^?&]+)/);
+    if (shortMatch) {
+        videoId = shortMatch[1];
+    }
+    
+    // Embed URL: youtube.com/embed/VIDEO_ID
+    const embedMatch = url.match(/youtube\.com\/embed\/([^?&]+)/);
+    if (embedMatch) {
+        videoId = embedMatch[1];
+    }
+    
+    return videoId;
+}
+
+// Preview YouTube video
+function previewYouTube() {
+    const urlInput = document.getElementById('youtubeUrl');
+    const previewDiv = document.getElementById('youtubePreview');
+    const iframe = document.getElementById('youtubeIframe');
+    
+    const videoId = parseYouTubeUrl(urlInput.value);
+    
+    if (videoId) {
+        iframe.src = 'https://www.youtube.com/embed/' + videoId;
+        previewDiv.style.display = 'block';
+    } else {
+        previewDiv.style.display = 'none';
+        iframe.src = '';
+    }
+}
+
+// Initialize video fields on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize video type fields visibility
+    toggleVideoFields();
+    
+    // Add YouTube URL change listener for preview
+    const youtubeInput = document.getElementById('youtubeUrl');
+    if (youtubeInput) {
+        youtubeInput.addEventListener('change', previewYouTube);
+        youtubeInput.addEventListener('blur', previewYouTube);
+        // Preview if there's already a value
+        if (youtubeInput.value) {
+            previewYouTube();
+        }
+    }
+});
 </script>
 
 <!-- Load Drill Designer JavaScript -->

@@ -596,9 +596,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Edit Drill Modal -->
+<!-- Edit Drill Modal (for imported drills - text fields only) -->
 <div id="edit-drill-modal" class="modal">
-    <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Drill</h2>
             <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-drill-modal')">&times;</button>
@@ -609,6 +609,11 @@ document.addEventListener('DOMContentLoaded', function() {
             <input type="hidden" name="drill_id" id="editDrillId">
             
             <div class="modal-body">
+                <div class="alert alert-info" style="margin-bottom: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; font-size: 13px; color: var(--text-white);">
+                    <i class="fas fa-info-circle" style="color: #3b82f6; margin-right: 8px;"></i>
+                    <span>This drill was imported from an external source. You can edit the text fields below. The drill diagram cannot be modified.</span>
+                </div>
+                
                 <div class="form-group">
                     <label class="form-label">Drill Name *</label>
                     <input type="text" name="title" id="editDrillTitle" class="form-input" required>
@@ -627,17 +632,39 @@ document.addEventListener('DOMContentLoaded', function() {
                         <option value="Stickhandling">Stickhandling</option>
                         <option value="Team Play">Team Play</option>
                         <option value="Goalie">Goalie</option>
+                        <option value="Defensive">Defensive</option>
+                        <option value="Offensive">Offensive</option>
+                        <option value="Conditioning">Conditioning</option>
+                        <option value="Puck Control">Puck Control</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea name="description" id="editDrillDescription" class="form-textarea" rows="4" placeholder="Describe the drill..."></textarea>
+                    <textarea name="description" id="editDrillDescription" class="form-textarea" rows="5" placeholder="Describe the drill objectives and key points..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Setup Instructions</label>
+                    <textarea name="setup" id="editDrillSetup" class="form-textarea" rows="3" placeholder="How to set up the drill..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Coaching Points</label>
+                    <textarea name="coaching_points" id="editDrillCoachingPoints" class="form-textarea" rows="3" placeholder="Key coaching points to emphasize..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Progression</label>
+                    <textarea name="progression" id="editDrillProgression" class="form-textarea" rows="3" placeholder="How to progress the drill..."></textarea>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Video URL (optional)</label>
-                    <input type="url" name="video_url" id="editDrillVideoUrl" class="form-input" placeholder="https://...">
+                    <input type="url" name="video_url" id="editDrillVideoUrl" class="form-input" placeholder="https://youtube.com/watch?v=... or other video URL">
+                    <p class="help-text" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
+                        <i class="fas fa-info-circle"></i> YouTube links will be automatically embedded when viewing the drill.
+                    </p>
                 </div>
             </div>
             
@@ -733,10 +760,61 @@ function loadDrillForEdit(drillId) {
     const drill = drillsData.find(d => d.id == drillId);
     if (!drill) return;
     
-    // Redirect to drill designer with edit mode
-    // Store drill data in sessionStorage for the designer to pick up
-    sessionStorage.setItem('editDrill', JSON.stringify(drill));
-    window.location.href = '?page=create_drill&edit=' + drillId;
+    // Check if this is an imported drill (has ihs_source_url or custom_image but no diagram_data)
+    const isImported = drill.ihs_source_url || (drill.custom_image && !drill.diagram_data);
+    
+    if (isImported) {
+        // For imported drills, open the text-only edit modal instead of drill designer
+        openImportedDrillEditModal(drill);
+    } else {
+        // For regular drills, redirect to drill designer with edit mode
+        // Store drill data in sessionStorage for the designer to pick up
+        sessionStorage.setItem('editDrill', JSON.stringify(drill));
+        window.location.href = '?page=create_drill&edit=' + drillId;
+    }
+}
+
+// Open edit modal for imported drills (text fields only)
+function openImportedDrillEditModal(drill) {
+    document.getElementById('editDrillId').value = drill.id;
+    document.getElementById('editDrillTitle').value = drill.title || '';
+    document.getElementById('editDrillDescription').value = drill.description || '';
+    document.getElementById('editDrillVideoUrl').value = drill.video_url || '';
+    
+    // Populate additional fields for imported drills
+    const setupField = document.getElementById('editDrillSetup');
+    if (setupField) setupField.value = drill.setup || '';
+    
+    const coachingPointsField = document.getElementById('editDrillCoachingPoints');
+    if (coachingPointsField) coachingPointsField.value = drill.coaching_points || '';
+    
+    const progressionField = document.getElementById('editDrillProgression');
+    if (progressionField) progressionField.value = drill.progression || '';
+    
+    // Set category
+    const categorySelect = document.getElementById('editDrillCategory');
+    if (categorySelect && drill.category_name) {
+        // Try to find and select the matching category
+        for (let option of categorySelect.options) {
+            if (option.text === drill.category_name || option.value === drill.category_name) {
+                option.selected = true;
+                break;
+            }
+        }
+    }
+    
+    // Update modal title to indicate imported drill
+    const modalTitle = document.querySelector('#edit-drill-modal .modal-title');
+    if (modalTitle) {
+        modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Imported Drill';
+    }
+    
+    // Show the modal
+    const modal = document.getElementById('edit-drill-modal');
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
 }
 
 // Handle view and edit button clicks
