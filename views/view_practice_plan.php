@@ -228,16 +228,22 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                             
                             <div class="drill-body">
                                 <!-- Drill Diagram -->
-                                <div class="drill-diagram" id="drill-diagram-container-<?php echo $drillNumber; ?>">
+                                <div class="drill-diagram-view" id="drill-diagram-container-<?php echo $drillNumber; ?>">
                                     <?php if ($hasCustomImage): ?>
-                                        <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" 
-                                             alt="<?php echo htmlspecialchars($drill['title'] ?? 'Drill'); ?> Diagram" 
-                                             class="drill-diagram-image"
-                                             onerror="this.parentElement.innerHTML='<div class=\'no-diagram\'><i class=\'fas fa-image\'></i><span>Image not available</span></div>'">
+                                        <!-- IHS Imported Image -->
+                                        <div class="ihs-diagram-container">
+                                            <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" 
+                                                 alt="<?php echo htmlspecialchars($drill['title'] ?? 'Drill'); ?> Diagram" 
+                                                 class="ihs-drill-image"
+                                                 onerror="this.parentElement.innerHTML='<div class=\'no-diagram\'><i class=\'fas fa-image\'></i><span>Image not available</span></div>'">
+                                        </div>
                                     <?php elseif ($hasDiagramData): ?>
-                                        <canvas id="drill-canvas-<?php echo $drillNumber; ?>" 
-                                                class="drill-diagram-canvas"
-                                                data-diagram='<?php echo htmlspecialchars($drill['diagram_data'], ENT_QUOTES); ?>'></canvas>
+                                        <!-- Drill Draw Canvas -->
+                                        <div class="ice-rink-canvas view-only">
+                                            <canvas id="drill-canvas-<?php echo $drillNumber; ?>" 
+                                                    class="drill-diagram-canvas"
+                                                    data-diagram='<?php echo htmlspecialchars($drill['diagram_data'], ENT_QUOTES); ?>'></canvas>
+                                        </div>
                                     <?php else: ?>
                                         <div class="no-diagram">
                                             <i class="fas fa-hockey-puck"></i>
@@ -306,54 +312,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 </div>
 
 <style>
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.page-header-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.page-title {
-    font-size: 28px;
-    font-weight: 900;
-    color: #fff;
-    margin: 0;
-}
-
-.page-description {
-    margin-top: 8px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    background: #1e293b;
-    color: #94a3b8;
-}
-
-.badge-primary {
-    background: var(--primary);
-    color: #fff;
-}
-
-.badge-secondary {
-    background: #334155;
-    color: #e2e8f0;
-}
+/* View Practice Plan - Styles consistent with shared_styles.css */
 
 .view-practice-plan-content {
     display: flex;
@@ -362,26 +321,31 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 }
 
 .content-card {
-    background: #0d1117;
-    border: 1px solid #1e293b;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
 }
 
-.card-header {
+.content-card .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    background: rgba(30, 41, 59, 0.5);
-    border-bottom: 1px solid #1e293b;
+    padding: var(--space-4) var(--space-5);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
 }
 
-.card-header h3 {
+.content-card .card-header h3 {
     margin: 0;
     font-size: 16px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
+}
+
+.content-card .card-header h3 i {
+    color: var(--primary-light);
+    margin-right: 8px;
 }
 
 .card-actions {
@@ -389,25 +353,25 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
     gap: 10px;
 }
 
-.card-body {
-    padding: 20px;
+.content-card .card-body {
+    padding: var(--space-5);
 }
 
 .plan-overview-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 20px;
-    margin-bottom: 20px;
+    gap: var(--space-5);
+    margin-bottom: var(--space-5);
 }
 
 .overview-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 15px;
-    background: #06080b;
+    padding: var(--space-4);
+    background: var(--bg-main);
     border-radius: 8px;
-    border: 1px solid #1e293b;
+    border: 1px solid var(--border);
 }
 
 .overview-icon {
@@ -430,31 +394,36 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 .overview-label {
     font-size: 11px;
     text-transform: uppercase;
-    color: #64748b;
+    color: var(--text-muted);
     letter-spacing: 0.5px;
 }
 
 .overview-value {
     font-size: 16px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
 }
 
 .plan-description-section {
-    padding-top: 20px;
-    border-top: 1px solid #1e293b;
-    margin-top: 20px;
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border);
+    margin-top: var(--space-5);
 }
 
 .plan-description-section h4 {
     font-size: 14px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     margin-bottom: 10px;
 }
 
+.plan-description-section h4 i {
+    color: var(--primary-light);
+    margin-right: 8px;
+}
+
 .plan-description-section p {
-    color: #94a3b8;
+    color: var(--text-secondary);
     line-height: 1.6;
 }
 
@@ -469,17 +438,16 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
     flex: 1;
     font-family: monospace;
     font-size: 13px;
-    background: #06080b;
-    border: 1px solid #1e293b;
-    color: #fff;
-    padding: 10px 12px;
-    border-radius: 6px;
 }
 
 .share-hint {
     font-size: 12px;
-    color: #64748b;
+    color: var(--text-muted);
     margin: 0;
+}
+
+.share-hint i {
+    color: var(--primary-light);
 }
 
 /* Drills List */
@@ -490,8 +458,8 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 }
 
 .drill-card {
-    background: #06080b;
-    border: 1px solid #1e293b;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
 }
@@ -500,9 +468,9 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    background: rgba(30, 41, 59, 0.3);
-    border-bottom: 1px solid #1e293b;
+    padding: var(--space-4) var(--space-5);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
 }
 
 .drill-title-section {
@@ -527,13 +495,13 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 .drill-title {
     font-size: 18px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     margin: 0;
 }
 
 .drill-category {
     font-size: 12px;
-    color: #64748b;
+    color: var(--text-muted);
 }
 
 .drill-duration {
@@ -542,8 +510,8 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
     gap: 6px;
     font-size: 14px;
     font-weight: 600;
-    color: #94a3b8;
-    background: #1e293b;
+    color: var(--text-secondary);
+    background: var(--bg-card);
     padding: 6px 12px;
     border-radius: 20px;
 }
@@ -552,30 +520,58 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 24px;
-    padding: 20px;
+    padding: var(--space-5);
 }
 
-/* Drill Diagram */
-.drill-diagram {
-    background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
-    border: 2px solid #0033a0;
-    border-radius: 12px;
-    min-height: 350px;
+/* Drill Diagram - Matching view_drill.php patterns */
+.drill-diagram-view {
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
+    min-height: 350px;
+}
+
+.ihs-diagram-container {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
+    border: 3px solid #0033a0;
+    border-radius: 12px;
+    padding: 20px;
     overflow: hidden;
 }
 
-.drill-diagram-image {
+.ihs-drill-image {
     max-width: 100%;
     max-height: 400px;
+    height: auto;
     object-fit: contain;
+    border-radius: 8px;
+}
+
+.ice-rink-canvas.view-only {
+    width: 100%;
+    aspect-ratio: 2/1;
+    min-height: 300px;
+    background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
+    border: 3px solid #0033a0;
+    border-radius: 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ice-rink-canvas.view-only canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 77px;
 }
 
 .drill-diagram-canvas {
     width: 100%;
-    height: 350px;
+    height: 100%;
 }
 
 .no-diagram {
@@ -583,8 +579,13 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #64748b;
+    color: var(--text-muted);
     padding: 40px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    min-height: 200px;
 }
 
 .no-diagram i {
@@ -602,7 +603,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 
 .drill-detail-section {
     padding-bottom: 16px;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid var(--border);
 }
 
 .drill-detail-section:last-of-type {
@@ -612,14 +613,19 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 .drill-detail-section h5 {
     font-size: 13px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     margin: 0 0 8px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
+.drill-detail-section h5 i {
+    color: var(--primary-light);
+    margin-right: 6px;
+}
+
 .drill-detail-section p {
-    color: #94a3b8;
+    color: var(--text-secondary);
     line-height: 1.6;
     margin: 0;
 }
@@ -628,39 +634,10 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
     margin-top: auto;
 }
 
-.btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    transition: 0.2s;
-}
-
-.btn:hover {
-    transform: translateY(-2px);
-    opacity: 0.9;
-}
-
-.btn-secondary {
-    background: #1e293b;
-}
-
-.btn-sm {
-    padding: 8px 14px;
-    font-size: 13px;
-}
-
 .empty-drills-message {
     text-align: center;
     padding: 60px 20px;
-    color: #64748b;
+    color: var(--text-muted);
 }
 
 @media (max-width: 992px) {
@@ -668,8 +645,8 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
         grid-template-columns: 1fr;
     }
     
-    .drill-diagram {
-        min-height: 300px;
+    .drill-diagram-view {
+        min-height: 250px;
     }
 }
 
@@ -679,7 +656,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
         align-items: flex-start;
     }
     
-    .card-header {
+    .content-card .card-header {
         flex-direction: column;
         gap: 12px;
         align-items: flex-start;

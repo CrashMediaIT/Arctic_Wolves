@@ -656,29 +656,29 @@ try {
                         <span>DocuSeal is an open-source document e-signature platform. Follow these steps to set up DocuSeal for employee contract workflows.</span>
                     </div>
                     
-                    <div class="setup-instructions" style="background: #0a0d12; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                        <h4 style="color: #fff; margin-bottom: 15px;"><i class="fas fa-server"></i> Option 1: Self-Hosted Installation (Recommended)</h4>
-                        <ol style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
+                    <div class="setup-instructions" style="background: var(--bg-main); border-radius: 8px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border);">
+                        <h4 style="color: var(--text-primary); margin-bottom: 15px;"><i class="fas fa-server" style="color: var(--primary-light); margin-right: 8px;"></i> Option 1: Self-Hosted Installation (Recommended)</h4>
+                        <ol style="color: var(--text-secondary); line-height: 1.8; padding-left: 20px;">
                             <li><strong>Install Docker</strong> on your server if not already installed. Visit <a href="https://docs.docker.com/get-docker/" target="_blank" style="color: var(--primary-light);">Docker's official documentation</a> for platform-specific installation instructions.</li>
                             <li><strong>Run DocuSeal container:</strong>
-                                <code style="display: block; background: #1e293b; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 12px; overflow-x: auto;">docker run -d --name docuseal -p 3000:3000 -v docuseal_data:/data docuseal/docuseal</code>
+                                <code style="display: block; background: var(--bg-card); padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 12px; overflow-x: auto; border: 1px solid var(--border);">docker run -d --name docuseal -p 3000:3000 -v docuseal_data:/data docuseal/docuseal</code>
                             </li>
-                            <li><strong>Access DocuSeal</strong> at <code>http://your-server-ip:3000</code> and create your admin account</li>
+                            <li><strong>Access DocuSeal</strong> at <code style="background: var(--bg-card); padding: 4px 8px; border-radius: 4px;">http://your-server-ip:3000</code> and create your admin account</li>
                             <li><strong>Generate an API key:</strong> Go to Settings → API → Create new API key</li>
-                            <li><strong>Set up webhook URL:</strong> In DocuSeal settings, add webhook URL: <code style="background: #1e293b; padding: 4px 8px; border-radius: 4px;"><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'your-domain.com'); ?>/webhook_docuseal.php</code></li>
+                            <li><strong>Set up webhook URL:</strong> In DocuSeal settings, add webhook URL: <code style="background: var(--bg-card); padding: 4px 8px; border-radius: 4px;"><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'your-domain.com'); ?>/webhook_docuseal.php</code></li>
                             <li><strong>Create contract templates</strong> in DocuSeal with signature fields</li>
                         </ol>
                         
-                        <h4 style="color: #fff; margin: 20px 0 15px 0;"><i class="fas fa-cloud"></i> Option 2: DocuSeal Cloud</h4>
-                        <ol style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
+                        <h4 style="color: var(--text-primary); margin: 20px 0 15px 0;"><i class="fas fa-cloud" style="color: var(--primary-light); margin-right: 8px;"></i> Option 2: DocuSeal Cloud</h4>
+                        <ol style="color: var(--text-secondary); line-height: 1.8; padding-left: 20px;">
                             <li>Sign up at <a href="https://docuseal.co" target="_blank" style="color: var(--primary-light);">docuseal.co</a></li>
                             <li>Navigate to Settings → API and generate an API key</li>
-                            <li>Use <code style="background: #1e293b; padding: 4px 8px; border-radius: 4px;">https://api.docuseal.co</code> as your DocuSeal URL</li>
+                            <li>Use <code style="background: var(--bg-card); padding: 4px 8px; border-radius: 4px;">https://api.docuseal.co</code> as your DocuSeal URL</li>
                             <li>Configure webhook URL in your DocuSeal account settings</li>
                         </ol>
                         
-                        <h4 style="color: #fff; margin: 20px 0 15px 0;"><i class="fas fa-cog"></i> Template Setup</h4>
-                        <ol style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
+                        <h4 style="color: var(--text-primary); margin: 20px 0 15px 0;"><i class="fas fa-cog" style="color: var(--primary-light); margin-right: 8px;"></i> Template Setup</h4>
+                        <ol style="color: var(--text-secondary); line-height: 1.8; padding-left: 20px;">
                             <li>Upload your contract PDF template to DocuSeal</li>
                             <li>Add signature fields, date fields, and text fields as needed</li>
                             <li>Configure submitter roles (e.g., "Employee", "Manager")</li>
