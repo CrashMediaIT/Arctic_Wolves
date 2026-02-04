@@ -585,6 +585,9 @@ function parseIHSPracticePlanPage($html, $url) {
     
     libxml_clear_errors();
     
+    // Deduplicate drills by title, merging text fields from duplicates
+    $plan['drills'] = deduplicateDrillsByTitle($plan['drills']);
+    
     // Return plan if we have at least a title
     if (!empty($plan['title']) || !empty($plan['drills'])) {
         if (empty($plan['title'])) {
@@ -766,6 +769,88 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
     }
     
     return $drill;
+}
+
+/**
+ * Deduplicate drills by title, merging text fields from duplicates
+ * Each drill should have unique title with all information consolidated
+ * Text fields (description, setup, coaching_points, progression) are merged if duplicate has non-empty values
+ * 
+ * @param array $drills Array of drill data
+ * @return array Deduplicated array of drills
+ */
+function deduplicateDrillsByTitle($drills) {
+    if (empty($drills) || !is_array($drills)) {
+        return [];
+    }
+    
+    $uniqueDrills = [];
+    $titleIndex = []; // Maps normalized title to index in uniqueDrills
+    
+    foreach ($drills as $drill) {
+        $title = trim($drill['title'] ?? '');
+        if (empty($title)) {
+            continue; // Skip drills without titles
+        }
+        
+        // Normalize title for comparison (lowercase, trim whitespace)
+        $normalizedTitle = strtolower(preg_replace('/\s+/', ' ', $title));
+        
+        if (isset($titleIndex[$normalizedTitle])) {
+            // Drill with this title already exists - merge fields
+            $existingIndex = $titleIndex[$normalizedTitle];
+            $uniqueDrills[$existingIndex] = mergeDrillFields($uniqueDrills[$existingIndex], $drill);
+        } else {
+            // New unique drill
+            $titleIndex[$normalizedTitle] = count($uniqueDrills);
+            $uniqueDrills[] = $drill;
+        }
+    }
+    
+    return array_values($uniqueDrills);
+}
+
+/**
+ * Merge two drill arrays, preserving non-empty values from both
+ * The first drill (original) takes precedence for title and image,
+ * but text fields are merged/appended if the new drill has unique content
+ * 
+ * @param array $original Original drill data
+ * @param array $new New drill data to merge in
+ * @return array Merged drill data
+ */
+function mergeDrillFields($original, $new) {
+    $textFields = ['description', 'setup', 'coaching_points', 'progression'];
+    
+    foreach ($textFields as $field) {
+        $origValue = trim($original[$field] ?? '');
+        $newValue = trim($new[$field] ?? '');
+        
+        if (empty($origValue) && !empty($newValue)) {
+            // Original is empty, use new value
+            $original[$field] = $newValue;
+        } elseif (!empty($origValue) && !empty($newValue) && $origValue !== $newValue) {
+            // Both have values and they're different - check if new content is unique
+            // Avoid duplicating content that's already present
+            if (strpos($origValue, $newValue) === false) {
+                // New content is not a substring of original - append it
+                $original[$field] = $origValue . "\n\n" . $newValue;
+            }
+        }
+        // If original has value and new is empty, keep original (no change needed)
+    }
+    
+    // For rink_image: prefer the first non-empty value
+    if (empty($original['rink_image']) && !empty($new['rink_image'])) {
+        $original['rink_image'] = $new['rink_image'];
+    }
+    
+    // For duration: prefer the first non-empty value
+    if (empty($original['duration']) && !empty($new['duration'])) {
+        $original['duration'] = $new['duration'];
+    }
+    
+    return $original;
 }
 
 /**
