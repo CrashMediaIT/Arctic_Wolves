@@ -355,9 +355,12 @@ if ($editDrillId) {
                     <div id="uploadFields" class="video-type-fields" style="display: none;">
                         <div class="form-group">
                             <label>Upload Video File</label>
-                            <input type="file" name="video_file" id="videoFileInput" class="form-input" accept="video/mp4,video/webm,video/ogg">
+                            <input type="file" name="video_file" id="videoFileInput" class="form-input" accept="video/mp4,video/webm,video/ogg" onchange="validateVideoFileSize(this)">
                             <p class="help-text" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
                                 <i class="fas fa-info-circle"></i> Supported formats: MP4, WebM, OGG. Max size: 100MB
+                            </p>
+                            <p id="videoFileSizeError" style="display: none; color: var(--error); font-size: 12px; margin-top: 4px;">
+                                <i class="fas fa-exclamation-circle"></i> File is too large. Maximum size is 100MB.
                             </p>
                             <?php if (!empty($editingDrill['video_upload_path'])): ?>
                             <div class="current-video" style="margin-top: 8px; padding: 8px; background: var(--bg-main); border-radius: 6px;">
@@ -967,6 +970,26 @@ function previewYouTube() {
         previewDiv.style.display = 'none';
         iframe.src = '';
     }
+}
+
+// Validate video file size (max 100MB)
+function validateVideoFileSize(input) {
+    const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+    const errorEl = document.getElementById('videoFileSizeError');
+    
+    if (input.files && input.files[0]) {
+        const fileSize = input.files[0].size;
+        if (fileSize > maxSize) {
+            errorEl.style.display = 'block';
+            input.value = ''; // Clear the file input
+            return false;
+        } else {
+            errorEl.style.display = 'none';
+            return true;
+        }
+    }
+    errorEl.style.display = 'none';
+    return true;
 }
 
 // Initialize video fields on page load

@@ -857,13 +857,17 @@ function viewComplaint(id) {
     modal.classList.add('active');
     modal.style.display = 'flex';
     
+    // Get CSRF token safely
+    const csrfTokenEl = document.querySelector('[name="csrf_token"]');
+    const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
+    
     // Fetch complaint details via AJAX
     fetch('process_hr_complaints.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'action=get_details&complaint_id=' + id + '&csrf_token=' + document.querySelector('[name="csrf_token"]').value
+        body: 'action=get_details&complaint_id=' + id + '&csrf_token=' + encodeURIComponent(csrfToken)
     })
     .then(response => response.json())
     .then(data => {
@@ -883,13 +887,17 @@ function editComplaint(id) {
     const modal = document.getElementById('editComplaintModal');
     document.getElementById('editComplaintId').value = id;
     
+    // Get CSRF token safely
+    const csrfTokenEl = document.querySelector('[name="csrf_token"]');
+    const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
+    
     // Fetch current values
     fetch('process_hr_complaints.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'action=get_details&complaint_id=' + id + '&format=json&csrf_token=' + document.querySelector('[name="csrf_token"]').value
+        body: 'action=get_details&complaint_id=' + id + '&format=json&csrf_token=' + encodeURIComponent(csrfToken)
     })
     .then(response => response.json())
     .then(data => {

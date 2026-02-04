@@ -185,11 +185,22 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
                 </div>
                 <?php endif; ?>
                 
-                <?php if (!empty($drill['video_upload_path'])): ?>
+                <?php if (!empty($drill['video_upload_path'])): 
+                    // Determine MIME type from file extension
+                    $videoPath = $drill['video_upload_path'];
+                    $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
+                    $videoMimeTypes = [
+                        'mp4' => 'video/mp4',
+                        'webm' => 'video/webm',
+                        'ogg' => 'video/ogg',
+                        'ogv' => 'video/ogg'
+                    ];
+                    $videoMimeType = $videoMimeTypes[$videoExt] ?? 'video/mp4';
+                ?>
                 <div class="detail-section video-section">
                     <h4><i class="fas fa-film"></i> Uploaded Video</h4>
                     <video controls style="width: 100%; max-width: 640px; border-radius: 8px; background: var(--bg-main);">
-                        <source src="<?php echo htmlspecialchars($drill['video_upload_path']); ?>" type="video/mp4">
+                        <source src="<?php echo htmlspecialchars($videoPath); ?>" type="<?php echo $videoMimeType; ?>">
                         Your browser does not support the video tag.
                     </video>
                 </div>

@@ -89,9 +89,10 @@ if ($action === 'save_drill' || $action === 'create') {
         }
         
         // Create upload directory if it doesn't exist
+        // Use 0755 for better compatibility with various web server configurations
         $upload_dir = __DIR__ . '/uploads/drill_videos/';
         if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0750, true);
+            mkdir($upload_dir, 0755, true);
         }
         
         // Generate unique filename
