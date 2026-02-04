@@ -65,27 +65,41 @@ class FeatureImporter {
             // If so, add the applied_at column
             $columns = $this->pdo->query("SHOW COLUMNS FROM `feature_versions`")->fetchAll(PDO::FETCH_COLUMN);
             
+            // Helper function to safely add column
+            $addColumn = function($sql) {
+                try {
+                    $this->pdo->exec($sql);
+                } catch (PDOException $e) {
+                    // Column might already exist or other issue - log and continue
+                    error_log("Feature versions column add: " . $e->getMessage());
+                }
+            };
+            
             if (!in_array('applied_at', $columns) && in_array('created_at', $columns)) {
                 // Old schema detected - add applied_at column based on created_at
-                $this->pdo->exec("ALTER TABLE `feature_versions` ADD COLUMN `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER `version`");
-                $this->pdo->exec("UPDATE `feature_versions` SET `applied_at` = `created_at` WHERE `applied_at` IS NULL");
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER `version`");
+                try {
+                    $this->pdo->exec("UPDATE `feature_versions` SET `applied_at` = `created_at` WHERE `applied_at` IS NULL");
+                } catch (PDOException $e) {
+                    error_log("Feature versions update: " . $e->getMessage());
+                }
             } elseif (!in_array('applied_at', $columns)) {
                 // No applied_at column exists, add it
-                $this->pdo->exec("ALTER TABLE `feature_versions` ADD COLUMN `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER `version`");
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER `version`");
             }
             
             // Ensure other required columns exist
             if (!in_array('applied_by', $columns)) {
-                $this->pdo->exec("ALTER TABLE `feature_versions` ADD COLUMN `applied_by` INT DEFAULT NULL AFTER `applied_at`");
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `applied_by` INT DEFAULT NULL AFTER `applied_at`");
             }
             if (!in_array('database_changes', $columns)) {
-                $this->pdo->exec("ALTER TABLE `feature_versions` ADD COLUMN `database_changes` JSON DEFAULT NULL");
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `database_changes` JSON DEFAULT NULL");
             }
             if (!in_array('file_changes', $columns)) {
-                $this->pdo->exec("ALTER TABLE `feature_versions` ADD COLUMN `file_changes` JSON DEFAULT NULL");
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `file_changes` JSON DEFAULT NULL");
             }
             if (!in_array('manifest', $columns)) {
-                $this->pdo->exec("ALTER TABLE `feature_versions` ADD COLUMN `manifest` JSON DEFAULT NULL");
+                $addColumn("ALTER TABLE `feature_versions` ADD COLUMN `manifest` JSON DEFAULT NULL");
             }
             
         } catch (PDOException $e) {
