@@ -87,12 +87,37 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
         </div>
         <div class="card-body">
             <div class="drill-diagram-view">
-                <div class="ice-rink-canvas view-only" id="drill-view-canvas" data-ice-view="full" data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
-                    <canvas id="drill-view-canvas-el"></canvas>
-                </div>
+                <?php if (!empty($drill['custom_image'])): ?>
+                    <!-- IHS Imported Image -->
+                    <div class="ihs-diagram-container">
+                        <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?> Diagram" class="ihs-drill-image" id="drill-ihs-image">
+                    </div>
+                <?php else: ?>
+                    <!-- Drill Draw Canvas -->
+                    <div class="ice-rink-canvas view-only" id="drill-view-canvas" data-ice-view="full" data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
+                        <canvas id="drill-view-canvas-el"></canvas>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
+    
+    <?php if (!empty($drill['ihs_source_url'])): ?>
+    <!-- IHS Source -->
+    <div class="content-card">
+        <div class="card-header">
+            <h3><i class="fas fa-external-link-alt"></i> Original Source</h3>
+        </div>
+        <div class="card-body">
+            <p class="source-info">
+                <i class="fas fa-info-circle"></i> This drill was imported from Ice Hockey Systems.
+            </p>
+            <a href="<?php echo htmlspecialchars($drill['ihs_source_url']); ?>" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                <i class="fas fa-external-link-alt"></i> View Original on IHS
+            </a>
+        </div>
+    </div>
+    <?php endif; ?>
     
     <!-- Drill Details -->
     <div class="content-card">
@@ -179,6 +204,40 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
 .drill-diagram-view {
     display: flex;
     justify-content: center;
+}
+
+.ihs-diagram-container {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
+    border: 3px solid #0033a0;
+    border-radius: 12px;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.ihs-drill-image {
+    max-width: 100%;
+    max-height: 500px;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.source-info {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.source-info i {
+    color: var(--primary-light);
 }
 
 .ice-rink-canvas.view-only {
