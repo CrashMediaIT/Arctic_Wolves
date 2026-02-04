@@ -466,57 +466,80 @@ function updateCurrentTime() {
 function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
     
+    // Cache DOM elements for better performance and reliability
+    const timerElement = document.getElementById('shift-timer');
+    const timerLabelElement = document.getElementById('timer-label');
+    
+    // Verify elements exist before starting timer
+    if (!timerElement) {
+        console.error('Timer: shift-timer element not found');
+        return;
+    }
+    
+    // Parse clock_in time once at the start
+    if (!shiftData || !shiftData.clock_in) {
+        console.error('Timer: No shift data or clock_in', shiftData);
+        return;
+    }
+    
+    const clockIn = parseMySQLDateTime(shiftData.clock_in);
+    if (!clockIn || isNaN(clockIn.getTime())) {
+        console.error('Timer: Invalid clockIn date', shiftData.clock_in, clockIn);
+        return;
+    }
+    
+    // Parse lunch times once if they exist
+    const lunchStart = shiftData.lunch_start ? parseMySQLDateTime(shiftData.lunch_start) : null;
+    const lunchEnd = shiftData.lunch_end ? parseMySQLDateTime(shiftData.lunch_end) : null;
+    
     // Function to update timer display
     function updateTimer() {
-        if (!shiftData || !shiftData.clock_in) {
-            console.log('Timer: No shift data or clock_in', shiftData);
-            return;
-        }
-        
-        const clockIn = parseMySQLDateTime(shiftData.clock_in);
-        if (!clockIn || isNaN(clockIn.getTime())) {
-            console.log('Timer: Invalid clockIn date', shiftData.clock_in, clockIn);
-            return;
-        }
-        
-        const now = new Date();
-        let elapsed = Math.floor((now - clockIn) / 1000);
-        
-        // Ensure elapsed is never negative (handle clock/timezone issues)
-        if (elapsed < 0) elapsed = 0;
-        
-        // Check if currently on lunch break - timer should be paused
-        if (shiftData.lunch_start && !shiftData.lunch_end) {
-            // Currently on lunch - calculate worked time up to lunch start (paused)
-            const lunchStart = parseMySQLDateTime(shiftData.lunch_start);
-            if (lunchStart && !isNaN(lunchStart.getTime())) {
-                elapsed = Math.floor((lunchStart - clockIn) / 1000);
-                if (elapsed < 0) elapsed = 0;
+        try {
+            const now = new Date();
+            let elapsed = Math.floor((now - clockIn) / 1000);
+            
+            // Ensure elapsed is never negative (handle clock/timezone issues)
+            if (elapsed < 0) elapsed = 0;
+            
+            // Check if currently on lunch break - timer should be paused
+            if (lunchStart && !lunchEnd) {
+                // Currently on lunch - calculate worked time up to lunch start (paused)
+                if (!isNaN(lunchStart.getTime())) {
+                    elapsed = Math.floor((lunchStart - clockIn) / 1000);
+                    if (elapsed < 0) elapsed = 0;
+                }
+                if (timerLabelElement) {
+                    timerLabelElement.textContent = 'Paused - On Lunch Break';
+                }
+            } else if (lunchStart && lunchEnd) {
+                // Lunch completed - subtract lunch duration from total
+                if (!isNaN(lunchStart.getTime()) && !isNaN(lunchEnd.getTime())) {
+                    const lunchSeconds = Math.floor((lunchEnd - lunchStart) / 1000);
+                    elapsed -= lunchSeconds;
+                    if (elapsed < 0) elapsed = 0;
+                }
+                if (timerLabelElement) {
+                    timerLabelElement.textContent = 'Time Worked Today';
+                }
+            } else {
+                if (timerLabelElement) {
+                    timerLabelElement.textContent = 'Time Worked Today';
+                }
             }
-            document.getElementById('timer-label').textContent = 'Paused - On Lunch Break';
-        } else if (shiftData.lunch_start && shiftData.lunch_end) {
-            // Lunch completed - subtract lunch duration from total
-            const lunchStart = parseMySQLDateTime(shiftData.lunch_start);
-            const lunchEnd = parseMySQLDateTime(shiftData.lunch_end);
-            if (lunchStart && lunchEnd && !isNaN(lunchStart.getTime()) && !isNaN(lunchEnd.getTime())) {
-                const lunchSeconds = Math.floor((lunchEnd - lunchStart) / 1000);
-                elapsed -= lunchSeconds;
-                if (elapsed < 0) elapsed = 0;
-            }
-            document.getElementById('timer-label').textContent = 'Time Worked Today';
-        } else {
-            document.getElementById('timer-label').textContent = 'Time Worked Today';
+            
+            // Convert elapsed to hours, minutes, seconds (elapsed is guaranteed non-negative)
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            const seconds = elapsed % 60;
+            
+            // Format and display the time
+            timerElement.textContent = 
+                String(hours).padStart(2, '0') + ':' + 
+                String(minutes).padStart(2, '0') + ':' + 
+                String(seconds).padStart(2, '0');
+        } catch (e) {
+            console.error('Timer update error:', e);
         }
-        
-        // Convert elapsed to hours, minutes, seconds (elapsed is guaranteed non-negative)
-        const hours = Math.floor(elapsed / 3600);
-        const minutes = Math.floor((elapsed % 3600) / 60);
-        const seconds = elapsed % 60;
-        
-        document.getElementById('shift-timer').textContent = 
-            String(hours).padStart(2, '0') + ':' + 
-            String(minutes).padStart(2, '0') + ':' + 
-            String(seconds).padStart(2, '0');
     }
     
     // Run immediately to show timer without delay
