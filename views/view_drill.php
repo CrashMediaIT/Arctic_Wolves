@@ -4,6 +4,11 @@ $drillId = $_GET['id'] ?? null;
 $isShared = isset($_GET['shared']);
 $drill = null;
 
+// Validate drillId is numeric to prevent injection
+if ($drillId !== null && !ctype_digit((string)$drillId)) {
+    $drillId = null;
+}
+
 if ($drillId) {
     try {
         $stmt = $pdo->prepare("
@@ -26,7 +31,12 @@ if (!$drill) {
 }
 
 $coachName = htmlspecialchars(($drill['first_name'] ?? '') . ' ' . ($drill['last_name'] ?? ''));
-$shareUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/dashboard.php?page=view_drill&id=' . $drillId . '&shared=true';
+
+// Build share URL using validated host from SERVER_NAME (more reliable than HTTP_HOST for security)
+// Note: For production, consider using a configured BASE_URL constant
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+$host = htmlspecialchars($_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost');
+$shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . urlencode($drillId) . '&shared=true';
 ?>
 
 <div class="page-header">
@@ -251,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas.height = container.offsetHeight;
     
     const ctx = canvas.getContext('2d');
-    const diagramData = <?php echo json_encode($drill['diagram_data'] ?? '[]'); ?>;
+    const diagramData = <?php echo json_encode($drill['diagram_data'] ?? ''); ?>;
     
     // Draw the rink
     drawViewRink(ctx, canvas.width, canvas.height);
@@ -494,13 +504,18 @@ function drawObject(ctx, obj) {
 function copyShareLink() {
     const input = document.getElementById('share-url-input');
     input.select();
-    input.setSelectionRange(0, 99999);
+    input.setSelectionRange(0, input.value.length);
     
     navigator.clipboard.writeText(input.value).then(() => {
         showNotification('Share link copied to clipboard!', 'success');
     }).catch(() => {
-        document.execCommand('copy');
-        showNotification('Share link copied to clipboard!', 'success');
+        // Fallback for older browsers - execCommand is deprecated but still works in many browsers
+        try {
+            document.execCommand('copy');
+            showNotification('Share link copied to clipboard!', 'success');
+        } catch (e) {
+            showNotification('Please copy the link manually using Ctrl+C', 'info');
+        }
     });
 }
 

@@ -11,6 +11,9 @@
  * - Shareable drill links
  */
 
+// Line-based drawing tools constant
+const LINE_TOOLS = ['line', 'arrow', 'dashed', 'squiggly'];
+
 class DrillDesigner {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
@@ -144,8 +147,8 @@ class DrillDesigner {
     }
     
     handleKeyDown(e) {
-        // Delete selected object with Delete or Backspace key
-        if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedObject) {
+        // Delete selected object with Delete key only (Backspace is reserved for browser navigation)
+        if (e.key === 'Delete' && this.selectedObject) {
             // Don't delete if user is typing in an input field
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 return;
@@ -187,9 +190,9 @@ class DrillDesigner {
     
     rotateSelected(degrees = 45) {
         if (this.selectedObject) {
-            // Only rotate objects that support rotation
-            const rotatableTypes = ['net', 'mininet', 'stick', 'cone', 'player', 'number', 'text'];
-            if (rotatableTypes.includes(this.selectedObject.type) || this.selectedObject.rotation !== undefined) {
+            // All objects with a rotation property can be rotated
+            // Line-based objects (line, arrow, dashed, squiggly) don't have rotation
+            if (this.selectedObject.rotation !== undefined) {
                 this.selectedObject.rotation = ((this.selectedObject.rotation || 0) + degrees) % 360;
                 this.redraw();
                 this.saveState();
@@ -211,21 +214,30 @@ class DrillDesigner {
         const drillId = urlParams.get('edit');
         
         if (drillId) {
-            // Generate shareable URL
-            const shareUrl = window.location.origin + '/dashboard.php?page=view_drill&id=' + drillId + '&shared=true';
+            // Generate shareable URL with encoded drill ID
+            const shareUrl = window.location.origin + '/dashboard.php?page=view_drill&id=' + encodeURIComponent(drillId) + '&shared=true';
             
             // Copy to clipboard
             navigator.clipboard.writeText(shareUrl).then(() => {
                 this.showNotification('Share link copied to clipboard!', 'success');
             }).catch(() => {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = shareUrl;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                this.showNotification('Share link copied to clipboard!', 'success');
+                // Fallback for older browsers - execCommand is deprecated but still works in many browsers
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = shareUrl;
+                    // Hide the textarea to prevent visual flashing
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    textArea.style.top = '0';
+                    textArea.style.opacity = '0';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    this.showNotification('Share link copied to clipboard!', 'success');
+                } catch (e) {
+                    this.showNotification('Please copy this link manually: ' + shareUrl, 'info');
+                }
             });
         } else {
             this.showNotification('Please save the drill first to get a share link.', 'info');
@@ -349,7 +361,7 @@ class DrillDesigner {
                 this.isDragging = true;
                 this.dragStartPos = { x, y };
             }
-        } else if (this.currentTool === 'line' || this.currentTool === 'arrow' || this.currentTool === 'dashed' || this.currentTool === 'squiggly') {
+        } else if (LINE_TOOLS.includes(this.currentTool)) {
             this.dragStartPos = { x, y };
         }
     }
@@ -381,7 +393,7 @@ class DrillDesigner {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        if (this.currentTool === 'line' || this.currentTool === 'arrow' || this.currentTool === 'dashed' || this.currentTool === 'squiggly') {
+        if (LINE_TOOLS.includes(this.currentTool)) {
             if (this.dragStartPos) {
                 this.objects.push({
                     type: this.currentTool,
@@ -399,9 +411,8 @@ class DrillDesigner {
     }
     
     handleClick(e) {
-        // Tools that shouldn't add objects on click
-        const ignoreTools = ['select', 'line', 'arrow', 'dashed', 'squiggly'];
-        if (ignoreTools.includes(this.currentTool)) {
+        // Line tools and select shouldn't add objects on click
+        if (this.currentTool === 'select' || LINE_TOOLS.includes(this.currentTool)) {
             return;
         }
         
@@ -583,17 +594,58 @@ class DrillDesigner {
     findObjectAt(x, y) {
         for (let i = this.objects.length - 1; i >= 0; i--) {
             const obj = this.objects[i];
-            // Check if the object is close to the click position using squared distance for efficiency
             const hitRadiusSquared = 400; // 20^2
+            
+            // Check if the object is close to the click position
             if (obj.x !== undefined && obj.y !== undefined) {
+                // Standard point-based objects
                 const dx = x - obj.x;
                 const dy = y - obj.y;
                 if (dx * dx + dy * dy < hitRadiusSquared) {
                     return obj;
                 }
+            } else if (LINE_TOOLS.includes(obj.type)) {
+                // Line-based objects - check distance to line segment
+                const distToLine = this.pointToLineDistance(x, y, obj.x1, obj.y1, obj.x2, obj.y2);
+                if (distToLine < 15) {
+                    return obj;
+                }
             }
         }
         return null;
+    }
+    
+    // Calculate distance from point to line segment
+    pointToLineDistance(px, py, x1, y1, x2, y2) {
+        const A = px - x1;
+        const B = py - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+        
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = -1;
+        
+        if (lenSq !== 0) {
+            param = dot / lenSq;
+        }
+        
+        let xx, yy;
+        
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        } else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        } else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
+        
+        const dx = px - xx;
+        const dy = py - yy;
+        return Math.sqrt(dx * dx + dy * dy);
     }
     
     drawRink() {
@@ -1005,21 +1057,46 @@ class DrillDesigner {
             this.ctx.strokeStyle = '#00ff00';
             this.ctx.lineWidth = 2;
             this.ctx.setLineDash([5, 3]);
-            this.ctx.beginPath();
-            this.ctx.arc(this.selectedObject.x, this.selectedObject.y, 22, 0, 2 * Math.PI);
-            this.ctx.stroke();
+            
+            // Handle line-based objects differently
+            if (LINE_TOOLS.includes(this.selectedObject.type)) {
+                // For line objects, highlight the line endpoints
+                const centerX = (this.selectedObject.x1 + this.selectedObject.x2) / 2;
+                const centerY = (this.selectedObject.y1 + this.selectedObject.y2) / 2;
+                
+                // Draw selection circles at endpoints
+                this.ctx.beginPath();
+                this.ctx.arc(this.selectedObject.x1, this.selectedObject.y1, 8, 0, 2 * Math.PI);
+                this.ctx.stroke();
+                
+                this.ctx.beginPath();
+                this.ctx.arc(this.selectedObject.x2, this.selectedObject.y2, 8, 0, 2 * Math.PI);
+                this.ctx.stroke();
+                
+                // Draw center indicator
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, 12, 0, 2 * Math.PI);
+                this.ctx.stroke();
+            } else {
+                // Standard objects with x, y coordinates
+                this.ctx.beginPath();
+                this.ctx.arc(this.selectedObject.x, this.selectedObject.y, 22, 0, 2 * Math.PI);
+                this.ctx.stroke();
+            }
             this.ctx.setLineDash([]);
             
-            // Draw rotate indicator
-            this.ctx.fillStyle = '#00ff00';
-            this.ctx.beginPath();
-            this.ctx.arc(this.selectedObject.x + 18, this.selectedObject.y - 18, 6, 0, 2 * Math.PI);
-            this.ctx.fill();
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = 'bold 8px Inter, sans-serif';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText('R', this.selectedObject.x + 18, this.selectedObject.y - 18);
+            // Draw rotate indicator only for rotatable objects (not line-based)
+            if (!LINE_TOOLS.includes(this.selectedObject.type) && this.selectedObject.rotation !== undefined) {
+                this.ctx.fillStyle = '#00ff00';
+                this.ctx.beginPath();
+                this.ctx.arc(this.selectedObject.x + 18, this.selectedObject.y - 18, 6, 0, 2 * Math.PI);
+                this.ctx.fill();
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = 'bold 8px Inter, sans-serif';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('R', this.selectedObject.x + 18, this.selectedObject.y - 18);
+            }
         }
     }
     
