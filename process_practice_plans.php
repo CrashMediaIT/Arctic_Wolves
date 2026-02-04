@@ -351,6 +351,7 @@ if ($action === 'import_ihs_practice_plan') {
         $plan_id = $pdo->lastInsertId();
         
         // Create each drill and add to the practice plan
+        // First, check if drill with same name already exists in library
         $drill_order = 0;
         foreach ($drills as $drill) {
             $drill_title = trim($drill['title'] ?? '');
@@ -358,73 +359,91 @@ if ($action === 'import_ihs_practice_plan') {
                 continue;
             }
             
-            // Download and save the rink image if available
-            $custom_image = '';
-            $rink_image_url = trim($drill['rink_image'] ?? '');
-            if (!empty($rink_image_url) && filter_var($rink_image_url, FILTER_VALIDATE_URL)) {
-                $custom_image = downloadAndSaveDrillImage($rink_image_url, $user_id);
-            }
-            
-            // Determine category from drill title or use General
-            $category_id = null;
-            $category_keywords = [
-                'skating' => 'Skating',
-                'shooting' => 'Shooting',
-                'passing' => 'Passing',
-                'stickhandling' => 'Stickhandling',
-                'puck' => 'Puck Control',
-                'defensive' => 'Defensive',
-                'offensive' => 'Offensive',
-                'goalie' => 'Goalie',
-                'conditioning' => 'Conditioning',
-                'battle' => 'Battle Drills',
-                'warm' => 'Warm Up'
-            ];
-            
-            $category_name = 'General';
-            $lower_title = strtolower($drill_title);
-            foreach ($category_keywords as $keyword => $cat_name) {
-                if (strpos($lower_title, $keyword) !== false) {
-                    $category_name = $cat_name;
-                    break;
-                }
-            }
-            
-            // Look up or create category
-            $cat_stmt = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
-            $cat_stmt->execute([$category_name]);
-            $cat = $cat_stmt->fetch();
-            if ($cat) {
-                $category_id = $cat['id'];
-            } else {
-                $cat_stmt = $pdo->prepare("INSERT INTO drill_categories (name) VALUES (?)");
-                $cat_stmt->execute([$category_name]);
-                $category_id = $pdo->lastInsertId();
-            }
-            
-            // Get section data
-            $drill_description = trim($drill['description'] ?? '');
-            $drill_setup = trim($drill['setup'] ?? '');
-            $drill_coaching_points = trim($drill['coaching_points'] ?? '');
-            $drill_progression = trim($drill['progression'] ?? '');
-            
-            // Create the drill with sections in their own columns
-            $drill_stmt = $pdo->prepare("
-                INSERT INTO drills (title, description, setup, coaching_points, progression, category_id, custom_image, ihs_source_url, created_by, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            // Check if a drill with this name already exists in the drill library
+            // Prioritize drills owned by the same user, then fall back to any drill with the same title
+            $existing_drill_stmt = $pdo->prepare("
+                SELECT id FROM drills 
+                WHERE title = ? 
+                ORDER BY (created_by = ?) DESC, created_at DESC 
+                LIMIT 1
             ");
-            $drill_stmt->execute([
-                $drill_title,
-                $drill_description,
-                $drill_setup,
-                $drill_coaching_points,
-                $drill_progression,
-                $category_id,
-                $custom_image,
-                $ihs_url,
-                $user_id
-            ]);
-            $drill_id = $pdo->lastInsertId();
+            $existing_drill_stmt->execute([$drill_title, $user_id]);
+            $existing_drill = $existing_drill_stmt->fetch();
+            
+            if ($existing_drill) {
+                // Use the existing drill from the library
+                $drill_id = $existing_drill['id'];
+            } else {
+                // Create a new drill since it doesn't exist in the library
+                
+                // Download and save the rink image if available
+                $custom_image = '';
+                $rink_image_url = trim($drill['rink_image'] ?? '');
+                if (!empty($rink_image_url) && filter_var($rink_image_url, FILTER_VALIDATE_URL)) {
+                    $custom_image = downloadAndSaveDrillImage($rink_image_url, $user_id);
+                }
+                
+                // Determine category from drill title or use General
+                $category_id = null;
+                $category_keywords = [
+                    'skating' => 'Skating',
+                    'shooting' => 'Shooting',
+                    'passing' => 'Passing',
+                    'stickhandling' => 'Stickhandling',
+                    'puck' => 'Puck Control',
+                    'defensive' => 'Defensive',
+                    'offensive' => 'Offensive',
+                    'goalie' => 'Goalie',
+                    'conditioning' => 'Conditioning',
+                    'battle' => 'Battle Drills',
+                    'warm' => 'Warm Up'
+                ];
+                
+                $category_name = 'General';
+                $lower_title = strtolower($drill_title);
+                foreach ($category_keywords as $keyword => $cat_name) {
+                    if (strpos($lower_title, $keyword) !== false) {
+                        $category_name = $cat_name;
+                        break;
+                    }
+                }
+                
+                // Look up or create category
+                $cat_stmt = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+                $cat_stmt->execute([$category_name]);
+                $cat = $cat_stmt->fetch();
+                if ($cat) {
+                    $category_id = $cat['id'];
+                } else {
+                    $cat_stmt = $pdo->prepare("INSERT INTO drill_categories (name) VALUES (?)");
+                    $cat_stmt->execute([$category_name]);
+                    $category_id = $pdo->lastInsertId();
+                }
+                
+                // Get section data
+                $drill_description = trim($drill['description'] ?? '');
+                $drill_setup = trim($drill['setup'] ?? '');
+                $drill_coaching_points = trim($drill['coaching_points'] ?? '');
+                $drill_progression = trim($drill['progression'] ?? '');
+                
+                // Create the drill with sections in their own columns
+                $drill_stmt = $pdo->prepare("
+                    INSERT INTO drills (title, description, setup, coaching_points, progression, category_id, custom_image, ihs_source_url, created_by, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $drill_stmt->execute([
+                    $drill_title,
+                    $drill_description,
+                    $drill_setup,
+                    $drill_coaching_points,
+                    $drill_progression,
+                    $category_id,
+                    $custom_image,
+                    $ihs_url,
+                    $user_id
+                ]);
+                $drill_id = $pdo->lastInsertId();
+            }
             
             // Parse drill duration
             $drill_duration = null;
@@ -579,6 +598,7 @@ function parseIHSPracticePlanPage($html, $url) {
 
 /**
  * Extract drill information from a DOM node
+ * Extracts section data (setup, coaching_points, progression) similar to parseIHSDrillPage
  */
 function extractDrillFromNode($node, $xpath, $baseUrl) {
     $drill = [
@@ -660,13 +680,90 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
         }
     }
     
-    // Find description/text in node
-    $paragraphs = $xpath->query('.//p', $node);
-    $text = '';
-    for ($i = 0; $i < $paragraphs->length; $i++) {
-        $text .= trim($paragraphs->item($i)->textContent) . "\n";
+    // Extract content sections (Setup, Coaching Points, Progression) - similar to parseIHSDrillPage
+    // These are often in divs with specific headers or classes
+    // Note: Keywords are hardcoded and controlled - not from external input - so XPath injection is not a risk
+    $sectionPatterns = [
+        'setup' => ['setup', 'set-up', 'organization', 'drill setup'],
+        'coaching_points' => ['coaching points', 'coaching-points', 'key points', 'teaching points', 'focus points'],
+        'progression' => ['progression', 'progressions', 'variations', 'drill progression']
+    ];
+    
+    // Track nodes that have been processed as part of sections to avoid duplication
+    $processedNodePaths = [];
+    
+    foreach ($sectionPatterns as $field => $keywords) {
+        foreach ($keywords as $keyword) {
+            // Look for headers containing the keyword within this node
+            $headers = $xpath->query('.//*[self::h2 or self::h3 or self::h4 or self::h5 or self::strong or self::b][contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "' . $keyword . '")]', $node);
+            if ($headers->length > 0) {
+                $header = $headers->item(0);
+                // Get the next sibling or parent's next content
+                $nextSibling = $header->nextSibling;
+                $content = '';
+                while ($nextSibling) {
+                    if ($nextSibling->nodeType === XML_ELEMENT_NODE) {
+                        $tagName = strtolower($nextSibling->nodeName);
+                        // Stop if we hit another header
+                        if (in_array($tagName, ['h2', 'h3', 'h4', 'h5', 'strong', 'b'])) {
+                            // Check if this header is also a section keyword - if so, stop
+                            $headerText = strtolower($nextSibling->textContent);
+                            $isNewSection = false;
+                            foreach ($sectionPatterns as $checkKeywords) {
+                                foreach ($checkKeywords as $checkKeyword) {
+                                    if (strpos($headerText, $checkKeyword) !== false) {
+                                        $isNewSection = true;
+                                        break 2;
+                                    }
+                                }
+                            }
+                            if ($isNewSection) {
+                                break;
+                            }
+                        }
+                        $content .= trim($nextSibling->textContent) . "\n";
+                        // Track this node as processed
+                        $processedNodePaths[$nextSibling->getNodePath()] = true;
+                    } elseif ($nextSibling->nodeType === XML_TEXT_NODE) {
+                        $textContent = trim($nextSibling->textContent);
+                        if (!empty($textContent)) {
+                            $content .= $textContent . "\n";
+                        }
+                    }
+                    $nextSibling = $nextSibling->nextSibling;
+                }
+                if (!empty($content)) {
+                    $drill[$field] = trim($content);
+                    break;
+                }
+            }
+        }
     }
-    $drill['description'] = trim($text);
+    
+    // Find description/text in node - collect paragraphs that aren't part of section content
+    $paragraphs = $xpath->query('.//p', $node);
+    $descriptionParts = [];
+    
+    for ($i = 0; $i < $paragraphs->length; $i++) {
+        $pNode = $paragraphs->item($i);
+        $pText = trim($pNode->textContent);
+        // Skip if this node was processed as part of a section
+        if (!empty($pText) && !isset($processedNodePaths[$pNode->getNodePath()])) {
+            $descriptionParts[] = $pText;
+        }
+    }
+    
+    // If we have distinct description parts, use them; otherwise combine all paragraphs
+    if (!empty($descriptionParts)) {
+        $drill['description'] = implode("\n", $descriptionParts);
+    } elseif (empty($drill['setup']) && empty($drill['coaching_points']) && empty($drill['progression'])) {
+        // If no sections were found, use all paragraph text as description
+        $text = '';
+        for ($i = 0; $i < $paragraphs->length; $i++) {
+            $text .= trim($paragraphs->item($i)->textContent) . "\n";
+        }
+        $drill['description'] = trim($text);
+    }
     
     return $drill;
 }
