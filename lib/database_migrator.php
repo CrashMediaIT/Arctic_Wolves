@@ -174,7 +174,8 @@ class DatabaseMigrator {
             case 'add_column':
                 return $this->addColumn(
                     $migration['table'],
-                    $migration['column_definition']
+                    $migration['column_definition'],
+                    $migration['after'] ?? null
                 );
                 
             case 'drop_column':
@@ -188,6 +189,54 @@ class DatabaseMigrator {
                     $migration['table'],
                     $migration['column_name'],
                     $migration['new_definition']
+                );
+                
+            case 'create_table':
+                return $this->createTable(
+                    $migration['table'],
+                    $migration['columns'],
+                    $migration['indexes'] ?? [],
+                    $migration['foreign_keys'] ?? []
+                );
+                
+            case 'drop_table':
+                return $this->dropTable($migration['table']);
+                
+            case 'add_index':
+                return $this->addIndex(
+                    $migration['table'],
+                    $migration['index_name'],
+                    $migration['columns'],
+                    $migration['unique'] ?? false
+                );
+                
+            case 'drop_index':
+                return $this->dropIndex(
+                    $migration['table'],
+                    $migration['index_name']
+                );
+                
+            case 'add_foreign_key':
+                return $this->addForeignKey(
+                    $migration['table'],
+                    $migration['constraint_name'],
+                    $migration['column'],
+                    $migration['ref_table'],
+                    $migration['ref_column'],
+                    $migration['on_delete'] ?? 'CASCADE',
+                    $migration['on_update'] ?? 'CASCADE'
+                );
+                
+            case 'drop_foreign_key':
+                return $this->dropForeignKey(
+                    $migration['table'],
+                    $migration['constraint_name']
+                );
+                
+            case 'data_migration':
+                return $this->executeDataMigration(
+                    $migration['sql'],
+                    $migration['description'] ?? ''
                 );
                 
             default:
@@ -259,7 +308,7 @@ class DatabaseMigrator {
     /**
      * Add column to table
      */
-    public function addColumn($table, $column_definition) {
+    public function addColumn($table, $column_definition, $after_column = null) {
         if (!$this->tableExists($table)) {
             throw new Exception("Table '$table' does not exist");
         }
@@ -281,6 +330,9 @@ class DatabaseMigrator {
         }
         
         $sql = "ALTER TABLE `$table` ADD $column_definition";
+        if ($after_column) {
+            $sql .= " AFTER `$after_column`";
+        }
         $this->pdo->exec($sql);
         
         return [
@@ -459,5 +511,397 @@ class DatabaseMigrator {
         }
         
         return $sql;
+    }
+    
+    /**
+     * Create a new table
+     * 
+     * @param string $table_name Table name
+     * @param array $columns Array of column definitions
+     * @param array $indexes Array of index definitions
+     * @param array $foreign_keys Array of foreign key definitions
+     * @return array Result with success status
+     */
+    public function createTable($table_name, array $columns, array $indexes = [], array $foreign_keys = []) {
+        if ($this->tableExists($table_name)) {
+            return [
+                'success' => true,
+                'message' => "Table '$table_name' already exists",
+                'skipped' => true
+            ];
+        }
+        
+        $column_defs = [];
+        $primary_key = null;
+        
+        foreach ($columns as $col_name => $col_def) {
+            if (is_array($col_def)) {
+                // Structured column definition
+                $def = "`$col_name` " . $col_def['type'];
+                
+                if (isset($col_def['nullable']) && !$col_def['nullable']) {
+                    $def .= ' NOT NULL';
+                }
+                
+                if (isset($col_def['default'])) {
+                    $default = $col_def['default'];
+                    if ($default === 'CURRENT_TIMESTAMP') {
+                        $def .= " DEFAULT $default";
+                    } else {
+                        $def .= " DEFAULT '$default'";
+                    }
+                }
+                
+                if (isset($col_def['auto_increment']) && $col_def['auto_increment']) {
+                    $def .= ' AUTO_INCREMENT';
+                    $primary_key = $col_name;
+                }
+                
+                if (isset($col_def['primary']) && $col_def['primary']) {
+                    $primary_key = $col_name;
+                }
+                
+                $column_defs[] = $def;
+            } else {
+                // String column definition
+                $column_defs[] = "`$col_name` $col_def";
+            }
+        }
+        
+        // Add primary key
+        if ($primary_key) {
+            $column_defs[] = "PRIMARY KEY (`$primary_key`)";
+        }
+        
+        // Add indexes
+        foreach ($indexes as $index_name => $index_def) {
+            if (is_array($index_def)) {
+                $unique = !empty($index_def['unique']) ? 'UNIQUE ' : '';
+                $cols = implode('`, `', $index_def['columns']);
+                $column_defs[] = "{$unique}INDEX `$index_name` (`$cols`)";
+            } else {
+                $column_defs[] = "INDEX `$index_name` (`$index_def`)";
+            }
+        }
+        
+        // Add foreign keys
+        foreach ($foreign_keys as $fk_name => $fk_def) {
+            $column_defs[] = sprintf(
+                "CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`) ON DELETE %s ON UPDATE %s",
+                $fk_name,
+                $fk_def['column'],
+                $fk_def['ref_table'],
+                $fk_def['ref_column'],
+                $fk_def['on_delete'] ?? 'CASCADE',
+                $fk_def['on_update'] ?? 'CASCADE'
+            );
+        }
+        
+        $sql = "CREATE TABLE IF NOT EXISTS `$table_name` (\n    " . 
+               implode(",\n    ", $column_defs) . 
+               "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->pdo->exec($sql);
+        
+        return [
+            'success' => true,
+            'message' => "Table created: $table_name",
+            'sql' => $sql
+        ];
+    }
+    
+    /**
+     * Drop a table
+     * 
+     * @param string $table_name Table name to drop
+     * @return array Result with success status
+     */
+    public function dropTable($table_name) {
+        if (!$this->tableExists($table_name)) {
+            return [
+                'success' => true,
+                'message' => "Table '$table_name' does not exist",
+                'skipped' => true
+            ];
+        }
+        
+        $sql = "DROP TABLE `$table_name`";
+        $this->pdo->exec($sql);
+        
+        return [
+            'success' => true,
+            'message' => "Table dropped: $table_name",
+            'sql' => $sql
+        ];
+    }
+    
+    /**
+     * Add an index to a table
+     * 
+     * @param string $table Table name
+     * @param string $index_name Index name
+     * @param array $columns Columns to include in the index
+     * @param bool $unique Whether the index should be unique
+     * @return array Result with success status
+     */
+    public function addIndex($table, $index_name, array $columns, $unique = false) {
+        if (!$this->tableExists($table)) {
+            throw new Exception("Table '$table' does not exist");
+        }
+        
+        // Check if index already exists
+        $stmt = $this->pdo->query("SHOW INDEX FROM `$table` WHERE Key_name = '$index_name'");
+        if ($stmt->rowCount() > 0) {
+            return [
+                'success' => true,
+                'message' => "Index '$index_name' already exists on table '$table'",
+                'skipped' => true
+            ];
+        }
+        
+        $unique_str = $unique ? 'UNIQUE ' : '';
+        $cols = '`' . implode('`, `', $columns) . '`';
+        $sql = "CREATE {$unique_str}INDEX `$index_name` ON `$table` ($cols)";
+        $this->pdo->exec($sql);
+        
+        return [
+            'success' => true,
+            'message' => "Index created: $index_name on $table",
+            'sql' => $sql
+        ];
+    }
+    
+    /**
+     * Drop an index from a table
+     * 
+     * @param string $table Table name
+     * @param string $index_name Index name to drop
+     * @return array Result with success status
+     */
+    public function dropIndex($table, $index_name) {
+        if (!$this->tableExists($table)) {
+            throw new Exception("Table '$table' does not exist");
+        }
+        
+        // Check if index exists
+        $stmt = $this->pdo->query("SHOW INDEX FROM `$table` WHERE Key_name = '$index_name'");
+        if ($stmt->rowCount() == 0) {
+            return [
+                'success' => true,
+                'message' => "Index '$index_name' does not exist on table '$table'",
+                'skipped' => true
+            ];
+        }
+        
+        $sql = "DROP INDEX `$index_name` ON `$table`";
+        $this->pdo->exec($sql);
+        
+        return [
+            'success' => true,
+            'message' => "Index dropped: $index_name from $table",
+            'sql' => $sql
+        ];
+    }
+    
+    /**
+     * Add a foreign key constraint
+     * 
+     * @param string $table Table name
+     * @param string $constraint_name Constraint name
+     * @param string $column Local column name
+     * @param string $ref_table Referenced table
+     * @param string $ref_column Referenced column
+     * @param string $on_delete ON DELETE action
+     * @param string $on_update ON UPDATE action
+     * @return array Result with success status
+     */
+    public function addForeignKey($table, $constraint_name, $column, $ref_table, $ref_column, $on_delete = 'CASCADE', $on_update = 'CASCADE') {
+        if (!$this->tableExists($table)) {
+            throw new Exception("Table '$table' does not exist");
+        }
+        
+        if (!$this->tableExists($ref_table)) {
+            throw new Exception("Referenced table '$ref_table' does not exist");
+        }
+        
+        // Check if constraint already exists
+        $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+            WHERE CONSTRAINT_SCHEMA = DATABASE() 
+            AND TABLE_NAME = ? 
+            AND CONSTRAINT_NAME = ?
+        ");
+        $stmt->execute([$table, $constraint_name]);
+        if ($stmt->fetchColumn() > 0) {
+            return [
+                'success' => true,
+                'message' => "Foreign key '$constraint_name' already exists on table '$table'",
+                'skipped' => true
+            ];
+        }
+        
+        $sql = sprintf(
+            "ALTER TABLE `%s` ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`) ON DELETE %s ON UPDATE %s",
+            $table,
+            $constraint_name,
+            $column,
+            $ref_table,
+            $ref_column,
+            $on_delete,
+            $on_update
+        );
+        
+        $this->pdo->exec($sql);
+        
+        return [
+            'success' => true,
+            'message' => "Foreign key added: $constraint_name on $table",
+            'sql' => $sql
+        ];
+    }
+    
+    /**
+     * Drop a foreign key constraint
+     * 
+     * @param string $table Table name
+     * @param string $constraint_name Constraint name to drop
+     * @return array Result with success status
+     */
+    public function dropForeignKey($table, $constraint_name) {
+        if (!$this->tableExists($table)) {
+            throw new Exception("Table '$table' does not exist");
+        }
+        
+        // Check if constraint exists
+        $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+            WHERE CONSTRAINT_SCHEMA = DATABASE() 
+            AND TABLE_NAME = ? 
+            AND CONSTRAINT_NAME = ?
+        ");
+        $stmt->execute([$table, $constraint_name]);
+        if ($stmt->fetchColumn() == 0) {
+            return [
+                'success' => true,
+                'message' => "Foreign key '$constraint_name' does not exist on table '$table'",
+                'skipped' => true
+            ];
+        }
+        
+        $sql = "ALTER TABLE `$table` DROP FOREIGN KEY `$constraint_name`";
+        $this->pdo->exec($sql);
+        
+        return [
+            'success' => true,
+            'message' => "Foreign key dropped: $constraint_name from $table",
+            'sql' => $sql
+        ];
+    }
+    
+    /**
+     * Execute a data migration (INSERT, UPDATE, DELETE)
+     * 
+     * @param string $sql_statement The SQL statement to execute
+     * @param string $description Description of what the migration does
+     * @return array Result with success status
+     */
+    public function executeDataMigration($sql_statement, $description = '') {
+        // Execute the SQL statement
+        $affected = $this->pdo->exec($sql_statement);
+        
+        $message = $description ? $description : "Data migration executed";
+        if ($affected !== false) {
+            $message .= " ({$affected} rows affected)";
+        }
+        
+        return [
+            'success' => true,
+            'message' => $message,
+            'sql' => $sql_statement,
+            'affected_rows' => $affected
+        ];
+    }
+    
+    /**
+     * Get the current schema version from the database
+     * 
+     * @return string|null The current schema version or null if not set
+     */
+    public function getSchemaVersion() {
+        try {
+            $stmt = $this->pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'schema_version'");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result ? $result['setting_value'] : null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Set the schema version in the database
+     * 
+     * @param string $version The version to set
+     * @return bool Success status
+     */
+    public function setSchemaVersion($version) {
+        try {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO system_settings (setting_key, setting_value) 
+                VALUES ('schema_version', ?) 
+                ON DUPLICATE KEY UPDATE setting_value = ?
+            ");
+            return $stmt->execute([$version, $version]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Compare two schemas and generate migration steps
+     * 
+     * @param array $source_schema Source schema (current)
+     * @param array $target_schema Target schema (desired)
+     * @return array Array of migration steps needed
+     */
+    public function compareSchemas($source_schema, $target_schema) {
+        $migrations = [];
+        
+        // Find tables to create
+        foreach ($target_schema['tables'] as $table_name => $table_def) {
+            if (!isset($source_schema['tables'][$table_name])) {
+                $migrations[] = [
+                    'type' => 'create_table',
+                    'table' => $table_name,
+                    'definition' => $table_def
+                ];
+            } else {
+                // Compare columns
+                $source_cols = $source_schema['tables'][$table_name]['columns'] ?? [];
+                $target_cols = $table_def['columns'] ?? [];
+                
+                // Find columns to add
+                foreach ($target_cols as $col_name => $col_def) {
+                    if (!isset($source_cols[$col_name])) {
+                        $migrations[] = [
+                            'type' => 'add_column',
+                            'table' => $table_name,
+                            'column_definition' => $col_def['definition'] ?? "$col_name {$col_def['type']}"
+                        ];
+                    }
+                }
+            }
+        }
+        
+        // Find tables to drop (only if explicitly marked for removal)
+        foreach ($source_schema['tables'] as $table_name => $table_def) {
+            if (!isset($target_schema['tables'][$table_name]) && isset($target_schema['drop_tables']) && in_array($table_name, $target_schema['drop_tables'])) {
+                $migrations[] = [
+                    'type' => 'drop_table',
+                    'table' => $table_name
+                ];
+            }
+        }
+        
+        return $migrations;
     }
 }

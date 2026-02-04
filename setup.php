@@ -269,45 +269,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($step == 4) {
-        // Demo Data Setup
-        if (!isset($_SESSION['db_credentials'])) {
-            $error = "Database credentials not found. Please restart setup.";
-        } else {
-            $add_demo = isset($_POST['add_demo_data']) ? $_POST['add_demo_data'] : 'no';
-            $_SESSION['setup']['demo'] = ($add_demo === 'yes');
-            
-            if ($add_demo === 'yes') {
-                try {
-                    $db_creds = $_SESSION['db_credentials'];
-                    $pdo = new PDO("mysql:host={$db_creds['host']};dbname={$db_creds['name']};charset=utf8mb4", 
-                                  $db_creds['user'], $db_creds['pass']);
-                    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                    
-                    // Load and run demo data seeder
-                    require_once __DIR__ . '/demo_data_seeder.php';
-                    $seeder = new DemoDataSeeder($pdo);
-                    
-                    // Add demo columns to all tables
-                    ob_start();
-                    $seeder->addDemoColumns();
-                    ob_end_clean();
-                    
-                    // Seed demo data
-                    ob_start();
-                    $seeder->seedAll();
-                    $demo_output = ob_get_clean();
-                    
-                    $_SESSION['demo_data_added'] = true;
-                    $success = "Demo data has been successfully added to the database!";
-                } catch (Exception $e) {
-                    $error = "Failed to add demo data: " . $e->getMessage();
-                }
-            }
-            
-            header("Location: setup.php?step=5");
-            exit();
-        }
-    } elseif ($step == 5) {
         // Finalize Setup - Verify database connection one more time
         try {
             // Clear any session-based DB credentials to force reading from .env
@@ -415,7 +376,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="progress-step <?= $step >= 2 ? 'active' : '' ?>"></div>
             <div class="progress-step <?= $step >= 3 ? 'active' : '' ?>"></div>
             <div class="progress-step <?= $step >= 4 ? 'active' : '' ?>"></div>
-            <div class="progress-step <?= $step >= 5 ? 'active' : '' ?>"></div>
         </div>
         
         <?php if ($error): ?>
@@ -520,41 +480,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn-primary">Continue to Step 4</button>
             </form>
         <?php elseif ($step == 4): ?>
-            <h2>Step 4: Demo Data</h2>
-            <p>Add demo data to test all features of the application</p>
-            <div class="step-info">
-                <i class="fa-solid fa-info-circle"></i> Demo data includes sample users, sessions, drills, and more. All demo entries can be removed later from the Admin Portal.
-            </div>
-            <form method="POST">
-                <div class="form-group">
-                    <label>Add Demo Data?</label>
-                    <select name="add_demo_data" style="width: 100%; height: 45px;">
-                        <option value="yes">Yes - Add demo data for testing</option>
-                        <option value="no">No - Start with empty database</option>
-                    </select>
-                </div>
-                <div style="background: rgba(107, 70, 193, 0.05); border: 1px solid var(--border); border-radius: 6px; padding: 15px; margin-bottom: 20px; font-size: 12px; color: #94a3b8;">
-                    <strong style="color: #fff;">What's included in demo data:</strong><br/>
-                    • Sample coaches, athletes, and parents<br/>
-                    • Training sessions and practice plans<br/>
-                    • Drills and exercises<br/>
-                    • Goals and evaluations<br/>
-                    • Equipment and locations<br/>
-                    • All demo entries marked with "Demo" prefix
-                </div>
-                <button type="submit" class="btn-primary">Continue to Step 5</button>
-            </form>
-        <?php elseif ($step == 5): ?>
-            <h2>Step 5: Complete Setup</h2>
+            <h2>Step 4: Complete Setup</h2>
             <p>Setup is complete! Click below to finalize and access your dashboard.</p>
             <div class="step-info">
                 <i class="fa-solid fa-check-circle"></i> All configuration has been saved successfully.
             </div>
-            <?php if (isset($_SESSION['demo_data_added']) && $_SESSION['demo_data_added']): ?>
-                <div class="alert alert-success" style="margin-bottom: 20px;">
-                    <i class="fa-solid fa-check-circle"></i> Demo data has been added successfully!
-                </div>
-            <?php endif; ?>
             <form method="POST">
                 <button type="submit" class="btn-primary">Complete Setup & Go to Login</button>
             </form>
