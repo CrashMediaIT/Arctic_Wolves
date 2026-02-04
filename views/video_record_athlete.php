@@ -101,10 +101,11 @@ try {
 
     <!-- Upload Form -->
     <div class="upload-interface" id="upload-interface" style="display: none;">
-        <form class="upload-form" method="POST" action="process_video.php" enctype="multipart/form-data" id="video-upload-form">
+        <form class="upload-form" method="POST" action="<?= htmlspecialchars(dirname($_SERVER['PHP_SELF'])) ?>/process_video.php" enctype="multipart/form-data" id="video-upload-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
             <input type="hidden" name="action" value="athlete_upload_video">
             <input type="hidden" name="coach_id" value="<?= (int)$assigned_coach_id ?>">
+            <input type="hidden" name="MAX_FILE_SIZE" value="524288000">
             
             <div class="form-row">
                 <div class="form-group">
@@ -475,13 +476,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let mediaStream = null;
     let mediaRecorder = null;
     let recordedChunks = [];
+    const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB in bytes
     
     // Show camera recording interface
     if (startCameraBtn) {
         startCameraBtn.addEventListener('click', async function() {
             try {
+                // Try user-facing camera first (selfie mode), fall back to environment
                 mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' },
+                    video: { facingMode: 'user' },
                     audio: true 
                 });
                 
@@ -525,6 +528,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Validate file size
+    function validateFileSize(file) {
+        if (file.size > MAX_FILE_SIZE) {
+            alert('File size exceeds the maximum limit of 500MB. Please choose a smaller file.');
+            return false;
+        }
+        return true;
+    }
+    
     // File upload area click
     if (fileUploadArea) {
         fileUploadArea.addEventListener('click', function() {
@@ -551,8 +563,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const files = e.dataTransfer.files;
             if (files.length > 0 && files[0].type.startsWith('video/')) {
-                videoFileInput.files = files;
-                showSelectedFile(files[0]);
+                if (validateFileSize(files[0])) {
+                    videoFileInput.files = files;
+                    showSelectedFile(files[0]);
+                }
             }
         });
     }
@@ -561,7 +575,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (videoFileInput) {
         videoFileInput.addEventListener('change', function() {
             if (this.files.length > 0) {
-                showSelectedFile(this.files[0]);
+                if (validateFileSize(this.files[0])) {
+                    showSelectedFile(this.files[0]);
+                } else {
+                    this.value = '';
+                }
             }
         });
     }
@@ -576,7 +594,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showSelectedFile(file) {
-        selectedFileName.textContent = file.name;
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        selectedFileName.textContent = file.name + ' (' + sizeMB + ' MB)';
         selectedFile.style.display = 'flex';
         fileUploadArea.style.display = 'none';
     }
@@ -601,7 +620,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 mediaRecorder.onstop = function() {
                     const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                    const file = new File([blob], 'recorded-video.webm', { type: 'video/webm' });
+                    // Generate a descriptive filename with timestamp
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                    const filename = 'athlete-recording-' + timestamp + '.webm';
+                    const file = new File([blob], filename, { type: 'video/webm' });
                     
                     // Create a DataTransfer to set the file input
                     const dataTransfer = new DataTransfer();
