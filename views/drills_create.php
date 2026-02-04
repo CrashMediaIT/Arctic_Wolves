@@ -67,12 +67,17 @@ if ($editDrillId) {
                         <button class="tool-btn" title="Net" data-tool="net"><i class="fas fa-border-all"></i></button>
                         <button class="tool-btn" title="Mini Net" data-tool="mininet"><i class="fas fa-th-large"></i></button>
                         <button class="tool-btn" title="Tire" data-tool="tire"><i class="fas fa-circle-notch"></i></button>
-                        <button class="tool-btn" title="Stick" data-tool="stick"><i class="fas fa-slash"></i></button>
+                        <button class="tool-btn" title="Stick" data-tool="stick">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
                     </div>
                     <div class="tool-group">
                         <span class="tool-group-label">Drawing</span>
                         <button class="tool-btn" title="Draw Line" data-tool="line"><i class="fas fa-minus"></i></button>
                         <button class="tool-btn" title="Draw Dashed Line" data-tool="dashed"><i class="fas fa-ellipsis-h"></i></button>
+                        <button class="tool-btn" title="Squiggly Line (Puck Carry)" data-tool="squiggly"><i class="fas fa-wave-square"></i></button>
                         <button class="tool-btn" title="Arrow" data-tool="arrow"><i class="fas fa-long-arrow-alt-right"></i></button>
                         <button class="tool-btn" title="Add Text" data-tool="text"><i class="fas fa-font"></i></button>
                     </div>
@@ -88,6 +93,25 @@ if ($editDrillId) {
                         <button class="tool-btn" title="Number 7" data-tool="num7"><span class="tool-label">7</span></button>
                         <button class="tool-btn" title="Number 8" data-tool="num8"><span class="tool-label">8</span></button>
                         <button class="tool-btn" title="Number 9" data-tool="num9"><span class="tool-label">9</span></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Color</span>
+                        <button class="tool-btn" title="Paint Color" data-tool="paint"><i class="fas fa-paint-brush"></i></button>
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="drill-color-picker" data-drill-action="color-picker" value="#000000" title="Select Color">
+                            <div class="active-color-circle" style="background-color: #000000;"></div>
+                        </div>
+                        <button class="tool-btn color-preset" title="Black" data-color-preset="#000000" style="background-color: #000000;"></button>
+                        <button class="tool-btn color-preset" title="Red" data-color-preset="#c41e3a" style="background-color: #c41e3a;"></button>
+                        <button class="tool-btn color-preset" title="Blue" data-color-preset="#0033a0" style="background-color: #0033a0;"></button>
+                        <button class="tool-btn color-preset" title="Light Blue" data-color-preset="#00bfff" style="background-color: #00bfff;"></button>
+                        <button class="tool-btn color-preset" title="Orange" data-color-preset="#ff6600" style="background-color: #ff6600;"></button>
+                        <button class="tool-btn color-preset" title="Green" data-color-preset="#10b981" style="background-color: #10b981;"></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Edit</span>
+                        <button class="tool-btn" title="Rotate Item" data-tool="rotate" data-drill-action="rotate"><i class="fas fa-sync-alt"></i></button>
+                        <button class="tool-btn danger-btn" title="Delete Selected" data-tool="delete" data-drill-action="delete"><i class="fas fa-trash-alt"></i></button>
                     </div>
                     <div class="tool-group">
                         <span class="tool-group-label">Actions</span>
@@ -117,6 +141,12 @@ if ($editDrillId) {
                     <button class="btn-secondary" data-drill-action="undo"><i class="fas fa-undo"></i> Undo</button>
                     <button class="btn-secondary" data-drill-action="redo"><i class="fas fa-redo"></i> Redo</button>
                     <button class="btn-secondary" data-drill-action="export"><i class="fas fa-download"></i> Export Image</button>
+                    <?php if ($isEditMode): ?>
+                    <button class="btn-secondary" data-drill-action="share"><i class="fas fa-share-alt"></i> Share Link</button>
+                    <?php endif; ?>
+                </div>
+                <div class="canvas-help-text">
+                    <p><i class="fas fa-lightbulb"></i> <strong>Tips:</strong> Select an item to see rotation indicator. Press <kbd>R</kbd> to rotate, <kbd>Delete</kbd> to remove. Use Paint tool to change item colors.</p>
                 </div>
             </div>
         </div>
@@ -457,6 +487,86 @@ if ($editDrillId) {
     display: flex;
     gap: 10px;
     justify-content: center;
+    flex-wrap: wrap;
+}
+
+.canvas-help-text {
+    margin-top: 12px;
+    padding: 10px 15px;
+    background: rgba(107, 70, 193, 0.1);
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.canvas-help-text kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 11px;
+    color: var(--text-white);
+}
+
+/* Color Picker Styles */
+.color-picker-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.color-picker-wrapper input[type="color"] {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+}
+
+.color-picker-wrapper input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 2px;
+}
+
+.color-picker-wrapper input[type="color"]::-webkit-color-swatch {
+    border-radius: 2px;
+    border: none;
+}
+
+.active-color-circle {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    pointer-events: none;
+}
+
+.tool-btn.color-preset {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    padding: 0;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.tool-btn.color-preset:hover {
+    transform: scale(1.15);
+    border-color: #fff;
+}
+
+.tool-btn.color-preset.active {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px var(--primary);
 }
 
 .equipment-tags {
