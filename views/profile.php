@@ -1034,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     parentItem.style.pointerEvents = '';
                 }
                 if (data.success) {
-                    // Show brief success indicator with green border flash
+                    // Show success indicator with green border flash (1.5 seconds)
                     if (parentItem) {
                         parentItem.classList.add('preference-saved');
                         setTimeout(() => {
