@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 $action = $_POST['action'] ?? '';
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_opensign'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -508,47 +508,47 @@ try {
             header('Location: dashboard.php?page=admin_settings&success=1');
             exit;
             
-        case 'update_opensign':
-            $opensign_enabled = isset($_POST['opensign_enabled']) ? '1' : '0';
-            $opensign_url = trim($_POST['opensign_url'] ?? '');
-            $opensign_api_key = trim($_POST['opensign_api_key'] ?? '');
-            $opensign_webhook_secret = trim($_POST['opensign_webhook_secret'] ?? '');
-            $opensign_auto_confirm = isset($_POST['opensign_auto_confirm']) ? '1' : '0';
-            $opensign_verify_ssl = isset($_POST['opensign_verify_ssl']) ? '1' : '0';
+        case 'update_docuseal':
+            $docuseal_enabled = isset($_POST['docuseal_enabled']) ? '1' : '0';
+            $docuseal_url = trim($_POST['docuseal_url'] ?? '');
+            $docuseal_api_key = trim($_POST['docuseal_api_key'] ?? '');
+            $docuseal_webhook_secret = trim($_POST['docuseal_webhook_secret'] ?? '');
+            $docuseal_auto_confirm = isset($_POST['docuseal_auto_confirm']) ? '1' : '0';
+            $docuseal_verify_ssl = isset($_POST['docuseal_verify_ssl']) ? '1' : '0';
             
             // Validate URL if provided
-            if (!empty($opensign_url) && !filter_var($opensign_url, FILTER_VALIDATE_URL)) {
-                throw new Exception('Invalid OpenSign URL format');
+            if (!empty($docuseal_url) && !filter_var($docuseal_url, FILTER_VALIDATE_URL)) {
+                throw new Exception('Invalid DocuSeal URL format');
             }
             
-            updateSetting($pdo, 'opensign_enabled', $opensign_enabled);
-            updateSetting($pdo, 'opensign_url', $opensign_url);
-            if (!empty($opensign_api_key)) {
-                updateSetting($pdo, 'opensign_api_key', $opensign_api_key);
+            updateSetting($pdo, 'docuseal_enabled', $docuseal_enabled);
+            updateSetting($pdo, 'docuseal_url', $docuseal_url);
+            if (!empty($docuseal_api_key)) {
+                updateSetting($pdo, 'docuseal_api_key', $docuseal_api_key);
             }
-            updateSetting($pdo, 'opensign_webhook_secret', $opensign_webhook_secret);
-            updateSetting($pdo, 'opensign_auto_confirm', $opensign_auto_confirm);
-            updateSetting($pdo, 'opensign_verify_ssl', $opensign_verify_ssl);
+            updateSetting($pdo, 'docuseal_webhook_secret', $docuseal_webhook_secret);
+            updateSetting($pdo, 'docuseal_auto_confirm', $docuseal_auto_confirm);
+            updateSetting($pdo, 'docuseal_verify_ssl', $docuseal_verify_ssl);
             
             // Redirect back to the appropriate page
             $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
             if ($redirect_page === 'system_tools') {
-                header('Location: dashboard.php?page=system_tools&tab=opensign&success=1');
+                header('Location: dashboard.php?page=system_tools&tab=docuseal&success=1');
             } else {
                 header('Location: dashboard.php?page=admin_settings&success=1');
             }
             exit;
             
-        case 'test_opensign':
-            require_once __DIR__ . '/lib/opensign.php';
+        case 'test_docuseal':
+            require_once __DIR__ . '/lib/docuseal.php';
             
             $settings = [
-                'opensign_url' => trim($_POST['opensign_url'] ?? ''),
-                'opensign_api_key' => trim($_POST['opensign_api_key'] ?? ''),
-                'opensign_verify_ssl' => '1'
+                'docuseal_url' => trim($_POST['docuseal_url'] ?? ''),
+                'docuseal_api_key' => trim($_POST['docuseal_api_key'] ?? ''),
+                'docuseal_verify_ssl' => '1'
             ];
             
-            $result = testOpenSignConnection($settings);
+            $result = testDocuSealConnection($settings);
             echo json_encode($result);
             exit;
             

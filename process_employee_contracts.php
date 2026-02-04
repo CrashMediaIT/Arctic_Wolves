@@ -2,14 +2,14 @@
 /**
  * Process Employee Contract Actions
  * Handles contract creation, e-signature requests, and signed document processing
- * Uses OpenSign API for e-signature handling
+ * Uses DocuSeal API for e-signature handling
  */
 
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
-require_once 'lib/opensign.php';
+require_once 'lib/docuseal.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -132,7 +132,7 @@ try {
          */
         case 'send_for_signature':
             $contractId = intval($_POST['contract_id'] ?? 0);
-            $opensignTemplateId = intval($_POST['opensign_template_id'] ?? 0);
+            $docusealTemplateId = intval($_POST['docuseal_template_id'] ?? 0);
             
             if ($contractId <= 0) {
                 throw new Exception('Invalid contract ID');
@@ -140,7 +140,7 @@ try {
             
             // Get contract
             $stmt = $pdo->prepare("
-                SELECT ec.*, ct.opensign_template_id as template_opensign_id, ct.name as template_name
+                SELECT ec.*, ct.docuseal_template_id as template_docuseal_id, ct.name as template_name
                 FROM employee_contracts ec
                 LEFT JOIN contract_templates ct ON ec.template_id = ct.id
                 WHERE ec.id = ?
@@ -156,24 +156,24 @@ try {
                 throw new Exception('Contract has already been sent or signed');
             }
             
-            // Get OpenSign settings
-            $settings = getOpenSignSettings($pdo);
+            // Get DocuSeal settings
+            $settings = getDocuSealSettings($pdo);
             
-            if (empty($settings['opensign_enabled']) || $settings['opensign_enabled'] !== '1') {
-                throw new Exception('OpenSign is not enabled. Please configure it in System Tools.');
+            if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+                throw new Exception('DocuSeal is not enabled. Please configure it in System Tools.');
             }
             
-            // Use template OpenSign ID from POST or from linked template
-            $templateId = $opensignTemplateId > 0 ? $opensignTemplateId : ($contract['template_opensign_id'] ?? 0);
+            // Use template DocuSeal ID from POST or from linked template
+            $templateId = $docusealTemplateId > 0 ? $docusealTemplateId : ($contract['template_docuseal_id'] ?? 0);
             
             if ($templateId <= 0) {
-                throw new Exception('No OpenSign template selected. Please select a template or configure the OpenSign template ID.');
+                throw new Exception('No DocuSeal template selected. Please select a template or configure the DocuSeal template ID.');
             }
             
             // Parse contract data for pre-filling
             $contractData = json_decode($contract['contract_data'], true) ?? [];
             
-            // Create e-signature request via OpenSign
+            // Create e-signature request via DocuSeal
             $esignResult = createEsignatureRequest(
                 $pdo,
                 $contractId,
@@ -196,13 +196,13 @@ try {
             $auditStmt->execute([
                 $user_id,
                 $contractId,
-                json_encode(['action' => 'sent_for_signature', 'opensign_template_id' => $templateId]),
+                json_encode(['action' => 'sent_for_signature', 'docuseal_template_id' => $templateId]),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
             
             echo json_encode([
                 'success' => true,
-                'message' => 'Contract sent for signature via OpenSign. The employee will receive an email with signing instructions.',
+                'message' => 'Contract sent for signature via DocuSeal. The employee will receive an email with signing instructions.',
                 'signing_url' => $esignResult['signing_url'] ?? null,
                 'expires_at' => $esignResult['expires_at'] ?? null
             ]);
@@ -327,9 +327,9 @@ try {
                 throw new Exception('Contract is not pending signature');
             }
             
-            // Check if we have an OpenSign signing URL
+            // Check if we have a DocuSeal signing URL
             if (empty($contract['signing_url'])) {
-                throw new Exception('No signing URL available. The contract may need to be re-sent via OpenSign.');
+                throw new Exception('No signing URL available. The contract may need to be re-sent via DocuSeal.');
             }
             
             // Check if signing link hasn't expired
@@ -337,7 +337,7 @@ try {
                 throw new Exception('Signing link has expired. Please create a new e-signature request.');
             }
             
-            // Resend email with OpenSign signing URL
+            // Resend email with DocuSeal signing URL
             $emailSent = sendEsignatureRequestEmail(
                 $contract['employee_email'],
                 $contract['employee_name'],
