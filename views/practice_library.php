@@ -101,13 +101,13 @@ try {
                 </div>
                 <?php endif; ?>
                 <div class="practice-actions">
-                    <button class="btn-sm btn-secondary" data-action="view-plan" data-plan-id="<?= $plan['id'] ?>">
+                    <button type="button" class="btn-sm btn-secondary" data-action="view-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-eye"></i> View
                     </button>
-                    <button class="btn-sm btn-secondary" data-action="edit-plan" data-plan-id="<?= $plan['id'] ?>">
+                    <button type="button" class="btn-sm btn-secondary" data-action="edit-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button class="btn-sm btn-danger" data-action="delete-plan" data-plan-id="<?= $plan['id'] ?>">
+                    <button type="button" class="btn-sm btn-danger" data-action="delete-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
@@ -339,29 +339,25 @@ try {
     text-decoration: none;
 }
 
-.btn-sm.btn-secondary,
-.btn-secondary.btn-sm {
+.btn-sm.btn-secondary {
     background: transparent;
     color: var(--text-white);
     border: 1px solid var(--border);
 }
 
-.btn-sm.btn-secondary:hover,
-.btn-secondary.btn-sm:hover {
+.btn-sm.btn-secondary:hover {
     background: var(--bg-card);
     border-color: var(--primary);
     color: var(--primary);
 }
 
-.btn-sm.btn-danger,
-.btn-danger.btn-sm {
+.btn-sm.btn-danger {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
     color: #ef4444;
 }
 
-.btn-sm.btn-danger:hover,
-.btn-danger.btn-sm:hover {
+.btn-sm.btn-danger:hover {
     background: rgba(239, 68, 68, 0.2);
     border-color: #ef4444;
 }
