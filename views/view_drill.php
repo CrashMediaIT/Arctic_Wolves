@@ -152,12 +152,57 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
                 </div>
                 <?php endif; ?>
                 
-                <?php if (!empty($drill['video_url'])): ?>
-                <div class="detail-section">
-                    <h4>Video</h4>
-                    <a href="<?php echo htmlspecialchars($drill['video_url']); ?>" target="_blank" class="btn btn-secondary">
+                <?php if (!empty($drill['video_url'])): 
+                    // Check if it's a YouTube URL
+                    $videoUrl = $drill['video_url'];
+                    $youtubeId = null;
+                    
+                    // Extract YouTube video ID from various URL formats
+                    if (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/', $videoUrl, $matches)) {
+                        $youtubeId = $matches[1];
+                    }
+                ?>
+                <div class="detail-section video-section">
+                    <h4><i class="fas fa-video"></i> Video</h4>
+                    <?php if ($youtubeId): ?>
+                    <div class="video-embed-container" style="position: relative; width: 100%; max-width: 640px; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-bottom: 12px; border-radius: 8px; background: var(--bg-main);">
+                        <iframe 
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; border-radius: 8px;"
+                            src="https://www.youtube.com/embed/<?php echo htmlspecialchars($youtubeId); ?>" 
+                            title="Drill Video"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                    <a href="https://www.youtube.com/watch?v=<?php echo htmlspecialchars($youtubeId); ?>" target="_blank" class="btn btn-secondary" style="margin-top: 8px;">
+                        <i class="fab fa-youtube"></i> Open on YouTube
+                    </a>
+                    <?php else: ?>
+                    <a href="<?php echo htmlspecialchars($videoUrl); ?>" target="_blank" class="btn btn-secondary">
                         <i class="fas fa-play-circle"></i> Watch Video
                     </a>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($drill['video_upload_path'])): 
+                    // Determine MIME type from file extension
+                    $videoPath = $drill['video_upload_path'];
+                    $videoExt = strtolower(pathinfo($videoPath, PATHINFO_EXTENSION));
+                    $videoMimeTypes = [
+                        'mp4' => 'video/mp4',
+                        'webm' => 'video/webm',
+                        'ogg' => 'video/ogg',
+                        'ogv' => 'video/ogg'
+                    ];
+                    $videoMimeType = $videoMimeTypes[$videoExt] ?? 'video/mp4';
+                ?>
+                <div class="detail-section video-section">
+                    <h4><i class="fas fa-film"></i> Uploaded Video</h4>
+                    <video controls style="width: 100%; max-width: 640px; border-radius: 8px; background: var(--bg-main);">
+                        <source src="<?php echo htmlspecialchars($videoPath); ?>" type="<?php echo $videoMimeType; ?>">
+                        Your browser does not support the video tag.
+                    </video>
                 </div>
                 <?php endif; ?>
                 

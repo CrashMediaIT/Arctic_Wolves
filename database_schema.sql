@@ -3480,3 +3480,92 @@ CREATE TABLE IF NOT EXISTS `staff_schedules` (
     INDEX `idx_date` (`schedule_date`),
     INDEX `idx_staff_date` (`staff_id`, `schedule_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- =========================================================
+-- HR COMPLAINTS - Based on Canada's HR Best Practices
+-- =========================================================
+
+-- HR Complaints table for tracking internal and external complaints
+CREATE TABLE IF NOT EXISTS `hr_complaints` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `complaint_number` VARCHAR(50) NOT NULL UNIQUE COMMENT 'Unique complaint tracking number',
+    `complaint_type` ENUM('internal', 'external') NOT NULL COMMENT 'Internal: between employees, External: from outside party',
+    `category` ENUM('harassment', 'discrimination', 'workplace_safety', 'policy_violation', 'performance', 'conduct', 'interpersonal_conflict', 'other') NOT NULL,
+    `severity` ENUM('low', 'medium', 'high', 'critical') DEFAULT 'medium',
+    `confidentiality_level` ENUM('standard', 'restricted', 'highly_confidential') DEFAULT 'standard' COMMENT 'Per Canadian privacy requirements',
+    `complainant_id` INT DEFAULT NULL COMMENT 'Employee filing the complaint (NULL for anonymous or external)',
+    `complainant_name` VARCHAR(255) DEFAULT NULL COMMENT 'For external complainants or anonymous tracking',
+    `complainant_contact` VARCHAR(255) DEFAULT NULL COMMENT 'Contact info for external complainants',
+    `respondent_id` INT DEFAULT NULL COMMENT 'Employee the complaint is about',
+    `respondent_name` VARCHAR(255) DEFAULT NULL COMMENT 'For cases where respondent not in system',
+    `complaint_date` DATE NOT NULL COMMENT 'Date complaint was filed',
+    `incident_date` DATE DEFAULT NULL COMMENT 'Date the incident occurred',
+    `incident_location` VARCHAR(255) DEFAULT NULL,
+    `description` TEXT NOT NULL COMMENT 'Detailed description of the complaint',
+    `witnesses` TEXT DEFAULT NULL COMMENT 'Names/details of any witnesses',
+    `evidence_attached` TINYINT(1) DEFAULT 0,
+    `status` ENUM('received', 'under_review', 'investigation', 'pending_resolution', 'resolved', 'dismissed', 'escalated') DEFAULT 'received',
+    `priority` ENUM('low', 'normal', 'high', 'urgent') DEFAULT 'normal',
+    `assigned_to` INT DEFAULT NULL COMMENT 'HR representative handling the case',
+    `resolution` TEXT DEFAULT NULL COMMENT 'How the complaint was resolved',
+    `resolution_date` DATE DEFAULT NULL,
+    `corrective_actions` TEXT DEFAULT NULL COMMENT 'Actions taken to prevent recurrence',
+    `appeal_filed` TINYINT(1) DEFAULT 0,
+    `appeal_notes` TEXT DEFAULT NULL,
+    `legal_consultation` TINYINT(1) DEFAULT 0 COMMENT 'Whether legal was consulted',
+    `documentation_complete` TINYINT(1) DEFAULT 0,
+    `nextcloud_folder` VARCHAR(500) DEFAULT NULL COMMENT 'Path to complaint documents in Nextcloud',
+    `created_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`complainant_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`respondent_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`assigned_to`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_type` (`complaint_type`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_category` (`category`),
+    INDEX `idx_severity` (`severity`),
+    INDEX `idx_date` (`complaint_date`),
+    INDEX `idx_respondent` (`respondent_id`),
+    INDEX `idx_assigned` (`assigned_to`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- HR Complaint Notes (activity log for each complaint)
+CREATE TABLE IF NOT EXISTS `hr_complaint_notes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `complaint_id` INT NOT NULL,
+    `note_type` ENUM('general', 'investigation', 'interview', 'update', 'resolution', 'escalation') DEFAULT 'general',
+    `note_content` TEXT NOT NULL,
+    `is_confidential` TINYINT(1) DEFAULT 0 COMMENT 'Only visible to HR admins',
+    `created_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`complaint_id`) REFERENCES `hr_complaints`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_complaint` (`complaint_id`),
+    INDEX `idx_type` (`note_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- HR Complaint Documents
+CREATE TABLE IF NOT EXISTS `hr_complaint_documents` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `complaint_id` INT NOT NULL,
+    `document_type` ENUM('evidence', 'statement', 'interview_notes', 'investigation_report', 'resolution', 'correspondence', 'other') NOT NULL,
+    `document_name` VARCHAR(255) NOT NULL,
+    `file_path` VARCHAR(500) DEFAULT NULL,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL,
+    `file_size` INT DEFAULT NULL,
+    `mime_type` VARCHAR(100) DEFAULT NULL,
+    `is_confidential` TINYINT(1) DEFAULT 1,
+    `uploaded_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`complaint_id`) REFERENCES `hr_complaints`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_complaint` (`complaint_id`),
+    INDEX `idx_type` (`document_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Add video upload support to drills table
+ALTER TABLE `drills` ADD COLUMN IF NOT EXISTS `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file' AFTER `video_url`;

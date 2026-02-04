@@ -44,9 +44,69 @@ if ($action === 'save_drill' || $action === 'create') {
     $instructions = trim($_POST['instructions'] ?? '');
     $equipment = isset($_POST['equipment']) && is_array($_POST['equipment']) ? implode(', ', $_POST['equipment']) : trim($_POST['equipment_needed'] ?? '');
     $coaching_points = trim($_POST['coaching_points'] ?? '');
-    $video_url = trim($_POST['video_url'] ?? '');
+    $setup = trim($_POST['setup'] ?? '');
+    $progression = trim($_POST['progression'] ?? '');
     $tags_input = $_POST['tags'] ?? '';
     $tags = is_array($tags_input) ? $tags_input : array_map('trim', explode(',', $tags_input));
+    
+    // Handle video - support YouTube, external URL, and uploads
+    $video_url = '';
+    $video_upload_path = '';
+    $video_type = $_POST['video_type'] ?? '';
+    
+    if ($video_type === 'youtube') {
+        $youtube_input = trim($_POST['youtube_url'] ?? '');
+        if (!empty($youtube_input)) {
+            // Extract YouTube video ID and create a clean URL
+            if (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/', $youtube_input, $matches)) {
+                $video_url = 'https://www.youtube.com/watch?v=' . $matches[1];
+            } else {
+                // If we can't parse it, just use the input directly
+                $video_url = $youtube_input;
+            }
+        }
+    } elseif ($video_type === 'url') {
+        $video_url = trim($_POST['video_url'] ?? '');
+        // Validate URL format
+        if (!empty($video_url) && !filter_var($video_url, FILTER_VALIDATE_URL)) {
+            $video_url = '';
+        }
+    } elseif ($video_type === 'upload' && isset($_FILES['video_file']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
+        // Handle video upload
+        $allowed_types = ['video/mp4', 'video/webm', 'video/ogg'];
+        $max_size = 100 * 1024 * 1024; // 100MB
+        
+        $file = $_FILES['video_file'];
+        
+        if (!in_array($file['type'], $allowed_types)) {
+            header("Location: dashboard.php?page=create_drill&error=invalid_video_type");
+            exit();
+        }
+        
+        if ($file['size'] > $max_size) {
+            header("Location: dashboard.php?page=create_drill&error=video_too_large");
+            exit();
+        }
+        
+        // Create upload directory if it doesn't exist
+        // Use 0755 for better compatibility with various web server configurations
+        $upload_dir = __DIR__ . '/uploads/drill_videos/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        
+        // Generate unique filename
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = 'drill_video_' . bin2hex(random_bytes(16)) . '.' . $extension;
+        $filepath = $upload_dir . $filename;
+        
+        if (move_uploaded_file($file['tmp_name'], $filepath)) {
+            $video_upload_path = 'uploads/drill_videos/' . $filename;
+        }
+    } else {
+        // Legacy support - check for direct video_url field
+        $video_url = trim($_POST['video_url'] ?? '');
+    }
     
     // If category name is provided instead of ID, look up or create the category
     if (empty($category_id) && !empty($category_name)) {
@@ -87,13 +147,16 @@ if ($action === 'save_drill' || $action === 'create') {
             // Update existing drill
             $stmt = $pdo->prepare("
                 UPDATE drills SET 
-                    title = ?, description = ?, category_id = ?, diagram_data = ?,
-                    video_url = ?, updated_at = NOW()
+                    title = ?, description = ?, category_id = ?, diagram_data = COALESCE(NULLIF(?, ''), diagram_data),
+                    setup = COALESCE(NULLIF(?, ''), setup), coaching_points = COALESCE(NULLIF(?, ''), coaching_points),
+                    progression = COALESCE(NULLIF(?, ''), progression),
+                    video_url = ?, video_upload_path = COALESCE(NULLIF(?, ''), video_upload_path), updated_at = NOW()
                 WHERE id = ? AND created_by = ?
             ");
             $stmt->execute([
                 $title, $full_description, $category_id, $diagram_data,
-                $video_url, $drill_id, $user_id
+                $setup, $coaching_points, $progression,
+                $video_url, $video_upload_path ?: null, $drill_id, $user_id
             ]);
             
             // Delete old tags
@@ -102,11 +165,11 @@ if ($action === 'save_drill' || $action === 'create') {
             // Insert new drill
             $stmt = $pdo->prepare("
                 INSERT INTO drills (
-                    title, description, category_id, diagram_data, video_url, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    title, description, category_id, diagram_data, setup, coaching_points, progression, video_url, video_upload_path, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $title, $full_description, $category_id, $diagram_data, $video_url, $user_id
+                $title, $full_description, $category_id, $diagram_data, $setup, $coaching_points, $progression, $video_url, $video_upload_path ?: null, $user_id
             ]);
             $drill_id = $pdo->lastInsertId();
         }
