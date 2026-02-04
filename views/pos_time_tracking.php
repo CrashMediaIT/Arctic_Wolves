@@ -441,6 +441,9 @@ try {
 <script>
 const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
 
+// Shift data for API calls
+const shiftData = <?= $activeShift ? json_encode(['id' => $activeShift['id']]) : 'null' ?>;
+
 // Debug: Output raw values to help diagnose issues
 <?php if ($activeShift): ?>
 // Raw shift data for debugging
