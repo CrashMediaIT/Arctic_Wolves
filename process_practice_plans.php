@@ -360,8 +360,14 @@ if ($action === 'import_ihs_practice_plan') {
             }
             
             // Check if a drill with this name already exists in the drill library
-            $existing_drill_stmt = $pdo->prepare("SELECT id FROM drills WHERE title = ? LIMIT 1");
-            $existing_drill_stmt->execute([$drill_title]);
+            // Prioritize drills owned by the same user, then fall back to any drill with the same title
+            $existing_drill_stmt = $pdo->prepare("
+                SELECT id FROM drills 
+                WHERE title = ? 
+                ORDER BY (created_by = ?) DESC, created_at DESC 
+                LIMIT 1
+            ");
+            $existing_drill_stmt->execute([$drill_title, $user_id]);
             $existing_drill = $existing_drill_stmt->fetch();
             
             if ($existing_drill) {
@@ -676,11 +682,15 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
     
     // Extract content sections (Setup, Coaching Points, Progression) - similar to parseIHSDrillPage
     // These are often in divs with specific headers or classes
+    // Note: Keywords are hardcoded and controlled - not from external input - so XPath injection is not a risk
     $sectionPatterns = [
         'setup' => ['setup', 'set-up', 'organization', 'drill setup'],
         'coaching_points' => ['coaching points', 'coaching-points', 'key points', 'teaching points', 'focus points'],
         'progression' => ['progression', 'progressions', 'variations', 'drill progression']
     ];
+    
+    // Track nodes that have been processed as part of sections to avoid duplication
+    $processedNodePaths = [];
     
     foreach ($sectionPatterns as $field => $keywords) {
         foreach ($keywords as $keyword) {
@@ -712,6 +722,8 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
                             }
                         }
                         $content .= trim($nextSibling->textContent) . "\n";
+                        // Track this node as processed
+                        $processedNodePaths[$nextSibling->getNodePath()] = true;
                     } elseif ($nextSibling->nodeType === XML_TEXT_NODE) {
                         $textContent = trim($nextSibling->textContent);
                         if (!empty($textContent)) {
@@ -731,12 +743,12 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
     // Find description/text in node - collect paragraphs that aren't part of section content
     $paragraphs = $xpath->query('.//p', $node);
     $descriptionParts = [];
-    $sectionContent = $drill['setup'] . $drill['coaching_points'] . $drill['progression'];
     
     for ($i = 0; $i < $paragraphs->length; $i++) {
-        $pText = trim($paragraphs->item($i)->textContent);
-        // Skip if this text is already captured in a section
-        if (!empty($pText) && (empty($sectionContent) || strpos($sectionContent, $pText) === false)) {
+        $pNode = $paragraphs->item($i);
+        $pText = trim($pNode->textContent);
+        // Skip if this node was processed as part of a section
+        if (!empty($pText) && !isset($processedNodePaths[$pNode->getNodePath()])) {
             $descriptionParts[] = $pText;
         }
     }
