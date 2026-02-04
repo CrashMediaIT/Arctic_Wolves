@@ -4,6 +4,19 @@ $editDrillId = $_GET['edit'] ?? null;
 $editingDrill = null;
 $isEditMode = false;
 
+// Fetch logo URL from theme settings for center ice display
+$centerLogoUrl = '';
+try {
+    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
+    $logoStmt->execute();
+    $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
+    if ($logoResult && !empty($logoResult['setting_value'])) {
+        $centerLogoUrl = $logoResult['setting_value'];
+    }
+} catch (PDOException $e) {
+    error_log("Error fetching logo URL: " . $e->getMessage());
+}
+
 if ($editDrillId) {
     // Fetch drill data for editing
     try {
@@ -147,7 +160,7 @@ if ($editDrillId) {
                         <option value="center">Center Ice</option>
                     </select>
                 </div>
-                <div class="ice-rink-canvas" id="drill-rink-container" data-ice-view="full">
+                <div class="ice-rink-canvas" id="drill-rink-container" data-ice-view="full" data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
                     <div class="rink-overlay">
                         <p><i class="fas fa-info-circle"></i> Click the tools above to start designing your drill</p>
                     </div>

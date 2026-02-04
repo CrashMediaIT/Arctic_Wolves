@@ -90,8 +90,8 @@ if ($action === 'import_drills') {
                 INSERT INTO drills (
                     title, description, category_id, duration_minutes, skill_level,
                     age_group, equipment_needed, coaching_points, video_url,
-                    imported_from_ihs, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    custom_image, imported_from_ihs, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
             ");
             $stmt->execute([
                 $title,
@@ -103,6 +103,7 @@ if ($action === 'import_drills') {
                 $drill['equipment'] ?? '',
                 $drill['coaching_points'] ?? '',
                 $drill['video_url'] ?? '',
+                $drill['image_url'] ?? $drill['image'] ?? $drill['photo_url'] ?? '',
                 $user_id
             ]);
             

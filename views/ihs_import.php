@@ -184,7 +184,8 @@ Example JSON format:
       "duration": 15,
       "skill_level": "intermediate",
       "equipment": "Cones, pucks",
-      "coaching_points": "Keep head up, support the puck carrier"
+      "coaching_points": "Keep head up, support the puck carrier",
+      "image_url": "https://example.com/drill-image.png"
     }
   ]
 }'></textarea>
