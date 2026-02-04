@@ -512,32 +512,15 @@ function parseIHSPracticePlanPage($html, $url) {
         '//div[contains(@class, "plan-item")]'
     ];
     
-    // Track seen drills to prevent duplicates (using title + image as key)
-    $seenDrills = [];
-    
     foreach ($drillPatterns as $pattern) {
         $drillNodes = $xpath->query($pattern);
         if ($drillNodes->length > 0) {
             for ($i = 0; $i < $drillNodes->length; $i++) {
                 $drillNode = $drillNodes->item($i);
                 
-                // Skip parent nodes that contain child drill elements
-                // This prevents extracting both parent and child as separate drills
-                $childDrillNodes = $xpath->query('.//div[contains(@class, "drill")] | .//article[contains(@class, "drill")]', $drillNode);
-                if ($childDrillNodes->length > 0) {
-                    continue; // Skip parent containers, process children instead
-                }
-                
                 $drill = extractDrillFromNode($drillNode, $xpath, $url);
                 if ($drill && !empty($drill['title'])) {
-                    // Create a unique key for deduplication based on title and image
-                    $drillKey = strtolower(trim($drill['title'])) . '|' . ($drill['rink_image'] ?? '');
-                    
-                    // Only add if we haven't seen this drill before
-                    if (!isset($seenDrills[$drillKey])) {
-                        $seenDrills[$drillKey] = true;
-                        $plan['drills'][] = $drill;
-                    }
+                    $plan['drills'][] = $drill;
                 }
             }
             break;
