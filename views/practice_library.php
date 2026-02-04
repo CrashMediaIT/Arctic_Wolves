@@ -101,13 +101,13 @@ try {
                 </div>
                 <?php endif; ?>
                 <div class="practice-actions">
-                    <a href="?page=view_practice_plan&id=<?= $plan['id'] ?>" class="btn-secondary btn-sm">
+                    <button class="btn-sm btn-secondary" data-action="view-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-eye"></i> View
-                    </a>
-                    <button class="btn-secondary btn-sm" data-action="edit-plan" data-plan-id="<?= $plan['id'] ?>">
+                    </button>
+                    <button class="btn-sm btn-secondary" data-action="edit-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button class="btn-danger btn-sm" data-action="delete-plan" data-plan-id="<?= $plan['id'] ?>">
+                    <button class="btn-sm btn-danger" data-action="delete-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
@@ -319,6 +319,49 @@ try {
 }
 
 .btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+}
+
+/* Consistent button styles */
+.btn-sm {
+    height: 36px;
+    padding: 0 16px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-sm.btn-secondary,
+.btn-secondary.btn-sm {
+    background: transparent;
+    color: var(--text-white);
+    border: 1px solid var(--border);
+}
+
+.btn-sm.btn-secondary:hover,
+.btn-secondary.btn-sm:hover {
+    background: var(--bg-card);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-sm.btn-danger,
+.btn-danger.btn-sm {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.btn-sm.btn-danger:hover,
+.btn-danger.btn-sm:hover {
     background: rgba(239, 68, 68, 0.2);
     border-color: #ef4444;
 }
@@ -582,13 +625,13 @@ try {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle View Practice Plan button - opens printable view modal
+    // Handle View Practice Plan button - navigate to detail page
     document.querySelectorAll('[data-action="view-plan"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             var planId = this.getAttribute('data-plan-id');
             if (planId) {
-                openPlanViewModal(planId);
+                window.location.href = 'dashboard.php?page=view_practice_plan&id=' + planId;
             }
         });
     });

@@ -44,7 +44,7 @@ if ($planId) {
             $drillStmt = $pdo->prepare("
                 SELECT ppd.*, 
                        d.title, d.description, d.setup, d.coaching_points, d.progression,
-                       d.diagram_data, d.custom_image, d.video_url, d.ihs_source_url, d.notes,
+                       d.diagram_data, d.custom_image, d.video_url, d.ihs_source_url,
                        dc.name as category_name,
                        ppd.duration_minutes as drill_duration
                 FROM practice_plan_drills ppd
