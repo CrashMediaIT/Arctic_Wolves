@@ -586,15 +586,19 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
     // Find image in node - prioritize IHS-specific images from files.icehockeysystems.com
     $images = $xpath->query('.//img', $node);
     if ($images->length > 0) {
-        // First pass: look for IHS-specific images with img-responsive class
+        // First pass: look for IHS-specific images
+        // Priority 1: Images hosted on files.icehockeysystems.com (the official IHS CDN)
+        // Priority 2: Images with img-responsive class (common IHS drill image class)
         foreach ($images as $img) {
             $imgSrc = $img->getAttribute('src');
-            $imgClass = $img->getAttribute('class');
+            $imgClass = $img->getAttribute('class') ?: '';
+            // Priority 1: IHS CDN images
             if (!empty($imgSrc) && strpos($imgSrc, 'files.icehockeysystems.com') !== false) {
                 $drill['rink_image'] = $imgSrc;
                 break;
             }
-            if (!empty($imgSrc) && strpos($imgClass, 'img-responsive') !== false) {
+            // Priority 2: Images with img-responsive class
+            if (!empty($imgSrc) && !empty($imgClass) && strpos($imgClass, 'img-responsive') !== false) {
                 if (strpos($imgSrc, 'http') !== 0) {
                     $url_parts = parse_url($baseUrl);
                     $base = $url_parts['scheme'] . '://' . $url_parts['host'];
