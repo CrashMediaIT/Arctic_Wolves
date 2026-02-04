@@ -151,6 +151,27 @@ try {
             header('Location: dashboard.php?page=admin_theme_settings&tab=branding&success=1');
             exit;
             
+        case 'update_center_ice_logo':
+            // Handle center ice logo upload for drill designer
+            if (isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                }
+            } elseif (!empty($_POST['center_ice_logo_url_input'])) {
+                updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['center_ice_logo_url_input']);
+            }
+            
+            header('Location: dashboard.php?page=admin_theme_settings&tab=branding&success=1');
+            exit;
+            
+        case 'remove_center_ice_logo':
+            // Remove center ice logo
+            updateThemeSetting($pdo, 'center_ice_logo_url', '');
+            
+            header('Location: dashboard.php?page=admin_theme_settings&tab=branding&success=1');
+            exit;
+            
         case 'update_hero':
             // Handle hero image upload
             if (isset($_FILES['hero_image']) && $_FILES['hero_image']['error'] === UPLOAD_ERR_OK) {

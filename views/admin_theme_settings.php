@@ -48,6 +48,7 @@ $colors = array_merge($defaults, $theme_colors);
 
 // Get branding settings
 $logo_url = $theme_colors['logo_url'] ?? '';
+$center_ice_logo_url = $theme_colors['center_ice_logo_url'] ?? '';
 $hero_image_url = $theme_colors['hero_image_url'] ?? '';
 $hero_title = $theme_colors['hero_title'] ?? 'Arctic Wolves Player Development';
 $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-ice training protocols designed for competitive athletes seeking elite performance levels.';
@@ -1023,6 +1024,68 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
                 </button>
             </div>
         </form>
+        
+        <!-- Center Ice Logo Section -->
+        <form id="centerIceLogoForm" method="POST" action="process_theme.php" enctype="multipart/form-data" style="margin-top: 40px; border-top: 1px solid #1e293b; padding-top: 30px;">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="update_center_ice_logo">
+            
+            <h3 class="section-title">
+                <i class="fas fa-hockey-puck"></i>
+                Center Ice Logo
+            </h3>
+            <p style="color: #94a3b8; margin-bottom: 20px; font-size: 14px;">
+                This logo appears at center ice in the drill designer. It will be displayed at 12% opacity as a subtle watermark.
+            </p>
+            
+            <div class="form-group">
+                <label>Upload Method</label>
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="center_ice_logo_upload" name="center_ice_logo_method" value="upload" checked>
+                        <label for="center_ice_logo_upload">Upload File</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="center_ice_logo_url" name="center_ice_logo_method" value="url">
+                        <label for="center_ice_logo_url">Enter URL</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group" id="center_ice_logo_upload_field">
+                <label>Center Ice Logo File (PNG, max 2MB)</label>
+                <input type="file" class="form-control" name="center_ice_logo" accept=".png,.jpg,.jpeg,.webp" onchange="previewImage(this, 'center_ice_logo_preview')">
+                <small style="color: #94a3b8; display: block; margin-top: 8px;">Recommended size: 400x400px (square or circular logo works best)</small>
+            </div>
+            
+            <div class="form-group" id="center_ice_logo_url_field" style="display: none;">
+                <label>Center Ice Logo URL</label>
+                <input type="text" class="form-control" name="center_ice_logo_url_input" placeholder="https://example.com/center-ice-logo.png">
+            </div>
+            
+            <div class="image-preview" id="center_ice_logo_preview">
+                <?php if ($center_ice_logo_url): ?>
+                    <img src="<?= htmlspecialchars($center_ice_logo_url) ?>" alt="Current Center Ice Logo" style="max-width: 200px; max-height: 200px;">
+                <?php else: ?>
+                    <div class="image-preview-empty">
+                        <i class="fas fa-hockey-puck" style="font-size: 48px; margin-bottom: 10px; opacity: 0.3;"></i>
+                        <p>No center ice logo uploaded</p>
+                        <p style="font-size: 12px; opacity: 0.6;">Default text branding will be used</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-save">
+                    <i class="fas fa-save"></i> Save Center Ice Logo
+                </button>
+                <?php if ($center_ice_logo_url): ?>
+                <button type="button" class="btn btn-secondary" onclick="removeCenterIceLogo()" style="margin-left: 10px;">
+                    <i class="fas fa-trash"></i> Remove Logo
+                </button>
+                <?php endif; ?>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -1557,6 +1620,79 @@ function showAlert(type, message) {
         alert.classList.remove('show');
         setTimeout(() => alert.remove(), 300);
     }, 5000);
+}
+
+// Center Ice Logo upload method toggle
+document.querySelectorAll('input[name="center_ice_logo_method"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        document.getElementById('center_ice_logo_upload_field').style.display = this.value === 'upload' ? 'block' : 'none';
+        document.getElementById('center_ice_logo_url_field').style.display = this.value === 'url' ? 'block' : 'none';
+    });
+});
+
+// Save center ice logo
+document.getElementById('centerIceLogoForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('process_theme.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        // Check if response redirects (success)
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
+        
+        const text = await response.text();
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                showAlert('success', data.message || 'Center ice logo saved successfully!');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showAlert('error', data.message || 'Failed to save center ice logo');
+            }
+        } catch (parseError) {
+            // If it's not JSON, the form likely submitted successfully
+            showAlert('success', 'Center ice logo saved!');
+            setTimeout(() => window.location.reload(), 1500);
+        }
+    } catch (error) {
+        showAlert('error', 'An error occurred while saving center ice logo.');
+    }
+});
+
+// Remove center ice logo
+async function removeCenterIceLogo() {
+    if (!confirm('Are you sure you want to remove the center ice logo?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'remove_center_ice_logo');
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+    
+    try {
+        const response = await fetch('process_theme.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
+        
+        showAlert('success', 'Center ice logo removed!');
+        setTimeout(() => window.location.reload(), 1500);
+    } catch (error) {
+        showAlert('error', 'An error occurred while removing center ice logo.');
+    }
 }
 
 // Close modal on outside click

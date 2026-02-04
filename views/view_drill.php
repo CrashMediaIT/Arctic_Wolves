@@ -4,17 +4,26 @@ $drillId = $_GET['id'] ?? null;
 $isShared = isset($_GET['shared']);
 $drill = null;
 
-// Fetch logo URL from theme settings for center ice display
+// Fetch center ice logo URL from theme settings for drill display
 $centerLogoUrl = '';
 try {
-    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
+    // First try to get the dedicated center ice logo
+    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'center_ice_logo_url'");
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
     if ($logoResult && !empty($logoResult['setting_value'])) {
         $centerLogoUrl = $logoResult['setting_value'];
+    } else {
+        // Fall back to main logo if no center ice logo is set
+        $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
+        $logoStmt->execute();
+        $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
+        if ($logoResult && !empty($logoResult['setting_value'])) {
+            $centerLogoUrl = $logoResult['setting_value'];
+        }
     }
 } catch (PDOException $e) {
-    error_log("Error fetching logo URL: " . $e->getMessage());
+    error_log("Error fetching center ice logo URL: " . $e->getMessage());
 }
 
 // Validate drillId is numeric to prevent injection
@@ -571,7 +580,7 @@ function drawViewRink(ctx, w, h) {
     ctx.lineTo(w * 0.97, h - cornerRadius - 4);
     ctx.stroke();
     
-    // Faceoff circles with dots
+    // Faceoff circles with dots and hash marks
     const faceoffRadius = Math.min(w, h) * 0.1;
     const circles = [
         { x: w * 0.15, y: h * 0.3 },
@@ -591,6 +600,59 @@ function drawViewRink(ctx, w, h) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
         ctx.fill();
+        
+        // Draw NHL-style hash marks
+        // Two 2-foot parallel lines on each side, 5'7" apart, perpendicular to goal line
+        drawHashMarksForCircle(ctx, circle.x, circle.y, faceoffRadius);
+    });
+}
+
+// Helper function to draw NHL hash marks around faceoff circles
+function drawHashMarksForCircle(ctx, cx, cy, radius) {
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    
+    // NHL hash marks are 2 feet long - scale to canvas
+    const hashLength = radius * 0.3;
+    
+    // Gap from circle edge
+    const gapFromCircle = 4;
+    
+    // NHL: hash marks are 5'7" apart
+    const pairGap = radius * 0.4;
+    
+    // Hash marks are on both sides (left and right), with top and bottom pairs
+    const positions = [
+        { side: -1, topY: cy - radius * 0.55, bottomY: cy + radius * 0.55 },
+        { side: 1, topY: cy - radius * 0.55, bottomY: cy + radius * 0.55 }
+    ];
+    
+    positions.forEach(function(pos) {
+        const outerEdgeX = cx + pos.side * (radius + gapFromCircle);
+        const innerEdgeX = outerEdgeX + pos.side * hashLength;
+        
+        // Top hash mark pair
+        ctx.beginPath();
+        ctx.moveTo(outerEdgeX, pos.topY - pairGap/2);
+        ctx.lineTo(innerEdgeX, pos.topY - pairGap/2);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(outerEdgeX, pos.topY + pairGap/2);
+        ctx.lineTo(innerEdgeX, pos.topY + pairGap/2);
+        ctx.stroke();
+        
+        // Bottom hash mark pair
+        ctx.beginPath();
+        ctx.moveTo(outerEdgeX, pos.bottomY - pairGap/2);
+        ctx.lineTo(innerEdgeX, pos.bottomY - pairGap/2);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(outerEdgeX, pos.bottomY + pairGap/2);
+        ctx.lineTo(innerEdgeX, pos.bottomY + pairGap/2);
+        ctx.stroke();
     });
 }
 

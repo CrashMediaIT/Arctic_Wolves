@@ -1022,44 +1022,77 @@ class DrillDesigner {
     }
     
     // Helper function to draw hash marks around faceoff circles
-    // NHL regulation: 4 hash marks positioned on the outside of the circle
-    // Two on each side (left and right) with L-shaped marks
+    // NHL regulation hash marks:
+    // - Two 2-foot parallel red lines on each side of the faceoff circle (4 pairs total)
+    // - Lines are 5'7" apart, perpendicular to the goal line (horizontal on rink)
+    // - Positioned at top and bottom of circle, on both sides
     drawHashMarks(ctx, cx, cy, radius) {
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
         
-        const hashLength = 18;
-        const gapFromCircle = 3;
+        // NHL hash marks are 2 feet long - scale to canvas
+        // Assuming radius represents ~15 feet circle radius, 2 feet ≈ radius * (2/15)
+        const hashLength = radius * 0.3; // Approximately 2 feet scaled
         
-        // Four L-shaped hash marks positioned at 2 o'clock, 4 o'clock, 8 o'clock, and 10 o'clock
-        // These are the standard NHL faceoff circle hash marks
-        const hashPositions = [
-            // Top-left (10 o'clock area)
-            { startAngle: -2.35, horizontal: 1, vertical: -1 },
-            // Top-right (2 o'clock area)  
-            { startAngle: -0.79, horizontal: -1, vertical: -1 },
-            // Bottom-right (4 o'clock area)
-            { startAngle: 0.79, horizontal: -1, vertical: 1 },
-            // Bottom-left (8 o'clock area)
-            { startAngle: 2.35, horizontal: 1, vertical: 1 }
+        // Distance from circle to hash marks (small gap outside circle)
+        const gapFromCircle = 4;
+        
+        // NHL: hash marks are 5'7" apart - scale to canvas
+        // 5'7" ≈ 5.58 feet, so gap between pair of lines ≈ radius * (5.58/15)
+        const pairGap = radius * 0.4; // Approximately 5'7" scaled
+        
+        // Hash marks are at ~2 o'clock, ~4 o'clock, ~8 o'clock, ~10 o'clock positions
+        // They are horizontal lines (perpendicular to the goal line)
+        // The two lines in each pair are vertically separated by pairGap
+        
+        // For each side (left and right of circle), we draw 2 pairs of horizontal lines
+        // Top pair and bottom pair on each side
+        
+        const positions = [
+            // Left side of circle (facing the goal)
+            { 
+                side: -1, // left
+                topY: cy - radius * 0.55,  // upper pair position
+                bottomY: cy + radius * 0.55  // lower pair position
+            },
+            // Right side of circle (away from goal)
+            { 
+                side: 1,  // right
+                topY: cy - radius * 0.55,
+                bottomY: cy + radius * 0.55
+            }
         ];
         
-        hashPositions.forEach(pos => {
-            // Starting point just outside the circle
-            const x = cx + Math.cos(pos.startAngle) * (radius + gapFromCircle);
-            const y = cy + Math.sin(pos.startAngle) * (radius + gapFromCircle);
+        positions.forEach(pos => {
+            // Calculate x position (just outside the circle on this side)
+            const outerEdgeX = cx + pos.side * (radius + gapFromCircle);
+            const innerEdgeX = outerEdgeX + pos.side * hashLength;
             
-            // Draw the two lines of the L-shape
-            // Horizontal line
+            // Draw top hash mark pair (two horizontal parallel lines)
+            // Upper line of top pair
             ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + pos.horizontal * hashLength, y);
+            ctx.moveTo(outerEdgeX, pos.topY - pairGap/2);
+            ctx.lineTo(innerEdgeX, pos.topY - pairGap/2);
             ctx.stroke();
             
-            // Vertical line
+            // Lower line of top pair
             ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x, y + pos.vertical * hashLength);
+            ctx.moveTo(outerEdgeX, pos.topY + pairGap/2);
+            ctx.lineTo(innerEdgeX, pos.topY + pairGap/2);
+            ctx.stroke();
+            
+            // Draw bottom hash mark pair (two horizontal parallel lines)
+            // Upper line of bottom pair
+            ctx.beginPath();
+            ctx.moveTo(outerEdgeX, pos.bottomY - pairGap/2);
+            ctx.lineTo(innerEdgeX, pos.bottomY - pairGap/2);
+            ctx.stroke();
+            
+            // Lower line of bottom pair
+            ctx.beginPath();
+            ctx.moveTo(outerEdgeX, pos.bottomY + pairGap/2);
+            ctx.lineTo(innerEdgeX, pos.bottomY + pairGap/2);
             ctx.stroke();
         });
     }

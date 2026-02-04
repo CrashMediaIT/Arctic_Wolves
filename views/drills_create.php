@@ -4,17 +4,26 @@ $editDrillId = $_GET['edit'] ?? null;
 $editingDrill = null;
 $isEditMode = false;
 
-// Fetch logo URL from theme settings for center ice display
+// Fetch center ice logo URL from theme settings for drill designer
 $centerLogoUrl = '';
 try {
-    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
+    // First try to get the dedicated center ice logo
+    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'center_ice_logo_url'");
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
     if ($logoResult && !empty($logoResult['setting_value'])) {
         $centerLogoUrl = $logoResult['setting_value'];
+    } else {
+        // Fall back to main logo if no center ice logo is set
+        $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
+        $logoStmt->execute();
+        $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
+        if ($logoResult && !empty($logoResult['setting_value'])) {
+            $centerLogoUrl = $logoResult['setting_value'];
+        }
     }
 } catch (PDOException $e) {
-    error_log("Error fetching logo URL: " . $e->getMessage());
+    error_log("Error fetching center ice logo URL: " . $e->getMessage());
 }
 
 if ($editDrillId) {
