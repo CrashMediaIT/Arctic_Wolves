@@ -484,21 +484,6 @@ if ($action === 'import_ihs_url') {
     }
     
     try {
-        // Build the full description with all sections
-        $full_description = $description;
-        
-        if (!empty($setup)) {
-            $full_description .= "\n\n## Setup\n" . $setup;
-        }
-        
-        if (!empty($coaching_points)) {
-            $full_description .= "\n\n## Coaching Points\n" . $coaching_points;
-        }
-        
-        if (!empty($progression)) {
-            $full_description .= "\n\n## Progression\n" . $progression;
-        }
-        
         // Look up or create the category
         $category_id = null;
         if (!empty($category_name)) {
@@ -520,12 +505,12 @@ if ($action === 'import_ihs_url') {
             $custom_image = downloadAndSaveImage($rink_image_url, $user_id);
         }
         
-        // Insert the drill
+        // Insert the drill with sections in their own columns
         $stmt = $pdo->prepare("
-            INSERT INTO drills (title, description, category_id, custom_image, ihs_source_url, created_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO drills (title, description, setup, coaching_points, progression, category_id, custom_image, ihs_source_url, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$title, $full_description, $category_id, $custom_image, $ihs_url, $user_id]);
+        $stmt->execute([$title, $description, $setup, $coaching_points, $progression, $category_id, $custom_image, $ihs_url, $user_id]);
         
         header("Location: dashboard.php?page=drill_library&status=drill_imported");
         exit();
@@ -588,32 +573,47 @@ function parseIHSDrillPage($html, $url) {
     }
     
     // Try to find rink diagram image
-    // Look for images with common class names or alt text
-    $imagePatterns = [
-        '//img[contains(@class, "rink")]/@src',
-        '//img[contains(@class, "diagram")]/@src',
-        '//img[contains(@class, "drill")]/@src',
-        '//img[contains(@alt, "rink")]/@src',
-        '//img[contains(@alt, "drill")]/@src',
-        '//img[contains(@alt, "diagram")]/@src',
-        '//div[contains(@class, "drill")]//img/@src',
-        '//article//img/@src',
-        '//meta[@property="og:image"]/@content'
-    ];
-    
-    foreach ($imagePatterns as $pattern) {
-        $images = $xpath->query($pattern);
-        if ($images->length > 0) {
-            $imageSrc = trim($images->item(0)->textContent);
-            // Make sure it's an absolute URL
-            if (!empty($imageSrc)) {
-                if (strpos($imageSrc, 'http') !== 0) {
-                    $url_parts = parse_url($url);
-                    $base = $url_parts['scheme'] . '://' . $url_parts['host'];
-                    $imageSrc = $base . (strpos($imageSrc, '/') === 0 ? '' : '/') . $imageSrc;
-                }
+    // First, look for IHS-specific drill images from files.icehockeysystems.com with img-responsive class
+    $ihsImages = $xpath->query('//img[contains(@class, "img-responsive")]/@src');
+    if ($ihsImages->length > 0) {
+        foreach ($ihsImages as $imgNode) {
+            $imageSrc = trim($imgNode->textContent);
+            // Prioritize images from files.icehockeysystems.com/files/drills/
+            if (strpos($imageSrc, 'files.icehockeysystems.com') !== false) {
                 $drill['rink_image'] = $imageSrc;
                 break;
+            }
+        }
+    }
+    
+    // If no IHS-specific image found, fall back to other patterns
+    if (empty($drill['rink_image'])) {
+        $imagePatterns = [
+            '//img[contains(@class, "rink")]/@src',
+            '//img[contains(@class, "diagram")]/@src',
+            '//img[contains(@class, "drill")]/@src',
+            '//img[contains(@alt, "rink")]/@src',
+            '//img[contains(@alt, "drill")]/@src',
+            '//img[contains(@alt, "diagram")]/@src',
+            '//div[contains(@class, "drill")]//img/@src',
+            '//article//img/@src',
+            '//meta[@property="og:image"]/@content'
+        ];
+        
+        foreach ($imagePatterns as $pattern) {
+            $images = $xpath->query($pattern);
+            if ($images->length > 0) {
+                $imageSrc = trim($images->item(0)->textContent);
+                // Make sure it's an absolute URL
+                if (!empty($imageSrc)) {
+                    if (strpos($imageSrc, 'http') !== 0) {
+                        $url_parts = parse_url($url);
+                        $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                        $imageSrc = $base . (strpos($imageSrc, '/') === 0 ? '' : '/') . $imageSrc;
+                    }
+                    $drill['rink_image'] = $imageSrc;
+                    break;
+                }
             }
         }
     }

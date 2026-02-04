@@ -355,18 +355,6 @@ if ($action === 'import_ihs_practice_plan') {
                 continue;
             }
             
-            // Build drill description
-            $drill_description = trim($drill['description'] ?? '');
-            if (!empty($drill['setup'])) {
-                $drill_description .= "\n\n## Setup\n" . $drill['setup'];
-            }
-            if (!empty($drill['coaching_points'])) {
-                $drill_description .= "\n\n## Coaching Points\n" . $drill['coaching_points'];
-            }
-            if (!empty($drill['progression'])) {
-                $drill_description .= "\n\n## Progression\n" . $drill['progression'];
-            }
-            
             // Download and save the rink image if available
             $custom_image = '';
             $rink_image_url = trim($drill['rink_image'] ?? '');
@@ -411,14 +399,23 @@ if ($action === 'import_ihs_practice_plan') {
                 $category_id = $pdo->lastInsertId();
             }
             
-            // Create the drill
+            // Get section data
+            $drill_description = trim($drill['description'] ?? '');
+            $drill_setup = trim($drill['setup'] ?? '');
+            $drill_coaching_points = trim($drill['coaching_points'] ?? '');
+            $drill_progression = trim($drill['progression'] ?? '');
+            
+            // Create the drill with sections in their own columns
             $drill_stmt = $pdo->prepare("
-                INSERT INTO drills (title, description, category_id, custom_image, ihs_source_url, created_by, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
+                INSERT INTO drills (title, description, setup, coaching_points, progression, category_id, custom_image, ihs_source_url, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
             $drill_stmt->execute([
                 $drill_title,
                 $drill_description,
+                $drill_setup,
+                $drill_coaching_points,
+                $drill_progression,
                 $category_id,
                 $custom_image,
                 $ihs_url,
@@ -586,17 +583,42 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
         $drill['title'] = trim($titles->item(0)->textContent);
     }
     
-    // Find image in node
+    // Find image in node - prioritize IHS-specific images from files.icehockeysystems.com
     $images = $xpath->query('.//img', $node);
     if ($images->length > 0) {
-        $imgSrc = $images->item(0)->getAttribute('src');
-        if (!empty($imgSrc)) {
-            if (strpos($imgSrc, 'http') !== 0) {
-                $url_parts = parse_url($baseUrl);
-                $base = $url_parts['scheme'] . '://' . $url_parts['host'];
-                $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+        // First pass: look for IHS-specific images
+        // Priority 1: Images hosted on files.icehockeysystems.com (the official IHS CDN)
+        // Priority 2: Images with img-responsive class (common IHS drill image class)
+        foreach ($images as $img) {
+            $imgSrc = $img->getAttribute('src');
+            $imgClass = $img->getAttribute('class') ?: '';
+            // Priority 1: IHS CDN images
+            if (!empty($imgSrc) && strpos($imgSrc, 'files.icehockeysystems.com') !== false) {
+                $drill['rink_image'] = $imgSrc;
+                break;
             }
-            $drill['rink_image'] = $imgSrc;
+            // Priority 2: Images with img-responsive class
+            if (!empty($imgSrc) && !empty($imgClass) && strpos($imgClass, 'img-responsive') !== false) {
+                if (strpos($imgSrc, 'http') !== 0) {
+                    $url_parts = parse_url($baseUrl);
+                    $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                    $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+                }
+                $drill['rink_image'] = $imgSrc;
+                break;
+            }
+        }
+        // Fallback to first image if no IHS-specific image found
+        if (empty($drill['rink_image'])) {
+            $imgSrc = $images->item(0)->getAttribute('src');
+            if (!empty($imgSrc)) {
+                if (strpos($imgSrc, 'http') !== 0) {
+                    $url_parts = parse_url($baseUrl);
+                    $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                    $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+                }
+                $drill['rink_image'] = $imgSrc;
+            }
         }
     }
     

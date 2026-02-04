@@ -106,6 +106,27 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
                     <p><?php echo nl2br(htmlspecialchars($drill['description'] ?? 'No description available.')); ?></p>
                 </div>
                 
+                <?php if (!empty($drill['setup'])): ?>
+                <div class="detail-section">
+                    <h4><i class="fas fa-cog"></i> Setup</h4>
+                    <p><?php echo nl2br(htmlspecialchars($drill['setup'])); ?></p>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($drill['coaching_points'])): ?>
+                <div class="detail-section">
+                    <h4><i class="fas fa-bullseye"></i> Coaching Points</h4>
+                    <p><?php echo nl2br(htmlspecialchars($drill['coaching_points'])); ?></p>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($drill['progression'])): ?>
+                <div class="detail-section">
+                    <h4><i class="fas fa-level-up-alt"></i> Progression</h4>
+                    <p><?php echo nl2br(htmlspecialchars($drill['progression'])); ?></p>
+                </div>
+                <?php endif; ?>
+                
                 <?php if (!empty($drill['video_url'])): ?>
                 <div class="detail-section">
                     <h4>Video</h4>
