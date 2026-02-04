@@ -281,12 +281,13 @@ try {
             exit;
             
         case 'update_theme':
+        case 'save_theme':
             // Handle theme update from system_tools theme tab
-            // Process colors
+            // Process colors - check for both 'background_color' and 'bg_color' keys
             $colors = [
                 'primary_color' => $_POST['primary_color'] ?? null,
                 'secondary_color' => $_POST['secondary_color'] ?? null,
-                'background_color' => $_POST['bg_color'] ?? null
+                'background_color' => $_POST['background_color'] ?? $_POST['bg_color'] ?? null
             ];
             
             foreach ($colors as $name => $value) {
