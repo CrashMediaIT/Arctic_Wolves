@@ -38,8 +38,9 @@ try {
 // Fetch theme settings from theme_settings table
 $theme_settings = [];
 try {
-    $theme_query = $pdo->query("SELECT setting_name, setting_value FROM theme_settings");
-    while ($row = $theme_query->fetch(PDO::FETCH_ASSOC)) {
+    $theme_stmt = $pdo->prepare("SELECT setting_name, setting_value FROM theme_settings");
+    $theme_stmt->execute();
+    while ($row = $theme_stmt->fetch(PDO::FETCH_ASSOC)) {
         $theme_settings[$row['setting_name']] = $row['setting_value'];
     }
 } catch (PDOException $e) {
@@ -60,6 +61,9 @@ foreach ($theme_defaults as $key => $value) {
         $theme_settings[$key] = $value;
     }
 }
+
+// Helper for favicon checkbox
+$is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_settings['use_logo_as_favicon'] !== '0';
 ?>
 
 <div class="page-header">
@@ -1031,7 +1035,7 @@ foreach ($theme_defaults as $key => $value) {
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" name="use_logo_as_favicon" 
-                                           <?php echo !empty($theme_settings['use_logo_as_favicon']) && $theme_settings['use_logo_as_favicon'] !== '0' ? 'checked' : ''; ?>>
+                                           <?php echo $is_favicon_enabled ? 'checked' : ''; ?>>
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -1637,6 +1641,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Database Tools functions
+function getCsrfToken() {
+    return document.querySelector('input[name="csrf_token"]')?.value || '';
+}
+
 function showDbStatus(message, type) {
     const statusDiv = document.getElementById('db-status-message');
     if (!statusDiv) return;
@@ -1661,12 +1669,10 @@ function runDatabaseBackup(btn) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Backing up...';
     
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
-    
     fetch('process_database_backup.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=manual_backup&csrf_token=${encodeURIComponent(csrfToken)}`
+        body: `action=manual_backup&csrf_token=${encodeURIComponent(getCsrfToken())}`
     })
     .then(response => response.json())
     .then(data => {
@@ -1689,12 +1695,10 @@ function runDatabaseOptimize(btn) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Optimizing...';
     
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
-    
     fetch('process_database_backup.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=repair_optimize&csrf_token=${encodeURIComponent(csrfToken)}`
+        body: `action=repair_optimize&csrf_token=${encodeURIComponent(getCsrfToken())}`
     })
     .then(response => response.json())
     .then(data => {
@@ -1717,12 +1721,10 @@ function runClearCache(btn) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
     
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
-    
     fetch('process_database_backup.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=clear_cache&csrf_token=${encodeURIComponent(csrfToken)}`
+        body: `action=clear_cache&csrf_token=${encodeURIComponent(getCsrfToken())}`
     })
     .then(response => response.json())
     .then(data => {
