@@ -277,6 +277,8 @@ if ($editDrillId) {
                         $equipStmt = $pdo->prepare("SELECT id, name FROM equipment WHERE equipment_type = 'category' ORDER BY name ASC");
                         $equipStmt->execute();
                         $equipmentCategories = $equipStmt->fetchAll();
+                        // Define hockey stick SVG icon with accessibility attributes
+                        $stickIconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" role="img" aria-label="Hockey stick" style="display: inline-block; vertical-align: middle; margin-right: 8px;"><path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/></svg>';
                         ?>
                         <div class="equipment-tags">
                             <?php if (count($equipmentCategories) > 0): ?>
@@ -296,7 +298,7 @@ if ($editDrillId) {
                                 ?>
                                 <label class="checkbox-tag">
                                     <input type="checkbox" name="equipment[]" value="<?php echo htmlspecialchars($equipValue); ?>" <?php echo $isChecked ? 'checked' : ''; ?>>
-                                    <span><?php if ($isStick): ?><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: inline-block; vertical-align: middle; margin-right: 8px;"><path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/></svg><?php else: ?><i class="fas <?php echo $icon; ?>"></i> <?php endif; ?><?php echo htmlspecialchars($equip['name']); ?></span>
+                                    <span><?php if ($isStick): ?><?php echo $stickIconSvg; ?><?php else: ?><i class="fas <?php echo $icon; ?>"></i> <?php endif; ?><?php echo htmlspecialchars($equip['name']); ?></span>
                                 </label>
                                 <?php endforeach; ?>
                             <?php else: ?>
@@ -315,7 +317,7 @@ if ($editDrillId) {
                                 </label>
                                 <label class="checkbox-tag">
                                     <input type="checkbox" name="equipment[]" value="sticks" <?php echo in_array('sticks', $currentEquipment) ? 'checked' : ''; ?>>
-                                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: inline-block; vertical-align: middle; margin-right: 8px;"><path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/></svg>Extra Sticks</span>
+                                    <span><?php echo $stickIconSvg; ?>Extra Sticks</span>
                                 </label>
                                 <p class="help-text" style="width: 100%; margin-top: 8px; font-size: 12px; color: var(--text-dim);">
                                     <i class="fas fa-info-circle"></i> <a href="?page=categories&tab=equipment" style="color: var(--primary-light);">Add more equipment categories</a> in the admin settings.
