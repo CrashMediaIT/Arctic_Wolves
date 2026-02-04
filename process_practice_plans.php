@@ -830,12 +830,19 @@ function mergeDrillFields($original, $new) {
             // Original is empty, use new value
             $original[$field] = $newValue;
         } elseif (!empty($origValue) && !empty($newValue) && $origValue !== $newValue) {
-            // Both have values and they're different - check if new content is unique
-            // Avoid duplicating content that's already present
-            if (strpos($origValue, $newValue) === false) {
-                // New content is not a substring of original - append it
+            // Both have values and they're different - check if content is unique
+            // Avoid duplicating content that's already present (check both directions)
+            $isNewSubstringOfOrig = (strpos($origValue, $newValue) !== false);
+            $isOrigSubstringOfNew = (strpos($newValue, $origValue) !== false);
+            
+            if ($isOrigSubstringOfNew) {
+                // Original is contained in new - use new (more complete) value
+                $original[$field] = $newValue;
+            } elseif (!$isNewSubstringOfOrig) {
+                // Neither is a substring of the other - append new content
                 $original[$field] = $origValue . "\n\n" . $newValue;
             }
+            // If new is a substring of original, keep original (no change needed)
         }
         // If original has value and new is empty, keep original (no change needed)
     }
