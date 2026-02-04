@@ -11,7 +11,8 @@
  * - Shareable drill links
  */
 
-// Line-based drawing tools constant (now all draw freehand curves)
+// Line-based drawing tools constant - kept empty for backward compatibility
+// All line-based tools now use freehand drawing by default
 const LINE_TOOLS = [];
 
 // Freehand drawing tools - can be drawn in any shape/curve
@@ -1027,23 +1028,23 @@ class DrillDesigner {
     // - Two 2-foot parallel red lines on each side of the faceoff circle (4 total per circle)
     // - Lines are 3 feet apart (vertical distance between hash marks in each pair)
     // - Hash marks are 2 feet long
-    // - Hash marks positioned 2 feet from edge of faceoff spot (which is at the circle center)
+    // - Hash marks positioned just outside the circle edge
     drawHashMarks(ctx, cx, cy, radius) {
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         
         // The faceoff circle radius is 15 feet, so scale factors:
-        // 2 feet = radius * (2/15) ≈ radius * 0.133
+        // 2 feet = radius * (2/15) = radius * 0.1333
         // 3 feet = radius * (3/15) = radius * 0.2
-        const hashLength = radius * 0.133; // 2 feet scaled
-        const hashSpacing = radius * 0.2; // 3 feet spacing between hash marks in pair
+        const hashLength = radius * (2 / 15); // 2 feet scaled (exact calculation)
+        const hashSpacing = radius * (3 / 15); // 3 feet spacing between hash marks in pair
         
-        // Distance from circle center to hash mark start (at edge of faceoff dot area)
-        // The faceoff dot is 1 foot radius, hash marks start 2 feet from edge
-        // So total from center: 1 + 2 = 3 feet from center = radius * 0.2
-        // But hash marks are OUTSIDE the circle (15 feet radius), so they start at radius + small gap
-        const startDistance = radius + 3; // Start just outside the circle
+        // Small gap outside the circle in canvas pixels (visual offset for clarity)
+        const gapOutsideCircle = radius * 0.05;
+        
+        // Hash marks start just outside the circle edge
+        const startDistance = radius + gapOutsideCircle;
         
         // Hash marks on LEFT and RIGHT side of circle only (not top/bottom)
         // Each side has 2 horizontal lines, 3 feet apart vertically
@@ -1248,41 +1249,89 @@ class DrillDesigner {
             } else if (obj.type === 'cone') {
                 this.drawCone(obj.x, obj.y, obj.color, obj.rotation);
             } else if (obj.type === 'line') {
-                // Now uses freehand points
-                this.drawFreehandLine(obj.points, obj.color || '#333');
+                // Support both old (x1,y1,x2,y2) and new (points) format for backward compatibility
+                if (obj.points) {
+                    this.drawFreehandLine(obj.points, obj.color || '#333');
+                } else if (obj.x1 !== undefined) {
+                    this.drawLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#333');
+                }
             } else if (obj.type === 'dashed') {
-                // Now uses freehand dashed
-                this.drawFreehandDashed(obj.points, obj.color || '#333');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandDashed(obj.points, obj.color || '#333');
+                } else if (obj.x1 !== undefined) {
+                    this.drawDashedLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#333');
+                }
             } else if (obj.type === 'squiggly') {
-                // Now uses freehand squiggly
-                this.drawFreehandSquiggly(obj.points, obj.color || '#333');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandSquiggly(obj.points, obj.color || '#333');
+                } else if (obj.x1 !== undefined) {
+                    this.drawSquigglyLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#333');
+                }
             } else if (obj.type === 'arrow') {
-                // Now uses freehand arrow
-                this.drawFreehandArrow(obj.points, obj.color || '#333');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandArrow(obj.points, obj.color || '#333');
+                } else if (obj.x1 !== undefined) {
+                    this.drawArrow(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#333');
+                }
             } else if (obj.type === 'skating_forward') {
-                // Now uses freehand skating forward
-                this.drawFreehandSkatingForward(obj.points, obj.color || '#0033a0');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandSkatingForward(obj.points, obj.color || '#0033a0');
+                } else if (obj.x1 !== undefined) {
+                    this.drawSkatingForward(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#0033a0');
+                }
             } else if (obj.type === 'skating_backward') {
-                // Now uses freehand skating backward
-                this.drawFreehandSkatingBackward(obj.points, obj.color || '#c41e3a');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandSkatingBackward(obj.points, obj.color || '#c41e3a');
+                } else if (obj.x1 !== undefined) {
+                    this.drawSkatingBackward(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#c41e3a');
+                }
             } else if (obj.type === 'skating_lateral') {
-                // Now uses freehand skating lateral
-                this.drawFreehandSkatingLateral(obj.points, obj.color || '#10b981');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandSkatingLateral(obj.points, obj.color || '#10b981');
+                } else if (obj.x1 !== undefined) {
+                    this.drawSkatingLateral(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#10b981');
+                }
             } else if (obj.type === 'skating_ccuts') {
-                // Now uses freehand skating c-cuts
-                this.drawFreehandSkatingCCuts(obj.points, obj.color || '#8b5cf6');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandSkatingCCuts(obj.points, obj.color || '#8b5cf6');
+                } else if (obj.x1 !== undefined) {
+                    this.drawSkatingCCuts(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#8b5cf6');
+                }
             } else if (obj.type === 'skating_forward_puck') {
-                // Now uses freehand skating forward with puck
-                this.drawFreehandSkatingForwardPuck(obj.points, obj.color || '#00bfff');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandSkatingForwardPuck(obj.points, obj.color || '#00bfff');
+                } else if (obj.x1 !== undefined) {
+                    this.drawSkatingForwardPuck(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#00bfff');
+                }
             } else if (obj.type === 'skating_backward_puck') {
-                // Now uses freehand skating backward with puck
-                this.drawFreehandSkatingBackwardPuck(obj.points, obj.color || '#ff6600');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandSkatingBackwardPuck(obj.points, obj.color || '#ff6600');
+                } else if (obj.x1 !== undefined) {
+                    this.drawSkatingBackwardPuck(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#ff6600');
+                }
             } else if (obj.type === 'pass') {
-                // Now uses freehand pass line
-                this.drawFreehandPassLine(obj.points, obj.color || '#0033a0');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandPassLine(obj.points, obj.color || '#0033a0');
+                } else if (obj.x1 !== undefined) {
+                    this.drawPassLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#0033a0');
+                }
             } else if (obj.type === 'shot') {
-                // Now uses freehand shot line
-                this.drawFreehandShotLine(obj.points, obj.color || '#c41e3a');
+                // Support both old and new format
+                if (obj.points) {
+                    this.drawFreehandShotLine(obj.points, obj.color || '#c41e3a');
+                } else if (obj.x1 !== undefined) {
+                    this.drawShotLine(obj.x1, obj.y1, obj.x2, obj.y2, obj.color || '#c41e3a');
+                }
             } else if (obj.type === 'freehand') {
                 this.drawFreehand(obj.points, obj.color || '#333');
             } else if (obj.type === 'freehand_arrow') {
