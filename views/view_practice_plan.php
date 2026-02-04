@@ -223,7 +223,12 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                                         <span class="drill-category"><?php echo htmlspecialchars($categoryName); ?></span>
                                     </div>
                                 </div>
-                                <span class="drill-duration"><i class="fas fa-clock"></i> <?php echo intval($duration); ?> min</span>
+                                <div class="drill-header-actions">
+                                    <span class="drill-duration"><i class="fas fa-clock"></i> <?php echo intval($duration); ?> min</span>
+                                    <a href="?page=view_drill&id=<?php echo $drill['drill_id']; ?>" class="btn btn-sm btn-primary drill-view-btn">
+                                        <i class="fas fa-eye"></i> View Drill
+                                    </a>
+                                </div>
                             </div>
                             
                             <div class="drill-body">
@@ -502,6 +507,16 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 .drill-category {
     font-size: 12px;
     color: var(--text-muted);
+}
+
+.drill-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.drill-view-btn {
+    white-space: nowrap;
 }
 
 .drill-duration {
