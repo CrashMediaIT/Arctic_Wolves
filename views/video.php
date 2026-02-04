@@ -18,6 +18,9 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
         <a href="?page=coaches_reviews" class="page-tab <?= $tab === 'coaches_reviews' ? 'active' : '' ?>">
             <i class="fas fa-comments"></i> Coach Review
         </a>
+        <a href="?page=record_video" class="page-tab <?= $tab === 'record_video' ? 'active' : '' ?>">
+            <i class="fas fa-circle-dot"></i> Record Video
+        </a>
     </div>
 </div>
 
@@ -27,6 +30,8 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
         include __DIR__ . '/video_drill_review.php';
     } elseif ($tab === 'coaches_reviews') {
         include __DIR__ . '/video_coach_reviews.php';
+    } elseif ($tab === 'record_video') {
+        include __DIR__ . '/video_record_athlete.php';
     }
     ?>
 </div>

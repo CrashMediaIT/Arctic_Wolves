@@ -71,6 +71,7 @@ $allowed_pages = [
     'video'                   => 'views/video.php',
     'drill_review'            => 'views/video.php',
     'coaches_reviews'         => 'views/video.php',
+    'record_video'            => 'views/video.php',
     'record_drill_video'      => 'views/video_record_drill.php',
     
     // Health - Parent page with tabs
