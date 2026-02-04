@@ -49,6 +49,28 @@ $provinces = [
     'PE' => 'Prince Edward Island', 'QC' => 'Quebec', 'SK' => 'Saskatchewan', 'YT' => 'Yukon'
 ];
 
+// Get DocuSeal settings to check if configured
+$docuseal_enabled = false;
+$docuseal_templates = [];
+try {
+    $settingsQuery = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('docuseal_url', 'docuseal_enabled', 'docuseal_api_key')");
+    $docuseal_settings = [];
+    while ($row = $settingsQuery->fetch(PDO::FETCH_ASSOC)) {
+        $docuseal_settings[$row['setting_key']] = $row['setting_value'];
+    }
+    $docuseal_enabled = !empty($docuseal_settings['docuseal_url']) && 
+                        !empty($docuseal_settings['docuseal_api_key']) && 
+                        ($docuseal_settings['docuseal_enabled'] ?? '0') === '1';
+    
+    // Fetch templates from DocuSeal if enabled
+    if ($docuseal_enabled) {
+        require_once __DIR__ . '/../lib/docuseal.php';
+        $docuseal_templates = listDocuSealTemplates($pdo, $docuseal_settings);
+    }
+} catch (PDOException $e) {
+    $docuseal_enabled = false;
+}
+
 // Equipment types
 $equipmentTypes = [
     'camera' => 'Camera', 'tablet' => 'Tablet', 'laptop' => 'Laptop', 
@@ -485,7 +507,73 @@ $perkTypes = [
                     </div>
                 </div>
 
-                <!-- Section 9: Notes -->
+                <!-- Section 9: Employee Contract -->
+                <h4 class="section-title"><i class="fas fa-file-signature"></i> Employee Contract</h4>
+                <p class="section-description">Optionally create and send an employment contract for e-signature during onboarding.</p>
+
+                <?php if ($docuseal_enabled): ?>
+                <div class="form-group">
+                    <label class="checkbox-option" style="max-width: 500px;">
+                        <input type="checkbox" name="create_contract" value="1" id="createContract">
+                        <span><i class="fas fa-file-signature"></i> Create and send employment contract for e-signature</span>
+                    </label>
+                    <small class="form-hint">The employee will receive an email with a link to sign their employment contract electronically.</small>
+                </div>
+
+                <div id="contractSection" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-file-alt"></i> DocuSeal Template *</label>
+                            <select name="docuseal_template_id" id="docuseal-template" class="form-input">
+                                <option value="">-- Select Contract Template --</option>
+                                <?php foreach ($docuseal_templates as $dsTemplate): ?>
+                                <option value="<?= $dsTemplate['id'] ?>">
+                                    <?= htmlspecialchars($dsTemplate['name']) ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="form-hint">Select the DocuSeal template to use for the employment contract.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-heading"></i> Contract Title</label>
+                            <input type="text" name="contract_title" class="form-input" value="Employment Contract" placeholder="Employment Contract">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-dollar-sign"></i> Salary/Rate</label>
+                            <input type="text" name="contract_salary" class="form-input" placeholder="e.g., $50,000/year or $25/hour">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-calendar-alt"></i> Pay Frequency</label>
+                            <select name="contract_pay_frequency" class="form-input">
+                                <option value="">-- Select --</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="bi-weekly">Bi-Weekly</option>
+                                <option value="semi-monthly">Semi-Monthly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="alert-card info" style="margin-top: 10px;">
+                        <i class="fas fa-info-circle"></i>
+                        <div class="alert-content">
+                            <p>The contract will be created with the employee's name, email, role, start date, and address pre-filled from the onboarding form above. After submission, the employee will receive an email with a signing link.</p>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div class="alert-card warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div class="alert-content">
+                        <p><strong>DocuSeal Not Configured</strong> - E-signature functionality requires DocuSeal to be configured. <a href="?page=system_tools&tab=docuseal">Configure DocuSeal Settings</a></p>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Section 10: Notes -->
                 <h4 class="section-title"><i class="fas fa-sticky-note"></i> Additional Notes</h4>
 
                 <div class="form-group">
@@ -653,6 +741,16 @@ $perkTypes = [
 // Toggle payroll section
 document.getElementById('setupPayroll')?.addEventListener('change', function() {
     document.getElementById('payrollSection').style.display = this.checked ? 'block' : 'none';
+});
+
+// Toggle contract section
+document.getElementById('createContract')?.addEventListener('change', function() {
+    document.getElementById('contractSection').style.display = this.checked ? 'block' : 'none';
+    // Make docuseal template required when checkbox is checked
+    const templateSelect = document.getElementById('docuseal-template');
+    if (templateSelect) {
+        templateSelect.required = this.checked;
+    }
 });
 
 // Pay type change
