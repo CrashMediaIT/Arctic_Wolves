@@ -293,15 +293,38 @@ function populatePreview(drill) {
         }
     }
     
-    // Display rink image
+    // Display rink image using safe DOM methods
     const imagePreview = document.getElementById('rinkImagePreview');
     if (drill.rink_image) {
-        imagePreview.innerHTML = '<img src="' + drill.rink_image + '" alt="Rink diagram">';
+        setImagePreview(imagePreview, drill.rink_image);
         document.getElementById('rinkImageUrl').value = drill.rink_image;
     } else {
-        imagePreview.innerHTML = '<i class="fas fa-hockey-puck placeholder-icon"></i><span>No image available</span>';
+        setPlaceholderIcon(imagePreview, 'hockey-puck', 'No image available');
         document.getElementById('rinkImageUrl').value = '';
     }
+}
+
+// Safe function to set image preview using DOM methods
+function setImagePreview(container, src) {
+    container.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = 'Rink diagram';
+    img.onerror = function() {
+        setPlaceholderIcon(container, 'exclamation-triangle', 'Image failed to load');
+    };
+    container.appendChild(img);
+}
+
+// Safe function to set placeholder icon using DOM methods
+function setPlaceholderIcon(container, icon, text) {
+    container.innerHTML = '';
+    const i = document.createElement('i');
+    i.className = 'fas fa-' + icon + ' placeholder-icon';
+    const span = document.createElement('span');
+    span.textContent = text;
+    container.appendChild(i);
+    container.appendChild(span);
 }
 
 function showManualEntry() {
@@ -319,7 +342,7 @@ function showManualEntry() {
     document.getElementById('rinkImageUrl').value = '';
     
     const imagePreview = document.getElementById('rinkImagePreview');
-    imagePreview.innerHTML = '<i class="fas fa-hockey-puck placeholder-icon"></i><span>Enter image URL below</span>';
+    setPlaceholderIcon(imagePreview, 'hockey-puck', 'Enter image URL below');
     
     // Focus on the title field
     document.getElementById('previewTitle').focus();
@@ -336,7 +359,10 @@ function clearPreview() {
 function showNotification(message, type = 'info') {
     const alertDiv = document.createElement('div');
     alertDiv.className = 'notification-toast notification-' + type;
-    alertDiv.innerHTML = '<i class="fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle') + '"></i> ' + message;
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle');
+    alertDiv.appendChild(icon);
+    alertDiv.appendChild(document.createTextNode(' ' + message));
     document.body.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 4000);
 }
@@ -346,9 +372,9 @@ document.getElementById('rinkImageUrl').addEventListener('change', function() {
     const url = this.value.trim();
     const imagePreview = document.getElementById('rinkImagePreview');
     if (url) {
-        imagePreview.innerHTML = '<img src="' + url + '" alt="Rink diagram" onerror="this.parentElement.innerHTML=\'<i class=\\\'fas fa-exclamation-triangle placeholder-icon\\\'></i><span>Image failed to load</span>\'">';
+        setImagePreview(imagePreview, url);
     } else {
-        imagePreview.innerHTML = '<i class="fas fa-hockey-puck placeholder-icon"></i><span>No image available</span>';
+        setPlaceholderIcon(imagePreview, 'hockey-puck', 'No image available');
     }
 });
 </script>

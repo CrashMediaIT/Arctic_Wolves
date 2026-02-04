@@ -291,33 +291,109 @@ function renderDrillsList(drills) {
     const drillsList = document.getElementById('drillsList');
     document.getElementById('drillCount').textContent = '(' + drills.length + ')';
     
+    // Clear existing content
+    drillsList.innerHTML = '';
+    
     if (drills.length === 0) {
-        drillsList.innerHTML = '<p class="no-drills-message">No drills added yet. Click "Add Drill" to add drills to this practice plan.</p>';
+        const p = document.createElement('p');
+        p.className = 'no-drills-message';
+        p.textContent = 'No drills added yet. Click "Add Drill" to add drills to this practice plan.';
+        drillsList.appendChild(p);
     } else {
-        let html = '';
         drills.forEach((drill, index) => {
-            html += `
-                <div class="drill-preview-item" data-index="${index}">
-                    <div class="drill-order">${index + 1}</div>
-                    <div class="drill-image-preview">
-                        ${drill.rink_image ? `<img src="${escapeHtml(drill.rink_image)}" alt="Drill diagram" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-hockey-puck\\'></i>'">` : '<i class="fas fa-hockey-puck"></i>'}
-                    </div>
-                    <div class="drill-details">
-                        <input type="text" class="form-input drill-title-input" value="${escapeHtml(drill.title || '')}" placeholder="Drill title" onchange="updateDrill(${index}, 'title', this.value)">
-                        <input type="text" class="form-input drill-duration-input" value="${escapeHtml(drill.duration || '')}" placeholder="Duration (min)" onchange="updateDrill(${index}, 'duration', this.value)">
-                        <textarea class="form-textarea drill-desc-input" placeholder="Description, setup, coaching points..." onchange="updateDrill(${index}, 'description', this.value)">${escapeHtml(drill.description || '')}</textarea>
-                        <input type="text" class="form-input drill-image-input" value="${escapeHtml(drill.rink_image || '')}" placeholder="Image URL" onchange="updateDrillImage(${index}, this.value)">
-                    </div>
-                    <div class="drill-actions">
-                        <button type="button" class="btn-icon" onclick="removeDrill(${index})" title="Remove drill">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
+            const drillItem = createDrillElement(drill, index);
+            drillsList.appendChild(drillItem);
         });
-        drillsList.innerHTML = html;
     }
+}
+
+// Create drill element using safe DOM methods
+function createDrillElement(drill, index) {
+    const container = document.createElement('div');
+    container.className = 'drill-preview-item';
+    container.dataset.index = index;
+    
+    // Order number
+    const orderDiv = document.createElement('div');
+    orderDiv.className = 'drill-order';
+    orderDiv.textContent = index + 1;
+    container.appendChild(orderDiv);
+    
+    // Image preview
+    const imageDiv = document.createElement('div');
+    imageDiv.className = 'drill-image-preview';
+    if (drill.rink_image) {
+        const img = document.createElement('img');
+        img.src = drill.rink_image;
+        img.alt = 'Drill diagram';
+        img.onerror = function() {
+            this.parentElement.innerHTML = '';
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-hockey-puck';
+            this.parentElement.appendChild(icon);
+        };
+        imageDiv.appendChild(img);
+    } else {
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-hockey-puck';
+        imageDiv.appendChild(icon);
+    }
+    container.appendChild(imageDiv);
+    
+    // Details
+    const detailsDiv = document.createElement('div');
+    detailsDiv.className = 'drill-details';
+    
+    const titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.className = 'form-input drill-title-input';
+    titleInput.value = drill.title || '';
+    titleInput.placeholder = 'Drill title';
+    titleInput.addEventListener('change', function() { updateDrill(index, 'title', this.value); });
+    detailsDiv.appendChild(titleInput);
+    
+    const durationInput = document.createElement('input');
+    durationInput.type = 'text';
+    durationInput.className = 'form-input drill-duration-input';
+    durationInput.value = drill.duration || '';
+    durationInput.placeholder = 'Duration (min)';
+    durationInput.addEventListener('change', function() { updateDrill(index, 'duration', this.value); });
+    detailsDiv.appendChild(durationInput);
+    
+    const descTextarea = document.createElement('textarea');
+    descTextarea.className = 'form-textarea drill-desc-input';
+    descTextarea.placeholder = 'Description, setup, coaching points...';
+    descTextarea.value = drill.description || '';
+    descTextarea.addEventListener('change', function() { updateDrill(index, 'description', this.value); });
+    detailsDiv.appendChild(descTextarea);
+    
+    const imageInput = document.createElement('input');
+    imageInput.type = 'text';
+    imageInput.className = 'form-input drill-image-input';
+    imageInput.value = drill.rink_image || '';
+    imageInput.placeholder = 'Image URL';
+    imageInput.addEventListener('change', function() { updateDrillImage(index, this.value); });
+    detailsDiv.appendChild(imageInput);
+    
+    container.appendChild(detailsDiv);
+    
+    // Actions
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'drill-actions';
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-icon';
+    removeBtn.title = 'Remove drill';
+    removeBtn.addEventListener('click', function() { removeDrill(index); });
+    const trashIcon = document.createElement('i');
+    trashIcon.className = 'fas fa-trash';
+    removeBtn.appendChild(trashIcon);
+    actionsDiv.appendChild(removeBtn);
+    
+    container.appendChild(actionsDiv);
+    
+    return container;
 }
 
 function updateDrill(index, field, value) {
@@ -332,13 +408,25 @@ function updateDrillImage(index, value) {
         currentDrills[index].rink_image = value;
         updateDrillsJson(currentDrills);
         
-        // Update the image preview
+        // Update the image preview using safe DOM methods
         const drillItem = document.querySelector(`.drill-preview-item[data-index="${index}"] .drill-image-preview`);
         if (drillItem) {
+            drillItem.innerHTML = '';
             if (value) {
-                drillItem.innerHTML = `<img src="${escapeHtml(value)}" alt="Drill diagram" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-exclamation-triangle\\'></i>'">`;
+                const img = document.createElement('img');
+                img.src = value;
+                img.alt = 'Drill diagram';
+                img.onerror = function() {
+                    this.parentElement.innerHTML = '';
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-exclamation-triangle';
+                    this.parentElement.appendChild(icon);
+                };
+                drillItem.appendChild(img);
             } else {
-                drillItem.innerHTML = '<i class="fas fa-hockey-puck"></i>';
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-hockey-puck';
+                drillItem.appendChild(icon);
             }
         }
     }
@@ -416,7 +504,10 @@ function clearPreview() {
 function showNotification(message, type = 'info') {
     const alertDiv = document.createElement('div');
     alertDiv.className = 'notification-toast notification-' + type;
-    alertDiv.innerHTML = '<i class="fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle') + '"></i> ' + message;
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle');
+    alertDiv.appendChild(icon);
+    alertDiv.appendChild(document.createTextNode(' ' + message));
     document.body.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 4000);
 }

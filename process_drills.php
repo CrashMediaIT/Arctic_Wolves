@@ -699,24 +699,10 @@ function downloadAndSaveImage($image_url, $user_id) {
     // Create upload directory if it doesn't exist
     $upload_dir = __DIR__ . '/uploads/drills/';
     if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
+        mkdir($upload_dir, 0750, true);
     }
     
-    // Get the image extension
-    $path_info = pathinfo(parse_url($image_url, PHP_URL_PATH));
-    $extension = strtolower($path_info['extension'] ?? 'png');
-    
-    // Only allow safe image extensions
-    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    if (!in_array($extension, $allowed_extensions)) {
-        $extension = 'png';
-    }
-    
-    // Generate a unique filename
-    $filename = 'drill_' . $user_id . '_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
-    $filepath = $upload_dir . $filename;
-    
-    // Download the image
+    // Download the image first to validate its content
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => $image_url,
@@ -731,16 +717,35 @@ function downloadAndSaveImage($image_url, $user_id) {
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
-    if ($http_code === 200 && !empty($image_data)) {
-        // Validate it's actually an image
-        $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->buffer($image_data);
-        
-        if (strpos($mime, 'image/') === 0) {
-            if (file_put_contents($filepath, $image_data)) {
-                return 'uploads/drills/' . $filename;
-            }
-        }
+    if ($http_code !== 200 || empty($image_data)) {
+        return '';
+    }
+    
+    // Validate it's actually an image and determine the extension from content
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->buffer($image_data);
+    
+    // Map MIME types to extensions
+    $mime_to_ext = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp'
+    ];
+    
+    if (!isset($mime_to_ext[$mime])) {
+        // Not a supported image type
+        return '';
+    }
+    
+    $extension = $mime_to_ext[$mime];
+    
+    // Generate a unique filename using only random bytes for security
+    $filename = 'drill_' . bin2hex(random_bytes(16)) . '.' . $extension;
+    $filepath = $upload_dir . $filename;
+    
+    if (file_put_contents($filepath, $image_data)) {
+        return 'uploads/drills/' . $filename;
     }
     
     return '';
