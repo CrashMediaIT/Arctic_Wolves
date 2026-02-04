@@ -795,9 +795,9 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
                 </div>
                 
                 <div class="plan-actions">
-                    <button class="btn-icon" data-id="<?= $plan['id'] ?>" onclick="viewPlan(<?= $plan['id'] ?>)">
+                    <a href="?page=view_practice_plan&id=<?= $plan['id'] ?>" class="btn-icon">
                         <i class="fas fa-eye"></i> View
-                    </button>
+                    </a>
                     <?php if ($can_share && $plan['created_by'] == $user_id): ?>
                         <button class="btn-icon" data-id="<?= $plan['id'] ?>" onclick="openShareModal(<?= $plan['id'] ?>, '<?= htmlspecialchars($plan['share_token'] ?? '') ?>')">
                             <i class="fas fa-share"></i> Share

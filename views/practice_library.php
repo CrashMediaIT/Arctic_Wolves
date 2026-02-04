@@ -101,9 +101,9 @@ try {
                 </div>
                 <?php endif; ?>
                 <div class="practice-actions">
-                    <button class="btn-secondary btn-sm" data-action="view-plan" data-plan-id="<?= $plan['id'] ?>">
+                    <a href="?page=view_practice_plan&id=<?= $plan['id'] ?>" class="btn-secondary btn-sm">
                         <i class="fas fa-eye"></i> View
-                    </button>
+                    </a>
                     <button class="btn-secondary btn-sm" data-action="edit-plan" data-plan-id="<?= $plan['id'] ?>">
                         <i class="fas fa-edit"></i> Edit
                     </button>
