@@ -2,7 +2,7 @@
 /**
  * Athlete Video Recording/Upload Interface
  * Allows athletes to record videos using their device camera or upload existing videos
- * for coach review
+ * for coach review. Supports direct upload to Nextcloud or offline recording mode.
  */
 
 // Get the current user's assigned coach
@@ -35,12 +35,45 @@ try {
 } catch (PDOException $e) {
     error_log("Failed to load user teams: " . $e->getMessage());
 }
+
+// Check Nextcloud connection status (same as coach recording interface)
+$nextcloud_available = false;
+$nextcloud_message = '';
+try {
+    require_once __DIR__ . '/../cloud_config.php';
+    $nc_settings = getNextcloudSettings($pdo);
+    if (!empty($nc_settings['nextcloud_url']) && !empty($nc_settings['nextcloud_username'])) {
+        $connection = connectNextcloud($nc_settings);
+        $nextcloud_available = true;
+    }
+} catch (Exception $e) {
+    $nextcloud_message = $e->getMessage();
+}
 ?>
 
 <div class="record-video-container">
     <div class="record-header">
         <h2><i class="fas fa-circle-dot"></i> Record Video</h2>
         <p>Record a video directly from your device or upload an existing video for coach review</p>
+    </div>
+
+    <!-- Connection Status - Same as coach recording interface -->
+    <div class="connection-status <?= $nextcloud_available ? 'status-connected' : 'status-offline' ?>">
+        <div class="status-icon">
+            <i class="fas <?= $nextcloud_available ? 'fa-cloud-upload-alt' : 'fa-exclamation-triangle' ?>"></i>
+        </div>
+        <div class="status-info">
+            <?php if ($nextcloud_available): ?>
+                <strong>Cloud Connected</strong>
+                <span>Videos will upload directly to Nextcloud</span>
+            <?php else: ?>
+                <strong>Offline Mode</strong>
+                <span>Videos will be saved locally for later upload</span>
+                <?php if ($nextcloud_message): ?>
+                    <small class="status-error"><?= htmlspecialchars($nextcloud_message) ?></small>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php if (!$assigned_coach_id): ?>
@@ -198,6 +231,72 @@ try {
 
 .record-header p {
     color: var(--text-dim);
+}
+
+/* Connection Status - Same styling as coach recording interface */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+.connection-status.status-connected {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.connection-status.status-offline {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.connection-status .status-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-connected .status-icon {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.status-offline .status-icon {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.connection-status .status-icon i {
+    font-size: 20px;
+}
+
+.connection-status .status-info {
+    flex: 1;
+}
+
+.connection-status .status-info strong {
+    display: block;
+    font-size: 15px;
+    color: var(--text-white);
+    margin-bottom: 4px;
+}
+
+.connection-status .status-info span {
+    font-size: 14px;
+    color: var(--text-dim);
+}
+
+.connection-status .status-error {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #ef4444;
 }
 
 .alert {
