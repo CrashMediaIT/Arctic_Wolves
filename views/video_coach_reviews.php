@@ -400,19 +400,8 @@ $reviewed_videos = array_filter($videos, function($v) {
                     </div>
                 </div>
 
-                <?php if ($isAnyCoach): ?>
-                <div class="form-group">
-                    <label>Athlete *</label>
-                    <select name="athlete_id" class="form-input" required>
-                        <option value="">-- Select Athlete --</option>
-                        <?php foreach ($athletes as $athlete): ?>
-                            <option value="<?= $athlete['id'] ?>">
-                                <?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php endif; ?>
+                <!-- Auto-assign video to current user (no athlete selector needed) -->
+                <input type="hidden" name="athlete_id" value="<?= $user_id ?>">
 
                 <div class="form-group">
                     <label>Video File *</label>
