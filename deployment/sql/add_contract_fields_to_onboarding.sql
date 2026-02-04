@@ -29,7 +29,14 @@ PREPARE alterIfNotExists FROM @preparedStatement;
 EXECUTE alterIfNotExists;
 DEALLOCATE PREPARE alterIfNotExists;
 
--- Add index for contract_id lookups (ignore if already exists)
--- Note: This will fail silently if index already exists
-CREATE INDEX `idx_contract` ON `employee_onboarding`(`contract_id`);
+-- Add index for contract_id lookups (check if exists first)
+SET @preparedStatement = (SELECT IF(
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND INDEX_NAME = 'idx_contract') > 0,
+    'SELECT 1',
+    "CREATE INDEX `idx_contract` ON `employee_onboarding`(`contract_id`)"
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;
 
