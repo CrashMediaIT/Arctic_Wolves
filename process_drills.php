@@ -573,6 +573,9 @@ function parseIHSDrillPage($html, $url) {
     }
     
     // Try to find rink diagram image
+    // IHS CDN base URL for drill images
+    $ihsCdnBase = 'https://www.files.icehockeysystems.com';
+    
     // First, look for IHS-specific drill images from files.icehockeysystems.com with img-responsive class
     $ihsImages = $xpath->query('//img[contains(@class, "img-responsive")]/@src');
     if ($ihsImages->length > 0) {
@@ -580,7 +583,16 @@ function parseIHSDrillPage($html, $url) {
             $imageSrc = trim($imgNode->textContent);
             // Prioritize images from files.icehockeysystems.com/files/drills/
             if (strpos($imageSrc, 'files.icehockeysystems.com') !== false) {
+                // Ensure proper https:// prefix
+                if (strpos($imageSrc, '//') === 0) {
+                    $imageSrc = 'https:' . $imageSrc;
+                }
                 $drill['rink_image'] = $imageSrc;
+                break;
+            }
+            // Handle relative paths starting with /files/drills/
+            if (strpos($imageSrc, '/files/drills/') === 0) {
+                $drill['rink_image'] = $ihsCdnBase . $imageSrc;
                 break;
             }
         }
@@ -606,10 +618,18 @@ function parseIHSDrillPage($html, $url) {
                 $imageSrc = trim($images->item(0)->textContent);
                 // Make sure it's an absolute URL
                 if (!empty($imageSrc)) {
-                    if (strpos($imageSrc, 'http') !== 0) {
-                        $url_parts = parse_url($url);
-                        $base = $url_parts['scheme'] . '://' . $url_parts['host'];
-                        $imageSrc = $base . (strpos($imageSrc, '/') === 0 ? '' : '/') . $imageSrc;
+                    // Handle relative paths starting with /files/drills/ (IHS CDN)
+                    if (strpos($imageSrc, '/files/drills/') === 0) {
+                        $imageSrc = $ihsCdnBase . $imageSrc;
+                    } elseif (strpos($imageSrc, 'http') !== 0) {
+                        // Handle protocol-relative URLs
+                        if (strpos($imageSrc, '//') === 0) {
+                            $imageSrc = 'https:' . $imageSrc;
+                        } else {
+                            $url_parts = parse_url($url);
+                            $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                            $imageSrc = $base . (strpos($imageSrc, '/') === 0 ? '' : '/') . $imageSrc;
+                        }
                     }
                     $drill['rink_image'] = $imageSrc;
                     break;
