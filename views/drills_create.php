@@ -5,22 +5,21 @@ $editingDrill = null;
 $isEditMode = false;
 
 // Fetch center ice logo URL from theme settings for drill designer
+// Uses single query with COALESCE for efficiency
 $centerLogoUrl = '';
 try {
-    // First try to get the dedicated center ice logo
-    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'center_ice_logo_url'");
+    $logoStmt = $pdo->prepare("
+        SELECT COALESCE(
+            MAX(CASE WHEN setting_name = 'center_ice_logo_url' AND setting_value != '' THEN setting_value END),
+            MAX(CASE WHEN setting_name = 'logo_url' THEN setting_value END)
+        ) as logo_url 
+        FROM theme_settings 
+        WHERE setting_name IN ('center_ice_logo_url', 'logo_url')
+    ");
     $logoStmt->execute();
     $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
-    if ($logoResult && !empty($logoResult['setting_value'])) {
-        $centerLogoUrl = $logoResult['setting_value'];
-    } else {
-        // Fall back to main logo if no center ice logo is set
-        $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
-        $logoStmt->execute();
-        $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
-        if ($logoResult && !empty($logoResult['setting_value'])) {
-            $centerLogoUrl = $logoResult['setting_value'];
-        }
+    if ($logoResult && !empty($logoResult['logo_url'])) {
+        $centerLogoUrl = $logoResult['logo_url'];
     }
 } catch (PDOException $e) {
     error_log("Error fetching center ice logo URL: " . $e->getMessage());

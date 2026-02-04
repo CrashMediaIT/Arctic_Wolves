@@ -1053,7 +1053,7 @@ $hero_subtitle = $theme_colors['hero_subtitle'] ?? 'Specialized on-ice and off-i
             </div>
             
             <div class="form-group" id="center_ice_logo_upload_field">
-                <label>Center Ice Logo File (PNG, max 2MB)</label>
+                <label>Center Ice Logo File (PNG/JPG/WEBP, max 2MB)</label>
                 <input type="file" class="form-control" name="center_ice_logo" accept=".png,.jpg,.jpeg,.webp" onchange="previewImage(this, 'center_ice_logo_preview')">
                 <small style="color: #94a3b8; display: block; margin-top: 8px;">Recommended size: 400x400px (square or circular logo works best)</small>
             </div>
