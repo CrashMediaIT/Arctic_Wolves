@@ -4,6 +4,19 @@ $drillId = $_GET['id'] ?? null;
 $isShared = isset($_GET['shared']);
 $drill = null;
 
+// Fetch logo URL from theme settings for center ice display
+$centerLogoUrl = '';
+try {
+    $logoStmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'logo_url'");
+    $logoStmt->execute();
+    $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
+    if ($logoResult && !empty($logoResult['setting_value'])) {
+        $centerLogoUrl = $logoResult['setting_value'];
+    }
+} catch (PDOException $e) {
+    error_log("Error fetching logo URL: " . $e->getMessage());
+}
+
 // Validate drillId is numeric to prevent injection
 if ($drillId !== null && !ctype_digit((string)$drillId)) {
     $drillId = null;
@@ -74,7 +87,7 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
         </div>
         <div class="card-body">
             <div class="drill-diagram-view">
-                <div class="ice-rink-canvas view-only" id="drill-view-canvas" data-ice-view="full">
+                <div class="ice-rink-canvas view-only" id="drill-view-canvas" data-ice-view="full" data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
                     <canvas id="drill-view-canvas-el"></canvas>
                 </div>
             </div>
@@ -251,6 +264,9 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
 
 <script>
 // Simple drill diagram viewer
+let centerLogoImage = null;
+let centerLogoLoaded = false;
+
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('drill-view-canvas');
     const canvas = document.getElementById('drill-view-canvas-el');
@@ -262,31 +278,44 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const ctx = canvas.getContext('2d');
     const diagramData = <?php echo json_encode($drill['diagram_data'] ?? ''); ?>;
+    const centerLogoUrl = container.dataset.centerLogo || '';
     
-    // Draw the rink
-    drawViewRink(ctx, canvas.width, canvas.height);
-    
-    // Parse and draw diagram objects
-    try {
-        const objects = JSON.parse(diagramData);
-        if (Array.isArray(objects)) {
-            objects.forEach(obj => drawObject(ctx, obj));
-        }
-    } catch (e) {
-        console.log('No diagram data to display');
-    }
-    
-    // Handle resize
-    window.addEventListener('resize', function() {
-        canvas.width = container.offsetWidth;
-        canvas.height = container.offsetHeight;
+    // Function to render everything
+    function renderDrill() {
         drawViewRink(ctx, canvas.width, canvas.height);
         try {
             const objects = JSON.parse(diagramData);
             if (Array.isArray(objects)) {
                 objects.forEach(obj => drawObject(ctx, obj));
             }
-        } catch (e) {}
+        } catch (e) {
+            console.log('No diagram data to display');
+        }
+    }
+    
+    // Load center logo if URL provided
+    if (centerLogoUrl) {
+        centerLogoImage = new Image();
+        centerLogoImage.crossOrigin = 'anonymous';
+        centerLogoImage.onload = function() {
+            centerLogoLoaded = true;
+            renderDrill();
+        };
+        centerLogoImage.onerror = function() {
+            console.warn('Failed to load center logo image');
+            centerLogoLoaded = false;
+            renderDrill();
+        };
+        centerLogoImage.src = centerLogoUrl;
+    } else {
+        renderDrill();
+    }
+    
+    // Handle resize
+    window.addEventListener('resize', function() {
+        canvas.width = container.offsetWidth;
+        canvas.height = container.offsetHeight;
+        renderDrill();
     });
 });
 
@@ -295,16 +324,39 @@ function drawViewRink(ctx, w, h) {
     ctx.fillStyle = '#f0f7fa';
     ctx.fillRect(0, 0, w, h);
     
-    // Center logo
+    // Center logo (image if available, otherwise text at 12% opacity)
     ctx.save();
     ctx.globalAlpha = 0.12;
-    ctx.fillStyle = '#7000a4';
-    ctx.font = 'bold 48px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('ARCTIC WOLVES', w/2, h/2 - 15);
-    ctx.font = '24px Inter, sans-serif';
-    ctx.fillText('HOCKEY', w/2, h/2 + 25);
+    
+    if (centerLogoLoaded && centerLogoImage) {
+        // Draw logo image centered on ice
+        const maxLogoWidth = w * 0.3;  // Logo takes up 30% of canvas width
+        const maxLogoHeight = h * 0.25; // Max 25% of height
+        
+        // Calculate scaled dimensions maintaining aspect ratio
+        const imgAspect = centerLogoImage.width / centerLogoImage.height;
+        let logoWidth = maxLogoWidth;
+        let logoHeight = logoWidth / imgAspect;
+        
+        if (logoHeight > maxLogoHeight) {
+            logoHeight = maxLogoHeight;
+            logoWidth = logoHeight * imgAspect;
+        }
+        
+        const logoX = (w - logoWidth) / 2;
+        const logoY = (h - logoHeight) / 2;
+        
+        ctx.drawImage(centerLogoImage, logoX, logoY, logoWidth, logoHeight);
+    } else {
+        // Fallback to text branding
+        ctx.fillStyle = '#7000a4';
+        ctx.font = 'bold 48px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('ARCTIC WOLVES', w/2, h/2 - 15);
+        ctx.font = '24px Inter, sans-serif';
+        ctx.fillText('HOCKEY', w/2, h/2 + 25);
+    }
     ctx.restore();
     
     // Center line

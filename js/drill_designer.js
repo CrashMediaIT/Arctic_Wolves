@@ -61,6 +61,11 @@ class DrillDesigner {
         this.brandingText = 'ARCTIC WOLVES';
         this.brandingSubtext = 'HOCKEY';
         
+        // Center logo image from settings
+        this.centerLogoUrl = '';
+        this.centerLogoImage = null;
+        this.centerLogoLoaded = false;
+        
         this.init();
     }
     
@@ -68,6 +73,13 @@ class DrillDesigner {
         // Set canvas size
         this.canvas.width = this.canvas.offsetWidth;
         this.canvas.height = this.canvas.offsetHeight;
+        
+        // Load center logo from data attribute if available
+        const container = document.getElementById('drill-rink-container');
+        if (container && container.dataset.centerLogo) {
+            this.centerLogoUrl = container.dataset.centerLogo;
+            this.loadCenterLogo();
+        }
         
         // Draw initial rink
         this.drawRink();
@@ -77,6 +89,23 @@ class DrillDesigner {
         
         // Save initial state
         this.saveState();
+    }
+    
+    // Load center logo image from URL
+    loadCenterLogo() {
+        if (!this.centerLogoUrl) return;
+        
+        this.centerLogoImage = new Image();
+        this.centerLogoImage.crossOrigin = 'anonymous';
+        this.centerLogoImage.onload = () => {
+            this.centerLogoLoaded = true;
+            this.redraw();
+        };
+        this.centerLogoImage.onerror = () => {
+            console.warn('Failed to load center logo image, falling back to text');
+            this.centerLogoLoaded = false;
+        };
+        this.centerLogoImage.src = this.centerLogoUrl;
     }
     
     setupEventListeners() {
@@ -119,10 +148,14 @@ class DrillDesigner {
             colorPicker.addEventListener('input', (e) => {
                 this.activeColor = e.target.value;
                 this.updateActiveColorDisplay();
+                // Auto-select paint tool when color is selected
+                this.selectPaintTool();
             });
             colorPicker.addEventListener('change', (e) => {
                 this.activeColor = e.target.value;
                 this.updateActiveColorDisplay();
+                // Auto-select paint tool when color is selected
+                this.selectPaintTool();
             });
         }
         
@@ -142,6 +175,9 @@ class DrillDesigner {
                 // Update active state on preset buttons
                 document.querySelectorAll('[data-color-preset]').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
+                
+                // Auto-select paint tool when color preset is clicked
+                this.selectPaintTool();
             });
         });
         
@@ -153,6 +189,17 @@ class DrillDesigner {
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
             });
+        }
+    }
+    
+    // Helper method to automatically select the paint tool when a color is chosen
+    selectPaintTool() {
+        this.currentTool = 'paint';
+        // Update UI to show paint tool as active
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        const paintBtn = document.querySelector('[data-tool="paint"]');
+        if (paintBtn) {
+            paintBtn.classList.add('active');
         }
     }
     
@@ -790,16 +837,39 @@ class DrillDesigner {
         ctx.fillStyle = '#f0f7fa';
         ctx.fillRect(0, 0, w, h);
         
-        // Draw center logo (Arctic Wolves branding - 12% opacity as requested)
+        // Draw center logo (image if available, otherwise text at 12% opacity)
         ctx.save();
         ctx.globalAlpha = 0.12;
-        ctx.fillStyle = '#7000a4';
-        ctx.font = 'bold 48px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.brandingText, w/2, h/2 - 15);
-        ctx.font = '24px Inter, sans-serif';
-        ctx.fillText(this.brandingSubtext, w/2, h/2 + 25);
+        
+        if (this.centerLogoLoaded && this.centerLogoImage) {
+            // Draw logo image centered on ice
+            const maxLogoWidth = w * 0.3;  // Logo takes up 30% of canvas width
+            const maxLogoHeight = h * 0.25; // Max 25% of height
+            
+            // Calculate scaled dimensions maintaining aspect ratio
+            const imgAspect = this.centerLogoImage.width / this.centerLogoImage.height;
+            let logoWidth = maxLogoWidth;
+            let logoHeight = logoWidth / imgAspect;
+            
+            if (logoHeight > maxLogoHeight) {
+                logoHeight = maxLogoHeight;
+                logoWidth = logoHeight * imgAspect;
+            }
+            
+            const logoX = (w - logoWidth) / 2;
+            const logoY = (h - logoHeight) / 2;
+            
+            ctx.drawImage(this.centerLogoImage, logoX, logoY, logoWidth, logoHeight);
+        } else {
+            // Fallback to text branding
+            ctx.fillStyle = '#7000a4';
+            ctx.font = 'bold 48px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.brandingText, w/2, h/2 - 15);
+            ctx.font = '24px Inter, sans-serif';
+            ctx.fillText(this.brandingSubtext, w/2, h/2 + 25);
+        }
         ctx.restore();
         
         // Draw based on ice view
