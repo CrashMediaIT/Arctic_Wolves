@@ -584,6 +584,9 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
     }
     
     // Find image in node - prioritize IHS-specific images from files.icehockeysystems.com
+    // IHS CDN base URL for drill images
+    $ihsCdnBase = 'https://www.files.icehockeysystems.com';
+    
     $images = $xpath->query('.//img', $node);
     if ($images->length > 0) {
         // First pass: look for IHS-specific images
@@ -592,17 +595,32 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
         foreach ($images as $img) {
             $imgSrc = $img->getAttribute('src');
             $imgClass = $img->getAttribute('class') ?: '';
-            // Priority 1: IHS CDN images
+            // Priority 1: IHS CDN images (already contains the domain)
             if (!empty($imgSrc) && strpos($imgSrc, 'files.icehockeysystems.com') !== false) {
+                // Ensure proper https:// prefix for protocol-relative URLs
+                if (strpos($imgSrc, '//') === 0) {
+                    $imgSrc = 'https:' . $imgSrc;
+                }
                 $drill['rink_image'] = $imgSrc;
                 break;
             }
-            // Priority 2: Images with img-responsive class
+            // Priority 2: Relative paths starting with /files/drills/ (IHS CDN)
+            if (!empty($imgSrc) && strpos($imgSrc, '/files/drills/') === 0) {
+                $drill['rink_image'] = $ihsCdnBase . $imgSrc;
+                break;
+            }
+            // Priority 3: Images with img-responsive class
             if (!empty($imgSrc) && !empty($imgClass) && strpos($imgClass, 'img-responsive') !== false) {
-                if (strpos($imgSrc, 'http') !== 0) {
-                    $url_parts = parse_url($baseUrl);
-                    $base = $url_parts['scheme'] . '://' . $url_parts['host'];
-                    $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+                if (strpos($imgSrc, '/files/drills/') === 0) {
+                    $imgSrc = $ihsCdnBase . $imgSrc;
+                } elseif (strpos($imgSrc, 'http') !== 0) {
+                    if (strpos($imgSrc, '//') === 0) {
+                        $imgSrc = 'https:' . $imgSrc;
+                    } else {
+                        $url_parts = parse_url($baseUrl);
+                        $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                        $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+                    }
                 }
                 $drill['rink_image'] = $imgSrc;
                 break;
@@ -612,10 +630,16 @@ function extractDrillFromNode($node, $xpath, $baseUrl) {
         if (empty($drill['rink_image'])) {
             $imgSrc = $images->item(0)->getAttribute('src');
             if (!empty($imgSrc)) {
-                if (strpos($imgSrc, 'http') !== 0) {
-                    $url_parts = parse_url($baseUrl);
-                    $base = $url_parts['scheme'] . '://' . $url_parts['host'];
-                    $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+                if (strpos($imgSrc, '/files/drills/') === 0) {
+                    $imgSrc = $ihsCdnBase . $imgSrc;
+                } elseif (strpos($imgSrc, 'http') !== 0) {
+                    if (strpos($imgSrc, '//') === 0) {
+                        $imgSrc = 'https:' . $imgSrc;
+                    } else {
+                        $url_parts = parse_url($baseUrl);
+                        $base = $url_parts['scheme'] . '://' . $url_parts['host'];
+                        $imgSrc = $base . (strpos($imgSrc, '/') === 0 ? '' : '/') . $imgSrc;
+                    }
                 }
                 $drill['rink_image'] = $imgSrc;
             }
