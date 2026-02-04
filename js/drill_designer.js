@@ -1026,9 +1026,9 @@ class DrillDesigner {
     // Helper function to draw hash marks around faceoff circles
     // Hockey Canada regulation hash marks:
     // - Two 2-foot parallel red lines on each side of the faceoff circle (4 total per circle)
-    // - Lines are 3 feet apart (vertical distance between hash marks in each pair)
+    // - Lines are 3 feet apart (horizontal distance between hash marks in each pair)
     // - Hash marks are 2 feet long
-    // - Hash marks positioned just outside the circle edge
+    // - Hash marks positioned just outside the circle edge on TOP and BOTTOM (nets are at top/bottom)
     drawHashMarks(ctx, cx, cy, radius) {
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
@@ -1046,26 +1046,26 @@ class DrillDesigner {
         // Hash marks start just outside the circle edge
         const startDistance = radius + gapOutsideCircle;
         
-        // Hash marks on LEFT and RIGHT side of circle only (not top/bottom)
-        // Each side has 2 horizontal lines, 3 feet apart vertically
-        const sides = [-1, 1]; // -1 = left, 1 = right
+        // Hash marks on TOP and BOTTOM of circle (nets are at top and bottom of rink)
+        // Each side has 2 vertical lines, 3 feet apart horizontally
+        const sides = [-1, 1]; // -1 = top, 1 = bottom
         
         sides.forEach(side => {
-            // Hash marks are positioned near the center of the circle vertically
-            // with one line above center and one below, separated by 3 feet
-            const startX = cx + side * startDistance;
-            const endX = startX + side * hashLength;
+            // Hash marks are positioned near the center of the circle horizontally
+            // with one line to the left of center and one to the right, separated by 3 feet
+            const startY = cy + side * startDistance;
+            const endY = startY + side * hashLength;
             
-            // Upper hash mark
+            // Left hash mark
             ctx.beginPath();
-            ctx.moveTo(startX, cy - hashSpacing / 2);
-            ctx.lineTo(endX, cy - hashSpacing / 2);
+            ctx.moveTo(cx - hashSpacing / 2, startY);
+            ctx.lineTo(cx - hashSpacing / 2, endY);
             ctx.stroke();
             
-            // Lower hash mark
+            // Right hash mark
             ctx.beginPath();
-            ctx.moveTo(startX, cy + hashSpacing / 2);
-            ctx.lineTo(endX, cy + hashSpacing / 2);
+            ctx.moveTo(cx + hashSpacing / 2, startY);
+            ctx.lineTo(cx + hashSpacing / 2, endY);
             ctx.stroke();
         });
     }
