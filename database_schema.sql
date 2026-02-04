@@ -2757,6 +2757,7 @@ CREATE TABLE IF NOT EXISTS `employee_contracts` (
     `template_id` INT DEFAULT NULL COMMENT 'Local template reference',
     `opensign_template_id` INT DEFAULT NULL COMMENT 'External: OpenSign template ID used (not a local FK)',
     `opensign_submission_id` INT DEFAULT NULL COMMENT 'External: OpenSign submission ID for tracking (not a local FK)',
+    `docuseal_submission_id` INT DEFAULT NULL COMMENT 'External: DocuSeal submission ID for tracking (not a local FK)',
     `employee_name` VARCHAR(255) NOT NULL,
     `employee_email` VARCHAR(255) NOT NULL,
     `contract_title` VARCHAR(255) DEFAULT 'Employment Contract',
@@ -2780,6 +2781,7 @@ CREATE TABLE IF NOT EXISTS `employee_contracts` (
     INDEX `idx_user` (`user_id`),
     INDEX `idx_status` (`status`),
     INDEX `idx_opensign_submission` (`opensign_submission_id`),
+    INDEX `idx_docuseal_submission` (`docuseal_submission_id`),
     INDEX `idx_template` (`template_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
