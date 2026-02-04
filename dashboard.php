@@ -622,6 +622,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>">
                 <i class="fa-solid fa-plane icon"></i> Travel
             </a>
+            <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>">
+                <i class="fa-solid fa-video icon"></i> Video Recording
+            </a>
         </nav>
     </div>
     <?php endif; ?>

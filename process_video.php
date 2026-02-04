@@ -173,19 +173,20 @@ function handleAthleteVideoUpload() {
     $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
     $is_coach = in_array($user_role, $allowed_roles);
     
-    $athlete_id = $user_id;
+    // Get athlete_id from POST (auto-assigned to current user on the frontend)
+    $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
+    
+    // Default to current user if no athlete_id provided
+    if (!$athlete_id) {
+        $athlete_id = $user_id;
+    }
+    
+    // Get the coach for this video
     if ($is_coach) {
-        $athlete_id = filter_input(INPUT_POST, 'athlete_id', FILTER_VALIDATE_INT);
-        if (!$athlete_id) {
-            throw new Exception('Please select an athlete');
-        }
-        // Get the athlete's assigned coach
-        $stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
-        $stmt->execute([$athlete_id]);
-        $athlete = $stmt->fetch();
-        $coach_id = $athlete['assigned_coach_id'] ?? $user_id;
+        // For coaches uploading for themselves, they are their own reviewer
+        $coach_id = $user_id;
     } else {
-        // Validate that athlete has an assigned coach
+        // For athletes, validate that they have an assigned coach
         if (!$coach_id) {
             $stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
             $stmt->execute([$user_id]);

@@ -19,13 +19,6 @@ if ($tab === 'video') $tab = 'drill_review'; // Default tab
             <i class="fas fa-comments"></i> Coach Review
         </a>
     </div>
-    <?php if($isAnyCoach): ?>
-    <div class="page-tabs-action">
-        <a href="?page=record_drill_video" class="btn btn-primary">
-            <i class="fas fa-video"></i> Record Drill Video
-        </a>
-    </div>
-    <?php endif; ?>
 </div>
 
 <div class="page-tab-content">
