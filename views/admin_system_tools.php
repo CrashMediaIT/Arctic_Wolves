@@ -1060,7 +1060,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                     <!-- Center Ice Logo Section -->
                     <div class="sync-options" style="margin-bottom: 24px;">
                         <h4><i class="fas fa-hockey-puck"></i> Center Ice Logo</h4>
-                        <p class="help-text" style="margin-bottom: 16px;">This logo appears at center ice in the drill designer. It will be displayed at 12% opacity as a subtle watermark.</p>
+                        <p class="help-text" style="margin-bottom: 16px;">This logo appears at center ice in the drill designer as a subtle watermark. Preview shown at 50% opacity; actual display uses 12% opacity.</p>
                         
                         <div class="settings-list">
                             <div class="setting-item">
@@ -1706,9 +1706,16 @@ function removeCenterIceLogo() {
         method: 'POST',
         body: formData
     })
-    .then(response => response.text())
-    .then(() => {
-        location.reload();
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        // Check if redirect happened (success)
+        if (response.redirected || response.status === 200) {
+            location.reload();
+        } else {
+            throw new Error('Unexpected response');
+        }
     })
     .catch(error => {
         console.error('Error:', error);

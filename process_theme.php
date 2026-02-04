@@ -337,13 +337,16 @@ try {
             }
             
             // Handle center ice logo upload/URL
-            if (isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
+            $center_ice_upload_attempted = isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] !== UPLOAD_ERR_NO_FILE;
+            if ($center_ice_upload_attempted && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
                 $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
                 if ($result['success']) {
                     updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
                     updateThemeSetting($pdo, 'center_ice_logo_method', 'upload');
                 }
-            } elseif (!empty($_POST['center_ice_logo_url_input'])) {
+                // If upload failed, don't fall through to URL - let user know via no change
+            } elseif (!$center_ice_upload_attempted && !empty($_POST['center_ice_logo_url_input'])) {
+                // Only use URL if no file upload was attempted
                 updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['center_ice_logo_url_input']);
                 updateThemeSetting($pdo, 'center_ice_logo_method', 'url');
             }
