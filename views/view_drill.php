@@ -511,6 +511,12 @@ function drawViewRink(ctx, w, h) {
     ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
     ctx.stroke();
     
+    // Center dot
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    
     // Rink border
     const cornerRadius = Math.min(w, h) * 0.1;
     ctx.strokeStyle = '#0033a0';
@@ -527,6 +533,65 @@ function drawViewRink(ctx, w, h) {
     ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
     ctx.closePath();
     ctx.stroke();
+    
+    // Goal creases and goal lines
+    const creaseRadius = Math.min(w, h) * 0.08;
+    
+    // Left goal crease
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(w * 0.03, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Left goal line - extends full height within bounds
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.03, cornerRadius + 4);
+    ctx.lineTo(w * 0.03, h - cornerRadius - 4);
+    ctx.stroke();
+    
+    // Right goal crease
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(w * 0.97, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Right goal line - extends full height within bounds
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.97, cornerRadius + 4);
+    ctx.lineTo(w * 0.97, h - cornerRadius - 4);
+    ctx.stroke();
+    
+    // Faceoff circles with dots
+    const faceoffRadius = Math.min(w, h) * 0.1;
+    const circles = [
+        { x: w * 0.15, y: h * 0.3 },
+        { x: w * 0.15, y: h * 0.7 },
+        { x: w * 0.85, y: h * 0.3 },
+        { x: w * 0.85, y: h * 0.7 }
+    ];
+    
+    circles.forEach(function(circle) {
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#c41e3a';
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+    });
 }
 
 function drawObject(ctx, obj) {
@@ -616,14 +681,72 @@ function drawObject(ctx, obj) {
     } else if (obj.type === 'net') {
         ctx.translate(obj.x, obj.y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
-        ctx.strokeStyle = obj.color || '#c41e3a';
+        
+        const frameColor = obj.color || '#c41e3a';
+        const netWidth = 48;
+        const netDepth = 16;
+        
+        // Draw the net frame - D-shape like real hockey net
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = frameColor;
         ctx.lineWidth = 3;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        
         ctx.beginPath();
-        ctx.moveTo(-20, -15);
-        ctx.lineTo(-25, 15);
-        ctx.lineTo(25, 15);
-        ctx.lineTo(20, -15);
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.lineTo(netWidth/2 - 4, -netDepth);
+        ctx.quadraticCurveTo(0, -netDepth - 8, -netWidth/2 + 4, -netDepth);
+        ctx.lineTo(-netWidth/2, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw mesh lines
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 0.5;
+        for (let i = -2; i <= 2; i++) {
+            const meshX = (netWidth/5) * i;
+            ctx.beginPath();
+            ctx.moveTo(meshX * 0.85, 0);
+            ctx.lineTo(meshX * 0.6, -netDepth);
+            ctx.stroke();
+        }
+        
+        // Red posts and crossbar
+        ctx.strokeStyle = frameColor;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 2);
+        ctx.lineTo(-netWidth/2, -2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(netWidth/2, 2);
+        ctx.lineTo(netWidth/2, -2);
+        ctx.stroke();
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.stroke();
+    } else if (obj.type === 'mininet') {
+        ctx.translate(obj.x, obj.y);
+        ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+        
+        const frameColor = obj.color || '#c41e3a';
+        const netWidth = 32;
+        const netDepth = 12;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = frameColor;
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.lineTo(netWidth/2 - 3, -netDepth);
+        ctx.quadraticCurveTo(0, -netDepth - 5, -netWidth/2 + 3, -netDepth);
+        ctx.lineTo(-netWidth/2, 0);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();

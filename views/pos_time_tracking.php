@@ -92,14 +92,39 @@ try {
     .timer-display {
         font-size: 72px;
         font-weight: 700;
-        font-family: 'Inter', monospace;
+        font-family: 'JetBrains Mono', 'Roboto Mono', 'Courier New', monospace;
         color: #fff;
         margin-bottom: 10px;
+        letter-spacing: 2px;
+        text-shadow: 0 0 20px rgba(107, 70, 193, 0.3);
+        position: relative;
+    }
+    
+    .timer-display.active::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: timerPulse 1s infinite;
+    }
+    
+    @keyframes timerPulse {
+        0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+        50% { opacity: 0.5; transform: translateX(-50%) scale(1.2); }
     }
     
     .timer-label {
         color: var(--text-dim);
         font-size: 14px;
+    }
+    
+    .timer-label.paused {
+        color: #f59e0b;
     }
     
     .shift-info {
@@ -415,43 +440,57 @@ try {
 
 <script>
 const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
-let shiftData = <?= $activeShift ? json_encode($activeShift) : 'null' ?>;
-let timerInterval = null;
 
-// Helper function to parse MySQL datetime string
-function parseMySQLDateTime(datetimeStr) {
-    if (!datetimeStr) return null;
-    // MySQL format: YYYY-MM-DD HH:MM:SS
-    // Split into date and time parts
-    const parts = datetimeStr.split(' ');
-    if (parts.length !== 2) return new Date(datetimeStr);
-    
-    const dateParts = parts[0].split('-');
-    const timeParts = parts[1].split(':');
-    
-    if (dateParts.length !== 3 || timeParts.length < 2) return new Date(datetimeStr);
-    
-    // Create date using local timezone (year, month-1, day, hour, minute, second)
-    return new Date(
-        parseInt(dateParts[0], 10),
-        parseInt(dateParts[1], 10) - 1, // Month is 0-indexed
-        parseInt(dateParts[2], 10),
-        parseInt(timeParts[0], 10),
-        parseInt(timeParts[1], 10),
-        timeParts[2] ? parseInt(timeParts[2], 10) : 0
-    );
+// Debug: Output raw values to help diagnose issues
+<?php if ($activeShift): ?>
+// Raw shift data for debugging
+console.log('POS Time Tracking: Active shift detected');
+console.log('clock_in raw:', '<?= addslashes($activeShift['clock_in'] ?? '') ?>');
+<?php endif; ?>
+
+// Store clock_in time as a timestamp from PHP for reliable parsing
+<?php
+$clockInTs = null;
+$lunchStartTs = null;
+$lunchEndTs = null;
+
+if ($activeShift && !empty($activeShift['clock_in'])) {
+    $clockInTs = strtotime($activeShift['clock_in']);
+    if ($clockInTs === false) $clockInTs = null;
 }
+if ($activeShift && !empty($activeShift['lunch_start'])) {
+    $lunchStartTs = strtotime($activeShift['lunch_start']);
+    if ($lunchStartTs === false) $lunchStartTs = null;
+}
+if ($activeShift && !empty($activeShift['lunch_end'])) {
+    $lunchEndTs = strtotime($activeShift['lunch_end']);
+    if ($lunchEndTs === false) $lunchEndTs = null;
+}
+?>
+const clockInTimestamp = <?= $clockInTs !== null ? ($clockInTs * 1000) : 'null' ?>;
+const lunchStartTimestamp = <?= $lunchStartTs !== null ? ($lunchStartTs * 1000) : 'null' ?>;
+const lunchEndTimestamp = <?= $lunchEndTs !== null ? ($lunchEndTs * 1000) : 'null' ?>;
+const hasActiveShift = <?= $activeShift ? 'true' : 'false' ?>;
+
+console.log('POS Timer Debug:', { clockInTimestamp, lunchStartTimestamp, lunchEndTimestamp, hasActiveShift });
+
+let timerInterval = null;
+let animationFrameId = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('POS Time Tracking: DOM loaded, initializing...');
+    
+    // Start the current time display
     updateCurrentTime();
     setInterval(updateCurrentTime, 1000);
     
-    if (shiftData) {
-        console.log('Timer: Starting with shiftData', shiftData);
-        startTimer();
+    // Start the shift timer if there's an active shift
+    if (hasActiveShift && clockInTimestamp) {
+        console.log('POS Timer: Starting live timer with clockInTimestamp:', clockInTimestamp);
+        startLiveTimer();
     } else {
-        console.log('Timer: No active shift data');
+        console.log('POS Timer: Not starting timer. hasActiveShift:', hasActiveShift, 'clockInTimestamp:', clockInTimestamp);
     }
     
     loadWeeklyStats();
@@ -459,94 +498,137 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function updateCurrentTime() {
     const now = new Date();
-    document.getElementById('current-time-display').textContent = 
-        now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const el = document.getElementById('current-time-display');
+    if (el) {
+        el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
 }
 
-function startTimer() {
-    if (timerInterval) clearInterval(timerInterval);
-    
-    // Cache DOM elements for better performance and reliability
+function startLiveTimer() {
     const timerElement = document.getElementById('shift-timer');
     const timerLabelElement = document.getElementById('timer-label');
     
-    // Verify elements exist before starting timer
+    console.log('startLiveTimer: Looking for elements...');
+    console.log('  timerElement:', timerElement);
+    console.log('  timerLabelElement:', timerLabelElement);
+    
     if (!timerElement) {
         console.error('Timer: shift-timer element not found');
         return;
     }
     
-    // Parse clock_in time once at the start
-    if (!shiftData || !shiftData.clock_in) {
-        console.error('Timer: No shift data or clock_in', shiftData);
+    if (!clockInTimestamp || isNaN(clockInTimestamp)) {
+        console.error('Timer: Invalid clock in timestamp:', clockInTimestamp);
         return;
     }
     
-    const clockIn = parseMySQLDateTime(shiftData.clock_in);
-    if (!clockIn || isNaN(clockIn.getTime())) {
-        console.error('Timer: Invalid clockIn date', shiftData.clock_in, clockIn);
-        return;
+    console.log('startLiveTimer: clockInTimestamp is valid:', clockInTimestamp, 'Date:', new Date(clockInTimestamp));
+    
+    // Clear any existing intervals
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
     }
     
-    // Parse lunch times once if they exist
-    const lunchStart = shiftData.lunch_start ? parseMySQLDateTime(shiftData.lunch_start) : null;
-    const lunchEnd = shiftData.lunch_end ? parseMySQLDateTime(shiftData.lunch_end) : null;
+    // Check lunch status
+    const isOnLunch = lunchStartTimestamp && !lunchEndTimestamp;
+    const lunchCompleted = lunchStartTimestamp && lunchEndTimestamp;
     
-    // Function to update timer display
-    function updateTimer() {
-        try {
-            const now = new Date();
-            let elapsed = Math.floor((now - clockIn) / 1000);
-            
-            // Ensure elapsed is never negative (handle clock/timezone issues)
-            if (elapsed < 0) elapsed = 0;
-            
-            // Check if currently on lunch break - timer should be paused
-            if (lunchStart && !lunchEnd) {
-                // Currently on lunch - calculate worked time up to lunch start (paused)
-                if (!isNaN(lunchStart.getTime())) {
-                    elapsed = Math.floor((lunchStart - clockIn) / 1000);
-                    if (elapsed < 0) elapsed = 0;
-                }
-                if (timerLabelElement) {
-                    timerLabelElement.textContent = 'Paused - On Lunch Break';
-                }
-            } else if (lunchStart && lunchEnd) {
-                // Lunch completed - subtract lunch duration from total
-                if (!isNaN(lunchStart.getTime()) && !isNaN(lunchEnd.getTime())) {
-                    const lunchSeconds = Math.floor((lunchEnd - lunchStart) / 1000);
-                    elapsed -= lunchSeconds;
-                    if (elapsed < 0) elapsed = 0;
-                }
-                if (timerLabelElement) {
-                    timerLabelElement.textContent = 'Time Worked Today';
-                }
-            } else {
-                if (timerLabelElement) {
-                    timerLabelElement.textContent = 'Time Worked Today';
-                }
-            }
-            
-            // Convert elapsed to hours, minutes, seconds (elapsed is guaranteed non-negative)
-            const hours = Math.floor(elapsed / 3600);
-            const minutes = Math.floor((elapsed % 3600) / 60);
-            const seconds = elapsed % 60;
-            
-            // Format and display the time
-            timerElement.textContent = 
-                String(hours).padStart(2, '0') + ':' + 
-                String(minutes).padStart(2, '0') + ':' + 
-                String(seconds).padStart(2, '0');
-        } catch (e) {
-            console.error('Timer update error:', e);
+    // Calculate lunch duration if completed
+    let lunchDurationMs = 0;
+    if (lunchCompleted) {
+        lunchDurationMs = lunchEndTimestamp - lunchStartTimestamp;
+    }
+    
+    console.log('startLiveTimer: isOnLunch:', isOnLunch, 'lunchCompleted:', lunchCompleted, 'lunchDurationMs:', lunchDurationMs);
+    
+    // Update the label and visual indicator based on lunch status
+    if (timerLabelElement) {
+        if (isOnLunch) {
+            timerLabelElement.textContent = 'Paused - On Lunch Break';
+            timerLabelElement.classList.add('paused');
+            timerElement.classList.remove('active');
+        } else {
+            timerLabelElement.textContent = 'Time Worked Today';
+            timerLabelElement.classList.remove('paused');
+            timerElement.classList.add('active');
+        }
+    } else if (!isOnLunch) {
+        timerElement.classList.add('active');
+    }
+    
+    // Track update count for debugging
+    let updateCount = 0;
+    
+    function updateTimerDisplay() {
+        const now = Date.now();
+        let elapsedMs;
+        
+        if (isOnLunch) {
+            // Paused - show time up until lunch started
+            elapsedMs = lunchStartTimestamp - clockInTimestamp;
+        } else {
+            // Calculate elapsed time, subtracting lunch duration if applicable
+            elapsedMs = now - clockInTimestamp - lunchDurationMs;
+        }
+        
+        // Ensure non-negative
+        if (elapsedMs < 0) elapsedMs = 0;
+        
+        const totalSeconds = Math.floor(elapsedMs / 1000);
+        
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        // Format as HH:MM:SS
+        const timeStr = String(hours).padStart(2, '0') + ':' + 
+            String(minutes).padStart(2, '0') + ':' + 
+            String(seconds).padStart(2, '0');
+        
+        // Always update DOM to ensure timer is working
+        timerElement.textContent = timeStr;
+        
+        // Log first few updates for debugging
+        if (updateCount < 5) {
+            console.log('Timer update #' + updateCount + ':', timeStr, 'elapsed:', elapsedMs);
+            updateCount++;
+        }
+        
+        // Continue the animation loop if not on lunch
+        if (!isOnLunch) {
+            animationFrameId = requestAnimationFrame(updateTimerDisplay);
         }
     }
     
-    // Run immediately to show timer without delay
-    updateTimer();
+    // Start immediately
+    console.log('startLiveTimer: Calling updateTimerDisplay for the first time...');
+    updateTimerDisplay();
     
-    // Then update every second
-    timerInterval = setInterval(updateTimer, 1000);
+    // Also use setInterval as a fallback (in case requestAnimationFrame pauses when tab is inactive)
+    if (!isOnLunch) {
+        timerInterval = setInterval(function() {
+            // This ensures timer updates even when tab is in background
+            const now = Date.now();
+            let elapsedMs = now - clockInTimestamp - lunchDurationMs;
+            if (elapsedMs < 0) elapsedMs = 0;
+            
+            const totalSeconds = Math.floor(elapsedMs / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            const timeStr = String(hours).padStart(2, '0') + ':' + 
+                String(minutes).padStart(2, '0') + ':' + 
+                String(seconds).padStart(2, '0');
+            
+            timerElement.textContent = timeStr;
+        }, 1000);
+    }
 }
 
 function loadWeeklyStats() {

@@ -965,6 +965,7 @@ class DrillDesigner {
         
         // Goal creases (proper semicircle shape)
         const creaseRadius = Math.min(w, h) * 0.08;
+        const cornerRadius = Math.min(w, h) * 0.1;
         
         // Left goal crease - semicircle
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)'; // Light blue fill
@@ -975,12 +976,12 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Left goal line
+        // Left goal line - extends all the way across (within rink bounds)
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * 0.03, h * 0.35);
-        ctx.lineTo(w * 0.03, h * 0.65);
+        ctx.moveTo(w * 0.03, cornerRadius + 4);
+        ctx.lineTo(w * 0.03, h - cornerRadius - 4);
         ctx.stroke();
         
         // Right goal crease - semicircle  
@@ -992,12 +993,12 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Right goal line
+        // Right goal line - extends all the way across (within rink bounds)
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * 0.97, h * 0.35);
-        ctx.lineTo(w * 0.97, h * 0.65);
+        ctx.moveTo(w * 0.97, cornerRadius + 4);
+        ctx.lineTo(w * 0.97, h - cornerRadius - 4);
         ctx.stroke();
         
         // Draw neutral zone faceoff dots with hash marks
@@ -1017,35 +1018,45 @@ class DrillDesigner {
     }
     
     // Helper function to draw hash marks around faceoff circles
+    // NHL regulation: 4 hash marks positioned on the outside of the circle
+    // Two on each side (left and right) with L-shaped marks
     drawHashMarks(ctx, cx, cy, radius) {
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
         
-        // Draw L-shaped hash marks at 4 positions around the circle
-        const positions = [
-            { angle: -Math.PI/4, dx: -1, dy: -1 },
-            { angle: Math.PI/4, dx: 1, dy: -1 },
-            { angle: 3*Math.PI/4, dx: 1, dy: 1 },
-            { angle: -3*Math.PI/4, dx: -1, dy: 1 }
+        const hashLength = 18;
+        const hashWidth = 4;
+        const gapFromCircle = 3;
+        
+        // Four L-shaped hash marks positioned at 2 o'clock, 4 o'clock, 8 o'clock, and 10 o'clock
+        // These are the standard NHL faceoff circle hash marks
+        const hashPositions = [
+            // Top-left (10 o'clock area)
+            { startAngle: -2.35, horizontal: 1, vertical: -1 },
+            // Top-right (2 o'clock area)  
+            { startAngle: -0.79, horizontal: -1, vertical: -1 },
+            // Bottom-right (4 o'clock area)
+            { startAngle: 0.79, horizontal: -1, vertical: 1 },
+            // Bottom-left (8 o'clock area)
+            { startAngle: 2.35, horizontal: 1, vertical: 1 }
         ];
         
-        const hashLength = 15;
-        const offset = radius + 5;
-        
-        positions.forEach(pos => {
-            const x = cx + Math.cos(pos.angle) * offset;
-            const y = cy + Math.sin(pos.angle) * offset;
+        hashPositions.forEach(pos => {
+            // Starting point just outside the circle
+            const x = cx + Math.cos(pos.startAngle) * (radius + gapFromCircle);
+            const y = cy + Math.sin(pos.startAngle) * (radius + gapFromCircle);
             
-            // Horizontal part
+            // Draw the two lines of the L-shape
+            // Horizontal line
             ctx.beginPath();
             ctx.moveTo(x, y);
-            ctx.lineTo(x + pos.dx * hashLength, y);
+            ctx.lineTo(x + pos.horizontal * hashLength, y);
             ctx.stroke();
             
-            // Vertical part  
+            // Vertical line
             ctx.beginPath();
             ctx.moveTo(x, y);
-            ctx.lineTo(x, y + pos.dy * hashLength);
+            ctx.lineTo(x, y + pos.vertical * hashLength);
             ctx.stroke();
         });
     }
@@ -1787,30 +1798,75 @@ class DrillDesigner {
         ctx.translate(x, y);
         ctx.rotate((rotation || 0) * Math.PI / 180);
         
-        // Net frame
-        ctx.strokeStyle = color || '#c41e3a';
-        ctx.lineWidth = 3;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        const frameColor = color || '#c41e3a';
+        const netWidth = 48;
+        const netHeight = 28;
+        const netDepth = 16;
         
-        // Net shape
+        // Net back frame (curved like real hockey net)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = frameColor;
+        ctx.lineWidth = 3;
+        
+        // Draw the net frame - more realistic D-shape
         ctx.beginPath();
-        ctx.moveTo(-20, -15);
-        ctx.lineTo(-25, 15);
-        ctx.lineTo(25, 15);
-        ctx.lineTo(20, -15);
+        // Front opening (goal line)
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        // Right side going back
+        ctx.lineTo(netWidth/2 - 4, -netDepth);
+        // Curved back of net
+        ctx.quadraticCurveTo(0, -netDepth - 8, -netWidth/2 + 4, -netDepth);
+        // Left side coming forward
+        ctx.lineTo(-netWidth/2, 0);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
         
-        // Net mesh
-        ctx.strokeStyle = '#999';
-        ctx.lineWidth = 1;
-        for (let i = -15; i <= 15; i += 5) {
+        // Draw net mesh pattern (horizontal lines)
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 0.5;
+        for (let i = 1; i <= 3; i++) {
+            const meshY = -netDepth * (i / 4);
+            const meshWidth = netWidth/2 - (i * 2);
             ctx.beginPath();
-            ctx.moveTo(i - 2, -13);
-            ctx.lineTo(i, 13);
+            ctx.moveTo(-meshWidth, meshY);
+            ctx.quadraticCurveTo(0, meshY - 2, meshWidth, meshY);
             ctx.stroke();
         }
+        
+        // Draw vertical mesh lines
+        for (let i = -3; i <= 3; i++) {
+            const meshX = (netWidth/6) * i;
+            ctx.beginPath();
+            ctx.moveTo(meshX * 0.85, 0);
+            ctx.lineTo(meshX * 0.6, -netDepth);
+            ctx.stroke();
+        }
+        
+        // Red goal posts (front pillars)
+        ctx.strokeStyle = frameColor;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        
+        // Left post
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 2);
+        ctx.lineTo(-netWidth/2, -2);
+        ctx.stroke();
+        
+        // Right post
+        ctx.beginPath();
+        ctx.moveTo(netWidth/2, 2);
+        ctx.lineTo(netWidth/2, -2);
+        ctx.stroke();
+        
+        // Crossbar
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.stroke();
         
         ctx.restore();
     }
@@ -1821,18 +1877,39 @@ class DrillDesigner {
         ctx.translate(x, y);
         ctx.rotate((rotation || 0) * Math.PI / 180);
         
-        // Mini net frame
-        ctx.strokeStyle = color || '#c41e3a';
+        const frameColor = color || '#c41e3a';
+        const netWidth = 32;
+        const netDepth = 12;
+        
+        // Mini net - similar D-shape but smaller
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = frameColor;
         ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         
         ctx.beginPath();
-        ctx.moveTo(-12, -10);
-        ctx.lineTo(-15, 10);
-        ctx.lineTo(15, 10);
-        ctx.lineTo(12, -10);
+        ctx.moveTo(-netWidth/2, 0);
+        ctx.lineTo(netWidth/2, 0);
+        ctx.lineTo(netWidth/2 - 3, -netDepth);
+        ctx.quadraticCurveTo(0, -netDepth - 5, -netWidth/2 + 3, -netDepth);
+        ctx.lineTo(-netWidth/2, 0);
         ctx.closePath();
         ctx.fill();
+        ctx.stroke();
+        
+        // Simple mesh
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(-netWidth/4, 0);
+        ctx.lineTo(-netWidth/5, -netDepth + 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -netDepth + 1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(netWidth/4, 0);
+        ctx.lineTo(netWidth/5, -netDepth + 2);
         ctx.stroke();
         
         ctx.restore();
