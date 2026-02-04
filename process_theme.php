@@ -336,6 +336,23 @@ try {
                 updateThemeSetting($pdo, 'use_logo_as_favicon', '0');
             }
             
+            // Handle center ice logo upload/URL
+            if (isset($_FILES['center_ice_logo']) && $_FILES['center_ice_logo']['error'] === UPLOAD_ERR_OK) {
+                $result = handleFileUpload($_FILES['center_ice_logo'], 'center_ice');
+                if ($result['success']) {
+                    updateThemeSetting($pdo, 'center_ice_logo_url', $result['url']);
+                    updateThemeSetting($pdo, 'center_ice_logo_method', 'upload');
+                }
+            } elseif (!empty($_POST['center_ice_logo_url_input'])) {
+                updateThemeSetting($pdo, 'center_ice_logo_url', $_POST['center_ice_logo_url_input']);
+                updateThemeSetting($pdo, 'center_ice_logo_method', 'url');
+            }
+            
+            // Save center ice logo method preference
+            if (isset($_POST['center_ice_logo_method'])) {
+                updateThemeSetting($pdo, 'center_ice_logo_method', $_POST['center_ice_logo_method']);
+            }
+            
             // Redirect back to system_tools theme tab
             header('Location: dashboard.php?page=system_tools&tab=theme&success=1');
             exit;
