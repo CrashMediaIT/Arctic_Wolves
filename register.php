@@ -571,12 +571,22 @@ if (isset($_GET['error'])) {
 
                 <div class="input-box">
                     <label>Password</label>
-                    <input type="password" name="password" required placeholder="••••••••" minlength="8">
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="password" id="password-field" required placeholder="••••••••" minlength="8" style="flex: 1; padding-right: 40px;">
+                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password-field', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px;">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="input-box">
                     <label>Confirm Password</label>
-                    <input type="password" name="confirm_password" required placeholder="••••••••" minlength="8">
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="confirm_password" id="confirm-password-field" required placeholder="••••••••" minlength="8" style="flex: 1; padding-right: 40px;">
+                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('confirm-password-field', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px;">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-primary" style="width: 100%; padding: 14px; font-size: 14px; border: none; cursor: pointer; border-radius: 6px; font-weight: 700; letter-spacing: 0.5px; margin-top: 10px;">
@@ -743,6 +753,20 @@ if (isset($_GET['error'])) {
                 }
             }
         });
+
+        function togglePasswordVisibility(inputId, button) {
+            const input = document.getElementById(inputId);
+            const icon = button.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
     </script>
 
 </body>

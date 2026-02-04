@@ -68,8 +68,13 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
             
             <div style="text-align: left; margin-bottom: 20px;">
                 <label style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">New Secure Password</label>
-                <input type="password" name="new_password" required minlength="6" placeholder="Minimum 6 characters" 
-                       style="width: 100%; padding: 12px; margin-top: 5px; background: #06080b; border: 1px solid var(--border); color: #fff; border-radius: 4px; outline: none;">
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="password" name="new_password" id="new-password-field" required minlength="6" placeholder="Minimum 6 characters" 
+                           style="width: 100%; padding: 12px; padding-right: 40px; margin-top: 5px; background: #06080b; border: 1px solid var(--border); color: #fff; border-radius: 4px; outline: none;">
+                    <button type="button" onclick="togglePasswordVisibility('new-password-field', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; margin-top: 2.5px;">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
             </div>
             
             <button type="submit" class="btn-primary" style="width: 100%; padding: 14px; border: none; cursor: pointer; font-weight: 700; border-radius: 4px;">
@@ -78,5 +83,20 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
         </form>
     </div>
 
+<script>
+function togglePasswordVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+</script>
 </body>
 </html>

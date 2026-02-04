@@ -778,18 +778,33 @@ $errors = [
                     <input type="hidden" name="action" value="change_password">
                     <div class="form-group">
                         <label>Current Password *</label>
-                        <input type="password" name="current_password" class="form-input" required>
+                        <div class="password-input-wrapper">
+                            <input type="password" name="current_password" id="current-password-field" class="form-input" required>
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('current-password-field', this)" aria-label="Toggle password visibility">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label>New Password *</label>
-                        <input type="password" name="new_password" class="form-input" minlength="8" required>
+                        <div class="password-input-wrapper">
+                            <input type="password" name="new_password" id="new-password-field" class="form-input" minlength="8" required>
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('new-password-field', this)" aria-label="Toggle password visibility">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                         <small class="form-hint">Minimum 8 characters</small>
                     </div>
 
                     <div class="form-group">
                         <label>Confirm New Password *</label>
-                        <input type="password" name="confirm_password" class="form-input" minlength="8" required>
+                        <div class="password-input-wrapper">
+                            <input type="password" name="confirm_password" id="confirm-password-field" class="form-input" minlength="8" required>
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('confirm-password-field', this)" aria-label="Toggle password visibility">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-actions">
@@ -1116,6 +1131,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Password visibility toggle function (defined globally for onclick handlers)
+function togglePasswordVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
 </script>
 
 <style>
@@ -1394,6 +1424,33 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 12px;
     color: var(--text-muted);
     font-style: normal;
+}
+
+/* Password input wrapper with toggle button */
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrapper .form-input {
+    flex: 1;
+    padding-right: 45px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 5px;
+    transition: color 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+    color: var(--primary);
 }
 
 /* Preferences List - Enhanced */

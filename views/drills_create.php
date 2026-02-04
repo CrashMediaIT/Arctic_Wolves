@@ -80,6 +80,21 @@ if ($editDrillId) {
                         <button class="tool-btn" title="Squiggly Line (Puck Carry)" data-tool="squiggly"><i class="fas fa-wave-square"></i></button>
                         <button class="tool-btn" title="Arrow" data-tool="arrow"><i class="fas fa-long-arrow-alt-right"></i></button>
                         <button class="tool-btn" title="Add Text" data-tool="text"><i class="fas fa-font"></i></button>
+                        <button class="tool-btn" title="Freehand Draw" data-tool="freehand"><i class="fas fa-pencil-alt"></i></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Skating Patterns</span>
+                        <button class="tool-btn" title="Forward Skating" data-tool="skating_forward"><i class="fas fa-arrow-right"></i></button>
+                        <button class="tool-btn" title="Backward Skating" data-tool="skating_backward"><i class="fas fa-arrow-left"></i></button>
+                        <button class="tool-btn" title="Lateral Skating" data-tool="skating_lateral"><i class="fas fa-arrows-alt-h"></i></button>
+                        <button class="tool-btn" title="C-Cuts Skating" data-tool="skating_ccuts"><span class="tool-label" style="font-weight: bold;">C</span></button>
+                        <button class="tool-btn" title="Forward Skating with Puck" data-tool="skating_forward_puck"><i class="fas fa-hockey-puck"></i><i class="fas fa-arrow-right" style="font-size: 8px; margin-left: 2px;"></i></button>
+                        <button class="tool-btn" title="Backward Skating with Puck" data-tool="skating_backward_puck"><i class="fas fa-arrow-left" style="font-size: 8px; margin-right: 2px;"></i><i class="fas fa-hockey-puck"></i></button>
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-group-label">Pass/Shot</span>
+                        <button class="tool-btn" title="Pass" data-tool="pass"><i class="fas fa-share"></i></button>
+                        <button class="tool-btn" title="Shot" data-tool="shot"><i class="fas fa-crosshairs"></i></button>
                     </div>
                     <div class="tool-group">
                         <span class="tool-group-label">Numbers</span>
@@ -146,7 +161,7 @@ if ($editDrillId) {
                     <?php endif; ?>
                 </div>
                 <div class="canvas-help-text">
-                    <p><i class="fas fa-lightbulb"></i> <strong>Tips:</strong> Select an item to see rotation indicator. Press <kbd>R</kbd> to rotate, <kbd>Delete</kbd> to remove. Use Paint tool to change item colors.</p>
+                    <p><i class="fas fa-lightbulb"></i> <strong>Tips:</strong> Click Rotate/Delete tool then click items to edit. Select item + press <kbd>R</kbd> to rotate or <kbd>Delete</kbd> to remove. Use Freehand for smooth paint-like lines.</p>
                 </div>
             </div>
         </div>
