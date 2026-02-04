@@ -43,6 +43,18 @@ function updateThemeSetting($pdo, $name, $value) {
 }
 
 /**
+ * Sync center_ice_logo_url with logo_url if not separately set
+ */
+function syncCenterIceLogoIfNeeded($pdo, $logoUrl) {
+    $stmt = $pdo->prepare("SELECT setting_value FROM theme_settings WHERE setting_name = 'center_ice_logo_url'");
+    $stmt->execute();
+    $existingCenterLogo = $stmt->fetchColumn();
+    if (empty($existingCenterLogo)) {
+        updateThemeSetting($pdo, 'center_ice_logo_url', $logoUrl);
+    }
+}
+
+/**
  * Handle file upload
  */
 function handleFileUpload($file, $type = 'image') {
@@ -125,9 +137,11 @@ try {
                 $result = handleFileUpload($_FILES['logo'], 'logo');
                 if ($result['success']) {
                     updateThemeSetting($pdo, 'logo_url', $result['url']);
+                    syncCenterIceLogoIfNeeded($pdo, $result['url']);
                 }
             } elseif (!empty($_POST['logo_url'])) {
                 updateThemeSetting($pdo, 'logo_url', $_POST['logo_url']);
+                syncCenterIceLogoIfNeeded($pdo, $_POST['logo_url']);
             }
             
             // Handle favicon upload
@@ -302,10 +316,12 @@ try {
                 if ($result['success']) {
                     updateThemeSetting($pdo, 'logo_url', $result['url']);
                     updateThemeSetting($pdo, 'logo_method', 'upload');
+                    syncCenterIceLogoIfNeeded($pdo, $result['url']);
                 }
             } elseif (!empty($_POST['logo_url'])) {
                 updateThemeSetting($pdo, 'logo_url', $_POST['logo_url']);
                 updateThemeSetting($pdo, 'logo_method', 'url');
+                syncCenterIceLogoIfNeeded($pdo, $_POST['logo_url']);
             }
             
             // Save logo method preference

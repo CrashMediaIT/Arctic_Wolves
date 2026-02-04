@@ -1674,7 +1674,20 @@ function runDatabaseBackup(btn) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `action=manual_backup&csrf_token=${encodeURIComponent(getCsrfToken())}`
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Response was not JSON:', text);
+            throw new Error('Invalid server response');
+        }
+    })
     .then(data => {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -1683,7 +1696,7 @@ function runDatabaseBackup(btn) {
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        showDbStatus('Network error: Failed to create backup', 'error');
+        showDbStatus(error.message || 'Network error: Failed to create backup', 'error');
         console.error('Backup error:', error);
     });
 }
@@ -1700,7 +1713,20 @@ function runDatabaseOptimize(btn) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `action=repair_optimize&csrf_token=${encodeURIComponent(getCsrfToken())}`
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Response was not JSON:', text);
+            throw new Error('Invalid server response');
+        }
+    })
     .then(data => {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -1709,7 +1735,7 @@ function runDatabaseOptimize(btn) {
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        showDbStatus('Network error: Failed to optimize database', 'error');
+        showDbStatus(error.message || 'Network error: Failed to optimize database', 'error');
         console.error('Optimize error:', error);
     });
 }
@@ -1726,7 +1752,20 @@ function runClearCache(btn) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `action=clear_cache&csrf_token=${encodeURIComponent(getCsrfToken())}`
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Response was not JSON:', text);
+            throw new Error('Invalid server response');
+        }
+    })
     .then(data => {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -1735,7 +1774,7 @@ function runClearCache(btn) {
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        showDbStatus('Network error: Failed to clear cache', 'error');
+        showDbStatus(error.message || 'Network error: Failed to clear cache', 'error');
         console.error('Clear cache error:', error);
     });
 }
