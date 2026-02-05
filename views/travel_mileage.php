@@ -1,4 +1,8 @@
 <?php
+// Get Google Maps API key
+$api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+$google_maps_api_key = $api_key_stmt->fetchColumn();
+
 // Get mileage rates and unit preference from system settings
 $rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate', 'mileage_rate_per_km', 'mileage_rate_per_mile', 'mileage_unit')");
 $rates = $rate_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -116,6 +120,11 @@ foreach ($mileage_entries as $entry) {
     $summary['total_amount'] += $entry['calculated_amount'] ?? 0;
 }
 ?>
+
+<!-- Load Google Maps API for address autocomplete -->
+<?php if (!empty($google_maps_api_key)): ?>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
+<?php endif; ?>
 
 <!-- Travel Mileage Tracking View -->
 <div class="page-header">
@@ -307,9 +316,9 @@ foreach ($mileage_entries as $entry) {
 
     <!-- Mileage Log -->
     <div class="content-card">
-        <div class="card-header" style="flex-wrap: wrap; gap: 15px;">
+        <div class="card-header mileage-log-header">
             <h3><i class="fas fa-list"></i> Mileage Log</h3>
-            <form method="GET" action="" class="filter-group" id="filterForm" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+            <form method="GET" action="" class="filter-group" id="filterForm">
                 <input type="hidden" name="page" value="mileage">
                 
                 <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -594,7 +603,53 @@ foreach ($mileage_entries as $entry) {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+    align-items: flex-end;
+    flex: 1;
+    margin-left: auto;
+}
+
+.filter-group > div {
+    min-width: fit-content;
+}
+
+.card-header.mileage-log-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
     align-items: center;
+}
+
+.card-header.mileage-log-header h3 {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+/* Responsive adjustments for filter group */
+@media (max-width: 1200px) {
+    .card-header.mileage-log-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .filter-group {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group > div {
+        width: 100%;
+    }
+    
+    .filter-group input[name="search"] {
+        width: 100% !important;
+    }
 }
 
 .form-input-small {
@@ -604,6 +659,7 @@ foreach ($mileage_entries as $entry) {
     border-radius: 6px;
     color: var(--text-white);
     font-size: 13px;
+    min-width: 120px;
 }
 </style>
 
@@ -738,6 +794,51 @@ document.addEventListener('DOMContentLoaded', function() {
     var pendingDeleteId = null;
     var stopIndex = 2; // Start with 2 since we have start (0) and end (1)
     
+    // Initialize Google Maps Autocomplete for address fields
+    function initGoogleMapsAutocomplete() {
+        if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+            // Initialize autocomplete for all address input fields
+            var addressInputs = document.querySelectorAll('.stop-address');
+            addressInputs.forEach(function(input) {
+                if (!input.dataset.autocompleteInit) {
+                    var autocomplete = new google.maps.places.Autocomplete(input, {
+                        fields: ['formatted_address', 'name']
+                    });
+                    input.dataset.autocompleteInit = 'true';
+                }
+            });
+            
+            // Also initialize for modal edit fields
+            var editFromLocation = document.getElementById('editFromLocation');
+            var editToLocation = document.getElementById('editToLocation');
+            if (editFromLocation && !editFromLocation.dataset.autocompleteInit) {
+                new google.maps.places.Autocomplete(editFromLocation, {
+                    fields: ['formatted_address', 'name']
+                });
+                editFromLocation.dataset.autocompleteInit = 'true';
+            }
+            if (editToLocation && !editToLocation.dataset.autocompleteInit) {
+                new google.maps.places.Autocomplete(editToLocation, {
+                    fields: ['formatted_address', 'name']
+                });
+                editToLocation.dataset.autocompleteInit = 'true';
+            }
+        }
+    }
+    
+    // Initialize on page load - with retry for async Google Maps loading
+    var initAttempts = 0;
+    var maxAttempts = 20;
+    function tryInitAutocomplete() {
+        if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+            initGoogleMapsAutocomplete();
+        } else if (initAttempts < maxAttempts) {
+            initAttempts++;
+            setTimeout(tryInitAutocomplete, 250);
+        }
+    }
+    tryInitAutocomplete();
+    
     // Show notification helper
     function showNotification(message, type) {
         var existing = document.querySelector('.notification-widget');
@@ -804,6 +905,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             container.insertBefore(newStop, endStop);
             stopIndex++;
+            
+            // Initialize Google Maps Autocomplete for the new field
+            initGoogleMapsAutocomplete();
         });
     }
     
