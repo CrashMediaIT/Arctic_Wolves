@@ -75,18 +75,7 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
-    .page-header {
-        margin-bottom: 24px;
-    }
-    .page-title {
-        font-size: 28px;
-        font-weight: 900;
-        color: #fff;
-        margin-bottom: 10px;
-    }
+    /* Payment History Styles - Using site-wide CSS variables */
     .stats-summary {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -94,17 +83,17 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
         margin-bottom: 24px;
     }
     .summary-card {
-        background: linear-gradient(135deg, var(--primary) 0%, #4a0070 100%);
-        border-radius: 8px;
+        background: linear-gradient(135deg, var(--primary, #6B46C1) 0%, var(--primary-hover, #7C3AED) 100%);
+        border-radius: var(--radius-lg, 8px);
         padding: 20px;
-        color: #fff;
+        color: var(--text-white, #fff);
     }
     .summary-card.green {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, var(--success, #10b981) 0%, var(--success-hover, #059669) 100%);
     }
     .summary-value {
         font-size: 32px;
-        font-weight: 900;
+        font-weight: var(--font-weight-black, 900);
         margin-bottom: 5px;
     }
     .summary-label {
@@ -112,16 +101,16 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
         opacity: 0.9;
     }
     .section-card {
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
+        border-radius: var(--radius-lg, 8px);
         padding: 24px;
         margin-bottom: 24px;
     }
     .section-title {
-        font-size: 20px;
-        font-weight: 700;
-        color: #fff;
+        font-size: var(--font-size-xl, 20px);
+        font-weight: var(--font-weight-bold, 700);
+        color: var(--text-white, #fff);
         margin-bottom: 20px;
     }
     .payment-table {
@@ -129,56 +118,56 @@ $total_credits = array_sum(array_column($credits, 'credit_amount'));
         border-collapse: collapse;
     }
     .payment-table thead {
-        background: #06080b;
+        background: var(--bg-main, #0A0A0F);
     }
     .payment-table th {
         text-align: left;
         padding: 12px;
-        color: #94a3b8;
-        font-size: 12px;
+        color: var(--text-secondary, #A8A8B8);
+        font-size: var(--font-size-sm, 12px);
         text-transform: uppercase;
-        font-weight: 700;
-        border-bottom: 1px solid #1e293b;
+        font-weight: var(--font-weight-bold, 700);
+        border-bottom: 1px solid var(--border, #2D2D3F);
     }
     .payment-table td {
         padding: 16px 12px;
-        border-bottom: 1px solid #1e293b;
-        color: #fff;
+        border-bottom: 1px solid var(--border, #2D2D3F);
+        color: var(--text-white, #fff);
     }
     .payment-table tr:hover {
-        background: rgba(255, 77, 0, 0.05);
+        background: rgba(107, 70, 193, 0.05);
     }
     .payment-type-badge {
         display: inline-block;
-        background: var(--primary);
-        color: #fff;
+        background: var(--primary, #6B46C1);
+        color: var(--text-white, #fff);
         padding: 4px 10px;
         border-radius: 12px;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: var(--font-weight-bold, 700);
     }
     .payment-type-badge.package {
-        background: #10b981;
+        background: var(--success, #10b981);
     }
     .credit-badge {
         display: inline-block;
-        background: #10b981;
-        color: #fff;
+        background: var(--success, #10b981);
+        color: var(--text-white, #fff);
         padding: 4px 10px;
         border-radius: 12px;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: var(--font-weight-bold, 700);
     }
     .credit-badge.refund {
-        background: #f59e0b;
+        background: var(--warning, #f59e0b);
     }
     .credit-badge.bonus {
-        background: #8b5cf6;
+        background: var(--primary-light, #8b5cf6);
     }
     .empty-state {
         text-align: center;
         padding: 40px 20px;
-        color: #64748b;
+        color: var(--text-muted, #6B6B7B);
     }
     .empty-state i {
         font-size: 48px;
