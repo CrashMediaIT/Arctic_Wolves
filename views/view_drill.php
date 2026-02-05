@@ -491,11 +491,12 @@ document.addEventListener('DOMContentLoaded', function() {
     container.setAttribute('data-ice-view', iceView);
     
     // Re-calculate canvas size after ice view is set (CSS aspect-ratio may have changed)
-    setTimeout(function() {
+    // Using requestAnimationFrame ensures CSS changes are applied before measuring dimensions
+    requestAnimationFrame(function() {
         canvas.width = container.offsetWidth;
         canvas.height = container.offsetHeight;
         renderDrill();
-    }, 50);
+    });
     
     // Function to render everything
     function renderDrill() {

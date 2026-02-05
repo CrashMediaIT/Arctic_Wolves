@@ -259,9 +259,9 @@ $is_demo_drills = false;
     padding-top: 85%;
 }
 
-/* Center ice: 72 ft × 85 ft (between the blue lines) - height/width = 85/72 ≈ 118% */
+/* Center ice: 72 ft × 85 ft (between the blue lines) - height/width = 85/72 ≈ 118.1% */
 .drill-image[data-ice-view="center"] {
-    padding-top: 118%;
+    padding-top: 118.1%;
 }
 
 .drill-image img {
