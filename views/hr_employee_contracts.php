@@ -498,16 +498,16 @@ $statusColors = [
                             <td><?= isset($dsTemplate['created_at']) ? date('M j, Y', strtotime($dsTemplate['created_at'])) : '-' ?></td>
                             <td>
                                 <div class="table-actions">
-                                    <button type="button" class="btn-icon" title="View Details" onclick="viewTemplateDetails(<?= $dsTemplate['id'] ?>)">
+                                    <button type="button" class="btn-icon template-action" data-action="view" data-id="<?= $dsTemplate['id'] ?>" data-name="<?= htmlspecialchars($dsTemplate['name']) ?>" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button type="button" class="btn-icon" title="Edit Template" onclick="editTemplate(<?= $dsTemplate['id'] ?>, '<?= htmlspecialchars(addslashes($dsTemplate['name'])) ?>')">
+                                    <button type="button" class="btn-icon template-action" data-action="edit" data-id="<?= $dsTemplate['id'] ?>" data-name="<?= htmlspecialchars($dsTemplate['name']) ?>" title="Edit Template">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button type="button" class="btn-icon" title="Clone Template" onclick="cloneTemplate(<?= $dsTemplate['id'] ?>, '<?= htmlspecialchars(addslashes($dsTemplate['name'])) ?>')">
+                                    <button type="button" class="btn-icon template-action" data-action="clone" data-id="<?= $dsTemplate['id'] ?>" data-name="<?= htmlspecialchars($dsTemplate['name']) ?>" title="Clone Template">
                                         <i class="fas fa-copy"></i>
                                     </button>
-                                    <button type="button" class="btn-icon text-error" title="Delete Template" onclick="deleteTemplate(<?= $dsTemplate['id'] ?>, '<?= htmlspecialchars(addslashes($dsTemplate['name'])) ?>')">
+                                    <button type="button" class="btn-icon text-error template-action" data-action="delete" data-id="<?= $dsTemplate['id'] ?>" data-name="<?= htmlspecialchars($dsTemplate['name']) ?>" title="Delete Template">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -1083,25 +1083,25 @@ function updateTemplatesTable(templates) {
     templates.forEach(template => {
         if (template.id && template.name) {
             const createdAt = template.created_at ? new Date(template.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
-            const escapedName = template.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const escapedName = escapeHtml(template.name);
             
             html += `
                 <tr data-template-id="${template.id}">
                     <td><code>${template.id}</code></td>
-                    <td><strong>${escapeHtml(template.name)}</strong></td>
+                    <td><strong>${escapedName}</strong></td>
                     <td>${createdAt}</td>
                     <td>
                         <div class="table-actions">
-                            <button type="button" class="btn-icon" title="View Details" onclick="viewTemplateDetails(${template.id})">
+                            <button type="button" class="btn-icon template-action" data-action="view" data-id="${template.id}" data-name="${escapedName}" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button type="button" class="btn-icon" title="Edit Template" onclick="editTemplate(${template.id}, '${escapedName}')">
+                            <button type="button" class="btn-icon template-action" data-action="edit" data-id="${template.id}" data-name="${escapedName}" title="Edit Template">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button type="button" class="btn-icon" title="Clone Template" onclick="cloneTemplate(${template.id}, '${escapedName}')">
+                            <button type="button" class="btn-icon template-action" data-action="clone" data-id="${template.id}" data-name="${escapedName}" title="Clone Template">
                                 <i class="fas fa-copy"></i>
                             </button>
-                            <button type="button" class="btn-icon text-error" title="Delete Template" onclick="deleteTemplate(${template.id}, '${escapedName}')">
+                            <button type="button" class="btn-icon text-error template-action" data-action="delete" data-id="${template.id}" data-name="${escapedName}" title="Delete Template">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -1315,4 +1315,29 @@ function deleteTemplate(templateId, templateName) {
         alert('Error deleting template: ' + error);
     });
 }
+
+// Event delegation for template action buttons
+document.addEventListener('click', function(e) {
+    const button = e.target.closest('.template-action');
+    if (!button) return;
+    
+    const action = button.dataset.action;
+    const templateId = parseInt(button.dataset.id, 10);
+    const templateName = button.dataset.name;
+    
+    switch (action) {
+        case 'view':
+            viewTemplateDetails(templateId);
+            break;
+        case 'edit':
+            editTemplate(templateId, templateName);
+            break;
+        case 'clone':
+            cloneTemplate(templateId, templateName);
+            break;
+        case 'delete':
+            deleteTemplate(templateId, templateName);
+            break;
+    }
+});
 </script>
