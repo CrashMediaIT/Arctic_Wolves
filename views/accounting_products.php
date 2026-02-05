@@ -2125,7 +2125,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'session') {
             // Build coach checkboxes for multi-select
             var coachCheckboxes = '';
-            var assignedCoaches = data.coach_ids ? data.coach_ids.split(',').map(function(id) { return id.trim(); }) : [];
+            var assignedCoaches = data.coach_ids && data.coach_ids.trim() ? data.coach_ids.split(',').map(function(id) { return id.trim(); }) : [];
             if (data.coach_id && assignedCoaches.indexOf(String(data.coach_id)) === -1) {
                 assignedCoaches.push(String(data.coach_id));
             }

@@ -537,7 +537,7 @@ if ($action == 'update_training_session') {
         
         // Insert new coach assignments
         if (!empty($coachIds)) {
-            $stmt = $pdo->prepare("INSERT IGNORE INTO session_coaches (session_id, coach_id) VALUES (?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO session_coaches (session_id, coach_id) VALUES (?, ?)");
             foreach ($coachIds as $coachId) {
                 $stmt->execute([$sessionId, $coachId]);
             }

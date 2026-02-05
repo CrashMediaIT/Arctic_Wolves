@@ -28,7 +28,7 @@ $sessions_query = "
            pp.name as practice_plan_name,
            pp.id as practice_plan_id,
            COUNT(DISTINCT b.id) as registered_count,
-           (SELECT COUNT(*) FROM session_coaches sc2 WHERE sc2.session_id = s.id AND sc2.coach_id = ?) as is_assigned_coach
+           MAX(CASE WHEN sc.coach_id = ? THEN 1 ELSE 0 END) as is_assigned_coach
     FROM sessions s
     LEFT JOIN users c ON s.coach_id = c.id
     LEFT JOIN session_coaches sc ON sc.session_id = s.id
