@@ -61,6 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $datesStmt->execute([$sessionId]);
             $session['dates'] = $datesStmt->fetchAll(PDO::FETCH_ASSOC);
             
+            // Fetch assigned coaches from session_coaches table
+            $coachesStmt = $pdo->prepare("SELECT coach_id FROM session_coaches WHERE session_id = ?");
+            $coachesStmt->execute([$sessionId]);
+            $coachIdList = $coachesStmt->fetchAll(PDO::FETCH_COLUMN);
+            $session['coach_ids'] = implode(',', $coachIdList);
+            
             echo json_encode(['success' => true, 'data' => $session]);
         } catch (Exception $e) {
             http_response_code(400);
@@ -498,6 +504,10 @@ if ($action == 'update_training_session') {
         $duration = intval($_POST['duration'] ?? 60);
         $maxParticipants = !empty($_POST['max_participants']) ? intval($_POST['max_participants']) : null;
         $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $sessionTypeId = !empty($_POST['session_type_id']) ? intval($_POST['session_type_id']) : null;
+        $locationId = !empty($_POST['location_id']) ? intval($_POST['location_id']) : null;
+        $practicePlanId = !empty($_POST['practice_plan_id']) ? intval($_POST['practice_plan_id']) : null;
+        $coachIds = isset($_POST['coach_ids']) ? array_map('intval', $_POST['coach_ids']) : [];
         
         if ($sessionId <= 0) {
             throw new Exception('Invalid session ID');
@@ -506,12 +516,34 @@ if ($action == 'update_training_session') {
             throw new Exception('Session name is required');
         }
         
+        $pdo->beginTransaction();
+        
+        // Set primary coach_id to first selected coach (for backward compatibility)
+        $primaryCoachId = !empty($coachIds) ? $coachIds[0] : null;
+        
         $stmt = $pdo->prepare("
             UPDATE training_session_templates 
-            SET name = ?, description = ?, price = ?, duration_minutes = ?, max_participants = ?, is_active = ?
+            SET name = ?, description = ?, price = ?, duration_minutes = ?, max_participants = ?, is_active = ?,
+                session_type_id = ?, location_id = ?, practice_plan_id = ?, coach_id = ?
             WHERE id = ?
         ");
-        $stmt->execute([$name, $description, $price, $duration, $maxParticipants, $isActive, $sessionId]);
+        $stmt->execute([$name, $description, $price, $duration, $maxParticipants, $isActive,
+                        $sessionTypeId, $locationId, $practicePlanId, $primaryCoachId, $sessionId]);
+        
+        // Update session_coaches junction table
+        // Remove existing coach assignments
+        $stmt = $pdo->prepare("DELETE FROM session_coaches WHERE session_id = ?");
+        $stmt->execute([$sessionId]);
+        
+        // Insert new coach assignments
+        if (!empty($coachIds)) {
+            $stmt = $pdo->prepare("INSERT IGNORE INTO session_coaches (session_id, coach_id) VALUES (?, ?)");
+            foreach ($coachIds as $coachId) {
+                $stmt->execute([$sessionId, $coachId]);
+            }
+        }
+        
+        $pdo->commit();
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -520,6 +552,9 @@ if ($action == 'update_training_session') {
         }
         header("Location: dashboard.php?page=products&tab=sessions&status=updated");
     } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log("Update training session error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');

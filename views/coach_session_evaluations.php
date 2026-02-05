@@ -7,9 +7,9 @@
 </div>
 
 <?php
-// Fetch sessions with evaluations
+// Fetch sessions with evaluations - only upcoming sessions assigned to this coach (admins see all)
 try {
-    $stmt = $pdo->prepare("
+    $eval_query = "
         SELECT s.id, s.title, s.session_date, s.duration_minutes, s.status as session_status,
                se.id as evaluation_id, se.name as evaluation_name, se.status as evaluation_status,
                se.created_at as evaluation_created,
@@ -18,9 +18,21 @@ try {
         FROM sessions s
         INNER JOIN session_evaluations se ON s.id = se.session_id
         LEFT JOIN locations l ON s.location_id = l.id
-        ORDER BY s.session_date DESC
-    ");
-    $stmt->execute();
+        LEFT JOIN session_coaches sc ON sc.session_id = s.id
+        WHERE s.session_date >= CURDATE()
+    ";
+    $eval_params = [];
+    
+    if ($user_role !== 'admin') {
+        $eval_query .= " AND (s.coach_id = ? OR sc.coach_id = ?)";
+        $eval_params[] = $user_id;
+        $eval_params[] = $user_id;
+    }
+    
+    $eval_query .= " GROUP BY s.id, se.id ORDER BY s.session_date ASC";
+    
+    $stmt = $pdo->prepare($eval_query);
+    $stmt->execute($eval_params);
     $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get sessions for calendar (filter to current and future months)
@@ -936,10 +948,10 @@ $activeView = $_GET['view'] ?? 'list';
 <script>
 // Switch eval view function
 function switchEvalView(view) {
-    document.querySelectorAll('.session-evals-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page-tabs .page-tab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
     
-    document.querySelector('.session-evals-tab[data-view="' + view + '"]').classList.add('active');
+    document.querySelector('.page-tabs .page-tab[data-view="' + view + '"]').classList.add('active');
     document.getElementById(view + '-view').classList.add('active');
     
     if (view === 'calendar') {

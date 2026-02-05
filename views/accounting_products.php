@@ -1624,6 +1624,12 @@ $activeTab = $_GET['tab'] ?? 'sessions';
 </div>
 
 <script>
+// Session edit data (from PHP)
+var editCoaches = <?= json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $c['role']]; }, $coaches)) ?>;
+var editLocations = <?= json_encode(array_map(function($l) { return ['id' => $l['id'], 'name' => $l['name'], 'city' => $l['city'] ?? '']; }, $locations)) ?>;
+var editPracticePlans = <?= json_encode(array_map(function($p) { return ['id' => $p['id'], 'name' => $p['name']]; }, $practicePlans)) ?>;
+var editSessionTypes = <?= json_encode(array_map(function($t) { return ['id' => $t['id'], 'name' => $t['name']]; }, $sessionTypes)) ?>;
+
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
     var sessionDateIndex = 0;
@@ -2117,6 +2123,38 @@ document.addEventListener('DOMContentLoaded', function() {
         var csrfToken = document.querySelector('input[name="csrf_token"]').value;
         
         if (type === 'session') {
+            // Build coach checkboxes for multi-select
+            var coachCheckboxes = '';
+            var assignedCoaches = data.coach_ids ? data.coach_ids.split(',').map(function(id) { return id.trim(); }) : [];
+            if (data.coach_id && assignedCoaches.indexOf(String(data.coach_id)) === -1) {
+                assignedCoaches.push(String(data.coach_id));
+            }
+            editCoaches.forEach(function(coach) {
+                var checked = assignedCoaches.indexOf(String(coach.id)) !== -1 ? ' checked' : '';
+                coachCheckboxes += '<label class="skill-checkbox" style="margin-bottom: 4px;"><input type="checkbox" name="coach_ids[]" value="' + coach.id + '"' + checked + '><span>' + escapeHtml(coach.name) + ' (' + escapeHtml(coach.role) + ')</span></label>';
+            });
+            
+            // Build location options
+            var locationOptions = '<option value="">Select Location (Optional)</option>';
+            editLocations.forEach(function(loc) {
+                var selected = data.location_id == loc.id ? ' selected' : '';
+                locationOptions += '<option value="' + loc.id + '"' + selected + '>' + escapeHtml(loc.name) + (loc.city ? ' - ' + escapeHtml(loc.city) : '') + '</option>';
+            });
+            
+            // Build practice plan options
+            var planOptions = '<option value="">Select Practice Plan (Optional)</option>';
+            editPracticePlans.forEach(function(plan) {
+                var selected = data.practice_plan_id == plan.id ? ' selected' : '';
+                planOptions += '<option value="' + plan.id + '"' + selected + '>' + escapeHtml(plan.name) + '</option>';
+            });
+            
+            // Build session type options
+            var typeOptions = '<option value="">Select Category (Optional)</option>';
+            editSessionTypes.forEach(function(st) {
+                var selected = data.session_type_id == st.id ? ' selected' : '';
+                typeOptions += '<option value="' + st.id + '"' + selected + '>' + escapeHtml(st.name) + '</option>';
+            });
+            
             container.innerHTML = 
                 '<form method="POST" action="process_admin_action.php" id="edit-session-form">' +
                 '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
@@ -2152,6 +2190,25 @@ document.addEventListener('DOMContentLoaded', function() {
                             '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
                         '</select>' +
                     '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Session Type Category</label>' +
+                        '<select name="session_type_id" class="form-input">' + typeOptions + '</select>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Location</label>' +
+                        '<select name="location_id" class="form-input">' + locationOptions + '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Practice Plan</label>' +
+                    '<select name="practice_plan_id" class="form-input">' + planOptions + '</select>' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Coaches</label>' +
+                    '<p style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Select one or more coaches for this session</p>' +
+                    '<div class="skill-selector" style="max-height: 150px; overflow-y: auto;">' + coachCheckboxes + '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
                     '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-session-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
