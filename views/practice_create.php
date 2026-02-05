@@ -230,8 +230,8 @@ $action_value = $is_editing ? 'update' : 'create';
                         }
                     }
                     ?>
-                    <div class="drill-selector-card" data-drill-id="<?= $drillId ?>" data-title="<?= $title ?>" data-category="<?= $category ?>">
-                        <div class="drill-selector-image" data-ice-view="<?= htmlspecialchars($drillIceView) ?>">
+                    <div class="drill-card" data-drill-id="<?= $drillId ?>" data-title="<?= $title ?>" data-category="<?= $category ?>">
+                        <div class="drill-image" data-ice-view="<?= htmlspecialchars($drillIceView) ?>">
                             <?php if ($hasCustomImage): ?>
                                 <img src="<?= htmlspecialchars($drill['custom_image']) ?>" alt="<?= $title ?>">
                             <?php else: ?>
@@ -240,14 +240,20 @@ $action_value = $is_editing ? 'update' : 'create';
                                 </div>
                             <?php endif; ?>
                         </div>
-                        <div class="drill-selector-content">
-                            <h4 class="drill-selector-title"><?= $title ?></h4>
-                            <?php if (!empty($category)): ?>
-                                <span class="drill-selector-category"><?= $category ?></span>
-                            <?php endif; ?>
-                            <p class="drill-selector-description"><?= $description ?><?= strlen($drill['description'] ?? '') > 100 ? '...' : '' ?></p>
+                        <div class="drill-content">
+                            <div class="drill-header">
+                                <h4 class="drill-title"><?= $title ?></h4>
+                                <?php if (!empty($category)): ?>
+                                    <div class="drill-category">
+                                        <span class="category-badge"><?= $category ?></span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            <p class="drill-description"><?= $description ?><?= strlen($drill['description'] ?? '') > 100 ? '...' : '' ?></p>
                         </div>
-                        <button type="button" class="btn btn-primary btn-sm drill-add-btn"><i class="fas fa-plus"></i> Add</button>
+                        <div class="drill-actions">
+                            <button type="button" class="btn btn-primary btn-sm drill-add-btn"><i class="fas fa-plus"></i> Add</button>
+                        </div>
                     </div>
                     <?php
                 }
@@ -431,11 +437,11 @@ $action_value = $is_editing ? 'update' : 'create';
     font-size: 14px;
 }
 
-/* Drill Selector Modal - Card-based layout */
+/* Drill Selector Modal - Using same card styles as Drill Library */
 .drill-selector-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
 }
 
 @media (max-width: 768px) {
@@ -444,109 +450,135 @@ $action_value = $is_editing ? 'update' : 'create';
     }
 }
 
-.drill-selector-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-main);
+.drill-selector-grid .drill-card {
+    background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
+    transition: all 0.3s ease;
+    max-width: 380px;
     cursor: pointer;
-    transition: all 0.2s;
 }
 
-.drill-selector-card:hover {
+.drill-selector-grid .drill-card:hover {
     border-color: var(--primary);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 20px rgba(107, 70, 193, 0.2);
 }
 
-.drill-selector-image {
+.drill-selector-grid .drill-image {
     position: relative;
     width: 100%;
-    /* NHL rink aspect ratio: 200 ft (length) × 85 ft (width)
-     * For horizontal layout: height/width = 85/200 = 0.425 = 42.5% */
+    /* Default for full ice (200/85 ratio) - width/height ≈ 2.35, so height as % of width ≈ 42.5% */
     padding-top: 42.5%;
-    background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
-    border-bottom: 1px solid var(--border);
+    background: var(--bg-main);
     overflow: hidden;
+    transition: padding-top 0.3s ease-in-out;
 }
 
-.drill-selector-image[data-ice-view="half-top"],
-.drill-selector-image[data-ice-view="half-bottom"] {
-    /* Half ice view (vertical): width/half-length = 85/100 = 0.85, inverted = 117.6% */
-    padding-top: 117.6%;
+/* Dynamic aspect ratios based on ice view for thumbnails */
+/* Full ice: 200 ft × 85 ft (horizontal, net on left/right) - height/width = 85/200 = 42.5% */
+.drill-selector-grid .drill-image[data-ice-view="full"] {
+    padding-top: 42.5%;
 }
 
-.drill-selector-image[data-ice-view="left-zone"],
-.drill-selector-image[data-ice-view="right-zone"] {
-    /* Zone view: approximately 85% aspect ratio */
+/* Half ice: Reduced height for better display in modal (was 117.6%, now 75%) */
+.drill-selector-grid .drill-image[data-ice-view="half-top"],
+.drill-selector-grid .drill-image[data-ice-view="half-bottom"] {
+    padding-top: 75%;
+}
+
+/* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) - height/width = 85/100 = 85% */
+.drill-selector-grid .drill-image[data-ice-view="left-zone"],
+.drill-selector-grid .drill-image[data-ice-view="right-zone"] {
     padding-top: 85%;
 }
 
-.drill-selector-image[data-ice-view="center"] {
-    /* Center ice view: similar to half ice */
-    padding-top: 118.1%;
+/* Center ice: Reduced height for better display (was 118.1%, now 75%) */
+.drill-selector-grid .drill-image[data-ice-view="center"] {
+    padding-top: 75%;
 }
 
-.drill-selector-image img {
+.drill-selector-grid .drill-image img {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
 }
 
-.drill-selector-image .drill-diagram-preview {
+.drill-selector-grid .drill-diagram-preview {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-}
-
-.drill-selector-image .drill-thumbnail-canvas {
-    width: 100%;
-    height: 100%;
-}
-
-.drill-selector-content {
-    padding: 12px;
-    flex: 1;
-}
-
-.drill-selector-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-white);
-    margin: 0 0 4px 0;
-    line-height: 1.3;
-}
-
-.drill-selector-category {
-    display: inline-block;
-    font-size: 10px;
-    color: var(--primary);
-    background: rgba(107, 70, 193, 0.15);
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-bottom: 6px;
-}
-
-.drill-selector-description {
-    font-size: 12px;
-    color: var(--text-dim);
-    line-height: 1.4;
-    margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
     overflow: hidden;
 }
 
+.drill-selector-grid .drill-diagram-preview canvas.drill-thumbnail-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.drill-selector-grid .drill-content {
+    padding: 20px;
+}
+
+.drill-selector-grid .drill-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 12px;
+}
+
+.drill-selector-grid .drill-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-white);
+    flex: 1;
+    margin: 0;
+}
+
+.drill-selector-grid .drill-category {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.drill-selector-grid .category-badge {
+    background: rgba(107, 70, 193, 0.15);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.drill-selector-grid .drill-description {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 0;
+}
+
+.drill-selector-grid .drill-actions {
+    padding: 16px 20px;
+    background: var(--bg-main);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .drill-add-btn {
-    margin: 0 12px 12px 12px;
+    width: 100%;
 }
 
 /* Legacy drill-selector-item support */
@@ -728,8 +760,8 @@ function closeDrillSelector() {
 
 function filterDrillSelector() {
     const search = document.getElementById('drillSelectorSearch').value.toLowerCase();
-    // Handle both old (.drill-selector-item) and new (.drill-selector-card) selectors
-    const items = document.querySelectorAll('.drill-selector-card, .drill-selector-item');
+    // Handle both old (.drill-selector-item) and new (.drill-card) selectors in drill selector grid
+    const items = document.querySelectorAll('.drill-selector-grid .drill-card, .drill-selector-item');
     items.forEach(item => {
         const title = (item.dataset.title || '').toLowerCase();
         const category = (item.dataset.category || '').toLowerCase();
@@ -740,8 +772,8 @@ function filterDrillSelector() {
 
 // Use event delegation for drill selection
 document.addEventListener('click', function(e) {
-    // Handle new card-based selector
-    const drillCard = e.target.closest('.drill-selector-card');
+    // Handle new card-based selector (now using .drill-card within .drill-selector-grid)
+    const drillCard = e.target.closest('.drill-selector-grid .drill-card');
     if (drillCard) {
         const id = parseInt(drillCard.dataset.drillId, 10);
         const title = drillCard.dataset.title || '';
@@ -1030,7 +1062,7 @@ const THUMBNAIL_SIZES = {
 
 // Render drill thumbnails in selector modal (matching drills_library.php)
 function renderDrillSelectorThumbnails() {
-    const previews = document.querySelectorAll('.drill-selector-card .drill-diagram-preview');
+    const previews = document.querySelectorAll('.drill-selector-grid .drill-card .drill-diagram-preview');
     
     previews.forEach(preview => {
         const canvas = preview.querySelector('.drill-thumbnail-canvas');

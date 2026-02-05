@@ -248,11 +248,10 @@ $is_demo_drills = false;
     padding-top: 42.5%;
 }
 
-/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom)
-   height/width = 100/85 = 1.1765... ≈ 117.6% (rounded for browser compatibility) */
+/* Half ice: Reduced height for better card display (was 117.6%, now 75%) */
 .drill-image[data-ice-view="half-top"],
 .drill-image[data-ice-view="half-bottom"] {
-    padding-top: 117.6%;
+    padding-top: 75%;
 }
 
 /* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) - height/width = 85/100 = 85% */
@@ -261,10 +260,9 @@ $is_demo_drills = false;
     padding-top: 85%;
 }
 
-/* Center ice: 72 ft × 85 ft (between the blue lines)
-   height/width = 85/72 = 1.1806... ≈ 118.1% (rounded for browser compatibility) */
+/* Center ice: Reduced height for better card display (was 118.1%, now 75%) */
 .drill-image[data-ice-view="center"] {
-    padding-top: 118.1%;
+    padding-top: 75%;
 }
 
 .drill-image img {
