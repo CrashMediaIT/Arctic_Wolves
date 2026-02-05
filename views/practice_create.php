@@ -722,6 +722,8 @@ $action_value = $is_editing ? 'update' : 'create';
 }
 </style>
 
+<!-- Shared Ice Canvas Renderer - ensures consistent rink drawing across all views -->
+<script src="js/ice_canvas.js"></script>
 <script>
 // Notification helper function
 function showNotification(message, type = 'info') {
@@ -751,6 +753,20 @@ let practiceDrills = [];
 let draggedItem = null;
 
 function showDrillSelector() {
+    // Hide drills that are already in the practice plan
+    const addedDrillIds = practiceDrills.map(d => d.id);
+    const items = document.querySelectorAll('.drill-selector-grid .drill-card, .drill-selector-item');
+    items.forEach(item => {
+        const drillId = parseInt(item.dataset.drillId, 10);
+        if (addedDrillIds.includes(drillId)) {
+            item.style.display = 'none';
+            item.setAttribute('data-already-added', 'true');
+        } else {
+            item.style.display = '';
+            item.removeAttribute('data-already-added');
+        }
+    });
+    
     document.getElementById('drillSelectorModal').classList.add('active');
 }
 
@@ -760,9 +776,16 @@ function closeDrillSelector() {
 
 function filterDrillSelector() {
     const search = document.getElementById('drillSelectorSearch').value.toLowerCase();
+    const addedDrillIds = practiceDrills.map(d => d.id);
     // Handle both old (.drill-selector-item) and new (.drill-card) selectors in drill selector grid
     const items = document.querySelectorAll('.drill-selector-grid .drill-card, .drill-selector-item');
     items.forEach(item => {
+        const drillId = parseInt(item.dataset.drillId, 10);
+        // Don't show drills that are already added
+        if (addedDrillIds.includes(drillId)) {
+            item.style.display = 'none';
+            return;
+        }
         const title = (item.dataset.title || '').toLowerCase();
         const category = (item.dataset.category || '').toLowerCase();
         const matches = title.includes(search) || category.includes(search);
@@ -1105,57 +1128,19 @@ function renderDrillSelectorThumbnails() {
         const h = canvas.height;
         
         function renderThumbnail(logoImage, logoLoaded) {
-            // Draw ice background
-            ctx.fillStyle = '#f0f7fa';
-            ctx.fillRect(0, 0, w, h);
-            
-            // Draw center branding
-            ctx.save();
-            ctx.globalAlpha = 0.12;
-            
-            if (logoLoaded && logoImage) {
-                const maxLogoWidth = w * 0.35;
-                const maxLogoHeight = h * 0.3;
-                const imgAspect = logoImage.width / logoImage.height;
-                let logoWidth = maxLogoWidth;
-                let logoHeight = logoWidth / imgAspect;
-                
-                if (logoHeight > maxLogoHeight) {
-                    logoHeight = maxLogoHeight;
-                    logoWidth = logoHeight * imgAspect;
-                }
-                
-                ctx.drawImage(logoImage, (w - logoWidth) / 2, (h - logoHeight) / 2, logoWidth, logoHeight);
+            // Use the shared IceCanvasRenderer for consistent rink drawing
+            if (window.IceCanvasRenderer) {
+                IceCanvasRenderer.drawRink(ctx, w, h, iceView, {
+                    logoImage: logoImage,
+                    logoLoaded: logoLoaded
+                });
             } else {
-                ctx.fillStyle = '#7000a4';
-                ctx.font = 'bold 18px Inter, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('ARCTIC WOLVES', w/2, h/2);
-            }
-            ctx.restore();
-            
-            // Draw rink markings based on ice view (matching drills_library.php)
-            switch(iceView) {
-                case 'half-top':
-                    drawThumbnailHalfIce(ctx, w, h, 'top');
-                    break;
-                case 'half-bottom':
-                    drawThumbnailHalfIce(ctx, w, h, 'bottom');
-                    break;
-                case 'left-zone':
-                    drawThumbnailZone(ctx, w, h, 'left');
-                    break;
-                case 'right-zone':
-                    drawThumbnailZone(ctx, w, h, 'right');
-                    break;
-                case 'center':
-                    drawThumbnailCenterIce(ctx, w, h);
-                    break;
-                case 'full':
-                default:
-                    drawThumbnailFullIce(ctx, w, h);
-                    break;
+                // Fallback if shared module not loaded - draw basic ice
+                ctx.fillStyle = '#f0f7fa';
+                ctx.fillRect(0, 0, w, h);
+                ctx.strokeStyle = '#0033a0';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(2, 2, w - 4, h - 4);
             }
             
             // Draw diagram objects
@@ -1170,66 +1155,6 @@ function renderDrillSelectorThumbnails() {
                     drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY);
                 });
             }
-            
-            // Draw rink border that adapts to view type (matching drill designer)
-            ctx.strokeStyle = '#0033a0';
-            ctx.lineWidth = 2;
-            
-            // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio)
-            let cornerRadius;
-            if (iceView === 'half-top' || iceView === 'half-bottom') {
-                cornerRadius = w * NHL_RINK.CORNER_RADIUS;
-            } else {
-                cornerRadius = h * NHL_RINK.CORNER_RADIUS;
-            }
-            
-            ctx.beginPath();
-            if (iceView === 'half-top') {
-                ctx.moveTo(cornerRadius, 0);
-                ctx.lineTo(w - cornerRadius, 0);
-                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-                ctx.lineTo(w, h);
-                ctx.lineTo(0, h);
-                ctx.lineTo(0, cornerRadius);
-                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
-            } else if (iceView === 'half-bottom') {
-                ctx.moveTo(0, 0);
-                ctx.lineTo(w, 0);
-                ctx.lineTo(w, h - cornerRadius);
-                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-                ctx.lineTo(cornerRadius, h);
-                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-                ctx.lineTo(0, 0);
-            } else if (iceView === 'left-zone') {
-                ctx.moveTo(cornerRadius, 0);
-                ctx.lineTo(w, 0);
-                ctx.lineTo(w, h);
-                ctx.lineTo(cornerRadius, h);
-                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-                ctx.lineTo(0, cornerRadius);
-                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
-            } else if (iceView === 'right-zone') {
-                ctx.moveTo(0, 0);
-                ctx.lineTo(w - cornerRadius, 0);
-                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-                ctx.lineTo(w, h - cornerRadius);
-                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-                ctx.lineTo(0, h);
-                ctx.lineTo(0, 0);
-            } else {
-                // Full ice and center - all corners rounded
-                ctx.moveTo(cornerRadius, 0);
-                ctx.lineTo(w - cornerRadius, 0);
-                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-                ctx.lineTo(w, h - cornerRadius);
-                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-                ctx.lineTo(cornerRadius, h);
-                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-                ctx.lineTo(0, cornerRadius);
-                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
-            }
-            ctx.closePath();
-            ctx.stroke();
         }
         
         if (centerLogoUrl) {
