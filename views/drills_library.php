@@ -248,13 +248,6 @@ $is_demo_drills = false;
     padding-top: 42.5%;
 }
 
-/* Half ice: Reduced height for better card display in grid layouts
-   Original was 117.6% (true aspect ratio), reduced to 75% to prevent cards from being excessively tall */
-.drill-image[data-ice-view="half-top"],
-.drill-image[data-ice-view="half-bottom"] {
-    padding-top: 75%;
-}
-
 /* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) - height/width = 85/100 = 85% */
 .drill-image[data-ice-view="left-zone"],
 .drill-image[data-ice-view="right-zone"] {

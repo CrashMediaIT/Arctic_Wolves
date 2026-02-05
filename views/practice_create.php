@@ -482,12 +482,6 @@ $action_value = $is_editing ? 'update' : 'create';
     padding-top: 42.5%;
 }
 
-/* Half ice: Reduced height for better display in modal (was 117.6%, now 75%) */
-.drill-selector-grid .drill-image[data-ice-view="half-top"],
-.drill-selector-grid .drill-image[data-ice-view="half-bottom"] {
-    padding-top: 75%;
-}
-
 /* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) - height/width = 85/100 = 85% */
 .drill-selector-grid .drill-image[data-ice-view="left-zone"],
 .drill-selector-grid .drill-image[data-ice-view="right-zone"] {
@@ -1442,96 +1436,6 @@ function drawThumbnailTrapezoid(ctx, w, h, side) {
         ctx.lineTo(w, h/2 + trapezoidTop);
         ctx.stroke();
     }
-}
-
-function drawThumbnailHalfIce(ctx, w, h, side) {
-    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
-    const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
-    const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
-    const cornerRadius = w * NHL_RINK.CORNER_RADIUS;
-    
-    const goalLineRatio = 11 / 100;
-    const blueLineRatio = 64 / 100;
-    const faceoffYRatio = 31 / 100;
-    
-    const blueLineY = side === 'top' ? h * blueLineRatio : h * (1 - blueLineRatio);
-    ctx.strokeStyle = '#0033a0';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, blueLineY);
-    ctx.lineTo(w, blueLineY);
-    ctx.stroke();
-    
-    const goalY = side === 'top' ? h * goalLineRatio : h * (1 - goalLineRatio);
-    const faceoffY = side === 'top' ? h * faceoffYRatio : h * (1 - faceoffYRatio);
-    
-    ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(w * faceoffFromBoards, faceoffY, faceoffRadius, 0, 2 * Math.PI);
-    ctx.stroke();
-    ctx.fillStyle = '#c41e3a';
-    ctx.beginPath();
-    ctx.arc(w * faceoffFromBoards, faceoffY, 2, 0, 2 * Math.PI);
-    ctx.fill();
-    drawThumbnailHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
-    drawThumbnailRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w, true);
-    
-    ctx.strokeStyle = '#c41e3a';
-    ctx.beginPath();
-    ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 2, 0, 2 * Math.PI);
-    ctx.fill();
-    drawThumbnailHashMarks(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
-    drawThumbnailRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w, true);
-    
-    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
-    ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    if (side === 'top') {
-        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
-    } else {
-        ctx.arc(w * 0.5, goalY, creaseRadius, Math.PI, 0);
-    }
-    ctx.fill();
-    ctx.stroke();
-    
-    ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    const distFromEnd = side === 'top' ? goalY : (h - goalY);
-    let goalLineStartX = 0;
-    let goalLineEndX = w;
-    if (distFromEnd < cornerRadius) {
-        const dy = cornerRadius - distFromEnd;
-        const xOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dy * dy);
-        goalLineStartX = xOffset;
-        goalLineEndX = w - xOffset;
-    }
-    ctx.moveTo(goalLineStartX, goalY);
-    ctx.lineTo(goalLineEndX, goalY);
-    ctx.stroke();
-    
-    drawThumbnailHalfIceTrapezoid(ctx, w, h, side, goalY);
-}
-
-function drawThumbnailHalfIceTrapezoid(ctx, w, h, side, goalY) {
-    const trapezoidBase = w * NHL_RINK.TRAPEZOID_BASE / 2;
-    const trapezoidTop = w * NHL_RINK.TRAPEZOID_TOP / 2;
-    ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 1;
-    const boardY = side === 'top' ? 0 : h;
-    ctx.beginPath();
-    ctx.moveTo(w/2 - trapezoidBase, goalY);
-    ctx.lineTo(w/2 - trapezoidTop, boardY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(w/2 + trapezoidBase, goalY);
-    ctx.lineTo(w/2 + trapezoidTop, boardY);
-    ctx.stroke();
 }
 
 function drawThumbnailZone(ctx, w, h, side) {

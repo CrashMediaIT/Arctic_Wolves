@@ -55,7 +55,7 @@ $coachName = htmlspecialchars(($drill['first_name'] ?? '') . ' ' . ($drill['last
 
 // Extract ice view from diagram data for proper initial CSS aspect ratio
 // Validate against allowed values to prevent injection
-$allowedIceViews = ['full', 'half-top', 'half-bottom', 'left-zone', 'right-zone', 'center'];
+$allowedIceViews = ['full', 'left-zone', 'right-zone', 'center'];
 $drillIceView = 'full';
 if (!empty($drill['diagram_data'])) {
     $diagramParsed = json_decode($drill['diagram_data'], true);
@@ -326,16 +326,6 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
 .ice-rink-canvas.view-only[data-ice-view="full"] {
     aspect-ratio: 200/85;
     border-radius: 80px;
-}
-
-/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom) */
-.ice-rink-canvas.view-only[data-ice-view="half-top"],
-.ice-rink-canvas.view-only[data-ice-view="half-bottom"] {
-    aspect-ratio: 85/100;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-    border-radius: 80px 80px 20px 20px;
 }
 
 /* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) */

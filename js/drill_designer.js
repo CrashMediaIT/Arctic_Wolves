@@ -921,12 +921,6 @@ class DrillDesigner {
         
         // Draw based on ice view
         switch(iceView) {
-            case 'half-top':
-                this.drawHalfIce(ctx, w, h, 'top');
-                break;
-            case 'half-bottom':
-                this.drawHalfIce(ctx, w, h, 'bottom');
-                break;
             case 'left-zone':
                 this.drawZone(ctx, w, h, 'left');
                 break;
@@ -950,43 +944,10 @@ class DrillDesigner {
         ctx.lineWidth = 4;
         
         // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio)
-        // For full ice (horizontal layout), use height as reference since width represents length
-        // For half ice (vertical layout with net at top/bottom), use width as reference
-        let cornerRadius;
-        if (iceView === 'half-top' || iceView === 'half-bottom') {
-            // Half ice views are oriented vertically - width represents the 85 ft rink width
-            cornerRadius = w * NHL_RINK.CORNER_RADIUS;
-        } else {
-            // Full ice, zones, and center - height represents the 85 ft rink width
-            cornerRadius = h * NHL_RINK.CORNER_RADIUS;
-        }
+        // For full ice, zones, and center - height represents the 85 ft rink width
+        const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
         
-        if (iceView === 'half-top' || iceView === 'half-bottom') {
-            // Half ice views - curved corners at net end, flat at center line end
-            const isTop = iceView === 'half-top';
-            ctx.beginPath();
-            if (isTop) {
-                // Curved corners at top (net end), flat at bottom (center line)
-                ctx.moveTo(cornerRadius + 2, 2);
-                ctx.lineTo(w - cornerRadius - 2, 2);
-                ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
-                ctx.lineTo(w - 2, h - 2);
-                ctx.lineTo(2, h - 2);
-                ctx.lineTo(2, cornerRadius + 2);
-                ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
-            } else {
-                // Flat at top (center line), curved corners at bottom (net end)
-                ctx.moveTo(2, 2);
-                ctx.lineTo(w - 2, 2);
-                ctx.lineTo(w - 2, h - cornerRadius - 2);
-                ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
-                ctx.lineTo(cornerRadius + 2, h - 2);
-                ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
-                ctx.lineTo(2, 2);
-            }
-            ctx.closePath();
-            ctx.stroke();
-        } else if (iceView === 'left-zone' || iceView === 'right-zone') {
+        if (iceView === 'left-zone' || iceView === 'right-zone') {
             // Zone views - curved corners at net end, flat at blue line end
             const isLeft = iceView === 'left-zone';
             ctx.beginPath();
@@ -1336,188 +1297,6 @@ class DrillDesigner {
                 ctx.stroke();
             });
         }
-    }
-    
-    drawHalfIce(ctx, w, h, side) {
-        // Half ice shows one end zone with faceoff circles
-        // Half ice represents approximately half the rink - from boards to center line
-        // NHL half ice: ~100 ft (half of 200 ft length) × 85 ft width
-        // The canvas now represents this portion properly
-        
-        // Use width as the 85 ft reference since half-ice is oriented with net at top/bottom
-        const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
-        const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
-        const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
-        
-        // Calculate positions based on half-ice proportions
-        // Half rink: goal line is 11 ft from end, blue line is 64 ft from end
-        // In half ice view, we show from end boards to center (100 ft)
-        // Goal line: 11 ft from end = 11/100 = 0.11 of half ice height
-        // Blue line: 64 ft from end = 64/100 = 0.64 of half ice height
-        // Faceoff dot: 31 ft from end (11 + 20) = 31/100 = 0.31 of half ice height
-        const goalLineRatio = 11 / 100;      // Goal line at 11% from net end
-        const blueLineRatio = 64 / 100;      // Blue line at 64% from net end
-        const faceoffYRatio = 31 / 100;      // Faceoff dot at 31% from net end
-        
-        // Blue line position
-        const blueLineY = side === 'top' ? h * blueLineRatio : h * (1 - blueLineRatio);
-        
-        // Blue line
-        ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(0, blueLineY);
-        ctx.lineTo(w, blueLineY);
-        ctx.stroke();
-        
-        // Goal line position
-        const goalY = side === 'top' ? h * goalLineRatio : h * (1 - goalLineRatio);
-        
-        // Faceoff circles - positioned 22 ft from boards on each side
-        const faceoffY = side === 'top' ? h * faceoffYRatio : h * (1 - faceoffYRatio);
-        
-        // Left faceoff circle
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(w * faceoffFromBoards, faceoffY, faceoffRadius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.fillStyle = '#c41e3a';
-        ctx.beginPath();
-        ctx.arc(w * faceoffFromBoards, faceoffY, 4, 0, 2 * Math.PI);
-        ctx.fill();
-        this.drawHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
-        // Draw restraint lines for half ice (goal is at top or bottom)
-        this.drawHalfIceRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w);
-        
-        // Right faceoff circle  
-        ctx.strokeStyle = '#c41e3a';
-        ctx.beginPath();
-        ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 4, 0, 2 * Math.PI);
-        ctx.fill();
-        this.drawHashMarks(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
-        this.drawHalfIceRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w);
-        
-        // Goal crease - 6 ft radius semicircle
-        ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        if (side === 'top') {
-            ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
-        } else {
-            ctx.arc(w * 0.5, goalY, creaseRadius, Math.PI, 0);
-        }
-        ctx.fill();
-        ctx.stroke();
-        
-        // Goal line - extends to boards but respects the curved corners
-        // The corners are curved with cornerRadius, so we need to clip the goal line
-        // to not exceed the board boundary at this y-position
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        
-        // Calculate the x-offset due to curved corners
-        // In half-ice view, width represents the 85 ft rink width
-        const cornerRadius = w * NHL_RINK.CORNER_RADIUS;
-        
-        // Distance from the net end (top or bottom) to the goal line
-        const distFromEnd = side === 'top' ? goalY : (h - goalY);
-        
-        // If the goal line is within the corner curve region, we need to offset the x
-        let goalLineStartX = 0;
-        let goalLineEndX = w;
-        
-        if (distFromEnd < cornerRadius) {
-            // Goal line is in the curved corner region
-            // For a quarter-circle corner with radius R at the corner:
-            // x_offset = R - sqrt(R^2 - (R - distFromEnd)^2)
-            const dy = cornerRadius - distFromEnd;
-            const xOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dy * dy);
-            goalLineStartX = xOffset;
-            goalLineEndX = w - xOffset;
-        }
-        
-        ctx.moveTo(goalLineStartX, goalY);
-        ctx.lineTo(goalLineEndX, goalY);
-        ctx.stroke();
-        
-        // Draw trapezoid behind net (for half ice view)
-        this.drawHalfIceTrapezoid(ctx, w, h, side, goalY);
-    }
-    
-    // Draw trapezoid for half ice view (net at top or bottom)
-    drawHalfIceTrapezoid(ctx, w, h, side, goalY) {
-        const trapezoidBase = w * NHL_RINK.TRAPEZOID_BASE / 2;
-        const trapezoidTop = w * NHL_RINK.TRAPEZOID_TOP / 2;
-        
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        
-        if (side === 'top') {
-            // Trapezoid goes from goal line to top edge
-            ctx.beginPath();
-            ctx.moveTo(w/2 - trapezoidBase, goalY);
-            ctx.lineTo(w/2 - trapezoidTop, 0);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(w/2 + trapezoidBase, goalY);
-            ctx.lineTo(w/2 + trapezoidTop, 0);
-            ctx.stroke();
-        } else {
-            // Trapezoid goes from goal line to bottom edge
-            ctx.beginPath();
-            ctx.moveTo(w/2 - trapezoidBase, goalY);
-            ctx.lineTo(w/2 - trapezoidTop, h);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(w/2 + trapezoidBase, goalY);
-            ctx.lineTo(w/2 + trapezoidTop, h);
-            ctx.stroke();
-        }
-    }
-    
-    // Draw restraint lines for half ice view (net at top or bottom)
-    drawHalfIceRestraintLines(ctx, cx, cy, radius, side, canvasWidth) {
-        const lineLength = canvasWidth * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
-        const offset = radius * 0.15;
-        
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        
-        // Goal direction for half ice (top = -1, bottom = 1 for Y direction)
-        const goalDirection = side === 'top' ? -1 : 1;
-        // Blue line direction is opposite (away from goal)
-        const blueLineDirection = -goalDirection;
-        
-        // L-shapes on the goal side point towards the goal
-        // L-shapes on the blue line side (away from goal) point towards the blue line (flipped)
-        // For top goal: top L-shapes (cy - offset) point up, bottom L-shapes (cy + offset) point down
-        // For bottom goal: bottom L-shapes (cy + offset) point down, top L-shapes (cy - offset) point up
-        
-        // Left side of faceoff dot
-        this.drawHalfIceLShape(ctx, cx - offset, cy - offset, lineLength, side === 'top' ? goalDirection : blueLineDirection);
-        this.drawHalfIceLShape(ctx, cx - offset, cy + offset, lineLength, side === 'top' ? blueLineDirection : goalDirection);
-        // Right side of faceoff dot
-        this.drawHalfIceLShape(ctx, cx + offset, cy - offset, lineLength, side === 'top' ? goalDirection : blueLineDirection);
-        this.drawHalfIceLShape(ctx, cx + offset, cy + offset, lineLength, side === 'top' ? blueLineDirection : goalDirection);
-    }
-    
-    drawHalfIceLShape(ctx, x, y, length, vDir) {
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + vDir * length);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(x - length/2, y);
-        ctx.lineTo(x + length/2, y);
-        ctx.stroke();
     }
     
     drawZone(ctx, w, h, side) {
