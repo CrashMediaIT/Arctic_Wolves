@@ -824,7 +824,7 @@ const IceCanvasRenderer = {
         // Center circle
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 1 * lineScale;
-        const circleRadius = h * (15 / 85);
+        const circleRadius = h * NHL.CENTER_CIRCLE_RADIUS;
         ctx.beginPath();
         ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
         ctx.stroke();
