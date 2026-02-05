@@ -1337,6 +1337,11 @@ $coaches = $coaches_stmt->fetchAll();
     <input type="hidden" id="delete-skill-level-id" name="id" value="">
 </form>
 
+<!-- Load Google Maps API with Places library -->
+<?php if (!empty($google_maps_api_key)): ?>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
+<?php endif; ?>
+
 <script>
 // Initialize event handlers
 (function() {
@@ -1633,22 +1638,36 @@ function initPlacesSearch() {
 }
 
 function searchPlaces(query, prefix) {
-    // TODO: PRODUCTION REQUIRED - Replace this simulated implementation with actual Google Places API
-    // This is placeholder code for development/demo purposes only.
-    // In production, use Google Places Text Search API:
-    // https://developers.google.com/maps/documentation/places/web-service/search-text
-    // The API key should be configured in System Tools > Google Maps API
-    const results = [
-        {
-            place_id: 'SIMULATED_' + Date.now(), // Simulated - will not work with Google Maps
-            name: query + ' Arena',
-            formatted_address: '123 Main St, ' + query + ', BC',
-            photos: [{
-                getUrl: () => '' // Placeholder - real implementation would use Places Photos API
-            }]
+    // Check if Google Maps API is loaded
+    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+        console.error('Google Maps API not loaded');
+        displayPlaceResults([], prefix);
+        return;
+    }
+    
+    // Initialize Places Service if not already done
+    if (!window.placesService) {
+        // Create a hidden div for PlacesService (it requires a map or div element)
+        const div = document.createElement('div');
+        div.style.display = 'none';
+        document.body.appendChild(div);
+        window.placesService = new google.maps.places.PlacesService(div);
+    }
+    
+    // Use PlacesService textSearch
+    const request = {
+        query: query,
+        fields: ['place_id', 'name', 'formatted_address', 'photos', 'geometry']
+    };
+    
+    window.placesService.textSearch(request, function(results, status) {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+            displayPlaceResults(results, prefix);
+        } else {
+            console.error('Places search failed:', status);
+            displayPlaceResults([], prefix);
         }
-    ];
-    displayPlaceResults(results, prefix);
+    });
 }
 
 function displayPlaceResults(results, prefix) {
@@ -1694,9 +1713,10 @@ function selectPlace(place, prefix) {
     // Set Google Place ID
     document.getElementById(prefix + '-google-place-id').value = place.place_id;
     
-    // Set image URL if available
-    if (place.photos && place.photos.length > 0) {
-        const photoUrl = place.photos[0].getUrl ? place.photos[0].getUrl() : place.photos[0];
+    // Set image URL if available from Google Places photos
+    if (place.photos && place.photos.length > 0 && place.photos[0].getUrl) {
+        // Get photo URL with proper dimensions
+        const photoUrl = place.photos[0].getUrl({maxWidth: 800, maxHeight: 600});
         document.getElementById(prefix + '-location-image-url').value = photoUrl;
         document.getElementById(prefix + '-preview-image').src = photoUrl;
         document.getElementById(prefix + '-location-preview').style.display = 'block';
@@ -1744,6 +1764,22 @@ function testGoogleAPI() {
 
 // Initialize places search on page load
 document.addEventListener('DOMContentLoaded', function() {
-    initPlacesSearch();
+    // Wait for Google Maps API to load (handles async/defer loading)
+    var initAttempts = 0;
+    var MAX_INIT_ATTEMPTS = 20;
+    var INIT_RETRY_DELAY_MS = 250;
+    
+    function tryInit() {
+        if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+            initPlacesSearch();
+        } else if (initAttempts < MAX_INIT_ATTEMPTS) {
+            initAttempts++;
+            setTimeout(tryInit, INIT_RETRY_DELAY_MS);
+        } else {
+            console.warn('Google Maps API failed to load after', MAX_INIT_ATTEMPTS, 'attempts');
+        }
+    }
+    
+    tryInit();
 });
 </script>
