@@ -58,6 +58,26 @@ $drills = $pdo->query("
 // Get unique age groups and focus areas
 $age_groups = $pdo->query("SELECT DISTINCT age_group FROM practice_plans WHERE age_group IS NOT NULL AND age_group != '' ORDER BY age_group")->fetchAll(PDO::FETCH_COLUMN);
 $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE focus_area IS NOT NULL AND focus_area != '' ORDER BY focus_area")->fetchAll(PDO::FETCH_COLUMN);
+
+// Fetch center ice logo URL from theme settings for drill thumbnails (same as drills_library.php)
+$centerLogoUrl = '';
+try {
+    $logoStmt = $pdo->prepare("
+        SELECT COALESCE(
+            MAX(CASE WHEN setting_name = 'center_ice_logo_url' AND setting_value != '' THEN setting_value END),
+            MAX(CASE WHEN setting_name = 'logo_url' AND setting_value != '' THEN setting_value END)
+        ) as logo_url 
+        FROM theme_settings 
+        WHERE setting_name IN ('center_ice_logo_url', 'logo_url')
+    ");
+    $logoStmt->execute();
+    $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
+    if ($logoResult && !empty($logoResult['logo_url'])) {
+        $centerLogoUrl = $logoResult['logo_url'];
+    }
+} catch (PDOException $e) {
+    error_log("Error fetching center ice logo URL: " . $e->getMessage());
+}
 ?>
 
 <style>
@@ -677,6 +697,115 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
             height: 200px;
         }
     }
+    
+    /* Drill Cards for Practice Plan Modal - Same style as drill library */
+    .available-drills-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 12px;
+        background: #06080b;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+    }
+    .modal-drill-card {
+        background: var(--bg-card, #0d1117);
+        border: 1px solid var(--border, #1e293b);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+    .modal-drill-card:hover {
+        border-color: var(--primary, #7c3aed);
+    }
+    .modal-drill-card.added {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    .modal-drill-card .drill-image {
+        height: 120px;
+        background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
+        border-bottom: 2px solid #0033a0;
+        position: relative;
+        overflow: hidden;
+    }
+    .modal-drill-card .drill-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .modal-drill-card .drill-diagram-preview {
+        width: 100%;
+        height: 100%;
+    }
+    .modal-drill-card .drill-diagram-preview canvas {
+        width: 100%;
+        height: 100%;
+    }
+    .modal-drill-card .drill-content {
+        padding: 12px 16px;
+    }
+    .modal-drill-card .drill-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+        gap: 8px;
+    }
+    .modal-drill-card .drill-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-white, #fff);
+        flex: 1;
+        margin: 0;
+    }
+    .modal-drill-card .drill-category {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    .modal-drill-card .category-badge {
+        background: rgba(107, 70, 193, 0.15);
+        color: var(--primary, #7c3aed);
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .modal-drill-card .drill-description {
+        font-size: 12px;
+        color: var(--text-secondary, #94a3b8);
+        line-height: 1.4;
+        margin-bottom: 8px;
+    }
+    .modal-drill-card .drill-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 11px;
+        color: var(--text-dim, #64748b);
+    }
+    .modal-drill-card .drill-meta i {
+        color: var(--primary, #7c3aed);
+        margin-right: 4px;
+    }
+    .modal-drill-card .drill-actions {
+        padding: 12px 16px;
+        background: var(--bg-main, #06080b);
+        border-top: 1px solid var(--border, #1e293b);
+    }
+    .modal-drill-card .add-drill-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    .modal-drill-card.hidden {
+        display: none !important;
+    }
 </style>
 
 <div class="practice-page-header">
@@ -870,25 +999,59 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
                 <label class="form-label">Select Drills</label>
                 <div class="drills-selector">
                     <div class="drill-search">
-                        <input type="text" id="drillSearchInput" class="form-input" placeholder="Search drills..." onkeyup="filterDrills()">
+                        <input type="text" id="drillSearchInput" class="form-input" placeholder="Search drills..." onkeyup="filterModalDrills()">
                     </div>
-                    <div class="available-drills" id="availableDrills">
-                        <?php foreach ($drills as $drill): ?>
-                            <div class="drill-item" 
+                    <div class="available-drills-grid" id="availableDrills">
+                        <?php foreach ($drills as $drill): 
+                            // Extract ice view from diagram data (same as drills_library.php)
+                            $drillIceView = 'full';
+                            if (!empty($drill['diagram_data'])) {
+                                $diagramParsed = json_decode($drill['diagram_data'], true);
+                                if (is_array($diagramParsed) && isset($diagramParsed['iceView'])) {
+                                    $drillIceView = $diagramParsed['iceView'];
+                                }
+                            }
+                        ?>
+                            <!-- Using same drill-card structure as drills_library.php -->
+                            <div class="drill-card modal-drill-card" 
                                  data-drill-id="<?= $drill['id'] ?>" 
                                  data-drill-title="<?= htmlspecialchars($drill['title']) ?>" 
                                  data-drill-duration="<?= $drill['duration_minutes'] ?? 10 ?>"
-                                 onclick="addDrillFromData(this)">
-                                <div class="drill-item-info">
-                                    <div class="drill-item-title"><?= htmlspecialchars($drill['title']) ?></div>
-                                    <div class="drill-item-meta">
-                                        <?= $drill['category_name'] ? htmlspecialchars($drill['category_name']) . ' • ' : '' ?>
-                                        <?= $drill['duration_minutes'] ? $drill['duration_minutes'] . ' min' : '' ?>
+                                 data-category="<?= $drill['category_id'] ?? '' ?>"
+                                 data-title="<?= htmlspecialchars(strtolower($drill['title'])); ?>">
+                                <div class="drill-image" data-ice-view="<?= htmlspecialchars($drillIceView); ?>">
+                                    <?php if (!empty($drill['custom_image'])): ?>
+                                        <img src="<?= htmlspecialchars($drill['custom_image']); ?>" alt="<?= htmlspecialchars($drill['title']); ?>">
+                                    <?php else: ?>
+                                        <div class="drill-diagram-preview" data-diagram='<?= htmlspecialchars($drill['diagram_data'] ?? '[]'); ?>' data-center-logo="<?= htmlspecialchars($centerLogoUrl); ?>">
+                                            <canvas class="drill-thumbnail-canvas"></canvas>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="drill-content">
+                                    <div class="drill-header">
+                                        <h4 class="drill-title"><?= htmlspecialchars($drill['title']); ?></h4>
+                                        <?php if (!empty($drill['category_name'])): ?>
+                                            <div class="drill-category">
+                                                <span class="category-badge"><?= htmlspecialchars($drill['category_name']); ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <p class="drill-description">
+                                        <?= htmlspecialchars(substr($drill['description'] ?? 'No description available', 0, 80)); ?>
+                                        <?= strlen($drill['description'] ?? '') > 80 ? '...' : ''; ?>
+                                    </p>
+                                    <div class="drill-meta">
+                                        <?php if (!empty($drill['duration_minutes'])): ?>
+                                            <span><i class="fas fa-clock"></i> <?= $drill['duration_minutes']; ?> min</span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                                <button type="button" class="btn-icon" onclick="event.stopPropagation(); addDrillFromData(this.parentElement)">
-                                    <i class="fas fa-plus"></i>
-                                </button>
+                                <div class="drill-actions">
+                                    <button type="button" class="btn btn-primary btn-sm add-drill-btn" onclick="addDrillFromCard(this)">
+                                        <i class="fas fa-plus"></i> Add to Plan
+                                    </button>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -1014,7 +1177,24 @@ $focus_areas = $pdo->query("SELECT DISTINCT focus_area FROM practice_plans WHERE
     </div>
 </div>
 
+<!-- Shared Ice Canvas Renderer - ensures consistent rink drawing across all views -->
+<script src="js/ice_canvas.js"></script>
 <script>
+// Use shared NHL_RINK constants from ice_canvas.js
+const NHL_RINK = window.ICE_CANVAS_NHL_RINK || {
+    GOAL_LINE: 11 / 200,
+    BLUE_LINE: 64 / 200,
+    FACEOFF_RADIUS: 15 / 85,
+    CENTER_CIRCLE_RADIUS: 15 / 85,
+    CREASE_RADIUS: 6 / 85,
+    FACEOFF_FROM_GOAL: 20 / 200,
+    FACEOFF_FROM_BOARDS: 22 / 85,
+    TRAPEZOID_BASE: 22 / 85,
+    TRAPEZOID_TOP: 28 / 85,
+    RESTRAINT_LINE_LENGTH: 2 / 85,
+    CORNER_RADIUS: 28 / 85
+};
+
 let selectedDrills = [];
 
 function showNotification(message, type = 'info') {
@@ -1038,6 +1218,12 @@ function openPlanModal() {
     document.getElementById('planId').value = '';
     selectedDrills = [];
     updateSelectedDrillsDisplay();
+    // Reset added state on drill cards
+    document.querySelectorAll('.modal-drill-card.added').forEach(card => {
+        card.classList.remove('added');
+    });
+    // Render drill thumbnails after modal opens (ensure canvas elements are visible)
+    setTimeout(renderModalDrillThumbnails, 100);
 }
 
 function closePlanModal() {
@@ -1597,4 +1783,169 @@ document.querySelectorAll('.modal').forEach(modal => {
         }
     });
 });
+
+// Render drill thumbnails in the practice plan modal using shared IceCanvasRenderer
+function renderModalDrillThumbnails() {
+    const previews = document.querySelectorAll('#availableDrills .drill-diagram-preview');
+    
+    previews.forEach(preview => {
+        const canvas = preview.querySelector('.drill-thumbnail-canvas');
+        if (!canvas) return;
+        
+        // Skip if already rendered
+        if (canvas.dataset.rendered === 'true') return;
+        
+        // Get diagram data
+        let diagramData = [];
+        let sourceWidth = 800;
+        let sourceHeight = 400;
+        let iceView = 'full';
+        try {
+            const dataStr = preview.getAttribute('data-diagram') || '[]';
+            const parsed = JSON.parse(dataStr);
+            
+            if (Array.isArray(parsed)) {
+                diagramData = parsed;
+            } else if (parsed && parsed.objects && Array.isArray(parsed.objects)) {
+                diagramData = parsed.objects;
+                sourceWidth = parsed.canvasWidth || 800;
+                sourceHeight = parsed.canvasHeight || 400;
+                if (parsed.iceView) {
+                    iceView = parsed.iceView;
+                }
+            }
+        } catch (e) {
+            diagramData = [];
+        }
+        
+        const centerLogoUrl = preview.getAttribute('data-center-logo') || '';
+        
+        // Set canvas size
+        canvas.width = preview.offsetWidth || 280;
+        canvas.height = preview.offsetHeight || 120;
+        
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        
+        function renderThumbnail(logoImage, logoLoaded) {
+            // Use the shared IceCanvasRenderer for consistent rink drawing
+            if (window.IceCanvasRenderer) {
+                IceCanvasRenderer.drawRink(ctx, w, h, iceView, {
+                    logoImage: logoImage,
+                    logoLoaded: logoLoaded,
+                    lineScale: 1
+                });
+            } else {
+                ctx.fillStyle = '#f0f7fa';
+                ctx.fillRect(0, 0, w, h);
+                ctx.strokeStyle = '#0033a0';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(2, 2, w - 4, h - 4);
+            }
+            
+            // Draw diagram objects if available
+            if (diagramData && diagramData.length > 0) {
+                const scaleX = w / sourceWidth;
+                const scaleY = h / sourceHeight;
+                const uniformScale = Math.min(scaleX, scaleY);
+                const offsetX = (w - sourceWidth * uniformScale) / 2;
+                const offsetY = (h - sourceHeight * uniformScale) / 2;
+                
+                diagramData.forEach(obj => {
+                    const x = (obj.x || 0) * uniformScale + offsetX;
+                    const y = (obj.y || 0) * uniformScale + offsetY;
+                    
+                    if (obj.type === 'player') {
+                        ctx.fillStyle = obj.color || '#00bfff';
+                        ctx.beginPath();
+                        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        if (obj.label) {
+                            ctx.fillStyle = '#fff';
+                            ctx.font = 'bold 6px Inter, sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(obj.label, x, y);
+                        }
+                    } else if (obj.type === 'cone') {
+                        ctx.fillStyle = obj.color || '#ff6b00';
+                        ctx.beginPath();
+                        ctx.moveTo(x, y - 8);
+                        ctx.lineTo(x - 5, y + 5);
+                        ctx.lineTo(x + 5, y + 5);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (obj.type === 'puck') {
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                    // Note: Simplified object rendering for thumbnails
+                });
+            }
+        }
+        
+        // Load center logo if provided, then render
+        if (centerLogoUrl) {
+            const logoImage = new Image();
+            logoImage.crossOrigin = 'anonymous';
+            logoImage.onload = function() {
+                renderThumbnail(logoImage, true);
+                canvas.dataset.rendered = 'true';
+            };
+            logoImage.onerror = function() {
+                renderThumbnail(null, false);
+                canvas.dataset.rendered = 'true';
+            };
+            logoImage.src = centerLogoUrl;
+        } else {
+            renderThumbnail(null, false);
+            canvas.dataset.rendered = 'true';
+        }
+    });
+}
+
+// Add drill from card (new function for drill cards with preview)
+function addDrillFromCard(button) {
+    const card = button.closest('.modal-drill-card');
+    if (!card) return;
+    
+    const drillId = card.dataset.drillId;
+    const drillTitle = card.dataset.drillTitle;
+    const drillDuration = parseInt(card.dataset.drillDuration) || 10;
+    
+    // Check if already added
+    if (selectedDrills.find(d => d.id === drillId)) {
+        showNotification('This drill is already in your plan', 'info');
+        return;
+    }
+    
+    selectedDrills.push({ id: drillId, title: drillTitle, duration: drillDuration });
+    updateSelectedDrillsDisplay();
+    
+    // Mark card as added
+    card.classList.add('added');
+    
+    showNotification('Drill added to plan', 'success');
+}
+
+// Filter drills in modal
+function filterModalDrills() {
+    const searchText = document.getElementById('drillSearchInput').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#availableDrills .modal-drill-card');
+    
+    cards.forEach(card => {
+        const title = card.dataset.title || '';
+        if (searchText === '' || title.includes(searchText)) {
+            card.classList.remove('hidden');
+        } else {
+            card.classList.add('hidden');
+        }
+    });
+}
 </script>
