@@ -1240,17 +1240,29 @@ function drawThumbnailRestraintLines(ctx, cx, cy, radius, zone, canvasRefDimensi
     ctx.lineCap = 'round';
     
     if (isVertical) {
+        // For half-ice (vertical layout), L-shapes alternate direction:
+        // - L-shapes closer to goal point toward goal
+        // - L-shapes closer to blue line point away from goal
         const goalDirection = zone === 'top' ? -1 : 1;
-        drawThumbnailLShapeVertical(ctx, cx - offset, cy - offset, lineLength, goalDirection);
-        drawThumbnailLShapeVertical(ctx, cx - offset, cy + offset, lineLength, goalDirection);
-        drawThumbnailLShapeVertical(ctx, cx + offset, cy - offset, lineLength, goalDirection);
-        drawThumbnailLShapeVertical(ctx, cx + offset, cy + offset, lineLength, goalDirection);
+        const blueLineDirection = -goalDirection;
+        
+        // cy - offset L-shapes point toward goal for 'top', toward blue line for 'bottom'
+        drawThumbnailLShapeVertical(ctx, cx - offset, cy - offset, lineLength, zone === 'top' ? goalDirection : blueLineDirection);
+        // cy + offset L-shapes point toward blue line for 'top', toward goal for 'bottom'
+        drawThumbnailLShapeVertical(ctx, cx - offset, cy + offset, lineLength, zone === 'top' ? blueLineDirection : goalDirection);
+        drawThumbnailLShapeVertical(ctx, cx + offset, cy - offset, lineLength, zone === 'top' ? goalDirection : blueLineDirection);
+        drawThumbnailLShapeVertical(ctx, cx + offset, cy + offset, lineLength, zone === 'top' ? blueLineDirection : goalDirection);
     } else {
+        // For horizontal layout (full ice, zone views), L-shapes alternate direction:
+        // - L-shapes closer to goal point toward goal
+        // - L-shapes closer to blue line point away from goal
         const goalDirection = zone === 'left' ? -1 : 1;
-        drawThumbnailLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection, -1);
-        drawThumbnailLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection, -1);
-        drawThumbnailLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection, 1);
-        drawThumbnailLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection, 1);
+        const blueLineDirection = -goalDirection;
+        
+        drawThumbnailLShape(ctx, cx - offset, cy - offset, lineLength, zone === 'left' ? goalDirection : blueLineDirection, -1);
+        drawThumbnailLShape(ctx, cx + offset, cy - offset, lineLength, zone === 'left' ? blueLineDirection : goalDirection, -1);
+        drawThumbnailLShape(ctx, cx - offset, cy + offset, lineLength, zone === 'left' ? goalDirection : blueLineDirection, 1);
+        drawThumbnailLShape(ctx, cx + offset, cy + offset, lineLength, zone === 'left' ? blueLineDirection : goalDirection, 1);
     }
 }
 
