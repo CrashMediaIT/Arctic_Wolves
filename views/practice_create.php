@@ -1152,6 +1152,7 @@ function renderDrillSelectorThumbnails() {
                 IceCanvasRenderer.drawRink(ctx, w, h, iceView, { logoImage, logoLoaded });
             } else {
                 // Fallback if shared module not loaded - draw basic ice
+                console.warn('IceCanvasRenderer not loaded - using basic fallback for drill selector thumbnail');
                 ctx.fillStyle = '#f0f7fa';
                 ctx.fillRect(0, 0, w, h);
                 ctx.strokeStyle = '#0033a0';

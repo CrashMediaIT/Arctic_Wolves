@@ -863,6 +863,7 @@ function renderDrillCanvas(canvas, diagramDataStr) {
         });
     } else {
         // Fallback to local drawRink if IceCanvasRenderer not available
+        console.warn('IceCanvasRenderer not loaded - using basic fallback for practice plan view');
         drawRink(ctx, w, h, iceView);
         drawRinkBorder(ctx, w, h, iceView);
     }
