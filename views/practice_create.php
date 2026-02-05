@@ -1110,6 +1110,13 @@ function renderDrillSelectorThumbnails() {
         let sourceWidth = 800;
         let sourceHeight = 400;
         let iceView = 'full';
+        
+        // First, check if parent .drill-image has data-ice-view attribute (set by PHP)
+        const drillImageParent = preview.closest('.drill-image');
+        if (drillImageParent && drillImageParent.dataset.iceView) {
+            iceView = drillImageParent.dataset.iceView;
+        }
+        
         try {
             const dataStr = preview.getAttribute('data-diagram') || '[]';
             const parsed = JSON.parse(dataStr);
@@ -1120,6 +1127,7 @@ function renderDrillSelectorThumbnails() {
                 diagramData = parsed.objects;
                 sourceWidth = parsed.canvasWidth || 800;
                 sourceHeight = parsed.canvasHeight || 400;
+                // Get saved ice view (overrides parent attribute if present)
                 if (parsed.iceView) {
                     iceView = parsed.iceView;
                 }
