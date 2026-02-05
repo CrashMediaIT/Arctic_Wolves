@@ -1547,8 +1547,16 @@ function renderDrillThumbnails() {
                 ctx.lineTo(0, h);
                 ctx.lineTo(0, 0);
             } else if (iceView === 'center') {
-                // Center ice has flat edges on both sides (at the blue lines)
-                ctx.rect(0, 0, w, h);
+                // Center ice - all corners rounded (matching drill designer)
+                ctx.moveTo(cornerRadius, 0);
+                ctx.lineTo(w - cornerRadius, 0);
+                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+                ctx.lineTo(w, h - cornerRadius);
+                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+                ctx.lineTo(cornerRadius, h);
+                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+                ctx.lineTo(0, cornerRadius);
+                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
             } else {
                 // Full ice - all corners rounded
                 ctx.moveTo(cornerRadius, 0);
