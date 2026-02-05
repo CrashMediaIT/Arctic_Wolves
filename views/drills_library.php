@@ -248,11 +248,11 @@ $is_demo_drills = false;
     padding-top: 42.5%;
 }
 
-/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom)
-   height/width = 100/85 = 1.1765... ≈ 117.6% (rounded for browser compatibility) */
+/* Half ice: Reduced height for better card display in grid layouts
+   Original was 117.6% (true aspect ratio), reduced to 75% to prevent cards from being excessively tall */
 .drill-image[data-ice-view="half-top"],
 .drill-image[data-ice-view="half-bottom"] {
-    padding-top: 117.6%;
+    padding-top: 75%;
 }
 
 /* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) - height/width = 85/100 = 85% */
@@ -261,10 +261,10 @@ $is_demo_drills = false;
     padding-top: 85%;
 }
 
-/* Center ice: 72 ft × 85 ft (between the blue lines)
-   height/width = 85/72 = 1.1806... ≈ 118.1% (rounded for browser compatibility) */
+/* Center ice: Reduced height for better card display in grid layouts
+   Original was 118.1% (true aspect ratio), reduced to 75% to prevent cards from being excessively tall */
 .drill-image[data-ice-view="center"] {
-    padding-top: 118.1%;
+    padding-top: 75%;
 }
 
 .drill-image img {
@@ -1714,6 +1714,7 @@ function drawThumbnailFullIce(ctx, w, h) {
     const blueLinePos = NHL_RINK.BLUE_LINE;
     const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
     const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+    const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
     
     // Center line
     ctx.strokeStyle = '#c41e3a';
@@ -1790,17 +1791,108 @@ function drawThumbnailFullIce(ctx, w, h) {
     ctx.arc(w * (1 - goalLinePos), h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
     ctx.fill();
     ctx.stroke();
+    
+    // Goal lines - extends to boards respecting curved corners (matching drill designer)
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    
+    // Left goal line
+    const leftGoalLineX = w * goalLinePos;
+    let leftGoalLineStartY = 0;
+    let leftGoalLineEndY = h;
+    if (leftGoalLineX < cornerRadius) {
+        const dx = cornerRadius - leftGoalLineX;
+        const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+        leftGoalLineStartY = yOffset;
+        leftGoalLineEndY = h - yOffset;
+    }
+    ctx.beginPath();
+    ctx.moveTo(leftGoalLineX, leftGoalLineStartY);
+    ctx.lineTo(leftGoalLineX, leftGoalLineEndY);
+    ctx.stroke();
+    
+    // Right goal line
+    const rightGoalLineX = w * (1 - goalLinePos);
+    let rightGoalLineStartY = 0;
+    let rightGoalLineEndY = h;
+    if ((w - rightGoalLineX) < cornerRadius) {
+        const dx = cornerRadius - (w - rightGoalLineX);
+        const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+        rightGoalLineStartY = yOffset;
+        rightGoalLineEndY = h - yOffset;
+    }
+    ctx.beginPath();
+    ctx.moveTo(rightGoalLineX, rightGoalLineStartY);
+    ctx.lineTo(rightGoalLineX, rightGoalLineEndY);
+    ctx.stroke();
+    
+    // Goalie trapezoids (matching drill designer)
+    drawThumbnailTrapezoid(ctx, w, h, 'left');
+    drawThumbnailTrapezoid(ctx, w, h, 'right');
+    
+    // Neutral zone faceoff dots (5 ft from blue lines)
+    const neutralZoneDotOffset = 5 / 200;
+    ctx.fillStyle = '#c41e3a';
+    const neutralDots = [
+        { x: w * (blueLinePos + neutralZoneDotOffset), y: h * faceoffFromBoards },
+        { x: w * (blueLinePos + neutralZoneDotOffset), y: h * (1 - faceoffFromBoards) },
+        { x: w * (1 - blueLinePos - neutralZoneDotOffset), y: h * faceoffFromBoards },
+        { x: w * (1 - blueLinePos - neutralZoneDotOffset), y: h * (1 - faceoffFromBoards) }
+    ];
+    neutralDots.forEach(function(dot) {
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+    });
+}
+
+// Draw goalie trapezoid for thumbnails (matching drill designer)
+function drawThumbnailTrapezoid(ctx, w, h, side) {
+    const goalLinePos = NHL_RINK.GOAL_LINE;
+    const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    
+    if (side === 'left') {
+        const goalX = w * goalLinePos;
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 - trapezoidBase);
+        ctx.lineTo(0, h/2 - trapezoidTop);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 + trapezoidBase);
+        ctx.lineTo(0, h/2 + trapezoidTop);
+        ctx.stroke();
+    } else {
+        const goalX = w * (1 - goalLinePos);
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 - trapezoidBase);
+        ctx.lineTo(w, h/2 - trapezoidTop);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 + trapezoidBase);
+        ctx.lineTo(w, h/2 + trapezoidTop);
+        ctx.stroke();
+    }
 }
 
 // Draw half ice view for thumbnails
 function drawThumbnailHalfIce(ctx, w, h, side) {
-    // Use NHL proportions for half ice
+    // Use NHL proportions for half ice (matching drill designer)
     const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
     const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
     const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
+    const cornerRadius = w * NHL_RINK.CORNER_RADIUS;
     
-    // Blue line position (relative to the half-ice view)
-    const blueLineY = side === 'top' ? h * 0.85 : h * 0.15;
+    // Calculate positions based on half-ice proportions (matching drill designer)
+    const goalLineRatio = 11 / 100;      // Goal line at 11% from net end
+    const blueLineRatio = 64 / 100;      // Blue line at 64% from net end
+    const faceoffYRatio = 31 / 100;      // Faceoff dot at 31% from net end
+    
+    // Blue line position
+    const blueLineY = side === 'top' ? h * blueLineRatio : h * (1 - blueLineRatio);
     
     // Blue line
     ctx.strokeStyle = '#0033a0';
@@ -1810,11 +1902,11 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     ctx.lineTo(w, blueLineY);
     ctx.stroke();
     
-    // Goal position (goal line is near the end)
-    const goalY = side === 'top' ? h * 0.08 : h * 0.92;
+    // Goal position (goal line)
+    const goalY = side === 'top' ? h * goalLineRatio : h * (1 - goalLineRatio);
     
     // Faceoff circles - positioned 22 ft from boards on each side
-    const faceoffY = side === 'top' ? h * 0.35 : h * 0.65;
+    const faceoffY = side === 'top' ? h * faceoffYRatio : h * (1 - faceoffYRatio);
     
     // Left faceoff circle
     ctx.strokeStyle = '#c41e3a';
@@ -1853,28 +1945,68 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     ctx.fill();
     ctx.stroke();
     
-    // Goal line - extends to boards
+    // Goal line - extends to boards respecting curved corners (matching drill designer)
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, goalY);
-    ctx.lineTo(w, goalY);
+    
+    const distFromEnd = side === 'top' ? goalY : (h - goalY);
+    let goalLineStartX = 0;
+    let goalLineEndX = w;
+    
+    if (distFromEnd < cornerRadius) {
+        const dy = cornerRadius - distFromEnd;
+        const xOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dy * dy);
+        goalLineStartX = xOffset;
+        goalLineEndX = w - xOffset;
+    }
+    
+    ctx.moveTo(goalLineStartX, goalY);
+    ctx.lineTo(goalLineEndX, goalY);
+    ctx.stroke();
+    
+    // Draw trapezoid behind net (matching drill designer)
+    drawThumbnailHalfIceTrapezoid(ctx, w, h, side, goalY);
+}
+
+// Draw trapezoid for half ice thumbnail (net at top or bottom)
+function drawThumbnailHalfIceTrapezoid(ctx, w, h, side, goalY) {
+    const trapezoidBase = w * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = w * NHL_RINK.TRAPEZOID_TOP / 2;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    
+    const boardY = side === 'top' ? 0 : h;
+    
+    // Left trapezoid line
+    ctx.beginPath();
+    ctx.moveTo(w/2 - trapezoidBase, goalY);
+    ctx.lineTo(w/2 - trapezoidTop, boardY);
+    ctx.stroke();
+    
+    // Right trapezoid line
+    ctx.beginPath();
+    ctx.moveTo(w/2 + trapezoidBase, goalY);
+    ctx.lineTo(w/2 + trapezoidTop, boardY);
     ctx.stroke();
 }
 
-// Draw zone view for thumbnails - LEFT/RIGHT HALF of full rink
+// Draw zone view for thumbnails - LEFT/RIGHT HALF of full rink (matching drill designer)
 function drawThumbnailZone(ctx, w, h, side) {
-    // Left/Right Zone view: shows LEFT or RIGHT HALF of the full rink
-    // Split vertically through the center of the nets
-    
-    // Use NHL rink proportions
-    const goalLinePos = NHL_RINK.GOAL_LINE;
-    const blueLinePos = NHL_RINK.BLUE_LINE;
-    const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
+    // Zone view shows one half of the rink (from end boards to center line)
+    // Use height as the 85 ft reference
     const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
     const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
     const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
     const centerCircleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
+    const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
+    
+    // Calculate positions based on half-rink proportions (100 ft span, matching drill designer)
+    const goalLineRatio = 11 / 100;
+    const blueLineRatio = 64 / 100;
+    const faceoffXRatio = 31 / 100;
+    const neutralZoneDotRatio = (64 + 5) / 100;
     
     // Center line (red) - at the edge of the visible half
     ctx.strokeStyle = '#c41e3a';
@@ -1891,8 +2023,8 @@ function drawThumbnailZone(ctx, w, h, side) {
         ctx.stroke();
     }
     
-    // Blue line position (visible in this half)
-    const blueLineX = side === 'left' ? w * blueLinePos * 2 : w * (1 - blueLinePos * 2);
+    // Blue line position
+    const blueLineX = side === 'left' ? w * blueLineRatio : w * (1 - blueLineRatio);
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -1900,13 +2032,25 @@ function drawThumbnailZone(ctx, w, h, side) {
     ctx.lineTo(blueLineX, h);
     ctx.stroke();
     
-    // Goal line position - extends to boards
-    const goalLineX = side === 'left' ? w * goalLinePos * 2 : w * (1 - goalLinePos * 2);
+    // Goal line position - respects curved corners (matching drill designer)
+    const goalLineX = side === 'left' ? w * goalLineRatio : w * (1 - goalLineRatio);
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(goalLineX, 0);
-    ctx.lineTo(goalLineX, h);
+    
+    const distFromEnd = side === 'left' ? goalLineX : (w - goalLineX);
+    let zoneGoalLineStartY = 0;
+    let zoneGoalLineEndY = h;
+    
+    if (distFromEnd < cornerRadius) {
+        const dx = cornerRadius - distFromEnd;
+        const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+        zoneGoalLineStartY = yOffset;
+        zoneGoalLineEndY = h - yOffset;
+    }
+    
+    ctx.moveTo(goalLineX, zoneGoalLineStartY);
+    ctx.lineTo(goalLineX, zoneGoalLineEndY);
     ctx.stroke();
     
     // Half center circle (at the edge, only half visible)
@@ -1930,8 +2074,8 @@ function drawThumbnailZone(ctx, w, h, side) {
     }
     ctx.fill();
     
-    // Faceoff circles in this half
-    const faceoffX = side === 'left' ? w * faceoffFromGoal * 2 : w * (1 - faceoffFromGoal * 2);
+    // Faceoff circles in this zone
+    const faceoffX = side === 'left' ? w * faceoffXRatio : w * (1 - faceoffXRatio);
     
     // Top faceoff circle
     ctx.strokeStyle = '#c41e3a';
@@ -1958,10 +2102,7 @@ function drawThumbnailZone(ctx, w, h, side) {
     drawThumbnailRestraintLines(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, side, h, false);
     
     // Neutral zone dots
-    const neutralZoneDotOffset = 5 / 200;
-    const neutralDotX = side === 'left' 
-        ? w * (blueLinePos + neutralZoneDotOffset) * 2 
-        : w * (1 - (blueLinePos + neutralZoneDotOffset) * 2);
+    const neutralDotX = side === 'left' ? w * neutralZoneDotRatio : w * (1 - neutralZoneDotRatio);
     
     ctx.fillStyle = '#c41e3a';
     ctx.beginPath();
@@ -1983,6 +2124,32 @@ function drawThumbnailZone(ctx, w, h, side) {
     }
     ctx.fill();
     ctx.stroke();
+    
+    // Draw trapezoid behind net (matching drill designer)
+    drawThumbnailZoneTrapezoid(ctx, w, h, side, goalLineX);
+}
+
+// Draw trapezoid for zone view thumbnail (net at left or right)
+function drawThumbnailZoneTrapezoid(ctx, w, h, side, goalLineX) {
+    const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    
+    const boardX = side === 'left' ? 0 : w;
+    
+    // Top trapezoid line
+    ctx.beginPath();
+    ctx.moveTo(goalLineX, h/2 - trapezoidBase);
+    ctx.lineTo(boardX, h/2 - trapezoidTop);
+    ctx.stroke();
+    
+    // Bottom trapezoid line
+    ctx.beginPath();
+    ctx.moveTo(goalLineX, h/2 + trapezoidBase);
+    ctx.lineTo(boardX, h/2 + trapezoidTop);
+    ctx.stroke();
 }
 
 // Draw center ice view for thumbnails (neutral zone around center)
@@ -1995,10 +2162,10 @@ function drawThumbnailCenterIce(ctx, w, h) {
     ctx.lineTo(w/2, h);
     ctx.stroke();
     
-    // Center circle - use NHL proportions (15 ft radius on 85 ft height)
+    // Center circle - use NHL proportions constant
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 1;
-    const circleRadius = h * (15 / 85);
+    const circleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
     ctx.beginPath();
     ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
     ctx.stroke();
