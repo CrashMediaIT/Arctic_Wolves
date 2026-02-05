@@ -875,7 +875,17 @@ function showFieldError(field, message) {
     
     const errorDiv = document.createElement('div');
     errorDiv.className = 'field-error';
-    errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + message;
+    
+    // Create icon element separately for safety
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-exclamation-circle';
+    
+    const textSpan = document.createElement('span');
+    textSpan.textContent = message;
+    
+    errorDiv.appendChild(icon);
+    errorDiv.appendChild(document.createTextNode(' '));
+    errorDiv.appendChild(textSpan);
     
     // Insert error message after the field
     field.parentNode.insertBefore(errorDiv, field.nextSibling);
