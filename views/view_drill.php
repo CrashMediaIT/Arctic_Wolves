@@ -609,6 +609,7 @@ function drawViewRink(ctx, w, h, iceView) {
         });
     } else {
         // Fallback if shared module not loaded - use inline functions
+        console.warn('IceCanvasRenderer not loaded - using basic fallback for drill view');
         // Ice background
         ctx.fillStyle = '#f0f7fa';
         ctx.fillRect(0, 0, w, h);
