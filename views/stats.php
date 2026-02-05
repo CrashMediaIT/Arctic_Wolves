@@ -68,22 +68,6 @@ if ($viewing_athlete_id != $user_id) {
     </div>
 </div>
 
-<!-- Tab Navigation -->
-<div class="stats-tabs-wrapper">
-    <div class="stats-tabs">
-        <a href="?page=stats&tab=goals<?php echo $viewing_athlete_id != $user_id ? '&athlete_id=' . $viewing_athlete_id : ''; ?>" 
-           class="stats-tab-btn <?php echo $active_tab === 'goals' ? 'active' : ''; ?>">
-            <i class="fas fa-bullseye"></i>
-            <span>Goal Tracker</span>
-        </a>
-        <a href="?page=stats&tab=performance<?php echo $viewing_athlete_id != $user_id ? '&athlete_id=' . $viewing_athlete_id : ''; ?>" 
-           class="stats-tab-btn <?php echo $active_tab === 'performance' ? 'active' : ''; ?>">
-            <i class="fas fa-chart-bar"></i>
-            <span>Performance Stats</span>
-        </a>
-    </div>
-</div>
-
 <?php
 // Fetch real stats data - Each query in its own try/catch to prevent one failure from affecting others
 
@@ -338,6 +322,22 @@ try {
                 <h4>Skills Mastered</h4>
                 <p class="stat-value"><?php echo $skillsData['skills_mastered']; ?></p>
             </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="stats-tabs-wrapper">
+        <div class="stats-tabs">
+            <a href="?page=stats&tab=goals<?php echo $viewing_athlete_id != $user_id ? '&athlete_id=' . $viewing_athlete_id : ''; ?>" 
+               class="stats-tab-btn <?php echo $active_tab === 'goals' ? 'active' : ''; ?>">
+                <i class="fas fa-bullseye"></i>
+                <span>Goal Tracker</span>
+            </a>
+            <a href="?page=stats&tab=performance<?php echo $viewing_athlete_id != $user_id ? '&athlete_id=' . $viewing_athlete_id : ''; ?>" 
+               class="stats-tab-btn <?php echo $active_tab === 'performance' ? 'active' : ''; ?>">
+                <i class="fas fa-chart-bar"></i>
+                <span>Performance Stats</span>
+            </a>
         </div>
     </div>
 
