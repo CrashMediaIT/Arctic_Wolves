@@ -752,20 +752,31 @@ function showNotification(message, type = 'info') {
 let practiceDrills = [];
 let draggedItem = null;
 
-function showDrillSelector() {
-    // Hide drills that are already in the practice plan
-    const addedDrillIds = practiceDrills.map(d => d.id);
-    const items = document.querySelectorAll('.drill-selector-grid .drill-card, .drill-selector-item');
+// Helper function to get IDs of drills already in the practice plan
+function getAddedDrillIds() {
+    return practiceDrills.map(d => d.id);
+}
+
+// Helper function to hide drills that are already in the practice plan
+function hideAddedDrills(items) {
+    const addedDrillIds = getAddedDrillIds();
     items.forEach(item => {
         const drillId = parseInt(item.dataset.drillId, 10);
         if (addedDrillIds.includes(drillId)) {
             item.style.display = 'none';
             item.setAttribute('data-already-added', 'true');
-        } else {
-            item.style.display = '';
-            item.removeAttribute('data-already-added');
         }
     });
+}
+
+function showDrillSelector() {
+    // Reset visibility and hide drills that are already in the practice plan
+    const items = document.querySelectorAll('.drill-selector-grid .drill-card, .drill-selector-item');
+    items.forEach(item => {
+        item.style.display = '';
+        item.removeAttribute('data-already-added');
+    });
+    hideAddedDrills(items);
     
     document.getElementById('drillSelectorModal').classList.add('active');
 }
@@ -776,7 +787,7 @@ function closeDrillSelector() {
 
 function filterDrillSelector() {
     const search = document.getElementById('drillSelectorSearch').value.toLowerCase();
-    const addedDrillIds = practiceDrills.map(d => d.id);
+    const addedDrillIds = getAddedDrillIds();
     // Handle both old (.drill-selector-item) and new (.drill-card) selectors in drill selector grid
     const items = document.querySelectorAll('.drill-selector-grid .drill-card, .drill-selector-item');
     items.forEach(item => {
@@ -1130,10 +1141,7 @@ function renderDrillSelectorThumbnails() {
         function renderThumbnail(logoImage, logoLoaded) {
             // Use the shared IceCanvasRenderer for consistent rink drawing
             if (window.IceCanvasRenderer) {
-                IceCanvasRenderer.drawRink(ctx, w, h, iceView, {
-                    logoImage: logoImage,
-                    logoLoaded: logoLoaded
-                });
+                IceCanvasRenderer.drawRink(ctx, w, h, iceView, { logoImage, logoLoaded });
             } else {
                 // Fallback if shared module not loaded - draw basic ice
                 ctx.fillStyle = '#f0f7fa';
