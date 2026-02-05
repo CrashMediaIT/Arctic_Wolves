@@ -291,7 +291,7 @@ $locations = $pdo->query("
 </div>
 
 <!-- Load Google Maps API with Places library -->
-<?php if (!empty($google_maps_api_key) && preg_match('/^[A-Za-z0-9_-]+$/', $google_maps_api_key)): ?>
+<?php if (!empty($google_maps_api_key)): ?>
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
 <?php endif; ?>
 
@@ -299,7 +299,6 @@ $locations = $pdo->query("
 // Google Places API Configuration
 const GOOGLE_API_KEY = '<?php echo htmlspecialchars($google_maps_api_key, ENT_QUOTES); ?>';
 let placesService = null;
-let sessionToken = null;
 
 function initPlacesSearch() {
     const searchInput = document.getElementById('placeSearch');
@@ -335,9 +334,6 @@ function searchPlaces(query) {
         div.style.display = 'none';
         document.body.appendChild(div);
         placesService = new google.maps.places.PlacesService(div);
-        
-        // Create new session token for billing optimization
-        sessionToken = new google.maps.places.AutocompleteSessionToken();
     }
     
     // Use PlacesService textSearch
@@ -400,7 +396,7 @@ function selectPlace(place) {
     document.getElementById('googlePlaceId').value = place.place_id;
     
     // Set image URL if available from Google Places photos
-    if (place.photos && place.photos.length > 0) {
+    if (place.photos && place.photos.length > 0 && place.photos[0].getUrl) {
         // Get photo URL with proper dimensions
         const photoUrl = place.photos[0].getUrl({maxWidth: 800, maxHeight: 600});
         document.getElementById('locationImageUrl').value = photoUrl;

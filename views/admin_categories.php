@@ -1338,7 +1338,7 @@ $coaches = $coaches_stmt->fetchAll();
 </form>
 
 <!-- Load Google Maps API with Places library -->
-<?php if (!empty($google_maps_api_key) && preg_match('/^[A-Za-z0-9_-]+$/', $google_maps_api_key)): ?>
+<?php if (!empty($google_maps_api_key)): ?>
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
 <?php endif; ?>
 
@@ -1714,7 +1714,7 @@ function selectPlace(place, prefix) {
     document.getElementById(prefix + '-google-place-id').value = place.place_id;
     
     // Set image URL if available from Google Places photos
-    if (place.photos && place.photos.length > 0) {
+    if (place.photos && place.photos.length > 0 && place.photos[0].getUrl) {
         // Get photo URL with proper dimensions
         const photoUrl = place.photos[0].getUrl({maxWidth: 800, maxHeight: 600});
         document.getElementById(prefix + '-location-image-url').value = photoUrl;

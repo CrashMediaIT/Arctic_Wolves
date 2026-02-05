@@ -123,7 +123,7 @@ foreach ($mileage_entries as $entry) {
 
 <!-- Load Google Maps API for address autocomplete -->
 <!-- Note: API key should be restricted in Google Cloud Console with HTTP referrer restrictions -->
-<?php if (!empty($google_maps_api_key) && preg_match('/^[A-Za-z0-9_-]+$/', $google_maps_api_key)): ?>
+<?php if (!empty($google_maps_api_key)): ?>
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
 <?php endif; ?>
 
