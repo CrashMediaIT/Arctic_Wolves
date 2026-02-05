@@ -767,10 +767,14 @@ function renderDrillCanvas(canvas, diagramDataStr) {
     // Canvas width represents the length, height represents the width
     const NHL_RINK_ASPECT_RATIO = 200 / 85; // ≈ 2.35
     const containerWidth = container.offsetWidth || 600;
-    // Calculate height based on width and aspect ratio, with fallback
+    
+    // Set canvas dimensions:
+    // - Primary: Use container's explicit height if set via CSS
+    // - Fallback: Calculate from width using NHL rink aspect ratio
+    // - Last resort: Use 350px default
     const calculatedHeight = Math.round(containerWidth / NHL_RINK_ASPECT_RATIO);
     canvas.width = containerWidth;
-    canvas.height = container.offsetHeight || calculatedHeight || 350;
+    canvas.height = container.offsetHeight > 0 ? container.offsetHeight : (calculatedHeight || 350);
     
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
