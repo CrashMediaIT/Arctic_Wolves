@@ -876,6 +876,7 @@ function renderDrillThumbnails() {
         let diagramData = [];
         let sourceWidth = 800;  // Default fallback
         let sourceHeight = 400; // Default fallback
+        let iceView = 'full';   // Default ice view
         try {
             const dataStr = preview.getAttribute('data-diagram') || '[]';
             const parsed = JSON.parse(dataStr);
@@ -889,6 +890,10 @@ function renderDrillThumbnails() {
                 diagramData = parsed.objects;
                 sourceWidth = parsed.canvasWidth || 800;
                 sourceHeight = parsed.canvasHeight || 400;
+                // Get saved ice view
+                if (parsed.iceView) {
+                    iceView = parsed.iceView;
+                }
             }
         } catch (e) {
             diagramData = [];
@@ -944,79 +949,25 @@ function renderDrillThumbnails() {
             }
             ctx.restore();
             
-            // Draw basic rink markings
-            // Center line
-            ctx.strokeStyle = '#c41e3a';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(w/2, 0);
-            ctx.lineTo(w/2, h);
-            ctx.stroke();
-            
-            // Blue lines
-            ctx.strokeStyle = '#0033a0';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(w * 0.25, 0);
-            ctx.lineTo(w * 0.25, h);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(w * 0.75, 0);
-            ctx.lineTo(w * 0.75, h);
-            ctx.stroke();
-            
-            // Center circle
-            ctx.beginPath();
-            ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
-            ctx.stroke();
-            
-            // Center dot
-            ctx.fillStyle = '#0033a0';
-            ctx.beginPath();
-            ctx.arc(w/2, h/2, 3, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // Faceoff circles
-            ctx.strokeStyle = '#c41e3a';
-            const faceoffRadius = Math.min(w, h) * 0.08;
-            const circles = [
-                { x: w * 0.15, y: h * 0.3 },
-                { x: w * 0.15, y: h * 0.7 },
-                { x: w * 0.85, y: h * 0.3 },
-                { x: w * 0.85, y: h * 0.7 }
-            ];
-            circles.forEach(circle => {
-                ctx.beginPath();
-                ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
-                ctx.stroke();
-                
-                // Draw faceoff dot
-                ctx.fillStyle = '#c41e3a';
-                ctx.beginPath();
-                ctx.arc(circle.x, circle.y, 2, 0, 2 * Math.PI);
-                ctx.fill();
-                
-                // Draw hash marks around faceoff circles
-                drawThumbnailHashMarks(ctx, circle.x, circle.y, faceoffRadius);
-            });
-            
-            // Goal creases
-            const creaseRadius = Math.min(w, h) * 0.06;
-            ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
-            ctx.strokeStyle = '#c41e3a';
-            ctx.lineWidth = 2;
-            
-            // Left crease
-            ctx.beginPath();
-            ctx.arc(w * 0.02, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
-            ctx.fill();
-            ctx.stroke();
-            
-            // Right crease
-            ctx.beginPath();
-            ctx.arc(w * 0.98, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
-            ctx.fill();
-            ctx.stroke();
+            // Draw rink markings based on ice view
+            switch(iceView) {
+                case 'half-top':
+                    drawThumbnailHalfIce(ctx, w, h, 'top');
+                    break;
+                case 'half-bottom':
+                    drawThumbnailHalfIce(ctx, w, h, 'bottom');
+                    break;
+                case 'left-zone':
+                    drawThumbnailZone(ctx, w, h, 'left');
+                    break;
+                case 'right-zone':
+                    drawThumbnailZone(ctx, w, h, 'right');
+                    break;
+                case 'full':
+                default:
+                    drawThumbnailFullIce(ctx, w, h);
+                    break;
+            }
             
             // Draw diagram objects if available
             if (diagramData && diagramData.length > 0) {
@@ -1200,6 +1151,210 @@ function drawThumbnailHashMarks(ctx, cx, cy, radius) {
         ctx.lineTo(cx + hashSpacing / 2, endY);
         ctx.stroke();
     });
+}
+
+// Draw full ice view for thumbnails
+function drawThumbnailFullIce(ctx, w, h) {
+    // Center line
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2, h);
+    ctx.stroke();
+    
+    // Blue lines
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.25, 0);
+    ctx.lineTo(w * 0.25, h);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(w * 0.75, 0);
+    ctx.lineTo(w * 0.75, h);
+    ctx.stroke();
+    
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Center dot
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 3, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Faceoff circles
+    ctx.strokeStyle = '#c41e3a';
+    const faceoffRadius = Math.min(w, h) * 0.08;
+    const circles = [
+        { x: w * 0.15, y: h * 0.3 },
+        { x: w * 0.15, y: h * 0.7 },
+        { x: w * 0.85, y: h * 0.3 },
+        { x: w * 0.85, y: h * 0.7 }
+    ];
+    circles.forEach(function(circle) {
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // Draw faceoff dot
+        ctx.fillStyle = '#c41e3a';
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Draw hash marks around faceoff circles
+        drawThumbnailHashMarks(ctx, circle.x, circle.y, faceoffRadius);
+    });
+    
+    // Goal creases
+    const creaseRadius = Math.min(w, h) * 0.06;
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    
+    // Left crease
+    ctx.beginPath();
+    ctx.arc(w * 0.02, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Right crease
+    ctx.beginPath();
+    ctx.arc(w * 0.98, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
+    ctx.fill();
+    ctx.stroke();
+}
+
+// Draw half ice view for thumbnails
+function drawThumbnailHalfIce(ctx, w, h, side) {
+    // Blue line
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
+    if (side === 'top') {
+        ctx.beginPath();
+        ctx.moveTo(0, h * 0.8);
+        ctx.lineTo(w, h * 0.8);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.moveTo(0, h * 0.2);
+        ctx.lineTo(w, h * 0.2);
+        ctx.stroke();
+    }
+    
+    // Faceoff circles with hash marks
+    const faceoffRadius = Math.min(w, h) * 0.1;
+    const faceoffY = side === 'top' ? h * 0.4 : h * 0.6;
+    
+    // Left faceoff circle
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(w * 0.3, faceoffY, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(w * 0.3, faceoffY, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    drawThumbnailHashMarks(ctx, w * 0.3, faceoffY, faceoffRadius);
+    
+    // Right faceoff circle
+    ctx.beginPath();
+    ctx.arc(w * 0.7, faceoffY, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(w * 0.7, faceoffY, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    drawThumbnailHashMarks(ctx, w * 0.7, faceoffY, faceoffRadius);
+    
+    // Goal crease - proper semicircle
+    const creaseRadius = Math.min(w, h) * 0.08;
+    const goalY = side === 'top' ? h * 0.05 : h * 0.95;
+    
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (side === 'top') {
+        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
+    } else {
+        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI, true);
+    }
+    ctx.fill();
+    ctx.stroke();
+    
+    // Goal line
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.35, goalY);
+    ctx.lineTo(w * 0.65, goalY);
+    ctx.stroke();
+}
+
+// Draw zone view for thumbnails
+function drawThumbnailZone(ctx, w, h, side) {
+    // Blue line
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
+    const lineX = side === 'left' ? w * 0.75 : w * 0.25;
+    ctx.beginPath();
+    ctx.moveTo(lineX, 0);
+    ctx.lineTo(lineX, h);
+    ctx.stroke();
+    
+    // Faceoff circles with hash marks
+    const centerX = side === 'left' ? w * 0.35 : w * 0.65;
+    const faceoffRadius = Math.min(w, h) * 0.1;
+    
+    // Top faceoff circle
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, h * 0.3, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(centerX, h * 0.3, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    drawThumbnailHashMarks(ctx, centerX, h * 0.3, faceoffRadius);
+    
+    // Bottom faceoff circle
+    ctx.beginPath();
+    ctx.arc(centerX, h * 0.7, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(centerX, h * 0.7, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    drawThumbnailHashMarks(ctx, centerX, h * 0.7, faceoffRadius);
+    
+    // Goal crease - proper semicircle
+    const creaseRadius = Math.min(w, h) * 0.08;
+    const goalX = side === 'left' ? w * 0.05 : w * 0.95;
+    
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (side === 'left') {
+        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+    } else {
+        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
+    }
+    ctx.fill();
+    ctx.stroke();
+    
+    // Goal line
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(goalX, h * 0.35);
+    ctx.lineTo(goalX, h * 0.65);
+    ctx.stroke();
 }
 </script>
 

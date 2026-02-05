@@ -737,7 +737,7 @@ function drawHalfIceView(ctx, w, h, side) {
     if (side === 'top') {
         ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
     } else {
-        ctx.arc(w * 0.5, goalY, creaseRadius, Math.PI, 0);
+        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI, true);
     }
     ctx.fill();
     ctx.stroke();
@@ -797,7 +797,7 @@ function drawZoneView(ctx, w, h, side) {
     if (side === 'left') {
         ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
     } else {
-        ctx.arc(goalX, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
     }
     ctx.fill();
     ctx.stroke();
