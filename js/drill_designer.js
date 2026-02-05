@@ -1106,12 +1106,29 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Left goal line - extends all the way to the boards
+        // Left goal line - extends to the boards but respects curved corners
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * goalLinePos, 0);
-        ctx.lineTo(w * goalLinePos, h);
+        
+        // Calculate the y-offset due to curved corners in full ice view
+        // The goal line at x = w * goalLinePos may be within the corner curve
+        // Corner radius is based on height (which represents 85 ft width)
+        const goalLineX = w * goalLinePos;
+        let leftGoalLineStartY = 0;
+        let leftGoalLineEndY = h;
+        
+        if (goalLineX < cornerRadius) {
+            // Goal line is in the curved corner region
+            // x_offset from corner center = cornerRadius - goalLineX
+            const dx = cornerRadius - goalLineX;
+            const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+            leftGoalLineStartY = yOffset;
+            leftGoalLineEndY = h - yOffset;
+        }
+        
+        ctx.moveTo(goalLineX, leftGoalLineStartY);
+        ctx.lineTo(goalLineX, leftGoalLineEndY);
         ctx.stroke();
         
         // Right goal crease - semicircle  
@@ -1123,12 +1140,26 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Right goal line - extends all the way to the boards
+        // Right goal line - extends to the boards but respects curved corners
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * (1 - goalLinePos), 0);
-        ctx.lineTo(w * (1 - goalLinePos), h);
+        
+        // Calculate the y-offset due to curved corners
+        const rightGoalLineX = w * (1 - goalLinePos);
+        let rightGoalLineStartY = 0;
+        let rightGoalLineEndY = h;
+        
+        if ((w - rightGoalLineX) < cornerRadius) {
+            // Goal line is in the curved corner region on the right side
+            const dx = cornerRadius - (w - rightGoalLineX);
+            const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+            rightGoalLineStartY = yOffset;
+            rightGoalLineEndY = h - yOffset;
+        }
+        
+        ctx.moveTo(rightGoalLineX, rightGoalLineStartY);
+        ctx.lineTo(rightGoalLineX, rightGoalLineEndY);
         ctx.stroke();
         
         // Draw goalie trapezoids behind each net
@@ -1383,12 +1414,36 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Goal line - extends to boards
+        // Goal line - extends to boards but respects the curved corners
+        // The corners are curved with cornerRadius, so we need to clip the goal line
+        // to not exceed the board boundary at this y-position
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(0, goalY);
-        ctx.lineTo(w, goalY);
+        
+        // Calculate the x-offset due to curved corners
+        // In half-ice view, width represents the 85 ft rink width
+        const cornerRadius = w * NHL_RINK.CORNER_RADIUS;
+        
+        // Distance from the net end (top or bottom) to the goal line
+        const distFromEnd = side === 'top' ? goalY : (h - goalY);
+        
+        // If the goal line is within the corner curve region, we need to offset the x
+        let goalLineStartX = 0;
+        let goalLineEndX = w;
+        
+        if (distFromEnd < cornerRadius) {
+            // Goal line is in the curved corner region
+            // For a quarter-circle corner with radius R at the corner:
+            // x_offset = R - sqrt(R^2 - (R - distFromEnd)^2)
+            const dy = cornerRadius - distFromEnd;
+            const xOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dy * dy);
+            goalLineStartX = xOffset;
+            goalLineEndX = w - xOffset;
+        }
+        
+        ctx.moveTo(goalLineStartX, goalY);
+        ctx.lineTo(goalLineEndX, goalY);
         ctx.stroke();
         
         // Draw trapezoid behind net (for half ice view)
@@ -1511,13 +1566,31 @@ class DrillDesigner {
         ctx.lineTo(blueLineX, h);
         ctx.stroke();
         
-        // Goal line position
+        // Goal line position - respects curved corners
         const goalLineX = side === 'left' ? w * goalLineRatio : w * (1 - goalLineRatio);
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(goalLineX, 0);
-        ctx.lineTo(goalLineX, h);
+        
+        // Calculate the y-offset due to curved corners
+        // In zone view, height represents the 85 ft width, so corner radius is based on height
+        const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
+        
+        // Distance from the net end (left or right) to the goal line
+        const distFromEnd = side === 'left' ? goalLineX : (w - goalLineX);
+        let zoneGoalLineStartY = 0;
+        let zoneGoalLineEndY = h;
+        
+        if (distFromEnd < cornerRadius) {
+            // Goal line is in the curved corner region
+            const dx = cornerRadius - distFromEnd;
+            const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+            zoneGoalLineStartY = yOffset;
+            zoneGoalLineEndY = h - yOffset;
+        }
+        
+        ctx.moveTo(goalLineX, zoneGoalLineStartY);
+        ctx.lineTo(goalLineX, zoneGoalLineEndY);
         ctx.stroke();
         
         // Half center circle (at the edge)
@@ -1674,7 +1747,21 @@ class DrillDesigner {
     
     setIceView(view) {
         this.iceView = view;
-        this.redraw();
+        
+        // Update the container's data-ice-view attribute for dynamic CSS aspect ratio
+        const container = this.canvas.parentElement;
+        if (container) {
+            container.setAttribute('data-ice-view', view);
+            
+            // Wait for CSS transition to complete (300ms defined in CSS), then resize canvas to new container size
+            setTimeout(() => {
+                this.canvas.width = container.offsetWidth;
+                this.canvas.height = container.offsetHeight;
+                this.redraw();
+            }, 350);
+        } else {
+            this.redraw();
+        }
     }
     
     redraw() {
@@ -3112,6 +3199,11 @@ class DrillDesigner {
                     const iceViewSelect = document.getElementById('iceViewSelect');
                     if (iceViewSelect) {
                         iceViewSelect.value = parsed.iceView;
+                    }
+                    // Update container's data-ice-view for dynamic CSS aspect ratio
+                    const container = this.canvas.parentElement;
+                    if (container) {
+                        container.setAttribute('data-ice-view', parsed.iceView);
                     }
                 }
                 
