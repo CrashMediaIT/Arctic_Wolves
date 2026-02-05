@@ -213,6 +213,15 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                         $description = $drill['description'] ?? 'No description available.';
                         $hasCustomImage = !empty($drill['custom_image']) && trim($drill['custom_image']) !== '';
                         $hasDiagramData = !empty($drill['diagram_data']) && trim($drill['diagram_data']) !== '' && $drill['diagram_data'] !== '[]';
+                        
+                        // Extract ice view from diagram data for proper CSS aspect ratio
+                        $drillIceView = 'full';
+                        if ($hasDiagramData) {
+                            $diagramParsed = json_decode($drill['diagram_data'], true);
+                            if (is_array($diagramParsed) && isset($diagramParsed['iceView'])) {
+                                $drillIceView = $diagramParsed['iceView'];
+                            }
+                        }
                         ?>
                         <div class="drill-card" id="drill-<?php echo $drillNumber; ?>">
                             <div class="drill-header">
@@ -244,7 +253,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
                                         </div>
                                     <?php elseif ($hasDiagramData): ?>
                                         <!-- Drill Draw Canvas -->
-                                        <div class="ice-rink-canvas view-only">
+                                        <div class="ice-rink-canvas view-only" data-ice-view="<?php echo htmlspecialchars($drillIceView); ?>">
                                             <canvas id="drill-canvas-<?php echo $drillNumber; ?>" 
                                                     class="drill-diagram-canvas"
                                                     data-diagram='<?php echo htmlspecialchars($drill['diagram_data'], ENT_QUOTES); ?>'></canvas>
@@ -569,13 +578,50 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 
 .ice-rink-canvas.view-only {
     width: 100%;
-    aspect-ratio: 2/1;
-    min-height: 300px;
+    aspect-ratio: 200/85; /* Full ice default: 200 ft × 85 ft */
+    min-height: 200px;
     background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
     border: 3px solid #0033a0;
     border-radius: 80px;
     position: relative;
     overflow: hidden;
+}
+
+/* Dynamic aspect ratios based on ice view */
+/* Full ice: 200 ft × 85 ft (horizontal, net on left/right) */
+.ice-rink-canvas.view-only[data-ice-view="full"] {
+    aspect-ratio: 200/85;
+    border-radius: 80px;
+}
+
+/* Half ice: 85 ft × 100 ft (vertical orientation, net at top/bottom) */
+.ice-rink-canvas.view-only[data-ice-view="half-top"],
+.ice-rink-canvas.view-only[data-ice-view="half-bottom"] {
+    aspect-ratio: 85/100;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 80px 80px 20px 20px;
+}
+
+.ice-rink-canvas.view-only[data-ice-view="half-bottom"] {
+    border-radius: 20px 20px 80px 80px;
+}
+
+/* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) */
+.ice-rink-canvas.view-only[data-ice-view="left-zone"],
+.ice-rink-canvas.view-only[data-ice-view="right-zone"] {
+    aspect-ratio: 100/85;
+    border-radius: 80px;
+}
+
+/* Center ice: 72 ft × 85 ft (between the blue lines) */
+.ice-rink-canvas.view-only[data-ice-view="center"] {
+    aspect-ratio: 72/85;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 20px;
 }
 
 .ice-rink-canvas.view-only canvas {
