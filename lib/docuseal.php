@@ -168,18 +168,30 @@ function listDocuSealTemplates($pdo, $settings) {
     if ($result['success']) {
         $data = $result['data'] ?? [];
         
-        // Handle paginated response format where templates might be in 'data' key
-        if (isset($data['data']) && is_array($data['data'])) {
-            $data = $data['data'];
+        // Handle paginated response format where templates might be in nested keys
+        // Check common pagination patterns: 'data', 'items', 'results', 'templates'
+        foreach (['data', 'items', 'results', 'templates'] as $key) {
+            if (isset($data[$key]) && is_array($data[$key])) {
+                $data = $data[$key];
+                break;
+            }
         }
         
         // Filter to only include valid templates with 'id' and 'name' keys
         // This prevents errors when the API returns unexpected data structures
         $validTemplates = [];
-        foreach ($data as $template) {
+        $skippedCount = 0;
+        foreach ($data as $index => $template) {
             if (is_array($template) && isset($template['id']) && isset($template['name'])) {
                 $validTemplates[] = $template;
+            } else {
+                $skippedCount++;
             }
+        }
+        
+        // Log if any templates were skipped due to missing required keys
+        if ($skippedCount > 0) {
+            error_log("DocuSeal: Filtered out $skippedCount template(s) missing 'id' or 'name' keys");
         }
         
         return $validTemplates;
