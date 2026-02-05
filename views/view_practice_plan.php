@@ -1376,7 +1376,7 @@ function drawScaledObject(ctx, obj, uniformScale, offsetX, offsetY) {
         }
         
         // Draw arrow
-        if (x2 !== undefined) {
+        if (x2 !== undefined && y2 !== undefined && angle !== undefined) {
             ctx.beginPath();
             ctx.moveTo(x2, y2);
             ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
@@ -1386,7 +1386,7 @@ function drawScaledObject(ctx, obj, uniformScale, offsetX, offsetY) {
         }
         
         // Draw puck at start
-        if (x1 !== undefined) {
+        if (x1 !== undefined && y1 !== undefined) {
             ctx.fillStyle = '#000';
             ctx.beginPath();
             ctx.arc(x1, y1, 6 * uniformScale, 0, 2 * Math.PI);
@@ -1433,7 +1433,7 @@ function drawScaledObject(ctx, obj, uniformScale, offsetX, offsetY) {
         ctx.setLineDash([]);
         
         // Draw arrow
-        if (x2 !== undefined) {
+        if (x2 !== undefined && y2 !== undefined && angle !== undefined) {
             ctx.beginPath();
             ctx.moveTo(x2, y2);
             ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
@@ -1443,7 +1443,7 @@ function drawScaledObject(ctx, obj, uniformScale, offsetX, offsetY) {
         }
         
         // Draw puck at start
-        if (x1 !== undefined) {
+        if (x1 !== undefined && y1 !== undefined) {
             ctx.fillStyle = '#000';
             ctx.beginPath();
             ctx.arc(x1, y1, 6 * uniformScale, 0, 2 * Math.PI);
