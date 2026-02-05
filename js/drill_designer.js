@@ -949,7 +949,7 @@ class DrillDesigner {
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 4;
         
-        // NHL corner radius: 28 ft on 85 ft width = 0.329 ratio
+        // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio)
         // For full ice (horizontal layout), use height as reference since width represents length
         // For half ice (vertical layout with net at top/bottom), use width as reference
         let cornerRadius;
@@ -1027,7 +1027,7 @@ class DrillDesigner {
         // Faceoff circles: 20 ft from goal line, 22 ft from boards
         const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
         const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
-        // NHL corner radius: 28 ft on 85 ft width = 0.329 of the height (which represents width in horizontal layout)
+        // NHL corner radius: 28 ft on 85 ft width (~0.329 of the height, which represents width in horizontal layout)
         const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
         
         // Center line (red)
