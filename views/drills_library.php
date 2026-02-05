@@ -735,7 +735,10 @@ const NHL_RINK = {
     CENTER_CIRCLE_RADIUS: 15 / 85, // 15 ft radius center circle
     CREASE_RADIUS: 6 / 85,         // 6 ft radius goal crease
     FACEOFF_FROM_GOAL: 20 / 200,   // 20 ft from goal line
-    FACEOFF_FROM_BOARDS: 22 / 85   // 22 ft from boards
+    FACEOFF_FROM_BOARDS: 22 / 85,  // 22 ft from boards
+    TRAPEZOID_BASE: 22 / 85,       // Trapezoid base at goal line: 22 ft wide
+    TRAPEZOID_TOP: 28 / 85,        // Trapezoid top at boards: 28 ft wide
+    RESTRAINT_LINE_LENGTH: 2 / 85  // 2 ft restraint lines
 };
 
 // View drill details
@@ -1021,48 +1024,23 @@ function renderDrillThumbnails() {
                         ctx.beginPath();
                         ctx.arc(x, y, 4, 0, 2 * Math.PI);
                         ctx.fill();
+                    } else if (obj.type === 'pucks') {
+                        // Group of pucks
+                        ctx.fillStyle = '#000';
+                        const positions = [
+                            {x: -4, y: -4}, {x: 4, y: -4},
+                            {x: -4, y: 4}, {x: 4, y: 4}, {x: 0, y: 0}
+                        ];
+                        positions.forEach(pos => {
+                            ctx.beginPath();
+                            ctx.arc(x + pos.x, y + pos.y, 3, 0, 2 * Math.PI);
+                            ctx.fill();
+                        });
                     } else if (obj.type === 'line') {
                         ctx.strokeStyle = obj.color || '#333';
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
-                        ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
-                        ctx.stroke();
-                    } else if (obj.type === 'arrow') {
-                        const x1 = (obj.x1 || 0) * scaleX;
-                        const y1 = (obj.y1 || 0) * scaleY;
-                        const x2 = (obj.x2 || 0) * scaleX;
-                        const y2 = (obj.y2 || 0) * scaleY;
-                        const headlen = 6;
-                        const angle = Math.atan2(y2 - y1, x2 - x1);
-                        
-                        ctx.strokeStyle = obj.color || '#333';
-                        ctx.fillStyle = obj.color || '#333';
-                        ctx.lineWidth = 1;
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(x1, y1);
-                        ctx.lineTo(x2, y2);
-                        ctx.stroke();
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(x2, y2);
-                        ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
-                        ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
-                        ctx.closePath();
-                        ctx.fill();
-                    } else if (obj.type === 'dashed') {
-                        ctx.strokeStyle = obj.color || '#333';
-                        ctx.lineWidth = 1;
-                        ctx.setLineDash([4, 3]);
-                        ctx.beginPath();
-                        ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
-                        ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
-                        ctx.stroke();
-                        ctx.setLineDash([]);
-                    } else if (obj.type === 'squiggly' || obj.type === 'freehand') {
-                        ctx.strokeStyle = obj.color || '#333';
-                        ctx.lineWidth = 1;
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
                             ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
@@ -1076,6 +1054,352 @@ function renderDrillThumbnails() {
                             ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
                             ctx.stroke();
                         }
+                    } else if (obj.type === 'arrow' || obj.type === 'freehand_arrow') {
+                        ctx.strokeStyle = obj.color || '#333';
+                        ctx.fillStyle = obj.color || '#333';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        
+                        let x2, y2, angle;
+                        const headlen = 6;
+                        
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                            
+                            const last = obj.points[obj.points.length - 1];
+                            const secondLast = obj.points[obj.points.length - 2];
+                            x2 = last.x * scaleX;
+                            y2 = last.y * scaleY;
+                            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+                        } else if (obj.x1 !== undefined) {
+                            const x1 = (obj.x1 || 0) * scaleX;
+                            const y1 = (obj.y1 || 0) * scaleY;
+                            x2 = (obj.x2 || 0) * scaleX;
+                            y2 = (obj.y2 || 0) * scaleY;
+                            angle = Math.atan2(y2 - y1, x2 - x1);
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.stroke();
+                        }
+                        
+                        if (x2 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo(x2, y2);
+                            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+                            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    } else if (obj.type === 'dashed' || obj.type === 'freehand_dashed') {
+                        ctx.strokeStyle = obj.color || '#333';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.setLineDash([4, 3]);
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                        } else if (obj.x1 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
+                            ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                            ctx.stroke();
+                        }
+                        ctx.setLineDash([]);
+                    } else if (obj.type === 'squiggly' || obj.type === 'freehand') {
+                        ctx.strokeStyle = obj.color || '#333';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                        } else if (obj.x1 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
+                            ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                            ctx.stroke();
+                        }
+                    } else if (obj.type === 'freehand_skating' || obj.type === 'skating_forward') {
+                        // Skating lines with arrows
+                        ctx.strokeStyle = obj.color || '#0033a0';
+                        ctx.fillStyle = obj.color || '#0033a0';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        
+                        let x2, y2, angle;
+                        const headlen = 6;
+                        
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                            
+                            const last = obj.points[obj.points.length - 1];
+                            const secondLast = obj.points[obj.points.length - 2];
+                            x2 = last.x * scaleX;
+                            y2 = last.y * scaleY;
+                            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+                        } else if (obj.x1 !== undefined) {
+                            const x1 = (obj.x1 || 0) * scaleX;
+                            const y1 = (obj.y1 || 0) * scaleY;
+                            x2 = (obj.x2 || 0) * scaleX;
+                            y2 = (obj.y2 || 0) * scaleY;
+                            angle = Math.atan2(y2 - y1, x2 - x1);
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.stroke();
+                        }
+                        
+                        if (x2 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo(x2, y2);
+                            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+                            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    } else if (obj.type === 'skating_backward') {
+                        // Backward skating - dashed with arrow
+                        ctx.strokeStyle = obj.color || '#c41e3a';
+                        ctx.fillStyle = obj.color || '#c41e3a';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.setLineDash([6, 3]);
+                        
+                        let x2, y2, angle;
+                        const headlen = 6;
+                        
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                            
+                            const last = obj.points[obj.points.length - 1];
+                            const secondLast = obj.points[obj.points.length - 2];
+                            x2 = last.x * scaleX;
+                            y2 = last.y * scaleY;
+                            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+                        } else if (obj.x1 !== undefined) {
+                            const x1 = (obj.x1 || 0) * scaleX;
+                            const y1 = (obj.y1 || 0) * scaleY;
+                            x2 = (obj.x2 || 0) * scaleX;
+                            y2 = (obj.y2 || 0) * scaleY;
+                            angle = Math.atan2(y2 - y1, x2 - x1);
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.stroke();
+                        }
+                        ctx.setLineDash([]);
+                        
+                        if (x2 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo(x2, y2);
+                            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+                            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    } else if (obj.type === 'skating_lateral' || obj.type === 'skating_ccuts') {
+                        // Lateral/C-cuts skating - solid line
+                        ctx.strokeStyle = obj.color || '#10b981';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                        } else if (obj.x1 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
+                            ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                            ctx.stroke();
+                        }
+                    } else if (obj.type === 'skating_forward_puck' || obj.type === 'skating_backward_puck') {
+                        // Skating with puck - line with arrow and puck circle
+                        const color = obj.color || '#00bfff';
+                        ctx.strokeStyle = color;
+                        ctx.fillStyle = color;
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        
+                        if (obj.type === 'skating_backward_puck') {
+                            ctx.setLineDash([6, 3]);
+                        }
+                        
+                        let x1, y1, x2, y2, angle;
+                        const headlen = 6;
+                        
+                        if (obj.points && obj.points.length > 1) {
+                            x1 = obj.points[0].x * scaleX;
+                            y1 = obj.points[0].y * scaleY;
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                            
+                            const last = obj.points[obj.points.length - 1];
+                            const secondLast = obj.points[obj.points.length - 2];
+                            x2 = last.x * scaleX;
+                            y2 = last.y * scaleY;
+                            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+                        } else if (obj.x1 !== undefined) {
+                            x1 = (obj.x1 || 0) * scaleX;
+                            y1 = (obj.y1 || 0) * scaleY;
+                            x2 = (obj.x2 || 0) * scaleX;
+                            y2 = (obj.y2 || 0) * scaleY;
+                            angle = Math.atan2(y2 - y1, x2 - x1);
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.stroke();
+                        }
+                        ctx.setLineDash([]);
+                        
+                        // Arrow
+                        if (x2 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo(x2, y2);
+                            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+                            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                        
+                        // Puck at start
+                        if (x1 !== undefined) {
+                            ctx.fillStyle = '#000';
+                            ctx.beginPath();
+                            ctx.arc(x1, y1, 3, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
+                    } else if (obj.type === 'pass') {
+                        // Pass - dashed with hollow arrow
+                        ctx.strokeStyle = obj.color || '#0033a0';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.setLineDash([5, 3]);
+                        
+                        let x2, y2, angle;
+                        const headlen = 6;
+                        
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                            
+                            const last = obj.points[obj.points.length - 1];
+                            const secondLast = obj.points[obj.points.length - 2];
+                            x2 = last.x * scaleX;
+                            y2 = last.y * scaleY;
+                            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+                        } else if (obj.x1 !== undefined) {
+                            const x1 = (obj.x1 || 0) * scaleX;
+                            const y1 = (obj.y1 || 0) * scaleY;
+                            x2 = (obj.x2 || 0) * scaleX;
+                            y2 = (obj.y2 || 0) * scaleY;
+                            angle = Math.atan2(y2 - y1, x2 - x1);
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.stroke();
+                        }
+                        ctx.setLineDash([]);
+                        
+                        // Hollow arrow
+                        if (x2 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo(x2, y2);
+                            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+                            ctx.moveTo(x2, y2);
+                            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+                            ctx.stroke();
+                        }
+                    } else if (obj.type === 'shot') {
+                        // Shot - thick solid with large arrow
+                        ctx.strokeStyle = obj.color || '#c41e3a';
+                        ctx.fillStyle = obj.color || '#c41e3a';
+                        ctx.lineWidth = 3;
+                        ctx.lineCap = 'round';
+                        
+                        let x2, y2, angle;
+                        const headlen = 8;
+                        
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                            
+                            const last = obj.points[obj.points.length - 1];
+                            const secondLast = obj.points[obj.points.length - 2];
+                            x2 = last.x * scaleX;
+                            y2 = last.y * scaleY;
+                            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+                        } else if (obj.x1 !== undefined) {
+                            const x1 = (obj.x1 || 0) * scaleX;
+                            const y1 = (obj.y1 || 0) * scaleY;
+                            x2 = (obj.x2 || 0) * scaleX;
+                            y2 = (obj.y2 || 0) * scaleY;
+                            angle = Math.atan2(y2 - y1, x2 - x1);
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.stroke();
+                        }
+                        
+                        // Large filled arrow
+                        if (x2 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo(x2, y2);
+                            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 5), y2 - headlen * Math.sin(angle - Math.PI / 5));
+                            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 5), y2 - headlen * Math.sin(angle + Math.PI / 5));
+                            ctx.closePath();
+                            ctx.fill();
+                        }
                     } else if (obj.type === 'net' || obj.type === 'mininet') {
                         const netWidth = obj.type === 'mininet' ? 20 : 30;
                         const netDepth = obj.type === 'mininet' ? 8 : 10;
@@ -1086,12 +1410,46 @@ function renderDrillThumbnails() {
                         ctx.rect(x - netWidth/2, y - netDepth/2, netWidth, netDepth);
                         ctx.fill();
                         ctx.stroke();
+                    } else if (obj.type === 'tire') {
+                        ctx.strokeStyle = obj.color || '#333';
+                        ctx.lineWidth = 3;
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                        ctx.beginPath();
+                        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (obj.type === 'stick') {
+                        ctx.strokeStyle = obj.color || '#8B4513';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(x, y - 10);
+                        ctx.lineTo(x, y + 6);
+                        ctx.stroke();
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(x, y + 6);
+                        ctx.quadraticCurveTo(x + 4, y + 8, x + 7, y + 6);
+                        ctx.stroke();
                     } else if (obj.type === 'text') {
                         ctx.fillStyle = obj.color || '#333';
                         ctx.font = 'bold 8px Inter, sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText(obj.text || '', x, y);
+                    } else if (obj.type === 'number') {
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath();
+                        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.strokeStyle = obj.color || '#000';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        ctx.fillStyle = obj.color || '#000';
+                        ctx.font = 'bold 8px Inter, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(obj.value || '', x, y);
                     }
                 });
             }
@@ -1272,12 +1630,12 @@ function drawThumbnailFullIce(ctx, w, h) {
 
 // Draw half ice view for thumbnails
 function drawThumbnailHalfIce(ctx, w, h, side) {
-    // NHL proportions
+    // Use NHL proportions for half ice
     const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
     const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
     const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
     
-    // Blue line position
+    // Blue line position (relative to the half-ice view)
     const blueLineY = side === 'top' ? h * 0.85 : h * 0.15;
     
     // Blue line
@@ -1288,13 +1646,15 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     ctx.lineTo(w, blueLineY);
     ctx.stroke();
     
-    // Goal and faceoff positions
+    // Goal position (goal line is near the end)
     const goalY = side === 'top' ? h * 0.08 : h * 0.92;
+    
+    // Faceoff circles - positioned 22 ft from boards on each side
     const faceoffY = side === 'top' ? h * 0.35 : h * 0.65;
     
     // Left faceoff circle
     ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(w * faceoffFromBoards, faceoffY, faceoffRadius, 0, 2 * Math.PI);
     ctx.stroke();
@@ -1305,6 +1665,7 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     drawThumbnailHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
     
     // Right faceoff circle
+    ctx.strokeStyle = '#c41e3a';
     ctx.beginPath();
     ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
     ctx.stroke();
@@ -1316,36 +1677,56 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     // Goal crease - 6 ft radius semicircle
     ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
     ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.beginPath();
     if (side === 'top') {
         ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
     } else {
-        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI, true);
+        ctx.arc(w * 0.5, goalY, creaseRadius, Math.PI, 0);
     }
     ctx.fill();
     ctx.stroke();
     
-    // Goal line
+    // Goal line - extends to boards
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(w * 0.3, goalY);
-    ctx.lineTo(w * 0.7, goalY);
+    ctx.moveTo(0, goalY);
+    ctx.lineTo(w, goalY);
     ctx.stroke();
 }
 
-// Draw zone view for thumbnails
+// Draw zone view for thumbnails - LEFT/RIGHT HALF of full rink
 function drawThumbnailZone(ctx, w, h, side) {
-    // NHL proportions
+    // Left/Right Zone view: shows LEFT or RIGHT HALF of the full rink
+    // Split vertically through the center of the nets
+    
+    // Use NHL rink proportions
+    const goalLinePos = NHL_RINK.GOAL_LINE;
+    const blueLinePos = NHL_RINK.BLUE_LINE;
+    const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
     const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
     const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
     const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
+    const centerCircleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
     
-    // Blue line position (far from goal)
-    const blueLineX = side === 'left' ? w * 0.85 : w * 0.15;
+    // Center line (red) - at the edge of the visible half
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    if (side === 'left') {
+        ctx.beginPath();
+        ctx.moveTo(w, 0);
+        ctx.lineTo(w, h);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, h);
+        ctx.stroke();
+    }
     
-    // Blue line
+    // Blue line position (visible in this half)
+    const blueLineX = side === 'left' ? w * blueLinePos * 2 : w * (1 - blueLinePos * 2);
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -1353,13 +1734,42 @@ function drawThumbnailZone(ctx, w, h, side) {
     ctx.lineTo(blueLineX, h);
     ctx.stroke();
     
-    // Goal and faceoff positions
-    const goalX = side === 'left' ? w * 0.08 : w * 0.92;
-    const faceoffX = side === 'left' ? w * 0.35 : w * 0.65;
+    // Goal line position - extends to boards
+    const goalLineX = side === 'left' ? w * goalLinePos * 2 : w * (1 - goalLinePos * 2);
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(goalLineX, 0);
+    ctx.lineTo(goalLineX, h);
+    ctx.stroke();
+    
+    // Half center circle (at the edge, only half visible)
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (side === 'left') {
+        ctx.arc(w, h/2, centerCircleRadius, Math.PI/2, -Math.PI/2);
+    } else {
+        ctx.arc(0, h/2, centerCircleRadius, -Math.PI/2, Math.PI/2);
+    }
+    ctx.stroke();
+    
+    // Center dot (at edge)
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    if (side === 'left') {
+        ctx.arc(w, h/2, 3, 0, 2 * Math.PI);
+    } else {
+        ctx.arc(0, h/2, 3, 0, 2 * Math.PI);
+    }
+    ctx.fill();
+    
+    // Faceoff circles in this half
+    const faceoffX = side === 'left' ? w * faceoffFromGoal * 2 : w * (1 - faceoffFromGoal * 2);
     
     // Top faceoff circle
     ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(faceoffX, h * faceoffFromBoards, faceoffRadius, 0, 2 * Math.PI);
     ctx.stroke();
@@ -1370,6 +1780,7 @@ function drawThumbnailZone(ctx, w, h, side) {
     drawThumbnailHashMarks(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, 'horizontal');
     
     // Bottom faceoff circle
+    ctx.strokeStyle = '#c41e3a';
     ctx.beginPath();
     ctx.arc(faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 0, 2 * Math.PI);
     ctx.stroke();
@@ -1378,25 +1789,31 @@ function drawThumbnailZone(ctx, w, h, side) {
     ctx.fill();
     drawThumbnailHashMarks(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 'horizontal');
     
-    // Goal crease - 6 ft radius semicircle
+    // Neutral zone dots
+    const neutralZoneDotOffset = 5 / 200;
+    const neutralDotX = side === 'left' 
+        ? w * (blueLinePos + neutralZoneDotOffset) * 2 
+        : w * (1 - (blueLinePos + neutralZoneDotOffset) * 2);
+    
+    ctx.fillStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(neutralDotX, h * faceoffFromBoards, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(neutralDotX, h * (1 - faceoffFromBoards), 2, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Goal crease
     ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
     ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.beginPath();
     if (side === 'left') {
-        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+        ctx.arc(goalLineX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
     } else {
-        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
+        ctx.arc(goalLineX, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
     }
     ctx.fill();
-    ctx.stroke();
-    
-    // Goal line
-    ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(goalX, h * 0.3);
-    ctx.lineTo(goalX, h * 0.7);
     ctx.stroke();
 }
 </script>

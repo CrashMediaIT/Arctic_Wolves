@@ -47,7 +47,17 @@ const NHL_RINK = {
     FACEOFF_FROM_BOARDS: 22 / 85,
     
     // Corner radius (28 ft, relative to width: 28/85 = 0.329)
-    CORNER_RADIUS: 28 / 85
+    CORNER_RADIUS: 28 / 85,
+    
+    // Goalie trapezoid dimensions (behind the net)
+    // Trapezoid base at goal line: 22 ft wide (11 ft each side of center)
+    TRAPEZOID_BASE: 22 / 85,
+    // Trapezoid top at boards: 28 ft wide (14 ft each side of center)
+    TRAPEZOID_TOP: 28 / 85,
+    
+    // Faceoff restraint line dimensions
+    // L-shaped lines inside faceoff circles, 2 ft long each arm
+    RESTRAINT_LINE_LENGTH: 2 / 85
 };
 
 class DrillDesigner {
@@ -930,12 +940,72 @@ class DrillDesigner {
                 this.drawFullIce(ctx, w, h);
         }
         
-        // Draw rink boards (rounded rectangle)
+        // Draw rink boards (adapted to view type)
+        this.drawRinkBorder(ctx, w, h, iceView);
+    }
+    
+    // Draw rink border that adapts to view type
+    drawRinkBorder(ctx, w, h, iceView) {
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 4;
+        
         const cornerRadius = Math.min(w, h) * 0.1;
-        this.roundRect(ctx, 2, 2, w - 4, h - 4, cornerRadius);
-        ctx.stroke();
+        
+        if (iceView === 'half-top' || iceView === 'half-bottom') {
+            // Half ice views - curved corners at net end, flat at center line end
+            const isTop = iceView === 'half-top';
+            ctx.beginPath();
+            if (isTop) {
+                // Curved corners at top (net end), flat at bottom (center line)
+                ctx.moveTo(cornerRadius + 2, 2);
+                ctx.lineTo(w - cornerRadius - 2, 2);
+                ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
+                ctx.lineTo(w - 2, h - 2);
+                ctx.lineTo(2, h - 2);
+                ctx.lineTo(2, cornerRadius + 2);
+                ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
+            } else {
+                // Flat at top (center line), curved corners at bottom (net end)
+                ctx.moveTo(2, 2);
+                ctx.lineTo(w - 2, 2);
+                ctx.lineTo(w - 2, h - cornerRadius - 2);
+                ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
+                ctx.lineTo(cornerRadius + 2, h - 2);
+                ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
+                ctx.lineTo(2, 2);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        } else if (iceView === 'left-zone' || iceView === 'right-zone') {
+            // Zone views - curved corners at net end, flat at blue line end
+            const isLeft = iceView === 'left-zone';
+            ctx.beginPath();
+            if (isLeft) {
+                // Curved corners at left (net end), flat at right (blue line side)
+                ctx.moveTo(cornerRadius + 2, 2);
+                ctx.lineTo(w - 2, 2);
+                ctx.lineTo(w - 2, h - 2);
+                ctx.lineTo(cornerRadius + 2, h - 2);
+                ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
+                ctx.lineTo(2, cornerRadius + 2);
+                ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
+            } else {
+                // Flat at left (blue line side), curved corners at right (net end)
+                ctx.moveTo(2, 2);
+                ctx.lineTo(w - cornerRadius - 2, 2);
+                ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
+                ctx.lineTo(w - 2, h - cornerRadius - 2);
+                ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
+                ctx.lineTo(2, h - 2);
+                ctx.lineTo(2, 2);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        } else {
+            // Full ice and center - all corners rounded
+            this.roundRect(ctx, 2, 2, w - 4, h - 4, cornerRadius);
+            ctx.stroke();
+        }
     }
     
     drawFullIce(ctx, w, h) {
@@ -947,6 +1017,7 @@ class DrillDesigner {
         // Faceoff circles: 20 ft from goal line, 22 ft from boards
         const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
         const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+        const cornerRadius = Math.min(w, h) * 0.1;
         
         // Center line (red)
         ctx.strokeStyle = '#c41e3a';
@@ -985,10 +1056,10 @@ class DrillDesigner {
         // Faceoff circles with dots (15 ft radius, positioned 20 ft from goal line, 22 ft from boards)
         const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
         const circles = [
-            { x: w * faceoffFromGoal, y: h * faceoffFromBoards },
-            { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards) },
-            { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards },
-            { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards) }
+            { x: w * faceoffFromGoal, y: h * faceoffFromBoards, zone: 'left' },
+            { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards), zone: 'left' },
+            { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards, zone: 'right' },
+            { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards), zone: 'right' }
         ];
         
         circles.forEach(circle => {
@@ -1007,11 +1078,13 @@ class DrillDesigner {
             
             // Draw hash marks around faceoff circles (nets on left/right)
             this.drawHashMarks(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
+            
+            // Draw faceoff restraint lines (L-shaped lines inside the circle)
+            this.drawRestraintLines(ctx, circle.x, circle.y, faceoffRadius, circle.zone, h);
         });
         
         // Goal creases (6 ft radius semicircle)
         const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
-        const cornerRadius = Math.min(w, h) * 0.1;
         
         // Left goal crease - semicircle at goal line position
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)'; // Light blue fill
@@ -1022,12 +1095,12 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Left goal line - extends all the way across (within rink bounds)
+        // Left goal line - extends all the way to the boards
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * goalLinePos, cornerRadius + 4);
-        ctx.lineTo(w * goalLinePos, h - cornerRadius - 4);
+        ctx.moveTo(w * goalLinePos, 0);
+        ctx.lineTo(w * goalLinePos, h);
         ctx.stroke();
         
         // Right goal crease - semicircle  
@@ -1039,13 +1112,17 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Right goal line - extends all the way across (within rink bounds)
+        // Right goal line - extends all the way to the boards
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * (1 - goalLinePos), cornerRadius + 4);
-        ctx.lineTo(w * (1 - goalLinePos), h - cornerRadius - 4);
+        ctx.moveTo(w * (1 - goalLinePos), 0);
+        ctx.lineTo(w * (1 - goalLinePos), h);
         ctx.stroke();
+        
+        // Draw goalie trapezoids behind each net
+        this.drawTrapezoid(ctx, w, h, 'left');
+        this.drawTrapezoid(ctx, w, h, 'right');
         
         // Draw neutral zone faceoff dots (5 ft from blue lines)
         // These are just dots, no circles
@@ -1063,6 +1140,84 @@ class DrillDesigner {
             ctx.arc(dot.x, dot.y, 4, 0, 2 * Math.PI);
             ctx.fill();
         });
+    }
+    
+    // Draw goalie trapezoid behind the net
+    drawTrapezoid(ctx, w, h, side) {
+        const goalLinePos = NHL_RINK.GOAL_LINE;
+        const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2; // Half width at goal line
+        const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;   // Half width at boards
+        
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        
+        if (side === 'left') {
+            const goalX = w * goalLinePos;
+            // Left trapezoid - from goal line to left boards
+            ctx.beginPath();
+            // Top line (from goal line going towards boards)
+            ctx.moveTo(goalX, h/2 - trapezoidBase);
+            ctx.lineTo(0, h/2 - trapezoidTop);
+            ctx.stroke();
+            // Bottom line
+            ctx.beginPath();
+            ctx.moveTo(goalX, h/2 + trapezoidBase);
+            ctx.lineTo(0, h/2 + trapezoidTop);
+            ctx.stroke();
+        } else {
+            const goalX = w * (1 - goalLinePos);
+            // Right trapezoid - from goal line to right boards
+            ctx.beginPath();
+            // Top line
+            ctx.moveTo(goalX, h/2 - trapezoidBase);
+            ctx.lineTo(w, h/2 - trapezoidTop);
+            ctx.stroke();
+            // Bottom line
+            ctx.beginPath();
+            ctx.moveTo(goalX, h/2 + trapezoidBase);
+            ctx.lineTo(w, h/2 + trapezoidTop);
+            ctx.stroke();
+        }
+    }
+    
+    // Draw faceoff restraint lines (L-shaped lines inside end zone faceoff circles)
+    drawRestraintLines(ctx, cx, cy, radius, zone, canvasHeight) {
+        const lineLength = canvasHeight * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5; // Slightly longer for visibility
+        const offset = radius * 0.15; // Distance from center dot
+        
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        // There are 4 L-shaped restraint lines in each faceoff circle
+        // Two on each side (top and bottom) facing the goal
+        
+        // The L-shapes point towards the goal (left or right)
+        const goalDirection = zone === 'left' ? -1 : 1;
+        
+        // Top-left L-shape (relative to faceoff dot)
+        this.drawLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection, -1);
+        // Top-right L-shape
+        this.drawLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection, -1);
+        // Bottom-left L-shape
+        this.drawLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection, 1);
+        // Bottom-right L-shape
+        this.drawLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection, 1);
+    }
+    
+    // Draw a single L-shaped restraint line
+    drawLShape(ctx, x, y, length, hDir, vDir) {
+        ctx.beginPath();
+        // Vertical part of L
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + vDir * length);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        // Horizontal part of L (towards goal)
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + hDir * length, y);
+        ctx.stroke();
     }
     
     // Helper function to draw hash marks around faceoff circles
@@ -1168,8 +1323,11 @@ class DrillDesigner {
         ctx.arc(w * faceoffFromBoards, faceoffY, 4, 0, 2 * Math.PI);
         ctx.fill();
         this.drawHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
+        // Draw restraint lines for half ice (goal is at top or bottom)
+        this.drawHalfIceRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w);
         
         // Right faceoff circle  
+        ctx.strokeStyle = '#c41e3a';
         ctx.beginPath();
         ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -1177,6 +1335,7 @@ class DrillDesigner {
         ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 4, 0, 2 * Math.PI);
         ctx.fill();
         this.drawHashMarks(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
+        this.drawHalfIceRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w);
         
         // Goal crease - 6 ft radius semicircle
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
@@ -1191,26 +1350,115 @@ class DrillDesigner {
         ctx.fill();
         ctx.stroke();
         
-        // Goal line
+        // Goal line - extends to boards
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(w * 0.3, goalY);
-        ctx.lineTo(w * 0.7, goalY);
+        ctx.moveTo(0, goalY);
+        ctx.lineTo(w, goalY);
+        ctx.stroke();
+        
+        // Draw trapezoid behind net (for half ice view)
+        this.drawHalfIceTrapezoid(ctx, w, h, side, goalY);
+    }
+    
+    // Draw trapezoid for half ice view (net at top or bottom)
+    drawHalfIceTrapezoid(ctx, w, h, side, goalY) {
+        const trapezoidBase = w * NHL_RINK.TRAPEZOID_BASE / 2;
+        const trapezoidTop = w * NHL_RINK.TRAPEZOID_TOP / 2;
+        
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        
+        if (side === 'top') {
+            // Trapezoid goes from goal line to top edge
+            ctx.beginPath();
+            ctx.moveTo(w/2 - trapezoidBase, goalY);
+            ctx.lineTo(w/2 - trapezoidTop, 0);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(w/2 + trapezoidBase, goalY);
+            ctx.lineTo(w/2 + trapezoidTop, 0);
+            ctx.stroke();
+        } else {
+            // Trapezoid goes from goal line to bottom edge
+            ctx.beginPath();
+            ctx.moveTo(w/2 - trapezoidBase, goalY);
+            ctx.lineTo(w/2 - trapezoidTop, h);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(w/2 + trapezoidBase, goalY);
+            ctx.lineTo(w/2 + trapezoidTop, h);
+            ctx.stroke();
+        }
+    }
+    
+    // Draw restraint lines for half ice view (net at top or bottom)
+    drawHalfIceRestraintLines(ctx, cx, cy, radius, side, canvasWidth) {
+        const lineLength = canvasWidth * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
+        const offset = radius * 0.15;
+        
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        // Goal direction for half ice (top = -1, bottom = 1 for Y direction)
+        const goalDirection = side === 'top' ? -1 : 1;
+        
+        // L-shapes point towards the goal
+        // Left side of faceoff dot
+        this.drawHalfIceLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection);
+        this.drawHalfIceLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection);
+        // Right side of faceoff dot
+        this.drawHalfIceLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection);
+        this.drawHalfIceLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection);
+    }
+    
+    drawHalfIceLShape(ctx, x, y, length, vDir) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + vDir * length);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(x - length/2, y);
+        ctx.lineTo(x + length/2, y);
         ctx.stroke();
     }
     
     drawZone(ctx, w, h, side) {
-        // Zone view shows one end zone (left or right)
-        // Faceoff circles are 22 ft from boards (22/85 = 0.259 of height in this orientation)
+        // Left/Right Zone view: shows LEFT or RIGHT HALF of the full rink
+        // Split vertically through the center of the nets
+        // Shows: half of each goal crease, half center circle, one full faceoff circle per zone
+        
+        // Use NHL rink proportions
+        const goalLinePos = NHL_RINK.GOAL_LINE;
+        const blueLinePos = NHL_RINK.BLUE_LINE;
+        const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
         const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
         const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
         const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
+        const centerCircleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
         
-        // Blue line position (far from goal)
-        const blueLineX = side === 'left' ? w * 0.85 : w * 0.15;
+        // Center line (red) - at the edge of the visible half
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 4;
+        if (side === 'left') {
+            // Center line at right edge for left half
+            ctx.beginPath();
+            ctx.moveTo(w, 0);
+            ctx.lineTo(w, h);
+            ctx.stroke();
+        } else {
+            // Center line at left edge for right half
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, h);
+            ctx.stroke();
+        }
         
-        // Blue line
+        // Blue line position (visible in this half)
+        const blueLineX = side === 'left' ? w * blueLinePos * 2 : w * (1 - blueLinePos * 2);
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -1218,11 +1466,40 @@ class DrillDesigner {
         ctx.lineTo(blueLineX, h);
         ctx.stroke();
         
-        // Goal line position (near the end)
-        const goalX = side === 'left' ? w * 0.08 : w * 0.92;
+        // Goal line position - extends to boards
+        const goalLineX = side === 'left' ? w * goalLinePos * 2 : w * (1 - goalLinePos * 2);
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(goalLineX, 0);
+        ctx.lineTo(goalLineX, h);
+        ctx.stroke();
         
-        // Faceoff circles - positioned between goal and blue line
-        const faceoffX = side === 'left' ? w * 0.35 : w * 0.65;
+        // Half center circle (at the edge, only half visible)
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (side === 'left') {
+            // Right half of center circle at right edge
+            ctx.arc(w, h/2, centerCircleRadius, Math.PI/2, -Math.PI/2);
+        } else {
+            // Left half of center circle at left edge
+            ctx.arc(0, h/2, centerCircleRadius, -Math.PI/2, Math.PI/2);
+        }
+        ctx.stroke();
+        
+        // Center dot (at edge)
+        ctx.fillStyle = '#0033a0';
+        ctx.beginPath();
+        if (side === 'left') {
+            ctx.arc(w, h/2, 5, 0, 2 * Math.PI);
+        } else {
+            ctx.arc(0, h/2, 5, 0, 2 * Math.PI);
+        }
+        ctx.fill();
+        
+        // Faceoff circles in this half (one top, one bottom in the end zone)
+        const faceoffX = side === 'left' ? w * faceoffFromGoal * 2 : w * (1 - faceoffFromGoal * 2);
         
         // Top faceoff circle
         ctx.strokeStyle = '#c41e3a';
@@ -1235,8 +1512,10 @@ class DrillDesigner {
         ctx.arc(faceoffX, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
         ctx.fill();
         this.drawHashMarks(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, 'horizontal');
+        this.drawRestraintLines(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, side, h);
         
         // Bottom faceoff circle
+        ctx.strokeStyle = '#c41e3a';
         ctx.beginPath();
         ctx.arc(faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -1244,27 +1523,70 @@ class DrillDesigner {
         ctx.arc(faceoffX, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
         ctx.fill();
         this.drawHashMarks(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 'horizontal');
+        this.drawRestraintLines(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, side, h);
         
-        // Goal crease - 6 ft radius semicircle
+        // Neutral zone faceoff dots (between blue line and center line)
+        const neutralZoneDotOffset = 5 / 200; // 5 ft from blue line
+        const neutralDotX = side === 'left' 
+            ? w * (blueLinePos + neutralZoneDotOffset) * 2 
+            : w * (1 - (blueLinePos + neutralZoneDotOffset) * 2);
+        
+        ctx.fillStyle = '#c41e3a';
+        // Top neutral dot
+        ctx.beginPath();
+        ctx.arc(neutralDotX, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        // Bottom neutral dot
+        ctx.beginPath();
+        ctx.arc(neutralDotX, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Goal crease - semicircle (half visible at edge)
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
         ctx.beginPath();
         if (side === 'left') {
-            ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+            ctx.arc(goalLineX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
         } else {
-            ctx.arc(goalX, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+            ctx.arc(goalLineX, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
         }
         ctx.fill();
         ctx.stroke();
         
-        // Goal line
+        // Draw trapezoid behind net
+        this.drawZoneTrapezoid(ctx, w, h, side, goalLineX);
+    }
+    
+    // Draw trapezoid for zone view (net at left or right)
+    drawZoneTrapezoid(ctx, w, h, side, goalLineX) {
+        const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+        const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
+        
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(goalX, h * 0.3);
-        ctx.lineTo(goalX, h * 0.7);
-        ctx.stroke();
+        ctx.lineWidth = 2;
+        
+        if (side === 'left') {
+            // Trapezoid goes from goal line to left edge
+            ctx.beginPath();
+            ctx.moveTo(goalLineX, h/2 - trapezoidBase);
+            ctx.lineTo(0, h/2 - trapezoidTop);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(goalLineX, h/2 + trapezoidBase);
+            ctx.lineTo(0, h/2 + trapezoidTop);
+            ctx.stroke();
+        } else {
+            // Trapezoid goes from goal line to right edge
+            ctx.beginPath();
+            ctx.moveTo(goalLineX, h/2 - trapezoidBase);
+            ctx.lineTo(w, h/2 - trapezoidTop);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(goalLineX, h/2 + trapezoidBase);
+            ctx.lineTo(w, h/2 + trapezoidTop);
+            ctx.stroke();
+        }
     }
     
     drawCenterIce(ctx, w, h) {

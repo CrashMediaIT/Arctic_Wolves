@@ -408,7 +408,10 @@ const NHL_RINK = {
     CENTER_CIRCLE_RADIUS: 15 / 85, // 15 ft radius center circle
     CREASE_RADIUS: 6 / 85,         // 6 ft radius goal crease
     FACEOFF_FROM_GOAL: 20 / 200,   // 20 ft from goal line
-    FACEOFF_FROM_BOARDS: 22 / 85   // 22 ft from boards
+    FACEOFF_FROM_BOARDS: 22 / 85,  // 22 ft from boards
+    TRAPEZOID_BASE: 22 / 85,       // Trapezoid base at goal line: 22 ft wide
+    TRAPEZOID_TOP: 28 / 85,        // Trapezoid top at boards: 28 ft wide
+    RESTRAINT_LINE_LENGTH: 2 / 85  // 2 ft restraint lines
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -579,22 +582,82 @@ function drawViewRink(ctx, w, h, iceView) {
             break;
     }
     
-    // Rink border
-    const cornerRadius = Math.min(w, h) * 0.1;
+    // Rink border - adapts to view type
+    drawRinkBorder(ctx, w, h, iceView);
+}
+
+// Draw rink border that adapts to view type
+function drawRinkBorder(ctx, w, h, iceView) {
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(cornerRadius + 2, 2);
-    ctx.lineTo(w - cornerRadius - 2, 2);
-    ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
-    ctx.lineTo(w - 2, h - cornerRadius - 2);
-    ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
-    ctx.lineTo(cornerRadius + 2, h - 2);
-    ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
-    ctx.lineTo(2, cornerRadius + 2);
-    ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
-    ctx.closePath();
-    ctx.stroke();
+    
+    const cornerRadius = Math.min(w, h) * 0.1;
+    
+    if (iceView === 'half-top' || iceView === 'half-bottom') {
+        // Half ice views - net at top or bottom, flat edge on opposite side
+        const isTop = iceView === 'half-top';
+        ctx.beginPath();
+        if (isTop) {
+            // Curved corners at top (net end), flat at bottom (center line)
+            ctx.moveTo(cornerRadius + 2, 2);
+            ctx.lineTo(w - cornerRadius - 2, 2);
+            ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
+            ctx.lineTo(w - 2, h - 2);
+            ctx.lineTo(2, h - 2);
+            ctx.lineTo(2, cornerRadius + 2);
+            ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
+        } else {
+            // Flat at top (center line), curved corners at bottom (net end)
+            ctx.moveTo(2, 2);
+            ctx.lineTo(w - 2, 2);
+            ctx.lineTo(w - 2, h - cornerRadius - 2);
+            ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
+            ctx.lineTo(cornerRadius + 2, h - 2);
+            ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
+            ctx.lineTo(2, 2);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    } else if (iceView === 'left-zone' || iceView === 'right-zone') {
+        // Zone views - net at left or right, flat edge on opposite side
+        const isLeft = iceView === 'left-zone';
+        ctx.beginPath();
+        if (isLeft) {
+            // Curved corners at left (net end), flat at right (blue line side)
+            ctx.moveTo(cornerRadius + 2, 2);
+            ctx.lineTo(w - 2, 2);
+            ctx.lineTo(w - 2, h - 2);
+            ctx.lineTo(cornerRadius + 2, h - 2);
+            ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
+            ctx.lineTo(2, cornerRadius + 2);
+            ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
+        } else {
+            // Flat at left (blue line side), curved corners at right (net end)
+            ctx.moveTo(2, 2);
+            ctx.lineTo(w - cornerRadius - 2, 2);
+            ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
+            ctx.lineTo(w - 2, h - cornerRadius - 2);
+            ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
+            ctx.lineTo(2, h - 2);
+            ctx.lineTo(2, 2);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    } else {
+        // Full ice - all corners rounded
+        ctx.beginPath();
+        ctx.moveTo(cornerRadius + 2, 2);
+        ctx.lineTo(w - cornerRadius - 2, 2);
+        ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
+        ctx.lineTo(w - 2, h - cornerRadius - 2);
+        ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
+        ctx.lineTo(cornerRadius + 2, h - 2);
+        ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
+        ctx.lineTo(2, cornerRadius + 2);
+        ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
+        ctx.closePath();
+        ctx.stroke();
+    }
 }
 
 function drawFullIceView(ctx, w, h) {
@@ -651,12 +714,12 @@ function drawFullIceView(ctx, w, h) {
     ctx.fill();
     ctx.stroke();
     
-    // Left goal line
+    // Left goal line - extends to boards
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(w * goalLinePos, cornerRadius + 4);
-    ctx.lineTo(w * goalLinePos, h - cornerRadius - 4);
+    ctx.moveTo(w * goalLinePos, 0);
+    ctx.lineTo(w * goalLinePos, h);
     ctx.stroke();
     
     // Right goal crease
@@ -668,21 +731,25 @@ function drawFullIceView(ctx, w, h) {
     ctx.fill();
     ctx.stroke();
     
-    // Right goal line
+    // Right goal line - extends to boards
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(w * (1 - goalLinePos), cornerRadius + 4);
-    ctx.lineTo(w * (1 - goalLinePos), h - cornerRadius - 4);
+    ctx.moveTo(w * (1 - goalLinePos), 0);
+    ctx.lineTo(w * (1 - goalLinePos), h);
     ctx.stroke();
+    
+    // Draw goalie trapezoids
+    drawTrapezoid(ctx, w, h, 'left');
+    drawTrapezoid(ctx, w, h, 'right');
     
     // Faceoff circles (15 ft radius, 20 ft from goal, 22 ft from boards)
     const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
     const circles = [
-        { x: w * faceoffFromGoal, y: h * faceoffFromBoards },
-        { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards) },
-        { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards },
-        { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards) }
+        { x: w * faceoffFromGoal, y: h * faceoffFromBoards, zone: 'left' },
+        { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards), zone: 'left' },
+        { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards, zone: 'right' },
+        { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards), zone: 'right' }
     ];
     
     circles.forEach(function(circle) {
@@ -699,16 +766,99 @@ function drawFullIceView(ctx, w, h) {
         
         // Draw NHL-style hash marks (nets on left/right)
         drawHashMarksForCircle(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
+        
+        // Draw faceoff restraint lines
+        drawRestraintLines(ctx, circle.x, circle.y, faceoffRadius, circle.zone, h);
+    });
+    
+    // Neutral zone faceoff dots
+    const neutralZoneDotOffset = 5 / 200;
+    const neutralDots = [
+        { x: w * (blueLinePos + neutralZoneDotOffset), y: h * faceoffFromBoards },
+        { x: w * (blueLinePos + neutralZoneDotOffset), y: h * (1 - faceoffFromBoards) },
+        { x: w * (1 - blueLinePos - neutralZoneDotOffset), y: h * faceoffFromBoards },
+        { x: w * (1 - blueLinePos - neutralZoneDotOffset), y: h * (1 - faceoffFromBoards) }
+    ];
+    
+    ctx.fillStyle = '#c41e3a';
+    neutralDots.forEach(function(dot) {
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
     });
 }
 
+// Draw goalie trapezoid behind the net
+function drawTrapezoid(ctx, w, h, side) {
+    const goalLinePos = NHL_RINK.GOAL_LINE;
+    const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    
+    if (side === 'left') {
+        const goalX = w * goalLinePos;
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 - trapezoidBase);
+        ctx.lineTo(0, h/2 - trapezoidTop);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 + trapezoidBase);
+        ctx.lineTo(0, h/2 + trapezoidTop);
+        ctx.stroke();
+    } else {
+        const goalX = w * (1 - goalLinePos);
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 - trapezoidBase);
+        ctx.lineTo(w, h/2 - trapezoidTop);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 + trapezoidBase);
+        ctx.lineTo(w, h/2 + trapezoidTop);
+        ctx.stroke();
+    }
+}
+
+// Draw faceoff restraint lines (L-shaped lines inside end zone faceoff circles)
+function drawRestraintLines(ctx, cx, cy, radius, zone, canvasHeight) {
+    const lineLength = canvasHeight * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
+    const offset = radius * 0.15;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    
+    const goalDirection = zone === 'left' ? -1 : 1;
+    
+    // 4 L-shaped restraint lines
+    drawLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection, -1);
+    drawLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection, -1);
+    drawLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection, 1);
+    drawLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection, 1);
+}
+
+function drawLShape(ctx, x, y, length, hDir, vDir) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + vDir * length);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + hDir * length, y);
+    ctx.stroke();
+}
+
 function drawHalfIceView(ctx, w, h, side) {
-    // NHL proportions for half ice view
+    // Half ice shows one end zone with faceoff circles
+    // For half ice, we scale proportionally - the visible area is roughly half the rink
+    // Faceoff circles are 22 ft from boards (22/85 = 0.259 of width)
     const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
     const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
     const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
     
-    // Blue line position
+    // Blue line position (relative to the half-ice view)
     const blueLineY = side === 'top' ? h * 0.85 : h * 0.15;
     
     // Blue line
@@ -719,8 +869,11 @@ function drawHalfIceView(ctx, w, h, side) {
     ctx.lineTo(w, blueLineY);
     ctx.stroke();
     
-    // Goal and faceoff positions
+    // Goal position (goal line is near the end)
     const goalY = side === 'top' ? h * 0.08 : h * 0.92;
+    
+    // Faceoff circles - positioned 22 ft from boards on each side
+    // In half ice, faceoff Y is between goal and blue line
     const faceoffY = side === 'top' ? h * 0.35 : h * 0.65;
     
     // Left faceoff circle
@@ -734,8 +887,10 @@ function drawHalfIceView(ctx, w, h, side) {
     ctx.arc(w * faceoffFromBoards, faceoffY, 4, 0, 2 * Math.PI);
     ctx.fill();
     drawHashMarksForCircle(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
+    drawHalfIceRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w);
     
     // Right faceoff circle  
+    ctx.strokeStyle = '#c41e3a';
     ctx.beginPath();
     ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
     ctx.stroke();
@@ -743,6 +898,7 @@ function drawHalfIceView(ctx, w, h, side) {
     ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 4, 0, 2 * Math.PI);
     ctx.fill();
     drawHashMarksForCircle(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
+    drawHalfIceRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w);
     
     // Goal crease - 6 ft radius semicircle
     ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
@@ -752,30 +908,114 @@ function drawHalfIceView(ctx, w, h, side) {
     if (side === 'top') {
         ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
     } else {
-        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI, true);
+        ctx.arc(w * 0.5, goalY, creaseRadius, Math.PI, 0);
     }
     ctx.fill();
     ctx.stroke();
     
-    // Goal line
+    // Goal line - extends to boards
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(w * 0.3, goalY);
-    ctx.lineTo(w * 0.7, goalY);
+    ctx.moveTo(0, goalY);
+    ctx.lineTo(w, goalY);
+    ctx.stroke();
+    
+    // Draw trapezoid behind net
+    drawHalfIceTrapezoid(ctx, w, h, side, goalY);
+}
+
+// Draw trapezoid for half ice view (net at top or bottom)
+function drawHalfIceTrapezoid(ctx, w, h, side, goalY) {
+    const trapezoidBase = w * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = w * NHL_RINK.TRAPEZOID_TOP / 2;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    
+    if (side === 'top') {
+        ctx.beginPath();
+        ctx.moveTo(w/2 - trapezoidBase, goalY);
+        ctx.lineTo(w/2 - trapezoidTop, 0);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(w/2 + trapezoidBase, goalY);
+        ctx.lineTo(w/2 + trapezoidTop, 0);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.moveTo(w/2 - trapezoidBase, goalY);
+        ctx.lineTo(w/2 - trapezoidTop, h);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(w/2 + trapezoidBase, goalY);
+        ctx.lineTo(w/2 + trapezoidTop, h);
+        ctx.stroke();
+    }
+}
+
+// Draw restraint lines for half ice view (net at top or bottom)
+function drawHalfIceRestraintLines(ctx, cx, cy, radius, side, canvasWidth) {
+    const lineLength = canvasWidth * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
+    const offset = radius * 0.15;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    
+    const goalDirection = side === 'top' ? -1 : 1;
+    
+    drawHalfIceLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection);
+    drawHalfIceLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection);
+    drawHalfIceLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection);
+    drawHalfIceLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection);
+}
+
+function drawHalfIceLShape(ctx, x, y, length, vDir) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + vDir * length);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(x - length/2, y);
+    ctx.lineTo(x + length/2, y);
     ctx.stroke();
 }
 
 function drawZoneView(ctx, w, h, side) {
-    // NHL proportions for zone view
+    // Left/Right Zone view: shows LEFT or RIGHT HALF of the full rink
+    // Split vertically through the center of the nets
+    // Shows: half of each goal crease, half center circle, one full faceoff circle per zone
+    
+    // Use NHL rink proportions
+    const goalLinePos = NHL_RINK.GOAL_LINE;
+    const blueLinePos = NHL_RINK.BLUE_LINE;
+    const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
     const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
     const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
     const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
+    const centerCircleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
     
-    // Blue line position (far from goal)
-    const blueLineX = side === 'left' ? w * 0.85 : w * 0.15;
+    // Center line (red) - at the edge of the visible half
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 4;
+    if (side === 'left') {
+        // Center line at right edge for left half
+        ctx.beginPath();
+        ctx.moveTo(w, 0);
+        ctx.lineTo(w, h);
+        ctx.stroke();
+    } else {
+        // Center line at left edge for right half
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, h);
+        ctx.stroke();
+    }
     
-    // Blue line
+    // Blue line position (visible in this half)
+    const blueLineX = side === 'left' ? w * blueLinePos * 2 : w * (1 - blueLinePos * 2);
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -783,9 +1023,40 @@ function drawZoneView(ctx, w, h, side) {
     ctx.lineTo(blueLineX, h);
     ctx.stroke();
     
-    // Goal and faceoff positions
-    const goalX = side === 'left' ? w * 0.08 : w * 0.92;
-    const faceoffX = side === 'left' ? w * 0.35 : w * 0.65;
+    // Goal line position - extends to boards
+    const goalLineX = side === 'left' ? w * goalLinePos * 2 : w * (1 - goalLinePos * 2);
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(goalLineX, 0);
+    ctx.lineTo(goalLineX, h);
+    ctx.stroke();
+    
+    // Half center circle (at the edge, only half visible)
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (side === 'left') {
+        // Right half of center circle at right edge
+        ctx.arc(w, h/2, centerCircleRadius, Math.PI/2, -Math.PI/2);
+    } else {
+        // Left half of center circle at left edge
+        ctx.arc(0, h/2, centerCircleRadius, -Math.PI/2, Math.PI/2);
+    }
+    ctx.stroke();
+    
+    // Center dot (at edge)
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    if (side === 'left') {
+        ctx.arc(w, h/2, 5, 0, 2 * Math.PI);
+    } else {
+        ctx.arc(0, h/2, 5, 0, 2 * Math.PI);
+    }
+    ctx.fill();
+    
+    // Faceoff circles in this half (one top, one bottom in the end zone)
+    const faceoffX = side === 'left' ? w * faceoffFromGoal * 2 : w * (1 - faceoffFromGoal * 2);
     
     // Top faceoff circle
     ctx.strokeStyle = '#c41e3a';
@@ -798,8 +1069,10 @@ function drawZoneView(ctx, w, h, side) {
     ctx.arc(faceoffX, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
     ctx.fill();
     drawHashMarksForCircle(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, 'horizontal');
+    drawRestraintLines(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, side, h);
     
     // Bottom faceoff circle
+    ctx.strokeStyle = '#c41e3a';
     ctx.beginPath();
     ctx.arc(faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 0, 2 * Math.PI);
     ctx.stroke();
@@ -807,28 +1080,71 @@ function drawZoneView(ctx, w, h, side) {
     ctx.arc(faceoffX, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
     ctx.fill();
     drawHashMarksForCircle(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 'horizontal');
+    drawRestraintLines(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, side, h);
     
-    // Goal crease - 6 ft radius semicircle
+    // Neutral zone faceoff dots (between blue line and center line)
+    const neutralZoneDotOffset = 5 / 200; // 5 ft from blue line
+    const neutralDotX = side === 'left' 
+        ? w * (blueLinePos + neutralZoneDotOffset) * 2 
+        : w * (1 - (blueLinePos + neutralZoneDotOffset) * 2);
+    
+    ctx.fillStyle = '#c41e3a';
+    // Top neutral dot
+    ctx.beginPath();
+    ctx.arc(neutralDotX, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
+    ctx.fill();
+    // Bottom neutral dot
+    ctx.beginPath();
+    ctx.arc(neutralDotX, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Goal crease - semicircle (half visible at edge)
     ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
     if (side === 'left') {
-        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+        ctx.arc(goalLineX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
     } else {
-        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
+        ctx.arc(goalLineX, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
     }
     ctx.fill();
     ctx.stroke();
     
-    // Goal line
-    ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(goalX, h * 0.35);
-    ctx.lineTo(goalX, h * 0.65);
-    ctx.stroke();
+    // Draw trapezoid behind net
+    drawZoneTrapezoid(ctx, w, h, side, goalLineX);
 }
+
+// Draw trapezoid for zone view (net at left or right)
+function drawZoneTrapezoid(ctx, w, h, side, goalLineX) {
+    const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    
+    if (side === 'left') {
+        ctx.beginPath();
+        ctx.moveTo(goalLineX, h/2 - trapezoidBase);
+        ctx.lineTo(0, h/2 - trapezoidTop);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goalLineX, h/2 + trapezoidBase);
+        ctx.lineTo(0, h/2 + trapezoidTop);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.moveTo(goalLineX, h/2 - trapezoidBase);
+        ctx.lineTo(w, h/2 - trapezoidTop);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goalLineX, h/2 + trapezoidBase);
+        ctx.lineTo(w, h/2 + trapezoidTop);
+        ctx.stroke();
+    }
+}
+
+// Helper function to draw NHL hash marks around faceoff circles
 
 // Helper function to draw NHL hash marks around faceoff circles
 // netPosition: 'horizontal' (nets on left/right, hash marks on top/bottom)
@@ -924,53 +1240,127 @@ function drawObject(ctx, obj) {
         ctx.fill();
     } else if (obj.type === 'line') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(obj.x1, obj.y1);
-        ctx.lineTo(obj.x2, obj.y2);
-        ctx.stroke();
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        if (obj.points && obj.points.length >= 2) {
+            // Freehand line with points
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x, obj.points[0].y);
+            for (let i = 1; i < obj.points.length - 1; i++) {
+                const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+                const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+            }
+            ctx.lineTo(obj.points[obj.points.length - 1].x, obj.points[obj.points.length - 1].y);
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(obj.x1, obj.y1);
+            ctx.lineTo(obj.x2, obj.y2);
+            ctx.stroke();
+        }
     } else if (obj.type === 'dashed') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         ctx.setLineDash([8, 5]);
-        ctx.beginPath();
-        ctx.moveTo(obj.x1, obj.y1);
-        ctx.lineTo(obj.x2, obj.y2);
-        ctx.stroke();
+        if (obj.points && obj.points.length >= 2) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x, obj.points[0].y);
+            for (let i = 1; i < obj.points.length - 1; i++) {
+                const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+                const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+            }
+            ctx.lineTo(obj.points[obj.points.length - 1].x, obj.points[obj.points.length - 1].y);
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(obj.x1, obj.y1);
+            ctx.lineTo(obj.x2, obj.y2);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
     } else if (obj.type === 'squiggly') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 2;
-        const dx = obj.x2 - obj.x1;
-        const dy = obj.y2 - obj.y1;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-        const numWaves = Math.max(2, Math.floor(distance / 15));
-        
-        ctx.translate(obj.x1, obj.y1);
-        ctx.rotate(angle);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        for (let i = 0; i < numWaves; i++) {
-            const segmentEnd = ((i + 1) / numWaves) * distance;
-            const midX = ((i / numWaves) * distance + segmentEnd) / 2;
-            ctx.quadraticCurveTo(midX, (i % 2 === 0 ? 1 : -1) * 6, segmentEnd, 0);
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        if (obj.points && obj.points.length >= 2) {
+            // Freehand squiggly with points - draw with wave pattern
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x, obj.points[0].y);
+            for (let i = 1; i < obj.points.length - 1; i++) {
+                const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+                const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+            }
+            ctx.lineTo(obj.points[obj.points.length - 1].x, obj.points[obj.points.length - 1].y);
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            const dx = obj.x2 - obj.x1;
+            const dy = obj.y2 - obj.y1;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const numWaves = Math.max(2, Math.floor(distance / 15));
+            
+            ctx.translate(obj.x1, obj.y1);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            for (let i = 0; i < numWaves; i++) {
+                const segmentEnd = ((i + 1) / numWaves) * distance;
+                const midX = ((i / numWaves) * distance + segmentEnd) / 2;
+                ctx.quadraticCurveTo(midX, (i % 2 === 0 ? 1 : -1) * 6, segmentEnd, 0);
+            }
+            ctx.stroke();
         }
-        ctx.stroke();
     } else if (obj.type === 'arrow') {
         ctx.strokeStyle = obj.color || '#333';
         ctx.fillStyle = obj.color || '#333';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(obj.x1, obj.y1);
-        ctx.lineTo(obj.x2, obj.y2);
-        ctx.stroke();
-        const angle = Math.atan2(obj.y2 - obj.y1, obj.x2 - obj.x1);
-        ctx.beginPath();
-        ctx.moveTo(obj.x2, obj.y2);
-        ctx.lineTo(obj.x2 - 15 * Math.cos(angle - Math.PI/6), obj.y2 - 15 * Math.sin(angle - Math.PI/6));
-        ctx.lineTo(obj.x2 - 15 * Math.cos(angle + Math.PI/6), obj.y2 - 15 * Math.sin(angle + Math.PI/6));
-        ctx.closePath();
-        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        let x2, y2, angle;
+        
+        if (obj.points && obj.points.length >= 2) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x, obj.points[0].y);
+            for (let i = 1; i < obj.points.length - 1; i++) {
+                const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+                const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+            }
+            const last = obj.points[obj.points.length - 1];
+            ctx.lineTo(last.x, last.y);
+            ctx.stroke();
+            
+            x2 = last.x;
+            y2 = last.y;
+            const secondLast = obj.points[obj.points.length - 2];
+            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+        } else if (obj.x1 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(obj.x1, obj.y1);
+            ctx.lineTo(obj.x2, obj.y2);
+            ctx.stroke();
+            
+            x2 = obj.x2;
+            y2 = obj.y2;
+            angle = Math.atan2(obj.y2 - obj.y1, obj.x2 - obj.x1);
+        }
+        
+        if (x2 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - 15 * Math.cos(angle - Math.PI/6), y2 - 15 * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(x2 - 15 * Math.cos(angle + Math.PI/6), y2 - 15 * Math.sin(angle + Math.PI/6));
+            ctx.closePath();
+            ctx.fill();
+        }
     } else if (obj.type === 'net') {
         ctx.translate(obj.x, obj.y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
@@ -1089,6 +1479,42 @@ function drawObject(ctx, obj) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.value, 0, 0);
+    } else if (obj.type === 'pucks') {
+        // Group of pucks
+        ctx.fillStyle = '#000';
+        const positions = [
+            {x: -8, y: -8}, {x: 8, y: -8},
+            {x: -8, y: 8}, {x: 8, y: 8}, {x: 0, y: 0}
+        ];
+        positions.forEach(pos => {
+            ctx.beginPath();
+            ctx.arc(obj.x + pos.x, obj.y + pos.y, 5, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+    } else if (obj.type === 'skating_forward') {
+        // Forward skating - solid line with arrow
+        drawSkatingLine(ctx, obj, false, true, false);
+    } else if (obj.type === 'skating_backward') {
+        // Backward skating - dashed line with arrow
+        drawSkatingLine(ctx, obj, true, true, false);
+    } else if (obj.type === 'skating_lateral') {
+        // Lateral skating - zigzag line
+        drawLateralSkating(ctx, obj);
+    } else if (obj.type === 'skating_ccuts') {
+        // C-cuts skating - curved pattern
+        drawCCutsSkating(ctx, obj);
+    } else if (obj.type === 'skating_forward_puck') {
+        // Forward with puck - solid line with arrow and puck at start
+        drawSkatingLine(ctx, obj, false, true, true);
+    } else if (obj.type === 'skating_backward_puck') {
+        // Backward with puck - dashed line with backward arrow and puck at start
+        drawSkatingLine(ctx, obj, true, true, true, true);
+    } else if (obj.type === 'pass') {
+        // Pass line - dashed with hollow arrow
+        drawPassLine(ctx, obj);
+    } else if (obj.type === 'shot') {
+        // Shot line - thick solid with large arrow
+        drawShotLine(ctx, obj);
     } else if (obj.type === 'freehand' || obj.type === 'freehand_arrow' || obj.type === 'freehand_dashed' || obj.type === 'freehand_skating') {
         // Handle all freehand drawing types
         if (obj.points && obj.points.length >= 2) {
@@ -1139,6 +1565,281 @@ function drawObject(ctx, obj) {
     }
     
     ctx.restore();
+}
+
+// Helper function for skating lines (forward/backward with/without puck)
+function drawSkatingLine(ctx, obj, dashed, hasArrow, hasPuck, backwardArrow) {
+    const color = obj.color || '#333';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    if (dashed) {
+        ctx.setLineDash([12, 4, 4, 4]);
+    }
+    
+    let x1, y1, x2, y2, angle;
+    
+    if (obj.points && obj.points.length >= 2) {
+        // Freehand points format
+        ctx.beginPath();
+        ctx.moveTo(obj.points[0].x, obj.points[0].y);
+        
+        for (let i = 1; i < obj.points.length - 1; i++) {
+            const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+            const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+        }
+        
+        const last = obj.points[obj.points.length - 1];
+        ctx.lineTo(last.x, last.y);
+        ctx.stroke();
+        
+        x1 = obj.points[0].x;
+        y1 = obj.points[0].y;
+        x2 = last.x;
+        y2 = last.y;
+        
+        // Get angle from last two points for arrow
+        const secondLast = obj.points[obj.points.length - 2];
+        angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+        if (backwardArrow) {
+            angle = Math.atan2(secondLast.y - last.y, secondLast.x - last.x);
+        }
+    } else if (obj.x1 !== undefined) {
+        // Old x1/y1/x2/y2 format
+        ctx.beginPath();
+        ctx.moveTo(obj.x1, obj.y1);
+        ctx.lineTo(obj.x2, obj.y2);
+        ctx.stroke();
+        
+        x1 = obj.x1;
+        y1 = obj.y1;
+        x2 = obj.x2;
+        y2 = obj.y2;
+        
+        angle = backwardArrow ? Math.atan2(y1 - y2, x1 - x2) : Math.atan2(y2 - y1, x2 - x1);
+    }
+    
+    if (dashed) {
+        ctx.setLineDash([]);
+    }
+    
+    // Draw arrow head
+    if (hasArrow && x2 !== undefined) {
+        const headlen = 12;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+    }
+    
+    // Draw puck at start
+    if (hasPuck && x1 !== undefined) {
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(x1, y1, 6, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+}
+
+// Helper function for lateral skating (zigzag pattern)
+function drawLateralSkating(ctx, obj) {
+    const color = obj.color || '#10b981';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    if (obj.points && obj.points.length >= 2) {
+        // Use points directly for freehand lateral
+        ctx.beginPath();
+        ctx.moveTo(obj.points[0].x, obj.points[0].y);
+        
+        for (let i = 1; i < obj.points.length; i++) {
+            ctx.lineTo(obj.points[i].x, obj.points[i].y);
+        }
+        ctx.stroke();
+    } else if (obj.x1 !== undefined) {
+        const dx = obj.x2 - obj.x1;
+        const dy = obj.y2 - obj.y1;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const perpAngle = angle + Math.PI / 2;
+        const segments = Math.max(4, Math.floor(distance / 20));
+        const zigzagHeight = 8;
+        
+        ctx.beginPath();
+        ctx.moveTo(obj.x1, obj.y1);
+        
+        for (let i = 1; i <= segments; i++) {
+            const t = i / segments;
+            const px = obj.x1 + dx * t;
+            const py = obj.y1 + dy * t;
+            const offset = (i % 2 === 1) ? zigzagHeight : -zigzagHeight;
+            ctx.lineTo(px + Math.cos(perpAngle) * offset, py + Math.sin(perpAngle) * offset);
+        }
+        
+        ctx.lineTo(obj.x2, obj.y2);
+        ctx.stroke();
+    }
+}
+
+// Helper function for C-cuts skating
+function drawCCutsSkating(ctx, obj) {
+    const color = obj.color || '#8b5cf6';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    
+    if (obj.points && obj.points.length >= 2) {
+        // Use points directly for freehand c-cuts
+        ctx.beginPath();
+        ctx.moveTo(obj.points[0].x, obj.points[0].y);
+        
+        for (let i = 1; i < obj.points.length - 1; i++) {
+            const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+            const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+        }
+        
+        const last = obj.points[obj.points.length - 1];
+        ctx.lineTo(last.x, last.y);
+        ctx.stroke();
+    } else if (obj.x1 !== undefined) {
+        const dx = obj.x2 - obj.x1;
+        const dy = obj.y2 - obj.y1;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const numCuts = Math.max(3, Math.floor(distance / 30));
+        const cutWidth = distance / numCuts;
+        const cutHeight = 12;
+        
+        ctx.save();
+        ctx.translate(obj.x1, obj.y1);
+        ctx.rotate(angle);
+        
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        
+        for (let i = 0; i < numCuts; i++) {
+            const startX = i * cutWidth;
+            const endX = (i + 1) * cutWidth;
+            const direction = (i % 2 === 0) ? 1 : -1;
+            ctx.quadraticCurveTo(startX + cutWidth / 2, direction * cutHeight, endX, 0);
+        }
+        
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+// Helper function for pass line (dashed with hollow arrow)
+function drawPassLine(ctx, obj) {
+    const color = obj.color || '#0033a0';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([10, 5]);
+    
+    let x2, y2, angle;
+    
+    if (obj.points && obj.points.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(obj.points[0].x, obj.points[0].y);
+        
+        for (let i = 1; i < obj.points.length - 1; i++) {
+            const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+            const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+        }
+        
+        const last = obj.points[obj.points.length - 1];
+        ctx.lineTo(last.x, last.y);
+        ctx.stroke();
+        
+        x2 = last.x;
+        y2 = last.y;
+        const secondLast = obj.points[obj.points.length - 2];
+        angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+    } else if (obj.x1 !== undefined) {
+        ctx.beginPath();
+        ctx.moveTo(obj.x1, obj.y1);
+        ctx.lineTo(obj.x2, obj.y2);
+        ctx.stroke();
+        
+        x2 = obj.x2;
+        y2 = obj.y2;
+        angle = Math.atan2(obj.y2 - obj.y1, obj.x2 - obj.x1);
+    }
+    
+    ctx.setLineDash([]);
+    
+    // Hollow arrow head
+    if (x2 !== undefined) {
+        const headlen = 14;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+    }
+}
+
+// Helper function for shot line (thick with large filled arrow)
+function drawShotLine(ctx, obj) {
+    const color = obj.color || '#c41e3a';
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    
+    let x2, y2, angle;
+    
+    if (obj.points && obj.points.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(obj.points[0].x, obj.points[0].y);
+        
+        for (let i = 1; i < obj.points.length - 1; i++) {
+            const xc = (obj.points[i].x + obj.points[i + 1].x) / 2;
+            const yc = (obj.points[i].y + obj.points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(obj.points[i].x, obj.points[i].y, xc, yc);
+        }
+        
+        const last = obj.points[obj.points.length - 1];
+        ctx.lineTo(last.x, last.y);
+        ctx.stroke();
+        
+        x2 = last.x;
+        y2 = last.y;
+        const secondLast = obj.points[obj.points.length - 2];
+        angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+    } else if (obj.x1 !== undefined) {
+        ctx.beginPath();
+        ctx.moveTo(obj.x1, obj.y1);
+        ctx.lineTo(obj.x2, obj.y2);
+        ctx.stroke();
+        
+        x2 = obj.x2;
+        y2 = obj.y2;
+        angle = Math.atan2(obj.y2 - obj.y1, obj.x2 - obj.x1);
+    }
+    
+    // Large filled arrow head
+    if (x2 !== undefined) {
+        const headlen = 18;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 5), y2 - headlen * Math.sin(angle - Math.PI / 5));
+        ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 5), y2 - headlen * Math.sin(angle + Math.PI / 5));
+        ctx.closePath();
+        ctx.fill();
+    }
 }
 
 function copyShareLink() {
