@@ -296,19 +296,54 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
 .ice-rink-canvas.view-only {
     width: 100%;
     max-width: 900px;
-    aspect-ratio: 2/1;
+    /* Default aspect ratio for full ice (200/85 ≈ 2.35) */
+    aspect-ratio: 200/85;
     min-height: 350px;
     background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
     border: 3px solid #0033a0;
     border-radius: 80px;
     position: relative;
     overflow: hidden;
+    transition: aspect-ratio 0.3s ease-in-out;
+}
+
+/* Dynamic aspect ratios based on ice view */
+/* Full ice: 200 ft × 85 ft (horizontal, net on left/right) */
+.ice-rink-canvas.view-only[data-ice-view="full"] {
+    aspect-ratio: 200/85;
+    border-radius: 80px;
+}
+
+/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom) */
+.ice-rink-canvas.view-only[data-ice-view="half-top"],
+.ice-rink-canvas.view-only[data-ice-view="half-bottom"] {
+    aspect-ratio: 85/100;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 80px 80px 20px 20px;
+}
+
+/* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) */
+.ice-rink-canvas.view-only[data-ice-view="left-zone"],
+.ice-rink-canvas.view-only[data-ice-view="right-zone"] {
+    aspect-ratio: 100/85;
+    border-radius: 80px;
+}
+
+/* Center ice: 72 ft × 85 ft (between the blue lines) */
+.ice-rink-canvas.view-only[data-ice-view="center"] {
+    aspect-ratio: 72/85;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 20px;
 }
 
 .ice-rink-canvas.view-only canvas {
     width: 100%;
     height: 100%;
-    border-radius: 77px;
+    border-radius: inherit;
 }
 
 .card-actions {
@@ -452,6 +487,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('No diagram data to parse');
     }
     
+    // Update the container's data-ice-view attribute for dynamic CSS aspect ratio
+    container.setAttribute('data-ice-view', iceView);
+    
     // Function to render everything
     function renderDrill() {
         drawViewRink(ctx, canvas.width, canvas.height, iceView);
@@ -467,6 +505,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 drawObject(ctx, scaledObj);
             });
         }
+    }
+    
+    // Function to initialize canvas dimensions and render
+    function initializeAndRender() {
+        canvas.width = container.offsetWidth;
+        canvas.height = container.offsetHeight;
+        renderDrill();
     }
     
     // Scale object coordinates for view
@@ -494,22 +539,23 @@ document.addEventListener('DOMContentLoaded', function() {
         return scaled;
     }
     
-    // Load center logo if URL provided
+    // Load center logo if URL provided, then render
+    // Using requestAnimationFrame ensures CSS aspect-ratio changes are applied before measuring dimensions
     if (centerLogoUrl) {
         centerLogoImage = new Image();
         centerLogoImage.crossOrigin = 'anonymous';
         centerLogoImage.onload = function() {
             centerLogoLoaded = true;
-            renderDrill();
+            requestAnimationFrame(initializeAndRender);
         };
         centerLogoImage.onerror = function() {
             console.warn('Failed to load center logo image');
             centerLogoLoaded = false;
-            renderDrill();
+            requestAnimationFrame(initializeAndRender);
         };
         centerLogoImage.src = centerLogoUrl;
     } else {
-        renderDrill();
+        requestAnimationFrame(initializeAndRender);
     }
     
     // Handle resize
@@ -576,6 +622,9 @@ function drawViewRink(ctx, w, h, iceView) {
         case 'right-zone':
             drawZoneView(ctx, w, h, 'right');
             break;
+        case 'center':
+            drawCenterIceView(ctx, w, h);
+            break;
         case 'full':
         default:
             drawFullIceView(ctx, w, h);
@@ -584,6 +633,31 @@ function drawViewRink(ctx, w, h, iceView) {
     
     // Rink border - adapts to view type
     drawRinkBorder(ctx, w, h, iceView);
+}
+
+// Draw center ice view (neutral zone around center)
+function drawCenterIceView(ctx, w, h) {
+    // Center line (red)
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2, h);
+    ctx.stroke();
+    
+    // Center circle - use NHL proportions (15 ft radius on 85 ft width)
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
+    const circleRadius = h * (15 / 85);
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Center dot
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 6, 0, 2 * Math.PI);
+    ctx.fill();
 }
 
 // Draw rink border that adapts to view type
