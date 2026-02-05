@@ -1041,6 +1041,9 @@ const NHL_RINK = {
     CREASE_RADIUS: 6 / 85,
     FACEOFF_FROM_GOAL: 20 / 200,
     FACEOFF_FROM_BOARDS: 22 / 85,
+    TRAPEZOID_BASE: 22 / 85,
+    TRAPEZOID_TOP: 28 / 85,
+    RESTRAINT_LINE_LENGTH: 2 / 85,
     CORNER_RADIUS: 28 / 85
 };
 
@@ -1132,8 +1135,28 @@ function renderDrillSelectorThumbnails() {
             }
             ctx.restore();
             
-            // Draw rink markings based on ice view
-            drawThumbnailRink(ctx, w, h, iceView);
+            // Draw rink markings based on ice view (matching drills_library.php)
+            switch(iceView) {
+                case 'half-top':
+                    drawThumbnailHalfIce(ctx, w, h, 'top');
+                    break;
+                case 'half-bottom':
+                    drawThumbnailHalfIce(ctx, w, h, 'bottom');
+                    break;
+                case 'left-zone':
+                    drawThumbnailZone(ctx, w, h, 'left');
+                    break;
+                case 'right-zone':
+                    drawThumbnailZone(ctx, w, h, 'right');
+                    break;
+                case 'center':
+                    drawThumbnailCenterIce(ctx, w, h);
+                    break;
+                case 'full':
+                default:
+                    drawThumbnailFullIce(ctx, w, h);
+                    break;
+            }
             
             // Draw diagram objects
             if (diagramData && diagramData.length > 0) {
@@ -1148,8 +1171,65 @@ function renderDrillSelectorThumbnails() {
                 });
             }
             
-            // Draw rink border
-            drawThumbnailBorder(ctx, w, h, iceView);
+            // Draw rink border that adapts to view type (matching drill designer)
+            ctx.strokeStyle = '#0033a0';
+            ctx.lineWidth = 2;
+            
+            // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio)
+            let cornerRadius;
+            if (iceView === 'half-top' || iceView === 'half-bottom') {
+                cornerRadius = w * NHL_RINK.CORNER_RADIUS;
+            } else {
+                cornerRadius = h * NHL_RINK.CORNER_RADIUS;
+            }
+            
+            ctx.beginPath();
+            if (iceView === 'half-top') {
+                ctx.moveTo(cornerRadius, 0);
+                ctx.lineTo(w - cornerRadius, 0);
+                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+                ctx.lineTo(w, h);
+                ctx.lineTo(0, h);
+                ctx.lineTo(0, cornerRadius);
+                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            } else if (iceView === 'half-bottom') {
+                ctx.moveTo(0, 0);
+                ctx.lineTo(w, 0);
+                ctx.lineTo(w, h - cornerRadius);
+                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+                ctx.lineTo(cornerRadius, h);
+                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+                ctx.lineTo(0, 0);
+            } else if (iceView === 'left-zone') {
+                ctx.moveTo(cornerRadius, 0);
+                ctx.lineTo(w, 0);
+                ctx.lineTo(w, h);
+                ctx.lineTo(cornerRadius, h);
+                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+                ctx.lineTo(0, cornerRadius);
+                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            } else if (iceView === 'right-zone') {
+                ctx.moveTo(0, 0);
+                ctx.lineTo(w - cornerRadius, 0);
+                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+                ctx.lineTo(w, h - cornerRadius);
+                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+                ctx.lineTo(0, h);
+                ctx.lineTo(0, 0);
+            } else {
+                // Full ice and center - all corners rounded
+                ctx.moveTo(cornerRadius, 0);
+                ctx.lineTo(w - cornerRadius, 0);
+                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+                ctx.lineTo(w, h - cornerRadius);
+                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+                ctx.lineTo(cornerRadius, h);
+                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+                ctx.lineTo(0, cornerRadius);
+                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            }
+            ctx.closePath();
+            ctx.stroke();
         }
         
         if (centerLogoUrl) {
@@ -1168,8 +1248,100 @@ function renderDrillSelectorThumbnails() {
     });
 }
 
-function drawThumbnailRink(ctx, w, h, iceView) {
-    // Center line
+// Ice drawing helper functions (matching drills_library.php and drill_designer.js)
+function drawThumbnailHashMarks(ctx, cx, cy, radius, netPosition) {
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    
+    const hashLength = radius * (2 / 15);
+    const hashSpacing = radius * (3 / 15);
+    const gapOutsideCircle = radius * 0.05;
+    const startDistance = radius + gapOutsideCircle;
+    
+    const sides = [-1, 1];
+    
+    if (netPosition === 'vertical') {
+        sides.forEach(function(side) {
+            const startX = cx + side * startDistance;
+            const endX = startX + side * hashLength;
+            ctx.beginPath();
+            ctx.moveTo(startX, cy - hashSpacing / 2);
+            ctx.lineTo(endX, cy - hashSpacing / 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(startX, cy + hashSpacing / 2);
+            ctx.lineTo(endX, cy + hashSpacing / 2);
+            ctx.stroke();
+        });
+    } else {
+        sides.forEach(function(side) {
+            const startY = cy + side * startDistance;
+            const endY = startY + side * hashLength;
+            ctx.beginPath();
+            ctx.moveTo(cx - hashSpacing / 2, startY);
+            ctx.lineTo(cx - hashSpacing / 2, endY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx + hashSpacing / 2, startY);
+            ctx.lineTo(cx + hashSpacing / 2, endY);
+            ctx.stroke();
+        });
+    }
+}
+
+function drawThumbnailRestraintLines(ctx, cx, cy, radius, zone, canvasRefDimension, isVertical) {
+    const lineLength = canvasRefDimension * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
+    const offset = radius * 0.15;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    
+    if (isVertical) {
+        const goalDirection = zone === 'top' ? -1 : 1;
+        drawThumbnailLShapeVertical(ctx, cx - offset, cy - offset, lineLength, goalDirection);
+        drawThumbnailLShapeVertical(ctx, cx - offset, cy + offset, lineLength, goalDirection);
+        drawThumbnailLShapeVertical(ctx, cx + offset, cy - offset, lineLength, goalDirection);
+        drawThumbnailLShapeVertical(ctx, cx + offset, cy + offset, lineLength, goalDirection);
+    } else {
+        const goalDirection = zone === 'left' ? -1 : 1;
+        drawThumbnailLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection, -1);
+        drawThumbnailLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection, -1);
+        drawThumbnailLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection, 1);
+        drawThumbnailLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection, 1);
+    }
+}
+
+function drawThumbnailLShape(ctx, x, y, length, hDir, vDir) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + vDir * length);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + hDir * length, y);
+    ctx.stroke();
+}
+
+function drawThumbnailLShapeVertical(ctx, x, y, length, vDir) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + vDir * length);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - length/2, y);
+    ctx.lineTo(x + length/2, y);
+    ctx.stroke();
+}
+
+function drawThumbnailFullIce(ctx, w, h) {
+    const goalLinePos = NHL_RINK.GOAL_LINE;
+    const blueLinePos = NHL_RINK.BLUE_LINE;
+    const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
+    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+    const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
+    
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -1177,10 +1349,8 @@ function drawThumbnailRink(ctx, w, h, iceView) {
     ctx.lineTo(w/2, h);
     ctx.stroke();
     
-    // Blue lines
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 2;
-    const blueLinePos = NHL_RINK.BLUE_LINE;
     ctx.beginPath();
     ctx.moveTo(w * blueLinePos, 0);
     ctx.lineTo(w * blueLinePos, h);
@@ -1190,30 +1360,24 @@ function drawThumbnailRink(ctx, w, h, iceView) {
     ctx.lineTo(w * (1 - blueLinePos), h);
     ctx.stroke();
     
-    // Center circle
     ctx.beginPath();
     ctx.arc(w/2, h/2, h * NHL_RINK.CENTER_CIRCLE_RADIUS, 0, 2 * Math.PI);
     ctx.stroke();
     
-    // Center dot
     ctx.fillStyle = '#0033a0';
     ctx.beginPath();
     ctx.arc(w/2, h/2, 3, 0, 2 * Math.PI);
     ctx.fill();
     
-    // Faceoff circles
     ctx.strokeStyle = '#c41e3a';
     const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
-    const faceoffFromGoal = NHL_RINK.GOAL_LINE + NHL_RINK.FACEOFF_FROM_GOAL;
-    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
-    
     const circles = [
-        { x: w * faceoffFromGoal, y: h * faceoffFromBoards },
-        { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards) },
-        { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards },
-        { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards) }
+        { x: w * faceoffFromGoal, y: h * faceoffFromBoards, zone: 'left' },
+        { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards), zone: 'left' },
+        { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards, zone: 'right' },
+        { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards), zone: 'right' }
     ];
-    circles.forEach(circle => {
+    circles.forEach(function(circle) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -1221,11 +1385,11 @@ function drawThumbnailRink(ctx, w, h, iceView) {
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, 2, 0, 2 * Math.PI);
         ctx.fill();
+        drawThumbnailHashMarks(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
+        drawThumbnailRestraintLines(ctx, circle.x, circle.y, faceoffRadius, circle.zone, h, false);
     });
     
-    // Goal creases
     const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
-    const goalLinePos = NHL_RINK.GOAL_LINE;
     ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
@@ -1239,25 +1403,329 @@ function drawThumbnailRink(ctx, w, h, iceView) {
     ctx.arc(w * (1 - goalLinePos), h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
     ctx.fill();
     ctx.stroke();
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    
+    const leftGoalLineX = w * goalLinePos;
+    let leftGoalLineStartY = 0;
+    let leftGoalLineEndY = h;
+    if (leftGoalLineX < cornerRadius) {
+        const dx = cornerRadius - leftGoalLineX;
+        const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+        leftGoalLineStartY = yOffset;
+        leftGoalLineEndY = h - yOffset;
+    }
+    ctx.beginPath();
+    ctx.moveTo(leftGoalLineX, leftGoalLineStartY);
+    ctx.lineTo(leftGoalLineX, leftGoalLineEndY);
+    ctx.stroke();
+    
+    const rightGoalLineX = w * (1 - goalLinePos);
+    let rightGoalLineStartY = 0;
+    let rightGoalLineEndY = h;
+    if ((w - rightGoalLineX) < cornerRadius) {
+        const dx = cornerRadius - (w - rightGoalLineX);
+        const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+        rightGoalLineStartY = yOffset;
+        rightGoalLineEndY = h - yOffset;
+    }
+    ctx.beginPath();
+    ctx.moveTo(rightGoalLineX, rightGoalLineStartY);
+    ctx.lineTo(rightGoalLineX, rightGoalLineEndY);
+    ctx.stroke();
+    
+    drawThumbnailTrapezoid(ctx, w, h, 'left');
+    drawThumbnailTrapezoid(ctx, w, h, 'right');
+    
+    const neutralZoneDotOffset = 5 / 200;
+    ctx.fillStyle = '#c41e3a';
+    const neutralDots = [
+        { x: w * (blueLinePos + neutralZoneDotOffset), y: h * faceoffFromBoards },
+        { x: w * (blueLinePos + neutralZoneDotOffset), y: h * (1 - faceoffFromBoards) },
+        { x: w * (1 - blueLinePos - neutralZoneDotOffset), y: h * faceoffFromBoards },
+        { x: w * (1 - blueLinePos - neutralZoneDotOffset), y: h * (1 - faceoffFromBoards) }
+    ];
+    neutralDots.forEach(function(dot) {
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+    });
 }
 
-function drawThumbnailBorder(ctx, w, h, iceView) {
+function drawThumbnailTrapezoid(ctx, w, h, side) {
+    const goalLinePos = NHL_RINK.GOAL_LINE;
+    const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    
+    if (side === 'left') {
+        const goalX = w * goalLinePos;
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 - trapezoidBase);
+        ctx.lineTo(0, h/2 - trapezoidTop);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 + trapezoidBase);
+        ctx.lineTo(0, h/2 + trapezoidTop);
+        ctx.stroke();
+    } else {
+        const goalX = w * (1 - goalLinePos);
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 - trapezoidBase);
+        ctx.lineTo(w, h/2 - trapezoidTop);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goalX, h/2 + trapezoidBase);
+        ctx.lineTo(w, h/2 + trapezoidTop);
+        ctx.stroke();
+    }
+}
+
+function drawThumbnailHalfIce(ctx, w, h, side) {
+    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+    const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
+    const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
+    const cornerRadius = w * NHL_RINK.CORNER_RADIUS;
+    
+    const goalLineRatio = 11 / 100;
+    const blueLineRatio = 64 / 100;
+    const faceoffYRatio = 31 / 100;
+    
+    const blueLineY = side === 'top' ? h * blueLineRatio : h * (1 - blueLineRatio);
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, blueLineY);
+    ctx.lineTo(w, blueLineY);
+    ctx.stroke();
+    
+    const goalY = side === 'top' ? h * goalLineRatio : h * (1 - goalLineRatio);
+    const faceoffY = side === 'top' ? h * faceoffYRatio : h * (1 - faceoffYRatio);
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(w * faceoffFromBoards, faceoffY, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(w * faceoffFromBoards, faceoffY, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    drawThumbnailHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
+    drawThumbnailRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w, true);
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    drawThumbnailHashMarks(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
+    drawThumbnailRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w, true);
+    
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (side === 'top') {
+        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
+    } else {
+        ctx.arc(w * 0.5, goalY, creaseRadius, Math.PI, 0);
+    }
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const distFromEnd = side === 'top' ? goalY : (h - goalY);
+    let goalLineStartX = 0;
+    let goalLineEndX = w;
+    if (distFromEnd < cornerRadius) {
+        const dy = cornerRadius - distFromEnd;
+        const xOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dy * dy);
+        goalLineStartX = xOffset;
+        goalLineEndX = w - xOffset;
+    }
+    ctx.moveTo(goalLineStartX, goalY);
+    ctx.lineTo(goalLineEndX, goalY);
+    ctx.stroke();
+    
+    drawThumbnailHalfIceTrapezoid(ctx, w, h, side, goalY);
+}
+
+function drawThumbnailHalfIceTrapezoid(ctx, w, h, side, goalY) {
+    const trapezoidBase = w * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = w * NHL_RINK.TRAPEZOID_TOP / 2;
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    const boardY = side === 'top' ? 0 : h;
+    ctx.beginPath();
+    ctx.moveTo(w/2 - trapezoidBase, goalY);
+    ctx.lineTo(w/2 - trapezoidTop, boardY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(w/2 + trapezoidBase, goalY);
+    ctx.lineTo(w/2 + trapezoidTop, boardY);
+    ctx.stroke();
+}
+
+function drawThumbnailZone(ctx, w, h, side) {
+    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+    const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
+    const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
+    const centerCircleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
     const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
     
+    const goalLineRatio = 11 / 100;
+    const blueLineRatio = 64 / 100;
+    const faceoffXRatio = 31 / 100;
+    const neutralZoneDotRatio = (64 + 5) / 100;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    if (side === 'left') {
+        ctx.beginPath();
+        ctx.moveTo(w, 0);
+        ctx.lineTo(w, h);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, h);
+        ctx.stroke();
+    }
+    
+    const blueLineX = side === 'left' ? w * blueLineRatio : w * (1 - blueLineRatio);
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(cornerRadius, 0);
-    ctx.lineTo(w - cornerRadius, 0);
-    ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-    ctx.lineTo(w, h - cornerRadius);
-    ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-    ctx.lineTo(cornerRadius, h);
-    ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-    ctx.lineTo(0, cornerRadius);
-    ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
-    ctx.closePath();
+    ctx.moveTo(blueLineX, 0);
+    ctx.lineTo(blueLineX, h);
     ctx.stroke();
+    
+    const goalLineX = side === 'left' ? w * goalLineRatio : w * (1 - goalLineRatio);
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const distFromEnd = side === 'left' ? goalLineX : (w - goalLineX);
+    let zoneGoalLineStartY = 0;
+    let zoneGoalLineEndY = h;
+    if (distFromEnd < cornerRadius) {
+        const dx = cornerRadius - distFromEnd;
+        const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+        zoneGoalLineStartY = yOffset;
+        zoneGoalLineEndY = h - yOffset;
+    }
+    ctx.moveTo(goalLineX, zoneGoalLineStartY);
+    ctx.lineTo(goalLineX, zoneGoalLineEndY);
+    ctx.stroke();
+    
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (side === 'left') {
+        ctx.arc(w, h/2, centerCircleRadius, Math.PI/2, -Math.PI/2);
+    } else {
+        ctx.arc(0, h/2, centerCircleRadius, -Math.PI/2, Math.PI/2);
+    }
+    ctx.stroke();
+    
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    if (side === 'left') {
+        ctx.arc(w, h/2, 3, 0, 2 * Math.PI);
+    } else {
+        ctx.arc(0, h/2, 3, 0, 2 * Math.PI);
+    }
+    ctx.fill();
+    
+    const faceoffX = side === 'left' ? w * faceoffXRatio : w * (1 - faceoffXRatio);
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(faceoffX, h * faceoffFromBoards, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(faceoffX, h * faceoffFromBoards, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    drawThumbnailHashMarks(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, 'horizontal');
+    drawThumbnailRestraintLines(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, side, h, false);
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(faceoffX, h * (1 - faceoffFromBoards), 2, 0, 2 * Math.PI);
+    ctx.fill();
+    drawThumbnailHashMarks(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 'horizontal');
+    drawThumbnailRestraintLines(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, side, h, false);
+    
+    const neutralDotX = side === 'left' ? w * neutralZoneDotRatio : w * (1 - neutralZoneDotRatio);
+    ctx.fillStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(neutralDotX, h * faceoffFromBoards, 2, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(neutralDotX, h * (1 - faceoffFromBoards), 2, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (side === 'left') {
+        ctx.arc(goalLineX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+    } else {
+        ctx.arc(goalLineX, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+    }
+    ctx.fill();
+    ctx.stroke();
+    
+    drawThumbnailZoneTrapezoid(ctx, w, h, side, goalLineX);
+}
+
+function drawThumbnailZoneTrapezoid(ctx, w, h, side, goalLineX) {
+    const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+    const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    const boardX = side === 'left' ? 0 : w;
+    ctx.beginPath();
+    ctx.moveTo(goalLineX, h/2 - trapezoidBase);
+    ctx.lineTo(boardX, h/2 - trapezoidTop);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(goalLineX, h/2 + trapezoidBase);
+    ctx.lineTo(boardX, h/2 + trapezoidTop);
+    ctx.stroke();
+}
+
+function drawThumbnailCenterIce(ctx, w, h) {
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2, h);
+    ctx.stroke();
+    
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 1;
+    const circleRadius = h * (15 / 85);
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 4, 0, 2 * Math.PI);
+    ctx.fill();
 }
 
 function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
