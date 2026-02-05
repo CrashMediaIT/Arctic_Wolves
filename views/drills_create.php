@@ -160,8 +160,6 @@ if ($editDrillId) {
                     <label>Ice View:</label>
                     <select class="form-input-small" id="iceViewSelect" data-ice-view>
                         <option value="full" selected>Full Ice</option>
-                        <option value="half-top">Half Ice (Top)</option>
-                        <option value="half-bottom">Half Ice (Bottom)</option>
                         <option value="left-zone">Left Zone</option>
                         <option value="right-zone">Right Zone</option>
                         <option value="center">Center Ice</option>
@@ -561,16 +559,6 @@ if ($editDrillId) {
 .ice-rink-canvas[data-ice-view="full"] {
     aspect-ratio: 200/85;
     border-radius: 80px;
-}
-
-/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom) */
-.ice-rink-canvas[data-ice-view="half-top"],
-.ice-rink-canvas[data-ice-view="half-bottom"] {
-    aspect-ratio: 85/100;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-    border-radius: 80px 80px 20px 20px;
 }
 
 /* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) */

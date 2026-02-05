@@ -65,7 +65,7 @@ const IceCanvasRenderer = {
      * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
      * @param {number} w - Canvas width
      * @param {number} h - Canvas height
-     * @param {string} iceView - View type: 'full', 'half-top', 'half-bottom', 'left-zone', 'right-zone', 'center'
+     * @param {string} iceView - View type: 'full', 'left-zone', 'right-zone', 'center'
      * @param {Object} options - Rendering options
      * @param {Image} options.logoImage - Center logo image (optional)
      * @param {boolean} options.logoLoaded - Whether logo is loaded
@@ -117,12 +117,6 @@ const IceCanvasRenderer = {
         
         // Draw based on ice view - matches drill_designer.js switch statement exactly
         switch(iceView) {
-            case 'half-top':
-                this.drawHalfIce(ctx, w, h, 'top', NHL_RINK);
-                break;
-            case 'half-bottom':
-                this.drawHalfIce(ctx, w, h, 'bottom', NHL_RINK);
-                break;
             case 'left-zone':
                 this.drawZone(ctx, w, h, 'left', NHL_RINK);
                 break;
@@ -148,36 +142,9 @@ const IceCanvasRenderer = {
         ctx.lineWidth = 4;
         
         // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio)
-        let cornerRadius;
-        if (iceView === 'half-top' || iceView === 'half-bottom') {
-            cornerRadius = w * NHL_RINK.CORNER_RADIUS;
-        } else {
-            cornerRadius = h * NHL_RINK.CORNER_RADIUS;
-        }
+        const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
         
-        if (iceView === 'half-top' || iceView === 'half-bottom') {
-            const isTop = iceView === 'half-top';
-            ctx.beginPath();
-            if (isTop) {
-                ctx.moveTo(cornerRadius + 2, 2);
-                ctx.lineTo(w - cornerRadius - 2, 2);
-                ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
-                ctx.lineTo(w - 2, h - 2);
-                ctx.lineTo(2, h - 2);
-                ctx.lineTo(2, cornerRadius + 2);
-                ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
-            } else {
-                ctx.moveTo(2, 2);
-                ctx.lineTo(w - 2, 2);
-                ctx.lineTo(w - 2, h - cornerRadius - 2);
-                ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
-                ctx.lineTo(cornerRadius + 2, h - 2);
-                ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
-                ctx.lineTo(2, 2);
-            }
-            ctx.closePath();
-            ctx.stroke();
-        } else if (iceView === 'left-zone' || iceView === 'right-zone') {
+        if (iceView === 'left-zone' || iceView === 'right-zone') {
             const isLeft = iceView === 'left-zone';
             ctx.beginPath();
             if (isLeft) {
@@ -474,158 +441,6 @@ const IceCanvasRenderer = {
                 ctx.stroke();
             });
         }
-    },
-
-    /**
-     * Draw half ice view - EXACT copy from drill_designer.js
-     */
-    drawHalfIce: function(ctx, w, h, side, NHL_RINK) {
-        const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
-        const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
-        const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
-        
-        const goalLineRatio = 11 / 100;
-        const blueLineRatio = 64 / 100;
-        const faceoffYRatio = 31 / 100;
-        
-        const blueLineY = side === 'top' ? h * blueLineRatio : h * (1 - blueLineRatio);
-        
-        // Blue line
-        ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(0, blueLineY);
-        ctx.lineTo(w, blueLineY);
-        ctx.stroke();
-        
-        const goalY = side === 'top' ? h * goalLineRatio : h * (1 - goalLineRatio);
-        const faceoffY = side === 'top' ? h * faceoffYRatio : h * (1 - faceoffYRatio);
-        
-        // Left faceoff circle
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(w * faceoffFromBoards, faceoffY, faceoffRadius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.fillStyle = '#c41e3a';
-        ctx.beginPath();
-        ctx.arc(w * faceoffFromBoards, faceoffY, 4, 0, 2 * Math.PI);
-        ctx.fill();
-        this.drawHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
-        this.drawHalfIceRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w, NHL_RINK);
-        
-        // Right faceoff circle
-        ctx.strokeStyle = '#c41e3a';
-        ctx.beginPath();
-        ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 4, 0, 2 * Math.PI);
-        ctx.fill();
-        this.drawHashMarks(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
-        this.drawHalfIceRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w, NHL_RINK);
-        
-        // Goal crease
-        ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        if (side === 'top') {
-            ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
-        } else {
-            ctx.arc(w * 0.5, goalY, creaseRadius, Math.PI, 0);
-        }
-        ctx.fill();
-        ctx.stroke();
-        
-        // Goal line - respects curved corners
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        
-        const cornerRadius = w * NHL_RINK.CORNER_RADIUS;
-        const distFromEnd = side === 'top' ? goalY : (h - goalY);
-        let goalLineStartX = 0;
-        let goalLineEndX = w;
-        
-        if (distFromEnd < cornerRadius) {
-            const dy = cornerRadius - distFromEnd;
-            const xOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dy * dy);
-            goalLineStartX = xOffset;
-            goalLineEndX = w - xOffset;
-        }
-        
-        ctx.moveTo(goalLineStartX, goalY);
-        ctx.lineTo(goalLineEndX, goalY);
-        ctx.stroke();
-        
-        this.drawHalfIceTrapezoid(ctx, w, h, side, goalY, NHL_RINK);
-    },
-    
-    /**
-     * Draw trapezoid for half ice view - EXACT copy from drill_designer.js
-     */
-    drawHalfIceTrapezoid: function(ctx, w, h, side, goalY, NHL_RINK) {
-        const trapezoidBase = w * NHL_RINK.TRAPEZOID_BASE / 2;
-        const trapezoidTop = w * NHL_RINK.TRAPEZOID_TOP / 2;
-        
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        
-        if (side === 'top') {
-            ctx.beginPath();
-            ctx.moveTo(w/2 - trapezoidBase, goalY);
-            ctx.lineTo(w/2 - trapezoidTop, 0);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(w/2 + trapezoidBase, goalY);
-            ctx.lineTo(w/2 + trapezoidTop, 0);
-            ctx.stroke();
-        } else {
-            ctx.beginPath();
-            ctx.moveTo(w/2 - trapezoidBase, goalY);
-            ctx.lineTo(w/2 - trapezoidTop, h);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(w/2 + trapezoidBase, goalY);
-            ctx.lineTo(w/2 + trapezoidTop, h);
-            ctx.stroke();
-        }
-    },
-    
-    /**
-     * Draw restraint lines for half ice view - EXACT copy from drill_designer.js
-     */
-    drawHalfIceRestraintLines: function(ctx, cx, cy, radius, side, canvasWidth, NHL_RINK) {
-        const lineLength = canvasWidth * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
-        const offset = radius * 0.15;
-        
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        
-        const goalDirection = side === 'top' ? -1 : 1;
-        const blueLineDirection = -goalDirection;
-        
-        this.drawHalfIceLShape(ctx, cx - offset, cy - offset, lineLength, side === 'top' ? goalDirection : blueLineDirection);
-        this.drawHalfIceLShape(ctx, cx - offset, cy + offset, lineLength, side === 'top' ? blueLineDirection : goalDirection);
-        this.drawHalfIceLShape(ctx, cx + offset, cy - offset, lineLength, side === 'top' ? goalDirection : blueLineDirection);
-        this.drawHalfIceLShape(ctx, cx + offset, cy + offset, lineLength, side === 'top' ? blueLineDirection : goalDirection);
-    },
-    
-    /**
-     * Draw L-shape for half ice view - EXACT copy from drill_designer.js
-     */
-    drawHalfIceLShape: function(ctx, x, y, length, vDir) {
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + vDir * length);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(x - length/2, y);
-        ctx.lineTo(x + length/2, y);
-        ctx.stroke();
     },
 
     /**

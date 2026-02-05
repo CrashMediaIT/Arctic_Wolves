@@ -594,21 +594,6 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
     border-radius: 80px;
 }
 
-/* Half ice: Shows 100 ft × 85 ft section rotated 90° for vertical display (net at top/bottom)
-   Display aspect ratio is 85 (display width) / 100 (display height) for the rotated view */
-.ice-rink-canvas.view-only[data-ice-view="half-top"],
-.ice-rink-canvas.view-only[data-ice-view="half-bottom"] {
-    aspect-ratio: 85/100;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-    border-radius: 80px 80px 20px 20px;
-}
-
-.ice-rink-canvas.view-only[data-ice-view="half-bottom"] {
-    border-radius: 20px 20px 80px 80px;
-}
-
 /* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) */
 .ice-rink-canvas.view-only[data-ice-view="left-zone"],
 .ice-rink-canvas.view-only[data-ice-view="right-zone"] {
