@@ -213,7 +213,7 @@ $is_demo_drills = false;
 
 .drills-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 24px;
 }
 
@@ -223,6 +223,7 @@ $is_demo_drills = false;
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.3s ease;
+    max-width: 380px;
 }
 
 .drill-card:hover {

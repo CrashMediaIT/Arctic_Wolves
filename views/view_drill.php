@@ -53,6 +53,15 @@ if (!$drill) {
 
 $coachName = htmlspecialchars(($drill['first_name'] ?? '') . ' ' . ($drill['last_name'] ?? ''));
 
+// Extract ice view from diagram data for proper initial CSS aspect ratio
+$drillIceView = 'full';
+if (!empty($drill['diagram_data'])) {
+    $diagramParsed = json_decode($drill['diagram_data'], true);
+    if (is_array($diagramParsed) && isset($diagramParsed['iceView'])) {
+        $drillIceView = $diagramParsed['iceView'];
+    }
+}
+
 // Build share URL using validated host from SERVER_NAME (more reliable than HTTP_HOST for security)
 // Note: For production, consider using a configured BASE_URL constant
 $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
@@ -102,7 +111,7 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
                     </div>
                 <?php else: ?>
                     <!-- Drill Draw Canvas -->
-                    <div class="ice-rink-canvas view-only" id="drill-view-canvas" data-ice-view="full" data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
+                    <div class="ice-rink-canvas view-only" id="drill-view-canvas" data-ice-view="<?php echo htmlspecialchars($drillIceView); ?>" data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
                         <canvas id="drill-view-canvas-el"></canvas>
                     </div>
                 <?php endif; ?>
@@ -548,22 +557,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Load center logo if URL provided, then render
-    // Using requestAnimationFrame ensures CSS aspect-ratio changes are applied before measuring dimensions
+    // Use double requestAnimationFrame to ensure CSS aspect-ratio changes are fully applied
+    // before measuring dimensions (first frame schedules style recalc, second frame has new layout)
+    function waitForLayoutAndRender() {
+        requestAnimationFrame(function() {
+            requestAnimationFrame(initializeAndRender);
+        });
+    }
+    
     if (centerLogoUrl) {
         centerLogoImage = new Image();
         centerLogoImage.crossOrigin = 'anonymous';
         centerLogoImage.onload = function() {
             centerLogoLoaded = true;
-            requestAnimationFrame(initializeAndRender);
+            waitForLayoutAndRender();
         };
         centerLogoImage.onerror = function() {
             console.warn('Failed to load center logo image');
             centerLogoLoaded = false;
-            requestAnimationFrame(initializeAndRender);
+            waitForLayoutAndRender();
         };
         centerLogoImage.src = centerLogoUrl;
     } else {
-        requestAnimationFrame(initializeAndRender);
+        waitForLayoutAndRender();
     }
     
     // Handle resize
