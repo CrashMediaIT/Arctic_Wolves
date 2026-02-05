@@ -2645,10 +2645,11 @@ class DrillDesigner {
     }
     
     getDiagramData() {
-        // Include canvas dimensions with the data for proper scaling when rendering
+        // Include canvas dimensions and ice view with the data for proper scaling when rendering
         return JSON.stringify({
             canvasWidth: this.canvas.width,
             canvasHeight: this.canvas.height,
+            iceView: this.iceView || 'full',
             objects: this.objects
         });
     }
@@ -2665,6 +2666,16 @@ class DrillDesigner {
                 // New format with canvas dimensions
                 const sourceWidth = parsed.canvasWidth || this.canvas.width;
                 const sourceHeight = parsed.canvasHeight || this.canvas.height;
+                
+                // Restore ice view if saved
+                if (parsed.iceView) {
+                    this.iceView = parsed.iceView;
+                    // Update the ice view selector dropdown if it exists
+                    const iceViewSelect = document.getElementById('iceViewSelect');
+                    if (iceViewSelect) {
+                        iceViewSelect.value = parsed.iceView;
+                    }
+                }
                 
                 // Scale objects if canvas size is different
                 if (sourceWidth !== this.canvas.width || sourceHeight !== this.canvas.height) {

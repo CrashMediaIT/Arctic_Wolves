@@ -989,6 +989,15 @@ function renderDrillThumbnails() {
                 ctx.beginPath();
                 ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
                 ctx.stroke();
+                
+                // Draw faceoff dot
+                ctx.fillStyle = '#c41e3a';
+                ctx.beginPath();
+                ctx.arc(circle.x, circle.y, 2, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Draw hash marks around faceoff circles
+                drawThumbnailHashMarks(ctx, circle.x, circle.y, faceoffRadius);
             });
             
             // Goal creases
@@ -1157,6 +1166,39 @@ function renderDrillThumbnails() {
         } else {
             renderThumbnail(null, false);
         }
+    });
+}
+
+// Helper function to draw hash marks around faceoff circles in thumbnails
+function drawThumbnailHashMarks(ctx, cx, cy, radius) {
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    
+    // Scale factors for hash marks (based on NHL regulations)
+    const hashLength = radius * (2 / 15); // 2 feet scaled
+    const hashSpacing = radius * (3 / 15); // 3 feet spacing between hash marks in pair
+    const gapOutsideCircle = radius * 0.05;
+    const startDistance = radius + gapOutsideCircle;
+    
+    // Hash marks on TOP and BOTTOM of circle
+    const sides = [-1, 1]; // -1 = top, 1 = bottom
+    
+    sides.forEach(function(side) {
+        const startY = cy + side * startDistance;
+        const endY = startY + side * hashLength;
+        
+        // Left hash mark
+        ctx.beginPath();
+        ctx.moveTo(cx - hashSpacing / 2, startY);
+        ctx.lineTo(cx - hashSpacing / 2, endY);
+        ctx.stroke();
+        
+        // Right hash mark
+        ctx.beginPath();
+        ctx.moveTo(cx + hashSpacing / 2, startY);
+        ctx.lineTo(cx + hashSpacing / 2, endY);
+        ctx.stroke();
     });
 }
 </script>
