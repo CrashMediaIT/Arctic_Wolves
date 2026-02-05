@@ -122,7 +122,8 @@ foreach ($mileage_entries as $entry) {
 ?>
 
 <!-- Load Google Maps API for address autocomplete -->
-<?php if (!empty($google_maps_api_key)): ?>
+<!-- Note: API key should be restricted in Google Cloud Console with HTTP referrer restrictions -->
+<?php if (!empty($google_maps_api_key) && preg_match('/^[A-Za-z0-9_-]+$/', $google_maps_api_key)): ?>
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
 <?php endif; ?>
 
@@ -794,6 +795,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var pendingDeleteId = null;
     var stopIndex = 2; // Start with 2 since we have start (0) and end (1)
     
+    // Constants for Google Maps initialization
+    var MAX_GOOGLE_MAPS_INIT_ATTEMPTS = 20;
+    var GOOGLE_MAPS_INIT_RETRY_DELAY_MS = 250;
+    
     // Initialize Google Maps Autocomplete for address fields
     function initGoogleMapsAutocomplete() {
         if (typeof google !== 'undefined' && google.maps && google.maps.places) {
@@ -828,13 +833,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize on page load - with retry for async Google Maps loading
     var initAttempts = 0;
-    var maxAttempts = 20;
     function tryInitAutocomplete() {
         if (typeof google !== 'undefined' && google.maps && google.maps.places) {
             initGoogleMapsAutocomplete();
-        } else if (initAttempts < maxAttempts) {
+        } else if (initAttempts < MAX_GOOGLE_MAPS_INIT_ATTEMPTS) {
             initAttempts++;
-            setTimeout(tryInitAutocomplete, 250);
+            setTimeout(tryInitAutocomplete, GOOGLE_MAPS_INIT_RETRY_DELAY_MS);
         }
     }
     tryInitAutocomplete();
