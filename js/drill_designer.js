@@ -949,7 +949,17 @@ class DrillDesigner {
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 4;
         
-        const cornerRadius = Math.min(w, h) * 0.1;
+        // NHL corner radius: 28 ft on 85 ft width = 0.329 ratio
+        // For full ice (horizontal layout), use height as reference since width represents length
+        // For half ice (vertical layout with net at top/bottom), use width as reference
+        let cornerRadius;
+        if (iceView === 'half-top' || iceView === 'half-bottom') {
+            // Half ice views are oriented vertically - width represents the 85 ft rink width
+            cornerRadius = w * NHL_RINK.CORNER_RADIUS;
+        } else {
+            // Full ice, zones, and center - height represents the 85 ft rink width
+            cornerRadius = h * NHL_RINK.CORNER_RADIUS;
+        }
         
         if (iceView === 'half-top' || iceView === 'half-bottom') {
             // Half ice views - curved corners at net end, flat at center line end
@@ -1017,7 +1027,8 @@ class DrillDesigner {
         // Faceoff circles: 20 ft from goal line, 22 ft from boards
         const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
         const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
-        const cornerRadius = Math.min(w, h) * 0.1;
+        // NHL corner radius: 28 ft on 85 ft width = 0.329 of the height (which represents width in horizontal layout)
+        const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
         
         // Center line (red)
         ctx.strokeStyle = '#c41e3a';
@@ -1298,14 +1309,27 @@ class DrillDesigner {
     
     drawHalfIce(ctx, w, h, side) {
         // Half ice shows one end zone with faceoff circles
-        // For half ice, we scale proportionally - the visible area is roughly half the rink
-        // Faceoff circles are 22 ft from boards (22/85 = 0.259 of width)
+        // Half ice represents approximately half the rink - from boards to center line
+        // NHL half ice: ~100 ft (half of 200 ft length) × 85 ft width
+        // The canvas now represents this portion properly
+        
+        // Use width as the 85 ft reference since half-ice is oriented with net at top/bottom
         const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
         const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
         const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
         
-        // Blue line position (relative to the half-ice view)
-        const blueLineY = side === 'top' ? h * 0.85 : h * 0.15;
+        // Calculate positions based on half-ice proportions
+        // Half rink: goal line is 11 ft from end, blue line is 64 ft from end
+        // In half ice view, we show from end boards to center (100 ft)
+        // Goal line: 11 ft from end = 11/100 = 0.11 of half ice height
+        // Blue line: 64 ft from end = 64/100 = 0.64 of half ice height
+        // Faceoff dot: 31 ft from end (11 + 20) = 31/100 = 0.31 of half ice height
+        const goalLineRatio = 11 / 100;      // Goal line at 11% from net end
+        const blueLineRatio = 64 / 100;      // Blue line at 64% from net end
+        const faceoffYRatio = 31 / 100;      // Faceoff dot at 31% from net end
+        
+        // Blue line position
+        const blueLineY = side === 'top' ? h * blueLineRatio : h * (1 - blueLineRatio);
         
         // Blue line
         ctx.strokeStyle = '#0033a0';
@@ -1315,12 +1339,11 @@ class DrillDesigner {
         ctx.lineTo(w, blueLineY);
         ctx.stroke();
         
-        // Goal position (goal line is near the end)
-        const goalY = side === 'top' ? h * 0.08 : h * 0.92;
+        // Goal line position
+        const goalY = side === 'top' ? h * goalLineRatio : h * (1 - goalLineRatio);
         
         // Faceoff circles - positioned 22 ft from boards on each side
-        // In half ice, faceoff Y is between goal and blue line
-        const faceoffY = side === 'top' ? h * 0.35 : h * 0.65;
+        const faceoffY = side === 'top' ? h * faceoffYRatio : h * (1 - faceoffYRatio);
         
         // Left faceoff circle
         ctx.strokeStyle = '#c41e3a';
@@ -1443,38 +1466,44 @@ class DrillDesigner {
     }
     
     drawZone(ctx, w, h, side) {
-        // Left/Right Zone view: shows LEFT or RIGHT HALF of the full rink
-        // Split vertically through the center of the nets
-        // Shows: half of each goal crease, half center circle, one full faceoff circle per zone
+        // Left/Right Zone view: shows one half of the rink (from end boards to center line)
+        // For zone view, the canvas represents half the rink: ~100 ft × 85 ft
+        // height = 85 ft (rink width), width = 100 ft (half rink length)
         
-        // Use NHL rink proportions
-        const goalLinePos = NHL_RINK.GOAL_LINE;
-        const blueLinePos = NHL_RINK.BLUE_LINE;
-        const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
+        // Use height as the 85 ft reference
         const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
         const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
         const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
         const centerCircleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
         
-        // Center line (red) - at the edge of the visible half
+        // Calculate positions based on half-rink proportions (100 ft span)
+        // Goal line: 11 ft from end = 11/100 = 0.11
+        // Blue line: 64 ft from end = 64/100 = 0.64
+        // Faceoff dot: 31 ft from end (11 + 20) = 31/100 = 0.31
+        const goalLineRatio = 11 / 100;
+        const blueLineRatio = 64 / 100;
+        const faceoffXRatio = 31 / 100;
+        const neutralZoneDotRatio = (64 + 5) / 100; // 5 ft from blue line towards center
+        
+        // Center line (red) - at the far edge from goal
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 4;
         if (side === 'left') {
-            // Center line at right edge for left half
+            // Center line at right edge for left zone
             ctx.beginPath();
             ctx.moveTo(w, 0);
             ctx.lineTo(w, h);
             ctx.stroke();
         } else {
-            // Center line at left edge for right half
+            // Center line at left edge for right zone
             ctx.beginPath();
             ctx.moveTo(0, 0);
             ctx.lineTo(0, h);
             ctx.stroke();
         }
         
-        // Blue line position (visible in this half)
-        const blueLineX = side === 'left' ? w * blueLinePos * 2 : w * (1 - blueLinePos * 2);
+        // Blue line position
+        const blueLineX = side === 'left' ? w * blueLineRatio : w * (1 - blueLineRatio);
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -1482,8 +1511,8 @@ class DrillDesigner {
         ctx.lineTo(blueLineX, h);
         ctx.stroke();
         
-        // Goal line position - extends to boards
-        const goalLineX = side === 'left' ? w * goalLinePos * 2 : w * (1 - goalLinePos * 2);
+        // Goal line position
+        const goalLineX = side === 'left' ? w * goalLineRatio : w * (1 - goalLineRatio);
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -1491,7 +1520,7 @@ class DrillDesigner {
         ctx.lineTo(goalLineX, h);
         ctx.stroke();
         
-        // Half center circle (at the edge, only half visible)
+        // Half center circle (at the edge)
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1514,8 +1543,8 @@ class DrillDesigner {
         }
         ctx.fill();
         
-        // Faceoff circles in this half (one top, one bottom in the end zone)
-        const faceoffX = side === 'left' ? w * faceoffFromGoal * 2 : w * (1 - faceoffFromGoal * 2);
+        // Faceoff circles in this zone
+        const faceoffX = side === 'left' ? w * faceoffXRatio : w * (1 - faceoffXRatio);
         
         // Top faceoff circle
         ctx.strokeStyle = '#c41e3a';
@@ -1542,10 +1571,7 @@ class DrillDesigner {
         this.drawRestraintLines(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, side, h);
         
         // Neutral zone faceoff dots (between blue line and center line)
-        const neutralZoneDotOffset = 5 / 200; // 5 ft from blue line
-        const neutralDotX = side === 'left' 
-            ? w * (blueLinePos + neutralZoneDotOffset) * 2 
-            : w * (1 - (blueLinePos + neutralZoneDotOffset) * 2);
+        const neutralDotX = side === 'left' ? w * neutralZoneDotRatio : w * (1 - neutralZoneDotRatio);
         
         ctx.fillStyle = '#c41e3a';
         // Top neutral dot
@@ -1557,7 +1583,7 @@ class DrillDesigner {
         ctx.arc(neutralDotX, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Goal crease - semicircle (half visible at edge)
+        // Goal crease - semicircle
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
@@ -1606,6 +1632,9 @@ class DrillDesigner {
     }
     
     drawCenterIce(ctx, w, h) {
+        // Center ice view shows the neutral zone area around center ice
+        // The center circle radius is 15 ft on an 85 ft wide rink
+        
         // Center line (red)
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 4;
@@ -1614,10 +1643,10 @@ class DrillDesigner {
         ctx.lineTo(w/2, h);
         ctx.stroke();
         
-        // Center circle
+        // Center circle - use NHL proportions (15 ft radius on 85 ft width)
         ctx.strokeStyle = '#0033a0';
         ctx.lineWidth = 2;
-        const circleRadius = Math.min(w, h) * 0.25;
+        const circleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
         ctx.beginPath();
         ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
         ctx.stroke();
