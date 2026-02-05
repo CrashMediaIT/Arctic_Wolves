@@ -27,9 +27,11 @@ $sessions_query = "
            l.name as location_name,
            pp.name as practice_plan_name,
            pp.id as practice_plan_id,
-           COUNT(DISTINCT b.id) as registered_count
+           COUNT(DISTINCT b.id) as registered_count,
+           MAX(CASE WHEN sc.coach_id = ? THEN 1 ELSE 0 END) as is_assigned_coach
     FROM sessions s
     LEFT JOIN users c ON s.coach_id = c.id
+    LEFT JOIN session_coaches sc ON sc.session_id = s.id
     LEFT JOIN session_types st ON s.session_type_id = st.id
     LEFT JOIN locations l ON s.location_id = l.id
     LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
@@ -38,10 +40,11 @@ $sessions_query = "
     WHERE s.session_date >= DATE_SUB(NOW(), INTERVAL 1 DAY)
       AND s.status = 'scheduled'
 ";
-$params = [];
+$params = [$user_id];
 
 if ($filter_coach !== 'all') {
-    $sessions_query .= " AND s.coach_id = ?";
+    $sessions_query .= " AND (s.coach_id = ? OR sc.coach_id = ?)";
+    $params[] = $filter_coach;
     $params[] = $filter_coach;
 }
 if ($filter_location !== 'all') {
@@ -139,7 +142,7 @@ $is_demo_data = false;
             <?php foreach ($sessions as $session): 
                 $dt = strtotime($session['session_date']);
                 $end = $dt + ($session['duration_minutes'] ?? 60) * 60;
-                $is_mine = ($session['coach_user_id'] == $user_id);
+                $is_mine = ($session['coach_user_id'] == $user_id || $session['is_assigned_coach'] > 0);
             ?>
             <div class="session-card <?= $is_mine ? 'my-session' : '' ?>" data-session-id="<?= $session['id'] ?>" data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? 'Session') ?>" data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $dt) ?>" data-session-end-time="<?= date('g:i A', $end) ?>" data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-session-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>" data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-session-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>">
                 <div class="session-date">

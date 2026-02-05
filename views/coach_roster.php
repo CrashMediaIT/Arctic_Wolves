@@ -15,10 +15,15 @@ $athletes_query = "
     LEFT JOIN athlete_programs ap ON ap.athlete_id = u.id AND ap.status = 'active'
     LEFT JOIN programs p ON ap.program_id = p.id
     WHERE u.is_active = 1
-    AND EXISTS (SELECT 1 FROM bookings b JOIN sessions s ON b.session_id = s.id WHERE s.coach_id = ? AND b.user_id = u.id)
+    AND (
+        u.assigned_coach_id = ?
+        OR u.created_by_coach_id = ?
+        OR EXISTS (SELECT 1 FROM bookings b JOIN sessions s ON b.session_id = s.id WHERE s.coach_id = ? AND b.user_id = u.id)
+        OR EXISTS (SELECT 1 FROM bookings b JOIN sessions s ON b.session_id = s.id JOIN session_coaches sc ON sc.session_id = s.id WHERE sc.coach_id = ? AND b.user_id = u.id)
+    )
 ";
 
-$params = [$user_id];
+$params = [$user_id, $user_id, $user_id, $user_id];
 
 // Apply search filter
 if (!empty($search)) {
