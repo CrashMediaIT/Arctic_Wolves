@@ -400,6 +400,17 @@ $shareUrl = $protocol . '://' . $host . '/dashboard.php?page=view_drill&id=' . u
 let centerLogoImage = null;
 let centerLogoLoaded = false;
 
+// NHL/Hockey Canada Rink Proportions (200 ft × 85 ft rink)
+const NHL_RINK = {
+    GOAL_LINE: 11 / 200,           // Goal line 11 ft from end
+    BLUE_LINE: 64 / 200,           // Blue line 64 ft from end
+    FACEOFF_RADIUS: 15 / 85,       // 15 ft radius faceoff circles
+    CENTER_CIRCLE_RADIUS: 15 / 85, // 15 ft radius center circle
+    CREASE_RADIUS: 6 / 85,         // 6 ft radius goal crease
+    FACEOFF_FROM_GOAL: 20 / 200,   // 20 ft from goal line
+    FACEOFF_FROM_BOARDS: 22 / 85   // 22 ft from boards
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('drill-view-canvas');
     const canvas = document.getElementById('drill-view-canvas-el');
@@ -417,6 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let diagramObjects = [];
     let sourceWidth = canvas.width;
     let sourceHeight = canvas.height;
+    let iceView = 'full'; // Default ice view
     
     try {
         const parsed = JSON.parse(diagramDataRaw);
@@ -428,6 +440,10 @@ document.addEventListener('DOMContentLoaded', function() {
             diagramObjects = parsed.objects;
             sourceWidth = parsed.canvasWidth || canvas.width;
             sourceHeight = parsed.canvasHeight || canvas.height;
+            // Get saved ice view
+            if (parsed.iceView) {
+                iceView = parsed.iceView;
+            }
         }
     } catch (e) {
         console.log('No diagram data to parse');
@@ -435,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to render everything
     function renderDrill() {
-        drawViewRink(ctx, canvas.width, canvas.height);
+        drawViewRink(ctx, canvas.width, canvas.height, iceView);
         
         if (diagramObjects.length > 0) {
             // Calculate scale factors
@@ -501,7 +517,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function drawViewRink(ctx, w, h) {
+function drawViewRink(ctx, w, h, iceView) {
+    iceView = iceView || 'full';
+    
     // Ice background
     ctx.fillStyle = '#f0f7fa';
     ctx.fillRect(0, 0, w, h);
@@ -541,38 +559,25 @@ function drawViewRink(ctx, w, h) {
     }
     ctx.restore();
     
-    // Center line
-    ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(w/2, 0);
-    ctx.lineTo(w/2, h);
-    ctx.stroke();
-    
-    // Blue lines
-    ctx.strokeStyle = '#0033a0';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(w * 0.25, 0);
-    ctx.lineTo(w * 0.25, h);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(w * 0.75, 0);
-    ctx.lineTo(w * 0.75, h);
-    ctx.stroke();
-    
-    // Center circle
-    ctx.strokeStyle = '#0033a0';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
-    ctx.stroke();
-    
-    // Center dot
-    ctx.fillStyle = '#0033a0';
-    ctx.beginPath();
-    ctx.arc(w/2, h/2, 5, 0, 2 * Math.PI);
-    ctx.fill();
+    // Draw based on ice view
+    switch(iceView) {
+        case 'half-top':
+            drawHalfIceView(ctx, w, h, 'top');
+            break;
+        case 'half-bottom':
+            drawHalfIceView(ctx, w, h, 'bottom');
+            break;
+        case 'left-zone':
+            drawZoneView(ctx, w, h, 'left');
+            break;
+        case 'right-zone':
+            drawZoneView(ctx, w, h, 'right');
+            break;
+        case 'full':
+        default:
+            drawFullIceView(ctx, w, h);
+            break;
+    }
     
     // Rink border
     const cornerRadius = Math.min(w, h) * 0.1;
@@ -590,25 +595,68 @@ function drawViewRink(ctx, w, h) {
     ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
     ctx.closePath();
     ctx.stroke();
+}
+
+function drawFullIceView(ctx, w, h) {
+    const cornerRadius = Math.min(w, h) * 0.1;
     
-    // Goal creases and goal lines
-    const creaseRadius = Math.min(w, h) * 0.08;
+    // NHL proportions
+    const goalLinePos = NHL_RINK.GOAL_LINE;
+    const blueLinePos = NHL_RINK.BLUE_LINE;
+    const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
+    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+    
+    // Center line
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2, h);
+    ctx.stroke();
+    
+    // Blue lines (64 ft from ends)
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w * blueLinePos, 0);
+    ctx.lineTo(w * blueLinePos, h);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(w * (1 - blueLinePos), 0);
+    ctx.lineTo(w * (1 - blueLinePos), h);
+    ctx.stroke();
+    
+    // Center circle (15 ft radius)
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, h * NHL_RINK.CENTER_CIRCLE_RADIUS, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Center dot
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Goal creases (6 ft radius)
+    const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
     
     // Left goal crease
     ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(w * 0.03, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+    ctx.arc(w * goalLinePos, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
     ctx.fill();
     ctx.stroke();
     
-    // Left goal line - extends full height within bounds
+    // Left goal line
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(w * 0.03, cornerRadius + 4);
-    ctx.lineTo(w * 0.03, h - cornerRadius - 4);
+    ctx.moveTo(w * goalLinePos, cornerRadius + 4);
+    ctx.lineTo(w * goalLinePos, h - cornerRadius - 4);
     ctx.stroke();
     
     // Right goal crease
@@ -616,25 +664,25 @@ function drawViewRink(ctx, w, h) {
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(w * 0.97, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+    ctx.arc(w * (1 - goalLinePos), h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
     ctx.fill();
     ctx.stroke();
     
-    // Right goal line - extends full height within bounds
+    // Right goal line
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(w * 0.97, cornerRadius + 4);
-    ctx.lineTo(w * 0.97, h - cornerRadius - 4);
+    ctx.moveTo(w * (1 - goalLinePos), cornerRadius + 4);
+    ctx.lineTo(w * (1 - goalLinePos), h - cornerRadius - 4);
     ctx.stroke();
     
-    // Faceoff circles with dots and hash marks
-    const faceoffRadius = Math.min(w, h) * 0.1;
+    // Faceoff circles (15 ft radius, 20 ft from goal, 22 ft from boards)
+    const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
     const circles = [
-        { x: w * 0.15, y: h * 0.3 },
-        { x: w * 0.15, y: h * 0.7 },
-        { x: w * 0.85, y: h * 0.3 },
-        { x: w * 0.85, y: h * 0.7 }
+        { x: w * faceoffFromGoal, y: h * faceoffFromBoards },
+        { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards) },
+        { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards },
+        { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards) }
     ];
     
     circles.forEach(function(circle) {
@@ -649,59 +697,194 @@ function drawViewRink(ctx, w, h) {
         ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Draw NHL-style hash marks
-        // Two 2-foot parallel lines on each side, 5'7" apart, perpendicular to goal line
-        drawHashMarksForCircle(ctx, circle.x, circle.y, faceoffRadius);
+        // Draw NHL-style hash marks (nets on left/right)
+        drawHashMarksForCircle(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
     });
 }
 
+function drawHalfIceView(ctx, w, h, side) {
+    // NHL proportions for half ice view
+    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+    const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
+    const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
+    
+    // Blue line position
+    const blueLineY = side === 'top' ? h * 0.85 : h * 0.15;
+    
+    // Blue line
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, blueLineY);
+    ctx.lineTo(w, blueLineY);
+    ctx.stroke();
+    
+    // Goal and faceoff positions
+    const goalY = side === 'top' ? h * 0.08 : h * 0.92;
+    const faceoffY = side === 'top' ? h * 0.35 : h * 0.65;
+    
+    // Left faceoff circle
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(w * faceoffFromBoards, faceoffY, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(w * faceoffFromBoards, faceoffY, 4, 0, 2 * Math.PI);
+    ctx.fill();
+    drawHashMarksForCircle(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
+    
+    // Right faceoff circle  
+    ctx.beginPath();
+    ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 4, 0, 2 * Math.PI);
+    ctx.fill();
+    drawHashMarksForCircle(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
+    
+    // Goal crease - 6 ft radius semicircle
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (side === 'top') {
+        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
+    } else {
+        ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI, true);
+    }
+    ctx.fill();
+    ctx.stroke();
+    
+    // Goal line
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.3, goalY);
+    ctx.lineTo(w * 0.7, goalY);
+    ctx.stroke();
+}
+
+function drawZoneView(ctx, w, h, side) {
+    // NHL proportions for zone view
+    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+    const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
+    const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
+    
+    // Blue line position (far from goal)
+    const blueLineX = side === 'left' ? w * 0.85 : w * 0.15;
+    
+    // Blue line
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(blueLineX, 0);
+    ctx.lineTo(blueLineX, h);
+    ctx.stroke();
+    
+    // Goal and faceoff positions
+    const goalX = side === 'left' ? w * 0.08 : w * 0.92;
+    const faceoffX = side === 'left' ? w * 0.35 : w * 0.65;
+    
+    // Top faceoff circle
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(faceoffX, h * faceoffFromBoards, faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = '#c41e3a';
+    ctx.beginPath();
+    ctx.arc(faceoffX, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
+    ctx.fill();
+    drawHashMarksForCircle(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, 'horizontal');
+    
+    // Bottom faceoff circle
+    ctx.beginPath();
+    ctx.arc(faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(faceoffX, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
+    ctx.fill();
+    drawHashMarksForCircle(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 'horizontal');
+    
+    // Goal crease - 6 ft radius semicircle
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (side === 'left') {
+        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+    } else {
+        ctx.arc(goalX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
+    }
+    ctx.fill();
+    ctx.stroke();
+    
+    // Goal line
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(goalX, h * 0.35);
+    ctx.lineTo(goalX, h * 0.65);
+    ctx.stroke();
+}
+
 // Helper function to draw NHL hash marks around faceoff circles
-function drawHashMarksForCircle(ctx, cx, cy, radius) {
+// netPosition: 'horizontal' (nets on left/right, hash marks on top/bottom)
+//              'vertical' (nets on top/bottom, hash marks on left/right)
+function drawHashMarksForCircle(ctx, cx, cy, radius, netPosition) {
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     
-    // NHL hash marks are 2 feet long - scale to canvas
-    const hashLength = radius * 0.3;
+    // NHL/Hockey Canada regulations: faceoff circles have 15-foot radius
+    // Hash marks are 2 feet long and spaced 3 feet apart
+    // We scale these dimensions relative to the drawn circle radius
+    const hashLength = radius * (2 / 15); // 2 feet / 15 feet radius = 0.133
+    const hashSpacing = radius * (3 / 15); // 3 feet / 15 feet radius = 0.2
+    const gapOutsideCircle = radius * 0.05;
+    const startDistance = radius + gapOutsideCircle;
     
-    // Gap from circle edge
-    const gapFromCircle = 4;
+    const sides = [-1, 1];
     
-    // NHL: hash marks are 5'7" apart
-    const pairGap = radius * 0.4;
-    
-    // Hash marks are on both sides (left and right), with top and bottom pairs
-    const positions = [
-        { side: -1, topY: cy - radius * 0.55, bottomY: cy + radius * 0.55 },
-        { side: 1, topY: cy - radius * 0.55, bottomY: cy + radius * 0.55 }
-    ];
-    
-    positions.forEach(function(pos) {
-        const outerEdgeX = cx + pos.side * (radius + gapFromCircle);
-        const innerEdgeX = outerEdgeX + pos.side * hashLength;
-        
-        // Top hash mark pair
-        ctx.beginPath();
-        ctx.moveTo(outerEdgeX, pos.topY - pairGap/2);
-        ctx.lineTo(innerEdgeX, pos.topY - pairGap/2);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(outerEdgeX, pos.topY + pairGap/2);
-        ctx.lineTo(innerEdgeX, pos.topY + pairGap/2);
-        ctx.stroke();
-        
-        // Bottom hash mark pair
-        ctx.beginPath();
-        ctx.moveTo(outerEdgeX, pos.bottomY - pairGap/2);
-        ctx.lineTo(innerEdgeX, pos.bottomY - pairGap/2);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(outerEdgeX, pos.bottomY + pairGap/2);
-        ctx.lineTo(innerEdgeX, pos.bottomY + pairGap/2);
-        ctx.stroke();
-    });
+    if (netPosition === 'vertical') {
+        // Nets on top/bottom - hash marks on LEFT and RIGHT of circle (horizontal lines)
+        sides.forEach(function(side) {
+            const startX = cx + side * startDistance;
+            const endX = startX + side * hashLength;
+            
+            // Top hash mark
+            ctx.beginPath();
+            ctx.moveTo(startX, cy - hashSpacing / 2);
+            ctx.lineTo(endX, cy - hashSpacing / 2);
+            ctx.stroke();
+            
+            // Bottom hash mark
+            ctx.beginPath();
+            ctx.moveTo(startX, cy + hashSpacing / 2);
+            ctx.lineTo(endX, cy + hashSpacing / 2);
+            ctx.stroke();
+        });
+    } else {
+        // Nets on left/right (default) - hash marks on TOP and BOTTOM of circle (vertical lines)
+        sides.forEach(function(side) {
+            const startY = cy + side * startDistance;
+            const endY = startY + side * hashLength;
+            
+            // Left hash mark
+            ctx.beginPath();
+            ctx.moveTo(cx - hashSpacing / 2, startY);
+            ctx.lineTo(cx - hashSpacing / 2, endY);
+            ctx.stroke();
+            
+            // Right hash mark
+            ctx.beginPath();
+            ctx.moveTo(cx + hashSpacing / 2, startY);
+            ctx.lineTo(cx + hashSpacing / 2, endY);
+            ctx.stroke();
+        });
+    }
 }
 
 function drawObject(ctx, obj) {
