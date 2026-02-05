@@ -578,7 +578,7 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 
 .ice-rink-canvas.view-only {
     width: 100%;
-    aspect-ratio: 200/85; /* Full ice default: 200 ft × 85 ft */
+    aspect-ratio: 200/85; /* Full ice default: width/height ratio (rink is 200 ft long × 85 ft wide) */
     min-height: 200px;
     background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
     border: 3px solid #0033a0;
@@ -588,13 +588,14 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 }
 
 /* Dynamic aspect ratios based on ice view */
-/* Full ice: 200 ft × 85 ft (horizontal, net on left/right) */
+/* Full ice: 200 ft length × 85 ft width displayed horizontally (nets on left/right) */
 .ice-rink-canvas.view-only[data-ice-view="full"] {
     aspect-ratio: 200/85;
     border-radius: 80px;
 }
 
-/* Half ice: 85 ft × 100 ft (vertical orientation, net at top/bottom) */
+/* Half ice: Shows 100 ft × 85 ft section rotated 90° for vertical display (net at top/bottom)
+   Display aspect ratio is 85 (display width) / 100 (display height) for the rotated view */
 .ice-rink-canvas.view-only[data-ice-view="half-top"],
 .ice-rink-canvas.view-only[data-ice-view="half-bottom"] {
     aspect-ratio: 85/100;
