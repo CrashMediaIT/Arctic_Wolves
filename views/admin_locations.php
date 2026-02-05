@@ -290,10 +290,16 @@ $locations = $pdo->query("
     </div>
 </div>
 
+<!-- Load Google Maps API with Places library -->
+<?php if (!empty($google_maps_api_key) && preg_match('/^[A-Za-z0-9_-]+$/', $google_maps_api_key)): ?>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
+<?php endif; ?>
+
 <script>
 // Google Places API Configuration
 const GOOGLE_API_KEY = '<?php echo htmlspecialchars($google_maps_api_key, ENT_QUOTES); ?>';
 let placesService = null;
+let sessionToken = null;
 
 function initPlacesSearch() {
     const searchInput = document.getElementById('placeSearch');
@@ -315,30 +321,39 @@ function initPlacesSearch() {
 }
 
 function searchPlaces(query) {
-    // Using Google Places API (Text Search)
+    // Check if Google Maps API is loaded
+    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+        console.error('Google Maps API not loaded');
+        displayPlaceResults([]);
+        return;
+    }
+    
+    // Initialize Places Service if not already done
+    if (!placesService) {
+        // Create a hidden div for PlacesService (it requires a map or div element)
+        const div = document.createElement('div');
+        div.style.display = 'none';
+        document.body.appendChild(div);
+        placesService = new google.maps.places.PlacesService(div);
+        
+        // Create new session token for billing optimization
+        sessionToken = new google.maps.places.AutocompleteSessionToken();
+    }
+    
+    // Use PlacesService textSearch
     const request = {
         query: query,
         fields: ['place_id', 'name', 'formatted_address', 'photos', 'geometry']
     };
     
-    // For demonstration, using a simulated search
-    // In production, use actual Google Places API
-    const results = simulatePlacesSearch(query);
-    displayPlaceResults(results);
-}
-
-function simulatePlacesSearch(query) {
-    // This simulates API results - replace with actual API call
-    return [
-        {
-            place_id: 'ChIJ' + Math.random().toString(36).substr(2, 9),
-            name: query + ' Arena',
-            formatted_address: '123 Main St, City, State',
-            photos: [{
-                getUrl: () => 'https://via.placeholder.com/400x300?text=' + encodeURIComponent(query)
-            }]
+    placesService.textSearch(request, function(results, status) {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+            displayPlaceResults(results);
+        } else {
+            console.error('Places search failed:', status);
+            displayPlaceResults([]);
         }
-    ];
+    });
 }
 
 function displayPlaceResults(results) {
@@ -384,9 +399,10 @@ function selectPlace(place) {
     // Set Google Place ID
     document.getElementById('googlePlaceId').value = place.place_id;
     
-    // Set image URL if available
+    // Set image URL if available from Google Places photos
     if (place.photos && place.photos.length > 0) {
-        const photoUrl = place.photos[0].getUrl ? place.photos[0].getUrl() : place.photos[0];
+        // Get photo URL with proper dimensions
+        const photoUrl = place.photos[0].getUrl({maxWidth: 800, maxHeight: 600});
         document.getElementById('locationImageUrl').value = photoUrl;
         document.getElementById('previewImage').src = photoUrl;
         document.getElementById('locationPreview').style.display = 'block';
@@ -560,5 +576,21 @@ document.getElementById('locationModal').addEventListener('click', function(e) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    initPlacesSearch();
+    // Wait for Google Maps API to load (handles async/defer loading)
+    var initAttempts = 0;
+    var MAX_INIT_ATTEMPTS = 20;
+    var INIT_RETRY_DELAY_MS = 250;
+    
+    function tryInit() {
+        if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+            initPlacesSearch();
+        } else if (initAttempts < MAX_INIT_ATTEMPTS) {
+            initAttempts++;
+            setTimeout(tryInit, INIT_RETRY_DELAY_MS);
+        } else {
+            console.warn('Google Maps API failed to load after', MAX_INIT_ATTEMPTS, 'attempts');
+        }
+    }
+    
+    tryInit();
 });
