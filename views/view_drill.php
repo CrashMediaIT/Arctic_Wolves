@@ -54,11 +54,16 @@ if (!$drill) {
 $coachName = htmlspecialchars(($drill['first_name'] ?? '') . ' ' . ($drill['last_name'] ?? ''));
 
 // Extract ice view from diagram data for proper initial CSS aspect ratio
+// Validate against allowed values to prevent injection
+$allowedIceViews = ['full', 'half-top', 'half-bottom', 'left-zone', 'right-zone', 'center'];
 $drillIceView = 'full';
 if (!empty($drill['diagram_data'])) {
     $diagramParsed = json_decode($drill['diagram_data'], true);
     if (is_array($diagramParsed) && isset($diagramParsed['iceView'])) {
-        $drillIceView = $diagramParsed['iceView'];
+        $parsedIceView = $diagramParsed['iceView'];
+        if (in_array($parsedIceView, $allowedIceViews, true)) {
+            $drillIceView = $parsedIceView;
+        }
     }
 }
 

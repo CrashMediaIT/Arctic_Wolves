@@ -1018,8 +1018,13 @@ const THUMBNAIL_SIZES = {
     CONE_HEIGHT: 8,
     CONE_WIDTH: 5,
     PUCK_RADIUS: 4,
+    PUCK_SMALL_RADIUS: 3,
     ARROW_HEAD_LENGTH: 6,
+    SHOT_ARROW_HEAD_LENGTH: 8,
     LINE_WIDTH: 2,
+    SHOT_LINE_WIDTH: 3,
+    TIRE_LINE_WIDTH: 3,
+    TIRE_RADIUS: 6,
     FONT_SIZE: 6
 };
 
@@ -1524,7 +1529,7 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
         if (x1 !== undefined) {
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(x1, y1, 3, 0, 2 * Math.PI);
+            ctx.arc(x1, y1, THUMBNAIL_SIZES.PUCK_SMALL_RADIUS, 0, 2 * Math.PI);
             ctx.fill();
         }
     } else if (obj.type === 'pass') {
@@ -1577,11 +1582,11 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
         // Shot - thick solid with large arrow
         ctx.strokeStyle = obj.color || '#c41e3a';
         ctx.fillStyle = obj.color || '#c41e3a';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = THUMBNAIL_SIZES.SHOT_LINE_WIDTH;
         ctx.lineCap = 'round';
         
         let x2, y2, angle;
-        const headlen = 8;
+        const headlen = THUMBNAIL_SIZES.SHOT_ARROW_HEAD_LENGTH;
         
         if (obj.points && obj.points.length > 1) {
             ctx.beginPath();
@@ -1627,15 +1632,15 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
         ];
         positions.forEach(pos => {
             ctx.beginPath();
-            ctx.arc(x + pos.x, y + pos.y, 3, 0, 2 * Math.PI);
+            ctx.arc(x + pos.x, y + pos.y, THUMBNAIL_SIZES.PUCK_SMALL_RADIUS, 0, 2 * Math.PI);
             ctx.fill();
         });
     } else if (obj.type === 'tire') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = THUMBNAIL_SIZES.TIRE_LINE_WIDTH;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.beginPath();
-        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.arc(x, y, THUMBNAIL_SIZES.TIRE_RADIUS, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
     } else if (obj.type === 'stick') {
@@ -1646,7 +1651,7 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
         ctx.moveTo(x, y - 10);
         ctx.lineTo(x, y + 6);
         ctx.stroke();
-        ctx.lineWidth = 3;
+        ctx.lineWidth = THUMBNAIL_SIZES.TIRE_LINE_WIDTH;
         ctx.beginPath();
         ctx.moveTo(x, y + 6);
         ctx.quadraticCurveTo(x + 4, y + 8, x + 7, y + 6);
