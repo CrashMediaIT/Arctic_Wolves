@@ -1190,19 +1190,29 @@ class DrillDesigner {
         ctx.lineCap = 'round';
         
         // There are 4 L-shaped restraint lines in each faceoff circle
-        // Two on each side (top and bottom) facing the goal
+        // Two on the goal side point towards the goal
+        // Two on the blue line side (away from goal) point towards the blue line (flipped)
         
-        // The L-shapes point towards the goal (left or right)
+        // The L-shapes on the goal side point towards the goal (left or right)
         const goalDirection = zone === 'left' ? -1 : 1;
+        // The L-shapes on the blue line side point away from the goal (opposite direction)
+        const blueLineDirection = -goalDirection;
+        
+        // For left zone: goal is on left, blue line is on right
+        //   - Left L-shapes (cx - offset) point towards goal (left)
+        //   - Right L-shapes (cx + offset) point towards blue line (right)
+        // For right zone: goal is on right, blue line is on left
+        //   - Right L-shapes (cx + offset) point towards goal (right)
+        //   - Left L-shapes (cx - offset) point towards blue line (left)
         
         // Top-left L-shape (relative to faceoff dot)
-        this.drawLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection, -1);
+        this.drawLShape(ctx, cx - offset, cy - offset, lineLength, zone === 'left' ? goalDirection : blueLineDirection, -1);
         // Top-right L-shape
-        this.drawLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection, -1);
+        this.drawLShape(ctx, cx + offset, cy - offset, lineLength, zone === 'left' ? blueLineDirection : goalDirection, -1);
         // Bottom-left L-shape
-        this.drawLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection, 1);
+        this.drawLShape(ctx, cx - offset, cy + offset, lineLength, zone === 'left' ? goalDirection : blueLineDirection, 1);
         // Bottom-right L-shape
-        this.drawLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection, 1);
+        this.drawLShape(ctx, cx + offset, cy + offset, lineLength, zone === 'left' ? blueLineDirection : goalDirection, 1);
     }
     
     // Draw a single L-shaped restraint line
@@ -1404,14 +1414,20 @@ class DrillDesigner {
         
         // Goal direction for half ice (top = -1, bottom = 1 for Y direction)
         const goalDirection = side === 'top' ? -1 : 1;
+        // Blue line direction is opposite (away from goal)
+        const blueLineDirection = -goalDirection;
         
-        // L-shapes point towards the goal
+        // L-shapes on the goal side point towards the goal
+        // L-shapes on the blue line side (away from goal) point towards the blue line (flipped)
+        // For top goal: top L-shapes (cy - offset) point up, bottom L-shapes (cy + offset) point down
+        // For bottom goal: bottom L-shapes (cy + offset) point down, top L-shapes (cy - offset) point up
+        
         // Left side of faceoff dot
-        this.drawHalfIceLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection);
-        this.drawHalfIceLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection);
+        this.drawHalfIceLShape(ctx, cx - offset, cy - offset, lineLength, side === 'top' ? goalDirection : blueLineDirection);
+        this.drawHalfIceLShape(ctx, cx - offset, cy + offset, lineLength, side === 'top' ? blueLineDirection : goalDirection);
         // Right side of faceoff dot
-        this.drawHalfIceLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection);
-        this.drawHalfIceLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection);
+        this.drawHalfIceLShape(ctx, cx + offset, cy - offset, lineLength, side === 'top' ? goalDirection : blueLineDirection);
+        this.drawHalfIceLShape(ctx, cx + offset, cy + offset, lineLength, side === 'top' ? blueLineDirection : goalDirection);
     }
     
     drawHalfIceLShape(ctx, x, y, length, vDir) {
