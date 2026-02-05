@@ -1747,7 +1747,21 @@ class DrillDesigner {
     
     setIceView(view) {
         this.iceView = view;
-        this.redraw();
+        
+        // Update the container's data-ice-view attribute for dynamic CSS aspect ratio
+        const container = this.canvas.parentElement;
+        if (container) {
+            container.setAttribute('data-ice-view', view);
+            
+            // Wait for CSS transition to complete (300ms defined in CSS), then resize canvas to new container size
+            setTimeout(() => {
+                this.canvas.width = container.offsetWidth;
+                this.canvas.height = container.offsetHeight;
+                this.redraw();
+            }, 350);
+        } else {
+            this.redraw();
+        }
     }
     
     redraw() {
@@ -3185,6 +3199,11 @@ class DrillDesigner {
                     const iceViewSelect = document.getElementById('iceViewSelect');
                     if (iceViewSelect) {
                         iceViewSelect.value = parsed.iceView;
+                    }
+                    // Update container's data-ice-view for dynamic CSS aspect ratio
+                    const container = this.canvas.parentElement;
+                    if (container) {
+                        container.setAttribute('data-ice-view', parsed.iceView);
                     }
                 }
                 

@@ -543,20 +543,55 @@ if ($editDrillId) {
 
 .ice-rink-canvas {
     width: 100%;
-    min-height: 450px;
-    max-height: 600px;
-    aspect-ratio: 2/1;
+    min-height: 350px;
+    max-height: 700px;
+    /* Default aspect ratio for full ice (200/85 ≈ 2.35) */
+    aspect-ratio: 200/85;
     background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
     border: 3px solid #0033a0;
     border-radius: 80px;
     position: relative;
     margin-bottom: 16px;
     overflow: hidden;
+    transition: aspect-ratio 0.3s ease-in-out;
+}
+
+/* Dynamic aspect ratios based on ice view */
+/* Full ice: 200 ft × 85 ft (horizontal, net on left/right) */
+.ice-rink-canvas[data-ice-view="full"] {
+    aspect-ratio: 200/85;
+    border-radius: 80px;
+}
+
+/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom) */
+.ice-rink-canvas[data-ice-view="half-top"],
+.ice-rink-canvas[data-ice-view="half-bottom"] {
+    aspect-ratio: 85/100;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 80px 80px 20px 20px;
+}
+
+/* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) */
+.ice-rink-canvas[data-ice-view="left-zone"],
+.ice-rink-canvas[data-ice-view="right-zone"] {
+    aspect-ratio: 100/85;
+    border-radius: 80px;
+}
+
+/* Center ice: 72 ft × 85 ft (between the blue lines) */
+.ice-rink-canvas[data-ice-view="center"] {
+    aspect-ratio: 72/85;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 20px;
 }
 
 /* Canvas element inside takes over rendering */
 .ice-rink-canvas canvas {
-    border-radius: 77px;
+    border-radius: inherit;
 }
 
 /* Fullscreen mode */
