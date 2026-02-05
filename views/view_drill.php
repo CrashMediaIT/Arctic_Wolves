@@ -410,20 +410,69 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas.height = container.offsetHeight;
     
     const ctx = canvas.getContext('2d');
-    const diagramData = <?php echo json_encode($drill['diagram_data'] ?? ''); ?>;
+    const diagramDataRaw = <?php echo json_encode($drill['diagram_data'] ?? ''); ?>;
     const centerLogoUrl = container.dataset.centerLogo || '';
+    
+    // Parse diagram data and extract dimensions
+    let diagramObjects = [];
+    let sourceWidth = canvas.width;
+    let sourceHeight = canvas.height;
+    
+    try {
+        const parsed = JSON.parse(diagramDataRaw);
+        if (Array.isArray(parsed)) {
+            // Old format - just an array of objects
+            diagramObjects = parsed;
+        } else if (parsed && parsed.objects && Array.isArray(parsed.objects)) {
+            // New format with canvas dimensions
+            diagramObjects = parsed.objects;
+            sourceWidth = parsed.canvasWidth || canvas.width;
+            sourceHeight = parsed.canvasHeight || canvas.height;
+        }
+    } catch (e) {
+        console.log('No diagram data to parse');
+    }
     
     // Function to render everything
     function renderDrill() {
         drawViewRink(ctx, canvas.width, canvas.height);
-        try {
-            const objects = JSON.parse(diagramData);
-            if (Array.isArray(objects)) {
-                objects.forEach(obj => drawObject(ctx, obj));
-            }
-        } catch (e) {
-            console.log('No diagram data to display');
+        
+        if (diagramObjects.length > 0) {
+            // Calculate scale factors
+            const scaleX = canvas.width / sourceWidth;
+            const scaleY = canvas.height / sourceHeight;
+            
+            diagramObjects.forEach(obj => {
+                // Create a scaled copy of the object
+                const scaledObj = scaleObjectForView(obj, scaleX, scaleY);
+                drawObject(ctx, scaledObj);
+            });
         }
+    }
+    
+    // Scale object coordinates for view
+    function scaleObjectForView(obj, scaleX, scaleY) {
+        const scaled = { ...obj };
+        
+        // Scale position-based objects
+        if (scaled.x !== undefined) scaled.x *= scaleX;
+        if (scaled.y !== undefined) scaled.y *= scaleY;
+        
+        // Scale line-based objects
+        if (scaled.x1 !== undefined) scaled.x1 *= scaleX;
+        if (scaled.y1 !== undefined) scaled.y1 *= scaleY;
+        if (scaled.x2 !== undefined) scaled.x2 *= scaleX;
+        if (scaled.y2 !== undefined) scaled.y2 *= scaleY;
+        
+        // Scale freehand points
+        if (scaled.points && Array.isArray(scaled.points)) {
+            scaled.points = scaled.points.map(pt => ({
+                x: pt.x * scaleX,
+                y: pt.y * scaleY
+            }));
+        }
+        
+        return scaled;
     }
     
     // Load center logo if URL provided

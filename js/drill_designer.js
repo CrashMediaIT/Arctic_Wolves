@@ -2645,12 +2645,62 @@ class DrillDesigner {
     }
     
     getDiagramData() {
-        return JSON.stringify(this.objects);
+        // Include canvas dimensions with the data for proper scaling when rendering
+        return JSON.stringify({
+            canvasWidth: this.canvas.width,
+            canvasHeight: this.canvas.height,
+            objects: this.objects
+        });
     }
     
     loadDiagramData(data) {
         try {
-            this.objects = JSON.parse(data);
+            const parsed = JSON.parse(data);
+            
+            // Handle both old format (array) and new format (object with dimensions)
+            if (Array.isArray(parsed)) {
+                // Old format - just an array of objects
+                this.objects = parsed;
+            } else if (parsed.objects && Array.isArray(parsed.objects)) {
+                // New format with canvas dimensions
+                const sourceWidth = parsed.canvasWidth || this.canvas.width;
+                const sourceHeight = parsed.canvasHeight || this.canvas.height;
+                
+                // Scale objects if canvas size is different
+                if (sourceWidth !== this.canvas.width || sourceHeight !== this.canvas.height) {
+                    const scaleX = this.canvas.width / sourceWidth;
+                    const scaleY = this.canvas.height / sourceHeight;
+                    
+                    this.objects = parsed.objects.map(obj => {
+                        const scaled = { ...obj };
+                        
+                        // Scale position-based objects
+                        if (scaled.x !== undefined) scaled.x *= scaleX;
+                        if (scaled.y !== undefined) scaled.y *= scaleY;
+                        
+                        // Scale line-based objects
+                        if (scaled.x1 !== undefined) scaled.x1 *= scaleX;
+                        if (scaled.y1 !== undefined) scaled.y1 *= scaleY;
+                        if (scaled.x2 !== undefined) scaled.x2 *= scaleX;
+                        if (scaled.y2 !== undefined) scaled.y2 *= scaleY;
+                        
+                        // Scale freehand points
+                        if (scaled.points && Array.isArray(scaled.points)) {
+                            scaled.points = scaled.points.map(pt => ({
+                                x: pt.x * scaleX,
+                                y: pt.y * scaleY
+                            }));
+                        }
+                        
+                        return scaled;
+                    });
+                } else {
+                    this.objects = parsed.objects;
+                }
+            } else {
+                this.objects = [];
+            }
+            
             this.redraw();
             this.saveState();
         } catch (e) {
