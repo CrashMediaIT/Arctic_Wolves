@@ -683,6 +683,8 @@ $totalDuration = $plan['total_duration'] ?? $calculatedDuration;
 }
 </style>
 
+<!-- Shared Ice Canvas Renderer - ensures consistent rink drawing across all views -->
+<script src="js/ice_canvas.js"></script>
 <script>
 // Copy share link
 function copyShareLink() {
@@ -806,8 +808,17 @@ function renderDrillCanvas(canvas, diagramDataStr) {
         diagramData = [];
     }
     
-    // Draw ice rink
-    drawRink(ctx, w, h, iceView);
+    // Draw ice rink using shared IceCanvasRenderer for consistent rendering
+    if (window.IceCanvasRenderer) {
+        IceCanvasRenderer.drawRink(ctx, w, h, iceView, {
+            logoImage: centerLogoImage,
+            logoLoaded: centerLogoLoaded
+        });
+    } else {
+        // Fallback to local drawRink if IceCanvasRenderer not available
+        drawRink(ctx, w, h, iceView);
+        drawRinkBorder(ctx, w, h, iceView);
+    }
     
     // Draw diagram objects with proper uniform scaling
     if (diagramData.length > 0) {
@@ -823,9 +834,6 @@ function renderDrillCanvas(canvas, diagramDataStr) {
             drawScaledObject(ctx, obj, uniformScale, offsetX, offsetY);
         });
     }
-    
-    // Draw rink border
-    drawRinkBorder(ctx, w, h, iceView);
 }
 
 function drawRink(ctx, w, h, iceView) {
@@ -1327,6 +1335,211 @@ function drawScaledObject(ctx, obj, uniformScale, offsetX, offsetY) {
             ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 5), y2 - headlen * Math.sin(angle + Math.PI / 5));
             ctx.closePath();
             ctx.fill();
+        }
+    } else if (obj.type === 'skating_forward_puck') {
+        // Forward skating with puck - solid line with arrow and puck at start
+        ctx.strokeStyle = obj.color || '#0033a0';
+        ctx.fillStyle = obj.color || '#0033a0';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        let x1, y1, x2, y2, angle;
+        const headlen = 10 * uniformScale;
+        
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+            
+            x1 = obj.points[0].x * uniformScale + offsetX;
+            y1 = obj.points[0].y * uniformScale + offsetY;
+            const last = obj.points[obj.points.length - 1];
+            const secondLast = obj.points[obj.points.length - 2];
+            x2 = last.x * uniformScale + offsetX;
+            y2 = last.y * uniformScale + offsetY;
+            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+        } else if (obj.x1 !== undefined) {
+            x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            angle = Math.atan2(y2 - y1, x2 - x1);
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        
+        // Draw arrow
+        if (x2 !== undefined && y2 !== undefined && angle !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Draw puck at start
+        if (x1 !== undefined && y1 !== undefined) {
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x1, y1, 6 * uniformScale, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    } else if (obj.type === 'skating_backward_puck') {
+        // Backward skating with puck - dashed line with backward arrow and puck
+        ctx.strokeStyle = obj.color || '#c41e3a';
+        ctx.fillStyle = obj.color || '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([6, 3]);
+        
+        let x1, y1, x2, y2, angle;
+        const headlen = 10 * uniformScale;
+        
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+            
+            x1 = obj.points[0].x * uniformScale + offsetX;
+            y1 = obj.points[0].y * uniformScale + offsetY;
+            const last = obj.points[obj.points.length - 1];
+            const secondLast = obj.points[obj.points.length - 2];
+            x2 = last.x * uniformScale + offsetX;
+            y2 = last.y * uniformScale + offsetY;
+            angle = Math.atan2(secondLast.y - last.y, secondLast.x - last.x);
+        } else if (obj.x1 !== undefined) {
+            x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            angle = Math.atan2(y1 - y2, x1 - x2);
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        
+        // Draw arrow
+        if (x2 !== undefined && y2 !== undefined && angle !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Draw puck at start
+        if (x1 !== undefined && y1 !== undefined) {
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x1, y1, 6 * uniformScale, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    } else if (obj.type === 'skating_lateral') {
+        // Lateral skating - zigzag pattern
+        ctx.strokeStyle = obj.color || '#10b981';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        if (obj.points && obj.points.length >= 2) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            const x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            const y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const perpAngle = angle + Math.PI / 2;
+            const segments = Math.max(4, Math.floor(distance / 20));
+            const zigzagHeight = 8 * uniformScale;
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            
+            for (let i = 1; i <= segments; i++) {
+                const t = i / segments;
+                const px = x1 + dx * t;
+                const py = y1 + dy * t;
+                const offset = (i % 2 === 1) ? zigzagHeight : -zigzagHeight;
+                ctx.lineTo(px + Math.cos(perpAngle) * offset, py + Math.sin(perpAngle) * offset);
+            }
+            
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+    } else if (obj.type === 'skating_ccuts') {
+        // C-cuts skating - curved pattern
+        ctx.strokeStyle = obj.color || '#8b5cf6';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        if (obj.points && obj.points.length >= 2) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length - 1; i++) {
+                const xc = (obj.points[i].x + obj.points[i + 1].x) / 2 * uniformScale + offsetX;
+                const yc = (obj.points[i].y + obj.points[i + 1].y) / 2 * uniformScale + offsetY;
+                ctx.quadraticCurveTo(
+                    obj.points[i].x * uniformScale + offsetX,
+                    obj.points[i].y * uniformScale + offsetY,
+                    xc, yc
+                );
+            }
+            const last = obj.points[obj.points.length - 1];
+            ctx.lineTo(last.x * uniformScale + offsetX, last.y * uniformScale + offsetY);
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            const x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            const y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const numCuts = Math.max(3, Math.floor(distance / 30));
+            const cutWidth = distance / numCuts;
+            const cutHeight = 12 * uniformScale;
+            
+            ctx.save();
+            ctx.translate(x1, y1);
+            ctx.rotate(angle);
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            
+            for (let i = 0; i < numCuts; i++) {
+                const startX = i * cutWidth;
+                const endX = (i + 1) * cutWidth;
+                const direction = (i % 2 === 0) ? 1 : -1;
+                ctx.quadraticCurveTo(startX + cutWidth / 2, direction * cutHeight, endX, 0);
+            }
+            
+            ctx.stroke();
+            ctx.restore();
         }
     } else if (obj.type === 'pucks') {
         // Group of pucks
