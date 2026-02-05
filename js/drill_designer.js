@@ -3187,6 +3187,8 @@ class DrillDesigner {
             if (Array.isArray(parsed)) {
                 // Old format - just an array of objects
                 this.objects = parsed;
+                this.redraw();
+                this.saveState();
             } else if (parsed.objects && Array.isArray(parsed.objects)) {
                 // New format with canvas dimensions
                 const sourceWidth = parsed.canvasWidth || this.canvas.width;
@@ -3204,32 +3206,81 @@ class DrillDesigner {
                     const container = this.canvas.parentElement;
                     if (container) {
                         container.setAttribute('data-ice-view', parsed.iceView);
+                        
+                        // Wait for CSS aspect-ratio transition to complete (350ms for CSS + buffer)
+                        // Then resize canvas and scale objects with uniform scaling to preserve proportions
+                        setTimeout(() => {
+                            // Update canvas to match new container size after CSS transition
+                            this.canvas.width = container.offsetWidth;
+                            this.canvas.height = container.offsetHeight;
+                            
+                            // Use uniform scaling to preserve object proportions
+                            // Take the minimum scale to fit content while maintaining aspect ratio
+                            const scaleX = this.canvas.width / sourceWidth;
+                            const scaleY = this.canvas.height / sourceHeight;
+                            const uniformScale = Math.min(scaleX, scaleY);
+                            
+                            // Calculate offset to center content if aspect ratios don't match exactly
+                            const offsetX = (this.canvas.width - sourceWidth * uniformScale) / 2;
+                            const offsetY = (this.canvas.height - sourceHeight * uniformScale) / 2;
+                            
+                            this.objects = parsed.objects.map(obj => {
+                                const scaled = { ...obj };
+                                
+                                // Scale and offset position-based objects
+                                if (scaled.x !== undefined) scaled.x = scaled.x * uniformScale + offsetX;
+                                if (scaled.y !== undefined) scaled.y = scaled.y * uniformScale + offsetY;
+                                
+                                // Scale and offset line-based objects
+                                if (scaled.x1 !== undefined) scaled.x1 = scaled.x1 * uniformScale + offsetX;
+                                if (scaled.y1 !== undefined) scaled.y1 = scaled.y1 * uniformScale + offsetY;
+                                if (scaled.x2 !== undefined) scaled.x2 = scaled.x2 * uniformScale + offsetX;
+                                if (scaled.y2 !== undefined) scaled.y2 = scaled.y2 * uniformScale + offsetY;
+                                
+                                // Scale and offset freehand points
+                                if (scaled.points && Array.isArray(scaled.points)) {
+                                    scaled.points = scaled.points.map(pt => ({
+                                        x: pt.x * uniformScale + offsetX,
+                                        y: pt.y * uniformScale + offsetY
+                                    }));
+                                }
+                                
+                                return scaled;
+                            });
+                            
+                            this.redraw();
+                            this.saveState();
+                        }, 350);
+                        return; // Exit early, the timeout will handle redraw
                     }
                 }
                 
-                // Scale objects if canvas size is different
+                // Fallback: no ice view change or no container - use uniform scaling immediately
+                const scaleX = this.canvas.width / sourceWidth;
+                const scaleY = this.canvas.height / sourceHeight;
+                const uniformScale = Math.min(scaleX, scaleY);
+                const offsetX = (this.canvas.width - sourceWidth * uniformScale) / 2;
+                const offsetY = (this.canvas.height - sourceHeight * uniformScale) / 2;
+                
                 if (sourceWidth !== this.canvas.width || sourceHeight !== this.canvas.height) {
-                    const scaleX = this.canvas.width / sourceWidth;
-                    const scaleY = this.canvas.height / sourceHeight;
-                    
                     this.objects = parsed.objects.map(obj => {
                         const scaled = { ...obj };
                         
-                        // Scale position-based objects
-                        if (scaled.x !== undefined) scaled.x *= scaleX;
-                        if (scaled.y !== undefined) scaled.y *= scaleY;
+                        // Scale and offset position-based objects
+                        if (scaled.x !== undefined) scaled.x = scaled.x * uniformScale + offsetX;
+                        if (scaled.y !== undefined) scaled.y = scaled.y * uniformScale + offsetY;
                         
-                        // Scale line-based objects
-                        if (scaled.x1 !== undefined) scaled.x1 *= scaleX;
-                        if (scaled.y1 !== undefined) scaled.y1 *= scaleY;
-                        if (scaled.x2 !== undefined) scaled.x2 *= scaleX;
-                        if (scaled.y2 !== undefined) scaled.y2 *= scaleY;
+                        // Scale and offset line-based objects
+                        if (scaled.x1 !== undefined) scaled.x1 = scaled.x1 * uniformScale + offsetX;
+                        if (scaled.y1 !== undefined) scaled.y1 = scaled.y1 * uniformScale + offsetY;
+                        if (scaled.x2 !== undefined) scaled.x2 = scaled.x2 * uniformScale + offsetX;
+                        if (scaled.y2 !== undefined) scaled.y2 = scaled.y2 * uniformScale + offsetY;
                         
-                        // Scale freehand points
+                        // Scale and offset freehand points
                         if (scaled.points && Array.isArray(scaled.points)) {
                             scaled.points = scaled.points.map(pt => ({
-                                x: pt.x * scaleX,
-                                y: pt.y * scaleY
+                                x: pt.x * uniformScale + offsetX,
+                                y: pt.y * uniformScale + offsetY
                             }));
                         }
                         
@@ -3238,12 +3289,14 @@ class DrillDesigner {
                 } else {
                     this.objects = parsed.objects;
                 }
+                
+                this.redraw();
+                this.saveState();
             } else {
                 this.objects = [];
+                this.redraw();
+                this.saveState();
             }
-            
-            this.redraw();
-            this.saveState();
         } catch (e) {
             console.error('Failed to load diagram data:', e);
         }

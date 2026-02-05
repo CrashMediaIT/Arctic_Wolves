@@ -496,13 +496,19 @@ document.addEventListener('DOMContentLoaded', function() {
         drawViewRink(ctx, canvas.width, canvas.height, iceView);
         
         if (diagramObjects.length > 0) {
-            // Calculate scale factors
+            // Use uniform scaling to preserve object proportions
+            // Take the minimum scale to fit content while maintaining aspect ratio
             const scaleX = canvas.width / sourceWidth;
             const scaleY = canvas.height / sourceHeight;
+            const uniformScale = Math.min(scaleX, scaleY);
+            
+            // Calculate offset to center content if aspect ratios don't match exactly
+            const offsetX = (canvas.width - sourceWidth * uniformScale) / 2;
+            const offsetY = (canvas.height - sourceHeight * uniformScale) / 2;
             
             diagramObjects.forEach(obj => {
-                // Create a scaled copy of the object
-                const scaledObj = scaleObjectForView(obj, scaleX, scaleY);
+                // Create a scaled copy of the object with uniform scaling
+                const scaledObj = scaleObjectForView(obj, uniformScale, offsetX, offsetY);
                 drawObject(ctx, scaledObj);
             });
         }
@@ -515,25 +521,25 @@ document.addEventListener('DOMContentLoaded', function() {
         renderDrill();
     }
     
-    // Scale object coordinates for view
-    function scaleObjectForView(obj, scaleX, scaleY) {
+    // Scale object coordinates for view with uniform scaling to preserve proportions
+    function scaleObjectForView(obj, scale, offsetX, offsetY) {
         const scaled = { ...obj };
         
-        // Scale position-based objects
-        if (scaled.x !== undefined) scaled.x *= scaleX;
-        if (scaled.y !== undefined) scaled.y *= scaleY;
+        // Scale and offset position-based objects
+        if (scaled.x !== undefined) scaled.x = scaled.x * scale + offsetX;
+        if (scaled.y !== undefined) scaled.y = scaled.y * scale + offsetY;
         
-        // Scale line-based objects
-        if (scaled.x1 !== undefined) scaled.x1 *= scaleX;
-        if (scaled.y1 !== undefined) scaled.y1 *= scaleY;
-        if (scaled.x2 !== undefined) scaled.x2 *= scaleX;
-        if (scaled.y2 !== undefined) scaled.y2 *= scaleY;
+        // Scale and offset line-based objects
+        if (scaled.x1 !== undefined) scaled.x1 = scaled.x1 * scale + offsetX;
+        if (scaled.y1 !== undefined) scaled.y1 = scaled.y1 * scale + offsetY;
+        if (scaled.x2 !== undefined) scaled.x2 = scaled.x2 * scale + offsetX;
+        if (scaled.y2 !== undefined) scaled.y2 = scaled.y2 * scale + offsetY;
         
-        // Scale freehand points
+        // Scale and offset freehand points
         if (scaled.points && Array.isArray(scaled.points)) {
             scaled.points = scaled.points.map(pt => ({
-                x: pt.x * scaleX,
-                y: pt.y * scaleY
+                x: pt.x * scale + offsetX,
+                y: pt.y * scale + offsetY
             }));
         }
         

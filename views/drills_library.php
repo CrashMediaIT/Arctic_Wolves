@@ -1024,13 +1024,18 @@ function renderDrillThumbnails() {
             
             // Draw diagram objects if available
             if (diagramData && diagramData.length > 0) {
-                // Scale factor for thumbnail using source dimensions
+                // Use uniform scaling to preserve object proportions
                 const scaleX = w / sourceWidth;
                 const scaleY = h / sourceHeight;
+                const uniformScale = Math.min(scaleX, scaleY);
+                
+                // Calculate offset to center content
+                const offsetX = (w - sourceWidth * uniformScale) / 2;
+                const offsetY = (h - sourceHeight * uniformScale) / 2;
                 
                 diagramData.forEach(obj => {
-                    const x = (obj.x || 0) * scaleX;
-                    const y = (obj.y || 0) * scaleY;
+                    const x = (obj.x || 0) * uniformScale + offsetX;
+                    const y = (obj.y || 0) * uniformScale + offsetY;
                     
                     if (obj.type === 'player') {
                         // Draw player circle
@@ -1082,15 +1087,15 @@ function renderDrillThumbnails() {
                         ctx.lineJoin = 'round';
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                         } else if (obj.x1 !== undefined) {
                             ctx.beginPath();
-                            ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
-                            ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                            ctx.moveTo((obj.x1 || 0) * uniformScale + offsetX, (obj.y1 || 0) * uniformScale + offsetY);
+                            ctx.lineTo((obj.x2 || 0) * uniformScale + offsetX, (obj.y2 || 0) * uniformScale + offsetY);
                             ctx.stroke();
                         }
                     } else if (obj.type === 'arrow' || obj.type === 'freehand_arrow') {
@@ -1105,22 +1110,22 @@ function renderDrillThumbnails() {
                         
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                             
                             const last = obj.points[obj.points.length - 1];
                             const secondLast = obj.points[obj.points.length - 2];
-                            x2 = last.x * scaleX;
-                            y2 = last.y * scaleY;
+                            x2 = last.x * uniformScale + offsetX;
+                            y2 = last.y * uniformScale + offsetY;
                             angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
                         } else if (obj.x1 !== undefined) {
-                            const x1 = (obj.x1 || 0) * scaleX;
-                            const y1 = (obj.y1 || 0) * scaleY;
-                            x2 = (obj.x2 || 0) * scaleX;
-                            y2 = (obj.y2 || 0) * scaleY;
+                            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+                            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+                            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+                            y2 = (obj.y2 || 0) * uniformScale + offsetY;
                             angle = Math.atan2(y2 - y1, x2 - x1);
                             
                             ctx.beginPath();
@@ -1145,15 +1150,15 @@ function renderDrillThumbnails() {
                         ctx.setLineDash([4, 3]);
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                         } else if (obj.x1 !== undefined) {
                             ctx.beginPath();
-                            ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
-                            ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                            ctx.moveTo((obj.x1 || 0) * uniformScale + offsetX, (obj.y1 || 0) * uniformScale + offsetY);
+                            ctx.lineTo((obj.x2 || 0) * uniformScale + offsetX, (obj.y2 || 0) * uniformScale + offsetY);
                             ctx.stroke();
                         }
                         ctx.setLineDash([]);
@@ -1164,15 +1169,15 @@ function renderDrillThumbnails() {
                         ctx.lineJoin = 'round';
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                         } else if (obj.x1 !== undefined) {
                             ctx.beginPath();
-                            ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
-                            ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                            ctx.moveTo((obj.x1 || 0) * uniformScale + offsetX, (obj.y1 || 0) * uniformScale + offsetY);
+                            ctx.lineTo((obj.x2 || 0) * uniformScale + offsetX, (obj.y2 || 0) * uniformScale + offsetY);
                             ctx.stroke();
                         }
                     } else if (obj.type === 'freehand_skating' || obj.type === 'skating_forward') {
@@ -1188,22 +1193,22 @@ function renderDrillThumbnails() {
                         
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                             
                             const last = obj.points[obj.points.length - 1];
                             const secondLast = obj.points[obj.points.length - 2];
-                            x2 = last.x * scaleX;
-                            y2 = last.y * scaleY;
+                            x2 = last.x * uniformScale + offsetX;
+                            y2 = last.y * uniformScale + offsetY;
                             angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
                         } else if (obj.x1 !== undefined) {
-                            const x1 = (obj.x1 || 0) * scaleX;
-                            const y1 = (obj.y1 || 0) * scaleY;
-                            x2 = (obj.x2 || 0) * scaleX;
-                            y2 = (obj.y2 || 0) * scaleY;
+                            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+                            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+                            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+                            y2 = (obj.y2 || 0) * uniformScale + offsetY;
                             angle = Math.atan2(y2 - y1, x2 - x1);
                             
                             ctx.beginPath();
@@ -1233,22 +1238,22 @@ function renderDrillThumbnails() {
                         
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                             
                             const last = obj.points[obj.points.length - 1];
                             const secondLast = obj.points[obj.points.length - 2];
-                            x2 = last.x * scaleX;
-                            y2 = last.y * scaleY;
+                            x2 = last.x * uniformScale + offsetX;
+                            y2 = last.y * uniformScale + offsetY;
                             angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
                         } else if (obj.x1 !== undefined) {
-                            const x1 = (obj.x1 || 0) * scaleX;
-                            const y1 = (obj.y1 || 0) * scaleY;
-                            x2 = (obj.x2 || 0) * scaleX;
-                            y2 = (obj.y2 || 0) * scaleY;
+                            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+                            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+                            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+                            y2 = (obj.y2 || 0) * uniformScale + offsetY;
                             angle = Math.atan2(y2 - y1, x2 - x1);
                             
                             ctx.beginPath();
@@ -1275,15 +1280,15 @@ function renderDrillThumbnails() {
                         
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                         } else if (obj.x1 !== undefined) {
                             ctx.beginPath();
-                            ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
-                            ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                            ctx.moveTo((obj.x1 || 0) * uniformScale + offsetX, (obj.y1 || 0) * uniformScale + offsetY);
+                            ctx.lineTo((obj.x2 || 0) * uniformScale + offsetX, (obj.y2 || 0) * uniformScale + offsetY);
                             ctx.stroke();
                         }
                     } else if (obj.type === 'skating_forward_puck' || obj.type === 'skating_backward_puck') {
@@ -1302,26 +1307,26 @@ function renderDrillThumbnails() {
                         const headlen = 6;
                         
                         if (obj.points && obj.points.length > 1) {
-                            x1 = obj.points[0].x * scaleX;
-                            y1 = obj.points[0].y * scaleY;
+                            x1 = obj.points[0].x * uniformScale + offsetX;
+                            y1 = obj.points[0].y * uniformScale + offsetY;
                             
                             ctx.beginPath();
                             ctx.moveTo(x1, y1);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                             
                             const last = obj.points[obj.points.length - 1];
                             const secondLast = obj.points[obj.points.length - 2];
-                            x2 = last.x * scaleX;
-                            y2 = last.y * scaleY;
+                            x2 = last.x * uniformScale + offsetX;
+                            y2 = last.y * uniformScale + offsetY;
                             angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
                         } else if (obj.x1 !== undefined) {
-                            x1 = (obj.x1 || 0) * scaleX;
-                            y1 = (obj.y1 || 0) * scaleY;
-                            x2 = (obj.x2 || 0) * scaleX;
-                            y2 = (obj.y2 || 0) * scaleY;
+                            x1 = (obj.x1 || 0) * uniformScale + offsetX;
+                            y1 = (obj.y1 || 0) * uniformScale + offsetY;
+                            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+                            y2 = (obj.y2 || 0) * uniformScale + offsetY;
                             angle = Math.atan2(y2 - y1, x2 - x1);
                             
                             ctx.beginPath();
@@ -1360,22 +1365,22 @@ function renderDrillThumbnails() {
                         
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                             
                             const last = obj.points[obj.points.length - 1];
                             const secondLast = obj.points[obj.points.length - 2];
-                            x2 = last.x * scaleX;
-                            y2 = last.y * scaleY;
+                            x2 = last.x * uniformScale + offsetX;
+                            y2 = last.y * uniformScale + offsetY;
                             angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
                         } else if (obj.x1 !== undefined) {
-                            const x1 = (obj.x1 || 0) * scaleX;
-                            const y1 = (obj.y1 || 0) * scaleY;
-                            x2 = (obj.x2 || 0) * scaleX;
-                            y2 = (obj.y2 || 0) * scaleY;
+                            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+                            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+                            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+                            y2 = (obj.y2 || 0) * uniformScale + offsetY;
                             angle = Math.atan2(y2 - y1, x2 - x1);
                             
                             ctx.beginPath();
@@ -1406,22 +1411,22 @@ function renderDrillThumbnails() {
                         
                         if (obj.points && obj.points.length > 1) {
                             ctx.beginPath();
-                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
                             for (let i = 1; i < obj.points.length; i++) {
-                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
                             }
                             ctx.stroke();
                             
                             const last = obj.points[obj.points.length - 1];
                             const secondLast = obj.points[obj.points.length - 2];
-                            x2 = last.x * scaleX;
-                            y2 = last.y * scaleY;
+                            x2 = last.x * uniformScale + offsetX;
+                            y2 = last.y * uniformScale + offsetY;
                             angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
                         } else if (obj.x1 !== undefined) {
-                            const x1 = (obj.x1 || 0) * scaleX;
-                            const y1 = (obj.y1 || 0) * scaleY;
-                            x2 = (obj.x2 || 0) * scaleX;
-                            y2 = (obj.y2 || 0) * scaleY;
+                            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+                            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+                            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+                            y2 = (obj.y2 || 0) * uniformScale + offsetY;
                             angle = Math.atan2(y2 - y1, x2 - x1);
                             
                             ctx.beginPath();
