@@ -1399,11 +1399,17 @@ function renderDrillCanvas(drillId, diagramDataStr) {
             // Scale factor for display - original drill designer canvas is 800x400
             const DRILL_DESIGNER_WIDTH = 800;
             const DRILL_DESIGNER_HEIGHT = 400;
+            // Use uniform scaling to preserve object proportions
             const scaleX = w / DRILL_DESIGNER_WIDTH;
             const scaleY = h / DRILL_DESIGNER_HEIGHT;
+            const uniformScale = Math.min(scaleX, scaleY);
+            
+            // Calculate offset to center content
+            const offsetX = (w - DRILL_DESIGNER_WIDTH * uniformScale) / 2;
+            const offsetY = (h - DRILL_DESIGNER_HEIGHT * uniformScale) / 2;
             
             objects.forEach(obj => {
-                drawDrillObject(ctx, obj, scaleX, scaleY);
+                drawDrillObject(ctx, obj, uniformScale, offsetX, offsetY);
             });
         }
     } catch (e) {
@@ -1411,15 +1417,15 @@ function renderDrillCanvas(drillId, diagramDataStr) {
     }
 }
 
-function drawDrillObject(ctx, obj, scaleX, scaleY) {
+function drawDrillObject(ctx, obj, scale, offsetX, offsetY) {
     ctx.save();
     
-    const x = (obj.x || 0) * scaleX;
-    const y = (obj.y || 0) * scaleY;
-    const x1 = (obj.x1 || 0) * scaleX;
-    const y1 = (obj.y1 || 0) * scaleY;
-    const x2 = (obj.x2 || 0) * scaleX;
-    const y2 = (obj.y2 || 0) * scaleY;
+    const x = (obj.x || 0) * scale + offsetX;
+    const y = (obj.y || 0) * scale + offsetY;
+    const x1 = (obj.x1 || 0) * scale + offsetX;
+    const y1 = (obj.y1 || 0) * scale + offsetY;
+    const x2 = (obj.x2 || 0) * scale + offsetX;
+    const y2 = (obj.y2 || 0) * scale + offsetY;
     
     if (obj.type === 'player') {
         ctx.translate(x, y);
