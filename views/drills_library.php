@@ -1687,12 +1687,12 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     ctx.fill();
     ctx.stroke();
     
-    // Goal line
+    // Goal line - extends to boards
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(w * 0.3, goalY);
-    ctx.lineTo(w * 0.7, goalY);
+    ctx.moveTo(0, goalY);
+    ctx.lineTo(w, goalY);
     ctx.stroke();
 }
 
@@ -1709,7 +1709,6 @@ function drawThumbnailZone(ctx, w, h, side) {
     const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
     const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
     const centerCircleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
-    const cornerRadius = Math.min(w, h) * 0.1;
     
     // Center line (red) - at the edge of the visible half
     ctx.strokeStyle = '#c41e3a';
@@ -1735,13 +1734,13 @@ function drawThumbnailZone(ctx, w, h, side) {
     ctx.lineTo(blueLineX, h);
     ctx.stroke();
     
-    // Goal line position
+    // Goal line position - extends to boards
     const goalLineX = side === 'left' ? w * goalLinePos * 2 : w * (1 - goalLinePos * 2);
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(goalLineX, cornerRadius + 2);
-    ctx.lineTo(goalLineX, h - cornerRadius - 2);
+    ctx.moveTo(goalLineX, 0);
+    ctx.lineTo(goalLineX, h);
     ctx.stroke();
     
     // Half center circle (at the edge, only half visible)
