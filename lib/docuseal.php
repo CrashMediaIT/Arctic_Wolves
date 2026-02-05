@@ -160,13 +160,41 @@ function testDocuSealConnection($settings) {
  * 
  * @param PDO $pdo Database connection
  * @param array $settings DocuSeal settings
- * @return array List of templates
+ * @return array List of templates with 'id' and 'name' keys
  */
 function listDocuSealTemplates($pdo, $settings) {
     $result = docuSealApiRequest($settings, '/templates', 'GET');
     
     if ($result['success']) {
-        return $result['data'] ?? [];
+        $data = $result['data'] ?? [];
+        
+        // Handle paginated response format where templates might be in nested keys
+        // Check common pagination patterns: 'data', 'items', 'results', 'templates'
+        foreach (['data', 'items', 'results', 'templates'] as $key) {
+            if (isset($data[$key]) && is_array($data[$key])) {
+                $data = $data[$key];
+                break;
+            }
+        }
+        
+        // Filter to only include valid templates with 'id' and 'name' keys
+        // This prevents errors when the API returns unexpected data structures
+        $validTemplates = [];
+        $skippedCount = 0;
+        foreach ($data as $index => $template) {
+            if (is_array($template) && isset($template['id']) && isset($template['name'])) {
+                $validTemplates[] = $template;
+            } else {
+                $skippedCount++;
+            }
+        }
+        
+        // Log if any templates were skipped due to missing required keys
+        if ($skippedCount > 0) {
+            error_log("DocuSeal: Filtered out $skippedCount template(s) missing 'id' or 'name' keys");
+        }
+        
+        return $validTemplates;
     }
     
     error_log("Failed to list DocuSeal templates: " . $result['message']);
@@ -681,4 +709,287 @@ function sendContractSignedEmail($toEmail, $recipientName, $contractTitle) {
         'name' => $recipientName,
         'contract_title' => $contractTitle
     ]);
+}
+
+/**
+ * Make a multipart/form-data API request to DocuSeal for file uploads
+ * 
+ * @param array $settings DocuSeal settings
+ * @param string $endpoint API endpoint
+ * @param array $data Form data including file
+ * @return array Response with success status
+ */
+function docuSealApiRequestMultipart($settings, $endpoint, $data) {
+    if (empty($settings['docuseal_url'])) {
+        return ['success' => false, 'message' => 'DocuSeal URL is not configured'];
+    }
+    
+    if (empty($settings['docuseal_api_key'])) {
+        return ['success' => false, 'message' => 'DocuSeal API key is not configured'];
+    }
+    
+    $url = rtrim($settings['docuseal_url'], '/') . '/api' . $endpoint;
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, shouldVerifyDocuSealSsl($settings));
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    
+    $headers = [
+        'X-Auth-Token: ' . $settings['docuseal_api_key'],
+        'Accept: application/json'
+    ];
+    
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+    
+    if ($error) {
+        return ['success' => false, 'message' => 'API request failed: ' . $error];
+    }
+    
+    $responseData = json_decode($response, true);
+    
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return [
+            'success' => true,
+            'data' => $responseData,
+            'status_code' => $httpCode
+        ];
+    }
+    
+    $errorMessage = isset($responseData['error']) ? $responseData['error'] : 'API returned status code: ' . $httpCode;
+    return ['success' => false, 'message' => $errorMessage, 'status_code' => $httpCode];
+}
+
+/**
+ * Create a DocuSeal template from a PDF file
+ * 
+ * @param array $settings DocuSeal settings
+ * @param string $filePath Path to the PDF file
+ * @param string $name Template name
+ * @return array Result with template data
+ */
+function createDocuSealTemplateFromPdf($settings, $filePath, $name) {
+    if (!file_exists($filePath)) {
+        return ['success' => false, 'message' => 'File not found'];
+    }
+    
+    $mimeType = mime_content_type($filePath);
+    if ($mimeType !== 'application/pdf') {
+        return ['success' => false, 'message' => 'File must be a PDF'];
+    }
+    
+    $data = [
+        'files' => new CURLFile($filePath, 'application/pdf', basename($filePath)),
+        'name' => $name
+    ];
+    
+    return docuSealApiRequestMultipart($settings, '/templates/pdf', $data);
+}
+
+/**
+ * Create a DocuSeal template from a DOCX file
+ * 
+ * @param array $settings DocuSeal settings
+ * @param string $filePath Path to the DOCX file
+ * @param string $name Template name
+ * @return array Result with template data
+ */
+function createDocuSealTemplateFromDocx($settings, $filePath, $name) {
+    if (!file_exists($filePath)) {
+        return ['success' => false, 'message' => 'File not found'];
+    }
+    
+    $mimeType = mime_content_type($filePath);
+    $validTypes = [
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword'
+    ];
+    
+    if (!in_array($mimeType, $validTypes)) {
+        return ['success' => false, 'message' => 'File must be a DOCX or DOC file'];
+    }
+    
+    $data = [
+        'files' => new CURLFile($filePath, $mimeType, basename($filePath)),
+        'name' => $name
+    ];
+    
+    return docuSealApiRequestMultipart($settings, '/templates/docx', $data);
+}
+
+/**
+ * Create a DocuSeal template from uploaded file (PDF or DOCX)
+ * 
+ * @param PDO $pdo Database connection
+ * @param array $settings DocuSeal settings
+ * @param array $file Uploaded file ($_FILES entry)
+ * @param string $name Template name
+ * @return array Result with template data
+ */
+function createDocuSealTemplateFromUpload($pdo, $settings, $file, $name) {
+    if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+        return ['success' => false, 'message' => 'DocuSeal is not enabled'];
+    }
+    
+    if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+        return ['success' => false, 'message' => 'No valid file uploaded'];
+    }
+    
+    $mimeType = mime_content_type($file['tmp_name']);
+    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    
+    // Determine if PDF or DOCX
+    if ($mimeType === 'application/pdf' || $extension === 'pdf') {
+        $result = createDocuSealTemplateFromPdf($settings, $file['tmp_name'], $name);
+    } elseif (in_array($mimeType, [
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword'
+    ]) || in_array($extension, ['docx', 'doc'])) {
+        $result = createDocuSealTemplateFromDocx($settings, $file['tmp_name'], $name);
+    } else {
+        return ['success' => false, 'message' => 'File must be a PDF or DOCX. Uploaded type: ' . $mimeType];
+    }
+    
+    if ($result['success']) {
+        return [
+            'success' => true,
+            'template' => $result['data'],
+            'message' => 'Template created successfully in DocuSeal'
+        ];
+    }
+    
+    return $result;
+}
+
+/**
+ * Update a DocuSeal template
+ * 
+ * @param array $settings DocuSeal settings
+ * @param int $templateId Template ID
+ * @param array $data Update data (name, external_id, folder_name, etc.)
+ * @return array Result with updated template data
+ */
+function updateDocuSealTemplate($settings, $templateId, $data) {
+    $result = docuSealApiRequest($settings, '/templates/' . intval($templateId), 'PUT', $data);
+    
+    if ($result['success']) {
+        return [
+            'success' => true,
+            'template' => $result['data'],
+            'message' => 'Template updated successfully'
+        ];
+    }
+    
+    return $result;
+}
+
+/**
+ * Delete a DocuSeal template
+ * 
+ * @param array $settings DocuSeal settings
+ * @param int $templateId Template ID
+ * @return array Result with success status
+ */
+function deleteDocuSealTemplate($settings, $templateId) {
+    $result = docuSealApiRequest($settings, '/templates/' . intval($templateId), 'DELETE');
+    
+    if ($result['success']) {
+        return [
+            'success' => true,
+            'message' => 'Template deleted successfully'
+        ];
+    }
+    
+    return $result;
+}
+
+/**
+ * Clone a DocuSeal template
+ * 
+ * @param array $settings DocuSeal settings
+ * @param int $templateId Template ID to clone
+ * @param string $name New template name
+ * @return array Result with new template data
+ */
+function cloneDocuSealTemplate($settings, $templateId, $name) {
+    $data = [
+        'name' => $name
+    ];
+    
+    $result = docuSealApiRequest($settings, '/templates/' . intval($templateId) . '/clone', 'POST', $data);
+    
+    if ($result['success']) {
+        return [
+            'success' => true,
+            'template' => $result['data'],
+            'message' => 'Template cloned successfully'
+        ];
+    }
+    
+    return $result;
+}
+
+/**
+ * Get detailed template information including fields
+ * 
+ * @param array $settings DocuSeal settings
+ * @param int $templateId Template ID
+ * @return array Result with template data including fields
+ */
+function getDocuSealTemplateDetails($settings, $templateId) {
+    $result = docuSealApiRequest($settings, '/templates/' . intval($templateId), 'GET');
+    
+    if ($result['success']) {
+        $template = $result['data'];
+        
+        // Extract field information
+        $fields = [];
+        if (isset($template['fields']) && is_array($template['fields'])) {
+            foreach ($template['fields'] as $field) {
+                if (isset($field['name'])) {
+                    $fields[] = [
+                        'name' => $field['name'],
+                        'type' => $field['type'] ?? 'text',
+                        'required' => $field['required'] ?? false,
+                        'submitter_uuid' => $field['submitter_uuid'] ?? null
+                    ];
+                }
+            }
+        }
+        
+        // Extract submitter roles
+        $submitters = [];
+        if (isset($template['submitters']) && is_array($template['submitters'])) {
+            foreach ($template['submitters'] as $submitter) {
+                $submitters[] = [
+                    'uuid' => $submitter['uuid'] ?? null,
+                    'name' => $submitter['name'] ?? 'Signer'
+                ];
+            }
+        }
+        
+        return [
+            'success' => true,
+            'template' => [
+                'id' => $template['id'] ?? null,
+                'name' => $template['name'] ?? 'Unnamed',
+                'external_id' => $template['external_id'] ?? null,
+                'folder_name' => $template['folder_name'] ?? null,
+                'created_at' => $template['created_at'] ?? null,
+                'updated_at' => $template['updated_at'] ?? null,
+                'fields' => $fields,
+                'submitters' => $submitters,
+                'documents_count' => isset($template['documents']) ? count($template['documents']) : 0
+            ]
+        ];
+    }
+    
+    return $result;
 }

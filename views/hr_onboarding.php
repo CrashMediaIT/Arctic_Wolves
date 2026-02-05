@@ -527,9 +527,11 @@ $perkTypes = [
                             <select name="docuseal_template_id" id="docuseal-template" class="form-input">
                                 <option value="">-- Select Contract Template --</option>
                                 <?php foreach ($docuseal_templates as $dsTemplate): ?>
+                                <?php if (isset($dsTemplate['id']) && isset($dsTemplate['name'])): ?>
                                 <option value="<?= $dsTemplate['id'] ?>">
                                     <?= htmlspecialchars($dsTemplate['name']) ?>
                                 </option>
+                                <?php endif; ?>
                                 <?php endforeach; ?>
                             </select>
                             <small class="form-hint">Select the DocuSeal template to use for the employment contract.</small>
