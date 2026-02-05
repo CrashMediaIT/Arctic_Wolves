@@ -29,7 +29,9 @@ if ($action !== 'webhook_callback') {
 $user_id = $_SESSION['user_id'];
 
 // JSON actions that return JSON response
-$json_actions = ['create', 'send_for_signature', 'get_status', 'list_contracts', 'list_templates', 'resend', 'cancel'];
+$json_actions = ['create', 'send_for_signature', 'get_status', 'list_contracts', 'list_templates', 'resend', 'cancel', 
+                 'docuseal_create_template', 'docuseal_update_template', 'docuseal_delete_template', 
+                 'docuseal_clone_template', 'docuseal_get_template', 'docuseal_list_templates'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -407,6 +409,272 @@ try {
             echo json_encode([
                 'success' => true,
                 'message' => 'Contract cancelled successfully'
+            ]);
+            break;
+            
+        /**
+         * DocuSeal Template Management - Create template from uploaded file
+         */
+        case 'docuseal_create_template':
+            $templateName = trim($_POST['template_name'] ?? '');
+            
+            if (empty($templateName)) {
+                throw new Exception('Template name is required');
+            }
+            
+            if (!isset($_FILES['template_file']) || $_FILES['template_file']['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception('Please upload a valid PDF or DOCX file');
+            }
+            
+            $file = $_FILES['template_file'];
+            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            
+            // Validate file type
+            if (!in_array($extension, ['pdf', 'docx', 'doc'])) {
+                throw new Exception('Only PDF and DOCX files are allowed');
+            }
+            
+            // Validate file size (max 50MB)
+            if ($file['size'] > 50 * 1024 * 1024) {
+                throw new Exception('File size must not exceed 50MB');
+            }
+            
+            // Get DocuSeal settings
+            $settings = getDocuSealSettings($pdo);
+            
+            if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+                throw new Exception('DocuSeal is not enabled. Please configure it in System Tools.');
+            }
+            
+            // Create template in DocuSeal
+            $result = createDocuSealTemplateFromUpload($pdo, $settings, $file, $templateName);
+            
+            if (!$result['success']) {
+                throw new Exception('Failed to create template: ' . $result['message']);
+            }
+            
+            // Audit log
+            $auditStmt = $pdo->prepare("
+                INSERT INTO audit_logs 
+                (user_id, action_type, table_name, record_id, new_values, ip_address, created_at)
+                VALUES (?, 'CREATE', 'docuseal_templates', ?, ?, ?, NOW())
+            ");
+            $docusealTemplateId = $result['template']['id'] ?? 0;
+            $auditStmt->execute([
+                $user_id,
+                $docusealTemplateId,
+                json_encode(['name' => $templateName, 'file' => $file['name']]),
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Template created successfully in DocuSeal',
+                'template' => $result['template']
+            ]);
+            break;
+            
+        /**
+         * DocuSeal Template Management - Update template
+         */
+        case 'docuseal_update_template':
+            $templateId = intval($_POST['template_id'] ?? 0);
+            $templateName = trim($_POST['template_name'] ?? '');
+            $externalId = trim($_POST['external_id'] ?? '');
+            $folderName = trim($_POST['folder_name'] ?? '');
+            
+            if ($templateId <= 0) {
+                throw new Exception('Invalid template ID');
+            }
+            
+            if (empty($templateName)) {
+                throw new Exception('Template name is required');
+            }
+            
+            // Get DocuSeal settings
+            $settings = getDocuSealSettings($pdo);
+            
+            if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+                throw new Exception('DocuSeal is not enabled');
+            }
+            
+            // Build update data
+            $updateData = ['name' => $templateName];
+            if (!empty($externalId)) {
+                $updateData['external_id'] = $externalId;
+            }
+            if (!empty($folderName)) {
+                $updateData['folder_name'] = $folderName;
+            }
+            
+            // Update template in DocuSeal
+            $result = updateDocuSealTemplate($settings, $templateId, $updateData);
+            
+            if (!$result['success']) {
+                throw new Exception('Failed to update template: ' . $result['message']);
+            }
+            
+            // Audit log
+            $auditStmt = $pdo->prepare("
+                INSERT INTO audit_logs 
+                (user_id, action_type, table_name, record_id, new_values, ip_address, created_at)
+                VALUES (?, 'UPDATE', 'docuseal_templates', ?, ?, ?, NOW())
+            ");
+            $auditStmt->execute([
+                $user_id,
+                $templateId,
+                json_encode($updateData),
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Template updated successfully',
+                'template' => $result['template']
+            ]);
+            break;
+            
+        /**
+         * DocuSeal Template Management - Delete template
+         */
+        case 'docuseal_delete_template':
+            $templateId = intval($_POST['template_id'] ?? 0);
+            
+            if ($templateId <= 0) {
+                throw new Exception('Invalid template ID');
+            }
+            
+            // Get DocuSeal settings
+            $settings = getDocuSealSettings($pdo);
+            
+            if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+                throw new Exception('DocuSeal is not enabled');
+            }
+            
+            // Delete template from DocuSeal
+            $result = deleteDocuSealTemplate($settings, $templateId);
+            
+            if (!$result['success']) {
+                throw new Exception('Failed to delete template: ' . $result['message']);
+            }
+            
+            // Audit log
+            $auditStmt = $pdo->prepare("
+                INSERT INTO audit_logs 
+                (user_id, action_type, table_name, record_id, new_values, ip_address, created_at)
+                VALUES (?, 'DELETE', 'docuseal_templates', ?, ?, ?, NOW())
+            ");
+            $auditStmt->execute([
+                $user_id,
+                $templateId,
+                json_encode(['action' => 'deleted']),
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Template deleted successfully'
+            ]);
+            break;
+            
+        /**
+         * DocuSeal Template Management - Clone template
+         */
+        case 'docuseal_clone_template':
+            $templateId = intval($_POST['template_id'] ?? 0);
+            $newName = trim($_POST['new_name'] ?? '');
+            
+            if ($templateId <= 0) {
+                throw new Exception('Invalid template ID');
+            }
+            
+            if (empty($newName)) {
+                throw new Exception('New template name is required');
+            }
+            
+            // Get DocuSeal settings
+            $settings = getDocuSealSettings($pdo);
+            
+            if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+                throw new Exception('DocuSeal is not enabled');
+            }
+            
+            // Clone template in DocuSeal
+            $result = cloneDocuSealTemplate($settings, $templateId, $newName);
+            
+            if (!$result['success']) {
+                throw new Exception('Failed to clone template: ' . $result['message']);
+            }
+            
+            // Audit log
+            $auditStmt = $pdo->prepare("
+                INSERT INTO audit_logs 
+                (user_id, action_type, table_name, record_id, new_values, ip_address, created_at)
+                VALUES (?, 'CREATE', 'docuseal_templates', ?, ?, ?, NOW())
+            ");
+            $newTemplateId = $result['template']['id'] ?? 0;
+            $auditStmt->execute([
+                $user_id,
+                $newTemplateId,
+                json_encode(['cloned_from' => $templateId, 'new_name' => $newName]),
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Template cloned successfully',
+                'template' => $result['template']
+            ]);
+            break;
+            
+        /**
+         * DocuSeal Template Management - Get template details
+         */
+        case 'docuseal_get_template':
+            $templateId = intval($_POST['template_id'] ?? $_GET['template_id'] ?? 0);
+            
+            if ($templateId <= 0) {
+                throw new Exception('Invalid template ID');
+            }
+            
+            // Get DocuSeal settings
+            $settings = getDocuSealSettings($pdo);
+            
+            if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+                throw new Exception('DocuSeal is not enabled');
+            }
+            
+            // Get template details from DocuSeal
+            $result = getDocuSealTemplateDetails($settings, $templateId);
+            
+            if (!$result['success']) {
+                throw new Exception('Failed to get template: ' . $result['message']);
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'template' => $result['template']
+            ]);
+            break;
+            
+        /**
+         * DocuSeal Template Management - List all templates
+         */
+        case 'docuseal_list_templates':
+            // Get DocuSeal settings
+            $settings = getDocuSealSettings($pdo);
+            
+            if (empty($settings['docuseal_enabled']) || $settings['docuseal_enabled'] !== '1') {
+                throw new Exception('DocuSeal is not enabled');
+            }
+            
+            // List templates from DocuSeal
+            $templates = listDocuSealTemplates($pdo, $settings);
+            
+            echo json_encode([
+                'success' => true,
+                'templates' => $templates,
+                'count' => count($templates)
             ]);
             break;
             

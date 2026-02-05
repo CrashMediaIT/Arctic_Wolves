@@ -423,11 +423,184 @@ $statusColors = [
 </div>
 
 <?php elseif ($active_tab === 'templates'): ?>
-<!-- Contract Templates -->
+<!-- DocuSeal Template Management -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h3><i class="fas fa-plus-circle"></i> Create New DocuSeal Template</h3>
+    </div>
+    <div class="card-body">
+        <?php if ($docuseal_enabled): ?>
+        <form id="create-template-form" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <input type="hidden" name="action" value="docuseal_create_template">
+            
+            <p class="form-hint" style="margin-bottom: 16px;">
+                Upload a PDF or DOCX file to create a new e-signature template. Use text tags like <code>{{FieldName}}</code> in your document to define fillable fields. For signature fields, use <code>{{Signature;type=signature}}</code>.
+            </p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Template Name *</label>
+                    <input type="text" name="template_name" id="template-name" class="form-input" required placeholder="e.g., Employment Contract 2024">
+                </div>
+                <div class="form-group">
+                    <label>Template File (PDF or DOCX) *</label>
+                    <input type="file" name="template_file" id="template-file" class="form-input" required accept=".pdf,.docx,.doc">
+                    <small style="color: var(--text-secondary); margin-top: 4px; display: block;">Max file size: 50MB</small>
+                </div>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 16px;">
+                <button type="submit" class="btn-primary" id="create-template-btn">
+                    <i class="fas fa-upload"></i> Upload & Create Template
+                </button>
+            </div>
+        </form>
+        <?php else: ?>
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>DocuSeal must be enabled to create templates. <a href="?page=system_tools&tab=docuseal">Configure DocuSeal</a></span>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- DocuSeal Templates List -->
 <div class="card">
     <div class="card-header">
-        <h3><i class="fas fa-file-alt"></i> Contract Templates</h3>
-        <span class="badge badge-primary"><?= count($templates) ?> Templates</span>
+        <h3><i class="fas fa-file-signature"></i> DocuSeal Templates</h3>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button type="button" class="btn-secondary" onclick="refreshDocuSealTemplates()" id="refresh-templates-btn">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <span class="badge badge-primary" id="docuseal-template-count"><?= count($docuseal_templates) ?> Templates</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <?php if ($docuseal_enabled): ?>
+        <div class="table-wrapper">
+            <table id="docuseal-templates-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Template Name</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="docuseal-templates-body">
+                    <?php if (!empty($docuseal_templates)): ?>
+                        <?php foreach ($docuseal_templates as $dsTemplate): ?>
+                        <?php if (isset($dsTemplate['id']) && isset($dsTemplate['name'])): ?>
+                        <tr data-template-id="<?= $dsTemplate['id'] ?>">
+                            <td><code><?= $dsTemplate['id'] ?></code></td>
+                            <td><strong><?= htmlspecialchars($dsTemplate['name']) ?></strong></td>
+                            <td><?= isset($dsTemplate['created_at']) ? date('M j, Y', strtotime($dsTemplate['created_at'])) : '-' ?></td>
+                            <td>
+                                <div class="table-actions">
+                                    <button type="button" class="btn-icon" title="View Details" onclick="viewTemplateDetails(<?= $dsTemplate['id'] ?>)">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn-icon" title="Edit Template" onclick="editTemplate(<?= $dsTemplate['id'] ?>, '<?= htmlspecialchars(addslashes($dsTemplate['name'])) ?>')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn-icon" title="Clone Template" onclick="cloneTemplate(<?= $dsTemplate['id'] ?>, '<?= htmlspecialchars(addslashes($dsTemplate['name'])) ?>')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button type="button" class="btn-icon text-error" title="Delete Template" onclick="deleteTemplate(<?= $dsTemplate['id'] ?>, '<?= htmlspecialchars(addslashes($dsTemplate['name'])) ?>')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr class="empty-row">
+                            <td colspan="4" class="empty-state">
+                                <div class="empty-state-content">
+                                    <i class="fas fa-file-signature"></i>
+                                    <p>No DocuSeal templates found</p>
+                                    <span>Upload a PDF or DOCX file above to create your first template</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php else: ?>
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <strong>DocuSeal Not Configured</strong>
+                <p style="margin: 4px 0 0 0;">E-signature templates require DocuSeal to be configured. 
+                <a href="?page=system_tools&tab=docuseal" style="color: inherit; text-decoration: underline;">Configure DocuSeal Settings</a></p>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Template Details Modal -->
+<div id="template-details-modal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeTemplateModal()"></div>
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-file-alt"></i> Template Details</h3>
+            <button type="button" class="modal-close" onclick="closeTemplateModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="template-details-content">
+            <div class="loading-spinner">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Template Modal -->
+<div id="edit-template-modal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeEditModal()"></div>
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Edit Template</h3>
+            <button type="button" class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="edit-template-form">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <input type="hidden" name="action" value="docuseal_update_template">
+                <input type="hidden" name="template_id" id="edit-template-id">
+                
+                <div class="form-group">
+                    <label>Template Name *</label>
+                    <input type="text" name="template_name" id="edit-template-name" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>External ID (Optional)</label>
+                    <input type="text" name="external_id" id="edit-external-id" class="form-input" placeholder="Your reference ID">
+                </div>
+                
+                <div class="form-group">
+                    <label>Folder Name (Optional)</label>
+                    <input type="text" name="folder_name" id="edit-folder-name" class="form-input" placeholder="Organization folder">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Local Templates Reference -->
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header">
+        <h3><i class="fas fa-database"></i> Local Template Records</h3>
+        <span class="badge badge-secondary"><?= count($templates) ?> Records</span>
     </div>
     <div class="card-body">
         <div class="table-wrapper">
@@ -472,8 +645,8 @@ $statusColors = [
                             <td colspan="5" class="empty-state">
                                 <div class="empty-state-content">
                                     <i class="fas fa-file-alt"></i>
-                                    <p>No templates found</p>
-                                    <span>Templates are defined in the database schema</span>
+                                    <p>No local template records</p>
+                                    <span>Local templates are optional references for organization</span>
                                 </div>
                             </td>
                         </tr>
@@ -485,8 +658,8 @@ $statusColors = [
         <div class="alert alert-info" style="margin-top: 24px;">
             <i class="fas fa-info-circle"></i>
             <div>
-                <strong>Template Management</strong>
-                <p style="margin: 4px 0 0 0;">Templates are created and managed in <strong>DocuSeal</strong>. Create your contract templates with fillable fields in DocuSeal, then link them here by updating the <code>docuseal_template_id</code> in the local template records. When sending for signature, select the DocuSeal template to use.</p>
+                <strong>About Local Templates</strong>
+                <p style="margin: 4px 0 0 0;">Local template records are for internal organization. The actual e-signature templates are stored in DocuSeal (shown above). When creating contracts, you'll select from the DocuSeal templates.</p>
             </div>
         </div>
     </div>
@@ -574,6 +747,117 @@ $statusColors = [
     overflow: hidden;
     text-overflow: ellipsis;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.modal-content {
+    position: relative;
+    background: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.template-detail-section {
+    margin-bottom: 20px;
+}
+
+.template-detail-section h4 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.template-detail-section p {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.field-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.field-item {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.field-item .field-type {
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-left: 6px;
 }
 </style>
 
@@ -705,4 +989,330 @@ document.getElementById('new-contract-form')?.addEventListener('submit', functio
         alert('Error creating contract: ' + error);
     });
 });
+
+// ============================================
+// DocuSeal Template Management Functions
+// ============================================
+
+// Create template form submission
+document.getElementById('create-template-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('create-template-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+    btn.disabled = true;
+    
+    const formData = new FormData(this);
+    
+    fetch('process_employee_contracts.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Template created successfully! The template is now available in DocuSeal.');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        alert('Error creating template: ' + error);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+});
+
+// Refresh templates list
+function refreshDocuSealTemplates() {
+    const btn = document.getElementById('refresh-templates-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    btn.disabled = true;
+    
+    const formData = new FormData();
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    formData.append('action', 'docuseal_list_templates');
+    
+    fetch('process_employee_contracts.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTemplatesTable(data.templates);
+            document.getElementById('docuseal-template-count').textContent = data.count + ' Templates';
+        } else {
+            alert('Error: ' + data.message);
+        }
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    })
+    .catch(error => {
+        alert('Error refreshing templates: ' + error);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+// Update templates table with new data
+function updateTemplatesTable(templates) {
+    const tbody = document.getElementById('docuseal-templates-body');
+    
+    if (!templates || templates.length === 0) {
+        tbody.innerHTML = `
+            <tr class="empty-row">
+                <td colspan="4" class="empty-state">
+                    <div class="empty-state-content">
+                        <i class="fas fa-file-signature"></i>
+                        <p>No DocuSeal templates found</p>
+                        <span>Upload a PDF or DOCX file above to create your first template</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    templates.forEach(template => {
+        if (template.id && template.name) {
+            const createdAt = template.created_at ? new Date(template.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+            const escapedName = template.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            
+            html += `
+                <tr data-template-id="${template.id}">
+                    <td><code>${template.id}</code></td>
+                    <td><strong>${escapeHtml(template.name)}</strong></td>
+                    <td>${createdAt}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button type="button" class="btn-icon" title="View Details" onclick="viewTemplateDetails(${template.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button type="button" class="btn-icon" title="Edit Template" onclick="editTemplate(${template.id}, '${escapedName}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn-icon" title="Clone Template" onclick="cloneTemplate(${template.id}, '${escapedName}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button type="button" class="btn-icon text-error" title="Delete Template" onclick="deleteTemplate(${template.id}, '${escapedName}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+    });
+    
+    tbody.innerHTML = html;
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// View template details
+function viewTemplateDetails(templateId) {
+    const modal = document.getElementById('template-details-modal');
+    const content = document.getElementById('template-details-content');
+    
+    modal.style.display = 'flex';
+    content.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading template details...</div>';
+    
+    const formData = new FormData();
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    formData.append('action', 'docuseal_get_template');
+    formData.append('template_id', templateId);
+    
+    fetch('process_employee_contracts.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const template = data.template;
+            let fieldsHtml = '<span style="color: var(--text-secondary);">No fields defined</span>';
+            
+            if (template.fields && template.fields.length > 0) {
+                fieldsHtml = '<div class="field-list">';
+                template.fields.forEach(field => {
+                    fieldsHtml += `
+                        <div class="field-item">
+                            ${escapeHtml(field.name)}
+                            <span class="field-type">${field.type || 'text'}</span>
+                        </div>
+                    `;
+                });
+                fieldsHtml += '</div>';
+            }
+            
+            let submittersHtml = '<span style="color: var(--text-secondary);">No submitters defined</span>';
+            if (template.submitters && template.submitters.length > 0) {
+                submittersHtml = template.submitters.map(s => `<span class="tag">${escapeHtml(s.name)}</span>`).join(' ');
+            }
+            
+            content.innerHTML = `
+                <div class="template-detail-section">
+                    <h4>Template ID</h4>
+                    <p><code>${template.id}</code></p>
+                </div>
+                <div class="template-detail-section">
+                    <h4>Name</h4>
+                    <p>${escapeHtml(template.name)}</p>
+                </div>
+                ${template.external_id ? `
+                <div class="template-detail-section">
+                    <h4>External ID</h4>
+                    <p>${escapeHtml(template.external_id)}</p>
+                </div>
+                ` : ''}
+                ${template.folder_name ? `
+                <div class="template-detail-section">
+                    <h4>Folder</h4>
+                    <p>${escapeHtml(template.folder_name)}</p>
+                </div>
+                ` : ''}
+                <div class="template-detail-section">
+                    <h4>Documents</h4>
+                    <p>${template.documents_count || 0} document(s)</p>
+                </div>
+                <div class="template-detail-section">
+                    <h4>Signer Roles</h4>
+                    <p>${submittersHtml}</p>
+                </div>
+                <div class="template-detail-section">
+                    <h4>Form Fields</h4>
+                    ${fieldsHtml}
+                </div>
+                ${template.created_at ? `
+                <div class="template-detail-section">
+                    <h4>Created</h4>
+                    <p>${new Date(template.created_at).toLocaleString()}</p>
+                </div>
+                ` : ''}
+            `;
+        } else {
+            content.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${data.message}</div>`;
+        }
+    })
+    .catch(error => {
+        content.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Error loading template: ${error}</div>`;
+    });
+}
+
+// Close template details modal
+function closeTemplateModal() {
+    document.getElementById('template-details-modal').style.display = 'none';
+}
+
+// Edit template
+function editTemplate(templateId, templateName) {
+    document.getElementById('edit-template-id').value = templateId;
+    document.getElementById('edit-template-name').value = templateName;
+    document.getElementById('edit-external-id').value = '';
+    document.getElementById('edit-folder-name').value = '';
+    document.getElementById('edit-template-modal').style.display = 'flex';
+}
+
+// Close edit modal
+function closeEditModal() {
+    document.getElementById('edit-template-modal').style.display = 'none';
+}
+
+// Edit template form submission
+document.getElementById('edit-template-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('process_employee_contracts.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Template updated successfully!');
+            closeEditModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error updating template: ' + error);
+    });
+});
+
+// Clone template
+function cloneTemplate(templateId, templateName) {
+    const newName = prompt('Enter a name for the cloned template:', templateName + ' (Copy)');
+    
+    if (!newName) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    formData.append('action', 'docuseal_clone_template');
+    formData.append('template_id', templateId);
+    formData.append('new_name', newName);
+    
+    fetch('process_employee_contracts.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Template cloned successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error cloning template: ' + error);
+    });
+}
+
+// Delete template
+function deleteTemplate(templateId, templateName) {
+    if (!confirm(`Are you sure you want to delete the template "${templateName}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    formData.append('action', 'docuseal_delete_template');
+    formData.append('template_id', templateId);
+    
+    fetch('process_employee_contracts.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Template deleted successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error deleting template: ' + error);
+    });
+}
 </script>
