@@ -118,12 +118,20 @@ $is_demo_drills = false;
         <?php if (count($drills) > 0): ?>
             <?php foreach ($drills as $drill): 
                 $coachName = htmlspecialchars(($drill['first_name'] ?? '') . ' ' . ($drill['last_name'] ?? ''));
+                // Extract ice view from diagram data
+                $drillIceView = 'full';
+                if (!empty($drill['diagram_data'])) {
+                    $diagramParsed = json_decode($drill['diagram_data'], true);
+                    if (is_array($diagramParsed) && isset($diagramParsed['iceView'])) {
+                        $drillIceView = $diagramParsed['iceView'];
+                    }
+                }
             ?>
                 <div class="drill-card" 
                      data-category="<?php echo $drill['category_id'] ?? ''; ?>"
                      data-title="<?php echo htmlspecialchars(strtolower($drill['title'])); ?>"
                      data-coach="<?php echo strtolower($coachName); ?>">
-                    <div class="drill-image">
+                    <div class="drill-image" data-ice-view="<?php echo htmlspecialchars($drillIceView); ?>">
                         <?php if ($drill['custom_image']): ?>
                             <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?>">
                         <?php else: ?>
@@ -226,9 +234,34 @@ $is_demo_drills = false;
 .drill-image {
     position: relative;
     width: 100%;
-    padding-top: 60%;
+    /* Default for full ice (200/85 ratio) - width/height ≈ 2.35, so height as % of width ≈ 42.5% */
+    padding-top: 42.5%;
     background: var(--bg-main);
     overflow: hidden;
+    transition: padding-top 0.3s ease-in-out;
+}
+
+/* Dynamic aspect ratios based on ice view for thumbnails */
+/* Full ice: 200 ft × 85 ft (horizontal, net on left/right) - height/width = 85/200 = 42.5% */
+.drill-image[data-ice-view="full"] {
+    padding-top: 42.5%;
+}
+
+/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom) - height/width = 100/85 ≈ 117.6% */
+.drill-image[data-ice-view="half-top"],
+.drill-image[data-ice-view="half-bottom"] {
+    padding-top: 117.6%;
+}
+
+/* Zone views: 100 ft × 85 ft (horizontal, like half of full ice) - height/width = 85/100 = 85% */
+.drill-image[data-ice-view="left-zone"],
+.drill-image[data-ice-view="right-zone"] {
+    padding-top: 85%;
+}
+
+/* Center ice: 72 ft × 85 ft (between the blue lines) - height/width = 85/72 ≈ 118% */
+.drill-image[data-ice-view="center"] {
+    padding-top: 118%;
 }
 
 .drill-image img {
