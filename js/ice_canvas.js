@@ -6,12 +6,13 @@
  * - Practice Plan drill selection
  * - Drill Designer canvas
  * 
- * All areas that display ice rink canvases should use this module
- * to ensure consistent rendering.
+ * IMPORTANT: This module uses the EXACT same drawing logic as drill_designer.js
+ * to ensure visual consistency across all ice rink displays.
  */
 
-// NHL/Hockey Canada Rink Proportions (200 ft × 85 ft rink)
+// NHL/Hockey Canada Rink Proportions (200 ft x 85 ft rink)
 // All values are proportional to rink dimensions
+// This MUST match the NHL_RINK constant in drill_designer.js
 const ICE_CANVAS_NHL_RINK = {
     // Rink dimensions ratio (length / width)
     ASPECT_RATIO: 200 / 85,
@@ -53,14 +54,14 @@ const ICE_CANVAS_NHL_RINK = {
 
 /**
  * Ice Canvas Renderer - Main object for drawing hockey rinks
- * @param {Object} options - Configuration options
- * @param {number} options.lineWidth - Base line width multiplier (default 1 for thumbnails, 2 for full view)
+ * Uses the EXACT same drawing logic as drill_designer.js for visual consistency
  */
 const IceCanvasRenderer = {
     NHL_RINK: ICE_CANVAS_NHL_RINK,
     
     /**
      * Draw the complete ice rink based on view type
+     * This function replicates drill_designer.js drawRink() method exactly
      * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
      * @param {number} w - Canvas width
      * @param {number} h - Canvas height
@@ -68,61 +69,28 @@ const IceCanvasRenderer = {
      * @param {Object} options - Rendering options
      * @param {Image} options.logoImage - Center logo image (optional)
      * @param {boolean} options.logoLoaded - Whether logo is loaded
-     * @param {number} options.lineScale - Scale factor for line widths (1 for thumbnails, 1.5-2 for full view)
+     * @param {number} options.lineScale - Scale factor (ignored - uses same fixed values as drill_designer.js)
      */
     drawRink: function(ctx, w, h, iceView, options) {
         options = options || {};
         iceView = iceView || 'full';
-        const lineScale = options.lineScale || 1;
+        const NHL_RINK = this.NHL_RINK;
         
-        // Ice background
+        // Clear and draw ice background (light blue ice tone) - matches drill_designer.js
         ctx.fillStyle = '#f0f7fa';
         ctx.fillRect(0, 0, w, h);
         
-        // Center logo (image if available, otherwise text at 12% opacity)
-        this.drawCenterLogo(ctx, w, h, options.logoImage, options.logoLoaded);
-        
-        // Draw based on ice view
-        switch(iceView) {
-            case 'half-top':
-                this.drawHalfIce(ctx, w, h, 'top', lineScale);
-                break;
-            case 'half-bottom':
-                this.drawHalfIce(ctx, w, h, 'bottom', lineScale);
-                break;
-            case 'left-zone':
-                this.drawZone(ctx, w, h, 'left', lineScale);
-                break;
-            case 'right-zone':
-                this.drawZone(ctx, w, h, 'right', lineScale);
-                break;
-            case 'center':
-                this.drawCenterIce(ctx, w, h, lineScale);
-                break;
-            case 'full':
-            default:
-                this.drawFullIce(ctx, w, h, lineScale);
-                break;
-        }
-        
-        // Rink border - adapts to view type
-        this.drawRinkBorder(ctx, w, h, iceView, lineScale);
-    },
-    
-    /**
-     * Draw center logo or branding
-     */
-    drawCenterLogo: function(ctx, w, h, logoImage, logoLoaded) {
+        // Draw center logo (image if available, otherwise text at 12% opacity) - matches drill_designer.js
         ctx.save();
         ctx.globalAlpha = 0.12;
         
-        if (logoLoaded && logoImage) {
+        if (options.logoLoaded && options.logoImage) {
             // Draw logo image centered on ice
-            const maxLogoWidth = w * 0.3;
-            const maxLogoHeight = h * 0.25;
+            const maxLogoWidth = w * 0.3;  // Logo takes up 30% of canvas width
+            const maxLogoHeight = h * 0.25; // Max 25% of height
             
             // Calculate scaled dimensions maintaining aspect ratio
-            const imgAspect = logoImage.width / logoImage.height;
+            const imgAspect = options.logoImage.width / options.logoImage.height;
             let logoWidth = maxLogoWidth;
             let logoHeight = logoWidth / imgAspect;
             
@@ -134,107 +102,122 @@ const IceCanvasRenderer = {
             const logoX = (w - logoWidth) / 2;
             const logoY = (h - logoHeight) / 2;
             
-            ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+            ctx.drawImage(options.logoImage, logoX, logoY, logoWidth, logoHeight);
         } else {
-            // Fallback to text branding
+            // Fallback to text branding - matches drill_designer.js exactly
             ctx.fillStyle = '#7000a4';
-            const fontSize = Math.min(48, w * 0.08);
-            ctx.font = 'bold ' + fontSize + 'px Inter, sans-serif';
+            ctx.font = 'bold 48px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('ARCTIC WOLVES', w/2, h/2 - fontSize * 0.3);
-            ctx.font = Math.round(fontSize * 0.5) + 'px Inter, sans-serif';
-            ctx.fillText('HOCKEY', w/2, h/2 + fontSize * 0.5);
+            ctx.fillText('ARCTIC WOLVES', w/2, h/2 - 15);
+            ctx.font = '24px Inter, sans-serif';
+            ctx.fillText('HOCKEY', w/2, h/2 + 25);
         }
         ctx.restore();
+        
+        // Draw based on ice view - matches drill_designer.js switch statement exactly
+        switch(iceView) {
+            case 'half-top':
+                this.drawHalfIce(ctx, w, h, 'top', NHL_RINK);
+                break;
+            case 'half-bottom':
+                this.drawHalfIce(ctx, w, h, 'bottom', NHL_RINK);
+                break;
+            case 'left-zone':
+                this.drawZone(ctx, w, h, 'left', NHL_RINK);
+                break;
+            case 'right-zone':
+                this.drawZone(ctx, w, h, 'right', NHL_RINK);
+                break;
+            case 'center':
+                this.drawCenterIce(ctx, w, h, NHL_RINK);
+                break;
+            default:
+                this.drawFullIce(ctx, w, h, NHL_RINK);
+        }
+        
+        // Draw rink boards (adapted to view type) - matches drill_designer.js exactly
+        this.drawRinkBorder(ctx, w, h, iceView, NHL_RINK);
     },
     
     /**
-     * Draw rink border that adapts to view type
+     * Draw rink border - EXACT copy from drill_designer.js drawRinkBorder()
      */
-    drawRinkBorder: function(ctx, w, h, iceView, lineScale) {
-        lineScale = lineScale || 1;
+    drawRinkBorder: function(ctx, w, h, iceView, NHL_RINK) {
         ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 4;
         
         // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio)
         let cornerRadius;
         if (iceView === 'half-top' || iceView === 'half-bottom') {
-            cornerRadius = w * this.NHL_RINK.CORNER_RADIUS;
+            cornerRadius = w * NHL_RINK.CORNER_RADIUS;
         } else {
-            cornerRadius = h * this.NHL_RINK.CORNER_RADIUS;
+            cornerRadius = h * NHL_RINK.CORNER_RADIUS;
         }
         
-        ctx.beginPath();
-        if (iceView === 'half-top') {
-            // Curved corners at top (net end), flat at bottom (center line)
-            ctx.moveTo(cornerRadius, 0);
-            ctx.lineTo(w - cornerRadius, 0);
-            ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-            ctx.lineTo(w, h);
-            ctx.lineTo(0, h);
-            ctx.lineTo(0, cornerRadius);
-            ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
-        } else if (iceView === 'half-bottom') {
-            // Flat at top (center line), curved corners at bottom (net end)
-            ctx.moveTo(0, 0);
-            ctx.lineTo(w, 0);
-            ctx.lineTo(w, h - cornerRadius);
-            ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-            ctx.lineTo(cornerRadius, h);
-            ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-            ctx.lineTo(0, 0);
-        } else if (iceView === 'left-zone') {
-            // Curved corners at left (net end), flat at right (blue line side)
-            ctx.moveTo(cornerRadius, 0);
-            ctx.lineTo(w, 0);
-            ctx.lineTo(w, h);
-            ctx.lineTo(cornerRadius, h);
-            ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-            ctx.lineTo(0, cornerRadius);
-            ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
-        } else if (iceView === 'right-zone') {
-            // Flat at left (blue line side), curved corners at right (net end)
-            ctx.moveTo(0, 0);
-            ctx.lineTo(w - cornerRadius, 0);
-            ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-            ctx.lineTo(w, h - cornerRadius);
-            ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-            ctx.lineTo(0, h);
-            ctx.lineTo(0, 0);
+        if (iceView === 'half-top' || iceView === 'half-bottom') {
+            const isTop = iceView === 'half-top';
+            ctx.beginPath();
+            if (isTop) {
+                ctx.moveTo(cornerRadius + 2, 2);
+                ctx.lineTo(w - cornerRadius - 2, 2);
+                ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
+                ctx.lineTo(w - 2, h - 2);
+                ctx.lineTo(2, h - 2);
+                ctx.lineTo(2, cornerRadius + 2);
+                ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
+            } else {
+                ctx.moveTo(2, 2);
+                ctx.lineTo(w - 2, 2);
+                ctx.lineTo(w - 2, h - cornerRadius - 2);
+                ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
+                ctx.lineTo(cornerRadius + 2, h - 2);
+                ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
+                ctx.lineTo(2, 2);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        } else if (iceView === 'left-zone' || iceView === 'right-zone') {
+            const isLeft = iceView === 'left-zone';
+            ctx.beginPath();
+            if (isLeft) {
+                ctx.moveTo(cornerRadius + 2, 2);
+                ctx.lineTo(w - 2, 2);
+                ctx.lineTo(w - 2, h - 2);
+                ctx.lineTo(cornerRadius + 2, h - 2);
+                ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
+                ctx.lineTo(2, cornerRadius + 2);
+                ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
+            } else {
+                ctx.moveTo(2, 2);
+                ctx.lineTo(w - cornerRadius - 2, 2);
+                ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
+                ctx.lineTo(w - 2, h - cornerRadius - 2);
+                ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
+                ctx.lineTo(2, h - 2);
+                ctx.lineTo(2, 2);
+            }
+            ctx.closePath();
+            ctx.stroke();
         } else {
-            // Full ice and center - all corners rounded
-            ctx.moveTo(cornerRadius, 0);
-            ctx.lineTo(w - cornerRadius, 0);
-            ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-            ctx.lineTo(w, h - cornerRadius);
-            ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-            ctx.lineTo(cornerRadius, h);
-            ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-            ctx.lineTo(0, cornerRadius);
-            ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            this.roundRect(ctx, 2, 2, w - 4, h - 4, cornerRadius);
+            ctx.stroke();
         }
-        ctx.closePath();
-        ctx.stroke();
     },
-    
+
     /**
-     * Draw full ice view
+     * Draw full ice view - EXACT copy from drill_designer.js drawFullIce()
      */
-    drawFullIce: function(ctx, w, h, lineScale) {
-        lineScale = lineScale || 1;
-        const NHL = this.NHL_RINK;
+    drawFullIce: function(ctx, w, h, NHL_RINK) {
+        const goalLinePos = NHL_RINK.GOAL_LINE;
+        const blueLinePos = NHL_RINK.BLUE_LINE;
+        const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
+        const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+        const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
         
-        // NHL proportions
-        const goalLinePos = NHL.GOAL_LINE;
-        const blueLinePos = NHL.BLUE_LINE;
-        const faceoffFromGoal = goalLinePos + NHL.FACEOFF_FROM_GOAL;
-        const faceoffFromBoards = NHL.FACEOFF_FROM_BOARDS;
-        const cornerRadius = h * NHL.CORNER_RADIUS;
-        
-        // Center line
+        // Center line (red)
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.moveTo(w/2, 0);
         ctx.lineTo(w/2, h);
@@ -242,30 +225,32 @@ const IceCanvasRenderer = {
         
         // Blue lines
         ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(w * blueLinePos, 0);
         ctx.lineTo(w * blueLinePos, h);
         ctx.stroke();
+        
         ctx.beginPath();
         ctx.moveTo(w * (1 - blueLinePos), 0);
         ctx.lineTo(w * (1 - blueLinePos), h);
         ctx.stroke();
         
         // Center circle
+        ctx.strokeStyle = '#0033a0';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(w/2, h/2, h * NHL.CENTER_CIRCLE_RADIUS, 0, 2 * Math.PI);
+        ctx.arc(w/2, h/2, h * NHL_RINK.CENTER_CIRCLE_RADIUS, 0, 2 * Math.PI);
         ctx.stroke();
         
         // Center dot
         ctx.fillStyle = '#0033a0';
         ctx.beginPath();
-        ctx.arc(w/2, h/2, 3 * lineScale, 0, 2 * Math.PI);
+        ctx.arc(w/2, h/2, 5, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Faceoff circles
-        ctx.strokeStyle = '#c41e3a';
-        const faceoffRadius = h * NHL.FACEOFF_RADIUS;
+        // Faceoff circles with dots
+        const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
         const circles = [
             { x: w * faceoffFromGoal, y: h * faceoffFromBoards, zone: 'left' },
             { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards), zone: 'left' },
@@ -273,110 +258,115 @@ const IceCanvasRenderer = {
             { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards), zone: 'right' }
         ];
         
-        circles.forEach(circle => {
+        const self = this;
+        circles.forEach(function(circle) {
             ctx.strokeStyle = '#c41e3a';
-            ctx.lineWidth = 1 * lineScale;
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
             ctx.stroke();
             
-            // Faceoff dot
             ctx.fillStyle = '#c41e3a';
             ctx.beginPath();
-            ctx.arc(circle.x, circle.y, 2 * lineScale, 0, 2 * Math.PI);
+            ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
             ctx.fill();
             
-            // Hash marks
-            this.drawHashMarks(ctx, circle.x, circle.y, faceoffRadius, 'horizontal', lineScale);
-            
-            // Restraint lines
-            this.drawRestraintLines(ctx, circle.x, circle.y, faceoffRadius, circle.zone, h, false, lineScale);
+            self.drawHashMarks(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
+            self.drawRestraintLines(ctx, circle.x, circle.y, faceoffRadius, circle.zone, h, NHL_RINK);
         });
         
         // Goal creases
-        const creaseRadius = h * NHL.CREASE_RADIUS;
+        const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
+        
+        // Left goal crease
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
-        
-        // Left crease
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(w * goalLinePos, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
         ctx.fill();
         ctx.stroke();
         
-        // Right crease
+        // Left goal line
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        
+        const goalLineX = w * goalLinePos;
+        let leftGoalLineStartY = 0;
+        let leftGoalLineEndY = h;
+        
+        if (goalLineX < cornerRadius) {
+            const dx = cornerRadius - goalLineX;
+            const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
+            leftGoalLineStartY = yOffset;
+            leftGoalLineEndY = h - yOffset;
+        }
+        
+        ctx.moveTo(goalLineX, leftGoalLineStartY);
+        ctx.lineTo(goalLineX, leftGoalLineEndY);
+        ctx.stroke();
+        
+        // Right goal crease
+        ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(w * (1 - goalLinePos), h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
         ctx.fill();
         ctx.stroke();
         
-        // Goal lines - extend to boards respecting curved corners
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2 * lineScale;
-        
-        // Left goal line
-        const leftGoalLineX = w * goalLinePos;
-        let leftGoalLineStartY = 0;
-        let leftGoalLineEndY = h;
-        if (leftGoalLineX < cornerRadius) {
-            const dx = cornerRadius - leftGoalLineX;
-            const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
-            leftGoalLineStartY = yOffset;
-            leftGoalLineEndY = h - yOffset;
-        }
-        ctx.beginPath();
-        ctx.moveTo(leftGoalLineX, leftGoalLineStartY);
-        ctx.lineTo(leftGoalLineX, leftGoalLineEndY);
-        ctx.stroke();
-        
         // Right goal line
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        
         const rightGoalLineX = w * (1 - goalLinePos);
         let rightGoalLineStartY = 0;
         let rightGoalLineEndY = h;
+        
         if ((w - rightGoalLineX) < cornerRadius) {
             const dx = cornerRadius - (w - rightGoalLineX);
             const yOffset = cornerRadius - Math.sqrt(cornerRadius * cornerRadius - dx * dx);
             rightGoalLineStartY = yOffset;
             rightGoalLineEndY = h - yOffset;
         }
-        ctx.beginPath();
+        
         ctx.moveTo(rightGoalLineX, rightGoalLineStartY);
         ctx.lineTo(rightGoalLineX, rightGoalLineEndY);
         ctx.stroke();
         
         // Trapezoids
-        this.drawTrapezoid(ctx, w, h, 'left', lineScale);
-        this.drawTrapezoid(ctx, w, h, 'right', lineScale);
+        this.drawTrapezoid(ctx, w, h, 'left', NHL_RINK);
+        this.drawTrapezoid(ctx, w, h, 'right', NHL_RINK);
         
         // Neutral zone faceoff dots
         const neutralZoneDotOffset = 5 / 200;
-        ctx.fillStyle = '#c41e3a';
         const neutralDots = [
             { x: w * (blueLinePos + neutralZoneDotOffset), y: h * faceoffFromBoards },
             { x: w * (blueLinePos + neutralZoneDotOffset), y: h * (1 - faceoffFromBoards) },
             { x: w * (1 - blueLinePos - neutralZoneDotOffset), y: h * faceoffFromBoards },
             { x: w * (1 - blueLinePos - neutralZoneDotOffset), y: h * (1 - faceoffFromBoards) }
         ];
-        neutralDots.forEach(dot => {
+        
+        ctx.fillStyle = '#c41e3a';
+        neutralDots.forEach(function(dot) {
             ctx.beginPath();
-            ctx.arc(dot.x, dot.y, 2 * lineScale, 0, 2 * Math.PI);
+            ctx.arc(dot.x, dot.y, 4, 0, 2 * Math.PI);
             ctx.fill();
         });
     },
     
     /**
-     * Draw trapezoid for full ice view
+     * Draw goalie trapezoid - EXACT copy from drill_designer.js
      */
-    drawTrapezoid: function(ctx, w, h, side, lineScale) {
-        lineScale = lineScale || 1;
-        const NHL = this.NHL_RINK;
-        const goalLinePos = NHL.GOAL_LINE;
-        const trapezoidBase = h * NHL.TRAPEZOID_BASE / 2;
-        const trapezoidTop = h * NHL.TRAPEZOID_TOP / 2;
+    drawTrapezoid: function(ctx, w, h, side, NHL_RINK) {
+        const goalLinePos = NHL_RINK.GOAL_LINE;
+        const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+        const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
         
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         
         if (side === 'left') {
             const goalX = w * goalLinePos;
@@ -384,6 +374,7 @@ const IceCanvasRenderer = {
             ctx.moveTo(goalX, h/2 - trapezoidBase);
             ctx.lineTo(0, h/2 - trapezoidTop);
             ctx.stroke();
+            
             ctx.beginPath();
             ctx.moveTo(goalX, h/2 + trapezoidBase);
             ctx.lineTo(0, h/2 + trapezoidTop);
@@ -394,6 +385,7 @@ const IceCanvasRenderer = {
             ctx.moveTo(goalX, h/2 - trapezoidBase);
             ctx.lineTo(w, h/2 - trapezoidTop);
             ctx.stroke();
+            
             ctx.beginPath();
             ctx.moveTo(goalX, h/2 + trapezoidBase);
             ctx.lineTo(w, h/2 + trapezoidTop);
@@ -402,16 +394,48 @@ const IceCanvasRenderer = {
     },
     
     /**
-     * Draw hash marks around faceoff circles
-     * @param {string} netPosition - 'horizontal' (nets on left/right) or 'vertical' (nets on top/bottom)
+     * Draw faceoff restraint lines - EXACT copy from drill_designer.js
      */
-    drawHashMarks: function(ctx, cx, cy, radius, netPosition, lineScale) {
-        lineScale = lineScale || 1;
+    drawRestraintLines: function(ctx, cx, cy, radius, zone, canvasHeight, NHL_RINK) {
+        const lineLength = canvasHeight * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
+        const offset = radius * 0.15;
+        
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         
-        // NHL regulations: hash marks are 2 feet long, spaced 3 feet apart
+        const goalDirection = zone === 'left' ? -1 : 1;
+        const blueLineDirection = -goalDirection;
+        
+        this.drawLShape(ctx, cx - offset, cy - offset, lineLength, zone === 'left' ? goalDirection : blueLineDirection, -1);
+        this.drawLShape(ctx, cx + offset, cy - offset, lineLength, zone === 'left' ? blueLineDirection : goalDirection, -1);
+        this.drawLShape(ctx, cx - offset, cy + offset, lineLength, zone === 'left' ? goalDirection : blueLineDirection, 1);
+        this.drawLShape(ctx, cx + offset, cy + offset, lineLength, zone === 'left' ? blueLineDirection : goalDirection, 1);
+    },
+    
+    /**
+     * Draw L-shaped restraint line - EXACT copy from drill_designer.js
+     */
+    drawLShape: function(ctx, x, y, length, hDir, vDir) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + vDir * length);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + hDir * length, y);
+        ctx.stroke();
+    },
+    
+    /**
+     * Draw hash marks - EXACT copy from drill_designer.js
+     */
+    drawHashMarks: function(ctx, cx, cy, radius, netPosition) {
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
         const hashLength = radius * (2 / 15);
         const hashSpacing = radius * (3 / 15);
         const gapOutsideCircle = radius * 0.05;
@@ -420,8 +444,7 @@ const IceCanvasRenderer = {
         const sides = [-1, 1];
         
         if (netPosition === 'vertical') {
-            // Nets on top/bottom - hash marks on LEFT and RIGHT of circle
-            sides.forEach(side => {
+            sides.forEach(function(side) {
                 const startX = cx + side * startDistance;
                 const endX = startX + side * hashLength;
                 
@@ -436,8 +459,7 @@ const IceCanvasRenderer = {
                 ctx.stroke();
             });
         } else {
-            // Nets on left/right - hash marks on TOP and BOTTOM of circle
-            sides.forEach(side => {
+            sides.forEach(function(side) {
                 const startY = cy + side * startDistance;
                 const endY = startY + side * hashLength;
                 
@@ -453,110 +475,44 @@ const IceCanvasRenderer = {
             });
         }
     },
-    
+
     /**
-     * Draw faceoff restraint lines (L-shaped lines)
-     * @param {boolean} isVertical - True for half-ice (nets at top/bottom), false for full ice/zones
+     * Draw half ice view - EXACT copy from drill_designer.js
      */
-    drawRestraintLines: function(ctx, cx, cy, radius, zone, canvasRefDimension, isVertical, lineScale) {
-        lineScale = lineScale || 1;
-        const NHL = this.NHL_RINK;
-        const lineLength = canvasRefDimension * NHL.RESTRAINT_LINE_LENGTH * 1.5;
-        const offset = radius * 0.15;
+    drawHalfIce: function(ctx, w, h, side, NHL_RINK) {
+        const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+        const faceoffRadius = w * NHL_RINK.FACEOFF_RADIUS;
+        const creaseRadius = w * NHL_RINK.CREASE_RADIUS;
         
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
-        ctx.lineCap = 'round';
-        
-        if (isVertical) {
-            // Vertical layout (half-ice): net at top or bottom
-            const goalDirection = zone === 'top' ? -1 : 1;
-            
-            this.drawLShapeVertical(ctx, cx - offset, cy - offset, lineLength, goalDirection);
-            this.drawLShapeVertical(ctx, cx - offset, cy + offset, lineLength, goalDirection);
-            this.drawLShapeVertical(ctx, cx + offset, cy - offset, lineLength, goalDirection);
-            this.drawLShapeVertical(ctx, cx + offset, cy + offset, lineLength, goalDirection);
-        } else {
-            // Horizontal layout (full ice, zones): net at left or right
-            const goalDirection = zone === 'left' ? -1 : 1;
-            
-            this.drawLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection, -1);
-            this.drawLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection, -1);
-            this.drawLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection, 1);
-            this.drawLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection, 1);
-        }
-    },
-    
-    drawLShape: function(ctx, x, y, length, hDir, vDir) {
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + vDir * length);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + hDir * length, y);
-        ctx.stroke();
-    },
-    
-    drawLShapeVertical: function(ctx, x, y, length, vDir) {
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + vDir * length);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(x - length/2, y);
-        ctx.lineTo(x + length/2, y);
-        ctx.stroke();
-    },
-    
-    /**
-     * Draw half ice view
-     */
-    drawHalfIce: function(ctx, w, h, side, lineScale) {
-        lineScale = lineScale || 1;
-        const NHL = this.NHL_RINK;
-        
-        const faceoffFromBoards = NHL.FACEOFF_FROM_BOARDS;
-        const faceoffRadius = w * NHL.FACEOFF_RADIUS;
-        const creaseRadius = w * NHL.CREASE_RADIUS;
-        const cornerRadius = w * NHL.CORNER_RADIUS;
-        
-        // Half-ice proportions (100 ft visible)
         const goalLineRatio = 11 / 100;
         const blueLineRatio = 64 / 100;
         const faceoffYRatio = 31 / 100;
         
-        // Blue line position
         const blueLineY = side === 'top' ? h * blueLineRatio : h * (1 - blueLineRatio);
         
         // Blue line
         ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(0, blueLineY);
         ctx.lineTo(w, blueLineY);
         ctx.stroke();
         
-        // Goal position
         const goalY = side === 'top' ? h * goalLineRatio : h * (1 - goalLineRatio);
-        
-        // Faceoff circles
         const faceoffY = side === 'top' ? h * faceoffYRatio : h * (1 - faceoffYRatio);
         
         // Left faceoff circle
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(w * faceoffFromBoards, faceoffY, faceoffRadius, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.fillStyle = '#c41e3a';
         ctx.beginPath();
-        ctx.arc(w * faceoffFromBoards, faceoffY, 2 * lineScale, 0, 2 * Math.PI);
+        ctx.arc(w * faceoffFromBoards, faceoffY, 4, 0, 2 * Math.PI);
         ctx.fill();
-        this.drawHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical', lineScale);
-        this.drawRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w, true, lineScale);
+        this.drawHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
+        this.drawHalfIceRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w, NHL_RINK);
         
         // Right faceoff circle
         ctx.strokeStyle = '#c41e3a';
@@ -564,15 +520,15 @@ const IceCanvasRenderer = {
         ctx.arc(w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 2 * lineScale, 0, 2 * Math.PI);
+        ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 4, 0, 2 * Math.PI);
         ctx.fill();
-        this.drawHashMarks(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical', lineScale);
-        this.drawRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w, true, lineScale);
+        this.drawHashMarks(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
+        this.drawHalfIceRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w, NHL_RINK);
         
         // Goal crease
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         if (side === 'top') {
             ctx.arc(w * 0.5, goalY, creaseRadius, 0, Math.PI);
@@ -584,9 +540,10 @@ const IceCanvasRenderer = {
         
         // Goal line - respects curved corners
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         
+        const cornerRadius = w * NHL_RINK.CORNER_RADIUS;
         const distFromEnd = side === 'top' ? goalY : (h - goalY);
         let goalLineStartX = 0;
         let goalLineEndX = w;
@@ -602,57 +559,92 @@ const IceCanvasRenderer = {
         ctx.lineTo(goalLineEndX, goalY);
         ctx.stroke();
         
-        // Trapezoid
-        this.drawHalfIceTrapezoid(ctx, w, h, side, goalY, lineScale);
+        this.drawHalfIceTrapezoid(ctx, w, h, side, goalY, NHL_RINK);
     },
     
     /**
-     * Draw trapezoid for half ice view
+     * Draw trapezoid for half ice view - EXACT copy from drill_designer.js
      */
-    drawHalfIceTrapezoid: function(ctx, w, h, side, goalY, lineScale) {
-        lineScale = lineScale || 1;
-        const NHL = this.NHL_RINK;
-        const trapezoidBase = w * NHL.TRAPEZOID_BASE / 2;
-        const trapezoidTop = w * NHL.TRAPEZOID_TOP / 2;
+    drawHalfIceTrapezoid: function(ctx, w, h, side, goalY, NHL_RINK) {
+        const trapezoidBase = w * NHL_RINK.TRAPEZOID_BASE / 2;
+        const trapezoidTop = w * NHL_RINK.TRAPEZOID_TOP / 2;
         
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         
-        const boardY = side === 'top' ? 0 : h;
-        
-        ctx.beginPath();
-        ctx.moveTo(w/2 - trapezoidBase, goalY);
-        ctx.lineTo(w/2 - trapezoidTop, boardY);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(w/2 + trapezoidBase, goalY);
-        ctx.lineTo(w/2 + trapezoidTop, boardY);
-        ctx.stroke();
+        if (side === 'top') {
+            ctx.beginPath();
+            ctx.moveTo(w/2 - trapezoidBase, goalY);
+            ctx.lineTo(w/2 - trapezoidTop, 0);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(w/2 + trapezoidBase, goalY);
+            ctx.lineTo(w/2 + trapezoidTop, 0);
+            ctx.stroke();
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(w/2 - trapezoidBase, goalY);
+            ctx.lineTo(w/2 - trapezoidTop, h);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(w/2 + trapezoidBase, goalY);
+            ctx.lineTo(w/2 + trapezoidTop, h);
+            ctx.stroke();
+        }
     },
     
     /**
-     * Draw zone view (left or right half of rink)
+     * Draw restraint lines for half ice view - EXACT copy from drill_designer.js
      */
-    drawZone: function(ctx, w, h, side, lineScale) {
-        lineScale = lineScale || 1;
-        const NHL = this.NHL_RINK;
+    drawHalfIceRestraintLines: function(ctx, cx, cy, radius, side, canvasWidth, NHL_RINK) {
+        const lineLength = canvasWidth * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
+        const offset = radius * 0.15;
         
-        const faceoffFromBoards = NHL.FACEOFF_FROM_BOARDS;
-        const faceoffRadius = h * NHL.FACEOFF_RADIUS;
-        const creaseRadius = h * NHL.CREASE_RADIUS;
-        const centerCircleRadius = h * NHL.CENTER_CIRCLE_RADIUS;
-        const cornerRadius = h * NHL.CORNER_RADIUS;
+        ctx.strokeStyle = '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
         
-        // Zone view proportions (100 ft visible)
+        const goalDirection = side === 'top' ? -1 : 1;
+        const blueLineDirection = -goalDirection;
+        
+        this.drawHalfIceLShape(ctx, cx - offset, cy - offset, lineLength, side === 'top' ? goalDirection : blueLineDirection);
+        this.drawHalfIceLShape(ctx, cx - offset, cy + offset, lineLength, side === 'top' ? blueLineDirection : goalDirection);
+        this.drawHalfIceLShape(ctx, cx + offset, cy - offset, lineLength, side === 'top' ? goalDirection : blueLineDirection);
+        this.drawHalfIceLShape(ctx, cx + offset, cy + offset, lineLength, side === 'top' ? blueLineDirection : goalDirection);
+    },
+    
+    /**
+     * Draw L-shape for half ice view - EXACT copy from drill_designer.js
+     */
+    drawHalfIceLShape: function(ctx, x, y, length, vDir) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + vDir * length);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(x - length/2, y);
+        ctx.lineTo(x + length/2, y);
+        ctx.stroke();
+    },
+
+    /**
+     * Draw zone view - EXACT copy from drill_designer.js
+     */
+    drawZone: function(ctx, w, h, side, NHL_RINK) {
+        const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+        const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
+        const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
+        const centerCircleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
+        
         const goalLineRatio = 11 / 100;
         const blueLineRatio = 64 / 100;
         const faceoffXRatio = 31 / 100;
         const neutralZoneDotRatio = (64 + 5) / 100;
         
-        // Center line at edge
+        // Center line
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 4;
         if (side === 'left') {
             ctx.beginPath();
             ctx.moveTo(w, 0);
@@ -668,7 +660,7 @@ const IceCanvasRenderer = {
         // Blue line
         const blueLineX = side === 'left' ? w * blueLineRatio : w * (1 - blueLineRatio);
         ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(blueLineX, 0);
         ctx.lineTo(blueLineX, h);
@@ -677,9 +669,10 @@ const IceCanvasRenderer = {
         // Goal line - respects curved corners
         const goalLineX = side === 'left' ? w * goalLineRatio : w * (1 - goalLineRatio);
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         
+        const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
         const distFromEnd = side === 'left' ? goalLineX : (w - goalLineX);
         let zoneGoalLineStartY = 0;
         let zoneGoalLineEndY = h;
@@ -695,9 +688,9 @@ const IceCanvasRenderer = {
         ctx.lineTo(goalLineX, zoneGoalLineEndY);
         ctx.stroke();
         
-        // Half center circle at edge
+        // Half center circle
         ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         if (side === 'left') {
             ctx.arc(w, h/2, centerCircleRadius, Math.PI/2, -Math.PI/2);
@@ -706,13 +699,13 @@ const IceCanvasRenderer = {
         }
         ctx.stroke();
         
-        // Center dot at edge
+        // Center dot
         ctx.fillStyle = '#0033a0';
         ctx.beginPath();
         if (side === 'left') {
-            ctx.arc(w, h/2, 3 * lineScale, 0, 2 * Math.PI);
+            ctx.arc(w, h/2, 5, 0, 2 * Math.PI);
         } else {
-            ctx.arc(0, h/2, 3 * lineScale, 0, 2 * Math.PI);
+            ctx.arc(0, h/2, 5, 0, 2 * Math.PI);
         }
         ctx.fill();
         
@@ -721,16 +714,16 @@ const IceCanvasRenderer = {
         
         // Top faceoff circle
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(faceoffX, h * faceoffFromBoards, faceoffRadius, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.fillStyle = '#c41e3a';
         ctx.beginPath();
-        ctx.arc(faceoffX, h * faceoffFromBoards, 2 * lineScale, 0, 2 * Math.PI);
+        ctx.arc(faceoffX, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
         ctx.fill();
-        this.drawHashMarks(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, 'horizontal', lineScale);
-        this.drawRestraintLines(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, side, h, false, lineScale);
+        this.drawHashMarks(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, 'horizontal');
+        this.drawRestraintLines(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, side, h, NHL_RINK);
         
         // Bottom faceoff circle
         ctx.strokeStyle = '#c41e3a';
@@ -738,28 +731,26 @@ const IceCanvasRenderer = {
         ctx.arc(faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(faceoffX, h * (1 - faceoffFromBoards), 2 * lineScale, 0, 2 * Math.PI);
+        ctx.arc(faceoffX, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
         ctx.fill();
-        this.drawHashMarks(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 'horizontal', lineScale);
-        this.drawRestraintLines(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, side, h, false, lineScale);
+        this.drawHashMarks(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 'horizontal');
+        this.drawRestraintLines(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, side, h, NHL_RINK);
         
         // Neutral zone faceoff dots
-        const neutralDotX = side === 'left' 
-            ? w * neutralZoneDotRatio 
-            : w * (1 - neutralZoneDotRatio);
+        const neutralDotX = side === 'left' ? w * neutralZoneDotRatio : w * (1 - neutralZoneDotRatio);
         
         ctx.fillStyle = '#c41e3a';
         ctx.beginPath();
-        ctx.arc(neutralDotX, h * faceoffFromBoards, 2 * lineScale, 0, 2 * Math.PI);
+        ctx.arc(neutralDotX, h * faceoffFromBoards, 4, 0, 2 * Math.PI);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(neutralDotX, h * (1 - faceoffFromBoards), 2 * lineScale, 0, 2 * Math.PI);
+        ctx.arc(neutralDotX, h * (1 - faceoffFromBoards), 4, 0, 2 * Math.PI);
         ctx.fill();
         
         // Goal crease
         ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         if (side === 'left') {
             ctx.arc(goalLineX, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
@@ -769,21 +760,18 @@ const IceCanvasRenderer = {
         ctx.fill();
         ctx.stroke();
         
-        // Trapezoid
-        this.drawZoneTrapezoid(ctx, w, h, side, goalLineX, lineScale);
+        this.drawZoneTrapezoid(ctx, w, h, side, goalLineX, NHL_RINK);
     },
     
     /**
-     * Draw trapezoid for zone view
+     * Draw trapezoid for zone view - EXACT copy from drill_designer.js
      */
-    drawZoneTrapezoid: function(ctx, w, h, side, goalLineX, lineScale) {
-        lineScale = lineScale || 1;
-        const NHL = this.NHL_RINK;
-        const trapezoidBase = h * NHL.TRAPEZOID_BASE / 2;
-        const trapezoidTop = h * NHL.TRAPEZOID_TOP / 2;
+    drawZoneTrapezoid: function(ctx, w, h, side, goalLineX, NHL_RINK) {
+        const trapezoidBase = h * NHL_RINK.TRAPEZOID_BASE / 2;
+        const trapezoidTop = h * NHL_RINK.TRAPEZOID_TOP / 2;
         
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 1 * lineScale;
+        ctx.lineWidth = 2;
         
         if (side === 'left') {
             ctx.beginPath();
@@ -807,15 +795,12 @@ const IceCanvasRenderer = {
     },
     
     /**
-     * Draw center ice view
+     * Draw center ice view - EXACT copy from drill_designer.js
      */
-    drawCenterIce: function(ctx, w, h, lineScale) {
-        lineScale = lineScale || 1;
-        const NHL = this.NHL_RINK;
-        
+    drawCenterIce: function(ctx, w, h, NHL_RINK) {
         // Center line
         ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2 * lineScale;
+        ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.moveTo(w/2, 0);
         ctx.lineTo(w/2, h);
@@ -823,8 +808,8 @@ const IceCanvasRenderer = {
         
         // Center circle
         ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 1 * lineScale;
-        const circleRadius = h * NHL.CENTER_CIRCLE_RADIUS;
+        ctx.lineWidth = 2;
+        const circleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
         ctx.beginPath();
         ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -832,8 +817,25 @@ const IceCanvasRenderer = {
         // Center dot
         ctx.fillStyle = '#0033a0';
         ctx.beginPath();
-        ctx.arc(w/2, h/2, 4 * lineScale, 0, 2 * Math.PI);
+        ctx.arc(w/2, h/2, 6, 0, 2 * Math.PI);
         ctx.fill();
+    },
+    
+    /**
+     * Draw rounded rectangle - EXACT copy from drill_designer.js
+     */
+    roundRect: function(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
     }
 };
 
