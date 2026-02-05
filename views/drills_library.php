@@ -248,7 +248,8 @@ $is_demo_drills = false;
     padding-top: 42.5%;
 }
 
-/* Half ice: Reduced height for better card display (was 117.6%, now 75%) */
+/* Half ice: Reduced height for better card display in grid layouts
+   Original was 117.6% (true aspect ratio), reduced to 75% to prevent cards from being excessively tall */
 .drill-image[data-ice-view="half-top"],
 .drill-image[data-ice-view="half-bottom"] {
     padding-top: 75%;
@@ -260,7 +261,8 @@ $is_demo_drills = false;
     padding-top: 85%;
 }
 
-/* Center ice: Reduced height for better card display (was 118.1%, now 75%) */
+/* Center ice: Reduced height for better card display in grid layouts
+   Original was 118.1% (true aspect ratio), reduced to 75% to prevent cards from being excessively tall */
 .drill-image[data-ice-view="center"] {
     padding-top: 75%;
 }
@@ -2160,10 +2162,10 @@ function drawThumbnailCenterIce(ctx, w, h) {
     ctx.lineTo(w/2, h);
     ctx.stroke();
     
-    // Center circle - use NHL proportions (15 ft radius on 85 ft height)
+    // Center circle - use NHL proportions constant
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 1;
-    const circleRadius = h * (15 / 85);
+    const circleRadius = h * NHL_RINK.CENTER_CIRCLE_RADIUS;
     ctx.beginPath();
     ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
     ctx.stroke();
