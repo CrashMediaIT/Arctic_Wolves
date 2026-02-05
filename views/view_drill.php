@@ -819,9 +819,11 @@ function drawHashMarksForCircle(ctx, cx, cy, radius, netPosition) {
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     
-    // Scale factors for hash marks (based on NHL regulations)
-    const hashLength = radius * (2 / 15); // 2 feet scaled
-    const hashSpacing = radius * (3 / 15); // 3 feet spacing between hash marks in pair
+    // NHL/Hockey Canada regulations: faceoff circles have 15-foot radius
+    // Hash marks are 2 feet long and spaced 3 feet apart
+    // We scale these dimensions relative to the drawn circle radius
+    const hashLength = radius * (2 / 15); // 2 feet / 15 feet radius = 0.133
+    const hashSpacing = radius * (3 / 15); // 3 feet / 15 feet radius = 0.2
     const gapOutsideCircle = radius * 0.05;
     const startDistance = radius + gapOutsideCircle;
     
