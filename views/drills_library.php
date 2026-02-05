@@ -1651,8 +1651,8 @@ function drawThumbnailHashMarks(ctx, cx, cy, radius, netPosition) {
 // For horizontal layout (full ice, zones): zone is 'left' or 'right'
 // For vertical layout (half ice): zone is 'top' or 'bottom'
 function drawThumbnailRestraintLines(ctx, cx, cy, radius, zone, canvasRefDimension, isVertical) {
-    const lineLength = canvasRefDimension * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
-    const offset = radius * 0.15;
+    const lineLength = canvasRefDimension * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5; // Slightly longer for visibility
+    const offset = radius * 0.15; // Distance from center dot
     
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 1;
