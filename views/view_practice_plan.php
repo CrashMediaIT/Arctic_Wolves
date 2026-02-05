@@ -763,8 +763,14 @@ const NHL_RINK = {
 
 function renderDrillCanvas(canvas, diagramDataStr) {
     const container = canvas.parentElement;
-    canvas.width = container.offsetWidth || 600;
-    canvas.height = container.offsetHeight || 350;
+    // NHL rink aspect ratio: 200 ft length × 85 ft width = 200:85 ≈ 2.35:1
+    // Canvas width represents the length, height represents the width
+    const NHL_RINK_ASPECT_RATIO = 200 / 85; // ≈ 2.35
+    const containerWidth = container.offsetWidth || 600;
+    // Calculate height based on width and aspect ratio, with fallback
+    const calculatedHeight = Math.round(containerWidth / NHL_RINK_ASPECT_RATIO);
+    canvas.width = containerWidth;
+    canvas.height = container.offsetHeight || calculatedHeight || 350;
     
     const ctx = canvas.getContext('2d');
     const w = canvas.width;

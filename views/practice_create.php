@@ -464,7 +464,9 @@ $action_value = $is_editing ? 'update' : 'create';
 .drill-selector-image {
     position: relative;
     width: 100%;
-    padding-top: 42.5%; /* 200:85 ratio for full ice */
+    /* NHL rink aspect ratio: 200 ft (length) × 85 ft (width)
+     * For horizontal layout: height/width = 85/200 = 0.425 = 42.5% */
+    padding-top: 42.5%;
     background: linear-gradient(135deg, #f0f7fa 0%, #e8f4f8 100%);
     border-bottom: 1px solid var(--border);
     overflow: hidden;
@@ -472,16 +474,19 @@ $action_value = $is_editing ? 'update' : 'create';
 
 .drill-selector-image[data-ice-view="half-top"],
 .drill-selector-image[data-ice-view="half-bottom"] {
-    padding-top: 117.6%; /* 85:200 * 2 ratio for half ice */
+    /* Half ice view (vertical): width/half-length = 85/100 = 0.85, inverted = 117.6% */
+    padding-top: 117.6%;
 }
 
 .drill-selector-image[data-ice-view="left-zone"],
 .drill-selector-image[data-ice-view="right-zone"] {
-    padding-top: 85%; /* Zone view */
+    /* Zone view: approximately 85% aspect ratio */
+    padding-top: 85%;
 }
 
 .drill-selector-image[data-ice-view="center"] {
-    padding-top: 118.1%; /* Center ice view */
+    /* Center ice view: similar to half ice */
+    padding-top: 118.1%;
 }
 
 .drill-selector-image img {
@@ -1007,6 +1012,17 @@ const NHL_RINK = {
     CORNER_RADIUS: 28 / 85
 };
 
+// Thumbnail object sizes for consistent rendering
+const THUMBNAIL_SIZES = {
+    PLAYER_RADIUS: 8,
+    CONE_HEIGHT: 8,
+    CONE_WIDTH: 5,
+    PUCK_RADIUS: 4,
+    ARROW_HEAD_LENGTH: 6,
+    LINE_WIDTH: 2,
+    FONT_SIZE: 6
+};
+
 // Render drill thumbnails in selector modal (matching drills_library.php)
 function renderDrillSelectorThumbnails() {
     const previews = document.querySelectorAll('.drill-selector-card .drill-diagram-preview');
@@ -1214,7 +1230,7 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
     if (obj.type === 'player') {
         ctx.fillStyle = obj.color || '#00bfff';
         ctx.beginPath();
-        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.arc(x, y, THUMBNAIL_SIZES.PLAYER_RADIUS, 0, 2 * Math.PI);
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
@@ -1222,7 +1238,7 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
         
         if (obj.label) {
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 6px Inter, sans-serif';
+            ctx.font = 'bold ' + THUMBNAIL_SIZES.FONT_SIZE + 'px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(obj.label, x, y);
@@ -1230,19 +1246,19 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
     } else if (obj.type === 'cone') {
         ctx.fillStyle = obj.color || '#ff6b00';
         ctx.beginPath();
-        ctx.moveTo(x, y - 8);
-        ctx.lineTo(x - 5, y + 5);
-        ctx.lineTo(x + 5, y + 5);
+        ctx.moveTo(x, y - THUMBNAIL_SIZES.CONE_HEIGHT);
+        ctx.lineTo(x - THUMBNAIL_SIZES.CONE_WIDTH, y + THUMBNAIL_SIZES.CONE_WIDTH);
+        ctx.lineTo(x + THUMBNAIL_SIZES.CONE_WIDTH, y + THUMBNAIL_SIZES.CONE_WIDTH);
         ctx.closePath();
         ctx.fill();
     } else if (obj.type === 'puck') {
         ctx.fillStyle = '#000';
         ctx.beginPath();
-        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.arc(x, y, THUMBNAIL_SIZES.PUCK_RADIUS, 0, 2 * Math.PI);
         ctx.fill();
     } else if (obj.type === 'line' || obj.type === 'freehand') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = THUMBNAIL_SIZES.LINE_WIDTH;
         ctx.lineCap = 'round';
         if (obj.points && obj.points.length > 1) {
             ctx.beginPath();
@@ -1260,11 +1276,11 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
     } else if (obj.type === 'arrow' || obj.type === 'freehand_arrow') {
         ctx.strokeStyle = obj.color || '#333';
         ctx.fillStyle = obj.color || '#333';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = THUMBNAIL_SIZES.LINE_WIDTH;
         ctx.lineCap = 'round';
         
         let x2, y2, angle;
-        const headlen = 6;
+        const headlen = THUMBNAIL_SIZES.ARROW_HEAD_LENGTH;
         
         if (obj.points && obj.points.length > 1) {
             ctx.beginPath();
@@ -1302,7 +1318,7 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
         }
     } else if (obj.type === 'dashed' || obj.type === 'freehand_dashed') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = THUMBNAIL_SIZES.LINE_WIDTH;
         ctx.lineCap = 'round';
         ctx.setLineDash([4, 3]);
         if (obj.points && obj.points.length > 1) {
@@ -1324,27 +1340,27 @@ function drawThumbnailObject(ctx, obj, uniformScale, offsetX, offsetY) {
         const netDepth = obj.type === 'mininet' ? 8 : 10;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.strokeStyle = obj.color || '#c41e3a';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = THUMBNAIL_SIZES.LINE_WIDTH;
         ctx.beginPath();
         ctx.rect(x - netWidth/2, y - netDepth/2, netWidth, netDepth);
         ctx.fill();
         ctx.stroke();
     } else if (obj.type === 'text') {
         ctx.fillStyle = obj.color || '#333';
-        ctx.font = 'bold 8px Inter, sans-serif';
+        ctx.font = 'bold ' + THUMBNAIL_SIZES.PLAYER_RADIUS + 'px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.text || '', x, y);
     } else if (obj.type === 'number') {
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.arc(x, y, THUMBNAIL_SIZES.PLAYER_RADIUS, 0, 2 * Math.PI);
         ctx.fill();
         ctx.strokeStyle = obj.color || '#000';
         ctx.lineWidth = 1;
         ctx.stroke();
         ctx.fillStyle = obj.color || '#000';
-        ctx.font = 'bold 8px Inter, sans-serif';
+        ctx.font = 'bold ' + THUMBNAIL_SIZES.PLAYER_RADIUS + 'px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.value || '', x, y);
