@@ -490,14 +490,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update the container's data-ice-view attribute for dynamic CSS aspect ratio
     container.setAttribute('data-ice-view', iceView);
     
-    // Re-calculate canvas size after ice view is set (CSS aspect-ratio may have changed)
-    // Using requestAnimationFrame ensures CSS changes are applied before measuring dimensions
-    requestAnimationFrame(function() {
-        canvas.width = container.offsetWidth;
-        canvas.height = container.offsetHeight;
-        renderDrill();
-    });
-    
     // Function to render everything
     function renderDrill() {
         drawViewRink(ctx, canvas.width, canvas.height, iceView);
@@ -513,6 +505,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 drawObject(ctx, scaledObj);
             });
         }
+    }
+    
+    // Function to initialize canvas dimensions and render
+    function initializeAndRender() {
+        canvas.width = container.offsetWidth;
+        canvas.height = container.offsetHeight;
+        renderDrill();
     }
     
     // Scale object coordinates for view
@@ -540,22 +539,23 @@ document.addEventListener('DOMContentLoaded', function() {
         return scaled;
     }
     
-    // Load center logo if URL provided
+    // Load center logo if URL provided, then render
+    // Using requestAnimationFrame ensures CSS aspect-ratio changes are applied before measuring dimensions
     if (centerLogoUrl) {
         centerLogoImage = new Image();
         centerLogoImage.crossOrigin = 'anonymous';
         centerLogoImage.onload = function() {
             centerLogoLoaded = true;
-            renderDrill();
+            requestAnimationFrame(initializeAndRender);
         };
         centerLogoImage.onerror = function() {
             console.warn('Failed to load center logo image');
             centerLogoLoaded = false;
-            renderDrill();
+            requestAnimationFrame(initializeAndRender);
         };
         centerLogoImage.src = centerLogoUrl;
     } else {
-        renderDrill();
+        requestAnimationFrame(initializeAndRender);
     }
     
     // Handle resize
@@ -622,6 +622,9 @@ function drawViewRink(ctx, w, h, iceView) {
         case 'right-zone':
             drawZoneView(ctx, w, h, 'right');
             break;
+        case 'center':
+            drawCenterIceView(ctx, w, h);
+            break;
         case 'full':
         default:
             drawFullIceView(ctx, w, h);
@@ -630,6 +633,31 @@ function drawViewRink(ctx, w, h, iceView) {
     
     // Rink border - adapts to view type
     drawRinkBorder(ctx, w, h, iceView);
+}
+
+// Draw center ice view (neutral zone around center)
+function drawCenterIceView(ctx, w, h) {
+    // Center line (red)
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2, h);
+    ctx.stroke();
+    
+    // Center circle - use NHL proportions (15 ft radius on 85 ft width)
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 2;
+    const circleRadius = h * (15 / 85);
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Center dot
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 6, 0, 2 * Math.PI);
+    ctx.fill();
 }
 
 // Draw rink border that adapts to view type

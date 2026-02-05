@@ -247,7 +247,8 @@ $is_demo_drills = false;
     padding-top: 42.5%;
 }
 
-/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom) - height/width = 100/85 ≈ 117.6% */
+/* Half ice: 100 ft × 85 ft (vertical orientation, net at top/bottom)
+   height/width = 100/85 = 1.1765... ≈ 117.6% (rounded for browser compatibility) */
 .drill-image[data-ice-view="half-top"],
 .drill-image[data-ice-view="half-bottom"] {
     padding-top: 117.6%;
@@ -259,7 +260,8 @@ $is_demo_drills = false;
     padding-top: 85%;
 }
 
-/* Center ice: 72 ft × 85 ft (between the blue lines) - height/width = 85/72 ≈ 118.1% */
+/* Center ice: 72 ft × 85 ft (between the blue lines)
+   height/width = 85/72 = 1.1806... ≈ 118.1% (rounded for browser compatibility) */
 .drill-image[data-ice-view="center"] {
     padding-top: 118.1%;
 }
@@ -1009,6 +1011,9 @@ function renderDrillThumbnails() {
                     break;
                 case 'right-zone':
                     drawThumbnailZone(ctx, w, h, 'right');
+                    break;
+                case 'center':
+                    drawThumbnailCenterIce(ctx, w, h);
                     break;
                 case 'full':
                 default:
@@ -1848,6 +1853,31 @@ function drawThumbnailZone(ctx, w, h, side) {
     }
     ctx.fill();
     ctx.stroke();
+}
+
+// Draw center ice view for thumbnails (neutral zone around center)
+function drawThumbnailCenterIce(ctx, w, h) {
+    // Center line (red)
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2, h);
+    ctx.stroke();
+    
+    // Center circle - use NHL proportions (15 ft radius on 85 ft height)
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 1;
+    const circleRadius = h * (15 / 85);
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, circleRadius, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Center dot
+    ctx.fillStyle = '#0033a0';
+    ctx.beginPath();
+    ctx.arc(w/2, h/2, 4, 0, 2 * Math.PI);
+    ctx.fill();
 }
 </script>
 
