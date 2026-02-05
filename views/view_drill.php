@@ -1353,7 +1353,7 @@ function drawSkatingLine(ctx, obj, dashed, hasArrow, hasPuck, backwardArrow) {
         ctx.setLineDash([12, 4, 4, 4]);
     }
     
-    let x1, y1, x2, y2;
+    let x1, y1, x2, y2, angle;
     
     if (obj.points && obj.points.length >= 2) {
         // Freehand points format
@@ -1377,7 +1377,7 @@ function drawSkatingLine(ctx, obj, dashed, hasArrow, hasPuck, backwardArrow) {
         
         // Get angle from last two points for arrow
         const secondLast = obj.points[obj.points.length - 2];
-        var angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+        angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
         if (backwardArrow) {
             angle = Math.atan2(secondLast.y - last.y, secondLast.x - last.x);
         }
@@ -1393,7 +1393,7 @@ function drawSkatingLine(ctx, obj, dashed, hasArrow, hasPuck, backwardArrow) {
         x2 = obj.x2;
         y2 = obj.y2;
         
-        var angle = backwardArrow ? Math.atan2(y1 - y2, x1 - x2) : Math.atan2(y2 - y1, x2 - x1);
+        angle = backwardArrow ? Math.atan2(y1 - y2, x1 - x2) : Math.atan2(y2 - y1, x2 - x1);
     }
     
     if (dashed) {
