@@ -446,7 +446,8 @@ const NHL_RINK = {
     FACEOFF_FROM_BOARDS: 22 / 85,  // 22 ft from boards
     TRAPEZOID_BASE: 22 / 85,       // Trapezoid base at goal line: 22 ft wide
     TRAPEZOID_TOP: 28 / 85,        // Trapezoid top at boards: 28 ft wide
-    RESTRAINT_LINE_LENGTH: 2 / 85  // 2 ft restraint lines
+    RESTRAINT_LINE_LENGTH: 2 / 85, // 2 ft restraint lines
+    CORNER_RADIUS: 28 / 85         // Corner radius 28 ft on 85 ft width
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -665,7 +666,17 @@ function drawRinkBorder(ctx, w, h, iceView) {
     ctx.strokeStyle = '#0033a0';
     ctx.lineWidth = 4;
     
-    const cornerRadius = Math.min(w, h) * 0.1;
+    // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio)
+    // For full ice (horizontal layout), use height as reference since width represents length
+    // For half ice (vertical layout with net at top/bottom), use width as reference
+    let cornerRadius;
+    if (iceView === 'half-top' || iceView === 'half-bottom') {
+        // Half ice views are oriented vertically - width represents the 85 ft rink width
+        cornerRadius = w * NHL_RINK.CORNER_RADIUS;
+    } else {
+        // Full ice, zones, and center - height represents the 85 ft rink width
+        cornerRadius = h * NHL_RINK.CORNER_RADIUS;
+    }
     
     if (iceView === 'half-top' || iceView === 'half-bottom') {
         // Half ice views - net at top or bottom, flat edge on opposite side
@@ -735,7 +746,8 @@ function drawRinkBorder(ctx, w, h, iceView) {
 }
 
 function drawFullIceView(ctx, w, h) {
-    const cornerRadius = Math.min(w, h) * 0.1;
+    // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio of height for horizontal layout)
+    const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
     
     // NHL proportions
     const goalLinePos = NHL_RINK.GOAL_LINE;

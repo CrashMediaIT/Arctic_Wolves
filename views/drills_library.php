@@ -773,7 +773,8 @@ const NHL_RINK = {
     FACEOFF_FROM_BOARDS: 22 / 85,  // 22 ft from boards
     TRAPEZOID_BASE: 22 / 85,       // Trapezoid base at goal line: 22 ft wide
     TRAPEZOID_TOP: 28 / 85,        // Trapezoid top at boards: 28 ft wide
-    RESTRAINT_LINE_LENGTH: 2 / 85  // 2 ft restraint lines
+    RESTRAINT_LINE_LENGTH: 2 / 85, // 2 ft restraint lines
+    CORNER_RADIUS: 28 / 85         // Corner radius 28 ft on 85 ft width
 };
 
 // View drill details
@@ -1492,20 +1493,74 @@ function renderDrillThumbnails() {
                 });
             }
             
-            // Draw rink border
+            // Draw rink border that adapts to view type (matching drill designer)
             ctx.strokeStyle = '#0033a0';
             ctx.lineWidth = 2;
-            const cornerRadius = Math.min(w, h) * 0.08;
+            
+            // NHL corner radius: 28 ft on 85 ft width (~0.329 ratio)
+            // For full ice (horizontal layout), use height as reference since width represents length
+            // For half ice (vertical layout with net at top/bottom), use width as reference
+            let cornerRadius;
+            if (iceView === 'half-top' || iceView === 'half-bottom') {
+                // Half ice views are oriented vertically - width represents the 85 ft rink width
+                cornerRadius = w * NHL_RINK.CORNER_RADIUS;
+            } else {
+                // Full ice, zones, and center - height represents the 85 ft rink width
+                cornerRadius = h * NHL_RINK.CORNER_RADIUS;
+            }
+            
             ctx.beginPath();
-            ctx.moveTo(cornerRadius, 0);
-            ctx.lineTo(w - cornerRadius, 0);
-            ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-            ctx.lineTo(w, h - cornerRadius);
-            ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-            ctx.lineTo(cornerRadius, h);
-            ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-            ctx.lineTo(0, cornerRadius);
-            ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            if (iceView === 'half-top') {
+                // Curved corners at top (net end), flat at bottom (center line)
+                ctx.moveTo(cornerRadius, 0);
+                ctx.lineTo(w - cornerRadius, 0);
+                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+                ctx.lineTo(w, h);
+                ctx.lineTo(0, h);
+                ctx.lineTo(0, cornerRadius);
+                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            } else if (iceView === 'half-bottom') {
+                // Flat at top (center line), curved corners at bottom (net end)
+                ctx.moveTo(0, 0);
+                ctx.lineTo(w, 0);
+                ctx.lineTo(w, h - cornerRadius);
+                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+                ctx.lineTo(cornerRadius, h);
+                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+                ctx.lineTo(0, 0);
+            } else if (iceView === 'left-zone') {
+                // Curved corners at left (net end), flat at right (blue line side)
+                ctx.moveTo(cornerRadius, 0);
+                ctx.lineTo(w, 0);
+                ctx.lineTo(w, h);
+                ctx.lineTo(cornerRadius, h);
+                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+                ctx.lineTo(0, cornerRadius);
+                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            } else if (iceView === 'right-zone') {
+                // Flat at left (blue line side), curved corners at right (net end)
+                ctx.moveTo(0, 0);
+                ctx.lineTo(w - cornerRadius, 0);
+                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+                ctx.lineTo(w, h - cornerRadius);
+                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+                ctx.lineTo(0, h);
+                ctx.lineTo(0, 0);
+            } else if (iceView === 'center') {
+                // Center ice has flat edges on both sides (at the blue lines)
+                ctx.rect(0, 0, w, h);
+            } else {
+                // Full ice - all corners rounded
+                ctx.moveTo(cornerRadius, 0);
+                ctx.lineTo(w - cornerRadius, 0);
+                ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+                ctx.lineTo(w, h - cornerRadius);
+                ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+                ctx.lineTo(cornerRadius, h);
+                ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+                ctx.lineTo(0, cornerRadius);
+                ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            }
             ctx.closePath();
             ctx.stroke();
         }
@@ -1584,6 +1639,60 @@ function drawThumbnailHashMarks(ctx, cx, cy, radius, netPosition) {
     }
 }
 
+// Draw faceoff restraint lines (L-shaped lines inside end zone faceoff circles) for thumbnails
+// For horizontal layout (full ice, zones): zone is 'left' or 'right'
+// For vertical layout (half ice): zone is 'top' or 'bottom'
+function drawThumbnailRestraintLines(ctx, cx, cy, radius, zone, canvasRefDimension, isVertical) {
+    const lineLength = canvasRefDimension * NHL_RINK.RESTRAINT_LINE_LENGTH * 1.5;
+    const offset = radius * 0.15;
+    
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    
+    if (isVertical) {
+        // Vertical layout (half-ice): net at top or bottom
+        const goalDirection = zone === 'top' ? -1 : 1;
+        
+        drawThumbnailLShapeVertical(ctx, cx - offset, cy - offset, lineLength, goalDirection);
+        drawThumbnailLShapeVertical(ctx, cx - offset, cy + offset, lineLength, goalDirection);
+        drawThumbnailLShapeVertical(ctx, cx + offset, cy - offset, lineLength, goalDirection);
+        drawThumbnailLShapeVertical(ctx, cx + offset, cy + offset, lineLength, goalDirection);
+    } else {
+        // Horizontal layout (full ice, zones): net at left or right
+        const goalDirection = zone === 'left' ? -1 : 1;
+        
+        drawThumbnailLShape(ctx, cx - offset, cy - offset, lineLength, goalDirection, -1);
+        drawThumbnailLShape(ctx, cx + offset, cy - offset, lineLength, goalDirection, -1);
+        drawThumbnailLShape(ctx, cx - offset, cy + offset, lineLength, goalDirection, 1);
+        drawThumbnailLShape(ctx, cx + offset, cy + offset, lineLength, goalDirection, 1);
+    }
+}
+
+function drawThumbnailLShape(ctx, x, y, length, hDir, vDir) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + vDir * length);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + hDir * length, y);
+    ctx.stroke();
+}
+
+function drawThumbnailLShapeVertical(ctx, x, y, length, vDir) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + vDir * length);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(x - length/2, y);
+    ctx.lineTo(x + length/2, y);
+    ctx.stroke();
+}
+
 // Draw full ice view for thumbnails
 function drawThumbnailFullIce(ctx, w, h) {
     // NHL proportions
@@ -1627,10 +1736,10 @@ function drawThumbnailFullIce(ctx, w, h) {
     ctx.strokeStyle = '#c41e3a';
     const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
     const circles = [
-        { x: w * faceoffFromGoal, y: h * faceoffFromBoards },
-        { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards) },
-        { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards },
-        { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards) }
+        { x: w * faceoffFromGoal, y: h * faceoffFromBoards, zone: 'left' },
+        { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards), zone: 'left' },
+        { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards, zone: 'right' },
+        { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards), zone: 'right' }
     ];
     circles.forEach(function(circle) {
         ctx.beginPath();
@@ -1645,6 +1754,9 @@ function drawThumbnailFullIce(ctx, w, h) {
         
         // Draw hash marks around faceoff circles (nets on left/right)
         drawThumbnailHashMarks(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
+        
+        // Draw restraint lines
+        drawThumbnailRestraintLines(ctx, circle.x, circle.y, faceoffRadius, circle.zone, h, false);
     });
     
     // Goal creases (6 ft radius)
@@ -1701,6 +1813,7 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     ctx.arc(w * faceoffFromBoards, faceoffY, 2, 0, 2 * Math.PI);
     ctx.fill();
     drawThumbnailHashMarks(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, 'vertical');
+    drawThumbnailRestraintLines(ctx, w * faceoffFromBoards, faceoffY, faceoffRadius, side, w, true);
     
     // Right faceoff circle
     ctx.strokeStyle = '#c41e3a';
@@ -1711,6 +1824,7 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     ctx.arc(w * (1 - faceoffFromBoards), faceoffY, 2, 0, 2 * Math.PI);
     ctx.fill();
     drawThumbnailHashMarks(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, 'vertical');
+    drawThumbnailRestraintLines(ctx, w * (1 - faceoffFromBoards), faceoffY, faceoffRadius, side, w, true);
     
     // Goal crease - 6 ft radius semicircle
     ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
@@ -1816,6 +1930,7 @@ function drawThumbnailZone(ctx, w, h, side) {
     ctx.arc(faceoffX, h * faceoffFromBoards, 2, 0, 2 * Math.PI);
     ctx.fill();
     drawThumbnailHashMarks(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, 'horizontal');
+    drawThumbnailRestraintLines(ctx, faceoffX, h * faceoffFromBoards, faceoffRadius, side, h, false);
     
     // Bottom faceoff circle
     ctx.strokeStyle = '#c41e3a';
@@ -1826,6 +1941,7 @@ function drawThumbnailZone(ctx, w, h, side) {
     ctx.arc(faceoffX, h * (1 - faceoffFromBoards), 2, 0, 2 * Math.PI);
     ctx.fill();
     drawThumbnailHashMarks(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, 'horizontal');
+    drawThumbnailRestraintLines(ctx, faceoffX, h * (1 - faceoffFromBoards), faceoffRadius, side, h, false);
     
     // Neutral zone dots
     const neutralZoneDotOffset = 5 / 200;
