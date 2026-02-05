@@ -509,7 +509,8 @@ document.addEventListener('DOMContentLoaded', function() {
             diagramObjects.forEach(obj => {
                 // Create a scaled copy of the object with uniform scaling
                 const scaledObj = scaleObjectForView(obj, uniformScale, offsetX, offsetY);
-                drawObject(ctx, scaledObj);
+                // Pass the scale factor so object sizes can be scaled proportionally
+                drawObject(ctx, scaledObj, uniformScale);
             });
         }
     }
@@ -1295,7 +1296,10 @@ function drawHashMarksForCircle(ctx, cx, cy, radius, netPosition) {
     }
 }
 
-function drawObject(ctx, obj) {
+function drawObject(ctx, obj, scale) {
+    // Default scale to 1 if not provided (for backward compatibility)
+    scale = scale || 1;
+    
     ctx.save();
     
     if (obj.type === 'player') {
@@ -1303,14 +1307,14 @@ function drawObject(ctx, obj) {
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.fillStyle = obj.color || '#00bfff';
         ctx.beginPath();
-        ctx.arc(0, 0, 14, 0, 2 * Math.PI);
+        ctx.arc(0, 0, 14 * scale, 0, 2 * Math.PI);
         ctx.fill();
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * scale;
         ctx.stroke();
         if (obj.label) {
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 10px Inter, sans-serif';
+            ctx.font = 'bold ' + Math.round(10 * scale) + 'px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(obj.label, 0, 0);
@@ -1320,19 +1324,19 @@ function drawObject(ctx, obj) {
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.fillStyle = obj.color || '#ff6b00';
         ctx.beginPath();
-        ctx.moveTo(0, -15);
-        ctx.lineTo(-10, 10);
-        ctx.lineTo(10, 10);
+        ctx.moveTo(0, -15 * scale);
+        ctx.lineTo(-10 * scale, 10 * scale);
+        ctx.lineTo(10 * scale, 10 * scale);
         ctx.closePath();
         ctx.fill();
     } else if (obj.type === 'puck') {
         ctx.fillStyle = obj.color || '#000';
         ctx.beginPath();
-        ctx.arc(obj.x, obj.y, 8, 0, 2 * Math.PI);
+        ctx.arc(obj.x, obj.y, 8 * scale, 0, 2 * Math.PI);
         ctx.fill();
     } else if (obj.type === 'line') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 * scale;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         if (obj.points && obj.points.length >= 2) {
@@ -1354,10 +1358,10 @@ function drawObject(ctx, obj) {
         }
     } else if (obj.type === 'dashed') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 * scale;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.setLineDash([8, 5]);
+        ctx.setLineDash([8 * scale, 5 * scale]);
         if (obj.points && obj.points.length >= 2) {
             ctx.beginPath();
             ctx.moveTo(obj.points[0].x, obj.points[0].y);
@@ -1377,7 +1381,7 @@ function drawObject(ctx, obj) {
         ctx.setLineDash([]);
     } else if (obj.type === 'squiggly') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 * scale;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         if (obj.points && obj.points.length >= 2) {
@@ -1396,7 +1400,7 @@ function drawObject(ctx, obj) {
             const dy = obj.y2 - obj.y1;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx);
-            const numWaves = Math.max(2, Math.floor(distance / 15));
+            const numWaves = Math.max(2, Math.floor(distance / (15 * scale)));
             
             ctx.translate(obj.x1, obj.y1);
             ctx.rotate(angle);
@@ -1405,18 +1409,19 @@ function drawObject(ctx, obj) {
             for (let i = 0; i < numWaves; i++) {
                 const segmentEnd = ((i + 1) / numWaves) * distance;
                 const midX = ((i / numWaves) * distance + segmentEnd) / 2;
-                ctx.quadraticCurveTo(midX, (i % 2 === 0 ? 1 : -1) * 6, segmentEnd, 0);
+                ctx.quadraticCurveTo(midX, (i % 2 === 0 ? 1 : -1) * 6 * scale, segmentEnd, 0);
             }
             ctx.stroke();
         }
     } else if (obj.type === 'arrow') {
         ctx.strokeStyle = obj.color || '#333';
         ctx.fillStyle = obj.color || '#333';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 * scale;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
         let x2, y2, angle;
+        const arrowHeadLen = 15 * scale;
         
         if (obj.points && obj.points.length >= 2) {
             ctx.beginPath();
@@ -1448,8 +1453,8 @@ function drawObject(ctx, obj) {
         if (x2 !== undefined) {
             ctx.beginPath();
             ctx.moveTo(x2, y2);
-            ctx.lineTo(x2 - 15 * Math.cos(angle - Math.PI/6), y2 - 15 * Math.sin(angle - Math.PI/6));
-            ctx.lineTo(x2 - 15 * Math.cos(angle + Math.PI/6), y2 - 15 * Math.sin(angle + Math.PI/6));
+            ctx.lineTo(x2 - arrowHeadLen * Math.cos(angle - Math.PI/6), y2 - arrowHeadLen * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(x2 - arrowHeadLen * Math.cos(angle + Math.PI/6), y2 - arrowHeadLen * Math.sin(angle + Math.PI/6));
             ctx.closePath();
             ctx.fill();
         }
@@ -1458,19 +1463,19 @@ function drawObject(ctx, obj) {
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         
         const frameColor = obj.color || '#c41e3a';
-        const netWidth = 48;
-        const netDepth = 16;
+        const netWidth = 48 * scale;
+        const netDepth = 16 * scale;
         
         // Draw the net frame - D-shape like real hockey net
         ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.strokeStyle = frameColor;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 * scale;
         
         ctx.beginPath();
         ctx.moveTo(-netWidth/2, 0);
         ctx.lineTo(netWidth/2, 0);
-        ctx.lineTo(netWidth/2 - 4, -netDepth);
-        ctx.quadraticCurveTo(0, -netDepth - 8, -netWidth/2 + 4, -netDepth);
+        ctx.lineTo(netWidth/2 - 4 * scale, -netDepth);
+        ctx.quadraticCurveTo(0, -netDepth - 8 * scale, -netWidth/2 + 4 * scale, -netDepth);
         ctx.lineTo(-netWidth/2, 0);
         ctx.closePath();
         ctx.fill();
@@ -1478,7 +1483,7 @@ function drawObject(ctx, obj) {
         
         // Draw mesh lines
         ctx.strokeStyle = '#aaa';
-        ctx.lineWidth = 0.5;
+        ctx.lineWidth = 0.5 * scale;
         for (let i = -2; i <= 2; i++) {
             const meshX = (netWidth/5) * i;
             ctx.beginPath();
@@ -1489,17 +1494,17 @@ function drawObject(ctx, obj) {
         
         // Red posts and crossbar
         ctx.strokeStyle = frameColor;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 4 * scale;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(-netWidth/2, 2);
-        ctx.lineTo(-netWidth/2, -2);
+        ctx.moveTo(-netWidth/2, 2 * scale);
+        ctx.lineTo(-netWidth/2, -2 * scale);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(netWidth/2, 2);
-        ctx.lineTo(netWidth/2, -2);
+        ctx.moveTo(netWidth/2, 2 * scale);
+        ctx.lineTo(netWidth/2, -2 * scale);
         ctx.stroke();
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 * scale;
         ctx.beginPath();
         ctx.moveTo(-netWidth/2, 0);
         ctx.lineTo(netWidth/2, 0);
@@ -1509,50 +1514,50 @@ function drawObject(ctx, obj) {
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         
         const frameColor = obj.color || '#c41e3a';
-        const netWidth = 32;
-        const netDepth = 12;
+        const netWidth = 32 * scale;
+        const netDepth = 12 * scale;
         
         ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.strokeStyle = frameColor;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * scale;
         
         ctx.beginPath();
         ctx.moveTo(-netWidth/2, 0);
         ctx.lineTo(netWidth/2, 0);
-        ctx.lineTo(netWidth/2 - 3, -netDepth);
-        ctx.quadraticCurveTo(0, -netDepth - 5, -netWidth/2 + 3, -netDepth);
+        ctx.lineTo(netWidth/2 - 3 * scale, -netDepth);
+        ctx.quadraticCurveTo(0, -netDepth - 5 * scale, -netWidth/2 + 3 * scale, -netDepth);
         ctx.lineTo(-netWidth/2, 0);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
     } else if (obj.type === 'tire') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 6 * scale;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.beginPath();
-        ctx.arc(obj.x, obj.y, 12, 0, 2 * Math.PI);
+        ctx.arc(obj.x, obj.y, 12 * scale, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
     } else if (obj.type === 'stick') {
         ctx.translate(obj.x, obj.y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.strokeStyle = obj.color || '#8B4513';
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 5 * scale;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(0, -22);
-        ctx.lineTo(0, 12);
+        ctx.moveTo(0, -22 * scale);
+        ctx.lineTo(0, 12 * scale);
         ctx.stroke();
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 6 * scale;
         ctx.beginPath();
-        ctx.moveTo(0, 12);
-        ctx.quadraticCurveTo(8, 16, 14, 12);
+        ctx.moveTo(0, 12 * scale);
+        ctx.quadraticCurveTo(8 * scale, 16 * scale, 14 * scale, 12 * scale);
         ctx.stroke();
     } else if (obj.type === 'text') {
         ctx.translate(obj.x, obj.y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.fillStyle = obj.color || '#000';
-        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.font = 'bold ' + Math.round(14 * scale) + 'px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.text, 0, 0);
@@ -1561,64 +1566,66 @@ function drawObject(ctx, obj) {
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.arc(0, 0, 14, 0, 2 * Math.PI);
+        ctx.arc(0, 0, 14 * scale, 0, 2 * Math.PI);
         ctx.fill();
         ctx.strokeStyle = obj.color || '#000';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * scale;
         ctx.stroke();
         ctx.fillStyle = obj.color || '#000';
-        ctx.font = 'bold 16px Inter, sans-serif';
+        ctx.font = 'bold ' + Math.round(16 * scale) + 'px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.value, 0, 0);
     } else if (obj.type === 'pucks') {
         // Group of pucks
         ctx.fillStyle = '#000';
+        const puckSpacing = 8 * scale;
+        const puckRadius = 5 * scale;
         const positions = [
-            {x: -8, y: -8}, {x: 8, y: -8},
-            {x: -8, y: 8}, {x: 8, y: 8}, {x: 0, y: 0}
+            {x: -puckSpacing, y: -puckSpacing}, {x: puckSpacing, y: -puckSpacing},
+            {x: -puckSpacing, y: puckSpacing}, {x: puckSpacing, y: puckSpacing}, {x: 0, y: 0}
         ];
         positions.forEach(pos => {
             ctx.beginPath();
-            ctx.arc(obj.x + pos.x, obj.y + pos.y, 5, 0, 2 * Math.PI);
+            ctx.arc(obj.x + pos.x, obj.y + pos.y, puckRadius, 0, 2 * Math.PI);
             ctx.fill();
         });
     } else if (obj.type === 'skating_forward') {
         // Forward skating - solid line with arrow
-        drawSkatingLine(ctx, obj, false, true, false);
+        drawSkatingLine(ctx, obj, false, true, false, false, scale);
     } else if (obj.type === 'skating_backward') {
         // Backward skating - dashed line with arrow
-        drawSkatingLine(ctx, obj, true, true, false);
+        drawSkatingLine(ctx, obj, true, true, false, false, scale);
     } else if (obj.type === 'skating_lateral') {
         // Lateral skating - zigzag line
-        drawLateralSkating(ctx, obj);
+        drawLateralSkating(ctx, obj, scale);
     } else if (obj.type === 'skating_ccuts') {
         // C-cuts skating - curved pattern
-        drawCCutsSkating(ctx, obj);
+        drawCCutsSkating(ctx, obj, scale);
     } else if (obj.type === 'skating_forward_puck') {
         // Forward with puck - solid line with arrow and puck at start
-        drawSkatingLine(ctx, obj, false, true, true);
+        drawSkatingLine(ctx, obj, false, true, true, false, scale);
     } else if (obj.type === 'skating_backward_puck') {
         // Backward with puck - dashed line with backward arrow and puck at start
-        drawSkatingLine(ctx, obj, true, true, true, true);
+        drawSkatingLine(ctx, obj, true, true, true, true, scale);
     } else if (obj.type === 'pass') {
         // Pass line - dashed with hollow arrow
-        drawPassLine(ctx, obj);
+        drawPassLine(ctx, obj, scale);
     } else if (obj.type === 'shot') {
         // Shot line - thick solid with large arrow
-        drawShotLine(ctx, obj);
+        drawShotLine(ctx, obj, scale);
     } else if (obj.type === 'freehand' || obj.type === 'freehand_arrow' || obj.type === 'freehand_dashed' || obj.type === 'freehand_skating') {
         // Handle all freehand drawing types
         if (obj.points && obj.points.length >= 2) {
             const color = obj.color || '#333';
             ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3 * scale;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             
             // Set line dash for dashed types
             if (obj.type === 'freehand_dashed') {
-                ctx.setLineDash([10, 6]);
+                ctx.setLineDash([10 * scale, 6 * scale]);
             }
             
             // Draw the path
@@ -1643,7 +1650,7 @@ function drawObject(ctx, obj) {
             if ((obj.type === 'freehand_arrow' || obj.type === 'freehand_skating') && obj.points.length >= 2) {
                 const secondLast = obj.points[obj.points.length - 2];
                 const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
-                const headlen = 12;
+                const headlen = 12 * scale;
                 
                 ctx.fillStyle = color;
                 ctx.beginPath();
@@ -1660,15 +1667,16 @@ function drawObject(ctx, obj) {
 }
 
 // Helper function for skating lines (forward/backward with/without puck)
-function drawSkatingLine(ctx, obj, dashed, hasArrow, hasPuck, backwardArrow) {
+function drawSkatingLine(ctx, obj, dashed, hasArrow, hasPuck, backwardArrow, scale) {
+    scale = scale || 1;
     const color = obj.color || '#333';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 * scale;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
     if (dashed) {
-        ctx.setLineDash([12, 4, 4, 4]);
+        ctx.setLineDash([12 * scale, 4 * scale, 4 * scale, 4 * scale]);
     }
     
     let x1, y1, x2, y2, angle;
@@ -1720,7 +1728,7 @@ function drawSkatingLine(ctx, obj, dashed, hasArrow, hasPuck, backwardArrow) {
     
     // Draw arrow head
     if (hasArrow && x2 !== undefined) {
-        const headlen = 12;
+        const headlen = 12 * scale;
         ctx.fillStyle = color;
         ctx.beginPath();
         ctx.moveTo(x2, y2);
@@ -1734,16 +1742,17 @@ function drawSkatingLine(ctx, obj, dashed, hasArrow, hasPuck, backwardArrow) {
     if (hasPuck && x1 !== undefined) {
         ctx.fillStyle = '#000';
         ctx.beginPath();
-        ctx.arc(x1, y1, 6, 0, 2 * Math.PI);
+        ctx.arc(x1, y1, 6 * scale, 0, 2 * Math.PI);
         ctx.fill();
     }
 }
 
 // Helper function for lateral skating (zigzag pattern)
-function drawLateralSkating(ctx, obj) {
+function drawLateralSkating(ctx, obj, scale) {
+    scale = scale || 1;
     const color = obj.color || '#10b981';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 * scale;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
@@ -1762,8 +1771,8 @@ function drawLateralSkating(ctx, obj) {
         const distance = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
         const perpAngle = angle + Math.PI / 2;
-        const segments = Math.max(4, Math.floor(distance / 20));
-        const zigzagHeight = 8;
+        const segments = Math.max(4, Math.floor(distance / (20 * scale)));
+        const zigzagHeight = 8 * scale;
         
         ctx.beginPath();
         ctx.moveTo(obj.x1, obj.y1);
@@ -1782,10 +1791,11 @@ function drawLateralSkating(ctx, obj) {
 }
 
 // Helper function for C-cuts skating
-function drawCCutsSkating(ctx, obj) {
+function drawCCutsSkating(ctx, obj, scale) {
+    scale = scale || 1;
     const color = obj.color || '#8b5cf6';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 * scale;
     ctx.lineCap = 'round';
     
     if (obj.points && obj.points.length >= 2) {
@@ -1807,9 +1817,9 @@ function drawCCutsSkating(ctx, obj) {
         const dy = obj.y2 - obj.y1;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
-        const numCuts = Math.max(3, Math.floor(distance / 30));
+        const numCuts = Math.max(3, Math.floor(distance / (30 * scale)));
         const cutWidth = distance / numCuts;
-        const cutHeight = 12;
+        const cutHeight = 12 * scale;
         
         ctx.save();
         ctx.translate(obj.x1, obj.y1);
@@ -1831,12 +1841,13 @@ function drawCCutsSkating(ctx, obj) {
 }
 
 // Helper function for pass line (dashed with hollow arrow)
-function drawPassLine(ctx, obj) {
+function drawPassLine(ctx, obj, scale) {
+    scale = scale || 1;
     const color = obj.color || '#0033a0';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 * scale;
     ctx.lineCap = 'round';
-    ctx.setLineDash([10, 5]);
+    ctx.setLineDash([10 * scale, 5 * scale]);
     
     let x2, y2, angle;
     
@@ -1873,7 +1884,7 @@ function drawPassLine(ctx, obj) {
     
     // Hollow arrow head
     if (x2 !== undefined) {
-        const headlen = 14;
+        const headlen = 14 * scale;
         ctx.beginPath();
         ctx.moveTo(x2, y2);
         ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
@@ -1884,11 +1895,12 @@ function drawPassLine(ctx, obj) {
 }
 
 // Helper function for shot line (thick with large filled arrow)
-function drawShotLine(ctx, obj) {
+function drawShotLine(ctx, obj, scale) {
+    scale = scale || 1;
     const color = obj.color || '#c41e3a';
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 5 * scale;
     ctx.lineCap = 'round';
     
     let x2, y2, angle;
@@ -1924,7 +1936,7 @@ function drawShotLine(ctx, obj) {
     
     // Large filled arrow head
     if (x2 !== undefined) {
-        const headlen = 18;
+        const headlen = 18 * scale;
         ctx.beginPath();
         ctx.moveTo(x2, y2);
         ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 5), y2 - headlen * Math.sin(angle - Math.PI / 5));
