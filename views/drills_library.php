@@ -22,6 +22,26 @@ try {
     $drills = [];
 }
 
+// Fetch center ice logo URL from theme settings for drill thumbnails
+$centerLogoUrl = '';
+try {
+    $logoStmt = $pdo->prepare("
+        SELECT COALESCE(
+            MAX(CASE WHEN setting_name = 'center_ice_logo_url' AND setting_value != '' THEN setting_value END),
+            MAX(CASE WHEN setting_name = 'logo_url' AND setting_value != '' THEN setting_value END)
+        ) as logo_url 
+        FROM theme_settings 
+        WHERE setting_name IN ('center_ice_logo_url', 'logo_url')
+    ");
+    $logoStmt->execute();
+    $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
+    if ($logoResult && !empty($logoResult['logo_url'])) {
+        $centerLogoUrl = $logoResult['logo_url'];
+    }
+} catch (PDOException $e) {
+    error_log("Error fetching center ice logo URL: " . $e->getMessage());
+}
+
 // No demo data - show empty state when no drills exist
 $is_demo_drills = false;
 ?>
@@ -107,7 +127,7 @@ $is_demo_drills = false;
                         <?php if ($drill['custom_image']): ?>
                             <img src="<?php echo htmlspecialchars($drill['custom_image']); ?>" alt="<?php echo htmlspecialchars($drill['title']); ?>">
                         <?php else: ?>
-                            <div class="drill-diagram-preview" data-diagram='<?php echo htmlspecialchars($drill['diagram_data'] ?? '[]'); ?>'>
+                            <div class="drill-diagram-preview" data-diagram='<?php echo htmlspecialchars($drill['diagram_data'] ?? '[]'); ?>' data-center-logo="<?php echo htmlspecialchars($centerLogoUrl); ?>">
                                 <canvas class="drill-thumbnail-canvas"></canvas>
                             </div>
                         <?php endif; ?>
@@ -854,12 +874,28 @@ function renderDrillThumbnails() {
         
         // Get diagram data
         let diagramData = [];
+        let sourceWidth = 800;  // Default fallback
+        let sourceHeight = 400; // Default fallback
         try {
             const dataStr = preview.getAttribute('data-diagram') || '[]';
-            diagramData = JSON.parse(dataStr);
+            const parsed = JSON.parse(dataStr);
+            
+            // Handle both old format (array) and new format (object with dimensions)
+            if (Array.isArray(parsed)) {
+                // Old format - just an array of objects
+                diagramData = parsed;
+            } else if (parsed && parsed.objects && Array.isArray(parsed.objects)) {
+                // New format with canvas dimensions
+                diagramData = parsed.objects;
+                sourceWidth = parsed.canvasWidth || 800;
+                sourceHeight = parsed.canvasHeight || 400;
+            }
         } catch (e) {
             diagramData = [];
         }
+        
+        // Get center logo URL
+        const centerLogoUrl = preview.getAttribute('data-center-logo') || '';
         
         // Set canvas size
         canvas.width = preview.offsetWidth || 340;
@@ -869,178 +905,258 @@ function renderDrillThumbnails() {
         const w = canvas.width;
         const h = canvas.height;
         
-        // Draw ice background
-        ctx.fillStyle = '#f0f7fa';
-        ctx.fillRect(0, 0, w, h);
-        
-        // Draw center branding (subtle)
-        ctx.save();
-        ctx.globalAlpha = 0.08;
-        ctx.fillStyle = '#7000a4';
-        ctx.font = 'bold 24px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('ARCTIC WOLVES', w/2, h/2);
-        ctx.restore();
-        
-        // Draw basic rink markings
-        // Center line
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(w/2, 0);
-        ctx.lineTo(w/2, h);
-        ctx.stroke();
-        
-        // Blue lines
-        ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(w * 0.25, 0);
-        ctx.lineTo(w * 0.25, h);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(w * 0.75, 0);
-        ctx.lineTo(w * 0.75, h);
-        ctx.stroke();
-        
-        // Center circle
-        ctx.beginPath();
-        ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
-        ctx.stroke();
-        
-        // Center dot
-        ctx.fillStyle = '#0033a0';
-        ctx.beginPath();
-        ctx.arc(w/2, h/2, 3, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // Faceoff circles
-        ctx.strokeStyle = '#c41e3a';
-        const faceoffRadius = Math.min(w, h) * 0.08;
-        const circles = [
-            { x: w * 0.15, y: h * 0.3 },
-            { x: w * 0.15, y: h * 0.7 },
-            { x: w * 0.85, y: h * 0.3 },
-            { x: w * 0.85, y: h * 0.7 }
-        ];
-        circles.forEach(circle => {
-            ctx.beginPath();
-            ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
-            ctx.stroke();
-        });
-        
-        // Goal creases
-        const creaseRadius = Math.min(w, h) * 0.06;
-        ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
-        ctx.strokeStyle = '#c41e3a';
-        ctx.lineWidth = 2;
-        
-        // Left crease
-        ctx.beginPath();
-        ctx.arc(w * 0.02, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
-        ctx.fill();
-        ctx.stroke();
-        
-        // Right crease
-        ctx.beginPath();
-        ctx.arc(w * 0.98, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
-        ctx.fill();
-        ctx.stroke();
-        
-        // Draw diagram objects if available
-        if (diagramData && diagramData.length > 0) {
-            // Scale factor for thumbnail - original drill designer canvas is 800x400
-            const DRILL_DESIGNER_WIDTH = 800;
-            const DRILL_DESIGNER_HEIGHT = 400;
-            const scaleX = w / DRILL_DESIGNER_WIDTH;
-            const scaleY = h / DRILL_DESIGNER_HEIGHT;
+        // Function to render the thumbnail
+        function renderThumbnail(logoImage, logoLoaded) {
+            // Draw ice background
+            ctx.fillStyle = '#f0f7fa';
+            ctx.fillRect(0, 0, w, h);
             
-            diagramData.forEach(obj => {
-                const x = (obj.x || 0) * scaleX;
-                const y = (obj.y || 0) * scaleY;
+            // Draw center branding (logo image or text fallback)
+            ctx.save();
+            ctx.globalAlpha = 0.12;
+            
+            if (logoLoaded && logoImage) {
+                // Draw logo image centered on ice
+                const maxLogoWidth = w * 0.35;
+                const maxLogoHeight = h * 0.3;
                 
-                if (obj.type === 'player') {
-                    // Draw player circle
-                    ctx.fillStyle = obj.color || '#00bfff';
-                    ctx.beginPath();
-                    ctx.arc(x, y, 8, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
+                // Calculate scaled dimensions maintaining aspect ratio
+                const imgAspect = logoImage.width / logoImage.height;
+                let logoWidth = maxLogoWidth;
+                let logoHeight = logoWidth / imgAspect;
+                
+                if (logoHeight > maxLogoHeight) {
+                    logoHeight = maxLogoHeight;
+                    logoWidth = logoHeight * imgAspect;
+                }
+                
+                const logoX = (w - logoWidth) / 2;
+                const logoY = (h - logoHeight) / 2;
+                
+                ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+            } else {
+                // Fallback to text branding
+                ctx.fillStyle = '#7000a4';
+                ctx.font = 'bold 24px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('ARCTIC WOLVES', w/2, h/2);
+            }
+            ctx.restore();
+            
+            // Draw basic rink markings
+            // Center line
+            ctx.strokeStyle = '#c41e3a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(w/2, 0);
+            ctx.lineTo(w/2, h);
+            ctx.stroke();
+            
+            // Blue lines
+            ctx.strokeStyle = '#0033a0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.25, 0);
+            ctx.lineTo(w * 0.25, h);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(w * 0.75, 0);
+            ctx.lineTo(w * 0.75, h);
+            ctx.stroke();
+            
+            // Center circle
+            ctx.beginPath();
+            ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Center dot
+            ctx.fillStyle = '#0033a0';
+            ctx.beginPath();
+            ctx.arc(w/2, h/2, 3, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Faceoff circles
+            ctx.strokeStyle = '#c41e3a';
+            const faceoffRadius = Math.min(w, h) * 0.08;
+            const circles = [
+                { x: w * 0.15, y: h * 0.3 },
+                { x: w * 0.15, y: h * 0.7 },
+                { x: w * 0.85, y: h * 0.3 },
+                { x: w * 0.85, y: h * 0.7 }
+            ];
+            circles.forEach(circle => {
+                ctx.beginPath();
+                ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+            });
+            
+            // Goal creases
+            const creaseRadius = Math.min(w, h) * 0.06;
+            ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+            ctx.strokeStyle = '#c41e3a';
+            ctx.lineWidth = 2;
+            
+            // Left crease
+            ctx.beginPath();
+            ctx.arc(w * 0.02, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Right crease
+            ctx.beginPath();
+            ctx.arc(w * 0.98, h * 0.5, creaseRadius, Math.PI/2, -Math.PI/2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Draw diagram objects if available
+            if (diagramData && diagramData.length > 0) {
+                // Scale factor for thumbnail using source dimensions
+                const scaleX = w / sourceWidth;
+                const scaleY = h / sourceHeight;
+                
+                diagramData.forEach(obj => {
+                    const x = (obj.x || 0) * scaleX;
+                    const y = (obj.y || 0) * scaleY;
                     
-                    // Draw label
-                    if (obj.label) {
-                        ctx.fillStyle = '#fff';
-                        ctx.font = 'bold 6px Inter, sans-serif';
+                    if (obj.type === 'player') {
+                        // Draw player circle
+                        ctx.fillStyle = obj.color || '#00bfff';
+                        ctx.beginPath();
+                        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        
+                        // Draw label
+                        if (obj.label) {
+                            ctx.fillStyle = '#fff';
+                            ctx.font = 'bold 6px Inter, sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(obj.label, x, y);
+                        }
+                    } else if (obj.type === 'cone') {
+                        ctx.fillStyle = obj.color || '#ff6b00';
+                        ctx.beginPath();
+                        ctx.moveTo(x, y - 8);
+                        ctx.lineTo(x - 5, y + 5);
+                        ctx.lineTo(x + 5, y + 5);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (obj.type === 'puck') {
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                        ctx.fill();
+                    } else if (obj.type === 'line') {
+                        ctx.strokeStyle = obj.color || '#333';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
+                        ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                        ctx.stroke();
+                    } else if (obj.type === 'arrow') {
+                        const x1 = (obj.x1 || 0) * scaleX;
+                        const y1 = (obj.y1 || 0) * scaleY;
+                        const x2 = (obj.x2 || 0) * scaleX;
+                        const y2 = (obj.y2 || 0) * scaleY;
+                        const headlen = 6;
+                        const angle = Math.atan2(y2 - y1, x2 - x1);
+                        
+                        ctx.strokeStyle = obj.color || '#333';
+                        ctx.fillStyle = obj.color || '#333';
+                        ctx.lineWidth = 1;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1);
+                        ctx.lineTo(x2, y2);
+                        ctx.stroke();
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(x2, y2);
+                        ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+                        ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (obj.type === 'dashed') {
+                        ctx.strokeStyle = obj.color || '#333';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([4, 3]);
+                        ctx.beginPath();
+                        ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
+                        ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    } else if (obj.type === 'squiggly' || obj.type === 'freehand') {
+                        ctx.strokeStyle = obj.color || '#333';
+                        ctx.lineWidth = 1;
+                        if (obj.points && obj.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.points[0].x * scaleX, obj.points[0].y * scaleY);
+                            for (let i = 1; i < obj.points.length; i++) {
+                                ctx.lineTo(obj.points[i].x * scaleX, obj.points[i].y * scaleY);
+                            }
+                            ctx.stroke();
+                        } else if (obj.x1 !== undefined) {
+                            ctx.beginPath();
+                            ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
+                            ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
+                            ctx.stroke();
+                        }
+                    } else if (obj.type === 'net' || obj.type === 'mininet') {
+                        const netWidth = obj.type === 'mininet' ? 20 : 30;
+                        const netDepth = obj.type === 'mininet' ? 8 : 10;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.strokeStyle = obj.color || '#c41e3a';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.rect(x - netWidth/2, y - netDepth/2, netWidth, netDepth);
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (obj.type === 'text') {
+                        ctx.fillStyle = obj.color || '#333';
+                        ctx.font = 'bold 8px Inter, sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(obj.label, x, y);
+                        ctx.fillText(obj.text || '', x, y);
                     }
-                } else if (obj.type === 'cone') {
-                    ctx.fillStyle = obj.color || '#ff6b00';
-                    ctx.beginPath();
-                    ctx.moveTo(x, y - 8);
-                    ctx.lineTo(x - 5, y + 5);
-                    ctx.lineTo(x + 5, y + 5);
-                    ctx.closePath();
-                    ctx.fill();
-                } else if (obj.type === 'puck') {
-                    ctx.fillStyle = '#000';
-                    ctx.beginPath();
-                    ctx.arc(x, y, 4, 0, 2 * Math.PI);
-                    ctx.fill();
-                } else if (obj.type === 'line') {
-                    ctx.strokeStyle = '#333';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo((obj.x1 || 0) * scaleX, (obj.y1 || 0) * scaleY);
-                    ctx.lineTo((obj.x2 || 0) * scaleX, (obj.y2 || 0) * scaleY);
-                    ctx.stroke();
-                } else if (obj.type === 'arrow') {
-                    const x1 = (obj.x1 || 0) * scaleX;
-                    const y1 = (obj.y1 || 0) * scaleY;
-                    const x2 = (obj.x2 || 0) * scaleX;
-                    const y2 = (obj.y2 || 0) * scaleY;
-                    const headlen = 6;
-                    const angle = Math.atan2(y2 - y1, x2 - x1);
-                    
-                    ctx.strokeStyle = '#333';
-                    ctx.fillStyle = '#333';
-                    ctx.lineWidth = 1;
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
-                    ctx.stroke();
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(x2, y2);
-                    ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
-                    ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
-                    ctx.closePath();
-                    ctx.fill();
-                }
-            });
+                });
+            }
+            
+            // Draw rink border
+            ctx.strokeStyle = '#0033a0';
+            ctx.lineWidth = 2;
+            const cornerRadius = Math.min(w, h) * 0.08;
+            ctx.beginPath();
+            ctx.moveTo(cornerRadius, 0);
+            ctx.lineTo(w - cornerRadius, 0);
+            ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+            ctx.lineTo(w, h - cornerRadius);
+            ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+            ctx.lineTo(cornerRadius, h);
+            ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+            ctx.lineTo(0, cornerRadius);
+            ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
+            ctx.closePath();
+            ctx.stroke();
         }
         
-        // Draw rink border
-        ctx.strokeStyle = '#0033a0';
-        ctx.lineWidth = 2;
-        const cornerRadius = Math.min(w, h) * 0.08;
-        ctx.beginPath();
-        ctx.moveTo(cornerRadius, 0);
-        ctx.lineTo(w - cornerRadius, 0);
-        ctx.quadraticCurveTo(w, 0, w, cornerRadius);
-        ctx.lineTo(w, h - cornerRadius);
-        ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
-        ctx.lineTo(cornerRadius, h);
-        ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
-        ctx.lineTo(0, cornerRadius);
-        ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
-        ctx.closePath();
-        ctx.stroke();
+        // Load center logo if URL provided, then render
+        if (centerLogoUrl) {
+            const logoImage = new Image();
+            logoImage.crossOrigin = 'anonymous';
+            logoImage.onload = function() {
+                renderThumbnail(logoImage, true);
+            };
+            logoImage.onerror = function() {
+                renderThumbnail(null, false);
+            };
+            logoImage.src = centerLogoUrl;
+        } else {
+            renderThumbnail(null, false);
+        }
     });
 }
 </script>

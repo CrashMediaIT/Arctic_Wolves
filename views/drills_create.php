@@ -760,6 +760,25 @@ if ($editDrillId) {
         justify-content: center;
     }
 }
+
+/* Form validation error styles */
+.input-error {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.field-error {
+    color: #EF4444;
+    font-size: 12px;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.field-error i {
+    font-size: 12px;
+}
 </style>
 
 <script>
@@ -787,11 +806,79 @@ function showNotification(message, type = 'info') {
 
 // Drill form submission handler
 function submitDrillForm() {
+    const form = document.querySelector('.drill-form');
+    
+    // Validate required fields before submission
+    const drillName = form.querySelector('input[name="drill_name"]');
+    const category = form.querySelector('select[name="category"]');
+    const skillLevel = form.querySelector('select[name="skill_level"]');
+    const description = form.querySelector('textarea[name="description"]');
+    
+    let isValid = true;
+    let firstInvalidField = null;
+    
+    // Clear previous error states
+    form.querySelectorAll('.field-error').forEach(el => el.remove());
+    form.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+    
+    // Validate drill name
+    if (!drillName || !drillName.value.trim()) {
+        isValid = false;
+        showFieldError(drillName, 'Drill name is required');
+        if (!firstInvalidField) firstInvalidField = drillName;
+    }
+    
+    // Validate category
+    if (!category || !category.value) {
+        isValid = false;
+        showFieldError(category, 'Category is required');
+        if (!firstInvalidField) firstInvalidField = category;
+    }
+    
+    // Validate skill level
+    if (!skillLevel || !skillLevel.value) {
+        isValid = false;
+        showFieldError(skillLevel, 'Skill level is required');
+        if (!firstInvalidField) firstInvalidField = skillLevel;
+    }
+    
+    // Validate description
+    if (!description || !description.value.trim()) {
+        isValid = false;
+        showFieldError(description, 'Description is required');
+        if (!firstInvalidField) firstInvalidField = description;
+    }
+    
+    if (!isValid) {
+        showNotification('Please fill in all required fields before creating the drill.', 'error');
+        if (firstInvalidField) {
+            firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstInvalidField.focus();
+        }
+        return false;
+    }
+    
     // Get diagram data if drill designer is available
     if (window.drillDesigner) {
         document.getElementById('diagram_data').value = window.drillDesigner.getDiagramData();
     }
-    document.querySelector('.drill-form').submit();
+    
+    form.submit();
+    return true;
+}
+
+// Show field-level validation error
+function showFieldError(field, message) {
+    if (!field) return;
+    
+    field.classList.add('input-error');
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'field-error';
+    errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + message;
+    
+    // Insert error message after the field
+    field.parentNode.insertBefore(errorDiv, field.nextSibling);
 }
 
 // Save draft functionality
