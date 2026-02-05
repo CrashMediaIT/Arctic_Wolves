@@ -749,30 +749,76 @@ function renderAllCanvases() {
     });
 }
 
+// NHL/Hockey Canada Rink Proportions (200 ft × 85 ft rink)
+const NHL_RINK = {
+    GOAL_LINE: 11 / 200,
+    BLUE_LINE: 64 / 200,
+    FACEOFF_RADIUS: 15 / 85,
+    CENTER_CIRCLE_RADIUS: 15 / 85,
+    CREASE_RADIUS: 6 / 85,
+    FACEOFF_FROM_GOAL: 20 / 200,
+    FACEOFF_FROM_BOARDS: 22 / 85,
+    CORNER_RADIUS: 28 / 85
+};
+
 function renderDrillCanvas(canvas, diagramDataStr) {
     const container = canvas.parentElement;
     canvas.width = container.offsetWidth || 600;
-    canvas.height = 350;
+    canvas.height = container.offsetHeight || 350;
     
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
     
-    // Draw ice rink
-    drawRink(ctx, w, h);
+    // Parse diagram data - handle both old format (array) and new format (object with dimensions)
+    let diagramData = [];
+    let sourceWidth = 800;  // Default fallback
+    let sourceHeight = 400; // Default fallback
+    let iceView = 'full';   // Default ice view
     
-    // Draw diagram objects
     try {
-        const objects = JSON.parse(diagramDataStr);
-        if (Array.isArray(objects)) {
-            objects.forEach(obj => drawObject(ctx, obj));
+        const parsed = JSON.parse(diagramDataStr);
+        
+        if (Array.isArray(parsed)) {
+            // Old format - just an array of objects
+            diagramData = parsed;
+        } else if (parsed && parsed.objects && Array.isArray(parsed.objects)) {
+            // New format with canvas dimensions
+            diagramData = parsed.objects;
+            sourceWidth = parsed.canvasWidth || 800;
+            sourceHeight = parsed.canvasHeight || 400;
+            if (parsed.iceView) {
+                iceView = parsed.iceView;
+            }
         }
     } catch (e) {
         console.log('Error parsing diagram data:', e);
+        diagramData = [];
     }
+    
+    // Draw ice rink
+    drawRink(ctx, w, h, iceView);
+    
+    // Draw diagram objects with proper uniform scaling
+    if (diagramData.length > 0) {
+        const scaleX = w / sourceWidth;
+        const scaleY = h / sourceHeight;
+        const uniformScale = Math.min(scaleX, scaleY);
+        
+        // Calculate offset to center content
+        const offsetX = (w - sourceWidth * uniformScale) / 2;
+        const offsetY = (h - sourceHeight * uniformScale) / 2;
+        
+        diagramData.forEach(obj => {
+            drawScaledObject(ctx, obj, uniformScale, offsetX, offsetY);
+        });
+    }
+    
+    // Draw rink border
+    drawRinkBorder(ctx, w, h, iceView);
 }
 
-function drawRink(ctx, w, h) {
+function drawRink(ctx, w, h, iceView) {
     // Ice background
     ctx.fillStyle = '#f0f7fa';
     ctx.fillRect(0, 0, w, h);
@@ -796,18 +842,24 @@ function drawRink(ctx, w, h) {
         ctx.drawImage(centerLogoImage, (w - logoWidth) / 2, (h - logoHeight) / 2, logoWidth, logoHeight);
     } else {
         ctx.fillStyle = '#7000a4';
-        ctx.font = 'bold 36px Inter, sans-serif';
+        ctx.font = 'bold 28px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('ARCTIC WOLVES', w/2, h/2 - 12);
-        ctx.font = '18px Inter, sans-serif';
-        ctx.fillText('HOCKEY', w/2, h/2 + 18);
+        ctx.fillText('ARCTIC WOLVES', w/2, h/2 - 10);
+        ctx.font = '14px Inter, sans-serif';
+        ctx.fillText('HOCKEY', w/2, h/2 + 14);
     }
     ctx.restore();
     
+    // Use NHL proportions
+    const blueLinePos = NHL_RINK.BLUE_LINE;
+    const goalLinePos = NHL_RINK.GOAL_LINE;
+    const faceoffFromGoal = goalLinePos + NHL_RINK.FACEOFF_FROM_GOAL;
+    const faceoffFromBoards = NHL_RINK.FACEOFF_FROM_BOARDS;
+    
     // Center line
     ctx.strokeStyle = '#c41e3a';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(w/2, 0);
     ctx.lineTo(w/2, h);
@@ -815,183 +867,473 @@ function drawRink(ctx, w, h) {
     
     // Blue lines
     ctx.strokeStyle = '#0033a0';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(w * 0.25, 0);
-    ctx.lineTo(w * 0.25, h);
+    ctx.moveTo(w * blueLinePos, 0);
+    ctx.lineTo(w * blueLinePos, h);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(w * 0.75, 0);
-    ctx.lineTo(w * 0.75, h);
+    ctx.moveTo(w * (1 - blueLinePos), 0);
+    ctx.lineTo(w * (1 - blueLinePos), h);
     ctx.stroke();
     
     // Center circle
-    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(w/2, h/2, Math.min(w, h) * 0.12, 0, 2 * Math.PI);
+    ctx.arc(w/2, h/2, h * NHL_RINK.CENTER_CIRCLE_RADIUS, 0, 2 * Math.PI);
     ctx.stroke();
     
-    // Rink border
-    const cornerRadius = Math.min(w, h) * 0.08;
-    ctx.lineWidth = 4;
+    // Center dot
+    ctx.fillStyle = '#0033a0';
     ctx.beginPath();
-    ctx.moveTo(cornerRadius + 2, 2);
-    ctx.lineTo(w - cornerRadius - 2, 2);
-    ctx.quadraticCurveTo(w - 2, 2, w - 2, cornerRadius + 2);
-    ctx.lineTo(w - 2, h - cornerRadius - 2);
-    ctx.quadraticCurveTo(w - 2, h - 2, w - cornerRadius - 2, h - 2);
-    ctx.lineTo(cornerRadius + 2, h - 2);
-    ctx.quadraticCurveTo(2, h - 2, 2, h - cornerRadius - 2);
-    ctx.lineTo(2, cornerRadius + 2);
-    ctx.quadraticCurveTo(2, 2, cornerRadius + 2, 2);
+    ctx.arc(w/2, h/2, 4, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Faceoff circles
+    ctx.strokeStyle = '#c41e3a';
+    const faceoffRadius = h * NHL_RINK.FACEOFF_RADIUS;
+    const circles = [
+        { x: w * faceoffFromGoal, y: h * faceoffFromBoards },
+        { x: w * faceoffFromGoal, y: h * (1 - faceoffFromBoards) },
+        { x: w * (1 - faceoffFromGoal), y: h * faceoffFromBoards },
+        { x: w * (1 - faceoffFromGoal), y: h * (1 - faceoffFromBoards) }
+    ];
+    circles.forEach(circle => {
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, faceoffRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = '#c41e3a';
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+    });
+    
+    // Goal creases
+    const creaseRadius = h * NHL_RINK.CREASE_RADIUS;
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.4)';
+    ctx.strokeStyle = '#c41e3a';
+    ctx.lineWidth = 2;
+    
+    // Left crease
+    ctx.beginPath();
+    ctx.arc(w * goalLinePos, h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Right crease
+    ctx.beginPath();
+    ctx.arc(w * (1 - goalLinePos), h * 0.5, creaseRadius, -Math.PI/2, Math.PI/2, true);
+    ctx.fill();
+    ctx.stroke();
+}
+
+function drawRinkBorder(ctx, w, h, iceView) {
+    ctx.strokeStyle = '#0033a0';
+    ctx.lineWidth = 3;
+    const cornerRadius = h * NHL_RINK.CORNER_RADIUS;
+    
+    ctx.beginPath();
+    ctx.moveTo(cornerRadius, 0);
+    ctx.lineTo(w - cornerRadius, 0);
+    ctx.quadraticCurveTo(w, 0, w, cornerRadius);
+    ctx.lineTo(w, h - cornerRadius);
+    ctx.quadraticCurveTo(w, h, w - cornerRadius, h);
+    ctx.lineTo(cornerRadius, h);
+    ctx.quadraticCurveTo(0, h, 0, h - cornerRadius);
+    ctx.lineTo(0, cornerRadius);
+    ctx.quadraticCurveTo(0, 0, cornerRadius, 0);
     ctx.closePath();
     ctx.stroke();
 }
 
-function drawObject(ctx, obj) {
+function drawScaledObject(ctx, obj, uniformScale, offsetX, offsetY) {
+    const x = (obj.x || 0) * uniformScale + offsetX;
+    const y = (obj.y || 0) * uniformScale + offsetY;
+    
     ctx.save();
     
     if (obj.type === 'player') {
-        ctx.translate(obj.x, obj.y);
+        ctx.translate(x, y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.fillStyle = obj.color || '#00bfff';
         ctx.beginPath();
-        ctx.arc(0, 0, 14, 0, 2 * Math.PI);
+        ctx.arc(0, 0, 14 * uniformScale, 0, 2 * Math.PI);
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.stroke();
         if (obj.label) {
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 10px Inter, sans-serif';
+            ctx.font = 'bold ' + Math.round(10 * uniformScale) + 'px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(obj.label, 0, 0);
         }
     } else if (obj.type === 'cone') {
-        ctx.translate(obj.x, obj.y);
+        ctx.translate(x, y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.fillStyle = obj.color || '#ff6b00';
+        const size = 15 * uniformScale;
         ctx.beginPath();
-        ctx.moveTo(0, -15);
-        ctx.lineTo(-10, 10);
-        ctx.lineTo(10, 10);
+        ctx.moveTo(0, -size);
+        ctx.lineTo(-size * 0.67, size * 0.67);
+        ctx.lineTo(size * 0.67, size * 0.67);
         ctx.closePath();
         ctx.fill();
     } else if (obj.type === 'puck') {
         ctx.fillStyle = obj.color || '#000';
         ctx.beginPath();
-        ctx.arc(obj.x, obj.y, 8, 0, 2 * Math.PI);
+        ctx.arc(x, y, 8 * uniformScale, 0, 2 * Math.PI);
         ctx.fill();
-    } else if (obj.type === 'line') {
+    } else if (obj.type === 'line' || obj.type === 'freehand') {
         ctx.strokeStyle = obj.color || '#333';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(obj.x1, obj.y1);
-        ctx.lineTo(obj.x2, obj.y2);
-        ctx.stroke();
-    } else if (obj.type === 'dashed') {
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo((obj.x1 || 0) * uniformScale + offsetX, (obj.y1 || 0) * uniformScale + offsetY);
+            ctx.lineTo((obj.x2 || 0) * uniformScale + offsetX, (obj.y2 || 0) * uniformScale + offsetY);
+            ctx.stroke();
+        }
+    } else if (obj.type === 'dashed' || obj.type === 'freehand_dashed') {
         ctx.strokeStyle = obj.color || '#333';
         ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
         ctx.setLineDash([8, 5]);
-        ctx.beginPath();
-        ctx.moveTo(obj.x1, obj.y1);
-        ctx.lineTo(obj.x2, obj.y2);
-        ctx.stroke();
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo((obj.x1 || 0) * uniformScale + offsetX, (obj.y1 || 0) * uniformScale + offsetY);
+            ctx.lineTo((obj.x2 || 0) * uniformScale + offsetX, (obj.y2 || 0) * uniformScale + offsetY);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
     } else if (obj.type === 'squiggly') {
         ctx.strokeStyle = obj.color || '#333';
         ctx.lineWidth = 2;
-        const dx = obj.x2 - obj.x1;
-        const dy = obj.y2 - obj.y1;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-        const numWaves = Math.max(2, Math.floor(distance / 15));
-        
-        ctx.translate(obj.x1, obj.y1);
-        ctx.rotate(angle);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        for (let i = 0; i < numWaves; i++) {
-            const segmentEnd = ((i + 1) / numWaves) * distance;
-            const midX = ((i / numWaves) * distance + segmentEnd) / 2;
-            ctx.quadraticCurveTo(midX, (i % 2 === 0 ? 1 : -1) * 6, segmentEnd, 0);
+        ctx.lineCap = 'round';
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            const x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            const y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const numWaves = Math.max(2, Math.floor(distance / 15));
+            
+            ctx.save();
+            ctx.translate(x1, y1);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            for (let i = 0; i < numWaves; i++) {
+                const segmentEnd = ((i + 1) / numWaves) * distance;
+                const midX = ((i / numWaves) * distance + segmentEnd) / 2;
+                ctx.quadraticCurveTo(midX, (i % 2 === 0 ? 1 : -1) * 6, segmentEnd, 0);
+            }
+            ctx.stroke();
+            ctx.restore();
         }
-        ctx.stroke();
-    } else if (obj.type === 'arrow') {
+    } else if (obj.type === 'arrow' || obj.type === 'freehand_arrow') {
         ctx.strokeStyle = obj.color || '#333';
         ctx.fillStyle = obj.color || '#333';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(obj.x1, obj.y1);
-        ctx.lineTo(obj.x2, obj.y2);
-        ctx.stroke();
-        const angle = Math.atan2(obj.y2 - obj.y1, obj.x2 - obj.x1);
-        ctx.beginPath();
-        ctx.moveTo(obj.x2, obj.y2);
-        ctx.lineTo(obj.x2 - 15 * Math.cos(angle - Math.PI/6), obj.y2 - 15 * Math.sin(angle - Math.PI/6));
-        ctx.lineTo(obj.x2 - 15 * Math.cos(angle + Math.PI/6), obj.y2 - 15 * Math.sin(angle + Math.PI/6));
-        ctx.closePath();
-        ctx.fill();
-    } else if (obj.type === 'net') {
-        ctx.translate(obj.x, obj.y);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        let x2, y2, angle;
+        const headlen = 12 * uniformScale;
+        
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+            
+            const last = obj.points[obj.points.length - 1];
+            const secondLast = obj.points[obj.points.length - 2];
+            x2 = last.x * uniformScale + offsetX;
+            y2 = last.y * uniformScale + offsetY;
+            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+        } else if (obj.x1 !== undefined) {
+            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            angle = Math.atan2(y2 - y1, x2 - x1);
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        
+        if (x2 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI/6), y2 - headlen * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI/6), y2 - headlen * Math.sin(angle + Math.PI/6));
+            ctx.closePath();
+            ctx.fill();
+        }
+    } else if (obj.type === 'net' || obj.type === 'mininet') {
+        ctx.translate(x, y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+        const netWidth = (obj.type === 'mininet' ? 30 : 40) * uniformScale;
+        const netDepth = (obj.type === 'mininet' ? 12 : 15) * uniformScale;
         ctx.strokeStyle = obj.color || '#c41e3a';
         ctx.lineWidth = 3;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.beginPath();
-        ctx.moveTo(-20, -15);
-        ctx.lineTo(-25, 15);
-        ctx.lineTo(25, 15);
-        ctx.lineTo(20, -15);
+        ctx.moveTo(-netWidth/2, -netDepth/2);
+        ctx.lineTo(-netWidth/2 - 5 * uniformScale, netDepth/2);
+        ctx.lineTo(netWidth/2 + 5 * uniformScale, netDepth/2);
+        ctx.lineTo(netWidth/2, -netDepth/2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
     } else if (obj.type === 'tire') {
         ctx.strokeStyle = obj.color || '#333';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 6 * uniformScale;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.beginPath();
-        ctx.arc(obj.x, obj.y, 12, 0, 2 * Math.PI);
+        ctx.arc(x, y, 12 * uniformScale, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
     } else if (obj.type === 'stick') {
-        ctx.translate(obj.x, obj.y);
+        ctx.translate(x, y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.strokeStyle = obj.color || '#8B4513';
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 5 * uniformScale;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(0, -22);
-        ctx.lineTo(0, 12);
+        ctx.moveTo(0, -22 * uniformScale);
+        ctx.lineTo(0, 12 * uniformScale);
         ctx.stroke();
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 6 * uniformScale;
         ctx.beginPath();
-        ctx.moveTo(0, 12);
-        ctx.quadraticCurveTo(8, 16, 14, 12);
+        ctx.moveTo(0, 12 * uniformScale);
+        ctx.quadraticCurveTo(8 * uniformScale, 16 * uniformScale, 14 * uniformScale, 12 * uniformScale);
         ctx.stroke();
     } else if (obj.type === 'text') {
-        ctx.translate(obj.x, obj.y);
+        ctx.translate(x, y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.fillStyle = obj.color || '#000';
-        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.font = 'bold ' + Math.round(14 * uniformScale) + 'px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(obj.text, 0, 0);
+        ctx.fillText(obj.text || '', 0, 0);
     } else if (obj.type === 'number') {
-        ctx.translate(obj.x, obj.y);
+        ctx.translate(x, y);
         ctx.rotate((obj.rotation || 0) * Math.PI / 180);
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.arc(0, 0, 14, 0, 2 * Math.PI);
+        ctx.arc(0, 0, 14 * uniformScale, 0, 2 * Math.PI);
         ctx.fill();
         ctx.strokeStyle = obj.color || '#000';
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.fillStyle = obj.color || '#000';
-        ctx.font = 'bold 16px Inter, sans-serif';
+        ctx.font = 'bold ' + Math.round(16 * uniformScale) + 'px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(obj.value, 0, 0);
+        ctx.fillText(obj.value || '', 0, 0);
+    } else if (obj.type === 'freehand_skating' || obj.type === 'skating_forward') {
+        // Skating lines with arrows
+        ctx.strokeStyle = obj.color || '#0033a0';
+        ctx.fillStyle = obj.color || '#0033a0';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        let x2, y2, angle;
+        const headlen = 10 * uniformScale;
+        
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+            
+            const last = obj.points[obj.points.length - 1];
+            const secondLast = obj.points[obj.points.length - 2];
+            x2 = last.x * uniformScale + offsetX;
+            y2 = last.y * uniformScale + offsetY;
+            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+        } else if (obj.x1 !== undefined) {
+            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            angle = Math.atan2(y2 - y1, x2 - x1);
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        
+        if (x2 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+    } else if (obj.type === 'skating_backward') {
+        // Backward skating - dashed with arrow
+        ctx.strokeStyle = obj.color || '#c41e3a';
+        ctx.fillStyle = obj.color || '#c41e3a';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([6, 3]);
+        
+        let x2, y2, angle;
+        const headlen = 10 * uniformScale;
+        
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+            
+            const last = obj.points[obj.points.length - 1];
+            const secondLast = obj.points[obj.points.length - 2];
+            x2 = last.x * uniformScale + offsetX;
+            y2 = last.y * uniformScale + offsetY;
+            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+        } else if (obj.x1 !== undefined) {
+            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            angle = Math.atan2(y2 - y1, x2 - x1);
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        
+        if (x2 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+    } else if (obj.type === 'pass') {
+        // Pass - dashed line
+        ctx.strokeStyle = obj.color || '#0033a0';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([5, 3]);
+        
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+        } else if (obj.x1 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo((obj.x1 || 0) * uniformScale + offsetX, (obj.y1 || 0) * uniformScale + offsetY);
+            ctx.lineTo((obj.x2 || 0) * uniformScale + offsetX, (obj.y2 || 0) * uniformScale + offsetY);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+    } else if (obj.type === 'shot') {
+        // Shot - thick solid with large arrow
+        ctx.strokeStyle = obj.color || '#c41e3a';
+        ctx.fillStyle = obj.color || '#c41e3a';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        
+        let x2, y2, angle;
+        const headlen = 12 * uniformScale;
+        
+        if (obj.points && obj.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(obj.points[0].x * uniformScale + offsetX, obj.points[0].y * uniformScale + offsetY);
+            for (let i = 1; i < obj.points.length; i++) {
+                ctx.lineTo(obj.points[i].x * uniformScale + offsetX, obj.points[i].y * uniformScale + offsetY);
+            }
+            ctx.stroke();
+            
+            const last = obj.points[obj.points.length - 1];
+            const secondLast = obj.points[obj.points.length - 2];
+            x2 = last.x * uniformScale + offsetX;
+            y2 = last.y * uniformScale + offsetY;
+            angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+        } else if (obj.x1 !== undefined) {
+            const x1 = (obj.x1 || 0) * uniformScale + offsetX;
+            const y1 = (obj.y1 || 0) * uniformScale + offsetY;
+            x2 = (obj.x2 || 0) * uniformScale + offsetX;
+            y2 = (obj.y2 || 0) * uniformScale + offsetY;
+            angle = Math.atan2(y2 - y1, x2 - x1);
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        
+        if (x2 !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 5), y2 - headlen * Math.sin(angle - Math.PI / 5));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 5), y2 - headlen * Math.sin(angle + Math.PI / 5));
+            ctx.closePath();
+            ctx.fill();
+        }
+    } else if (obj.type === 'pucks') {
+        // Group of pucks
+        ctx.fillStyle = '#000';
+        const puckSize = 4 * uniformScale;
+        const positions = [
+            {x: -4 * uniformScale, y: -4 * uniformScale}, 
+            {x: 4 * uniformScale, y: -4 * uniformScale},
+            {x: -4 * uniformScale, y: 4 * uniformScale}, 
+            {x: 4 * uniformScale, y: 4 * uniformScale}, 
+            {x: 0, y: 0}
+        ];
+        positions.forEach(pos => {
+            ctx.beginPath();
+            ctx.arc(x + pos.x, y + pos.y, puckSize, 0, 2 * Math.PI);
+            ctx.fill();
+        });
     }
     
     ctx.restore();
