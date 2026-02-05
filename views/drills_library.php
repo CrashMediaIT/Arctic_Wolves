@@ -1121,7 +1121,9 @@ function renderDrillThumbnails() {
 }
 
 // Helper function to draw hash marks around faceoff circles in thumbnails
-function drawThumbnailHashMarks(ctx, cx, cy, radius) {
+// netPosition: 'horizontal' (nets on left/right, hash marks on top/bottom)
+//              'vertical' (nets on top/bottom, hash marks on left/right)
+function drawThumbnailHashMarks(ctx, cx, cy, radius, netPosition) {
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 1;
     ctx.lineCap = 'round';
@@ -1132,25 +1134,45 @@ function drawThumbnailHashMarks(ctx, cx, cy, radius) {
     const gapOutsideCircle = radius * 0.05;
     const startDistance = radius + gapOutsideCircle;
     
-    // Hash marks on TOP and BOTTOM of circle
-    const sides = [-1, 1]; // -1 = top, 1 = bottom
+    const sides = [-1, 1];
     
-    sides.forEach(function(side) {
-        const startY = cy + side * startDistance;
-        const endY = startY + side * hashLength;
-        
-        // Left hash mark
-        ctx.beginPath();
-        ctx.moveTo(cx - hashSpacing / 2, startY);
-        ctx.lineTo(cx - hashSpacing / 2, endY);
-        ctx.stroke();
-        
-        // Right hash mark
-        ctx.beginPath();
-        ctx.moveTo(cx + hashSpacing / 2, startY);
-        ctx.lineTo(cx + hashSpacing / 2, endY);
-        ctx.stroke();
-    });
+    if (netPosition === 'vertical') {
+        // Nets on top/bottom - hash marks on LEFT and RIGHT of circle (horizontal lines)
+        sides.forEach(function(side) {
+            const startX = cx + side * startDistance;
+            const endX = startX + side * hashLength;
+            
+            // Top hash mark
+            ctx.beginPath();
+            ctx.moveTo(startX, cy - hashSpacing / 2);
+            ctx.lineTo(endX, cy - hashSpacing / 2);
+            ctx.stroke();
+            
+            // Bottom hash mark
+            ctx.beginPath();
+            ctx.moveTo(startX, cy + hashSpacing / 2);
+            ctx.lineTo(endX, cy + hashSpacing / 2);
+            ctx.stroke();
+        });
+    } else {
+        // Nets on left/right (default) - hash marks on TOP and BOTTOM of circle (vertical lines)
+        sides.forEach(function(side) {
+            const startY = cy + side * startDistance;
+            const endY = startY + side * hashLength;
+            
+            // Left hash mark
+            ctx.beginPath();
+            ctx.moveTo(cx - hashSpacing / 2, startY);
+            ctx.lineTo(cx - hashSpacing / 2, endY);
+            ctx.stroke();
+            
+            // Right hash mark
+            ctx.beginPath();
+            ctx.moveTo(cx + hashSpacing / 2, startY);
+            ctx.lineTo(cx + hashSpacing / 2, endY);
+            ctx.stroke();
+        });
+    }
 }
 
 // Draw full ice view for thumbnails
@@ -1206,8 +1228,8 @@ function drawThumbnailFullIce(ctx, w, h) {
         ctx.arc(circle.x, circle.y, 2, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Draw hash marks around faceoff circles
-        drawThumbnailHashMarks(ctx, circle.x, circle.y, faceoffRadius);
+        // Draw hash marks around faceoff circles (nets on left/right)
+        drawThumbnailHashMarks(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
     });
     
     // Goal creases
@@ -1260,7 +1282,7 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     ctx.beginPath();
     ctx.arc(w * 0.3, faceoffY, 2, 0, 2 * Math.PI);
     ctx.fill();
-    drawThumbnailHashMarks(ctx, w * 0.3, faceoffY, faceoffRadius);
+    drawThumbnailHashMarks(ctx, w * 0.3, faceoffY, faceoffRadius, 'vertical');
     
     // Right faceoff circle
     ctx.beginPath();
@@ -1269,7 +1291,7 @@ function drawThumbnailHalfIce(ctx, w, h, side) {
     ctx.beginPath();
     ctx.arc(w * 0.7, faceoffY, 2, 0, 2 * Math.PI);
     ctx.fill();
-    drawThumbnailHashMarks(ctx, w * 0.7, faceoffY, faceoffRadius);
+    drawThumbnailHashMarks(ctx, w * 0.7, faceoffY, faceoffRadius, 'vertical');
     
     // Goal crease - proper semicircle
     const creaseRadius = Math.min(w, h) * 0.08;
@@ -1321,7 +1343,7 @@ function drawThumbnailZone(ctx, w, h, side) {
     ctx.beginPath();
     ctx.arc(centerX, h * 0.3, 2, 0, 2 * Math.PI);
     ctx.fill();
-    drawThumbnailHashMarks(ctx, centerX, h * 0.3, faceoffRadius);
+    drawThumbnailHashMarks(ctx, centerX, h * 0.3, faceoffRadius, 'horizontal');
     
     // Bottom faceoff circle
     ctx.beginPath();
@@ -1330,7 +1352,7 @@ function drawThumbnailZone(ctx, w, h, side) {
     ctx.beginPath();
     ctx.arc(centerX, h * 0.7, 2, 0, 2 * Math.PI);
     ctx.fill();
-    drawThumbnailHashMarks(ctx, centerX, h * 0.7, faceoffRadius);
+    drawThumbnailHashMarks(ctx, centerX, h * 0.7, faceoffRadius, 'horizontal');
     
     // Goal crease - proper semicircle
     const creaseRadius = Math.min(w, h) * 0.08;

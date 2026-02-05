@@ -680,8 +680,8 @@ function drawFullIceView(ctx, w, h) {
         ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Draw NHL-style hash marks
-        drawHashMarksForCircle(ctx, circle.x, circle.y, faceoffRadius);
+        // Draw NHL-style hash marks (nets on left/right)
+        drawHashMarksForCircle(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
     });
 }
 
@@ -715,7 +715,7 @@ function drawHalfIceView(ctx, w, h, side) {
     ctx.beginPath();
     ctx.arc(w * 0.3, faceoffY, 4, 0, 2 * Math.PI);
     ctx.fill();
-    drawHashMarksForCircle(ctx, w * 0.3, faceoffY, faceoffRadius);
+    drawHashMarksForCircle(ctx, w * 0.3, faceoffY, faceoffRadius, 'vertical');
     
     // Right faceoff circle  
     ctx.beginPath();
@@ -724,7 +724,7 @@ function drawHalfIceView(ctx, w, h, side) {
     ctx.beginPath();
     ctx.arc(w * 0.7, faceoffY, 4, 0, 2 * Math.PI);
     ctx.fill();
-    drawHashMarksForCircle(ctx, w * 0.7, faceoffY, faceoffRadius);
+    drawHashMarksForCircle(ctx, w * 0.7, faceoffY, faceoffRadius, 'vertical');
     
     // Goal crease - proper semicircle
     const creaseRadius = Math.min(w, h) * 0.1;
@@ -775,7 +775,7 @@ function drawZoneView(ctx, w, h, side) {
     ctx.beginPath();
     ctx.arc(centerX, h * 0.3, 4, 0, 2 * Math.PI);
     ctx.fill();
-    drawHashMarksForCircle(ctx, centerX, h * 0.3, faceoffRadius);
+    drawHashMarksForCircle(ctx, centerX, h * 0.3, faceoffRadius, 'horizontal');
     
     // Bottom faceoff circle
     ctx.beginPath();
@@ -784,7 +784,7 @@ function drawZoneView(ctx, w, h, side) {
     ctx.beginPath();
     ctx.arc(centerX, h * 0.7, 4, 0, 2 * Math.PI);
     ctx.fill();
-    drawHashMarksForCircle(ctx, centerX, h * 0.7, faceoffRadius);
+    drawHashMarksForCircle(ctx, centerX, h * 0.7, faceoffRadius, 'horizontal');
     
     // Goal crease - proper semicircle
     const creaseRadius = Math.min(w, h) * 0.1;
@@ -812,7 +812,9 @@ function drawZoneView(ctx, w, h, side) {
 }
 
 // Helper function to draw NHL hash marks around faceoff circles
-function drawHashMarksForCircle(ctx, cx, cy, radius) {
+// netPosition: 'horizontal' (nets on left/right, hash marks on top/bottom)
+//              'vertical' (nets on top/bottom, hash marks on left/right)
+function drawHashMarksForCircle(ctx, cx, cy, radius, netPosition) {
     ctx.strokeStyle = '#c41e3a';
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
@@ -823,25 +825,45 @@ function drawHashMarksForCircle(ctx, cx, cy, radius) {
     const gapOutsideCircle = radius * 0.05;
     const startDistance = radius + gapOutsideCircle;
     
-    // Hash marks on TOP and BOTTOM of circle
-    const sides = [-1, 1]; // -1 = top, 1 = bottom
+    const sides = [-1, 1];
     
-    sides.forEach(function(side) {
-        const startY = cy + side * startDistance;
-        const endY = startY + side * hashLength;
-        
-        // Left hash mark
-        ctx.beginPath();
-        ctx.moveTo(cx - hashSpacing / 2, startY);
-        ctx.lineTo(cx - hashSpacing / 2, endY);
-        ctx.stroke();
-        
-        // Right hash mark
-        ctx.beginPath();
-        ctx.moveTo(cx + hashSpacing / 2, startY);
-        ctx.lineTo(cx + hashSpacing / 2, endY);
-        ctx.stroke();
-    });
+    if (netPosition === 'vertical') {
+        // Nets on top/bottom - hash marks on LEFT and RIGHT of circle (horizontal lines)
+        sides.forEach(function(side) {
+            const startX = cx + side * startDistance;
+            const endX = startX + side * hashLength;
+            
+            // Top hash mark
+            ctx.beginPath();
+            ctx.moveTo(startX, cy - hashSpacing / 2);
+            ctx.lineTo(endX, cy - hashSpacing / 2);
+            ctx.stroke();
+            
+            // Bottom hash mark
+            ctx.beginPath();
+            ctx.moveTo(startX, cy + hashSpacing / 2);
+            ctx.lineTo(endX, cy + hashSpacing / 2);
+            ctx.stroke();
+        });
+    } else {
+        // Nets on left/right (default) - hash marks on TOP and BOTTOM of circle (vertical lines)
+        sides.forEach(function(side) {
+            const startY = cy + side * startDistance;
+            const endY = startY + side * hashLength;
+            
+            // Left hash mark
+            ctx.beginPath();
+            ctx.moveTo(cx - hashSpacing / 2, startY);
+            ctx.lineTo(cx - hashSpacing / 2, endY);
+            ctx.stroke();
+            
+            // Right hash mark
+            ctx.beginPath();
+            ctx.moveTo(cx + hashSpacing / 2, startY);
+            ctx.lineTo(cx + hashSpacing / 2, endY);
+            ctx.stroke();
+        });
+    }
 }
 
 function drawObject(ctx, obj) {

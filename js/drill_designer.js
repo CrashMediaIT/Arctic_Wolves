@@ -965,8 +965,8 @@ class DrillDesigner {
             ctx.arc(circle.x, circle.y, 4, 0, 2 * Math.PI);
             ctx.fill();
             
-            // Draw hash marks around faceoff circles
-            this.drawHashMarks(ctx, circle.x, circle.y, faceoffRadius);
+            // Draw hash marks around faceoff circles (nets on left/right)
+            this.drawHashMarks(ctx, circle.x, circle.y, faceoffRadius, 'horizontal');
         });
         
         // Goal creases (proper semicircle shape)
@@ -1028,8 +1028,10 @@ class DrillDesigner {
     // - Two 2-foot parallel red lines on each side of the faceoff circle (4 total per circle)
     // - Lines are 3 feet apart (horizontal distance between hash marks in each pair)
     // - Hash marks are 2 feet long
-    // - Hash marks positioned just outside the circle edge on TOP and BOTTOM (nets are at top/bottom)
-    drawHashMarks(ctx, cx, cy, radius) {
+    // - Hash marks positioned perpendicular to the goal line
+    // netPosition: 'horizontal' (nets on left/right, hash marks on top/bottom)
+    //              'vertical' (nets on top/bottom, hash marks on left/right)
+    drawHashMarks(ctx, cx, cy, radius, netPosition) {
         ctx.strokeStyle = '#c41e3a';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
@@ -1046,28 +1048,45 @@ class DrillDesigner {
         // Hash marks start just outside the circle edge
         const startDistance = radius + gapOutsideCircle;
         
-        // Hash marks on TOP and BOTTOM of circle (nets are at top and bottom of rink)
-        // Each side has 2 vertical lines, 3 feet apart horizontally
-        const sides = [-1, 1]; // -1 = top, 1 = bottom
+        const sides = [-1, 1];
         
-        sides.forEach(side => {
-            // Hash marks are positioned near the center of the circle horizontally
-            // with one line to the left of center and one to the right, separated by 3 feet
-            const startY = cy + side * startDistance;
-            const endY = startY + side * hashLength;
-            
-            // Left hash mark
-            ctx.beginPath();
-            ctx.moveTo(cx - hashSpacing / 2, startY);
-            ctx.lineTo(cx - hashSpacing / 2, endY);
-            ctx.stroke();
-            
-            // Right hash mark
-            ctx.beginPath();
-            ctx.moveTo(cx + hashSpacing / 2, startY);
-            ctx.lineTo(cx + hashSpacing / 2, endY);
-            ctx.stroke();
-        });
+        if (netPosition === 'vertical') {
+            // Nets on top/bottom - hash marks on LEFT and RIGHT of circle (horizontal lines)
+            sides.forEach(side => {
+                const startX = cx + side * startDistance;
+                const endX = startX + side * hashLength;
+                
+                // Top hash mark
+                ctx.beginPath();
+                ctx.moveTo(startX, cy - hashSpacing / 2);
+                ctx.lineTo(endX, cy - hashSpacing / 2);
+                ctx.stroke();
+                
+                // Bottom hash mark
+                ctx.beginPath();
+                ctx.moveTo(startX, cy + hashSpacing / 2);
+                ctx.lineTo(endX, cy + hashSpacing / 2);
+                ctx.stroke();
+            });
+        } else {
+            // Nets on left/right (default) - hash marks on TOP and BOTTOM of circle (vertical lines)
+            sides.forEach(side => {
+                const startY = cy + side * startDistance;
+                const endY = startY + side * hashLength;
+                
+                // Left hash mark
+                ctx.beginPath();
+                ctx.moveTo(cx - hashSpacing / 2, startY);
+                ctx.lineTo(cx - hashSpacing / 2, endY);
+                ctx.stroke();
+                
+                // Right hash mark
+                ctx.beginPath();
+                ctx.moveTo(cx + hashSpacing / 2, startY);
+                ctx.lineTo(cx + hashSpacing / 2, endY);
+                ctx.stroke();
+            });
+        }
     }
     
     drawHalfIce(ctx, w, h, side) {
@@ -1100,7 +1119,7 @@ class DrillDesigner {
         ctx.beginPath();
         ctx.arc(w * 0.3, faceoffY, 4, 0, 2 * Math.PI);
         ctx.fill();
-        this.drawHashMarks(ctx, w * 0.3, faceoffY, faceoffRadius);
+        this.drawHashMarks(ctx, w * 0.3, faceoffY, faceoffRadius, 'vertical');
         
         // Right faceoff circle  
         ctx.beginPath();
@@ -1109,7 +1128,7 @@ class DrillDesigner {
         ctx.beginPath();
         ctx.arc(w * 0.7, faceoffY, 4, 0, 2 * Math.PI);
         ctx.fill();
-        this.drawHashMarks(ctx, w * 0.7, faceoffY, faceoffRadius);
+        this.drawHashMarks(ctx, w * 0.7, faceoffY, faceoffRadius, 'vertical');
         
         // Goal crease - proper semicircle
         const creaseRadius = Math.min(w, h) * 0.1;
@@ -1160,7 +1179,7 @@ class DrillDesigner {
         ctx.beginPath();
         ctx.arc(centerX, h * 0.3, 4, 0, 2 * Math.PI);
         ctx.fill();
-        this.drawHashMarks(ctx, centerX, h * 0.3, faceoffRadius);
+        this.drawHashMarks(ctx, centerX, h * 0.3, faceoffRadius, 'horizontal');
         
         // Bottom faceoff circle
         ctx.beginPath();
@@ -1169,7 +1188,7 @@ class DrillDesigner {
         ctx.beginPath();
         ctx.arc(centerX, h * 0.7, 4, 0, 2 * Math.PI);
         ctx.fill();
-        this.drawHashMarks(ctx, centerX, h * 0.7, faceoffRadius);
+        this.drawHashMarks(ctx, centerX, h * 0.7, faceoffRadius, 'horizontal');
         
         // Goal crease - proper semicircle
         const creaseRadius = Math.min(w, h) * 0.1;
