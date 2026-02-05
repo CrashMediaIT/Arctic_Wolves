@@ -160,13 +160,29 @@ function testDocuSealConnection($settings) {
  * 
  * @param PDO $pdo Database connection
  * @param array $settings DocuSeal settings
- * @return array List of templates
+ * @return array List of templates with 'id' and 'name' keys
  */
 function listDocuSealTemplates($pdo, $settings) {
     $result = docuSealApiRequest($settings, '/templates', 'GET');
     
     if ($result['success']) {
-        return $result['data'] ?? [];
+        $data = $result['data'] ?? [];
+        
+        // Handle paginated response format where templates might be in 'data' key
+        if (isset($data['data']) && is_array($data['data'])) {
+            $data = $data['data'];
+        }
+        
+        // Filter to only include valid templates with 'id' and 'name' keys
+        // This prevents errors when the API returns unexpected data structures
+        $validTemplates = [];
+        foreach ($data as $template) {
+            if (is_array($template) && isset($template['id']) && isset($template['name'])) {
+                $validTemplates[] = $template;
+            }
+        }
+        
+        return $validTemplates;
     }
     
     error_log("Failed to list DocuSeal templates: " . $result['message']);

@@ -353,9 +353,11 @@ $statusColors = [
                     <select name="docuseal_template_id" id="docuseal-template" class="form-input" required>
                         <option value="">-- Select DocuSeal Template --</option>
                         <?php foreach ($docuseal_templates as $dsTemplate): ?>
+                        <?php if (isset($dsTemplate['id']) && isset($dsTemplate['name'])): ?>
                         <option value="<?= $dsTemplate['id'] ?>">
                             <?= htmlspecialchars($dsTemplate['name']) ?>
                         </option>
+                        <?php endif; ?>
                         <?php endforeach; ?>
                     </select>
                     <small style="color: var(--text-secondary); margin-top: 4px; display: block;">
