@@ -1400,7 +1400,8 @@ function drawObject(ctx, obj, scale) {
             const dy = obj.y2 - obj.y1;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx);
-            const numWaves = Math.max(2, Math.floor(distance / (15 * scale)));
+            // Number of waves based on unscaled distance, only wave height is scaled
+            const numWaves = Math.max(2, Math.floor(distance / 15));
             
             ctx.translate(obj.x1, obj.y1);
             ctx.rotate(angle);
@@ -1771,7 +1772,8 @@ function drawLateralSkating(ctx, obj, scale) {
         const distance = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
         const perpAngle = angle + Math.PI / 2;
-        const segments = Math.max(4, Math.floor(distance / (20 * scale)));
+        // Number of segments based on unscaled distance, only zigzag height is scaled
+        const segments = Math.max(4, Math.floor(distance / 20));
         const zigzagHeight = 8 * scale;
         
         ctx.beginPath();
@@ -1817,7 +1819,8 @@ function drawCCutsSkating(ctx, obj, scale) {
         const dy = obj.y2 - obj.y1;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
-        const numCuts = Math.max(3, Math.floor(distance / (30 * scale)));
+        // Number of cuts based on unscaled distance, only cut height is scaled
+        const numCuts = Math.max(3, Math.floor(distance / 30));
         const cutWidth = distance / numCuts;
         const cutHeight = 12 * scale;
         
