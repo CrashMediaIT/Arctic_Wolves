@@ -1063,20 +1063,8 @@ input:checked + .toggle-slider:before {
                 
                 <div class="form-row athlete-coach-fields" style="display: none;">
                     <div class="form-group" style="grid-column: span 2;">
-                        <label class="form-label">Assign Coaches <small>(Hold Ctrl/Cmd to select multiple)</small></label>
-                        <select name="assigned_coach_ids[]" class="form-input" multiple size="5" style="min-height: 120px;">
-                            <?php foreach ($coaches as $coach): 
-                                $roleLabel = '';
-                                switch($coach['role']) {
-                                    case 'admin': $roleLabel = ' (Admin)'; break;
-                                    case 'health_coach': $roleLabel = ' (Health Coach)'; break;
-                                    case 'team_coach': $roleLabel = ' (Team Coach)'; break;
-                                    case 'coach': $roleLabel = ' (Coach)'; break;
-                                }
-                            ?>
-                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name'] . $roleLabel); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label">Assign Coaches</label>
+                        <div id="add-user-coach-typeahead"></div>
                     </div>
                 </div>
                 
@@ -1176,20 +1164,8 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                 
                 <div class="form-row edit-athlete-coach-fields" style="display: none;">
                     <div class="form-group" style="grid-column: span 2;">
-                        <label class="form-label">Assign Coaches <small>(Hold Ctrl/Cmd to select multiple)</small></label>
-                        <select name="assigned_coach_ids[]" id="edit-user-coach-ids" class="form-input" multiple size="5" style="min-height: 120px;">
-                            <?php foreach ($coaches as $coach): 
-                                $roleLabel = '';
-                                switch($coach['role']) {
-                                    case 'admin': $roleLabel = ' (Admin)'; break;
-                                    case 'health_coach': $roleLabel = ' (Health Coach)'; break;
-                                    case 'team_coach': $roleLabel = ' (Team Coach)'; break;
-                                    case 'coach': $roleLabel = ' (Coach)'; break;
-                                }
-                            ?>
-                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name'] . $roleLabel); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label">Assign Coaches</label>
+                        <div id="edit-user-coach-typeahead"></div>
                     </div>
                 </div>
                 
@@ -1249,6 +1225,27 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
             if (coachId) {
                 var opt = coachSelect.querySelector('option[value="' + coachId + '"]');
                 if (opt) opt.selected = true;
+            }
+        }
+        
+        // Pre-populate edit coach typeahead
+        if (window._editCoachTypeahead) {
+            window._editCoachTypeahead.clear();
+            if (role === 'athlete') {
+                var coachAssignments = window._athleteCoachAssignments || {};
+                var coachNames = window._coachNamesMap || {};
+                var assignedCoachIds = coachAssignments[id] || [];
+                // Fallback: use primary coach_id from the data attribute
+                if (assignedCoachIds.length === 0 && coachId) {
+                    assignedCoachIds = [parseInt(coachId)];
+                }
+                var preItems = [];
+                assignedCoachIds.forEach(function(cid) {
+                    if (coachNames[cid]) {
+                        preItems.push({ id: cid, name: coachNames[cid].name, role: coachNames[cid].role });
+                    }
+                });
+                window._editCoachTypeahead.setPreSelected(preItems);
             }
         }
         
@@ -1530,20 +1527,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="hidden" name="user_id" class="manage-form-user-id" value="">
                     
                     <div class="form-group">
-                        <label class="form-label">Assigned Coaches <small>(Hold Ctrl/Cmd to select multiple)</small></label>
-                        <select name="assigned_coach_ids[]" class="form-input" id="manage-coach-select" multiple size="5" style="min-height: 120px;">
-                            <?php foreach ($coaches as $coach): 
-                                $roleLabel = '';
-                                switch($coach['role']) {
-                                    case 'admin': $roleLabel = ' (Admin)'; break;
-                                    case 'health_coach': $roleLabel = ' (Health Coach)'; break;
-                                    case 'team_coach': $roleLabel = ' (Team Coach)'; break;
-                                    case 'coach': $roleLabel = ' (Coach)'; break;
-                                }
-                            ?>
-                                <option value="<?php echo $coach['id']; ?>"><?php echo htmlspecialchars($coach['name'] . $roleLabel); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label">Assigned Coaches</label>
+                        <div id="manage-coach-typeahead"></div>
                     </div>
                     
                     <div class="form-group">
@@ -1663,9 +1648,23 @@ document.querySelectorAll('[data-action="manage-user"]').forEach(function(btn) {
         document.querySelectorAll('.manage-form-user-id').forEach(function(el) { el.value = userId; });
         document.querySelector('.manage-user-name').textContent = userName;
         
-        // Set coach dropdown if available
-        var coachSelect = document.getElementById('manage-coach-select');
-        if (coachSelect && coachId) coachSelect.value = coachId;
+        // Set coach typeahead if available
+        if (window._manageCoachTypeahead) {
+            window._manageCoachTypeahead.clear();
+            var coachAssignments = window._athleteCoachAssignments || {};
+            var coachNames = window._coachNamesMap || {};
+            var assignedCoachIds = coachAssignments[userId] || [];
+            if (assignedCoachIds.length === 0 && coachId) {
+                assignedCoachIds = [parseInt(coachId)];
+            }
+            var preItems = [];
+            assignedCoachIds.forEach(function(cid) {
+                if (coachNames[cid]) {
+                    preItems.push({ id: cid, name: coachNames[cid].name, role: coachNames[cid].role });
+                }
+            });
+            window._manageCoachTypeahead.setPreSelected(preItems);
+        }
         
         // Reset to first tab
         document.querySelectorAll('.management-tab').forEach(function(t) { t.classList.remove('active'); });
@@ -1789,5 +1788,48 @@ document.getElementById('notifications-form').addEventListener('submit', functio
         console.error('Error:', error);
         showNotification('An error occurred. Please try again.', 'error');
     });
+});
+</script>
+<script>
+// Build coach name map and athlete-coach assignments for pre-populating typeaheads
+window._coachNamesMap = <?php
+    $coachMap = [];
+    foreach ($coaches as $c) {
+        $roleLabel = '';
+        switch($c['role']) {
+            case 'admin': $roleLabel = 'Admin'; break;
+            case 'health_coach': $roleLabel = 'Health Coach'; break;
+            case 'team_coach': $roleLabel = 'Team Coach'; break;
+            case 'coach': $roleLabel = 'Coach'; break;
+        }
+        $coachMap[$c['id']] = ['name' => $c['name'], 'role' => $roleLabel];
+    }
+    echo json_encode($coachMap);
+?>;
+window._athleteCoachAssignments = <?= json_encode($athlete_coaches_map) ?>;
+
+// Initialize coach typeaheads
+window._addCoachTypeahead = new ArcticTypeahead({
+    container: '#add-user-coach-typeahead',
+    name: 'assigned_coach_ids',
+    placeholder: 'Search for coaches…',
+    roles: 'admin,coach,team_coach,health_coach',
+    multiple: true
+});
+
+window._editCoachTypeahead = new ArcticTypeahead({
+    container: '#edit-user-coach-typeahead',
+    name: 'assigned_coach_ids',
+    placeholder: 'Search for coaches…',
+    roles: 'admin,coach,team_coach,health_coach',
+    multiple: true
+});
+
+window._manageCoachTypeahead = new ArcticTypeahead({
+    container: '#manage-coach-typeahead',
+    name: 'assigned_coach_ids',
+    placeholder: 'Search for coaches…',
+    roles: 'admin,coach,team_coach,health_coach',
+    multiple: true
 });
 </script>

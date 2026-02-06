@@ -209,14 +209,7 @@ $is_demo_sessions = false;
                         </div>
                         <div class="form-group">
                             <label>Coach <span class="required">*</span></label>
-                            <select name="coach_id" class="form-input" required data-field="coach-select">
-                                <option value="">-- Select Coach --</option>
-                                <?php foreach ($coaches as $coach): ?>
-                                    <option value="<?= $coach['id'] ?>">
-                                        <?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div id="coach-typeahead-container"></div>
                         </div>
                     </div>
 
@@ -1655,4 +1648,15 @@ function showBookingNotification(message, type = 'info') {
         setTimeout(() => alertDiv.remove(), 300);
     }, 4500);
 }
+</script>
+<script>
+// Initialize coach typeahead for private session booking
+new ArcticTypeahead({
+    container: '#coach-typeahead-container',
+    name: 'coach_id',
+    placeholder: 'Search for a coach…',
+    roles: 'coach,admin',
+    multiple: false,
+    required: true
+});
 </script>
