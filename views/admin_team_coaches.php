@@ -639,7 +639,7 @@ foreach ($team_seasons as $ts) {
 <script>
 // Split team_season_combo value into separate hidden fields
 document.getElementById('team_season_combo')?.addEventListener('change', function() {
-    var parts = this.value.split('|');
+    const parts = this.value.split('|');
     document.getElementById('roster_team_id').value = parts[0] || '';
     document.getElementById('roster_season_id').value = parts[1] || '';
 });

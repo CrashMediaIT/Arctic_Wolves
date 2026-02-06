@@ -4,7 +4,7 @@
 -- Add season_id to team_coach_assignments if not exists
 ALTER TABLE `team_coach_assignments`
     ADD COLUMN IF NOT EXISTS `season_id` INT DEFAULT NULL AFTER `coach_id`,
-    ADD CONSTRAINT `fk_tca_season` FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE CASCADE;
+    ADD CONSTRAINT `fk_tca_season` FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE SET NULL;
 
 -- Rename assigned_date to assigned_at if the old column exists
 -- MySQL doesn't support IF EXISTS for CHANGE COLUMN, so we use a safe approach
