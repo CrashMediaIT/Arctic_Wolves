@@ -71,6 +71,7 @@ try {
             case 'health_coach': $roleLabel = 'Health Coach'; break;
             case 'athlete': $roleLabel = 'Athlete'; break;
             case 'parent': $roleLabel = 'Parent'; break;
+            case 'front_desk_staff': $roleLabel = 'Front Desk'; break;
         }
         return [
             'id'    => (int) $u['id'],
