@@ -1263,9 +1263,10 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
 
 // Toggle edit modal athlete fields when role changes
 document.getElementById('edit-user-role').addEventListener('change', function() {
+    var roleValue = this.value;
     document.querySelectorAll('.edit-athlete-coach-fields').forEach(function(el) {
-        el.style.display = this.value === 'athlete' ? 'grid' : 'none';
-    }.bind(this));
+        el.style.display = roleValue === 'athlete' ? 'grid' : 'none';
+    });
 });
 </script>
 
