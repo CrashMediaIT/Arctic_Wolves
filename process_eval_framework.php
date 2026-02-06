@@ -339,6 +339,149 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendResponse(true, 'Scale updated. Note: Custom scales require database schema update for full persistence.');
                 break;
                 
+            case 'save_evaluation':
+                $title = trim($_POST['title'] ?? '');
+                $description = trim($_POST['description'] ?? '');
+                $category_ids = $_POST['category_ids'] ?? [];
+                
+                if (empty($title)) {
+                    throw new Exception('Evaluation title is required');
+                }
+                
+                if (empty($category_ids) || !is_array($category_ids)) {
+                    throw new Exception('Please select at least one category to include');
+                }
+                
+                // Create evaluation template
+                $stmt = $pdo->prepare("
+                    INSERT INTO evaluation_templates (title, description, created_by, created_at)
+                    VALUES (?, ?, ?, NOW())
+                ");
+                $stmt->execute([$title, $description, $user_id]);
+                $template_id = $pdo->lastInsertId();
+                
+                // Link categories to template
+                $insertCat = $pdo->prepare("
+                    INSERT INTO evaluation_template_categories (template_id, category_id, display_order)
+                    VALUES (?, ?, ?)
+                ");
+                foreach ($category_ids as $order => $cat_id) {
+                    $cat_id = intval($cat_id);
+                    if ($cat_id > 0) {
+                        $insertCat->execute([$template_id, $cat_id, intval($order)]);
+                    }
+                }
+                
+                sendResponse(true, 'Evaluation saved successfully', 'admin_eval_framework', ['template_id' => $template_id]);
+                break;
+                
+            case 'update_evaluation':
+                $template_id = intval($_POST['template_id'] ?? 0);
+                $title = trim($_POST['title'] ?? '');
+                $description = trim($_POST['description'] ?? '');
+                $category_ids = $_POST['category_ids'] ?? [];
+                
+                if ($template_id <= 0) {
+                    throw new Exception('Invalid evaluation ID');
+                }
+                
+                if (empty($title)) {
+                    throw new Exception('Evaluation title is required');
+                }
+                
+                // Verify template exists
+                $check = $pdo->prepare("SELECT id FROM evaluation_templates WHERE id = ?");
+                $check->execute([$template_id]);
+                if (!$check->fetch()) {
+                    throw new Exception('Evaluation not found');
+                }
+                
+                // Update template
+                $stmt = $pdo->prepare("
+                    UPDATE evaluation_templates SET title = ?, description = ?, updated_at = NOW() WHERE id = ?
+                ");
+                $stmt->execute([$title, $description, $template_id]);
+                
+                // Replace category associations
+                $pdo->prepare("DELETE FROM evaluation_template_categories WHERE template_id = ?")->execute([$template_id]);
+                
+                if (!empty($category_ids) && is_array($category_ids)) {
+                    $insertCat = $pdo->prepare("
+                        INSERT INTO evaluation_template_categories (template_id, category_id, display_order)
+                        VALUES (?, ?, ?)
+                    ");
+                    foreach ($category_ids as $order => $cat_id) {
+                        $cat_id = intval($cat_id);
+                        if ($cat_id > 0) {
+                            $insertCat->execute([$template_id, $cat_id, intval($order)]);
+                        }
+                    }
+                }
+                
+                sendResponse(true, 'Evaluation updated successfully');
+                break;
+                
+            case 'delete_evaluation':
+                $template_id = intval($_POST['template_id'] ?? 0);
+                
+                if ($template_id <= 0) {
+                    throw new Exception('Invalid evaluation ID');
+                }
+                
+                // Check if template is used in any session evaluations
+                $check = $pdo->prepare("SELECT COUNT(*) as count FROM session_evaluations WHERE template_id = ?");
+                $check->execute([$template_id]);
+                $row = $check->fetch();
+                if ($row && $row['count'] > 0) {
+                    throw new Exception('Cannot delete evaluation that is assigned to sessions. Remove session assignments first.');
+                }
+                
+                $stmt = $pdo->prepare("DELETE FROM evaluation_templates WHERE id = ?");
+                $stmt->execute([$template_id]);
+                
+                sendResponse(true, 'Evaluation deleted successfully');
+                break;
+                
+            case 'assign_to_session':
+                $template_id = intval($_POST['template_id'] ?? 0);
+                $session_id = intval($_POST['session_id'] ?? 0);
+                
+                if ($template_id <= 0 || $session_id <= 0) {
+                    throw new Exception('Please select both an evaluation and a session');
+                }
+                
+                // Verify template exists
+                $check = $pdo->prepare("SELECT id, title FROM evaluation_templates WHERE id = ?");
+                $check->execute([$template_id]);
+                $template = $check->fetch();
+                if (!$template) {
+                    throw new Exception('Evaluation not found');
+                }
+                
+                // Verify session exists
+                $check = $pdo->prepare("SELECT id FROM sessions WHERE id = ?");
+                $check->execute([$session_id]);
+                if (!$check->fetch()) {
+                    throw new Exception('Session not found');
+                }
+                
+                // Check if session already has this evaluation assigned
+                $check = $pdo->prepare("SELECT id FROM session_evaluations WHERE session_id = ? AND template_id = ?");
+                $check->execute([$session_id, $template_id]);
+                if ($check->fetch()) {
+                    throw new Exception('This evaluation is already assigned to that session');
+                }
+                
+                // Create session evaluation linked to template
+                $stmt = $pdo->prepare("
+                    INSERT INTO session_evaluations (session_id, template_id, name, description, status, created_by, created_at)
+                    VALUES (?, ?, ?, ?, 'draft', ?, NOW())
+                ");
+                $stmt->execute([$session_id, $template_id, $template['title'], '', $user_id]);
+                
+                sendResponse(true, 'Evaluation assigned to session successfully');
+                break;
+                
             default:
                 throw new Exception('Invalid action');
         }
@@ -347,6 +490,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         sendResponse(false, $e->getMessage());
     }
     
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $action = $_GET['action'] ?? '';
+    
+    try {
+        switch ($action) {
+            case 'list_evaluations':
+                header('Content-Type: application/json');
+                $stmt = $pdo->prepare("
+                    SELECT et.id, et.title, et.description, et.created_at, et.updated_at,
+                           u.first_name, u.last_name,
+                           GROUP_CONCAT(ec.name ORDER BY etc2.display_order SEPARATOR ', ') as category_names,
+                           (SELECT COUNT(*) FROM session_evaluations se WHERE se.template_id = et.id) as session_count
+                    FROM evaluation_templates et
+                    LEFT JOIN users u ON et.created_by = u.id
+                    LEFT JOIN evaluation_template_categories etc2 ON et.id = etc2.template_id
+                    LEFT JOIN eval_categories ec ON etc2.category_id = ec.id
+                    GROUP BY et.id
+                    ORDER BY et.created_at DESC
+                ");
+                $stmt->execute();
+                $evaluations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                echo json_encode(['success' => true, 'evaluations' => $evaluations]);
+                exit;
+                
+            case 'get_evaluation':
+                header('Content-Type: application/json');
+                $template_id = intval($_GET['template_id'] ?? 0);
+                
+                if ($template_id <= 0) {
+                    throw new Exception('Invalid evaluation ID');
+                }
+                
+                $stmt = $pdo->prepare("SELECT * FROM evaluation_templates WHERE id = ?");
+                $stmt->execute([$template_id]);
+                $template = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$template) {
+                    throw new Exception('Evaluation not found');
+                }
+                
+                // Get associated categories
+                $stmt = $pdo->prepare("
+                    SELECT etc2.category_id, ec.name 
+                    FROM evaluation_template_categories etc2
+                    JOIN eval_categories ec ON etc2.category_id = ec.id
+                    ORDER BY etc2.display_order ASC
+                ");
+                $stmt->execute();
+                $template['categories'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                echo json_encode(['success' => true, 'evaluation' => $template]);
+                exit;
+                
+            case 'get_available_sessions':
+                header('Content-Type: application/json');
+                $stmt = $pdo->prepare("
+                    SELECT s.id, s.title, s.session_date, 
+                           COALESCE(l.name, 'TBD') as location_name
+                    FROM sessions s
+                    LEFT JOIN locations l ON s.location_id = l.id
+                    WHERE s.session_date >= CURDATE()
+                    ORDER BY s.session_date ASC
+                    LIMIT 100
+                ");
+                $stmt->execute();
+                $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                echo json_encode(['success' => true, 'sessions' => $sessions]);
+                exit;
+                
+            default:
+                throw new Exception('Invalid action');
+        }
+    } catch (Exception $e) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
 } else {
     http_response_code(405);
     echo json_encode([
