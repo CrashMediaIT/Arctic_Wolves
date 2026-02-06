@@ -95,10 +95,13 @@ CREATE TABLE IF NOT EXISTS `team_coach_assignments` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `team_id` INT NOT NULL,
     `coach_id` INT NOT NULL,
+    `season_id` INT NOT NULL,
     `role` ENUM('head_coach', 'assistant_coach') DEFAULT 'head_coach',
-    `assigned_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `assigned_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_coach_team_season` (`coach_id`, `team_id`, `season_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Team roster (athlete memberships)
@@ -106,12 +109,25 @@ CREATE TABLE IF NOT EXISTS `team_roster` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `team_id` INT NOT NULL,
     `athlete_id` INT NOT NULL,
+    `season_id` INT DEFAULT NULL,
     `jersey_number` INT DEFAULT NULL,
     `position` VARCHAR(50) DEFAULT NULL,
     `joined_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-    UNIQUE KEY `unique_team_athlete` (`team_id`, `athlete_id`)
+    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_team_athlete_season` (`team_id`, `athlete_id`, `season_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Team-Season junction (allows multiple seasons per team)
+CREATE TABLE IF NOT EXISTS `team_seasons` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `team_id` INT NOT NULL,
+    `season_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_team_season` (`team_id`, `season_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Player positions (standardized position categories)

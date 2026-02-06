@@ -31,10 +31,10 @@ $coaches = $coaches_stmt->fetchAll();
 
 // Get all teams
 $teams_stmt = $pdo->query("
-    SELECT DISTINCT team_name, id
-    FROM athlete_teams 
-    WHERE is_current = 1
-    ORDER BY team_name
+    SELECT id, name, division, season
+    FROM teams 
+    WHERE is_active = 1
+    ORDER BY name
 ");
 $teams = $teams_stmt->fetchAll();
 
@@ -43,15 +43,62 @@ $assignments_stmt = $pdo->query("
     SELECT 
         tca.*,
         u.first_name, u.last_name, u.email,
-        at.team_name,
+        t.name as team_name,
         s.name as season_name, s.is_active
     FROM team_coach_assignments tca
     INNER JOIN users u ON tca.coach_id = u.id
-    INNER JOIN athlete_teams at ON tca.team_id = at.id
+    INNER JOIN teams t ON tca.team_id = t.id
     INNER JOIN seasons s ON tca.season_id = s.id
-    ORDER BY s.is_active DESC, s.start_date DESC, u.last_name, at.team_name
+    ORDER BY s.is_active DESC, s.start_date DESC, u.last_name, t.name
 ");
 $assignments = $assignments_stmt->fetchAll();
+
+// Get team-season associations
+$team_seasons_stmt = $pdo->query("
+    SELECT 
+        ts.*,
+        t.name as team_name, t.division,
+        s.name as season_name, s.is_active as season_active
+    FROM team_seasons ts
+    INNER JOIN teams t ON ts.team_id = t.id
+    INNER JOIN seasons s ON ts.season_id = s.id
+    ORDER BY s.is_active DESC, s.start_date DESC, t.name
+");
+$team_seasons = $team_seasons_stmt->fetchAll();
+
+// Get all athletes for roster assignment
+$athletes_stmt = $pdo->query("
+    SELECT id, first_name, last_name, email
+    FROM users
+    WHERE role = 'athlete'
+    ORDER BY last_name, first_name
+");
+$athletes = $athletes_stmt->fetchAll();
+
+// Get roster entries grouped by team and season
+$roster_stmt = $pdo->query("
+    SELECT 
+        tr.*,
+        u.first_name, u.last_name, u.email,
+        t.name as team_name,
+        s.name as season_name, s.is_active as season_active
+    FROM team_roster tr
+    INNER JOIN users u ON tr.athlete_id = u.id
+    INNER JOIN teams t ON tr.team_id = t.id
+    LEFT JOIN seasons s ON tr.season_id = s.id
+    ORDER BY s.is_active DESC, s.start_date DESC, t.name, u.last_name
+");
+$roster_entries = $roster_stmt->fetchAll();
+
+// Build list of team-season combos that exist (for roster assignment dropdown)
+$team_season_combos = [];
+foreach ($team_seasons as $ts) {
+    $team_season_combos[] = [
+        'team_id' => $ts['team_id'],
+        'season_id' => $ts['season_id'],
+        'label' => $ts['team_name'] . ' — ' . $ts['season_name']
+    ];
+}
 ?>
 
 <style>
@@ -309,7 +356,7 @@ $assignments = $assignments_stmt->fetchAll();
                     <option value="">Select Team</option>
                     <?php foreach ($teams as $team): ?>
                         <option value="<?= $team['id'] ?>">
-                            <?= htmlspecialchars($team['team_name']) ?>
+                            <?= htmlspecialchars($team['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -383,3 +430,217 @@ $assignments = $assignments_stmt->fetchAll();
         </div>
     <?php endif; ?>
 </div>
+
+<!-- Team Seasons Management -->
+<div class="section-card">
+    <h2 class="section-title"><i class="fas fa-layer-group"></i> Team Seasons</h2>
+    <p style="color: #94a3b8; margin-bottom: 20px;">Assign seasons to teams. Each team can participate in multiple seasons.</p>
+    
+    <form method="POST" action="process_admin_team_coaches.php">
+        <?= csrfTokenInput() ?>
+        <input type="hidden" name="action" value="add_team_season">
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Team</label>
+                <select name="team_id" class="form-select" required>
+                    <option value="">Select Team</option>
+                    <?php foreach ($teams as $team): ?>
+                        <option value="<?= $team['id'] ?>">
+                            <?= htmlspecialchars($team['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Season</label>
+                <select name="season_id" class="form-select" required>
+                    <option value="">Select Season</option>
+                    <?php foreach ($seasons as $season): ?>
+                        <option value="<?= $season['id'] ?>" <?= $season['is_active'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($season['name']) ?>
+                            <?= $season['is_active'] ? '(Active)' : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn-primary">
+            <i class="fas fa-plus"></i> Add Season to Team
+        </button>
+    </form>
+    
+    <?php if (!empty($team_seasons)): ?>
+    <div class="table-container" style="margin-top: 24px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Team</th>
+                    <th>Division</th>
+                    <th>Season</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($team_seasons as $ts): ?>
+                <tr>
+                    <td><?= htmlspecialchars($ts['team_name']) ?></td>
+                    <td><?= htmlspecialchars($ts['division'] ?? '—') ?></td>
+                    <td><?= htmlspecialchars($ts['season_name']) ?></td>
+                    <td>
+                        <span class="badge badge-<?= $ts['season_active'] ? 'active' : 'inactive' ?>">
+                            <?= $ts['season_active'] ? 'Active' : 'Inactive' ?>
+                        </span>
+                    </td>
+                    <td>
+                        <form method="POST" action="process_admin_team_coaches.php" style="display: inline;"
+                              onsubmit="return confirm('Remove this season from the team? This will also remove all athlete roster entries for this team/season.');">
+                            <?= csrfTokenInput() ?>
+                            <input type="hidden" name="action" value="remove_team_season">
+                            <input type="hidden" name="team_season_id" value="<?= $ts['id'] ?>">
+                            <button type="submit" class="btn-delete">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php else: ?>
+        <div class="empty-state">
+            <i class="fas fa-layer-group" style="font-size: 48px; opacity: 0.3;"></i>
+            <p>No team-season associations yet. Add seasons to teams above.</p>
+        </div>
+    <?php endif; ?>
+</div>
+
+<!-- Team Roster (Athletes per Team per Season) -->
+<div class="section-card">
+    <h2 class="section-title"><i class="fas fa-running"></i> Team Roster — Assign Athletes</h2>
+    <p style="color: #94a3b8; margin-bottom: 20px;">Assign athletes to teams for specific seasons. Athletes can be on different teams each season.</p>
+    
+    <?php if (!empty($team_season_combos)): ?>
+    <form method="POST" action="process_admin_team_coaches.php">
+        <?= csrfTokenInput() ?>
+        <input type="hidden" name="action" value="add_roster_athlete">
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Team &amp; Season</label>
+                <select name="team_season_combo" class="form-select" required id="team_season_combo">
+                    <option value="">Select Team &amp; Season</option>
+                    <?php foreach ($team_season_combos as $combo): ?>
+                        <option value="<?= $combo['team_id'] ?>|<?= $combo['season_id'] ?>">
+                            <?= htmlspecialchars($combo['label']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <input type="hidden" name="team_id" id="roster_team_id">
+                <input type="hidden" name="season_id" id="roster_season_id">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Athlete</label>
+                <select name="athlete_id" class="form-select" required>
+                    <option value="">Select Athlete</option>
+                    <?php foreach ($athletes as $athlete): ?>
+                        <option value="<?= $athlete['id'] ?>">
+                            <?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?>
+                            (<?= htmlspecialchars($athlete['email']) ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Jersey #</label>
+                <input type="number" name="jersey_number" class="form-input" placeholder="Optional" min="0" max="99">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Position</label>
+                <select name="position" class="form-select">
+                    <option value="">Select Position</option>
+                    <option value="Forward">Forward</option>
+                    <option value="Defense">Defense</option>
+                    <option value="Goalie">Goalie</option>
+                    <option value="Left Wing">Left Wing</option>
+                    <option value="Center">Center</option>
+                    <option value="Right Wing">Right Wing</option>
+                    <option value="Left Defense">Left Defense</option>
+                    <option value="Right Defense">Right Defense</option>
+                </select>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn-primary">
+            <i class="fas fa-user-plus"></i> Add Athlete to Roster
+        </button>
+    </form>
+    <?php else: ?>
+        <div class="empty-state" style="margin-bottom: 24px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 32px; opacity: 0.5; color: #f59e0b;"></i>
+            <p>You must add seasons to teams first before assigning athletes.</p>
+        </div>
+    <?php endif; ?>
+    
+    <?php if (!empty($roster_entries)): ?>
+    <div class="table-container" style="margin-top: 24px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Athlete</th>
+                    <th>Team</th>
+                    <th>Season</th>
+                    <th>Jersey #</th>
+                    <th>Position</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($roster_entries as $entry): ?>
+                <tr>
+                    <td>
+                        <?= htmlspecialchars($entry['first_name'] . ' ' . $entry['last_name']) ?>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                            <?= htmlspecialchars($entry['email']) ?>
+                        </div>
+                    </td>
+                    <td><?= htmlspecialchars($entry['team_name']) ?></td>
+                    <td>
+                        <?= htmlspecialchars($entry['season_name'] ?? '—') ?>
+                        <?php if (!empty($entry['season_active'])): ?>
+                            <span class="badge badge-active" style="margin-left: 5px;">Active</span>
+                        <?php endif; ?>
+                    </td>
+                    <td><?= $entry['jersey_number'] !== null ? htmlspecialchars($entry['jersey_number']) : '—' ?></td>
+                    <td><?= htmlspecialchars($entry['position'] ?? '—') ?></td>
+                    <td>
+                        <form method="POST" action="process_admin_team_coaches.php"
+                              onsubmit="return confirm('Remove this athlete from the roster?');">
+                            <?= csrfTokenInput() ?>
+                            <input type="hidden" name="action" value="remove_roster_athlete">
+                            <input type="hidden" name="roster_id" value="<?= $entry['id'] ?>">
+                            <button type="submit" class="btn-delete">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php else: ?>
+        <div class="empty-state">
+            <i class="fas fa-running" style="font-size: 48px; opacity: 0.3;"></i>
+            <p>No athletes assigned to team rosters yet</p>
+        </div>
+    <?php endif; ?>
+</div>
+
+<script>
+// Split team_season_combo value into separate hidden fields
+document.getElementById('team_season_combo')?.addEventListener('change', function() {
+    const parts = this.value.split('|');
+    document.getElementById('roster_team_id').value = parts[0] || '';
+    document.getElementById('roster_season_id').value = parts[1] || '';
+});
+</script>
