@@ -90,6 +90,19 @@ INSERT INTO `teams` (`name`, `division`, `season`, `is_active`, `is_demo`) VALUE
 ('Arctic Wolves Elite', 'Elite', '2024-2025', 1, 1)
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 
+-- Seasons (must be defined before tables that reference it)
+CREATE TABLE IF NOT EXISTS `seasons` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_dates` (`start_date`, `end_date`),
+    INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Team-Coach assignments
 CREATE TABLE IF NOT EXISTS `team_coach_assignments` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -884,19 +897,6 @@ CREATE TABLE IF NOT EXISTS `athlete_notes` (
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_coach` (`coach_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Seasons (moved before athlete_stats to satisfy foreign key constraint)
-CREATE TABLE IF NOT EXISTS `seasons` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
-    `start_date` DATE NOT NULL,
-    `end_date` DATE NOT NULL,
-    `description` TEXT DEFAULT NULL,
-    `is_active` TINYINT(1) DEFAULT 1,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_dates` (`start_date`, `end_date`),
-    INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Athlete statistics tracking
