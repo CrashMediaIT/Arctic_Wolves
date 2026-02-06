@@ -890,6 +890,7 @@ function switchAthlete(athleteId) {
 </script>
 
 <!-- Main Application JavaScript -->
+<script src="js/typeahead.js"></script>
 <script src="js/app.js"></script>
 
 </body>
