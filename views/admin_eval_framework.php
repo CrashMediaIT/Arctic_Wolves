@@ -1,5 +1,7 @@
 <!-- Admin Evaluation Framework View -->
 <?php
+$activeTab = $_GET['tab'] ?? 'builder';
+
 // Fetch categories and skills from database
 try {
     // Get all categories and their skills in a single query to avoid N+1 problem
@@ -96,6 +98,22 @@ try {
     </div>
 </div>
 
+<!-- Tab Navigation -->
+<div class="page-tabs">
+    <a href="?page=eval_framework&tab=builder" class="page-tab <?php echo $activeTab === 'builder' ? 'active' : ''; ?>">
+        <i class="fas fa-tools"></i> Evaluation Builder
+    </a>
+    <a href="?page=eval_framework&tab=library" class="page-tab <?php echo $activeTab === 'library' ? 'active' : ''; ?>">
+        <i class="fas fa-book"></i> Evaluation Library
+    </a>
+</div>
+
+<div class="page-tab-content">
+
+<?php if ($activeTab === 'builder'): ?>
+<!-- Builder Tab -->
+<div class="tab-content active" id="builder-tab">
+
 <!-- Framework Builder -->
 <div class="card">
     <div class="card-header">
@@ -103,6 +121,9 @@ try {
         <div class="btn-group">
             <a href="?page=categories&tab=skills" class="btn btn-secondary"><i class="fas fa-tags"></i> Manage Skills Library</a>
             <button type="button" class="btn btn-primary" data-action="add" data-modal="add-eval-category-modal"><i class="fas fa-plus"></i> Add Evaluation Category</button>
+            <?php if (!empty($categories)): ?>
+            <button type="button" class="btn btn-success" onclick="openSaveEvaluationModal()"><i class="fas fa-save"></i> Save as Evaluation</button>
+            <?php endif; ?>
         </div>
     </div>
     <div class="card-body">
@@ -186,6 +207,37 @@ try {
         </div>
     </div>
 </div>
+
+</div><!-- /builder-tab -->
+<?php endif; ?>
+
+<?php if ($activeTab === 'library'): ?>
+<!-- Library Tab -->
+<div class="tab-content active" id="library-tab">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-book"></i> Evaluation Library</h3>
+            <span class="badge badge-primary" id="eval-count-badge">Loading...</span>
+        </div>
+        <div class="card-body">
+            <div id="evaluation-library-list">
+                <div class="empty-state-card" id="eval-library-empty" style="display: none;">
+                    <i class="fas fa-book-open"></i>
+                    <h4>No Saved Evaluations</h4>
+                    <p>Go to the <a href="?page=eval_framework&tab=builder">Evaluation Builder</a> tab to create categories and skills, then save them as an evaluation.</p>
+                </div>
+                <div id="eval-library-loading" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: var(--primary-light);"></i>
+                    <p style="color: var(--text-muted); margin-top: 12px;">Loading evaluations...</p>
+                </div>
+                <div class="sessions-list" id="eval-library-items" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div><!-- /library-tab -->
+<?php endif; ?>
+
+</div><!-- /page-tab-content -->
 
 <style>
 /* Eval Framework Enhanced Styles */
@@ -937,6 +989,145 @@ try {
     </div>
 </div>
 
+<!-- Save Evaluation Modal -->
+<div id="save-evaluation-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Save as Evaluation</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('save-evaluation-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php" id="save-evaluation-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="save_evaluation">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Evaluation Title *</label>
+                    <input type="text" name="title" class="form-input" required placeholder="e.g., U12 Skills Assessment">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Describe the purpose of this evaluation..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Categories to Include *</label>
+                    <p class="form-help-text" style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+                        <i class="fas fa-info-circle"></i> Choose which categories (and their skills) to include in this saved evaluation.
+                    </p>
+                    <div class="skills-checkbox-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                        <?php if (empty($categories)): ?>
+                            <p style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 10px;">
+                                No categories available. Create categories first in the builder.
+                            </p>
+                        <?php else: ?>
+                            <?php foreach ($categories as $cat): ?>
+                                <label class="skill-checkbox-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+                                    <input type="checkbox" name="category_ids[]" value="<?php echo $cat['id']; ?>" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                                    <span>
+                                        <strong><?php echo htmlspecialchars($cat['name']); ?></strong>
+                                        <small style="color: var(--text-dim);"> (<?php echo count($skillsByCategory[$cat['id']] ?? []); ?> criteria)</small>
+                                    </span>
+                                </label>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('save-evaluation-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Evaluation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Assign to Session Modal -->
+<div id="assign-to-session-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Assign Evaluation to Session</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('assign-to-session-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php" id="assign-to-session-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="assign_to_session">
+            <input type="hidden" name="template_id" id="assign-session-template-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Evaluation:</label>
+                    <input type="text" id="assign-session-eval-name" class="form-input" readonly style="opacity: 0.7;">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Session *</label>
+                    <select name="session_id" class="form-select" id="assign-session-select" required>
+                        <option value="">Loading sessions...</option>
+                    </select>
+                    <p class="form-help-text" style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+                        <i class="fas fa-info-circle"></i> Only upcoming sessions are shown.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('assign-to-session-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-calendar-plus"></i> Assign to Session</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Evaluation Modal -->
+<div id="edit-evaluation-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Evaluation</h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-evaluation-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_eval_framework.php" id="edit-evaluation-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_evaluation">
+            <input type="hidden" name="template_id" id="edit-eval-template-id">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Evaluation Title *</label>
+                    <input type="text" name="title" id="edit-eval-title" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="edit-eval-description" class="form-textarea" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Categories</label>
+                    <div class="skills-checkbox-list" id="edit-eval-categories" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                        <?php foreach ($categories as $cat): ?>
+                            <label class="skill-checkbox-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+                                <input type="checkbox" name="category_ids[]" value="<?php echo $cat['id']; ?>" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                                <span>
+                                    <strong><?php echo htmlspecialchars($cat['name']); ?></strong>
+                                    <small style="color: var(--text-dim);"> (<?php echo count($skillsByCategory[$cat['id']] ?? []); ?> criteria)</small>
+                                </span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('edit-evaluation-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Evaluation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Include SortableJS library for drag-and-drop -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" 
         integrity="sha256-ipiJrswvAR4VAx/th+6zWsdeYmVae0iJuiR+6OqHJHQ=" 
@@ -1195,4 +1386,216 @@ function closeModal(modalId) {
         if (form) form.reset();
     }
 }
+
+// Open Save Evaluation Modal
+function openSaveEvaluationModal() {
+    var modal = document.getElementById('save-evaluation-modal');
+    if (modal) modal.classList.add('active');
+}
+
+// Evaluation Library Functions
+function loadEvaluationLibrary() {
+    var listEl = document.getElementById('eval-library-items');
+    var loadingEl = document.getElementById('eval-library-loading');
+    var emptyEl = document.getElementById('eval-library-empty');
+    var badgeEl = document.getElementById('eval-count-badge');
+    
+    if (!listEl) return;
+    
+    fetch('process_eval_framework.php?action=list_evaluations', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (loadingEl) loadingEl.style.display = 'none';
+        
+        if (data.success && data.evaluations && data.evaluations.length > 0) {
+            if (badgeEl) badgeEl.textContent = data.evaluations.length + ' evaluations';
+            listEl.style.display = 'flex';
+            listEl.style.flexDirection = 'column';
+            listEl.style.gap = '12px';
+            listEl.innerHTML = '';
+            
+            data.evaluations.forEach(function(ev) {
+                var card = document.createElement('div');
+                card.className = 'card';
+                card.style.marginBottom = '0';
+                
+                var dateStr = ev.created_at ? new Date(ev.created_at).toLocaleDateString() : '';
+                var categoriesStr = ev.category_names || 'No categories';
+                var sessionInfo = ev.session_count > 0 
+                    ? '<span class="badge badge-success" style="font-size: 11px;">' + ev.session_count + ' session(s)</span>'
+                    : '<span class="badge" style="font-size: 11px; background: var(--bg-main); color: var(--text-muted);">Not assigned</span>';
+                
+                card.innerHTML = '<div class="card-body" style="padding: 16px 20px;">' +
+                    '<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">' +
+                        '<div style="flex: 1; min-width: 200px;">' +
+                            '<h4 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 700;">' + escapeHtml(ev.title) + '</h4>' +
+                            '<p style="margin: 0 0 6px 0; font-size: 13px; color: var(--text-muted);">' + escapeHtml(ev.description || '') + '</p>' +
+                            '<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">' +
+                                '<span style="font-size: 12px; color: var(--text-dim);"><i class="fas fa-tags"></i> ' + escapeHtml(categoriesStr) + '</span>' +
+                                '<span style="font-size: 12px; color: var(--text-dim);"><i class="fas fa-calendar"></i> ' + dateStr + '</span>' +
+                                sessionInfo +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="display: flex; gap: 8px;">' +
+                            '<button class="btn btn-primary btn-sm eval-assign-btn" data-eval-id="' + ev.id + '" title="Assign to Session"><i class="fas fa-calendar-plus"></i> Assign to Session</button>' +
+                            '<button class="btn btn-secondary btn-sm eval-edit-btn" data-eval-id="' + ev.id + '" title="Edit"><i class="fas fa-edit"></i></button>' +
+                            '<button class="btn btn-sm eval-delete-btn" style="background: var(--error); color: #fff;" data-eval-id="' + ev.id + '" title="Delete"><i class="fas fa-trash"></i></button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+                
+                // Store title on the card element for later use
+                card.dataset.evalTitle = ev.title;
+                listEl.appendChild(card);
+            });
+            
+            // Attach event listeners using event delegation
+            listEl.addEventListener('click', function(e) {
+                var btn = e.target.closest('.eval-assign-btn, .eval-edit-btn, .eval-delete-btn');
+                if (!btn) return;
+                var evalId = parseInt(btn.dataset.evalId, 10);
+                var evalCard = btn.closest('.card');
+                var evalTitle = evalCard ? evalCard.dataset.evalTitle : '';
+                
+                if (btn.classList.contains('eval-assign-btn')) {
+                    openAssignToSessionModal(evalId, evalTitle);
+                } else if (btn.classList.contains('eval-edit-btn')) {
+                    openEditEvaluationModal(evalId);
+                } else if (btn.classList.contains('eval-delete-btn')) {
+                    deleteEvaluation(evalId, evalTitle);
+                }
+            });
+        } else {
+            if (badgeEl) badgeEl.textContent = '0 evaluations';
+            if (emptyEl) emptyEl.style.display = 'block';
+        }
+    })
+    .catch(function(err) {
+        console.error('Error loading evaluations:', err);
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (emptyEl) {
+            emptyEl.style.display = 'block';
+            emptyEl.querySelector('h4').textContent = 'Error Loading Evaluations';
+            emptyEl.querySelector('p').textContent = 'Could not load saved evaluations. Please try refreshing the page.';
+        }
+    });
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
+function openAssignToSessionModal(templateId, evalName) {
+    document.getElementById('assign-session-template-id').value = templateId;
+    document.getElementById('assign-session-eval-name').value = evalName;
+    
+    // Load available sessions
+    var select = document.getElementById('assign-session-select');
+    select.innerHTML = '<option value="">Loading sessions...</option>';
+    
+    fetch('process_eval_framework.php?action=get_available_sessions', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        select.innerHTML = '<option value="">-- Select a Session --</option>';
+        if (data.success && data.sessions) {
+            data.sessions.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.id;
+                var dateStr = s.session_date ? new Date(s.session_date).toLocaleDateString() : '';
+                opt.textContent = (s.title || 'Session') + ' - ' + dateStr + ' (' + s.location_name + ')';
+                select.appendChild(opt);
+            });
+        }
+        if (select.options.length <= 1) {
+            var opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No upcoming sessions found';
+            opt.disabled = true;
+            select.appendChild(opt);
+        }
+    })
+    .catch(function() {
+        select.innerHTML = '<option value="">Error loading sessions</option>';
+    });
+    
+    var modal = document.getElementById('assign-to-session-modal');
+    if (modal) modal.classList.add('active');
+}
+
+function openEditEvaluationModal(templateId) {
+    fetch('process_eval_framework.php?action=get_evaluation&template_id=' + templateId, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success && data.evaluation) {
+            document.getElementById('edit-eval-template-id').value = data.evaluation.id;
+            document.getElementById('edit-eval-title').value = data.evaluation.title || '';
+            document.getElementById('edit-eval-description').value = data.evaluation.description || '';
+            
+            // Check the right categories
+            var catCheckboxes = document.querySelectorAll('#edit-eval-categories input[type="checkbox"]');
+            var selectedCats = (data.evaluation.categories || []).map(function(c) { return String(c.category_id); });
+            catCheckboxes.forEach(function(cb) {
+                cb.checked = selectedCats.indexOf(cb.value) !== -1;
+            });
+            
+            var modal = document.getElementById('edit-evaluation-modal');
+            if (modal) modal.classList.add('active');
+        }
+    })
+    .catch(function(err) {
+        console.error('Error loading evaluation:', err);
+    });
+}
+
+function deleteEvaluation(templateId, evalName) {
+    if (!confirm('Are you sure you want to delete "' + evalName + '"? This cannot be undone.')) return;
+    
+    var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+    if (!csrfToken) {
+        console.warn('CSRF token not found');
+        alert('Security token not found. Please refresh the page and try again.');
+        return;
+    }
+    var formData = new FormData();
+    formData.append('action', 'delete_evaluation');
+    formData.append('template_id', templateId);
+    formData.append('csrf_token', csrfToken);
+    
+    fetch('process_eval_framework.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var div = document.createElement('div');
+            div.className = 'notification-widget';
+            div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; background: rgba(16, 185, 129, 0.95); color: #fff;';
+            div.innerHTML = '<i class="fas fa-check-circle"></i> ' + (data.message || 'Deleted!');
+            document.body.appendChild(div);
+            setTimeout(function() { if (div.parentElement) div.remove(); }, 3000);
+            loadEvaluationLibrary();
+        } else {
+            alert('Error: ' + (data.message || 'Delete failed'));
+        }
+    })
+    .catch(function() { alert('An error occurred'); });
+}
+
+// Load library on page if on library tab
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('eval-library-items')) {
+        loadEvaluationLibrary();
+    }
+});
 </script>

@@ -3585,3 +3585,36 @@ CREATE TABLE IF NOT EXISTS `hr_complaint_documents` (
 
 -- Add video upload support to drills table
 ALTER TABLE `drills` ADD COLUMN IF NOT EXISTS `video_upload_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to uploaded video file' AFTER `video_url`;
+
+-- =========================================================
+-- Evaluation Templates - Saved evaluation configurations
+-- =========================================================
+
+-- Evaluation Templates - Reusable evaluation configurations with a title
+CREATE TABLE IF NOT EXISTS `evaluation_templates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `created_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Evaluation Template Categories - Which categories/skills belong to a saved evaluation
+CREATE TABLE IF NOT EXISTS `evaluation_template_categories` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `template_id` INT NOT NULL,
+    `category_id` INT NOT NULL,
+    `display_order` INT DEFAULT 0,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`template_id`) REFERENCES `evaluation_templates`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`category_id`) REFERENCES `eval_categories`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_template_category` (`template_id`, `category_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add template_id to session_evaluations to link saved evaluations to sessions
+ALTER TABLE `session_evaluations`
+ADD COLUMN IF NOT EXISTS `template_id` INT DEFAULT NULL COMMENT 'Reference to evaluation template used',
+ADD INDEX IF NOT EXISTS `idx_template` (`template_id`);
