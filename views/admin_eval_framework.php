@@ -1439,14 +1439,33 @@ function loadEvaluationLibrary() {
                             '</div>' +
                         '</div>' +
                         '<div style="display: flex; gap: 8px;">' +
-                            '<button class="btn btn-primary btn-sm" onclick="openAssignToSessionModal(' + ev.id + ', \'' + escapeHtml(ev.title).replace(/'/g, "\\'") + '\')" title="Assign to Session"><i class="fas fa-calendar-plus"></i> Assign to Session</button>' +
-                            '<button class="btn btn-secondary btn-sm" onclick="openEditEvaluationModal(' + ev.id + ')" title="Edit"><i class="fas fa-edit"></i></button>' +
-                            '<button class="btn btn-sm" style="background: var(--error); color: #fff;" onclick="deleteEvaluation(' + ev.id + ', \'' + escapeHtml(ev.title).replace(/'/g, "\\'") + '\')" title="Delete"><i class="fas fa-trash"></i></button>' +
+                            '<button class="btn btn-primary btn-sm eval-assign-btn" data-eval-id="' + ev.id + '" title="Assign to Session"><i class="fas fa-calendar-plus"></i> Assign to Session</button>' +
+                            '<button class="btn btn-secondary btn-sm eval-edit-btn" data-eval-id="' + ev.id + '" title="Edit"><i class="fas fa-edit"></i></button>' +
+                            '<button class="btn btn-sm eval-delete-btn" style="background: var(--error); color: #fff;" data-eval-id="' + ev.id + '" title="Delete"><i class="fas fa-trash"></i></button>' +
                         '</div>' +
                     '</div>' +
                 '</div>';
                 
+                // Store title on the card element for later use
+                card.dataset.evalTitle = ev.title;
                 listEl.appendChild(card);
+            });
+            
+            // Attach event listeners using event delegation
+            listEl.addEventListener('click', function(e) {
+                var btn = e.target.closest('.eval-assign-btn, .eval-edit-btn, .eval-delete-btn');
+                if (!btn) return;
+                var evalId = parseInt(btn.dataset.evalId, 10);
+                var evalCard = btn.closest('.card');
+                var evalTitle = evalCard ? evalCard.dataset.evalTitle : '';
+                
+                if (btn.classList.contains('eval-assign-btn')) {
+                    openAssignToSessionModal(evalId, evalTitle);
+                } else if (btn.classList.contains('eval-edit-btn')) {
+                    openEditEvaluationModal(evalId);
+                } else if (btn.classList.contains('eval-delete-btn')) {
+                    deleteEvaluation(evalId, evalTitle);
+                }
             });
         } else {
             if (badgeEl) badgeEl.textContent = '0 evaluations';
@@ -1541,6 +1560,11 @@ function deleteEvaluation(templateId, evalName) {
     if (!confirm('Are you sure you want to delete "' + evalName + '"? This cannot be undone.')) return;
     
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+    if (!csrfToken) {
+        console.warn('CSRF token not found');
+        alert('Security token not found. Please refresh the page and try again.');
+        return;
+    }
     var formData = new FormData();
     formData.append('action', 'delete_evaluation');
     formData.append('template_id', templateId);

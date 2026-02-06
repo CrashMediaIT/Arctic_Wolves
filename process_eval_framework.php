@@ -536,9 +536,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     SELECT etc2.category_id, ec.name 
                     FROM evaluation_template_categories etc2
                     JOIN eval_categories ec ON etc2.category_id = ec.id
+                    WHERE etc2.template_id = ?
                     ORDER BY etc2.display_order ASC
                 ");
-                $stmt->execute();
+                $stmt->execute([$template_id]);
                 $template['categories'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 echo json_encode(['success' => true, 'evaluation' => $template]);
