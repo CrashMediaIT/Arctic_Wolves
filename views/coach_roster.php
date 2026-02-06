@@ -6,7 +6,7 @@ $filter_age = $_GET['age_group'] ?? 'all';
 
 // Build query for athletes
 $athletes_query = "
-    SELECT u.id, u.first_name, u.last_name, u.email, u.date_of_birth,
+    SELECT u.id, u.first_name, u.last_name, u.email, COALESCE(u.date_of_birth, u.birth_date) as date_of_birth,
            (SELECT COUNT(*) FROM bookings b JOIN sessions s ON b.session_id = s.id WHERE b.user_id = u.id AND s.status = 'completed') as total_sessions,
            (SELECT COUNT(*) FROM user_packages up WHERE up.user_id = u.id) as package_sessions,
            (SELECT MAX(s.session_date) FROM bookings b JOIN sessions s ON b.session_id = s.id WHERE b.user_id = u.id) as last_session,
@@ -169,7 +169,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                     </thead>
                     <tbody>
                         <?php foreach ($athletes as $athlete): 
-                            $age = date_diff(date_create($athlete['date_of_birth']), date_create('today'))->y;
+                            $age = !empty($athlete['date_of_birth']) ? date_diff(date_create($athlete['date_of_birth']), date_create('today'))->y : null;
                             $session_progress = $athlete['package_sessions'] > 0 ? ($athlete['total_sessions'] / $athlete['package_sessions']) * 100 : 0;
                         ?>
                         <tr data-athlete-id="<?= $athlete['id'] ?>">
@@ -184,7 +184,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                                     </div>
                                 </div>
                             </td>
-                            <td><?= $age ?></td>
+                            <td><?= $age !== null ? $age : 'N/A' ?></td>
                             <td><span class="program-badge"><?= htmlspecialchars($athlete['program_name'] ?? 'None') ?></span></td>
                             <td>
                                 <div class="sessions-info">
@@ -212,6 +212,38 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+            </div>
+            <div class="athletes-grid-container" style="display: none;">
+                <div class="athletes-grid">
+                    <?php foreach ($athletes as $athlete): 
+                        $age = !empty($athlete['date_of_birth']) ? date_diff(date_create($athlete['date_of_birth']), date_create('today'))->y : null;
+                        $session_progress = $athlete['package_sessions'] > 0 ? ($athlete['total_sessions'] / $athlete['package_sessions']) * 100 : 0;
+                    ?>
+                    <div class="athlete-grid-card" data-athlete-id="<?= $athlete['id'] ?>">
+                        <div class="athlete-grid-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="athlete-grid-name"><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></div>
+                        <div class="athlete-grid-email"><?= htmlspecialchars($athlete['email']) ?></div>
+                        <div class="athlete-grid-details">
+                            <span class="athlete-grid-age"><?= $age !== null ? $age . ' yrs' : 'N/A' ?></span>
+                            <span class="program-badge"><?= htmlspecialchars($athlete['program_name'] ?? 'None') ?></span>
+                        </div>
+                        <div class="athlete-grid-sessions">
+                            <span class="sessions-count"><?= $athlete['total_sessions'] ?> / <?= $athlete['package_sessions'] ?> sessions</span>
+                            <div class="mini-progress">
+                                <div class="mini-progress-bar" style="width: <?= min($session_progress, 100) ?>%;"></div>
+                            </div>
+                        </div>
+                        <div class="athlete-grid-actions">
+                            <button class="btn-icon" title="View Profile" data-action="view-profile" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-eye"></i></button>
+                            <a href="?page=stats&tab=goals&athlete_id=<?= $athlete['id'] ?>" class="btn-icon" title="Manage Goals"><i class="fas fa-bullseye"></i></a>
+                            <button class="btn-icon" title="Schedule Session" data-action="schedule-session" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-calendar-plus"></i></button>
+                            <button class="btn-icon" title="Message" data-action="message-athlete" data-athlete-id="<?= $athlete['id'] ?>"><i class="fas fa-envelope"></i></button>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
             <?php else: ?>
             <div class="placeholder-container">
@@ -483,4 +515,101 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
     color: var(--text-dim);
     font-size: 14px;
 }
+
+/* Grid View Styles */
+.athletes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 10px 0;
+}
+
+.athlete-grid-card {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s;
+}
+
+.athlete-grid-card:hover {
+    border-color: var(--primary);
+}
+
+.athlete-grid-avatar {
+    width: 60px;
+    height: 60px;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--text-dim);
+}
+
+.athlete-grid-name {
+    font-weight: 700;
+    color: var(--text-white);
+    font-size: 16px;
+}
+
+.athlete-grid-email {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.athlete-grid-details {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.athlete-grid-age {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.athlete-grid-sessions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+}
+
+.athlete-grid-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
 </style>
+
+<script>
+// View toggle for table/grid
+document.querySelectorAll('.view-btn[data-view]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var view = this.getAttribute('data-view');
+        var tableContainer = document.querySelector('.athletes-table-container');
+        var gridContainer = document.querySelector('.athletes-grid-container');
+
+        document.querySelectorAll('.view-btn[data-view]').forEach(function(b) {
+            b.classList.remove('active');
+        });
+        this.classList.add('active');
+
+        if (view === 'grid') {
+            if (tableContainer) tableContainer.style.display = 'none';
+            if (gridContainer) gridContainer.style.display = 'block';
+        } else {
+            if (tableContainer) tableContainer.style.display = 'block';
+            if (gridContainer) gridContainer.style.display = 'none';
+        }
+    });
+});
+</script>

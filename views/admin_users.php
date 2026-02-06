@@ -137,6 +137,30 @@ foreach ($users as $u) {
 }
 ?>
 
+<?php if (isset($_GET['status']) && $_GET['status'] === 'success'): ?>
+<div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+    <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
+    <span style="color: #10b981; font-weight: 600;">User updated successfully!</span>
+    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #10b981; cursor: pointer; font-size: 18px;">&times;</button>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['status']) && $_GET['status'] === 'error'): ?>
+<div class="error-alert" style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+    <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 20px;"></i>
+    <span style="color: #ef4444; font-weight: 600;">
+    <?php
+    $error_messages = [
+        'required_fields' => 'Please fill in all required fields.',
+        'invalid_role' => 'Invalid role selected.'
+    ];
+    echo $error_messages[$_GET['msg'] ?? ''] ?? 'An error occurred. Please try again.';
+    ?>
+    </span>
+    <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;">&times;</button>
+</div>
+<?php endif; ?>
+
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-users-cog"></i> User Management</h1>
@@ -1218,14 +1242,20 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         document.getElementById('edit-user-role').value = role;
         document.getElementById('edit-user-birth-date').value = birthDate || '';
         
-        var coachSelect = document.getElementById('edit-user-coach-id');
-        if (coachSelect) coachSelect.value = coachId || '';
+        var coachSelect = document.getElementById('edit-user-coach-ids');
+        if (coachSelect) {
+            // Clear all selections first
+            Array.from(coachSelect.options).forEach(function(opt) { opt.selected = false; });
+            if (coachId) {
+                var opt = coachSelect.querySelector('option[value="' + coachId + '"]');
+                if (opt) opt.selected = true;
+            }
+        }
         
         // Show/hide athlete coach fields based on role
-        var athleteFields = document.querySelector('.edit-athlete-coach-fields');
-        if (athleteFields) {
-            athleteFields.style.display = role === 'athlete' ? 'grid' : 'none';
-        }
+        document.querySelectorAll('.edit-athlete-coach-fields').forEach(function(el) {
+            el.style.display = role === 'athlete' ? 'grid' : 'none';
+        });
         
         document.getElementById('edit-user-modal').classList.add('active');
     });
@@ -1233,10 +1263,9 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
 
 // Toggle edit modal athlete fields when role changes
 document.getElementById('edit-user-role').addEventListener('change', function() {
-    var athleteFields = document.querySelector('.edit-athlete-coach-fields');
-    if (athleteFields) {
-        athleteFields.style.display = this.value === 'athlete' ? 'grid' : 'none';
-    }
+    document.querySelectorAll('.edit-athlete-coach-fields').forEach(function(el) {
+        el.style.display = this.value === 'athlete' ? 'grid' : 'none';
+    }.bind(this));
 });
 </script>
 

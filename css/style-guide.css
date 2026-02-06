@@ -468,7 +468,7 @@ button:disabled {
     height: 36px;
     border: none;
     background: transparent;
-    color: var(--text-dim);
+    color: var(--text-white);
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: all var(--transition-normal);
