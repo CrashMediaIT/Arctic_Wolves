@@ -34,7 +34,8 @@ $required_tables = [
     'goals',
     'performance_stats',
     'teams',
-    'team_roster'
+    'team_roster',
+    'team_seasons'
 ];
 
 $missing_tables = [];
