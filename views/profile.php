@@ -69,6 +69,22 @@ try {
         }
     }
     
+    // Fetch available team-season combinations for the "Select from Roster" dropdown
+    $rosterTeamOptions = [];
+    try {
+        $rosterStmt = $pdo->query("
+            SELECT ts.team_id, ts.season_id, t.name as team_name, s.name as season_name, s.is_active as season_active
+            FROM team_seasons ts
+            INNER JOIN teams t ON ts.team_id = t.id
+            INNER JOIN seasons s ON ts.season_id = s.id
+            WHERE t.is_active = 1
+            ORDER BY s.is_active DESC, s.start_date DESC, t.name
+        ");
+        $rosterTeamOptions = $rosterStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // team_seasons table may not exist yet
+    }
+    
     // Get performance stats for current team (based on position)
     $performanceStats = [];
     if ($playerData) {
@@ -481,6 +497,65 @@ $errors = [
                 </div>
                 <?php endif; ?>
                 
+                <!-- Select from Roster -->
+                <?php if (!empty($rosterTeamOptions)): ?>
+                <div class="select-roster-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                    <h4 style="margin-bottom: 16px; color: #fff; font-size: 16px;"><i class="fas fa-list-check"></i> Select from Roster</h4>
+                    <p style="color: var(--text-muted, #94a3b8); font-size: 13px; margin-bottom: 16px;">Pick a team and season from the organization's roster.</p>
+                    <form method="POST" action="process_profile_update.php" id="select-roster-team-form">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                        <input type="hidden" name="action" value="add_team_from_roster">
+                        <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                            <div class="form-group">
+                                <label>Team &amp; Season *</label>
+                                <select name="roster_team_season" class="form-select" required>
+                                    <option value="">Select Team &amp; Season</option>
+                                    <?php foreach ($rosterTeamOptions as $opt): ?>
+                                        <option value="<?= $opt['team_id'] ?>|<?= $opt['season_id'] ?>">
+                                            <?= htmlspecialchars($opt['team_name']) ?> — <?= htmlspecialchars($opt['season_name']) ?>
+                                            <?= $opt['season_active'] ? ' (Active)' : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Position *</label>
+                                <select name="roster_position" class="form-select" required>
+                                    <option value="">Select Position</option>
+                                    <optgroup label="Forwards">
+                                        <option value="left_wing">Left Wing</option>
+                                        <option value="center">Center</option>
+                                        <option value="right_wing">Right Wing</option>
+                                        <option value="forward">Forward (General)</option>
+                                    </optgroup>
+                                    <optgroup label="Defense">
+                                        <option value="left_defense">Left Defense</option>
+                                        <option value="right_defense">Right Defense</option>
+                                        <option value="defense">Defense (General)</option>
+                                    </optgroup>
+                                    <optgroup label="Goalie">
+                                        <option value="goalie">Goalie</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px;">
+                            <div class="form-group" style="display: flex; align-items: flex-end;">
+                                <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" name="is_current" value="1">
+                                    <span>This is my current team</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: 16px;">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check"></i> Select Team
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <?php endif; ?>
+
                 <!-- Add New Team Form -->
                 <div class="add-team-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
                     <h4 style="margin-bottom: 16px; color: #fff; font-size: 16px;"><i class="fas fa-plus-circle"></i> Add New Team</h4>

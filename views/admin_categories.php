@@ -37,6 +37,26 @@ $locations = $locations_stmt->fetchAll();
 // Fetch coaches for team assignment dropdown
 $coaches_stmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role IN ('coach', 'team_coach', 'admin') ORDER BY last_name, first_name");
 $coaches = $coaches_stmt->fetchAll();
+
+// Fetch seasons for team assignment
+$seasons_for_teams = [];
+try {
+    $seasons_stmt = $pdo->query("SELECT id, name, start_date, end_date, is_active FROM seasons ORDER BY is_active DESC, start_date DESC");
+    $seasons_for_teams = $seasons_stmt->fetchAll();
+} catch (PDOException $e) {
+    // seasons table may not exist yet
+}
+
+// Fetch team-season associations for display
+$team_season_map = [];
+try {
+    $ts_stmt = $pdo->query("SELECT ts.team_id, ts.season_id, s.name as season_name FROM team_seasons ts INNER JOIN seasons s ON ts.season_id = s.id ORDER BY s.start_date DESC");
+    foreach ($ts_stmt->fetchAll() as $ts_row) {
+        $team_season_map[$ts_row['team_id']][] = ['season_id' => $ts_row['season_id'], 'season_name' => $ts_row['season_name']];
+    }
+} catch (PDOException $e) {
+    // team_seasons table may not exist yet
+}
 ?>
 <!-- Admin Resource Management View -->
 <div class="page-header">
@@ -337,6 +357,13 @@ $coaches = $coaches_stmt->fetchAll();
                             <?php if ($team['division']): ?>
                             <span class="category-tag"><?= htmlspecialchars($team['division']) ?></span>
                             <?php endif; ?>
+                            <?php if (!empty($team_season_map[$team['id']])): ?>
+                                <?php foreach ($team_season_map[$team['id']] as $ts_info): ?>
+                                <span class="category-tag" style="background: rgba(107, 70, 193, 0.2); color: #a78bfa;">
+                                    <i class="fas fa-calendar-alt" style="margin-right: 4px;"></i><?= htmlspecialchars($ts_info['season_name']) ?>
+                                </span>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                             <?php if ($team['session_count'] > 0): ?>
                             <span class="category-tag" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">
                                 <?= $team['session_count'] ?> sessions
@@ -353,6 +380,7 @@ $coaches = $coaches_stmt->fetchAll();
                                     data-skill-level="<?= htmlspecialchars($team['skill_level'] ?? '') ?>"
                                     data-division="<?= htmlspecialchars($team['division'] ?? '') ?>"
                                     data-season="<?= htmlspecialchars($team['season'] ?? '') ?>"
+                                    data-season-ids="<?= htmlspecialchars(implode(',', array_column($team_season_map[$team['id']] ?? [], 'season_id'))) ?>"
                                     data-coach-id="<?= $team['coach_id'] ?? '' ?>"
                                     data-assistant-coach-id="<?= $team['assistant_coach_id'] ?? '' ?>"
                                     data-is-active="<?= $team['is_active'] ?>">
@@ -1058,8 +1086,22 @@ $coaches = $coaches_stmt->fetchAll();
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Season</label>
-                    <input type="text" name="season" class="form-input" placeholder="e.g., 2024-2025">
+                    <label class="form-label">Seasons</label>
+                    <div class="season-checkboxes" style="max-height: 160px; overflow-y: auto; border: 1px solid var(--border, #1e293b); border-radius: 6px; padding: 12px; background: var(--bg-main, #06080b);">
+                        <?php if (!empty($seasons_for_teams)): ?>
+                            <?php foreach ($seasons_for_teams as $s): ?>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; color: #fff; font-size: 14px;">
+                                <input type="checkbox" name="season_ids[]" value="<?= $s['id'] ?>" <?= $s['is_active'] ? 'checked' : '' ?>>
+                                <?= htmlspecialchars($s['name']) ?>
+                                <?php if ($s['is_active']): ?>
+                                    <span style="background: rgba(34,197,94,0.2); color: #22c55e; padding: 2px 6px; border-radius: 4px; font-size: 11px;">Active</span>
+                                <?php endif; ?>
+                            </label>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <p style="color: #64748b; font-size: 13px; margin: 0;">No seasons created yet. Create seasons in Team Coach Management first.</p>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -1145,8 +1187,22 @@ $coaches = $coaches_stmt->fetchAll();
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Season</label>
-                    <input type="text" name="season" id="edit-team-season" class="form-input">
+                    <label class="form-label">Seasons</label>
+                    <div id="edit-team-seasons-container" class="season-checkboxes" style="max-height: 160px; overflow-y: auto; border: 1px solid var(--border, #1e293b); border-radius: 6px; padding: 12px; background: var(--bg-main, #06080b);">
+                        <?php if (!empty($seasons_for_teams)): ?>
+                            <?php foreach ($seasons_for_teams as $s): ?>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; color: #fff; font-size: 14px;">
+                                <input type="checkbox" name="season_ids[]" value="<?= $s['id'] ?>" class="edit-team-season-cb">
+                                <?= htmlspecialchars($s['name']) ?>
+                                <?php if ($s['is_active']): ?>
+                                    <span style="background: rgba(34,197,94,0.2); color: #22c55e; padding: 2px 6px; border-radius: 4px; font-size: 11px;">Active</span>
+                                <?php endif; ?>
+                            </label>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <p style="color: #64748b; font-size: 13px; margin: 0;">No seasons created yet.</p>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -1377,7 +1433,11 @@ $coaches = $coaches_stmt->fetchAll();
                 document.getElementById('edit-team-age-group').value = this.getAttribute('data-age-group') || '';
                 document.getElementById('edit-team-skill-level').value = this.getAttribute('data-skill-level') || '';
                 document.getElementById('edit-team-division').value = this.getAttribute('data-division') || '';
-                document.getElementById('edit-team-season').value = this.getAttribute('data-season') || '';
+                // Populate season checkboxes
+                var seasonIds = (this.getAttribute('data-season-ids') || '').split(',').filter(Boolean);
+                document.querySelectorAll('.edit-team-season-cb').forEach(function(cb) {
+                    cb.checked = seasonIds.indexOf(cb.value) !== -1;
+                });
                 document.getElementById('edit-team-coach-id').value = this.getAttribute('data-coach-id') || '';
                 document.getElementById('edit-team-assistant-coach-id').value = this.getAttribute('data-assistant-coach-id') || '';
                 document.getElementById('edit-team-is-active').value = this.getAttribute('data-is-active') || '1';
