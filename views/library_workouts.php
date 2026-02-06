@@ -1079,12 +1079,8 @@ document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Select Athletes <small>(Hold Ctrl/Cmd to select multiple)</small></label>
-                    <select name="athlete_ids[]" id="assign-athlete-select" class="form-input" multiple size="8" style="min-height: 200px;">
-                        <?php foreach ($allAthletes as $athlete): ?>
-                            <option value="<?= $athlete['id'] ?>"><?= htmlspecialchars($athlete['last_name'] . ', ' . $athlete['first_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label class="form-label">Select Athletes</label>
+                    <div id="workout-athlete-typeahead"></div>
                 </div>
                 
                 <div class="form-group">
@@ -1218,5 +1214,14 @@ document.getElementById('assign-athletes-form').addEventListener('submit', funct
         console.error(err);
         alert('An error occurred. Please try again.');
     });
+});
+</script>
+<script>
+new ArcticTypeahead({
+    container: '#workout-athlete-typeahead',
+    name: 'athlete_ids',
+    placeholder: 'Search for athletes…',
+    roles: 'athlete',
+    multiple: true
 });
 </script>

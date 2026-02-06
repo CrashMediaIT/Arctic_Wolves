@@ -848,14 +848,7 @@ if ($eval_id && $evaluation) {
                         <span>Team Evaluation Mode</span>
                     </label>
                     
-                    <select class="athlete-selector" onchange="switchAthlete(this.value, <?= $eval_id ?>)">
-                        <option value="">Quick Switch Athlete</option>
-                        <?php foreach ($athletes as $ath): ?>
-                            <option value="<?= $ath['id'] ?>" <?= $ath['id'] == $viewing_athlete_id ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($ath['last_name'] . ', ' . $ath['first_name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="athlete-selector" id="eval-detail-athlete-typeahead" style="min-width: 220px;"></div>
                 <?php endif; ?>
                 <a href="?page=evaluations_skills<?= $isCoach && $viewing_athlete_id != $current_user_id ? '&athlete_id=' . $viewing_athlete_id : '' ?><?= $team_mode ? '&team_mode=1' : '' ?>" class="btn-back">
                     <i class="fas fa-arrow-left"></i> Back to List
@@ -1126,14 +1119,7 @@ if ($eval_id && $evaluation) {
             </h1>
             <div class="header-actions">
                 <?php if ($isCoach): ?>
-                    <select class="athlete-selector" onchange="switchAthlete(this.value)">
-                        <option value="">Select Athlete</option>
-                        <?php foreach ($athletes as $ath): ?>
-                            <option value="<?= $ath['id'] ?>" <?= $ath['id'] == $viewing_athlete_id ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($ath['last_name'] . ', ' . $ath['first_name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div id="eval-list-athlete-typeahead" style="min-width: 220px;"></div>
                     <button class="btn-create" onclick="openCreateModal()">
                         <i class="fas fa-plus"></i> New Evaluation
                     </button>
@@ -1199,14 +1185,7 @@ if ($eval_id && $evaluation) {
             <?= csrfTokenInput() ?>
             <div class="form-group">
                 <label class="form-label">Athlete</label>
-                <select name="athlete_id" class="form-select" required>
-                    <option value="">Select Athlete</option>
-                    <?php foreach ($athletes as $ath): ?>
-                        <option value="<?= $ath['id'] ?>" <?= $ath['id'] == $viewing_athlete_id ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($ath['last_name'] . ', ' . $ath['first_name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <div id="eval-create-athlete-typeahead"></div>
             </div>
             <div class="form-group">
                 <label class="form-label">Evaluation Date</label>
@@ -1565,4 +1544,56 @@ async function saveTeamEvaluation() {
         alert('Error saving evaluation. Please try again.');
     }
 }
+</script>
+<script>
+<?php if ($isCoach): ?>
+// Detail view athlete switcher (with eval_id context)
+<?php if (isset($eval_id) && $eval_id): ?>
+(function() {
+    var container = document.getElementById('eval-detail-athlete-typeahead');
+    if (container) {
+        new ArcticTypeahead({
+            container: container,
+            name: 'athlete_id',
+            placeholder: 'Quick switch athlete…',
+            roles: 'athlete',
+            multiple: false,
+            onSelect: function(item) { switchAthlete(item.id, <?= json_encode($eval_id) ?>); }
+        });
+    }
+})();
+<?php endif; ?>
+
+// List view athlete switcher
+(function() {
+    var container = document.getElementById('eval-list-athlete-typeahead');
+    if (container) {
+        new ArcticTypeahead({
+            container: container,
+            name: 'athlete_id',
+            placeholder: 'Search for an athlete…',
+            roles: 'athlete',
+            multiple: false,
+            navigateOnSelect: '?page=evaluations_skills&athlete_id=',
+            preSelected: <?= $athlete_info ? json_encode([['id' => (int)$viewing_athlete_id, 'name' => $athlete_info['first_name'] . ' ' . $athlete_info['last_name'], 'role' => 'Athlete']]) : '[]' ?>
+        });
+    }
+})();
+
+// Create evaluation modal athlete selector
+(function() {
+    var container = document.getElementById('eval-create-athlete-typeahead');
+    if (container) {
+        new ArcticTypeahead({
+            container: container,
+            name: 'athlete_id',
+            placeholder: 'Search for an athlete…',
+            roles: 'athlete',
+            multiple: false,
+            required: true,
+            preSelected: <?= $athlete_info ? json_encode([['id' => (int)$viewing_athlete_id, 'name' => $athlete_info['first_name'] . ' ' . $athlete_info['last_name'], 'role' => 'Athlete']]) : '[]' ?>
+        });
+    }
+})();
+<?php endif; ?>
 </script>

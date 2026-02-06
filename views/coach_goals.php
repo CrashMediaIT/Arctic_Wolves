@@ -23,6 +23,17 @@ try {
     // Get selected athlete
     $selected_athlete_id = $_GET['athlete_id'] ?? ($athletes[0]['id'] ?? null);
     
+    // Find the selected athlete info for the typeahead pre-selection
+    $selected_athlete = null;
+    if ($selected_athlete_id) {
+        foreach ($athletes as $a) {
+            if ($a['id'] == $selected_athlete_id) {
+                $selected_athlete = $a;
+                break;
+            }
+        }
+    }
+    
     $goals = [];
     if ($selected_athlete_id) {
         $stmt = $pdo->prepare("
@@ -51,14 +62,8 @@ try {
 <div class="coach-goals-content">
     <!-- Athlete Selector -->
     <div class="athlete-selector">
-        <label for="athlete-select">Select Athlete:</label>
-        <select id="athlete-select" onchange="location.href='?page=coach_goals&athlete_id=' + this.value">
-            <?php foreach ($athletes as $athlete): ?>
-                <option value="<?= $athlete['id'] ?>" <?= $selected_athlete_id == $athlete['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
+        <label>Select Athlete:</label>
+        <div id="goals-athlete-typeahead"></div>
     </div>
     
     <?php if (empty($goals)): ?>
@@ -133,3 +138,14 @@ try {
     gap: 20px;
 }
 </style>
+<script>
+new ArcticTypeahead({
+    container: '#goals-athlete-typeahead',
+    name: 'athlete_id',
+    placeholder: 'Search for an athlete…',
+    roles: 'athlete',
+    multiple: false,
+    navigateOnSelect: '?page=coach_goals&athlete_id=',
+    preSelected: <?= $selected_athlete ? json_encode([['id' => (int)$selected_athlete['id'], 'name' => $selected_athlete['first_name'] . ' ' . $selected_athlete['last_name'], 'role' => 'Athlete']]) : '[]' ?>
+});
+</script>

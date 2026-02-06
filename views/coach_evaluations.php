@@ -88,14 +88,7 @@ try {
             <div class="filter-row">
                 <div class="filter-field" style="flex: 2;">
                     <label>Athlete</label>
-                    <select id="athlete-select" class="form-select" onchange="location.href='?page=coach_evaluations&athlete_id=' + this.value">
-                        <option value="">-- Select Athlete --</option>
-                        <?php foreach ($athletes as $athlete): ?>
-                            <option value="<?= $athlete['id'] ?>" <?= $selected_athlete_id == $athlete['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div id="eval-athlete-typeahead"></div>
                 </div>
                 <div class="filter-field filter-actions">
                     <label>&nbsp;</label>
@@ -642,3 +635,14 @@ try {
     }
 }
 </style>
+<script>
+new ArcticTypeahead({
+    container: '#eval-athlete-typeahead',
+    name: 'athlete_id',
+    placeholder: 'Search for an athlete…',
+    roles: 'athlete',
+    multiple: false,
+    navigateOnSelect: '?page=coach_evaluations&athlete_id=',
+    preSelected: <?= $selected_athlete_id && isset($selected_athlete) && $selected_athlete ? json_encode([['id' => (int)$selected_athlete['id'], 'name' => $selected_athlete['first_name'] . ' ' . $selected_athlete['last_name'], 'role' => 'Athlete']]) : '[]' ?>
+});
+</script>

@@ -323,11 +323,7 @@ $csrf_token = generateCsrfToken();
             <div id="reportFilters" style="display: none;">
                 <div class="form-group" id="athleteFilter" style="display: none;">
                     <label class="form-label">Select Athletes</label>
-                    <select name="athlete_ids[]" class="form-control" multiple size="5">
-                        <?php foreach ($athletes_list as $athlete): ?>
-                        <option value="<?= $athlete['id'] ?>"><?= htmlspecialchars($athlete['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div id="reports-athlete-typeahead"></div>
                 </div>
                 
                 <div class="form-group" id="teamFilter" style="display: none;">
@@ -617,4 +613,13 @@ function toggleSchedule(scheduleId, status) {
         }
     });
 }
+</script>
+<script>
+new ArcticTypeahead({
+    container: '#reports-athlete-typeahead',
+    name: 'athlete_ids',
+    placeholder: 'Search for athletes…',
+    roles: 'athlete',
+    multiple: true
+});
 </script>
