@@ -507,9 +507,9 @@ $errors = [
                         <input type="hidden" name="action" value="add_team_from_roster">
                         <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
                             <div class="form-group">
-                                <label>Team &amp; Season *</label>
+                                <label>Team and Season *</label>
                                 <select name="roster_team_season" class="form-select" required>
-                                    <option value="">Select Team &amp; Season</option>
+                                    <option value="">Select Team and Season</option>
                                     <?php foreach ($rosterTeamOptions as $opt): ?>
                                         <option value="<?= $opt['team_id'] ?>|<?= $opt['season_id'] ?>">
                                             <?= htmlspecialchars($opt['team_name']) ?> — <?= htmlspecialchars($opt['season_name']) ?>
