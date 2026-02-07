@@ -1513,21 +1513,19 @@ if ($action == 'update_user') {
             $stmt->execute([$first_name, $last_name, $email, $phone, $role, $birth_date, $primary_coach_id, $user_id_to_update]);
         }
         
-        // Update multiple coach assignments if this is an athlete
-        if ($role === 'athlete') {
+        // Update multiple coach assignments in athlete_coaches table for athletes
+        if ($role === 'athlete' && !empty($assigned_coach_ids)) {
             // First, deactivate all existing coach assignments for this athlete
             $pdo->prepare("UPDATE athlete_coaches SET status = 'inactive' WHERE athlete_id = ?")->execute([$user_id_to_update]);
             
             // Then add/reactivate the new coach assignments
-            if (!empty($assigned_coach_ids)) {
-                $insert_coach_stmt = $pdo->prepare("
-                    INSERT INTO athlete_coaches (athlete_id, coach_id, role_type, assigned_by, status) 
-                    VALUES (?, ?, 'primary', ?, 'active')
-                    ON DUPLICATE KEY UPDATE status = 'active', assigned_by = ?
-                ");
-                foreach ($assigned_coach_ids as $coach_id) {
-                    $insert_coach_stmt->execute([$user_id_to_update, $coach_id, $_SESSION['user_id'], $_SESSION['user_id']]);
-                }
+            $insert_coach_stmt = $pdo->prepare("
+                INSERT INTO athlete_coaches (athlete_id, coach_id, role_type, assigned_by, status) 
+                VALUES (?, ?, 'primary', ?, 'active')
+                ON DUPLICATE KEY UPDATE status = 'active', assigned_by = ?
+            ");
+            foreach ($assigned_coach_ids as $coach_id) {
+                $insert_coach_stmt->execute([$user_id_to_update, $coach_id, $_SESSION['user_id'], $_SESSION['user_id']]);
             }
         }
         
