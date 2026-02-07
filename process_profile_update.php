@@ -182,6 +182,63 @@ if ($action == 'remove_team') {
 }
 
 // =========================================================
+// ACTION 4C: ADD TEAM FROM ROSTER (Select from org teams)
+// =========================================================
+if ($action == 'add_team_from_roster') {
+    $combo = $_POST['roster_team_season'] ?? '';
+    $position = trim($_POST['roster_position'] ?? '');
+    $is_current = isset($_POST['is_current']) && $_POST['is_current'] == '1' ? 1 : 0;
+    
+    $parts = explode('|', $combo);
+    if (count($parts) !== 2 || empty($position)) {
+        header("Location: dashboard.php?page=profile&tab=player&error=invalid_selection");
+        exit();
+    }
+    
+    $team_id = intval($parts[0]);
+    $season_id = intval($parts[1]);
+    
+    if ($team_id <= 0 || $season_id <= 0) {
+        header("Location: dashboard.php?page=profile&tab=player&error=invalid_selection");
+        exit();
+    }
+    
+    try {
+        // Fetch team and season info
+        $info_stmt = $pdo->prepare("
+            SELECT t.name as team_name, s.name as season_name
+            FROM teams t
+            INNER JOIN team_seasons ts ON ts.team_id = t.id
+            INNER JOIN seasons s ON ts.season_id = s.id
+            WHERE t.id = ? AND s.id = ?
+        ");
+        $info_stmt->execute([$team_id, $season_id]);
+        $info = $info_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$info) {
+            header("Location: dashboard.php?page=profile&tab=player&error=team_not_found");
+            exit();
+        }
+        
+        // If setting as current, reset other current flags
+        if ($is_current) {
+            $pdo->prepare("UPDATE athlete_teams SET is_current = 0 WHERE user_id = ? OR athlete_id = ?")->execute([$current_user_id, $current_user_id]);
+        }
+        
+        // Insert into athlete_teams with team_id reference
+        $stmt = $pdo->prepare("INSERT INTO athlete_teams (user_id, athlete_id, team_id, team_name, season, position, is_current) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$current_user_id, $current_user_id, $team_id, $info['team_name'], $info['season_name'], $position, $is_current]);
+        
+        header("Location: dashboard.php?page=profile&tab=player&msg=team_added");
+        exit();
+    } catch (PDOException $e) {
+        error_log("Add team from roster error: " . $e->getMessage());
+        header("Location: dashboard.php?page=profile&tab=player&error=team_add_failed");
+        exit();
+    }
+}
+
+// =========================================================
 // ACTION 5: FORCE PASSWORD RESET (Mandatory First Login)
 // =========================================================
 if ($action == 'force_password_reset') {

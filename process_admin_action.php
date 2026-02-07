@@ -2520,6 +2520,7 @@ if ($action == 'create_team') {
     $skill_level = trim($_POST['skill_level'] ?? '');
     $division = trim($_POST['division'] ?? '');
     $season = trim($_POST['season'] ?? '');
+    $season_ids = $_POST['season_ids'] ?? [];
     $coach_id = !empty($_POST['coach_id']) ? intval($_POST['coach_id']) : null;
     $assistant_coach_id = !empty($_POST['assistant_coach_id']) ? intval($_POST['assistant_coach_id']) : null;
     
@@ -2536,6 +2537,19 @@ if ($action == 'create_team') {
     try {
         $stmt = $pdo->prepare("INSERT INTO teams (name, age_group, skill_level, division, season, coach_id, assistant_coach_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
         $stmt->execute([$name, $age_group ?: null, $skill_level ?: null, $division ?: null, $season ?: null, $coach_id, $assistant_coach_id]);
+        
+        $new_team_id = $pdo->lastInsertId();
+        
+        // Create team_seasons entries for selected seasons
+        if (!empty($season_ids) && $new_team_id) {
+            $ts_stmt = $pdo->prepare("INSERT IGNORE INTO team_seasons (team_id, season_id) VALUES (?, ?)");
+            foreach ($season_ids as $sid) {
+                $sid = intval($sid);
+                if ($sid > 0) {
+                    $ts_stmt->execute([$new_team_id, $sid]);
+                }
+            }
+        }
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2565,6 +2579,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
         $skill_level = trim($_POST['skill_level'] ?? '');
         $division = trim($_POST['division'] ?? '');
         $season = trim($_POST['season'] ?? '');
+        $season_ids = $_POST['season_ids'] ?? [];
         $coach_id = !empty($_POST['coach_id']) ? intval($_POST['coach_id']) : null;
         $assistant_coach_id = !empty($_POST['assistant_coach_id']) ? intval($_POST['assistant_coach_id']) : null;
         $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
@@ -2575,6 +2590,18 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
         
         $stmt = $pdo->prepare("UPDATE teams SET name = ?, age_group = ?, skill_level = ?, division = ?, season = ?, coach_id = ?, assistant_coach_id = ?, is_active = ? WHERE id = ?");
         $stmt->execute([$name, $age_group ?: null, $skill_level ?: null, $division ?: null, $season ?: null, $coach_id, $assistant_coach_id, $is_active, $id]);
+        
+        // Sync team_seasons: remove old, add new
+        $pdo->prepare("DELETE FROM team_seasons WHERE team_id = ?")->execute([$id]);
+        if (!empty($season_ids)) {
+            $ts_stmt = $pdo->prepare("INSERT IGNORE INTO team_seasons (team_id, season_id) VALUES (?, ?)");
+            foreach ($season_ids as $sid) {
+                $sid = intval($sid);
+                if ($sid > 0) {
+                    $ts_stmt->execute([$id, $sid]);
+                }
+            }
+        }
         
         if ($isAjax) {
             header('Content-Type: application/json');
