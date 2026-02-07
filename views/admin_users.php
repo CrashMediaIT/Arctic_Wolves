@@ -1162,14 +1162,14 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                     </div>
                 </div>
                 
-                <div class="form-row edit-athlete-coach-fields" style="display: none;">
+                <div class="form-row">
                     <div class="form-group" style="grid-column: span 2;">
                         <label class="form-label">Assign Coaches</label>
                         <div id="edit-user-coach-typeahead"></div>
                     </div>
                 </div>
                 
-                <div class="form-row edit-athlete-coach-fields" style="display: none;">
+                <div class="form-row edit-athlete-team-field" style="display: none;">
                     <div class="form-group">
                         <label class="form-label">Assign Team</label>
                         <select name="team_id" id="edit-user-team-id" class="form-input">
@@ -1231,26 +1231,24 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         // Pre-populate edit coach typeahead
         if (window._editCoachTypeahead) {
             window._editCoachTypeahead.clear();
-            if (role === 'athlete') {
-                var coachAssignments = window._athleteCoachAssignments || {};
-                var coachNames = window._coachNamesMap || {};
-                var assignedCoachIds = coachAssignments[id] || [];
-                // Fallback: use primary coach_id from the data attribute
-                if (assignedCoachIds.length === 0 && coachId) {
-                    assignedCoachIds = [parseInt(coachId)];
-                }
-                var preItems = [];
-                assignedCoachIds.forEach(function(cid) {
-                    if (coachNames[cid]) {
-                        preItems.push({ id: cid, name: coachNames[cid].name, role: coachNames[cid].role });
-                    }
-                });
-                window._editCoachTypeahead.setPreSelected(preItems);
+            var coachAssignments = window._athleteCoachAssignments || {};
+            var coachNames = window._coachNamesMap || {};
+            var assignedCoachIds = coachAssignments[id] || [];
+            // Fallback: use primary coach_id from the data attribute
+            if (assignedCoachIds.length === 0 && coachId) {
+                assignedCoachIds = [parseInt(coachId)];
             }
+            var preItems = [];
+            assignedCoachIds.forEach(function(cid) {
+                if (coachNames[cid]) {
+                    preItems.push({ id: cid, name: coachNames[cid].name, role: coachNames[cid].role });
+                }
+            });
+            window._editCoachTypeahead.setPreSelected(preItems);
         }
         
-        // Show/hide athlete coach fields based on role
-        document.querySelectorAll('.edit-athlete-coach-fields').forEach(function(el) {
+        // Show/hide athlete team field based on role
+        document.querySelectorAll('.edit-athlete-team-field').forEach(function(el) {
             el.style.display = role === 'athlete' ? 'grid' : 'none';
         });
         
@@ -1258,10 +1256,10 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
     });
 });
 
-// Toggle edit modal athlete fields when role changes
+// Toggle edit modal athlete team field when role changes
 document.getElementById('edit-user-role').addEventListener('change', function() {
     var roleValue = this.value;
-    document.querySelectorAll('.edit-athlete-coach-fields').forEach(function(el) {
+    document.querySelectorAll('.edit-athlete-team-field').forEach(function(el) {
         el.style.display = roleValue === 'athlete' ? 'grid' : 'none';
     });
 });
