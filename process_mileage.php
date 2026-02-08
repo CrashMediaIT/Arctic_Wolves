@@ -76,12 +76,25 @@ try {
             }
             
             // Get mileage rate from settings
-            $rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_per_mile')");
+            $rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_after_5000_per_km', 'mileage_rate_per_mile')");
             $rates = $rate_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-            $rate_per_km = floatval($rates['mileage_rate_per_km'] ?? 0.68);
+            $rate_per_km = floatval($rates['mileage_rate_per_km'] ?? 0.70);
+            $rate_after_5000_per_km = floatval($rates['mileage_rate_after_5000_per_km'] ?? 0.64);
             $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
             
-            $reimbursement_amount = $distance_miles * $rate_per_mile;
+            // Calculate year-to-date km for CRA tiered rate
+            $year_km_stmt = $pdo->prepare("SELECT COALESCE(SUM(total_distance_km), 0) FROM mileage_logs WHERE user_id = ? AND YEAR(trip_date) = YEAR(CURDATE())");
+            $year_km_stmt->execute([$user_id]);
+            $year_km_total = floatval($year_km_stmt->fetchColumn());
+            
+            // CRA tiered reimbursement calculation
+            $remaining_first_5000 = max(0, 5000 - $year_km_total);
+            $km_at_high_rate = min($distance_km, $remaining_first_5000);
+            $km_at_low_rate = max(0, $distance_km - $km_at_high_rate);
+            $reimbursement_amount = ($km_at_high_rate * $rate_per_km) + ($km_at_low_rate * $rate_after_5000_per_km);
+            
+            // Store the effective blended rate for this trip
+            $effective_rate = $distance_km > 0 ? ($reimbursement_amount / $distance_km) : $rate_per_km;
             
             // Insert mileage log
             $stmt = $pdo->prepare("
@@ -93,7 +106,7 @@ try {
             $stmt->execute([
                 $user_id, $trip_date, $title ?: null, $description ?: null,
                 $athlete_id ?: null, $session_id ?: null, $purpose,
-                $distance_km, $distance_miles, $rate_per_mile, $reimbursement_amount
+                $distance_km, $distance_miles, $effective_rate, $reimbursement_amount
             ]);
             
             $mileage_log_id = $pdo->lastInsertId();
@@ -150,12 +163,25 @@ try {
             }
             
             // Get mileage rate from settings
-            $rate_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_per_mile')");
+            $rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_after_5000_per_km', 'mileage_rate_per_mile')");
             $rates = $rate_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-            $rate_per_km = floatval($rates['mileage_rate_per_km'] ?? 0.68);
+            $rate_per_km = floatval($rates['mileage_rate_per_km'] ?? 0.70);
+            $rate_after_5000_per_km = floatval($rates['mileage_rate_after_5000_per_km'] ?? 0.64);
             $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
             
-            $reimbursement_amount = $distance_km * $rate_per_km;
+            // Calculate year-to-date km for CRA tiered rate (exclude current entry being updated)
+            $year_km_stmt = $pdo->prepare("SELECT COALESCE(SUM(total_distance_km), 0) FROM mileage_logs WHERE user_id = ? AND YEAR(trip_date) = YEAR(CURDATE()) AND id != ?");
+            $year_km_stmt->execute([$user_id, $log_id]);
+            $year_km_total = floatval($year_km_stmt->fetchColumn());
+            
+            // CRA tiered reimbursement calculation
+            $remaining_first_5000 = max(0, 5000 - $year_km_total);
+            $km_at_high_rate = min($distance_km, $remaining_first_5000);
+            $km_at_low_rate = max(0, $distance_km - $km_at_high_rate);
+            $reimbursement_amount = ($km_at_high_rate * $rate_per_km) + ($km_at_low_rate * $rate_after_5000_per_km);
+            
+            // Store the effective blended rate for this trip
+            $effective_rate = $distance_km > 0 ? ($reimbursement_amount / $distance_km) : $rate_per_km;
             
             // Update mileage log
             $stmt = $pdo->prepare("
@@ -168,7 +194,7 @@ try {
             $stmt->execute([
                 $trip_date, $title ?: null, $description ?: null,
                 $athlete_id ?: null, $session_id ?: null, $purpose,
-                $distance_km, $distance_miles, $rate_per_km,
+                $distance_km, $distance_miles, $effective_rate,
                 $reimbursement_amount, $log_id, $user_id
             ]);
             

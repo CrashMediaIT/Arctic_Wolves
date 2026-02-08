@@ -17,7 +17,9 @@ try {
         'session_duration' => 60,
         'notifications_enabled' => '1',
         'maintenance_mode' => '0',
-        'mileage_rate_per_km' => '0.68',
+        'province' => 'ON',
+        'mileage_rate_per_km' => '0.70',
+        'mileage_rate_after_5000_per_km' => '0.64',
         'mileage_rate_per_mile' => '1.10',
         'mileage_unit' => 'km',
         'smtp_port' => '587',
@@ -193,6 +195,35 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Province</h4>
+                                <p>Set your province to ensure correct tax rates are applied</p>
+                            </div>
+                            <select name="province" class="form-input" style="width: auto; min-width: 200px;">
+                                <?php
+                                $provinces = [
+                                    'AB' => 'Alberta',
+                                    'BC' => 'British Columbia',
+                                    'MB' => 'Manitoba',
+                                    'NB' => 'New Brunswick',
+                                    'NL' => 'Newfoundland and Labrador',
+                                    'NS' => 'Nova Scotia',
+                                    'NT' => 'Northwest Territories',
+                                    'NU' => 'Nunavut',
+                                    'ON' => 'Ontario',
+                                    'PE' => 'Prince Edward Island',
+                                    'QC' => 'Quebec',
+                                    'SK' => 'Saskatchewan',
+                                    'YT' => 'Yukon'
+                                ];
+                                $selected_province = $settings['province'] ?? 'ON';
+                                foreach ($provinces as $code => $name):
+                                ?>
+                                <option value="<?php echo $code; ?>" <?php echo $selected_province === $code ? 'selected' : ''; ?>><?php echo $name; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary" data-action="save">
@@ -227,14 +258,27 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>Rate per Kilometer</h4>
-                                <p>Reimbursement rate for travel in kilometers (CAD)</p>
+                                <h4>Rate per Kilometer (First 5,000 km)</h4>
+                                <p>CRA reimbursement rate for the first 5,000 km driven per year (CAD)</p>
                             </div>
                             <div class="rate-input-group">
                                 <span class="currency-symbol">$</span>
                                 <input type="number" name="mileage_rate_per_km" class="form-input" step="0.01" min="0"
-                                       value="<?php echo htmlspecialchars($settings['mileage_rate_per_km'] ?? '0.68'); ?>"
-                                       placeholder="0.68">
+                                       value="<?php echo htmlspecialchars($settings['mileage_rate_per_km'] ?? '0.70'); ?>"
+                                       placeholder="0.70">
+                                <span class="rate-unit">/km</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Rate per Kilometer (After 5,000 km)</h4>
+                                <p>CRA reimbursement rate for every km after the first 5,000 km per year (CAD)</p>
+                            </div>
+                            <div class="rate-input-group">
+                                <span class="currency-symbol">$</span>
+                                <input type="number" name="mileage_rate_after_5000_per_km" class="form-input" step="0.01" min="0"
+                                       value="<?php echo htmlspecialchars($settings['mileage_rate_after_5000_per_km'] ?? '0.64'); ?>"
+                                       placeholder="0.64">
                                 <span class="rate-unit">/km</span>
                             </div>
                         </div>
@@ -254,7 +298,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                     </div>
                     <div class="info-box">
                         <i class="fas fa-info-circle"></i>
-                        <p>These rates are used to calculate travel reimbursements for coaches. The standard CRA rate for 2024 is $0.70/km for the first 5,000 km and $0.64/km thereafter.</p>
+                        <p>These rates follow CRA (Canada Revenue Agency) guidelines. The standard CRA rate for 2024 is $0.70/km for the first 5,000 km and $0.64/km thereafter. Rates can be verified at <a href="https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/benefits-allowances/automobile/automobile-motor-vehicle-allowances/automobile-allowance-rates.html" target="_blank" style="color: var(--primary-light);">CRA Automobile Allowance Rates</a>.</p>
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary" data-action="save">

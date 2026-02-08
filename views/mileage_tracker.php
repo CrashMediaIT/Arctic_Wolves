@@ -31,9 +31,10 @@ try {
 }
 
 // Get mileage rates
-$rates_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_per_mile')");
+$rates_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_after_5000_per_km', 'mileage_rate_per_mile')");
 $rates = $rates_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-$rate_per_km = floatval($rates['mileage_rate_per_km'] ?? 0.68);
+$rate_per_km = floatval($rates['mileage_rate_per_km'] ?? 0.70);
+$rate_after_5000_per_km = floatval($rates['mileage_rate_after_5000_per_km'] ?? 0.64);
 $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
 ?>
 

@@ -4,6 +4,7 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 require 'cloud_config.php';
+require_once __DIR__ . '/lib/auditor.php';
 
 setSecurityHeaders();
 
@@ -13,6 +14,7 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 }
 
 $action = $_POST['action'] ?? '';
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
 $json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps'];
@@ -35,6 +37,11 @@ try {
             updateSetting($pdo, 'timezone', $timezone);
             updateSetting($pdo, 'language', $language);
             
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_general',
+                'settings' => ['site_name' => $site_name, 'timezone' => $timezone, 'language' => $language]
+            ]);
+            
             header('Location: dashboard.php?page=admin_settings&success=1');
             exit;
             
@@ -56,6 +63,11 @@ try {
             }
             updateSetting($pdo, 'smtp_from_email', $smtp_from_email);
             updateSetting($pdo, 'smtp_from_name', $smtp_from_name);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_smtp',
+                'settings' => ['smtp_host' => $smtp_host, 'smtp_port' => $smtp_port, 'smtp_encryption' => $smtp_encryption, 'smtp_user' => $smtp_user, 'smtp_from_email' => $smtp_from_email, 'smtp_from_name' => $smtp_from_name]
+            ]);
             
             // Redirect back to the appropriate page
             $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
@@ -135,6 +147,11 @@ try {
             updateSetting($pdo, 'sync_hr', $sync_hr);
             updateSetting($pdo, 'sync_terminations', $sync_terminations);
             
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_nextcloud',
+                'settings' => ['nextcloud_url' => $url, 'nextcloud_username' => $username, 'nextcloud_ocr_enabled' => $ocr_enabled, 'nextcloud_auto_sync' => $auto_sync]
+            ]);
+            
             // Redirect back to the appropriate page
             $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
             if ($redirect_page === 'system_tools') {
@@ -207,6 +224,11 @@ try {
             updateSetting($pdo, 'tax_name', $tax_name);
             updateSetting($pdo, 'tax_rate', $tax_rate);
             
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_payments',
+                'settings' => ['currency' => $currency, 'tax_name' => $tax_name, 'tax_rate' => $tax_rate, 'stripe_key_updated' => !empty($stripe_secret_key)]
+            ]);
+            
             // Redirect back to the appropriate page
             $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
             if ($redirect_page === 'system_tools') {
@@ -221,6 +243,11 @@ try {
             
             updateSetting($pdo, 'session_timeout_minutes', $session_timeout);
             
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_security',
+                'settings' => ['session_timeout_minutes' => $session_timeout]
+            ]);
+            
             header('Location: dashboard.php?page=admin_settings&success=1');
             exit;
             
@@ -230,6 +257,11 @@ try {
             
             updateSetting($pdo, 'maintenance_mode', $maintenance_mode);
             updateSetting($pdo, 'debug_mode', $debug_mode);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_advanced',
+                'settings' => ['maintenance_mode' => $maintenance_mode, 'debug_mode' => $debug_mode]
+            ]);
             
             header('Location: dashboard.php?page=admin_settings&success=1');
             exit;
@@ -241,12 +273,25 @@ try {
             $session_duration = intval($_POST['session_duration'] ?? 60);
             $notifications_enabled = isset($_POST['notifications_enabled']) ? '1' : '0';
             $maintenance_mode = isset($_POST['maintenance_mode']) ? '1' : '0';
+            $province = trim($_POST['province'] ?? 'ON');
+            
+            // Validate province code
+            $valid_provinces = ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'];
+            if (!in_array($province, $valid_provinces)) {
+                $province = 'ON';
+            }
             
             updateSetting($pdo, 'site_title', $site_title);
             updateSetting($pdo, 'site_email', $site_email);
             updateSetting($pdo, 'session_duration', $session_duration);
             updateSetting($pdo, 'notifications_enabled', $notifications_enabled);
             updateSetting($pdo, 'maintenance_mode', $maintenance_mode);
+            updateSetting($pdo, 'province', $province);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_settings',
+                'settings' => ['site_title' => $site_title, 'site_email' => $site_email, 'session_duration' => $session_duration, 'notifications_enabled' => $notifications_enabled, 'maintenance_mode' => $maintenance_mode, 'province' => $province]
+            ]);
             
             header('Location: dashboard.php?page=system_tools&success=1');
             exit;
@@ -261,12 +306,22 @@ try {
             updateSetting($pdo, 'accent_color', $accent_color);
             updateSetting($pdo, 'background_color', $bg_color);
             
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_theme',
+                'settings' => ['primary_color' => $primary_color, 'accent_color' => $accent_color, 'bg_color' => $bg_color]
+            ]);
+            
             header('Location: dashboard.php?page=system_tools&tab=theme&success=1');
             exit;
             
         case 'update_google_maps':
             $api_key = trim($_POST['google_maps_api_key']);
             updateSetting($pdo, 'google_maps_api_key', $api_key);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_google_maps',
+                'settings' => ['google_maps_api_key' => '***updated***']
+            ]);
             
             header('Location: dashboard.php?page=system_tools&tab=mileage&success=1');
             exit;
@@ -322,6 +377,7 @@ try {
             
         case 'update_mileage_rates':
             $rate_km = floatval($_POST['mileage_rate_per_km']);
+            $rate_after_5000_km = floatval($_POST['mileage_rate_after_5000_per_km']);
             $rate_mile = floatval($_POST['mileage_rate_per_mile']);
             $mileage_unit = trim($_POST['mileage_unit'] ?? 'km');
             
@@ -331,8 +387,14 @@ try {
             }
             
             updateSetting($pdo, 'mileage_rate_per_km', $rate_km);
+            updateSetting($pdo, 'mileage_rate_after_5000_per_km', $rate_after_5000_km);
             updateSetting($pdo, 'mileage_rate_per_mile', $rate_mile);
             updateSetting($pdo, 'mileage_unit', $mileage_unit);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_mileage_rates',
+                'settings' => ['mileage_rate_per_km' => $rate_km, 'mileage_rate_after_5000_per_km' => $rate_after_5000_km, 'mileage_rate_per_mile' => $rate_mile, 'mileage_unit' => $mileage_unit]
+            ]);
             
             header('Location: dashboard.php?page=system_tools&tab=mileage&success=1');
             exit;
@@ -340,6 +402,11 @@ try {
         case 'update_github_settings':
             $github_token = trim($_POST['github_token']);
             updateSetting($pdo, 'github_token', $github_token);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_github_settings',
+                'settings' => ['github_token' => '***updated***']
+            ]);
             
             header('Location: dashboard.php?page=admin_settings&success=1');
             exit;
@@ -382,6 +449,11 @@ try {
             }
             updateSetting($pdo, 'nextcloud_failover_timeout', $failover_timeout);
             updateSetting($pdo, 'nextcloud_sync_interval', $sync_interval);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_nextcloud_backup',
+                'settings' => ['nextcloud_backup_enabled' => $backup_enabled, 'nextcloud_backup_url' => $backup_url, 'nextcloud_backup_username' => $backup_username]
+            ]);
             
             header('Location: dashboard.php?page=system_tools&tab=nextcloud&success=1');
             exit;
@@ -526,6 +598,12 @@ try {
                 'success' => true, 
                 'message' => 'Stripe library updated to version ' . ($release['tag_name'] ?? 'latest')
             ]);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_stripe_library',
+                'settings' => ['stripe_version' => $release['tag_name'] ?? 'latest']
+            ]);
+            
             exit;
             
         case 'update_landing':
@@ -564,6 +642,11 @@ try {
                 updateSetting($pdo, $prefix . 'value', $value);
             }
             
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_landing',
+                'settings' => ['programs_and_standards_updated' => true]
+            ]);
+            
             header('Location: dashboard.php?page=admin_settings&success=1');
             exit;
             
@@ -588,6 +671,11 @@ try {
             updateSetting($pdo, 'docuseal_webhook_secret', $docuseal_webhook_secret);
             updateSetting($pdo, 'docuseal_auto_confirm', $docuseal_auto_confirm);
             updateSetting($pdo, 'docuseal_verify_ssl', $docuseal_verify_ssl);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_docuseal',
+                'settings' => ['docuseal_enabled' => $docuseal_enabled, 'docuseal_url' => $docuseal_url, 'docuseal_api_key' => '***updated***']
+            ]);
             
             // Redirect back to the appropriate page
             $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
