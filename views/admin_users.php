@@ -16,6 +16,7 @@ try {
     // Fetch coaches for assignment dropdown (includes admin, coach, team_coach, health_coach)
     $coaches_stmt = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as name, role FROM users WHERE role IN ('admin', 'coach', 'team_coach', 'health_coach') AND is_verified = 1 ORDER BY first_name");
     $coaches = $coaches_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $coaches = decryptUserRows($coaches);
     
     // Fetch existing athlete-coach assignments (for multiple coach support)
     $athlete_coaches_map = [];
@@ -138,6 +139,7 @@ try {
     ");
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
     
     $total_users = count($users);
 } catch (PDOException $e) {
