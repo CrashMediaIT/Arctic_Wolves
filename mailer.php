@@ -117,6 +117,33 @@ function getEmailConfig() {
 }
 
 /**
+ * Fetch theme settings (logo, colors) from the theme_settings table.
+ * Used to brand emails consistently with the website design.
+ */
+function getThemeSettings() {
+    global $pdo;
+    $defaults = [
+        'logo_url' => '',
+        'primary_color' => '#7000a4',
+        'secondary_color' => '#c0c0c0',
+        'background_color' => '#06080b',
+        'card_background_color' => '#0d1117',
+        'text_color' => '#ffffff',
+        'text_muted_color' => '#94a3b8',
+        'border_color' => '#1e293b',
+        'success_color' => '#22c55e',
+        'error_color' => '#ef4444',
+        'warning_color' => '#f59e0b'
+    ];
+    try {
+        $rows = $pdo->query("SELECT setting_name, setting_value FROM theme_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+        return array_merge($defaults, $rows);
+    } catch (Exception $e) {
+        return $defaults;
+    }
+}
+
+/**
  * Log email attempts to DB.
  * Now supports saving the $data payload for Resend functionality.
  */
@@ -137,17 +164,40 @@ function logEmailAttempt($to, $subject, $type, $status, $errorMsg = null, $data 
  */
 function sendEmail($to, $type, $data) {
     $config = getEmailConfig();
+    $theme = getThemeSettings();
     $year = date('Y');
+    
+    // Brand colors from theme settings
+    $primary    = htmlspecialchars($theme['primary_color'], ENT_QUOTES, 'UTF-8');
+    $bg         = htmlspecialchars($theme['background_color'], ENT_QUOTES, 'UTF-8');
+    $cardBg     = htmlspecialchars($theme['card_background_color'], ENT_QUOTES, 'UTF-8');
+    $textMuted  = htmlspecialchars($theme['text_muted_color'], ENT_QUOTES, 'UTF-8');
+    $borderClr  = htmlspecialchars($theme['border_color'], ENT_QUOTES, 'UTF-8');
+    $successClr = htmlspecialchars($theme['success_color'], ENT_QUOTES, 'UTF-8');
+    $errorClr   = htmlspecialchars($theme['error_color'], ENT_QUOTES, 'UTF-8');
+    $warningClr = htmlspecialchars($theme['warning_color'], ENT_QUOTES, 'UTF-8');
+    $logoUrl    = $theme['logo_url'];
     
     // --- TEMPLATE LOGIC ---
     $subject = "Arctic Wolves Notification"; 
     $body = "";
     
+    // Common Logo Header
+    $logoHtml = '';
+    if (!empty($logoUrl)) {
+        $safeLogo = htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8');
+        $logoHtml = "<img src='$safeLogo' alt='Arctic Wolves Performance Logo' style='max-height: 60px; max-width: 200px;'>";
+    }
+    $header = "
+    <div style='text-align: center; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid $borderClr;'>
+        $logoHtml
+    </div>";
+    
     // Common Footer
     $footer = "
-    <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; text-align: center; color: #555; font-size: 11px;'>
+    <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid $borderClr; text-align: center; color: $textMuted; font-size: 11px;'>
         &copy; $year Arctic Wolves Performance. All rights reserved.<br>
-        <a href='https://arcticwolves.ca' style='color: #555; text-decoration: none;'>arcticwolves.ca</a>
+        <a href='https://arcticwolves.ca' style='color: $textMuted; text-decoration: none;'>arcticwolves.ca</a>
     </div>";
 
     // 1. VERIFICATION CODE (Self-Registration)
@@ -157,15 +207,16 @@ function sendEmail($to, $type, $data) {
         $name = htmlspecialchars($data['name'] ?? 'Athlete');
         
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #00ff88; margin-top: 0;'>Welcome, $name!</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $successClr; margin-top: 0;'>Welcome, $name!</h2>
             <p style='color: #ccc;'>Please verify your email address to activate your account.</p>
-            <div style='background: #1e293b; padding: 20px; text-align: center; margin: 30px 0; border-radius: 6px; border: 1px solid #333;'>
+            <div style='background: $cardBg; padding: 20px; text-align: center; margin: 30px 0; border-radius: 6px; border: 1px solid $borderClr;'>
                 <span style='font-size: 32px; font-weight: 800; letter-spacing: 5px; color: #fff;'>$code</span>
             </div>
             $footer
         </div>";
-    } 
+    }
     
     // 2. WELCOME CREDENTIALS (Coach Created Athlete)
     elseif ($type == 'manual_welcome') {
@@ -175,10 +226,11 @@ function sendEmail($to, $type, $data) {
         $pass  = htmlspecialchars($data['password'] ?? '');
         
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #3b82f6; margin-top: 0;'>Welcome to the Team, $name!</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $primary; margin-top: 0;'>Welcome to the Team, $name!</h2>
             <p style='color: #ccc;'>Your account has been created. Please login with the details below:</p>
-            <div style='background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0;'>
+            <div style='background: $cardBg; border-left: 4px solid $primary; padding: 20px; margin: 20px 0;'>
                 <p style='margin: 0 0 10px 0;'><strong>Email:</strong> $email</p>
                 <p style='margin: 0;'><strong>Password:</strong> $pass</p>
             </div>
@@ -195,28 +247,29 @@ function sendEmail($to, $type, $data) {
         $trans_id = $data['trans_id'] ?? 'N/A';
         
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #00ff88; margin-top: 0;'>Payment Confirmed</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $successClr; margin-top: 0;'>Payment Confirmed</h2>
             <p style='color: #ccc;'>Thank you. Your booking has been secured.</p>
             
-            <div style='background: #1e293b; padding: 20px; border-radius: 6px; margin: 20px 0; border: 1px solid #333;'>
+            <div style='background: $cardBg; padding: 20px; border-radius: 6px; margin: 20px 0; border: 1px solid $borderClr;'>
                 <table style='width: 100%; border-collapse: collapse; color: #fff;'>
                     <tr>
-                        <td style='padding: 8px 0; color: #94a3b8; font-size:13px;'>Session</td>
+                        <td style='padding: 8px 0; color: $textMuted; font-size:13px;'>Session</td>
                         <td style='padding: 8px 0; text-align: right; font-weight: bold;'>{$data['session_title']}</td>
                     </tr>
                     <tr>
-                        <td style='padding: 8px 0; color: #94a3b8; font-size:13px;'>Date</td>
+                        <td style='padding: 8px 0; color: $textMuted; font-size:13px;'>Date</td>
                         <td style='padding: 8px 0; text-align: right;'>$date</td>
                     </tr>
-                    <tr style='border-top: 1px solid #475569;'>
+                    <tr style='border-top: 1px solid $borderClr;'>
                         <td style='padding: 15px 0 0 0; color: #fff; font-weight: bold;'>Total Paid</td>
-                        <td style='padding: 15px 0 0 0; text-align: right; font-weight: bold; color: #00ff88; font-size: 18px;'>$$amount</td>
+                        <td style='padding: 15px 0 0 0; text-align: right; font-weight: bold; color: $successClr; font-size: 18px;'>$$amount</td>
                     </tr>
                 </table>
             </div>
             
-            <p style='font-size: 11px; color: #64748b; text-align: center;'>Transaction ID: $trans_id</p>
+            <p style='font-size: 11px; color: $textMuted; text-align: center;'>Transaction ID: $trans_id</p>
             $footer
         </div>";
     }
@@ -226,10 +279,11 @@ function sendEmail($to, $type, $data) {
         $subject = "Reset Password";
         $code = $data['code'] ?? '---';
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #6B46C1; margin-top: 0;'>Password Reset</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $primary; margin-top: 0;'>Password Reset</h2>
             <p style='color:#ccc;'>Use this code to reset your password:</p>
-            <div style='background: #1e293b; padding: 20px; text-align: center; margin: 20px 0; border-radius: 6px; border: 1px solid #6B46C1;'>
+            <div style='background: $cardBg; padding: 20px; text-align: center; margin: 20px 0; border-radius: 6px; border: 1px solid $primary;'>
                 <span style='font-size: 28px; font-weight: 800; color: #fff;'>$code</span>
             </div>
             $footer
@@ -240,10 +294,11 @@ function sendEmail($to, $type, $data) {
     elseif ($type == 'test') {
         $subject = "SMTP Connection Test";
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #00ff88; margin-top: 0;'>✔ Connection Successful</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $successClr; margin-top: 0;'>✔ Connection Successful</h2>
             <p style='color: #ccc;'>Your email system is configured correctly.</p>
-            <div style='background: rgba(255,255,255,0.05); padding: 15px; border-radius: 6px; margin: 20px 0; font-family: monospace; font-size: 12px; color: #94a3b8;'>
+            <div style='background: $cardBg; padding: 15px; border-radius: 6px; margin: 20px 0; font-family: monospace; font-size: 12px; color: $textMuted;'>
                 <strong>Timestamp:</strong> " . date('Y-m-d H:i:s') . "
             </div>
             $footer
@@ -260,10 +315,10 @@ function sendEmail($to, $type, $data) {
         // Set subject and color based on notification type (whitelist approach for safety)
         $subject = "Arctic Wolves: " . $title;
         $color_map = [
-            'info' => '#3b82f6',
-            'maintenance' => '#fbbf24',
-            'warning' => '#f59e0b',
-            'alert' => '#ef4444'
+            'info' => $primary,
+            'maintenance' => $warningClr,
+            'warning' => $warningClr,
+            'alert' => $errorClr
         ];
         $icon_map = [
             'info' => '&#9432;',
@@ -275,13 +330,14 @@ function sendEmail($to, $type, $data) {
         $icon = isset($icon_map[$notif_type]) ? $icon_map[$notif_type] : $icon_map['info'];
         
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
             <h2 style='color: $color; margin-top: 0;'>$icon $title</h2>
             <p style='color: #ccc;'>Hi $name,</p>
-            <div style='background: #1e293b; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid $color;'>
+            <div style='background: $cardBg; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid $color;'>
                 <p style='color: #e2e8f0; margin: 0; line-height: 1.6;'>$message</p>
             </div>
-            <p style='color: #94a3b8; font-size: 13px;'>This is an automated system notification from Arctic Wolves Performance.</p>
+            <p style='color: $textMuted; font-size: 13px;'>This is an automated system notification from Arctic Wolves Performance.</p>
             $footer
         </div>";
     }
@@ -297,14 +353,15 @@ function sendEmail($to, $type, $data) {
         
         $linkHtml = '';
         if ($link) {
-            $linkHtml = "<p style='margin-top: 20px;'><a href='" . htmlspecialchars($link) . "' style='display: inline-block; background: #7000a4; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;'>View Details</a></p>";
+            $linkHtml = "<p style='margin-top: 20px;'><a href='" . htmlspecialchars($link) . "' style='display: inline-block; background: $primary; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;'>View Details</a></p>";
         }
         
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #7000a4; margin-top: 0;'>$title</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $primary; margin-top: 0;'>$title</h2>
             <p style='color: #ccc;'>Hi $name,</p>
-            <div style='background: #1e293b; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #7000a4;'>
+            <div style='background: $cardBg; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid $primary;'>
                 <p style='color: #e2e8f0; margin: 0; line-height: 1.6;'>$message</p>
             </div>
             $linkHtml
@@ -321,19 +378,20 @@ function sendEmail($to, $type, $data) {
         $confirm_link = $data['confirm_link'] ?? '#';
         
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #6B46C1; margin-top: 0;'>Email Change Request</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $primary; margin-top: 0;'>Email Change Request</h2>
             <p style='color: #ccc;'>Hi $name,</p>
             <p style='color: #ccc;'>We received a request to change your email address from:</p>
-            <div style='background: #1e293b; padding: 20px; margin: 20px 0; border-radius: 6px; border: 1px solid #333;'>
-                <p style='margin: 0 0 10px 0; color: #94a3b8;'>Current email: <strong style='color: #fff;'>$old_email</strong></p>
-                <p style='margin: 0; color: #94a3b8;'>New email: <strong style='color: #6B46C1;'>$new_email</strong></p>
+            <div style='background: $cardBg; padding: 20px; margin: 20px 0; border-radius: 6px; border: 1px solid $borderClr;'>
+                <p style='margin: 0 0 10px 0; color: $textMuted;'>Current email: <strong style='color: #fff;'>$old_email</strong></p>
+                <p style='margin: 0; color: $textMuted;'>New email: <strong style='color: $primary;'>$new_email</strong></p>
             </div>
             <p style='color: #ccc;'>If you made this request, please click the button below to confirm the change:</p>
             <p style='margin-top: 25px; text-align: center;'>
-                <a href='$confirm_link' style='display: inline-block; background: #6B46C1; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Confirm Email Change</a>
+                <a href='$confirm_link' style='display: inline-block; background: $primary; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Confirm Email Change</a>
             </p>
-            <p style='color: #ef4444; font-size: 13px; margin-top: 25px;'>⚠️ If you did not request this change, please ignore this email. Your email address will remain unchanged.</p>
+            <p style='color: $errorClr; font-size: 13px; margin-top: 25px;'>⚠️ If you did not request this change, please ignore this email. Your email address will remain unchanged.</p>
             <p style='color: #666; font-size: 12px; margin-top: 20px;'>This link will expire in 24 hours.</p>
             $footer
         </div>";
@@ -348,16 +406,17 @@ function sendEmail($to, $type, $data) {
         $subject = "Action Required: Sign Your " . $contract_title;
         
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #6B46C1; margin-top: 0;'>📝 Contract Ready for Signature</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $primary; margin-top: 0;'>📝 Contract Ready for Signature</h2>
             <p style='color: #ccc;'>Hi $name,</p>
             <p style='color: #ccc;'>Your <strong style='color: #fff;'>$contract_title</strong> is ready for your electronic signature.</p>
-            <div style='background: #1e293b; padding: 20px; margin: 25px 0; border-radius: 6px; border-left: 4px solid #6B46C1;'>
+            <div style='background: $cardBg; padding: 20px; margin: 25px 0; border-radius: 6px; border-left: 4px solid $primary;'>
                 <p style='color: #e2e8f0; margin: 0 0 15px 0;'>Please review and sign your contract by clicking the button below:</p>
-                <a href='$signing_url' style='display: inline-block; background: #6B46C1; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Review & Sign Contract</a>
+                <a href='$signing_url' style='display: inline-block; background: $primary; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Review & Sign Contract</a>
             </div>
-            <p style='color: #94a3b8; font-size: 13px;'>This signing link will expire in 7 days. If you have any questions, please contact HR.</p>
-            <p style='color: #ef4444; font-size: 12px; margin-top: 20px;'>⚠️ If you did not expect this email, please contact us immediately.</p>
+            <p style='color: $textMuted; font-size: 13px;'>This signing link will expire in 7 days. If you have any questions, please contact HR.</p>
+            <p style='color: $errorClr; font-size: 12px; margin-top: 20px;'>⚠️ If you did not expect this email, please contact us immediately.</p>
             $footer
         </div>";
     }
@@ -370,15 +429,16 @@ function sendEmail($to, $type, $data) {
         $subject = "✅ Contract Signed: " . $contract_title;
         
         $body = "
-        <div style='font-family: Arial, sans-serif; background: #06080b; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #00ff88; margin-top: 0;'>✔ Contract Successfully Signed</h2>
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $successClr; margin-top: 0;'>✔ Contract Successfully Signed</h2>
             <p style='color: #ccc;'>Hi $name,</p>
             <p style='color: #ccc;'>Thank you! Your <strong style='color: #fff;'>$contract_title</strong> has been successfully signed.</p>
-            <div style='background: #1e293b; padding: 20px; margin: 25px 0; border-radius: 6px; border: 1px solid #333;'>
+            <div style='background: $cardBg; padding: 20px; margin: 25px 0; border-radius: 6px; border: 1px solid $borderClr;'>
                 <p style='color: #e2e8f0; margin: 0;'><strong>Contract:</strong> $contract_title</p>
                 <p style='color: #e2e8f0; margin: 10px 0 0 0;'><strong>Signed On:</strong> " . date('F j, Y') . "</p>
             </div>
-            <p style='color: #94a3b8; font-size: 13px;'>A copy of your signed contract has been securely stored. You can access it through your employee portal or contact HR for a copy.</p>
+            <p style='color: $textMuted; font-size: 13px;'>A copy of your signed contract has been securely stored. You can access it through your employee portal or contact HR for a copy.</p>
             $footer
         </div>";
     }
