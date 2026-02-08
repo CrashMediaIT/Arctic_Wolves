@@ -1,7 +1,12 @@
 <?php
 // Get Google Maps API key
-$api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
-$google_maps_api_key = $api_key_stmt->fetchColumn();
+try {
+    $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+    $google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+} catch (Exception $e) {
+    error_log('Failed to retrieve Google Maps API key: ' . $e->getMessage());
+    $google_maps_api_key = '';
+}
 
 // Get mileage rates and unit preference from system settings
 $rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate', 'mileage_rate_per_km', 'mileage_rate_per_mile', 'mileage_unit')");

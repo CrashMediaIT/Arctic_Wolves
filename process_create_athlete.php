@@ -5,8 +5,8 @@ require 'db_config.php';
 require 'security.php';
 require 'mailer.php';
 
-// 1. SECURITY: Only Coach, Coach Plus, Health Coach, or Admin can run this
-$coach_roles = ['coach', 'coach_plus', 'health_coach', 'admin'];
+// 1. SECURITY: Only Coach, Coach Plus, Health Coach, Team Coach, or Admin can run this
+$coach_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $coach_roles)) {
     header("Location: dashboard.php"); 
     exit();
@@ -49,25 +49,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 3. INSERT USER
         // is_verified = 1 (Instant Access)
         // force_pass_change = 1 (Must change password immediately)
+        // is_active = 1 (Active immediately so they appear in rosters)
         // Set assigned_coach_id and created_by_coach_id for all coach types so athletes show in "My Athletes"
-        if (in_array($user_role, ['coach', 'coach_plus', 'health_coach']) || ($user_role === 'admin' && $assign_to_health_coach)) {
-            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, assigned_coach_id, created_by_coach_id) 
-                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, ?, ?)";
+        if (in_array($user_role, ['coach', 'coach_plus', 'health_coach', 'team_coach']) || ($user_role === 'admin' && $assign_to_health_coach)) {
+            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, is_active, assigned_coach_id, created_by_coach_id) 
+                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, 1, ?, ?)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob, $coach_id, $coach_id]);
         } else {
             // Admin creating without health coach assignment
-            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change) 
-                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1)";
+            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, is_active) 
+                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, 1)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob]);
         }
         
         $athlete_id = $pdo->lastInsertId();
         
-        // 4. ASSIGN ATHLETE TO COACH ROSTER (for coach and coach_plus roles)
+        // 4. ASSIGN ATHLETE TO COACH ROSTER (for all coach roles)
         // Note: managed_athletes is for coach rosters, parent_athlete_relationships is for parents
-        if ($user_role === 'coach' || $user_role === 'coach_plus') {
+        if (in_array($user_role, ['coach', 'coach_plus', 'health_coach', 'team_coach'])) {
             $assign_stmt = $pdo->prepare("
                 INSERT INTO managed_athletes (coach_id, athlete_id, start_date, status) 
                 VALUES (?, ?, CURDATE(), 'active')

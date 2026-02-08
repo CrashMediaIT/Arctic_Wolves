@@ -14,8 +14,13 @@ $offset = ($page_num - 1) * $per_page;
 $active_tab = $_GET['tab'] ?? 'list';
 
 // Get Google Maps API key for address autocomplete
-$api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
-$google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+try {
+    $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+    $google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+} catch (Exception $e) {
+    error_log('Failed to retrieve Google Maps API key: ' . $e->getMessage());
+    $google_maps_api_key = '';
+}
 
 // Get total count
 try {

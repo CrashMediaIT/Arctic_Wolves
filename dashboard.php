@@ -236,6 +236,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <link rel="stylesheet" href="css/style-guide.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="views/shared_styles.css">
+    <script src="js/typeahead.js"></script>
     <style>
         /* Dashboard-specific layout styles */
         body { margin: 0; background: var(--bg-main); font-family: 'Inter', sans-serif; color: #fff; display: flex; height: 100vh; overflow: hidden; }
@@ -890,7 +891,6 @@ function switchAthlete(athleteId) {
 </script>
 
 <!-- Main Application JavaScript -->
-<script src="js/typeahead.js"></script>
 <script src="js/app.js"></script>
 
 </body>

@@ -1437,8 +1437,8 @@ if ($action == 'create_user') {
         
         $new_user_id = $pdo->lastInsertId();
         
-        // Assign multiple coaches if this is an athlete
-        if ($role === 'athlete' && !empty($assigned_coach_ids)) {
+        // Assign multiple coaches to user
+        if (!empty($assigned_coach_ids)) {
             $insert_coach_stmt = $pdo->prepare("
                 INSERT INTO athlete_coaches (athlete_id, coach_id, role_type, assigned_by, status) 
                 VALUES (?, ?, 'primary', ?, 'active')
@@ -1513,8 +1513,8 @@ if ($action == 'update_user') {
             $stmt->execute([$first_name, $last_name, $email, $phone, $role, $birth_date, $primary_coach_id, $user_id_to_update]);
         }
         
-        // Update multiple coach assignments in athlete_coaches table for athletes
-        if ($role === 'athlete' && !empty($assigned_coach_ids)) {
+        // Update multiple coach assignments in athlete_coaches table
+        if (!empty($assigned_coach_ids)) {
             // First, deactivate all existing coach assignments for this athlete
             $pdo->prepare("UPDATE athlete_coaches SET status = 'inactive' WHERE athlete_id = ?")->execute([$user_id_to_update]);
             

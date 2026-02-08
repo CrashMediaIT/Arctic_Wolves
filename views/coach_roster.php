@@ -14,7 +14,7 @@ $athletes_query = "
     FROM users u
     LEFT JOIN athlete_programs ap ON ap.athlete_id = u.id AND ap.status = 'active'
     LEFT JOIN programs p ON ap.program_id = p.id
-    WHERE u.is_active = 1
+    WHERE u.is_active = 1 AND u.role = 'athlete'
     AND (
         u.assigned_coach_id = ?
         OR u.created_by_coach_id = ?

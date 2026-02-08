@@ -13,8 +13,13 @@ if ($user_role !== 'admin') {
 }
 
 // Get Google Maps API key from system settings
-$api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
-$google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+try {
+    $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+    $google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+} catch (Exception $e) {
+    error_log('Failed to retrieve Google Maps API key: ' . $e->getMessage());
+    $google_maps_api_key = '';
+}
 
 // Get all locations
 $locations = $pdo->query("

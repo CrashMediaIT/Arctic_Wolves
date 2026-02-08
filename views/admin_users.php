@@ -957,7 +957,7 @@ function closeModal(modalId) {
                     <input type="date" name="birth_date" class="form-input">
                 </div>
                 
-                <div class="form-row athlete-coach-fields" style="display: none;">
+                <div class="form-row coach-assignment-fields" style="display: none;">
                     <div class="form-group" style="grid-column: span 2;">
                         <label class="form-label">Assign Coaches</label>
                         <div id="add-user-coach-typeahead"></div>
@@ -992,14 +992,27 @@ function closeModal(modalId) {
 </div>
 
 <script>
-// Toggle athlete/coach fields based on role selection
+// Toggle coach/team fields based on role selection
 document.getElementById('add-user-role').addEventListener('change', function() {
-    var athleteFields = this.closest('form').querySelector('.athlete-coach-fields');
-    if (this.value === 'athlete') {
-        athleteFields.style.display = 'grid';
-    } else {
-        athleteFields.style.display = 'none';
-    }
+    var coachFields = this.closest('form').querySelectorAll('.coach-assignment-fields');
+    var athleteFields = this.closest('form').querySelectorAll('.athlete-coach-fields');
+    var selectedRole = this.value;
+    // Show coach assignment for all roles (any user can have a coach assigned)
+    coachFields.forEach(function(field) {
+        if (selectedRole) {
+            field.style.display = 'grid';
+        } else {
+            field.style.display = 'none';
+        }
+    });
+    // Show team/jersey/position fields only for athletes
+    athleteFields.forEach(function(field) {
+        if (selectedRole === 'athlete') {
+            field.style.display = 'grid';
+        } else {
+            field.style.display = 'none';
+        }
+    });
 });
 </script>
 

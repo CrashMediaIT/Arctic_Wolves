@@ -11,8 +11,13 @@ $skill_levels_stmt = $pdo->query("SELECT * FROM skill_levels ORDER BY display_or
 $skill_levels = $skill_levels_stmt->fetchAll();
 
 // Get Google Maps API key from system settings for Locations tab
-$api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
-$google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+try {
+    $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+    $google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+} catch (Exception $e) {
+    error_log('Failed to retrieve Google Maps API key: ' . $e->getMessage());
+    $google_maps_api_key = '';
+}
 
 // Fetch teams for the Teams tab
 $teams_stmt = $pdo->query("
