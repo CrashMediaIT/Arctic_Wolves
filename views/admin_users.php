@@ -791,44 +791,27 @@ function closeModal(modalId) {
     color: var(--text-muted);
 }
 
-/* Management Modal Styles */
-.management-tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 15px;
-}
-
-.management-tab {
-    padding: 8px 16px;
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 13px;
-    transition: all 0.2s ease;
-}
-
-.management-tab:hover {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-}
-
-.management-tab.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
+/* Form Hints */
+.form-hint {
     display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Checkbox Label */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Full-width submit buttons inside tabs */
+.btn-block {
+    width: 100%;
 }
 
 /* Profile Upload Preview */
@@ -885,50 +868,6 @@ function closeModal(modalId) {
     color: var(--text-muted);
 }
 
-/* Toggle Switch */
-.toggle-switch {
-    position: relative;
-    width: 50px;
-    height: 26px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--border);
-    transition: 0.3s;
-    border-radius: 26px;
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-}
-
-input:checked + .toggle-slider {
-    background-color: var(--primary);
-}
-
-input:checked + .toggle-slider:before {
-    transform: translateX(24px);
-}
 
 @media (max-width: 768px) {
     .action-bar-enhanced {
@@ -1031,7 +970,7 @@ input:checked + .toggle-slider:before {
                 <div class="form-group">
                     <label class="form-label">Temporary Password *</label>
                     <input type="password" name="password" class="form-input" required>
-                    <small style="color: var(--text-dim);">User will be prompted to change on first login</small>
+                    <small class="form-hint">User will be prompted to change on first login</small>
                 </div>
             </div>
             
@@ -1057,7 +996,7 @@ document.getElementById('add-user-role').addEventListener('change', function() {
 
 <!-- Edit User Modal (combined with Manage Assignments) -->
 <div id="edit-user-modal" class="modal">
-    <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Edit User - <span class="edit-user-display-name"></span></h2>
             <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-user-modal')">&times;</button>
@@ -1067,17 +1006,17 @@ document.getElementById('add-user-role').addEventListener('change', function() {
             <input type="hidden" id="edit-user-id" value="">
             
             <!-- Edit User Tabs -->
-            <div class="management-tabs edit-user-tabs">
-                <button type="button" class="management-tab active" data-tab="edit-details-tab">
+            <div class="tabs edit-user-tabs">
+                <button type="button" class="tab active" data-tab="edit-details-tab">
                     <i class="fas fa-user"></i> Details
                 </button>
-                <button type="button" class="management-tab" data-tab="edit-assignments-tab">
+                <button type="button" class="tab" data-tab="edit-assignments-tab">
                     <i class="fas fa-users"></i> Assignments
                 </button>
-                <button type="button" class="management-tab" data-tab="edit-profile-tab">
+                <button type="button" class="tab" data-tab="edit-profile-tab">
                     <i class="fas fa-user-circle"></i> Profile Image
                 </button>
-                <button type="button" class="management-tab" data-tab="edit-notifications-tab">
+                <button type="button" class="tab" data-tab="edit-notifications-tab">
                     <i class="fas fa-bell"></i> Notifications
                 </button>
             </div>
@@ -1131,7 +1070,7 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                         </div>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-save"></i> Update Details</button>
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Update Details</button>
                 </form>
             </div>
             
@@ -1175,7 +1114,7 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                         </select>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-save"></i> Save Assignments</button>
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save Assignments</button>
                 </form>
             </div>
             
@@ -1191,14 +1130,14 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                         <div id="edit-profile-upload-placeholder">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <p>Click to upload profile image</p>
-                            <small style="color: var(--text-muted);">JPG, PNG, GIF up to 5MB</small>
+                            <small class="form-hint">JPG, PNG, GIF up to 5MB</small>
                         </div>
                     </div>
                     <input type="file" id="edit-profile-image-input" name="profile_image" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
                     
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="fas fa-upload"></i> Upload Image</button>
+                    <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" id="edit-remove-profile-image"><i class="fas fa-trash"></i> Remove</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload Image</button>
                     </div>
                 </form>
             </div>
@@ -1254,7 +1193,7 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                         </label>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;"><i class="fas fa-save"></i> Save Notification Settings</button>
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save Notification Settings</button>
                 </form>
             </div>
         </div>
@@ -1263,10 +1202,10 @@ document.getElementById('add-user-role').addEventListener('change', function() {
 
 <script>
 // Edit user modal tab switching
-document.querySelectorAll('.edit-user-tabs .management-tab').forEach(function(tab) {
+document.querySelectorAll('.edit-user-tabs .tab').forEach(function(tab) {
     tab.addEventListener('click', function() {
         var modal = this.closest('.modal');
-        modal.querySelectorAll('.edit-user-tabs .management-tab').forEach(function(t) { t.classList.remove('active'); });
+        modal.querySelectorAll('.edit-user-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
         modal.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
         this.classList.add('active');
         var tabId = this.getAttribute('data-tab');
@@ -1319,9 +1258,9 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         
         // Reset to first tab
         var modal = document.getElementById('edit-user-modal');
-        modal.querySelectorAll('.edit-user-tabs .management-tab').forEach(function(t) { t.classList.remove('active'); });
+        modal.querySelectorAll('.edit-user-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
         modal.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
-        modal.querySelector('.edit-user-tabs .management-tab[data-tab="edit-details-tab"]').classList.add('active');
+        modal.querySelector('.edit-user-tabs .tab[data-tab="edit-details-tab"]').classList.add('active');
         document.getElementById('edit-details-tab').classList.add('active');
         
         modal.classList.add('active');
@@ -1445,7 +1384,7 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
 
 <!-- Security Modal (Password & PIN) -->
 <div id="security-modal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">Security - <span class="security-user-name"></span></h2>
             <button class="modal-close" aria-label="Close modal" onclick="closeModal('security-modal')">&times;</button>
@@ -1453,11 +1392,11 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
         
         <div class="modal-body">
             <!-- Security Tabs -->
-            <div class="management-tabs security-tabs">
-                <button type="button" class="management-tab active" data-tab="security-password-tab">
+            <div class="tabs security-tabs">
+                <button type="button" class="tab active" data-tab="security-password-tab">
                     <i class="fas fa-key"></i> Password
                 </button>
-                <button type="button" class="management-tab" data-tab="security-pin-tab" id="security-pin-tab-btn">
+                <button type="button" class="tab" data-tab="security-pin-tab" id="security-pin-tab-btn">
                     <i class="fas fa-th"></i> PIN
                 </button>
             </div>
@@ -1472,7 +1411,7 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
                     <div class="form-group">
                         <label class="form-label">New Password *</label>
                         <input type="password" name="new_password" class="form-input" required minlength="8" placeholder="Enter new password">
-                        <small style="color: var(--text-dim);">Minimum 8 characters</small>
+                        <small class="form-hint">Minimum 8 characters</small>
                     </div>
                     
                     <div class="form-group">
@@ -1481,13 +1420,13 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <label class="checkbox-label">
                             <input type="checkbox" name="force_change" value="1" checked>
                             <span>Force user to change password on next login</span>
                         </label>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-key"></i> Reset Password</button>
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-key"></i> Reset Password</button>
                 </form>
             </div>
             
@@ -1498,14 +1437,14 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
                     <input type="hidden" name="action" value="admin_reset_pin">
                     <input type="hidden" name="user_id" class="security-form-user-id" value="">
                     
-                    <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                    <p class="form-hint" style="margin-bottom: 20px;">
                         Set or reset POS/Kiosk PIN for this user.
                     </p>
                     
                     <div class="form-group">
                         <label class="form-label">New PIN (4 digits) *</label>
                         <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
-                        <small style="color: var(--text-dim);">Must be exactly 4 digits</small>
+                        <small class="form-hint">Must be exactly 4 digits</small>
                     </div>
                     
                     <div class="form-group">
@@ -1513,7 +1452,7 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
                         <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-th"></i> Set PIN</button>
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-th"></i> Set PIN</button>
                 </form>
             </div>
         </div>
@@ -1522,10 +1461,10 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
 
 <script>
 // Security modal tab switching
-document.querySelectorAll('.security-tabs .management-tab').forEach(function(tab) {
+document.querySelectorAll('.security-tabs .tab').forEach(function(tab) {
     tab.addEventListener('click', function() {
         var modal = this.closest('.modal');
-        modal.querySelectorAll('.security-tabs .management-tab').forEach(function(t) { t.classList.remove('active'); });
+        modal.querySelectorAll('.security-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
         modal.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
         this.classList.add('active');
         var tabId = this.getAttribute('data-tab');
@@ -1560,9 +1499,9 @@ document.querySelectorAll('[data-action="security"]').forEach(function(btn) {
             }
             
             // Reset to password tab
-            modal.querySelectorAll('.security-tabs .management-tab').forEach(function(t) { t.classList.remove('active'); });
+            modal.querySelectorAll('.security-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
             modal.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
-            modal.querySelector('.security-tabs .management-tab[data-tab="security-password-tab"]').classList.add('active');
+            modal.querySelector('.security-tabs .tab[data-tab="security-password-tab"]').classList.add('active');
             document.getElementById('security-password-tab').classList.add('active');
             
             modal.classList.add('active');
