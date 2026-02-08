@@ -89,6 +89,9 @@ if (isset($_GET['error'])) {
         case 'database_error':
             $error = "A database error occurred. Please try again later.";
             break;
+        case 'blocked':
+            $error = "Registration is not available for the provided information. Please contact the administrator.";
+            break;
         case 'csrf_invalid':
             $error = "Security token expired. Please refresh and try again.";
             break;

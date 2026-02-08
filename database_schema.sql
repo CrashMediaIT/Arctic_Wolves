@@ -3698,3 +3698,17 @@ CREATE TABLE IF NOT EXISTS `error_logs` (
     INDEX `idx_level` (`error_level`),
     INDEX `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Registration blocklist for blocking users by email, name, or IP address
+CREATE TABLE IF NOT EXISTS `registration_blocklist` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `block_type` ENUM('email', 'name', 'ip') NOT NULL,
+    `block_value` VARCHAR(255) NOT NULL,
+    `reason` TEXT DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_block` (`block_type`, `block_value`),
+    INDEX `idx_type` (`block_type`),
+    INDEX `idx_value` (`block_value`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

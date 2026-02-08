@@ -8,6 +8,7 @@ session_start();
 require 'db_config.php';
 require 'mailer.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/blocklist.php';
 
 /**
  * Generate a unique email for an athlete based on parent's email
@@ -102,6 +103,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt->execute([$email]);
     if ($stmt->rowCount() > 0) {
         header("Location: register.php?error=email_taken");
+        exit();
+    }
+
+    // 2. CHECK BLOCKLIST (email, name, or IP)
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+    $blockCheck = Blocklist::checkRegistration($pdo, $email, $first, $last, $clientIp);
+    if ($blockCheck['blocked']) {
+        header("Location: register.php?error=blocked");
         exit();
     }
 

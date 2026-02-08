@@ -838,9 +838,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=system_notification" class="nav-link <?= $page=='system_notification'?'active':'' ?>">
                 <i class="fa-solid fa-bell icon"></i> System Notification
             </a>
-            <a href="?page=audit_log" class="nav-link <?= $page=='audit_log'?'active':'' ?>">
-                <i class="fa-solid fa-list-check icon"></i> Audit Log
-            </a>
             <a href="?page=admin_security" class="nav-link <?= $page=='admin_security'?'active':'' ?>">
                 <i class="fa-solid fa-shield-halved icon"></i> Security
             </a>
