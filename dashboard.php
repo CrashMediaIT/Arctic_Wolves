@@ -28,6 +28,21 @@ $user_id   = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 $user_name = $_SESSION['user_name'] ?? 'Guest';
 
+// Update last_activity for online status tracking (at most once per minute)
+if (!isset($_SESSION['last_activity_update']) || (time() - $_SESSION['last_activity_update']) > 60) {
+    try {
+        $pdo->prepare("UPDATE login_history SET last_activity = NOW() WHERE user_id = ? AND logout_time IS NULL ORDER BY login_time DESC LIMIT 1")->execute([$user_id]);
+        $_SESSION['last_activity_update'] = time();
+    } catch (PDOException $e) {
+        // Silently fail - column may not exist yet
+    }
+}
+
+// Persona mode: check if admin is impersonating another role
+$isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original_role']) && $_SESSION['persona_original_role'] === 'admin'));
+$personaActive = !empty($_SESSION['persona_active']);
+$personaOriginalRole = $_SESSION['persona_original_role'] ?? null;
+
 // Role checks including new roles
 $isAdmin       = ($user_role === 'admin');
 $isCoach       = ($user_role === 'coach');
@@ -165,6 +180,7 @@ $allowed_pages = [
     'admin_coach_termination' => 'views/admin_coach_termination.php',
     'admin_feature_import'    => 'views/admin_feature_import.php',
     'admin_theme_settings'    => 'views/admin_theme_settings.php',
+    'admin_security'          => 'views/admin_security.php',
     'ihs_import'              => 'views/ihs_import.php',
     'session_templates'       => 'views/library_sessions.php',
     
@@ -564,6 +580,83 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
         ARCTIC <span>WOLVES</span>
     </a>
     
+    <?php if ($isActualAdmin): ?>
+    <!-- Admin Persona Switcher -->
+    <div class="persona-switcher" id="personaSwitcher">
+        <?php if ($personaActive): ?>
+        <div class="persona-banner">
+            <i class="fas fa-mask"></i>
+            <span>Persona Mode</span>
+        </div>
+        <?php endif; ?>
+        <label class="persona-label">
+            <i class="fas fa-user-secret"></i> View As Role
+        </label>
+        <select id="personaRoleSelect" class="persona-select">
+            <option value="admin" <?= $user_role === 'admin' ? 'selected' : '' ?>>Admin</option>
+            <option value="coach" <?= $user_role === 'coach' ? 'selected' : '' ?>>Coach</option>
+            <option value="health_coach" <?= $user_role === 'health_coach' ? 'selected' : '' ?>>Health Coach</option>
+            <option value="team_coach" <?= $user_role === 'team_coach' ? 'selected' : '' ?>>Team Coach</option>
+            <option value="athlete" <?= $user_role === 'athlete' ? 'selected' : '' ?>>Athlete</option>
+            <option value="parent" <?= $user_role === 'parent' ? 'selected' : '' ?>>Parent</option>
+            <option value="front_desk_staff" <?= $user_role === 'front_desk_staff' ? 'selected' : '' ?>>Front Desk</option>
+        </select>
+        <?php if ($personaActive): ?>
+        <button type="button" id="exitPersonaBtn" class="persona-exit-btn">
+            <i class="fas fa-arrow-rotate-left"></i> Back to Admin
+        </button>
+        <?php endif; ?>
+    </div>
+    <style>
+        .persona-switcher { padding: 12px; margin-bottom: 15px; background: rgba(107, 70, 193, 0.08); border: 1px solid rgba(107, 70, 193, 0.25); border-radius: 10px; }
+        .persona-banner { background: rgba(245, 158, 11, 0.15); color: #F59E0B; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .persona-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .persona-select { width: 100%; padding: 8px 12px; background: var(--bg, #0a0a0f); border: 1px solid var(--border, #2D2D3F); border-radius: 6px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 36px; }
+        .persona-select:focus { outline: none; border-color: var(--primary, #6B46C1); }
+        .persona-exit-btn { width: 100%; margin-top: 8px; padding: 8px 12px; background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; }
+        .persona-exit-btn:hover { background: rgba(245, 158, 11, 0.25); }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var personaSelect = document.getElementById('personaRoleSelect');
+        var exitBtn = document.getElementById('exitPersonaBtn');
+        var csrfToken = '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+        
+        if (personaSelect) {
+            personaSelect.addEventListener('change', function() {
+                var selectedRole = this.value;
+                fetch('process_persona_switch.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: 'action=switch_role&role=' + encodeURIComponent(selectedRole) + '&csrf_token=' + encodeURIComponent(csrfToken)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) { window.location.href = 'dashboard.php?page=home'; }
+                    else { alert('Error: ' + (data.message || 'Failed to switch role')); }
+                })
+                .catch(function() { alert('An error occurred. Please try again.'); });
+            });
+        }
+        
+        if (exitBtn) {
+            exitBtn.addEventListener('click', function() {
+                fetch('process_persona_switch.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: 'action=exit_persona&csrf_token=' + encodeURIComponent(csrfToken)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) { window.location.href = 'dashboard.php?page=home'; }
+                })
+                .catch(function() { alert('An error occurred. Please try again.'); });
+            });
+        }
+    });
+    </script>
+    <?php endif; ?>
+    
     <!-- MAIN MENU (For all users) -->
     <div class="nav-group">
         <span class="nav-label">Main Menu</span>
@@ -747,6 +840,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=audit_log" class="nav-link <?= $page=='audit_log'?'active':'' ?>">
                 <i class="fa-solid fa-list-check icon"></i> Audit Log
+            </a>
+            <a href="?page=admin_security" class="nav-link <?= $page=='admin_security'?'active':'' ?>">
+                <i class="fa-solid fa-shield-halved icon"></i> Security
             </a>
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>">
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools

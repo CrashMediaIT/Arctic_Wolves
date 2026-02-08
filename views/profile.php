@@ -929,6 +929,231 @@ $errors = [
                 </form>
             </div>
         </div>
+
+        <!-- Two-Factor Authentication Section -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h3><i class="fas fa-shield-halved"></i> Two-Factor Authentication</h3>
+            </div>
+            <div class="card-body">
+                <div id="tfa-status-container">
+                    <p style="color: var(--text-dim); margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i> Add an extra layer of security to your account using an authenticator app (Google Authenticator, Authy, etc.) or a hardware security key.
+                    </p>
+                    <div id="tfa-loading" style="text-align: center; padding: 20px;">
+                        <i class="fas fa-spinner fa-spin"></i> Loading 2FA status...
+                    </div>
+                    
+                    <!-- Shown when 2FA is NOT enabled -->
+                    <div id="tfa-disabled-section" style="display: none;">
+                        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                            <i class="fas fa-exclamation-triangle" style="color: #F59E0B;"></i>
+                            <span style="color: #F59E0B; font-weight: 600; font-size: 13px;"> Two-factor authentication is not enabled</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Authentication Method</label>
+                            <select id="tfa-method-select" class="form-input">
+                                <option value="app">Authenticator App (Google Authenticator, Authy)</option>
+                                <option value="hardware">Hardware Security Key (YubiKey, etc.)</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="tfa-setup-btn">
+                            <i class="fas fa-shield-halved"></i> Enable Two-Factor Authentication
+                        </button>
+                    </div>
+                    
+                    <!-- Setup flow -->
+                    <div id="tfa-setup-section" style="display: none;">
+                        <div style="background: rgba(107, 70, 193, 0.1); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                            <h4 style="margin: 0 0 8px; font-size: 14px;"><i class="fas fa-mobile-screen-button"></i> Step 1: Scan QR Code</h4>
+                            <p style="margin: 0; font-size: 13px; color: var(--text-dim);">Scan this QR code with your authenticator app, or enter the secret key manually.</p>
+                        </div>
+                        <div style="text-align: center; margin-bottom: 16px;">
+                            <div id="tfa-qr-code" style="display: inline-block; background: #fff; padding: 16px; border-radius: 8px;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Manual Entry Key</label>
+                            <input type="text" id="tfa-secret-display" class="form-input" readonly style="font-family: monospace; font-size: 16px; letter-spacing: 2px;">
+                        </div>
+                        
+                        <div style="background: rgba(107, 70, 193, 0.1); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 8px; padding: 16px; margin: 16px 0;">
+                            <h4 style="margin: 0 0 8px; font-size: 14px;"><i class="fas fa-key"></i> Step 2: Save Backup Codes</h4>
+                            <p style="margin: 0 0 12px; font-size: 13px; color: var(--text-dim);">Save these codes in a safe place. Each can be used once if you lose access to your authenticator.</p>
+                            <div id="tfa-backup-codes" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;"></div>
+                        </div>
+                        
+                        <div style="background: rgba(107, 70, 193, 0.1); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 8px; padding: 16px; margin: 16px 0;">
+                            <h4 style="margin: 0 0 8px; font-size: 14px;"><i class="fas fa-check-circle"></i> Step 3: Verify Code</h4>
+                            <p style="margin: 0 0 12px; font-size: 13px; color: var(--text-dim);">Enter the 6-digit code from your authenticator app to confirm setup.</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Verification Code</label>
+                            <input type="text" id="tfa-verify-code" class="form-input" maxlength="6" inputmode="numeric" placeholder="000000" style="font-size: 20px; text-align: center; letter-spacing: 6px;">
+                        </div>
+                        <div class="form-actions" style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-secondary" id="tfa-cancel-setup-btn">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="tfa-confirm-btn">
+                                <i class="fas fa-check"></i> Verify & Enable
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Shown when 2FA IS enabled -->
+                    <div id="tfa-enabled-section" style="display: none;">
+                        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                            <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                            <span style="color: #10b981; font-weight: 600; font-size: 13px;"> Two-factor authentication is enabled</span>
+                            <span id="tfa-method-display" style="color: var(--text-dim); font-size: 12px; margin-left: 8px;"></span>
+                        </div>
+                        <div class="form-group">
+                            <label>Enter current code to disable 2FA</label>
+                            <input type="text" id="tfa-disable-code" class="form-input" maxlength="6" inputmode="numeric" placeholder="000000" style="font-size: 18px; text-align: center; letter-spacing: 4px;">
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="tfa-disable-btn" style="background: rgba(239,68,68,0.1); color: #ef4444; border-color: rgba(239,68,68,0.3);">
+                            <i class="fas fa-shield-halved"></i> Disable Two-Factor Authentication
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var csrfToken = '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+            
+            // Load 2FA status
+            fetch('process_2fa.php?action=get_status')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                document.getElementById('tfa-loading').style.display = 'none';
+                if (data.enabled) {
+                    document.getElementById('tfa-enabled-section').style.display = 'block';
+                    var methodDisplay = document.getElementById('tfa-method-display');
+                    if (methodDisplay && data.method) {
+                        methodDisplay.textContent = '(' + (data.method === 'app' ? 'Authenticator App' : 'Hardware Key') + ')';
+                    }
+                } else {
+                    document.getElementById('tfa-disabled-section').style.display = 'block';
+                }
+            })
+            .catch(function() {
+                document.getElementById('tfa-loading').innerHTML = '<span style="color: var(--text-dim);">Unable to load 2FA status</span>';
+            });
+            
+            // Setup button
+            document.getElementById('tfa-setup-btn').addEventListener('click', function() {
+                var method = document.getElementById('tfa-method-select').value;
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Setting up...';
+                
+                fetch('process_2fa.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: 'action=setup&method=' + encodeURIComponent(method) + '&csrf_token=' + encodeURIComponent(csrfToken)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('tfa-disabled-section').style.display = 'none';
+                        document.getElementById('tfa-setup-section').style.display = 'block';
+                        document.getElementById('tfa-secret-display').value = data.secret;
+                        
+                        // Generate QR code using a simple text display (no external lib needed)
+                        var qrDiv = document.getElementById('tfa-qr-code');
+                        var qrImg = document.createElement('img');
+                        qrImg.src = 'https://chart.googleapis.com/chart?chs=200x200&chld=M|0&cht=qr&chl=' + encodeURIComponent(data.otpauth_uri);
+                        qrImg.alt = 'QR Code';
+                        qrImg.style.width = '200px';
+                        qrImg.style.height = '200px';
+                        qrDiv.innerHTML = '';
+                        qrDiv.appendChild(qrImg);
+                        
+                        // Show backup codes
+                        var codesDiv = document.getElementById('tfa-backup-codes');
+                        codesDiv.innerHTML = '';
+                        data.backup_codes.forEach(function(code) {
+                            var codeEl = document.createElement('div');
+                            codeEl.style.cssText = 'background: rgba(0,0,0,0.3); padding: 6px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; text-align: center; color: #fff;';
+                            codeEl.textContent = code;
+                            codesDiv.appendChild(codeEl);
+                        });
+                    } else {
+                        alert('Error: ' + (data.message || 'Setup failed'));
+                    }
+                    document.getElementById('tfa-setup-btn').disabled = false;
+                    document.getElementById('tfa-setup-btn').innerHTML = '<i class="fas fa-shield-halved"></i> Enable Two-Factor Authentication';
+                })
+                .catch(function() {
+                    alert('An error occurred. Please try again.');
+                    document.getElementById('tfa-setup-btn').disabled = false;
+                    document.getElementById('tfa-setup-btn').innerHTML = '<i class="fas fa-shield-halved"></i> Enable Two-Factor Authentication';
+                });
+            });
+            
+            // Cancel setup
+            document.getElementById('tfa-cancel-setup-btn').addEventListener('click', function() {
+                document.getElementById('tfa-setup-section').style.display = 'none';
+                document.getElementById('tfa-disabled-section').style.display = 'block';
+            });
+            
+            // Verify and enable
+            document.getElementById('tfa-confirm-btn').addEventListener('click', function() {
+                var code = document.getElementById('tfa-verify-code').value.trim();
+                if (!code || code.length !== 6) { alert('Please enter a 6-digit code'); return; }
+                
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+                var btn = this;
+                
+                fetch('process_2fa.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: 'action=verify_setup&code=' + encodeURIComponent(code) + '&csrf_token=' + encodeURIComponent(csrfToken)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('tfa-setup-section').style.display = 'none';
+                        document.getElementById('tfa-enabled-section').style.display = 'block';
+                        if (typeof showNotification === 'function') showNotification('Two-factor authentication enabled!', 'success');
+                    } else {
+                        alert(data.message || 'Invalid code');
+                    }
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Verify & Enable';
+                })
+                .catch(function() { alert('An error occurred.'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Verify & Enable'; });
+            });
+            
+            // Disable 2FA
+            document.getElementById('tfa-disable-btn').addEventListener('click', function() {
+                var code = document.getElementById('tfa-disable-code').value.trim();
+                if (!code || code.length !== 6) { alert('Please enter your current 6-digit code'); return; }
+                if (!confirm('Are you sure you want to disable two-factor authentication?')) return;
+                
+                this.disabled = true;
+                var btn = this;
+                
+                fetch('process_2fa.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: 'action=disable&code=' + encodeURIComponent(code) + '&csrf_token=' + encodeURIComponent(csrfToken)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('tfa-enabled-section').style.display = 'none';
+                        document.getElementById('tfa-disabled-section').style.display = 'block';
+                        document.getElementById('tfa-disable-code').value = '';
+                        if (typeof showNotification === 'function') showNotification('Two-factor authentication disabled', 'success');
+                    } else {
+                        alert(data.message || 'Failed to disable 2FA');
+                    }
+                    btn.disabled = false;
+                })
+                .catch(function() { alert('An error occurred.'); btn.disabled = false; });
+            });
+        });
+        </script>
     </div>
 
     <!-- Notifications Tab -->

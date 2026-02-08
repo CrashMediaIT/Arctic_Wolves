@@ -71,7 +71,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             // Verify password
             if (password_verify($password, $user['password'])) {
-                // Successful login
+                // Check if 2FA is enabled for this user
+                $has2FA = false;
+                try {
+                    $stmt2fa = $pdo->prepare("SELECT is_enabled FROM two_factor_auth WHERE user_id = ? AND is_enabled = 1");
+                    $stmt2fa->execute([$user['id']]);
+                    $has2FA = (bool)$stmt2fa->fetchColumn();
+                } catch (PDOException $e) {
+                    // Table may not exist yet, continue without 2FA
+                }
+                
+                if ($has2FA) {
+                    // Store pending 2FA state - don't complete login yet
+                    session_regenerate_id(true);
+                    $_SESSION['2fa_pending'] = true;
+                    $_SESSION['2fa_pending_user_id'] = $user['id'];
+                    $_SESSION['2fa_pending_user_name'] = $user['first_name'] . ' ' . $user['last_name'];
+                    $_SESSION['2fa_pending_user_role'] = $user['role'];
+                    $_SESSION['2fa_pending_user_email'] = $email;
+                    
+                    // Temporarily set user_id for CSRF to work on verify page
+                    $_SESSION['user_id'] = $user['id'];
+                    
+                    recordLoginHistory($pdo, $user['id'], 'success');
+                    header("Location: verify_2fa.php");
+                    exit();
+                }
+                
+                // Successful login (no 2FA)
                 session_regenerate_id(true);
                 $_SESSION['user_id']   = $user['id'];
                 $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];

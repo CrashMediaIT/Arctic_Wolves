@@ -135,6 +135,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         exit();
     }
+    
+    // Get user 2FA status (for admin security modal)
+    if ($action === 'get_user_2fa_status') {
+        header('Content-Type: application/json');
+        try {
+            $userId = intval($_GET['user_id'] ?? 0);
+            if ($userId <= 0) {
+                throw new Exception('Invalid user ID');
+            }
+            
+            $tfa_enabled = false;
+            $tfa_required = false;
+            
+            try {
+                $stmt = $pdo->prepare("SELECT is_enabled FROM two_factor_auth WHERE user_id = ? AND is_enabled = 1");
+                $stmt->execute([$userId]);
+                $tfa_enabled = (bool)$stmt->fetchColumn();
+            } catch (PDOException $e) {
+                // Table may not exist
+            }
+            
+            try {
+                $stmt = $pdo->prepare("SELECT two_factor_required FROM users WHERE id = ?");
+                $stmt->execute([$userId]);
+                $tfa_required = (bool)$stmt->fetchColumn();
+            } catch (PDOException $e) {
+                // Column may not exist
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'two_fa_enabled' => $tfa_enabled,
+                'two_factor_required' => $tfa_required
+            ]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit();
+    }
 }
 
 // Validate CSRF token for POST requests
@@ -1741,6 +1781,45 @@ if ($action == 'admin_reset_pin') {
         ]);
     } catch (PDOException $e) {
         error_log("Admin reset PIN error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
+if ($action == 'force_2fa') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_update = intval($_POST['user_id']);
+        $two_factor_required = intval($_POST['two_factor_required'] ?? 0) ? 1 : 0;
+        
+        if ($user_id_to_update <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
+            exit();
+        }
+        
+        // Check if column exists
+        try {
+            $stmt = $pdo->prepare("UPDATE users SET two_factor_required = ? WHERE id = ?");
+            $stmt->execute([$two_factor_required, $user_id_to_update]);
+        } catch (PDOException $e) {
+            // Column might not exist yet, try adding it
+            $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_required TINYINT(1) DEFAULT 0");
+            $stmt = $pdo->prepare("UPDATE users SET two_factor_required = ? WHERE id = ?");
+            $stmt->execute([$two_factor_required, $user_id_to_update]);
+        }
+        
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+        $stmt->execute([$user_id_to_update]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $action_text = $two_factor_required ? 'required' : 'not required';
+        echo json_encode([
+            'success' => true,
+            'message' => "2FA is now {$action_text} for " . ($user ? $user['first_name'] . ' ' . $user['last_name'] : 'this user')
+        ]);
+    } catch (PDOException $e) {
+        error_log("Admin force 2FA error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();

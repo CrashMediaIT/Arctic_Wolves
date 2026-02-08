@@ -1463,6 +1463,9 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
                 <button type="button" class="tab" data-tab="security-pin-tab" id="security-pin-tab-btn">
                     <i class="fas fa-th"></i> PIN
                 </button>
+                <button type="button" class="tab" data-tab="security-2fa-tab">
+                    <i class="fas fa-shield-halved"></i> 2FA
+                </button>
             </div>
             
             <!-- Password Tab -->
@@ -1519,6 +1522,35 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
                     <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-th"></i> Set PIN</button>
                 </form>
             </div>
+            
+            <!-- 2FA Tab -->
+            <div id="security-2fa-tab" class="tab-content">
+                <div class="form-group">
+                    <p style="color: var(--text-dim); margin-bottom: 16px;">
+                        <i class="fas fa-info-circle"></i> Force this user to set up two-factor authentication on their next login. You can also check if they already have 2FA enabled.
+                    </p>
+                    
+                    <div id="admin-2fa-status" style="margin-bottom: 16px;">
+                        <span style="color: var(--text-muted); font-size: 13px;"><i class="fas fa-spinner fa-spin"></i> Loading 2FA status...</span>
+                    </div>
+                    
+                    <form id="force-2fa-form">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="force_2fa">
+                        <input type="hidden" name="user_id" class="security-form-user-id" value="">
+                        
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="two_factor_required" value="1" id="force-2fa-checkbox">
+                                <span>Require two-factor authentication for this user</span>
+                            </label>
+                            <small class="form-hint">When enabled, the user will be required to set up 2FA on their next login.</small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-shield-halved"></i> Update 2FA Requirement</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1570,6 +1602,28 @@ document.querySelectorAll('[data-action="security"]').forEach(function(btn) {
             
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            
+            // Load 2FA status for this user
+            var statusDiv = document.getElementById('admin-2fa-status');
+            if (statusDiv) {
+                statusDiv.innerHTML = '<span style="color: var(--text-muted); font-size: 13px;"><i class="fas fa-spinner fa-spin"></i> Loading...</span>';
+                fetch('process_admin_action.php?action=get_user_2fa_status&user_id=' + userId, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.two_fa_enabled) {
+                        statusDiv.innerHTML = '<div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 10px; border-radius: 6px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> <span style="color: #10b981; font-weight: 600; font-size: 13px;">2FA is enabled</span></div>';
+                    } else {
+                        statusDiv.innerHTML = '<div style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); padding: 10px; border-radius: 6px;"><i class="fas fa-exclamation-triangle" style="color: #F59E0B;"></i> <span style="color: #F59E0B; font-weight: 600; font-size: 13px;">2FA is not enabled</span></div>';
+                    }
+                    var checkbox = document.getElementById('force-2fa-checkbox');
+                    if (checkbox) checkbox.checked = data.two_factor_required || false;
+                })
+                .catch(function() {
+                    statusDiv.innerHTML = '<span style="color: var(--text-muted); font-size: 13px;">Unable to load status</span>';
+                });
+            }
         }
     });
 });
@@ -1666,6 +1720,37 @@ if (resetPinForm) {
         .catch(function(error) {
             submitBtn.innerHTML = originalBtnText;
             submitBtn.disabled = false;
+            console.error('Error:', error);
+            showNotification('An error occurred. Please try again.', 'error');
+        });
+    });
+}
+
+// Handle force 2FA form submission
+var force2faForm = document.getElementById('force-2fa-form');
+if (force2faForm) {
+    force2faForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+        // Ensure checkbox value is sent even when unchecked
+        if (!document.getElementById('force-2fa-checkbox').checked) {
+            formData.set('two_factor_required', '0');
+        }
+        
+        fetch('process_admin_action.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showNotification(data.message || '2FA requirement updated!', 'success');
+            } else {
+                showNotification('Error: ' + (data.message || 'Failed to update'), 'error');
+            }
+        })
+        .catch(function(error) {
             console.error('Error:', error);
             showNotification('An error occurred. Please try again.', 'error');
         });

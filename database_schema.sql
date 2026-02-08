@@ -3655,3 +3655,46 @@ ADD INDEX IF NOT EXISTS `idx_template` (`template_id`);
 
 -- Fix locations image_url column to support long Google Places API photo URLs
 ALTER TABLE `locations` MODIFY COLUMN `image_url` TEXT DEFAULT NULL;
+
+-- Two-Factor Authentication
+CREATE TABLE IF NOT EXISTS `two_factor_auth` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `secret` VARCHAR(255) NOT NULL,
+    `method` ENUM('app', 'hardware') DEFAULT 'app',
+    `is_enabled` TINYINT(1) DEFAULT 0,
+    `backup_codes` TEXT DEFAULT NULL,
+    `verified_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_user_2fa` (`user_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_enabled` (`is_enabled`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add two_factor_required flag to users (admin can force 2FA)
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `two_factor_required` TINYINT(1) DEFAULT 0;
+
+-- Add last_activity tracking to login_history for online status
+ALTER TABLE `login_history` ADD COLUMN IF NOT EXISTS `last_activity` TIMESTAMP NULL;
+
+-- Error logs table for comprehensive error tracking
+CREATE TABLE IF NOT EXISTS `error_logs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT DEFAULT NULL,
+    `error_level` VARCHAR(50) NOT NULL DEFAULT 'ERROR',
+    `message` TEXT NOT NULL,
+    `file` VARCHAR(500) DEFAULT NULL,
+    `line` INT DEFAULT NULL,
+    `stack_trace` TEXT DEFAULT NULL,
+    `url` VARCHAR(500) DEFAULT NULL,
+    `ip_address` VARCHAR(45) DEFAULT NULL,
+    `user_agent` TEXT DEFAULT NULL,
+    `context` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_level` (`error_level`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
