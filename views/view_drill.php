@@ -41,6 +41,7 @@ if ($drillId) {
         ");
         $stmt->execute([$drillId]);
         $drill = $stmt->fetch(PDO::FETCH_ASSOC);
+        $drill = decryptUserRow($drill);
     } catch (PDOException $e) {
         error_log("Error fetching drill: " . $e->getMessage());
     }

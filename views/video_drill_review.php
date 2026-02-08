@@ -33,6 +33,7 @@ $coaches_stmt = $pdo->prepare("
 ");
 $coaches_stmt->execute([$user_id]);
 $coaches = $coaches_stmt->fetchAll();
+$coaches = decryptUserRows($coaches);
 
 // ========================================
 // VIEW 1: Drills by Skill Type
@@ -78,6 +79,7 @@ $drills_query .= " ORDER BY dc.name, v.upload_date DESC";
 $drills_stmt = $pdo->prepare($drills_query);
 $drills_stmt->execute($drills_params);
 $drill_videos = $drills_stmt->fetchAll();
+$drill_videos = decryptUserRows($drill_videos);
 
 // Group videos by skill type
 $videos_by_skill = [];
@@ -118,6 +120,7 @@ $sessions_query .= " GROUP BY s.id ORDER BY s.session_date DESC";
 $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute($session_params);
 $attended_sessions = $sessions_stmt->fetchAll();
+$attended_sessions = decryptUserRows($attended_sessions);
 
 // Build calendar data if in calendar mode
 $calendar_data = [];

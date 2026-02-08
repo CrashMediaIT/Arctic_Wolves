@@ -164,6 +164,7 @@ exit;
                 ");
                 $schedulesStmt->execute([$user_id]);
                 $activeSchedules = $schedulesStmt->fetchAll(PDO::FETCH_ASSOC);
+                $activeSchedules = decryptUserRows($activeSchedules);
             } catch (PDOException $e) {
                 error_log("Schedules fetch error: " . $e->getMessage());
                 $activeSchedules = [];

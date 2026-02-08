@@ -28,6 +28,7 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$token]);
 $report = $stmt->fetch();
+$report = decryptUserRow($report);
 
 if (!$report) {
     die('Report not found or link has expired.');

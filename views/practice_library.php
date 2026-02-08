@@ -47,6 +47,7 @@ try {
     $plans_stmt = $pdo->prepare($plans_query);
     $plans_stmt->execute($params);
     $practice_plans = $plans_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $practice_plans = decryptUserRows($practice_plans);
     
 } catch (PDOException $e) {
     error_log("Practice plans fetch error: " . $e->getMessage());

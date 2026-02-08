@@ -24,6 +24,7 @@ try {
     ");
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $products = decryptUserRows($products);
     
     // Fetch sizes for each product
     $sizesStmt = $pdo->prepare("SELECT * FROM merchandise_product_sizes WHERE product_id = ? ORDER BY id ASC");

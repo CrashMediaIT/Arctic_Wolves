@@ -46,6 +46,7 @@ try {
         ORDER BY pb.created_at DESC
         LIMIT 10
     ")->fetchAll(PDO::FETCH_ASSOC);
+    $batches = decryptUserRows($batches);
 } catch (PDOException $e) {
     $batches = [];
 }

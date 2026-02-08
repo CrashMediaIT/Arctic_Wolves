@@ -38,6 +38,7 @@ if ($planId) {
         ");
         $stmt->execute([$planId]);
         $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+        $plan = decryptUserRow($plan);
         
         if ($plan) {
             // Get the drills for this plan

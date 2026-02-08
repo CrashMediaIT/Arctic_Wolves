@@ -27,6 +27,7 @@ try {
     ");
     $stmt->execute([$currentUserId]);
     $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $schedules = decryptUserRows($schedules);
 } catch (PDOException $e) {
     error_log("Schedule fetch error: " . $e->getMessage());
 }

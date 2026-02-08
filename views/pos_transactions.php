@@ -61,6 +61,7 @@ try {
     $params[] = $offset;
     $stmt->execute($params);
     $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $transactions = decryptUserRows($transactions);
     
     // Get stats for today
     $todayStmt = $pdo->query("

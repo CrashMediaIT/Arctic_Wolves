@@ -37,6 +37,7 @@ if ($booking_id > 0) {
     ");
     $stmt->execute([$booking_id, $user_id]);
     $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+    $booking = decryptUserRow($booking);
 }
 
 // Handle payment via Stripe

@@ -12,6 +12,7 @@ $nutrition_query = "
 $nutrition_stmt = $pdo->prepare($nutrition_query);
 $nutrition_stmt->execute([$user_id]);
 $nutrition_plan = $nutrition_stmt->fetch();
+$nutrition_plan = decryptUserRow($nutrition_plan);
 
 // Initialize daily totals - will be set properly below based on plan existence
 $daily_totals = [

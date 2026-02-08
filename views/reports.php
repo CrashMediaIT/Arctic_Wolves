@@ -18,6 +18,7 @@ if (in_array($user_role, ['coach', 'coach_plus'])) {
     $athletes_stmt = $pdo->prepare("SELECT id, CONCAT(first_name, ' ', last_name) as name FROM users WHERE assigned_coach_id = ? AND role = 'athlete' ORDER BY last_name, first_name");
     $athletes_stmt->execute([$user_id]);
     $athletes_list = $athletes_stmt->fetchAll();
+    $athletes_list = decryptUserRows($athletes_list);
 }
 
 // Get teams for filtering
