@@ -33,7 +33,7 @@ $online_users = [];
 
 if ($security_tab === 'login_history') {
     try {
-        // Get currently online users (active session within last 15 minutes or no logout)
+        // Get currently online users (active session with activity within last 15 minutes or no logout)
         $online_stmt = $pdo->query("
             SELECT DISTINCT lh.user_id, u.first_name, u.last_name, u.role, u.email,
                    lh.login_time, lh.ip_address, lh.last_activity
@@ -41,7 +41,7 @@ if ($security_tab === 'login_history') {
             JOIN users u ON lh.user_id = u.id
             WHERE lh.login_status = 'success' 
             AND lh.logout_time IS NULL
-            AND lh.login_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            AND COALESCE(lh.last_activity, lh.login_time) >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
             ORDER BY COALESCE(lh.last_activity, lh.login_time) DESC
         ");
         $online_users = $online_stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -153,8 +153,8 @@ unset($_SESSION['2fa_error']);
         document.getElementById('backupToggle').addEventListener('click', function(e) {
             e.preventDefault();
             input.placeholder = 'BACKUPCODE';
-            input.maxLength = 8;
-            input.inputMode = 'text';
+            input.setAttribute('maxlength', '8');
+            input.setAttribute('inputmode', 'text');
             this.textContent = 'Enter your 8-character backup code above';
         });
     });
