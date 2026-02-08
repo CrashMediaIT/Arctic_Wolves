@@ -18,6 +18,8 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = intval($_SESSION['user_id']);
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 
+define('MAX_MESSAGE_LENGTH', 5000);
+
 header('Content-Type: application/json');
 
 // Handle GET requests
@@ -249,8 +251,8 @@ function sendMessage($pdo, $user_id) {
     }
     
     // Limit message length
-    if (strlen($message_body) > 5000) {
-        echo json_encode(['success' => false, 'message' => 'Message is too long (max 5000 characters)']);
+    if (strlen($message_body) > MAX_MESSAGE_LENGTH) {
+        echo json_encode(['success' => false, 'message' => 'Message is too long (max ' . MAX_MESSAGE_LENGTH . ' characters)']);
         return;
     }
     

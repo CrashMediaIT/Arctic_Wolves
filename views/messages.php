@@ -523,8 +523,8 @@ $start_with_user = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
             </div>
             <div class="msg-body" id="chatBody"></div>
             <div class="msg-input-area">
-                <textarea class="msg-input" id="msgInput" rows="1" placeholder="Type a message..." maxlength="5000"></textarea>
-                <button class="msg-send-btn" id="sendBtn" onclick="sendMessage()" disabled title="Send">
+                <textarea class="msg-input" id="msgInput" rows="1" placeholder="Type a message..." maxlength="5000" aria-label="Message input"></textarea>
+                <button class="msg-send-btn" id="sendBtn" onclick="sendMessage()" disabled title="Send" aria-label="Send message">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>

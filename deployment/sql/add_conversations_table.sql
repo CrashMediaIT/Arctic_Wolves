@@ -17,3 +17,4 @@ CREATE TABLE IF NOT EXISTS `conversations` (
 -- Add conversation_id to messages table if not exists
 ALTER TABLE `messages` ADD COLUMN IF NOT EXISTS `conversation_id` INT DEFAULT NULL AFTER `id`;
 ALTER TABLE `messages` ADD INDEX IF NOT EXISTS `idx_conversation` (`conversation_id`);
+ALTER TABLE `messages` ADD CONSTRAINT `fk_messages_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations`(`id`) ON DELETE SET NULL;
