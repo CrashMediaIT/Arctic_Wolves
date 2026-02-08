@@ -262,9 +262,9 @@ $athletes = $athletes_stmt->fetchAll();
                                     <a href="?page=athlete_detail&id=<?= $athlete['id'] ?>" class="btn-icon" title="View Profile">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <button class="btn-icon" title="Message Athlete" data-action="message-athlete" data-athlete-id="<?= $athlete['id'] ?>">
+                                    <a href="mailto:<?= htmlspecialchars($athlete['email']) ?>" class="btn-icon" title="Message Athlete">
                                         <i class="fas fa-envelope"></i>
-                                    </button>
+                                    </a>
                                 </div>
                             </td>
                         </tr>

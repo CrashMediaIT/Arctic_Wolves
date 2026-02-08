@@ -373,6 +373,12 @@ try {
 
     <!-- TAB 1: Goal Tracker -->
     <div class="tab-content <?php echo $active_tab === 'goals' ? 'active' : ''; ?>" id="goals-tab">
+        <?php if ($athlete_info): ?>
+        <div class="athlete-goals-banner">
+            <i class="fas fa-user"></i>
+            <span>Viewing goals for <strong><?php echo htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']); ?></strong></span>
+        </div>
+        <?php endif; ?>
         <!-- Filter Bar -->
         <div class="filters-bar">
             <div class="filter-group">
@@ -787,6 +793,23 @@ try {
 </div>
 
 <style>
+.athlete-goals-banner {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #3b82f6;
+    font-size: 14px;
+}
+
+.athlete-goals-banner i {
+    font-size: 16px;
+}
+
 .stats-overview {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
