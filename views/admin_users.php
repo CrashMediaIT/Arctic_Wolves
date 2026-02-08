@@ -337,24 +337,16 @@ foreach ($users as $u) {
                                                     data-role="<?php echo htmlspecialchars($user['role']); ?>"
                                                     data-coach-id="<?php echo htmlspecialchars($user['assigned_coach_id'] ?? ''); ?>"
                                                     data-birth-date="<?php echo htmlspecialchars($user['birth_date'] ?? ''); ?>"
+                                                    data-name="<?php echo htmlspecialchars($user['full_name']); ?>"
                                                     title="Edit User">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn-icon" data-action="manage-user" data-id="<?php echo $user['id']; ?>" 
+                                            <button class="btn-icon" data-action="security" data-id="<?php echo $user['id']; ?>" 
                                                     data-name="<?php echo htmlspecialchars($user['full_name']); ?>"
                                                     data-role="<?php echo htmlspecialchars($user['role']); ?>"
-                                                    data-coach-id="<?php echo htmlspecialchars($user['assigned_coach_id'] ?? ''); ?>"
-                                                    title="Manage Assignments">
-                                                <i class="fas fa-cogs"></i>
-                                            </button>
-                                            <button class="btn-icon" data-action="reset-password" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['full_name']); ?>" title="Reset Password">
+                                                    title="Password & PIN">
                                                 <i class="fas fa-lock"></i>
                                             </button>
-                                            <?php if (in_array($user['role'], ['admin', 'coach', 'health_coach', 'front_desk_staff'])): ?>
-                                            <button class="btn-icon" data-action="reset-pin" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['full_name']); ?>" title="Set/Reset PIN">
-                                                <i class="fas fa-th"></i>
-                                            </button>
-                                            <?php endif; ?>
                                             <?php if ($user['id'] != $user_id): ?>
                                                 <button class="btn-icon <?php echo $user['is_verified'] ? 'danger' : 'success'; ?>" data-action="toggle-status" data-id="<?php echo $user['id']; ?>" data-type="user" title="<?php echo $user['is_verified'] ? 'Disable' : 'Enable'; ?>">
                                                     <i class="fas fa-<?php echo $user['is_verified'] ? 'ban' : 'check'; ?>"></i>
@@ -435,50 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Handle reset password button
-    document.querySelectorAll('[data-action="reset-password"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var userId = this.getAttribute('data-id');
-            var userName = this.getAttribute('data-name') || 'this user';
-            
-            // Show password reset modal
-            var modal = document.getElementById('reset-password-modal');
-            if (modal) {
-                modal.querySelector('input[name="user_id"]').value = userId;
-                modal.querySelector('.reset-user-name').textContent = userName;
-                modal.classList.add('active');
-            }
-        });
-    });
-    
-    // Handle edit button
-    document.querySelectorAll('[data-action="edit"][data-modal]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var modalId = this.getAttribute('data-modal');
-            var modal = document.getElementById(modalId);
-            
-            if (modal) {
-                // Populate fields from data attributes
-                var firstName = this.getAttribute('data-first-name');
-                var lastName = this.getAttribute('data-last-name');
-                var email = this.getAttribute('data-email');
-                var phone = this.getAttribute('data-phone');
-                var role = this.getAttribute('data-role');
-                var userId = this.getAttribute('data-id');
-                
-                modal.querySelector('input[name="user_id"]').value = userId;
-                modal.querySelector('input[name="first_name"]').value = firstName;
-                modal.querySelector('input[name="last_name"]').value = lastName;
-                modal.querySelector('input[name="email"]').value = email;
-                modal.querySelector('input[name="phone"]').value = phone || '';
-                modal.querySelector('select[name="role"]').value = role;
-                
-                modal.classList.add('active');
-            }
-        });
-    });
     
     // Handle add user button
     document.querySelectorAll('[data-action="add"][data-modal]').forEach(function(btn) {
@@ -843,44 +791,27 @@ function closeModal(modalId) {
     color: var(--text-muted);
 }
 
-/* Management Modal Styles */
-.management-tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 15px;
-}
-
-.management-tab {
-    padding: 8px 16px;
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 13px;
-    transition: all 0.2s ease;
-}
-
-.management-tab:hover {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-}
-
-.management-tab.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
+/* Form Hints */
+.form-hint {
     display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Checkbox Label */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Full-width submit buttons inside tabs */
+.btn-block {
+    width: 100%;
 }
 
 /* Profile Upload Preview */
@@ -937,50 +868,6 @@ function closeModal(modalId) {
     color: var(--text-muted);
 }
 
-/* Toggle Switch */
-.toggle-switch {
-    position: relative;
-    width: 50px;
-    height: 26px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--border);
-    transition: 0.3s;
-    border-radius: 26px;
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-}
-
-input:checked + .toggle-slider {
-    background-color: var(--primary);
-}
-
-input:checked + .toggle-slider:before {
-    transform: translateX(24px);
-}
 
 @media (max-width: 768px) {
     .action-bar-enhanced {
@@ -1083,7 +970,7 @@ input:checked + .toggle-slider:before {
                 <div class="form-group">
                     <label class="form-label">Temporary Password *</label>
                     <input type="password" name="password" class="form-input" required>
-                    <small style="color: var(--text-dim);">User will be prompted to change on first login</small>
+                    <small class="form-hint">User will be prompted to change on first login</small>
                 </div>
             </div>
             
@@ -1107,431 +994,101 @@ document.getElementById('add-user-role').addEventListener('change', function() {
 });
 </script>
 
-<!-- Edit User Modal -->
+<!-- Edit User Modal (combined with Manage Assignments) -->
 <div id="edit-user-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title">Edit User</h2>
+            <h2 class="modal-title">Edit User - <span class="edit-user-display-name"></span></h2>
             <button class="modal-close" aria-label="Close modal" onclick="closeModal('edit-user-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_admin_action.php">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="update_user">
-            <input type="hidden" name="user_id" id="edit-user-id">
-            
-            <div class="modal-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">First Name *</label>
-                        <input type="text" name="first_name" id="edit-user-first-name" class="form-input" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Last Name *</label>
-                        <input type="text" name="last_name" id="edit-user-last-name" class="form-input" required>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Email *</label>
-                    <input type="email" name="email" id="edit-user-email" class="form-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Phone</label>
-                    <input type="tel" name="phone" id="edit-user-phone" class="form-input">
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Role *</label>
-                        <select name="role" id="edit-user-role" class="form-input" required>
-                            <option value="">Select Role</option>
-                            <option value="admin">Admin</option>
-                            <option value="coach">Coach</option>
-                            <option value="health_coach">Health Coach</option>
-                            <option value="team_coach">Team Coach</option>
-                            <option value="athlete">Athlete</option>
-                            <option value="parent">Parent</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Date of Birth</label>
-                        <input type="date" name="birth_date" id="edit-user-birth-date" class="form-input">
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label class="form-label">Assign Coaches</label>
-                        <div id="edit-user-coach-typeahead"></div>
-                    </div>
-                </div>
-                
-                <div class="form-row edit-athlete-team-field" style="display: none;">
-                    <div class="form-group">
-                        <label class="form-label">Assign Team</label>
-                        <select name="team_id" id="edit-user-team-id" class="form-input">
-                            <option value="">No Team</option>
-                            <?php foreach ($teams as $team): ?>
-                                <option value="<?php echo $team['id']; ?>"><?php echo htmlspecialchars($team['name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">New Password (leave blank to keep current)</label>
-                    <input type="password" name="password" class="form-input" placeholder="Enter new password if changing">
-                    <small style="color: var(--text-dim);">Leave empty to keep current password</small>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('edit-user-modal')">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update User</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-// Handle edit user button clicks - populate modal fields
-document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        var id = this.getAttribute('data-id');
-        var email = this.getAttribute('data-email');
-        var firstName = this.getAttribute('data-first-name');
-        var lastName = this.getAttribute('data-last-name');
-        var phone = this.getAttribute('data-phone');
-        var role = this.getAttribute('data-role');
-        var coachId = this.getAttribute('data-coach-id');
-        var birthDate = this.getAttribute('data-birth-date');
-        
-        document.getElementById('edit-user-id').value = id;
-        document.getElementById('edit-user-email').value = email;
-        document.getElementById('edit-user-first-name').value = firstName;
-        document.getElementById('edit-user-last-name').value = lastName;
-        document.getElementById('edit-user-phone').value = phone || '';
-        document.getElementById('edit-user-role').value = role;
-        document.getElementById('edit-user-birth-date').value = birthDate || '';
-        
-        var coachSelect = document.getElementById('edit-user-coach-ids');
-        if (coachSelect) {
-            // Clear all selections first
-            Array.from(coachSelect.options).forEach(function(opt) { opt.selected = false; });
-            if (coachId) {
-                var opt = coachSelect.querySelector('option[value="' + coachId + '"]');
-                if (opt) opt.selected = true;
-            }
-        }
-        
-        // Pre-populate edit coach typeahead
-        if (window._editCoachTypeahead) {
-            window._editCoachTypeahead.clear();
-            var coachAssignments = window._athleteCoachAssignments || {};
-            var coachNames = window._coachNamesMap || {};
-            var assignedCoachIds = coachAssignments[id] || [];
-            // Fallback: use primary coach_id from the data attribute
-            if (assignedCoachIds.length === 0 && coachId) {
-                assignedCoachIds = [parseInt(coachId)];
-            }
-            var preItems = [];
-            assignedCoachIds.forEach(function(cid) {
-                if (coachNames[cid]) {
-                    preItems.push({ id: cid, name: coachNames[cid].name, role: coachNames[cid].role });
-                }
-            });
-            window._editCoachTypeahead.setPreSelected(preItems);
-        }
-        
-        // Show/hide athlete team field based on role
-        document.querySelectorAll('.edit-athlete-team-field').forEach(function(el) {
-            el.style.display = role === 'athlete' ? 'grid' : 'none';
-        });
-        
-        document.getElementById('edit-user-modal').classList.add('active');
-    });
-});
-
-// Toggle edit modal athlete team field when role changes
-document.getElementById('edit-user-role').addEventListener('change', function() {
-    var roleValue = this.value;
-    document.querySelectorAll('.edit-athlete-team-field').forEach(function(el) {
-        el.style.display = roleValue === 'athlete' ? 'grid' : 'none';
-    });
-});
-</script>
-
-<!-- Reset Password Modal -->
-<div id="reset-password-modal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
-        <div class="modal-header">
-            <h2 class="modal-title">Reset Password</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('reset-password-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_admin_action.php" id="reset-password-form">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="reset_user_password">
-            <input type="hidden" name="user_id" value="">
-            
-            <div class="modal-body">
-                <p style="margin-bottom: 20px; color: var(--text-secondary);">
-                    Reset password for <strong class="reset-user-name" style="color: var(--text-white);"></strong>
-                </p>
-                
-                <div class="form-group">
-                    <label class="form-label">New Password *</label>
-                    <input type="password" name="new_password" class="form-input" required minlength="8" placeholder="Enter new password">
-                    <small style="color: var(--text-dim);">Minimum 8 characters</small>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Confirm Password *</label>
-                    <input type="password" name="confirm_password" class="form-input" required minlength="8" placeholder="Confirm new password">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                        <input type="checkbox" name="force_change" value="1" checked>
-                        <span>Force user to change password on next login</span>
-                    </label>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('reset-password-modal')">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-key"></i> Reset Password</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-// Handle reset password form submission
-document.getElementById('reset-password-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    var newPassword = this.querySelector('input[name="new_password"]').value;
-    var confirmPassword = this.querySelector('input[name="confirm_password"]').value;
-    
-    if (newPassword !== confirmPassword) {
-        showNotification('Passwords do not match', 'error');
-        return;
-    }
-    
-    var formData = new FormData(this);
-    var submitBtn = this.querySelector('button[type="submit"]');
-    var originalBtnText = submitBtn.innerHTML;
-    
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    submitBtn.disabled = true;
-    
-    fetch(this.getAttribute('action'), {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        submitBtn.innerHTML = originalBtnText;
-        submitBtn.disabled = false;
-        
-        if (data.success) {
-            showNotification(data.message || 'Password reset successfully!', 'success');
-            closeModal('reset-password-modal');
-            // Reload page after successful password reset to show updated data
-            setTimeout(function() { location.reload(); }, 1500);
-        } else {
-            showNotification('Error: ' + (data.message || 'Failed to reset password'), 'error');
-        }
-    })
-    .catch(function(error) {
-        submitBtn.innerHTML = originalBtnText;
-        submitBtn.disabled = false;
-        console.error('Error:', error);
-        showNotification('An error occurred. Please try again.', 'error');
-    });
-});
-</script>
-
-<!-- Reset PIN Modal -->
-<div id="reset-pin-modal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
-        <div class="modal-header">
-            <h2 class="modal-title">Set/Reset PIN</h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('reset-pin-modal')">&times;</button>
-        </div>
-        <form method="POST" action="process_admin_action.php" id="reset-pin-form">
-            <?php echo csrfTokenInput(); ?>
-            <input type="hidden" name="action" value="admin_reset_pin">
-            <input type="hidden" name="user_id" value="">
-            
-            <div class="modal-body">
-                <p style="margin-bottom: 20px; color: var(--text-secondary);">
-                    Set or reset POS/Kiosk PIN for <strong class="reset-pin-user-name" style="color: var(--text-white);"></strong>
-                </p>
-                
-                <div class="form-group">
-                    <label class="form-label">New PIN (4 digits) *</label>
-                    <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
-                    <small style="color: var(--text-dim);">Must be exactly 4 digits</small>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Confirm PIN *</label>
-                    <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('reset-pin-modal')">Cancel</button>
-                <button type="submit" class="btn-primary"><i class="fas fa-th"></i> Set PIN</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle reset PIN button click
-    document.querySelectorAll('[data-action="reset-pin"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            var userId = this.getAttribute('data-id');
-            var userName = this.getAttribute('data-name') || 'this user';
-            
-            var modal = document.getElementById('reset-pin-modal');
-            if (modal) {
-                modal.querySelector('input[name="user_id"]').value = userId;
-                modal.querySelector('.reset-pin-user-name').textContent = userName;
-                // Clear previous values
-                modal.querySelector('input[name="new_pin"]').value = '';
-                modal.querySelector('input[name="confirm_pin"]').value = '';
-                modal.classList.add('active');
-            }
-        });
-    });
-
-    // Handle reset PIN form submission
-    var resetPinForm = document.getElementById('reset-pin-form');
-    if (resetPinForm) {
-        resetPinForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            var newPin = this.querySelector('input[name="new_pin"]').value;
-            var confirmPin = this.querySelector('input[name="confirm_pin"]').value;
-            
-            if (newPin !== confirmPin) {
-                showNotification('PINs do not match', 'error');
-                return;
-            }
-            
-            if (!/^\d{4}$/.test(newPin)) {
-                showNotification('PIN must be exactly 4 digits', 'error');
-                return;
-            }
-            
-            var formData = new FormData(this);
-            var submitBtn = this.querySelector('button[type="submit"]');
-            var originalBtnText = submitBtn.innerHTML;
-            
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            submitBtn.disabled = true;
-            
-            fetch(this.action, {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                submitBtn.innerHTML = originalBtnText;
-                submitBtn.disabled = false;
-                
-                if (data.success) {
-                    showNotification(data.message || 'PIN set successfully!', 'success');
-                    closeModal('reset-pin-modal');
-                } else {
-                    showNotification('Error: ' + (data.message || 'Failed to set PIN'), 'error');
-                }
-            })
-            .catch(function(error) {
-                submitBtn.innerHTML = originalBtnText;
-                submitBtn.disabled = false;
-                console.error('Error:', error);
-                showNotification('An error occurred. Please try again.', 'error');
-            });
-        });
-    }
-}); // End DOMContentLoaded
-</script>
-
-<!-- Manage User Modal (Profile Image, Team, Notifications) -->
-<div id="manage-user-modal" class="modal">
-    <div class="modal-content" style="max-width: 600px;">
-        <div class="modal-header">
-            <h2 class="modal-title">Manage User - <span class="manage-user-name"></span></h2>
-            <button class="modal-close" aria-label="Close modal" onclick="closeModal('manage-user-modal')">&times;</button>
         </div>
         
         <div class="modal-body">
-            <input type="hidden" id="manage-user-id" value="">
+            <input type="hidden" id="edit-user-id" value="">
             
-            <!-- Management Tabs -->
-            <div class="management-tabs">
-                <button type="button" class="management-tab active" data-tab="profile-tab">
-                    <i class="fas fa-user-circle"></i> Profile Image
+            <!-- Edit User Tabs -->
+            <div class="tabs edit-user-tabs">
+                <button type="button" class="tab active" data-tab="edit-details-tab">
+                    <i class="fas fa-user"></i> Details
                 </button>
-                <button type="button" class="management-tab" data-tab="assignments-tab">
+                <button type="button" class="tab" data-tab="edit-assignments-tab">
                     <i class="fas fa-users"></i> Assignments
                 </button>
-                <button type="button" class="management-tab" data-tab="notifications-tab">
+                <button type="button" class="tab" data-tab="edit-profile-tab">
+                    <i class="fas fa-user-circle"></i> Profile Image
+                </button>
+                <button type="button" class="tab" data-tab="edit-notifications-tab">
                     <i class="fas fa-bell"></i> Notifications
                 </button>
             </div>
             
-            <!-- Profile Image Tab -->
-            <div id="profile-tab" class="tab-content active">
-                <form id="profile-image-form" enctype="multipart/form-data">
+            <!-- Details Tab -->
+            <div id="edit-details-tab" class="tab-content active">
+                <form method="POST" action="process_admin_action.php" id="edit-user-details-form">
                     <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="admin_update_profile_image">
-                    <input type="hidden" name="user_id" class="manage-form-user-id" value="">
+                    <input type="hidden" name="action" value="update_user">
+                    <input type="hidden" name="user_id" class="edit-form-user-id" value="">
                     
-                    <div class="profile-upload-area" onclick="document.getElementById('profile-image-input').click()">
-                        <img src="" alt="" class="profile-preview" id="profile-preview" style="display: none;">
-                        <div id="profile-upload-placeholder">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Click to upload profile image</p>
-                            <small style="color: var(--text-muted);">JPG, PNG, GIF up to 5MB</small>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">First Name *</label>
+                            <input type="text" name="first_name" id="edit-user-first-name" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Last Name *</label>
+                            <input type="text" name="last_name" id="edit-user-last-name" class="form-input" required>
                         </div>
                     </div>
-                    <input type="file" id="profile-image-input" name="profile_image" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
                     
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="fas fa-upload"></i> Upload Image</button>
-                        <button type="button" class="btn btn-secondary" id="remove-profile-image"><i class="fas fa-trash"></i> Remove</button>
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" name="email" id="edit-user-email" class="form-input" required>
                     </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" name="phone" id="edit-user-phone" class="form-input">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Role *</label>
+                            <select name="role" id="edit-user-role" class="form-input" required>
+                                <option value="">Select Role</option>
+                                <option value="admin">Admin</option>
+                                <option value="coach">Coach</option>
+                                <option value="health_coach">Health Coach</option>
+                                <option value="team_coach">Team Coach</option>
+                                <option value="athlete">Athlete</option>
+                                <option value="parent">Parent</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Date of Birth</label>
+                            <input type="date" name="birth_date" id="edit-user-birth-date" class="form-input">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Update Details</button>
                 </form>
             </div>
             
             <!-- Assignments Tab -->
-            <div id="assignments-tab" class="tab-content">
-                <form id="assignments-form">
+            <div id="edit-assignments-tab" class="tab-content">
+                <form id="edit-assignments-form">
                     <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="admin_update_assignments">
-                    <input type="hidden" name="user_id" class="manage-form-user-id" value="">
+                    <input type="hidden" name="user_id" class="edit-form-user-id" value="">
                     
                     <div class="form-group">
                         <label class="form-label">Assigned Coaches</label>
-                        <div id="manage-coach-typeahead"></div>
+                        <div id="edit-user-coach-typeahead"></div>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">Team Assignment</label>
-                        <select name="team_id" class="form-input" id="manage-team-select">
+                        <select name="team_id" class="form-input" id="edit-user-team-id">
                             <option value="">No Team Assigned</option>
                             <?php foreach ($teams as $team): ?>
                                 <option value="<?php echo $team['id']; ?>"><?php echo htmlspecialchars($team['name']); ?></option>
@@ -1541,12 +1098,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     <div class="form-group">
                         <label class="form-label">Jersey Number</label>
-                        <input type="number" name="jersey_number" class="form-input" min="0" max="99" placeholder="Enter jersey number">
+                        <input type="number" name="jersey_number" class="form-input" id="edit-user-jersey" min="0" max="99" placeholder="Enter jersey number">
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">Position</label>
-                        <select name="position" class="form-input">
+                        <select name="position" class="form-input" id="edit-user-position">
                             <option value="">Select Position</option>
                             <option value="Center">Center</option>
                             <option value="Left Wing">Left Wing</option>
@@ -1557,16 +1114,40 @@ document.addEventListener('DOMContentLoaded', function() {
                         </select>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-save"></i> Save Assignments</button>
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save Assignments</button>
+                </form>
+            </div>
+            
+            <!-- Profile Image Tab -->
+            <div id="edit-profile-tab" class="tab-content">
+                <form id="edit-profile-image-form" enctype="multipart/form-data">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="admin_update_profile_image">
+                    <input type="hidden" name="user_id" class="edit-form-user-id" value="">
+                    
+                    <div class="profile-upload-area" onclick="document.getElementById('edit-profile-image-input').click()">
+                        <img src="" alt="" class="profile-preview" id="edit-profile-preview" style="display: none;">
+                        <div id="edit-profile-upload-placeholder">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Click to upload profile image</p>
+                            <small class="form-hint">JPG, PNG, GIF up to 5MB</small>
+                        </div>
+                    </div>
+                    <input type="file" id="edit-profile-image-input" name="profile_image" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="edit-remove-profile-image"><i class="fas fa-trash"></i> Remove</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload Image</button>
+                    </div>
                 </form>
             </div>
             
             <!-- Notifications Tab -->
-            <div id="notifications-tab" class="tab-content">
-                <form id="notifications-form">
+            <div id="edit-notifications-tab" class="tab-content">
+                <form id="edit-notifications-form">
                     <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="admin_update_notifications">
-                    <input type="hidden" name="user_id" class="manage-form-user-id" value="">
+                    <input type="hidden" name="user_id" class="edit-form-user-id" value="">
                     
                     <div class="notification-option">
                         <div class="notification-option-info">
@@ -1612,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </label>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;"><i class="fas fa-save"></i> Save Notification Settings</button>
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save Notification Settings</button>
                 </form>
             </div>
         </div>
@@ -1620,38 +1201,49 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script>
-// Manage user modal tab switching
-document.querySelectorAll('.management-tab').forEach(function(tab) {
+// Edit user modal tab switching
+document.querySelectorAll('.edit-user-tabs .tab').forEach(function(tab) {
     tab.addEventListener('click', function() {
-        // Remove active class from all tabs and content
-        document.querySelectorAll('.management-tab').forEach(function(t) { t.classList.remove('active'); });
-        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
-        
-        // Add active class to clicked tab and corresponding content
+        var modal = this.closest('.modal');
+        modal.querySelectorAll('.edit-user-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
+        modal.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
         this.classList.add('active');
         var tabId = this.getAttribute('data-tab');
         document.getElementById(tabId).classList.add('active');
     });
 });
 
-// Handle manage user button click
-document.querySelectorAll('[data-action="manage-user"]').forEach(function(btn) {
+// Handle edit user button clicks - populate modal fields
+document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
         e.preventDefault();
-        var userId = this.getAttribute('data-id');
-        var userName = this.getAttribute('data-name');
+        var id = this.getAttribute('data-id');
+        var email = this.getAttribute('data-email');
+        var firstName = this.getAttribute('data-first-name');
+        var lastName = this.getAttribute('data-last-name');
+        var phone = this.getAttribute('data-phone');
+        var role = this.getAttribute('data-role');
         var coachId = this.getAttribute('data-coach-id');
+        var birthDate = this.getAttribute('data-birth-date');
+        var userName = this.getAttribute('data-name');
         
-        document.getElementById('manage-user-id').value = userId;
-        document.querySelectorAll('.manage-form-user-id').forEach(function(el) { el.value = userId; });
-        document.querySelector('.manage-user-name').textContent = userName;
+        document.getElementById('edit-user-id').value = id;
+        document.querySelectorAll('.edit-form-user-id').forEach(function(el) { el.value = id; });
+        document.querySelector('.edit-user-display-name').textContent = userName || (firstName + ' ' + lastName);
+        document.getElementById('edit-user-email').value = email;
+        document.getElementById('edit-user-first-name').value = firstName;
+        document.getElementById('edit-user-last-name').value = lastName;
+        document.getElementById('edit-user-phone').value = phone || '';
+        document.getElementById('edit-user-role').value = role;
+        document.getElementById('edit-user-birth-date').value = birthDate || '';
         
-        // Set coach typeahead if available
-        if (window._manageCoachTypeahead) {
-            window._manageCoachTypeahead.clear();
+        // Pre-populate edit coach typeahead
+        if (window._editCoachTypeahead) {
+            window._editCoachTypeahead.clear();
             var coachAssignments = window._athleteCoachAssignments || {};
             var coachNames = window._coachNamesMap || {};
-            var assignedCoachIds = coachAssignments[userId] || [];
+            var assignedCoachIds = coachAssignments[id] || [];
+            // Fallback: use primary coach_id from the data attribute
             if (assignedCoachIds.length === 0 && coachId) {
                 assignedCoachIds = [parseInt(coachId)];
             }
@@ -1661,35 +1253,36 @@ document.querySelectorAll('[data-action="manage-user"]').forEach(function(btn) {
                     preItems.push({ id: cid, name: coachNames[cid].name, role: coachNames[cid].role });
                 }
             });
-            window._manageCoachTypeahead.setPreSelected(preItems);
+            window._editCoachTypeahead.setPreSelected(preItems);
         }
         
         // Reset to first tab
-        document.querySelectorAll('.management-tab').forEach(function(t) { t.classList.remove('active'); });
-        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
-        document.querySelector('.management-tab[data-tab="profile-tab"]').classList.add('active');
-        document.getElementById('profile-tab').classList.add('active');
+        var modal = document.getElementById('edit-user-modal');
+        modal.querySelectorAll('.edit-user-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
+        modal.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        modal.querySelector('.edit-user-tabs .tab[data-tab="edit-details-tab"]').classList.add('active');
+        document.getElementById('edit-details-tab').classList.add('active');
         
-        document.getElementById('manage-user-modal').classList.add('active');
+        modal.classList.add('active');
     });
 });
 
-// Profile image preview
-document.getElementById('profile-image-input').addEventListener('change', function(e) {
+// Profile image preview (edit modal)
+document.getElementById('edit-profile-image-input').addEventListener('change', function(e) {
     var file = e.target.files[0];
     if (file) {
         var reader = new FileReader();
         reader.onload = function(e) {
-            document.getElementById('profile-preview').src = e.target.result;
-            document.getElementById('profile-preview').style.display = 'block';
-            document.getElementById('profile-upload-placeholder').style.display = 'none';
+            document.getElementById('edit-profile-preview').src = e.target.result;
+            document.getElementById('edit-profile-preview').style.display = 'block';
+            document.getElementById('edit-profile-upload-placeholder').style.display = 'none';
         };
         reader.readAsDataURL(file);
     }
 });
 
-// Profile image upload
-document.getElementById('profile-image-form').addEventListener('submit', function(e) {
+// Profile image upload (edit modal)
+document.getElementById('edit-profile-image-form').addEventListener('submit', function(e) {
     e.preventDefault();
     var formData = new FormData(this);
     
@@ -1713,11 +1306,11 @@ document.getElementById('profile-image-form').addEventListener('submit', functio
     });
 });
 
-// Remove profile image
-document.getElementById('remove-profile-image').addEventListener('click', function() {
+// Remove profile image (edit modal)
+document.getElementById('edit-remove-profile-image').addEventListener('click', function() {
     if (!confirm('Are you sure you want to remove the profile image?')) return;
     
-    var userId = document.getElementById('manage-user-id').value;
+    var userId = document.getElementById('edit-user-id').value;
     var formData = new FormData();
     formData.append('action', 'admin_remove_profile_image');
     formData.append('user_id', userId);
@@ -1739,8 +1332,8 @@ document.getElementById('remove-profile-image').addEventListener('click', functi
     });
 });
 
-// Assignments form submit
-document.getElementById('assignments-form').addEventListener('submit', function(e) {
+// Assignments form submit (edit modal)
+document.getElementById('edit-assignments-form').addEventListener('submit', function(e) {
     e.preventDefault();
     var formData = new FormData(this);
     
@@ -1764,8 +1357,8 @@ document.getElementById('assignments-form').addEventListener('submit', function(
     });
 });
 
-// Notifications form submit
-document.getElementById('notifications-form').addEventListener('submit', function(e) {
+// Notifications form submit (edit modal)
+document.getElementById('edit-notifications-form').addEventListener('submit', function(e) {
     e.preventDefault();
     var formData = new FormData(this);
     
@@ -1787,6 +1380,232 @@ document.getElementById('notifications-form').addEventListener('submit', functio
         showNotification('An error occurred. Please try again.', 'error');
     });
 });
+</script>
+
+<!-- Security Modal (Password & PIN) -->
+<div id="security-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Security - <span class="security-user-name"></span></h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('security-modal')">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Security Tabs -->
+            <div class="tabs security-tabs">
+                <button type="button" class="tab active" data-tab="security-password-tab">
+                    <i class="fas fa-key"></i> Password
+                </button>
+                <button type="button" class="tab" data-tab="security-pin-tab" id="security-pin-tab-btn">
+                    <i class="fas fa-th"></i> PIN
+                </button>
+            </div>
+            
+            <!-- Password Tab -->
+            <div id="security-password-tab" class="tab-content active">
+                <form method="POST" action="process_admin_action.php" id="reset-password-form">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="reset_user_password">
+                    <input type="hidden" name="user_id" class="security-form-user-id" value="">
+                    
+                    <div class="form-group">
+                        <label class="form-label">New Password *</label>
+                        <input type="password" name="new_password" class="form-input" required minlength="8" placeholder="Enter new password">
+                        <small class="form-hint">Minimum 8 characters</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password *</label>
+                        <input type="password" name="confirm_password" class="form-input" required minlength="8" placeholder="Confirm new password">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="force_change" value="1" checked>
+                            <span>Force user to change password on next login</span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-key"></i> Reset Password</button>
+                </form>
+            </div>
+            
+            <!-- PIN Tab -->
+            <div id="security-pin-tab" class="tab-content">
+                <form method="POST" action="process_admin_action.php" id="reset-pin-form">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="admin_reset_pin">
+                    <input type="hidden" name="user_id" class="security-form-user-id" value="">
+                    
+                    <p class="form-hint" style="margin-bottom: 20px;">
+                        Set or reset POS/Kiosk PIN for this user.
+                    </p>
+                    
+                    <div class="form-group">
+                        <label class="form-label">New PIN (4 digits) *</label>
+                        <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+                        <small class="form-hint">Must be exactly 4 digits</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Confirm PIN *</label>
+                        <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-th"></i> Set PIN</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Security modal tab switching
+document.querySelectorAll('.security-tabs .tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+        var modal = this.closest('.modal');
+        modal.querySelectorAll('.security-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
+        modal.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        this.classList.add('active');
+        var tabId = this.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+    });
+});
+
+// Handle security button click
+document.querySelectorAll('[data-action="security"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var userId = this.getAttribute('data-id');
+        var userName = this.getAttribute('data-name') || 'this user';
+        var userRole = this.getAttribute('data-role') || '';
+        
+        var modal = document.getElementById('security-modal');
+        if (modal) {
+            modal.querySelectorAll('.security-form-user-id').forEach(function(el) { el.value = userId; });
+            modal.querySelector('.security-user-name').textContent = userName;
+            
+            // Clear previous values
+            modal.querySelector('input[name="new_password"]').value = '';
+            modal.querySelector('input[name="confirm_password"]').value = '';
+            modal.querySelector('input[name="new_pin"]').value = '';
+            modal.querySelector('input[name="confirm_pin"]').value = '';
+            
+            // Show/hide PIN tab based on role
+            var pinRoles = ['admin', 'coach', 'health_coach', 'front_desk_staff'];
+            var pinTabBtn = document.getElementById('security-pin-tab-btn');
+            if (pinTabBtn) {
+                pinTabBtn.style.display = pinRoles.indexOf(userRole) !== -1 ? '' : 'none';
+            }
+            
+            // Reset to password tab
+            modal.querySelectorAll('.security-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
+            modal.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+            modal.querySelector('.security-tabs .tab[data-tab="security-password-tab"]').classList.add('active');
+            document.getElementById('security-password-tab').classList.add('active');
+            
+            modal.classList.add('active');
+        }
+    });
+});
+
+// Handle reset password form submission
+document.getElementById('reset-password-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var newPassword = this.querySelector('input[name="new_password"]').value;
+    var confirmPassword = this.querySelector('input[name="confirm_password"]').value;
+    
+    if (newPassword !== confirmPassword) {
+        showNotification('Passwords do not match', 'error');
+        return;
+    }
+    
+    var formData = new FormData(this);
+    var submitBtn = this.querySelector('button[type="submit"]');
+    var originalBtnText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    submitBtn.disabled = true;
+    
+    fetch(this.getAttribute('action'), {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            showNotification(data.message || 'Password reset successfully!', 'success');
+            closeModal('security-modal');
+            // Reload page after successful password reset to show updated data
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to reset password'), 'error');
+        }
+    })
+    .catch(function(error) {
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    });
+});
+
+// Handle reset PIN form submission
+var resetPinForm = document.getElementById('reset-pin-form');
+if (resetPinForm) {
+    resetPinForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        var newPin = this.querySelector('input[name="new_pin"]').value;
+        var confirmPin = this.querySelector('input[name="confirm_pin"]').value;
+        
+        if (newPin !== confirmPin) {
+            showNotification('PINs do not match', 'error');
+            return;
+        }
+        
+        if (!/^\d{4}$/.test(newPin)) {
+            showNotification('PIN must be exactly 4 digits', 'error');
+            return;
+        }
+        
+        var formData = new FormData(this);
+        var submitBtn = this.querySelector('button[type="submit"]');
+        var originalBtnText = submitBtn.innerHTML;
+        
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        submitBtn.disabled = true;
+        
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            submitBtn.innerHTML = originalBtnText;
+            submitBtn.disabled = false;
+            
+            if (data.success) {
+                showNotification(data.message || 'PIN set successfully!', 'success');
+                closeModal('security-modal');
+            } else {
+                showNotification('Error: ' + (data.message || 'Failed to set PIN'), 'error');
+            }
+        })
+        .catch(function(error) {
+            submitBtn.innerHTML = originalBtnText;
+            submitBtn.disabled = false;
+            console.error('Error:', error);
+            showNotification('An error occurred. Please try again.', 'error');
+        });
+    });
+}
 </script>
 <script>
 // Build coach name map and athlete-coach assignments for pre-populating typeaheads
@@ -1817,14 +1636,6 @@ window._addCoachTypeahead = new ArcticTypeahead({
 
 window._editCoachTypeahead = new ArcticTypeahead({
     container: '#edit-user-coach-typeahead',
-    name: 'assigned_coach_ids',
-    placeholder: 'Search for coaches…',
-    roles: 'admin,coach,team_coach,health_coach',
-    multiple: true
-});
-
-window._manageCoachTypeahead = new ArcticTypeahead({
-    container: '#manage-coach-typeahead',
     name: 'assigned_coach_ids',
     placeholder: 'Search for coaches…',
     roles: 'admin,coach,team_coach,health_coach',
