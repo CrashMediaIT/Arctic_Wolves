@@ -873,12 +873,5 @@ function closeEditModal() {
     document.getElementById('edit-schedule-modal').classList.remove('active');
 }
 
-// Close modal when clicking outside
-document.querySelectorAll('.modal').forEach(function(modal) {
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.classList.remove('active');
-        }
-    });
-});
+
 </script>

@@ -483,10 +483,5 @@ document.getElementById('discountForm').addEventListener('submit', function(e) {
     });
 });
 
-// Close modal when clicking outside
-document.getElementById('discountModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeModal();
-    }
-});
+
 </script>

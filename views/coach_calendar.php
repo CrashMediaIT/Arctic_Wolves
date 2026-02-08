@@ -420,9 +420,7 @@ function closeAssignPlanModal() { document.getElementById('assignPlanModal').cla
 function openPrivateSessionModal() { document.getElementById('privateSessionModal').classList.add('active'); }
 function closePrivateSessionModal() { document.getElementById('privateSessionModal').classList.remove('active'); }
 
-document.querySelectorAll('.session-modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-});
+
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.querySelectorAll('.session-modal-overlay.active').forEach(m => m.classList.remove('active')); });
 document.getElementById('assignPlanForm')?.addEventListener('submit', function(e) {
     const sessionId = document.getElementById('assignPlanSessionId').value;

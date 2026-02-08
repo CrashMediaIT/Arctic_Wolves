@@ -567,12 +567,7 @@ function testGoogleAPI() {
     });
 }
 
-// Close modal when clicking outside
-document.getElementById('locationModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeModal();
-    }
-});
+
 </script>
 
 // Initialize on page load

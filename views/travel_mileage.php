@@ -1109,12 +1109,5 @@ function closeDeleteModal() {
     document.getElementById('delete-mileage-modal').classList.remove('active');
 }
 
-// Close modals when clicking outside
-document.querySelectorAll('.modal').forEach(function(modal) {
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.classList.remove('active');
-        }
-    });
-});
+
 </script>

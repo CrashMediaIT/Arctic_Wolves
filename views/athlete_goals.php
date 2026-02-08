@@ -415,13 +415,5 @@ document.querySelectorAll('[data-action="update-progress"][data-modal="progress-
     });
 });
 
-// Close modals on background click
-document.querySelectorAll('.modal').forEach(function(modal) {
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            var modalId = this.id;
-            closeModal(modalId);
-        }
-    });
-});
+
 </script>

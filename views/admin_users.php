@@ -32,6 +32,31 @@ try {
         $athlete_coaches_map = [];
     }
     
+    // Fetch existing athlete team-season assignments (for multiple team support)
+    $athlete_teams_map = [];
+    try {
+        $at_stmt = $pdo->query("
+            SELECT tr.athlete_id, tr.team_id, tr.season_id, t.name as team_name, s.name as season_name
+            FROM team_roster tr
+            INNER JOIN teams t ON tr.team_id = t.id
+            LEFT JOIN seasons s ON tr.season_id = s.id
+            ORDER BY tr.athlete_id, t.name
+        ");
+        while ($row = $at_stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!isset($athlete_teams_map[$row['athlete_id']])) {
+                $athlete_teams_map[$row['athlete_id']] = [];
+            }
+            $athlete_teams_map[$row['athlete_id']][] = [
+                'team_id' => (int)$row['team_id'],
+                'season_id' => $row['season_id'] ? (int)$row['season_id'] : null,
+                'team_name' => $row['team_name'],
+                'season_name' => $row['season_name'] ?? ''
+            ];
+        }
+    } catch (PDOException $e) {
+        $athlete_teams_map = [];
+    }
+    
     // Build query
     $where = [];
     $params = [];
@@ -965,14 +990,9 @@ function closeModal(modalId) {
                 </div>
                 
                 <div class="form-row athlete-coach-fields" style="display: none;">
-                    <div class="form-group">
-                        <label class="form-label">Assign Team</label>
-                        <select name="team_id" class="form-input">
-                            <option value="">No Team</option>
-                            <?php foreach ($teams as $team): ?>
-                                <option value="<?php echo $team['id']; ?>"><?php echo htmlspecialchars($team['name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label">Assign Teams</label>
+                        <div id="add-user-team-typeahead"></div>
                     </div>
                 </div>
                 
@@ -1109,13 +1129,8 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Team Assignment</label>
-                        <select name="team_id" class="form-input" id="edit-user-team-id">
-                            <option value="">No Team Assigned</option>
-                            <?php foreach ($teams as $team): ?>
-                                <option value="<?php echo $team['id']; ?>"><?php echo htmlspecialchars($team['name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label">Team Assignments</label>
+                        <div id="edit-user-team-typeahead"></div>
                     </div>
                     
                     <div class="form-group">
@@ -1276,6 +1291,24 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
                 }
             });
             window._editCoachTypeahead.setPreSelected(preItems);
+        }
+        
+        // Pre-populate edit team typeahead
+        if (window._editTeamTypeahead) {
+            window._editTeamTypeahead.clear();
+            var teamAssignments = window._athleteTeamAssignments || {};
+            var userTeams = teamAssignments[id] || [];
+            var preTeamItems = [];
+            userTeams.forEach(function(t) {
+                var label = t.team_name;
+                if (t.season_name) label += ' — ' + t.season_name;
+                preTeamItems.push({
+                    id: t.team_id + '|' + (t.season_id !== null && t.season_id !== undefined ? t.season_id : ''),
+                    name: label,
+                    role: t.season_name ? 'Season' : ''
+                });
+            });
+            window._editTeamTypeahead.setPreSelected(preTeamItems);
         }
         
         // Reset to first tab
@@ -1646,6 +1679,7 @@ window._coachNamesMap = <?php
     echo json_encode($coachMap);
 ?>;
 window._athleteCoachAssignments = <?= json_encode($athlete_coaches_map) ?>;
+window._athleteTeamAssignments = <?= json_encode($athlete_teams_map) ?>;
 
 // Initialize coach typeaheads
 window._addCoachTypeahead = new ArcticTypeahead({
@@ -1661,6 +1695,23 @@ window._editCoachTypeahead = new ArcticTypeahead({
     name: 'assigned_coach_ids',
     placeholder: 'Search for coaches…',
     roles: 'admin,coach,team_coach,health_coach',
+    multiple: true
+});
+
+// Initialize team typeaheads
+window._addTeamTypeahead = new ArcticTypeahead({
+    container: '#add-user-team-typeahead',
+    name: 'team_season_ids',
+    placeholder: 'Search for teams…',
+    searchUrl: 'ajax_search_teams.php',
+    multiple: true
+});
+
+window._editTeamTypeahead = new ArcticTypeahead({
+    container: '#edit-user-team-typeahead',
+    name: 'team_season_ids',
+    placeholder: 'Search for teams…',
+    searchUrl: 'ajax_search_teams.php',
     multiple: true
 });
 </script>

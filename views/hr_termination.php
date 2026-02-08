@@ -1143,10 +1143,5 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Close modal on overlay click
-document.getElementById('terminationModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeTerminationModal();
-    }
-});
+
 </script>

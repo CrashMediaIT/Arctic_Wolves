@@ -1209,10 +1209,5 @@ function downloadBackup(filename) {
     window.location.href = `process_database_backup.php?action=download&filename=${encodeURIComponent(filename)}&csrf_token=<?= $csrf_token ?>`;
 }
 
-// Close modal on outside click
-document.getElementById('job-modal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeJobModal();
-    }
-});
+
 </script>
