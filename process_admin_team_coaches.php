@@ -16,10 +16,9 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['user_role'] !== 'admin') {
 
 $action = $_POST['action'] ?? '';
 
-// Determine redirect target - if coming from Resource Management (categories page), redirect back there
-$referer = $_SERVER['HTTP_REFERER'] ?? '';
+// Determine redirect target - if a redirect_page was specified, use it
 $redirect_page = 'admin_team_coaches';
-if (strpos($referer, 'page=categories') !== false) {
+if (!empty($_POST['redirect_page']) && $_POST['redirect_page'] === 'categories') {
     $redirect_page = 'categories&tab=seasons';
 }
 

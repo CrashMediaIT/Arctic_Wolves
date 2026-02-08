@@ -604,6 +604,7 @@ try {
                                 <?= csrfTokenInput() ?>
                                 <input type="hidden" name="action" value="activate_season">
                                 <input type="hidden" name="season_id" value="<?= $season['id'] ?>">
+                                <input type="hidden" name="redirect_page" value="categories">
                                 <button type="submit" class="btn-icon" title="Activate">
                                     <i class="fas fa-check"></i>
                                 </button>
@@ -613,6 +614,7 @@ try {
                                 <?= csrfTokenInput() ?>
                                 <input type="hidden" name="action" value="delete_season">
                                 <input type="hidden" name="season_id" value="<?= $season['id'] ?>">
+                                <input type="hidden" name="redirect_page" value="categories">
                                 <button type="submit" class="btn-icon btn-icon-danger" title="Delete"
                                         onclick="return confirm('Delete this season? This will fail if there are assignments using it.');">
                                     <i class="fas fa-trash"></i>
@@ -675,6 +677,7 @@ try {
                                 <?= csrfTokenInput() ?>
                                 <input type="hidden" name="action" value="delete_age_group">
                                 <input type="hidden" name="id" value="<?= $ag['id'] ?>">
+                                <input type="hidden" name="redirect_page" value="categories">
                                 <button type="submit" class="btn-icon btn-icon-danger" title="Delete"
                                         onclick="return confirm('Delete this age group? Sessions using it will have the field set to NULL.');">
                                     <i class="fas fa-trash"></i>
@@ -1553,6 +1556,7 @@ try {
         <form method="POST" action="process_admin_team_coaches.php">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create_season">
+            <input type="hidden" name="redirect_page" value="categories">
             
             <div class="modal-body">
                 <div class="form-group">
@@ -1602,6 +1606,7 @@ try {
         <form action="process_admin_age_skill.php" method="POST">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create_age_group">
+            <input type="hidden" name="redirect_page" value="categories">
             
             <div class="modal-body">
                 <div class="form-group">

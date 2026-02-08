@@ -59,11 +59,10 @@ if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
 
 $action = $_POST['action'] ?? '';
 
-// Determine redirect target - if coming from Resource Management (categories page), redirect back there
-$referer = $_SERVER['HTTP_REFERER'] ?? '';
+// Determine redirect target - if a redirect_page was specified, use it
 $age_group_redirect = 'admin_age_skill';
 $age_group_redirect_params = '';
-if (strpos($referer, 'page=categories') !== false) {
+if (!empty($_POST['redirect_page']) && $_POST['redirect_page'] === 'categories') {
     $age_group_redirect = 'categories';
     $age_group_redirect_params = 'tab=age_groups';
 }
