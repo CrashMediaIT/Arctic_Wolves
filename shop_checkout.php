@@ -28,6 +28,15 @@ if ($isLoggedIn) {
     $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+// Get Google Maps API key for address autocomplete
+$google_maps_api_key = '';
+try {
+    $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+    $google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+} catch (Exception $e) {
+    // Silently continue without autocomplete
+}
+
 // Calculate cart totals
 function calculateCartTotals($pdo) {
     $cart = $_SESSION['shop_cart'];
@@ -694,5 +703,74 @@ $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty(
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         });
     </script>
+    <?php if (!empty($google_maps_api_key)): ?>
+    <script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
+    <script>
+    (function() {
+        var MAX_INIT_ATTEMPTS = 20;
+        var RETRY_DELAY_MS = 250;
+        var initAttempts = 0;
+
+        function initAddressAutocomplete() {
+            if (typeof google === 'undefined' || !google.maps || !google.maps.places) return;
+
+            var addressFields = [
+                { input: 'billing_address1', city: 'billing_city', province: 'billing_state', postal: 'billing_postal' },
+                { input: 'shipping_address1', city: 'shipping_city', province: 'shipping_state', postal: 'shipping_postal' }
+            ];
+
+            addressFields.forEach(function(field) {
+                var input = document.querySelector('input[name="' + field.input + '"]');
+                if (input && !input.dataset.autocompleteInit) {
+                    var autocomplete = new google.maps.places.Autocomplete(input, {
+                        fields: ['formatted_address', 'address_components', 'name'],
+                        types: ['address']
+                    });
+                    autocomplete.addListener('place_changed', function() {
+                        var place = autocomplete.getPlace();
+                        if (place.address_components) {
+                            var city = '', province = '', postal = '';
+                            place.address_components.forEach(function(c) {
+                                if (c.types.includes('locality')) city = c.long_name;
+                                if (c.types.includes('administrative_area_level_1')) province = c.short_name;
+                                if (c.types.includes('postal_code')) postal = c.long_name;
+                            });
+                            var cityInput = document.querySelector('input[name="' + field.city + '"]');
+                            var postalInput = document.querySelector('input[name="' + field.postal + '"]');
+                            var provinceSelect = document.querySelector('select[name="' + field.province + '"]');
+                            if (cityInput && city) cityInput.value = city;
+                            if (postalInput && postal) postalInput.value = postal;
+                            if (provinceSelect && province) {
+                                for (var i = 0; i < provinceSelect.options.length; i++) {
+                                    if (provinceSelect.options[i].value === province) {
+                                        provinceSelect.selectedIndex = i;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    input.dataset.autocompleteInit = 'true';
+                }
+            });
+        }
+
+        function tryInit() {
+            if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                initAddressAutocomplete();
+            } else if (initAttempts < MAX_INIT_ATTEMPTS) {
+                initAttempts++;
+                setTimeout(tryInit, RETRY_DELAY_MS);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', tryInit);
+        } else {
+            tryInit();
+        }
+    })();
+    </script>
+    <?php endif; ?>
 </body>
 </html>

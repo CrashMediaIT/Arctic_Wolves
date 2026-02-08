@@ -380,21 +380,40 @@ let waypointCount = 2;
 let autocompleteFields = [];
 const ratePerKm = <?= $rate_per_km ?>;
 
+// Constants for Google Maps initialization
+var MAX_GOOGLE_MAPS_INIT_ATTEMPTS = 20;
+var GOOGLE_MAPS_INIT_RETRY_DELAY_MS = 250;
+
 // Initialize autocomplete on existing waypoint inputs
 document.addEventListener('DOMContentLoaded', function() {
-    initializeAutocomplete();
+    tryInitAutocomplete();
     loadLogs();
 });
 
 function initializeAutocomplete() {
+    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+        return;
+    }
     document.querySelectorAll('.waypoint-input').forEach(input => {
         if (!input.dataset.autocompleteInit) {
-            const autocomplete = new google.maps.places.Autocomplete(input);
-            autocomplete.setFields(['formatted_address', 'name']);
+            const autocomplete = new google.maps.places.Autocomplete(input, {
+                fields: ['formatted_address', 'name']
+            });
             input.dataset.autocompleteInit = 'true';
             autocompleteFields.push(autocomplete);
         }
     });
+}
+
+// Initialize with retry for async Google Maps loading
+var initAttempts = 0;
+function tryInitAutocomplete() {
+    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+        initializeAutocomplete();
+    } else if (initAttempts < MAX_GOOGLE_MAPS_INIT_ATTEMPTS) {
+        initAttempts++;
+        setTimeout(tryInitAutocomplete, GOOGLE_MAPS_INIT_RETRY_DELAY_MS);
+    }
 }
 
 function addWaypoint() {
