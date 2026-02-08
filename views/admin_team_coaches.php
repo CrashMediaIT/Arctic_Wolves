@@ -24,7 +24,7 @@ $active_season = $active_season_stmt->fetch();
 $coaches_stmt = $pdo->query("
     SELECT id, first_name, last_name, email 
     FROM users 
-    WHERE role = 'team_coach' 
+    WHERE role IN ('coach', 'team_coach', 'admin') 
     ORDER BY last_name, first_name
 ");
 $coaches = $coaches_stmt->fetchAll();

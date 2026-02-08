@@ -16,6 +16,13 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['user_role'] !== 'admin') {
 
 $action = $_POST['action'] ?? '';
 
+// Determine redirect target - if coming from Resource Management (categories page), redirect back there
+$referer = $_SERVER['HTTP_REFERER'] ?? '';
+$redirect_page = 'admin_team_coaches';
+if (strpos($referer, 'page=categories') !== false) {
+    $redirect_page = 'categories&tab=seasons';
+}
+
 try {
     switch ($action) {
         case 'create_season':
@@ -35,7 +42,7 @@ try {
             ");
             $stmt->execute([$name, $start_date, $end_date, $is_active]);
             
-            header("Location: dashboard.php?page=admin_team_coaches&msg=season_created");
+            header("Location: dashboard.php?page=$redirect_page&msg=season_created");
             break;
             
         case 'activate_season':
@@ -48,7 +55,7 @@ try {
             $stmt = $pdo->prepare("UPDATE seasons SET is_active = 1 WHERE id = ?");
             $stmt->execute([$season_id]);
             
-            header("Location: dashboard.php?page=admin_team_coaches&msg=season_activated");
+            header("Location: dashboard.php?page=$redirect_page&msg=season_activated");
             break;
             
         case 'delete_season':
@@ -60,14 +67,14 @@ try {
             $count = $check_stmt->fetchColumn();
             
             if ($count > 0) {
-                header("Location: dashboard.php?page=admin_team_coaches&error=season_has_assignments");
+                header("Location: dashboard.php?page=$redirect_page&error=season_has_assignments");
                 exit();
             }
             
             $stmt = $pdo->prepare("DELETE FROM seasons WHERE id = ?");
             $stmt->execute([$season_id]);
             
-            header("Location: dashboard.php?page=admin_team_coaches&msg=season_deleted");
+            header("Location: dashboard.php?page=$redirect_page&msg=season_deleted");
             break;
             
         case 'create_assignment':
