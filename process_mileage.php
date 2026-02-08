@@ -60,33 +60,13 @@ try {
             
             // Try to calculate distance via Google Maps API first
             // Only fall back to manual distance if API fails (e.g., service is down)
-            $distance_miles = 0;
-            $distance_km = 0;
-            $api_used = false;
+            $distance_data = tryCalculateDistanceFromWaypoints($waypoints);
             
-            if ($waypoints && count($waypoints) >= 2) {
-                $has_valid_addresses = true;
-                foreach ($waypoints as $wp) {
-                    if (empty(trim($wp['address'] ?? ''))) {
-                        $has_valid_addresses = false;
-                        break;
-                    }
-                }
-                
-                if ($has_valid_addresses) {
-                    try {
-                        $distance_data = calculateDistance($waypoints);
-                        $distance_km = floatval($distance_data['distance_km']);
-                        $distance_miles = floatval($distance_data['distance_miles']);
-                        $api_used = true;
-                    } catch (Exception $e) {
-                        error_log('Google Maps distance calculation failed, using manual entry: ' . $e->getMessage());
-                    }
-                }
-            }
-            
-            // Fall back to manual distance only if API calculation failed
-            if (!$api_used) {
+            if ($distance_data) {
+                $distance_km = floatval($distance_data['distance_km']);
+                $distance_miles = floatval($distance_data['distance_miles']);
+            } else {
+                // Fall back to manual distance only if API calculation failed
                 $distance_miles = floatval($_POST['distance_miles'] ?? 0);
                 $distance_km = floatval($_POST['distance_km'] ?? ($distance_miles * 1.60934));
                 
@@ -158,33 +138,13 @@ try {
             $waypoints = json_decode($_POST['waypoints'], true);
             
             // Try to calculate distance via Google Maps API first
-            $distance_miles = 0;
-            $distance_km = 0;
-            $api_used = false;
+            $distance_data = tryCalculateDistanceFromWaypoints($waypoints);
             
-            if ($waypoints && count($waypoints) >= 2) {
-                $has_valid_addresses = true;
-                foreach ($waypoints as $wp) {
-                    if (empty(trim($wp['address'] ?? ''))) {
-                        $has_valid_addresses = false;
-                        break;
-                    }
-                }
-                
-                if ($has_valid_addresses) {
-                    try {
-                        $distance_data = calculateDistance($waypoints);
-                        $distance_km = floatval($distance_data['distance_km']);
-                        $distance_miles = floatval($distance_data['distance_miles']);
-                        $api_used = true;
-                    } catch (Exception $e) {
-                        error_log('Google Maps distance calculation failed on update, using manual entry: ' . $e->getMessage());
-                    }
-                }
-            }
-            
-            // Fall back to manual distance only if API calculation failed
-            if (!$api_used) {
+            if ($distance_data) {
+                $distance_km = floatval($distance_data['distance_km']);
+                $distance_miles = floatval($distance_data['distance_miles']);
+            } else {
+                // Fall back to manual distance only if API calculation failed
                 $distance_km = floatval($_POST['distance_km']);
                 $distance_miles = floatval($_POST['distance_miles']);
             }
@@ -384,6 +344,28 @@ try {
 } catch (Exception $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+}
+
+/**
+ * Try to calculate distance via Google Maps API, return null on failure
+ */
+function tryCalculateDistanceFromWaypoints($waypoints) {
+    if (!$waypoints || count($waypoints) < 2) {
+        return null;
+    }
+    
+    foreach ($waypoints as $wp) {
+        if (empty(trim($wp['address'] ?? ''))) {
+            return null;
+        }
+    }
+    
+    try {
+        return calculateDistance($waypoints);
+    } catch (Exception $e) {
+        error_log('Google Maps distance calculation failed, using manual entry: ' . $e->getMessage());
+        return null;
+    }
 }
 
 /**
