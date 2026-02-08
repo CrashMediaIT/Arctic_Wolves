@@ -354,17 +354,21 @@ function calculateDistance($waypoints) {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         $response = curl_exec($ch);
         $curl_error = curl_error($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         
         if ($response === false) {
+            error_log('Google Maps Distance Matrix API curl error: ' . $curl_error);
             throw new Exception('Failed to connect to Google Maps API: ' . $curl_error);
         }
         
         $data = json_decode($response, true);
         
         if (!$data || ($data['status'] ?? '') !== 'OK') {
+            error_log('Google Maps Distance Matrix API error: ' . ($response ?: 'empty response') . ' HTTP: ' . $http_code);
             throw new Exception('Google Maps API error: ' . ($data['error_message'] ?? $data['status'] ?? 'Unknown error'));
         }
         

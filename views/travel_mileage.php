@@ -126,10 +126,11 @@ foreach ($mileage_entries as $entry) {
 }
 ?>
 
-<!-- Load Google Maps API for address autocomplete -->
-<!-- Note: API key should be restricted in Google Cloud Console with HTTP referrer restrictions -->
 <?php if (!empty($google_maps_api_key)): ?>
-<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
+<script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+  key: "<?= htmlspecialchars($google_maps_api_key) ?>",
+  v: "weekly"
+});</script>
 <?php endif; ?>
 
 <!-- Travel Mileage Tracking View -->
@@ -800,53 +801,68 @@ document.addEventListener('DOMContentLoaded', function() {
     var pendingDeleteId = null;
     var stopIndex = 2; // Start with 2 since we have start (0) and end (1)
     
-    // Constants for Google Maps initialization
-    var MAX_GOOGLE_MAPS_INIT_ATTEMPTS = 20;
-    var GOOGLE_MAPS_INIT_RETRY_DELAY_MS = 250;
-    
-    // Initialize Google Maps Autocomplete for address fields
-    function initGoogleMapsAutocomplete() {
-        if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+    // Initialize Google Maps PlaceAutocompleteElement for address fields
+    async function initGoogleMapsAutocomplete() {
+        try {
+            var { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
+            
             // Initialize autocomplete for all address input fields
             var addressInputs = document.querySelectorAll('.stop-address');
             addressInputs.forEach(function(input) {
                 if (!input.dataset.autocompleteInit) {
-                    var autocomplete = new google.maps.places.Autocomplete(input, {
-                        fields: ['formatted_address', 'name']
+                    var autocompleteEl = new PlaceAutocompleteElement();
+                    autocompleteEl.style.cssText = 'width: 100%;';
+                    autocompleteEl.setAttribute('placeholder', input.placeholder || 'Enter address');
+                    autocompleteEl.className = input.className;
+                    autocompleteEl.dataset.index = input.dataset.index;
+                    if (input.value) {
+                        autocompleteEl.value = input.value;
+                    }
+
+                    autocompleteEl.addEventListener('gmp-placeselect', async function(event) {
+                        var place = event.place;
+                        await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
+                        autocompleteEl.dataset.address = place.formattedAddress || '';
+                        autocompleteEl.dataset.name = place.displayName || '';
                     });
-                    input.dataset.autocompleteInit = 'true';
+
+                    input.parentNode.replaceChild(autocompleteEl, input);
+                    autocompleteEl.dataset.autocompleteInit = 'true';
                 }
             });
             
             // Also initialize for modal edit fields
-            var editFromLocation = document.getElementById('editFromLocation');
-            var editToLocation = document.getElementById('editToLocation');
-            if (editFromLocation && !editFromLocation.dataset.autocompleteInit) {
-                new google.maps.places.Autocomplete(editFromLocation, {
-                    fields: ['formatted_address', 'name']
-                });
-                editFromLocation.dataset.autocompleteInit = 'true';
-            }
-            if (editToLocation && !editToLocation.dataset.autocompleteInit) {
-                new google.maps.places.Autocomplete(editToLocation, {
-                    fields: ['formatted_address', 'name']
-                });
-                editToLocation.dataset.autocompleteInit = 'true';
-            }
+            var editFields = ['editFromLocation', 'editToLocation'];
+            editFields.forEach(function(fieldId) {
+                var field = document.getElementById(fieldId);
+                if (field && !field.dataset.autocompleteInit) {
+                    var autocompleteEl = new PlaceAutocompleteElement();
+                    autocompleteEl.style.cssText = 'width: 100%;';
+                    autocompleteEl.setAttribute('placeholder', field.placeholder || 'Enter address');
+                    autocompleteEl.className = field.className;
+                    autocompleteEl.id = field.id;
+                    autocompleteEl.setAttribute('name', field.name);
+                    if (field.value) {
+                        autocompleteEl.value = field.value;
+                    }
+
+                    autocompleteEl.addEventListener('gmp-placeselect', async function(event) {
+                        var place = event.place;
+                        await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
+                        autocompleteEl.dataset.address = place.formattedAddress || '';
+                    });
+
+                    field.parentNode.replaceChild(autocompleteEl, field);
+                    autocompleteEl.dataset.autocompleteInit = 'true';
+                }
+            });
+        } catch (e) {
+            console.error('Failed to initialize Google Maps Places:', e);
         }
     }
     
-    // Initialize on page load - with retry for async Google Maps loading
-    var initAttempts = 0;
-    function tryInitAutocomplete() {
-        if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-            initGoogleMapsAutocomplete();
-        } else if (initAttempts < MAX_GOOGLE_MAPS_INIT_ATTEMPTS) {
-            initAttempts++;
-            setTimeout(tryInitAutocomplete, GOOGLE_MAPS_INIT_RETRY_DELAY_MS);
-        }
-    }
-    tryInitAutocomplete();
+    // Initialize on page load
+    initGoogleMapsAutocomplete();
     
     // Show notification helper
     function showNotification(message, type) {
@@ -925,14 +941,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (addForm) {
         addForm.addEventListener('submit', function(e) {
             var waypoints = [];
-            var stopAddresses = document.querySelectorAll('.stop-address');
+            var stopAddresses = document.querySelectorAll('gmp-place-autocomplete.stop-address, input.stop-address');
             var stopNames = document.querySelectorAll('.stop-name');
             
-            stopAddresses.forEach(function(input, i) {
-                if (input.value.trim()) {
+            stopAddresses.forEach(function(el, i) {
+                var address = el.dataset.address || el.value || '';
+                if (address.trim()) {
                     waypoints.push({
                         name: stopNames[i]?.value || 'Stop',
-                        address: input.value.trim()
+                        address: address.trim()
                     });
                 }
             });
@@ -970,8 +987,14 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editTripDate').value = formattedDate;
             document.getElementById('editPurpose').value = purpose.trim() !== 'N/A' ? purpose.trim() : '';
             document.getElementById('editDescription').value = description;
-            document.getElementById('editFromLocation').value = fromLocation.trim() !== 'N/A' ? fromLocation.trim() : '';
-            document.getElementById('editToLocation').value = toLocation.trim() !== 'N/A' ? toLocation.trim() : '';
+            var editFrom = document.getElementById('editFromLocation');
+            var editTo = document.getElementById('editToLocation');
+            var fromVal = fromLocation.trim() !== 'N/A' ? fromLocation.trim() : '';
+            var toVal = toLocation.trim() !== 'N/A' ? toLocation.trim() : '';
+            editFrom.value = fromVal;
+            editFrom.dataset.address = fromVal;
+            editTo.value = toVal;
+            editTo.dataset.address = toVal;
             document.getElementById('editDistanceMiles').value = parseFloat(distance) || 0;
             document.getElementById('editDistanceKm').value = (parseFloat(distance) * 1.60934).toFixed(2) || 0;
             document.getElementById('editAthleteId').value = athleteId;
@@ -999,8 +1022,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
             var formData = new FormData(this);
             // Create waypoints from locations
-            var fromLocation = document.getElementById('editFromLocation').value;
-            var toLocation = document.getElementById('editToLocation').value;
+            var editFrom = document.getElementById('editFromLocation');
+            var editTo = document.getElementById('editToLocation');
+            var fromLocation = editFrom.dataset.address || editFrom.value;
+            var toLocation = editTo.dataset.address || editTo.value;
             var waypoints = JSON.stringify([
                 {name: 'Start', address: fromLocation},
                 {name: 'End', address: toLocation}

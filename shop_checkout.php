@@ -704,15 +704,14 @@ $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty(
         });
     </script>
     <?php if (!empty($google_maps_api_key)): ?>
-    <script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
+    <script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+      key: "<?= htmlspecialchars($google_maps_api_key) ?>",
+      v: "weekly"
+    });</script>
     <script>
-    (function() {
-        var MAX_INIT_ATTEMPTS = 20;
-        var RETRY_DELAY_MS = 250;
-        var initAttempts = 0;
-
-        function initAddressAutocomplete() {
-            if (typeof google === 'undefined' || !google.maps || !google.maps.places) return;
+    (async function() {
+        try {
+            var { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
 
             var addressFields = [
                 { input: 'billing_address1', city: 'billing_city', province: 'billing_state', postal: 'billing_postal' },
@@ -722,18 +721,22 @@ $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty(
             addressFields.forEach(function(field) {
                 var input = document.querySelector('input[name="' + field.input + '"]');
                 if (input && !input.dataset.autocompleteInit) {
-                    var autocomplete = new google.maps.places.Autocomplete(input, {
-                        fields: ['formatted_address', 'address_components', 'name'],
-                        types: ['address']
-                    });
-                    autocomplete.addListener('place_changed', function() {
-                        var place = autocomplete.getPlace();
-                        if (place.address_components) {
+                    var autocompleteEl = new PlaceAutocompleteElement();
+                    autocompleteEl.style.cssText = 'width: 100%;';
+                    autocompleteEl.setAttribute('placeholder', input.placeholder || 'Enter address');
+                    autocompleteEl.className = input.className;
+                    autocompleteEl.setAttribute('name', input.name);
+                    if (input.value) autocompleteEl.value = input.value;
+
+                    autocompleteEl.addEventListener('gmp-placeselect', async function(event) {
+                        var place = event.place;
+                        await place.fetchFields({ fields: ['formattedAddress', 'addressComponents'] });
+                        if (place.addressComponents) {
                             var city = '', province = '', postal = '';
-                            place.address_components.forEach(function(c) {
-                                if (c.types.includes('locality')) city = c.long_name;
-                                if (c.types.includes('administrative_area_level_1')) province = c.short_name;
-                                if (c.types.includes('postal_code')) postal = c.long_name;
+                            place.addressComponents.forEach(function(c) {
+                                if (c.types.includes('locality')) city = c.longText;
+                                if (c.types.includes('administrative_area_level_1')) province = c.shortText;
+                                if (c.types.includes('postal_code')) postal = c.longText;
                             });
                             var cityInput = document.querySelector('input[name="' + field.city + '"]');
                             var postalInput = document.querySelector('input[name="' + field.postal + '"]');
@@ -750,24 +753,13 @@ $stripeConfigured = !empty($stripeSettings['stripe_publishable_key']) && !empty(
                             }
                         }
                     });
-                    input.dataset.autocompleteInit = 'true';
+
+                    input.parentNode.replaceChild(autocompleteEl, input);
+                    autocompleteEl.dataset.autocompleteInit = 'true';
                 }
             });
-        }
-
-        function tryInit() {
-            if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-                initAddressAutocomplete();
-            } else if (initAttempts < MAX_INIT_ATTEMPTS) {
-                initAttempts++;
-                setTimeout(tryInit, RETRY_DELAY_MS);
-            }
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', tryInit);
-        } else {
-            tryInit();
+        } catch (e) {
+            console.error('Failed to initialize Google Maps Places:', e);
         }
     })();
     </script>
