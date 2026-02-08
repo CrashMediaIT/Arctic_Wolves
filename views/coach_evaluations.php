@@ -44,7 +44,7 @@ try {
             SELECT ae.id, ae.athlete_id, ae.evaluator_id, ae.skill_id, ae.rating, 
                    ae.comments as notes, ae.evaluation_date as eval_date, ae.session_id,
                    ae.created_at, 'published' as status,
-                   CONCAT(u.first_name, ' ', u.last_name) as evaluator_name,
+                   u.first_name as evaluator_first_name, u.last_name as evaluator_last_name,
                    es.name as skill_name
             FROM athlete_evaluations ae
             LEFT JOIN users u ON ae.evaluator_id = u.id
@@ -54,6 +54,15 @@ try {
         ");
         $stmt->execute([$selected_athlete_id]);
         $evaluations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($evaluations as &$eval) {
+            if (!empty($eval['evaluator_first_name'])) {
+                $eval['evaluator_first_name'] = FieldEncryption::decrypt($eval['evaluator_first_name']);
+            }
+            if (!empty($eval['evaluator_last_name'])) {
+                $eval['evaluator_last_name'] = FieldEncryption::decrypt($eval['evaluator_last_name']);
+            }
+        }
+        unset($eval);
     }
     
     // Get evaluation stats
@@ -179,9 +188,9 @@ try {
                                     </div>
                                 <?php endif; ?>
                                 
-                                <?php if (!empty($eval['evaluator_name'])): ?>
+                                <?php if (!empty($eval['evaluator_first_name']) || !empty($eval['evaluator_last_name'])): ?>
                                     <div class="evaluator-info">
-                                        <i class="fas fa-user-tie"></i> <?= htmlspecialchars($eval['evaluator_name']) ?>
+                                        <i class="fas fa-user-tie"></i> <?= htmlspecialchars($eval['evaluator_first_name'] . ' ' . $eval['evaluator_last_name']) ?>
                                     </div>
                                 <?php endif; ?>
                                 

@@ -16,7 +16,8 @@ if ($user_role !== 'admin') {
 $coaches_query = $pdo->query("
     SELECT 
         u.id,
-        CONCAT(u.first_name, ' ', u.last_name) as name,
+        u.first_name,
+        u.last_name,
         u.email,
         u.role,
         COUNT(DISTINCT ma.athlete_id) as athlete_count,
@@ -348,13 +349,13 @@ $csrf_token = generateCsrfToken();
                     <option value="">-- Select a coach --</option>
                     <?php foreach ($coaches as $coach): ?>
                         <option value="<?= $coach['id'] ?>" 
-                                data-name="<?= htmlspecialchars($coach['name']) ?>"
+                                data-name="<?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?>"
                                 data-email="<?= htmlspecialchars($coach['email']) ?>"
                                 data-role="<?= htmlspecialchars($coach['role']) ?>"
                                 data-athletes="<?= $coach['athlete_count'] ?>"
                                 data-goals="<?= $coach['goal_count'] ?>"
                                 data-evaluations="<?= $coach['evaluation_count'] ?>">
-                            <?= htmlspecialchars($coach['name']) ?> (<?= htmlspecialchars($coach['email']) ?>)
+                            <?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?> (<?= htmlspecialchars($coach['email']) ?>)
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -394,7 +395,7 @@ $csrf_token = generateCsrfToken();
                     <option value="">-- Select a coach --</option>
                     <?php foreach ($coaches as $coach): ?>
                         <option value="<?= $coach['id'] ?>">
-                            <?= htmlspecialchars($coach['name']) ?> (<?= htmlspecialchars($coach['role']) ?>)
+                            <?= htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']) ?> (<?= htmlspecialchars($coach['role']) ?>)
                         </option>
                     <?php endforeach; ?>
                 </select>

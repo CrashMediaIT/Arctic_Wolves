@@ -23,7 +23,7 @@ if ($user_role === 'athlete') {
     if ($show_history) {
         $sessions_query = "
             SELECT s.*, 
-                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   c.first_name as coach_first_name, c.last_name as coach_last_name,
                    st.name as session_type_name,
                    st.id as skill_id,
                    l.name as location_name,
@@ -46,7 +46,7 @@ if ($user_role === 'athlete') {
     } else {
         $sessions_query = "
             SELECT s.*, 
-                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   c.first_name as coach_first_name, c.last_name as coach_last_name,
                    st.name as session_type_name,
                    st.id as skill_id,
                    l.name as location_name,
@@ -73,7 +73,7 @@ if ($user_role === 'athlete') {
     if ($show_history) {
         $sessions_query = "
             SELECT s.*, 
-                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   c.first_name as coach_first_name, c.last_name as coach_last_name,
                    st.name as session_type_name,
                    st.id as skill_id,
                    l.name as location_name,
@@ -93,7 +93,7 @@ if ($user_role === 'athlete') {
     } else {
         $sessions_query = "
             SELECT s.*, 
-                   CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+                   c.first_name as coach_first_name, c.last_name as coach_last_name,
                    st.name as session_type_name,
                    st.id as skill_id,
                    l.name as location_name,
@@ -169,7 +169,7 @@ if (!$show_history) {
             TIME(tsd.session_date) as session_time,
             tsd.id as template_date_id,
             tsd.team_id,
-            CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+            c.first_name as coach_first_name, c.last_name as coach_last_name,
             st.name as session_type_name,
             st.id as skill_id,
             l.name as location_name,
@@ -237,6 +237,14 @@ if (!$show_history) {
     // Limit to 50 total
     $sessions = array_slice($sessions, 0, 50);
 }
+
+// Decrypt coach PII fields in session rows
+foreach ($sessions as &$s) {
+    foreach (['coach_first_name', 'coach_last_name'] as $f) {
+        if (!empty($s[$f])) $s[$f] = FieldEncryption::decrypt($s[$f]);
+    }
+}
+unset($s);
 
 // Get coaches for filter - based on user role
 if ($user_role === 'athlete') {
@@ -411,7 +419,7 @@ $is_demo_data = false;
                  data-date="<?= $iso_date ?>"
                  data-time="<?= date('g:i A', $session_datetime) ?>"
                  data-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>"
-                 data-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>"
+                 data-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?>"
                  data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>"
                  data-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>">
             </div>
@@ -434,7 +442,7 @@ $is_demo_data = false;
                  data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $session_datetime) ?>"
                  data-session-end-time="<?= date('g:i A', $session_end_time) ?>"
                  data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>"
-                 data-session-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>"
+                 data-session-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?>"
                  data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>"
                  data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>"
                  data-session-skill="<?= htmlspecialchars($session['session_type_name'] ?? '') ?>"
@@ -450,7 +458,7 @@ $is_demo_data = false;
                     <h3 class="session-title"><?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?></h3>
                     <div class="session-meta">
                         <span><i class="fas fa-clock"></i> <?= date('g:i A', $session_datetime) ?> - <?= date('g:i A', $session_end_time) ?></span>
-                        <span><i class="fas fa-user"></i> <?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?></span>
+                        <span><i class="fas fa-user"></i> <?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?></span>
                         <?php if ($session['location_name']): ?>
                             <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span>
                         <?php endif; ?>

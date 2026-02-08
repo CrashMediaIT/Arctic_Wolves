@@ -49,7 +49,7 @@ try {
     // Fetch transactions
     $stmt = $pdo->prepare("
         SELECT pt.*, 
-               CONCAT(u.first_name, ' ', u.last_name) as staff_name,
+               u.first_name, u.last_name,
                (SELECT COUNT(*) FROM pos_transaction_items WHERE transaction_id = pt.id) as item_count
         FROM pos_transactions pt
         LEFT JOIN users u ON pt.staff_id = u.id
@@ -217,7 +217,7 @@ $posBaseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=pos_transacti
                                         <div style="color: var(--text-dim); font-size: 11px;"><?= date('g:i:s A', strtotime($trans['created_at'])) ?></div>
                                     </div>
                                 </td>
-                                <td><?= htmlspecialchars($trans['staff_name'] ?? 'Unknown') ?></td>
+                                <td><?= htmlspecialchars(($trans['first_name'] ?? '') . ' ' . ($trans['last_name'] ?? '') ?: 'Unknown') ?></td>
                                 <td><?= $trans['item_count'] ?></td>
                                 <td>
                                     <?php

@@ -15,9 +15,13 @@ if ($user_role === 'athlete') {
     $assigned_coach_id = $coach_row['assigned_coach_id'] ?? null;
     
     if ($assigned_coach_id) {
-        $coach_name_stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM users WHERE id = ?");
+        $coach_name_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $coach_name_stmt->execute([$assigned_coach_id]);
-        $assigned_coach_name = $coach_name_stmt->fetchColumn() ?: '';
+        $coach_name_row = $coach_name_stmt->fetch();
+        if ($coach_name_row) {
+            $coach_name_row = decryptUserRow($coach_name_row);
+            $assigned_coach_name = $coach_name_row['first_name'] . ' ' . $coach_name_row['last_name'];
+        }
     }
 }
 
@@ -73,9 +77,9 @@ $search_query = $_GET['search'] ?? '';
 if ($isAnyCoach) {
     $video_query = "
         SELECT v.*, 
-               CONCAT(a.first_name, ' ', a.last_name) as athlete_name,
+               a.first_name as athlete_first_name, a.last_name as athlete_last_name,
                a.email as athlete_email,
-               CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+               c.first_name as coach_first_name, c.last_name as coach_last_name,
                d.title as drill_title,
                s.title as session_title,
                s.session_date
@@ -91,9 +95,9 @@ if ($isAnyCoach) {
 } else {
     $video_query = "
         SELECT v.*, 
-               CONCAT(a.first_name, ' ', a.last_name) as athlete_name,
+               a.first_name as athlete_first_name, a.last_name as athlete_last_name,
                a.email as athlete_email,
-               CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+               c.first_name as coach_first_name, c.last_name as coach_last_name,
                d.title as drill_title,
                s.title as session_title,
                s.session_date
@@ -136,6 +140,13 @@ $video_query .= " ORDER BY v.upload_date DESC LIMIT 50";
 $video_stmt = $pdo->prepare($video_query);
 $video_stmt->execute($params);
 $videos = $video_stmt->fetchAll();
+// Decrypt PII fields from joined user tables
+foreach ($videos as &$v) {
+    foreach (['athlete_first_name', 'athlete_last_name', 'coach_first_name', 'coach_last_name'] as $f) {
+        if (!empty($v[$f])) $v[$f] = FieldEncryption::decrypt($v[$f]);
+    }
+}
+unset($v);
 
 $pending_videos = array_filter($videos, function($v) { 
     return $v['status'] === 'pending_review'; 
@@ -226,7 +237,7 @@ $reviewed_videos = array_filter($videos, function($v) {
                     <div class="video-details">
                         <h4><?= htmlspecialchars($video['title']) ?></h4>
                         <div class="video-meta">
-                            <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['athlete_name']) ?></span>
+                            <span><i class="fas fa-user"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
                             <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
                             <span class="video-category-badge <?= ($video['video_category'] ?? 'drill') === 'game' ? 'badge-game' : 'badge-drill' ?>">
                                 <i class="fas <?= ($video['video_category'] ?? 'drill') === 'game' ? 'fa-hockey-puck' : 'fa-dumbbell' ?>"></i>
@@ -282,14 +293,14 @@ $reviewed_videos = array_filter($videos, function($v) {
                     <div class="video-details">
                         <h4><?= htmlspecialchars($video['title']) ?></h4>
                         <div class="video-meta">
-                            <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['athlete_name']) ?></span>
+                            <span><i class="fas fa-user"></i> <?= htmlspecialchars(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
                             <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
                             <span class="video-category-badge <?= ($video['video_category'] ?? 'drill') === 'game' ? 'badge-game' : 'badge-drill' ?>">
                                 <i class="fas <?= ($video['video_category'] ?? 'drill') === 'game' ? 'fa-hockey-puck' : 'fa-dumbbell' ?>"></i>
                                 <?= ucfirst($video['video_category'] ?? 'drill') ?>
                             </span>
-                            <?php if (!empty($video['coach_name'])): ?>
-                                <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
+                            <?php if (!empty($video['coach_first_name'])): ?>
+                                <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($video['coach_first_name'] . ' ' . ($video['coach_last_name'] ?? '')) ?></span>
                             <?php endif; ?>
                         </div>
                         <?php if (!empty($video['coach_notes'])): ?>
