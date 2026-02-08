@@ -252,7 +252,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
         .nav-label { font-size: 10px; text-transform: uppercase; color: #475569; font-weight: 800; margin-bottom: 12px; display: block; letter-spacing: 1.5px; }
         .nav-menu { list-style: none; padding: 0; margin: 0; }
         .nav-link { display: flex; align-items: center; gap: 14px; padding: 10px 15px; color: var(--text); text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 600; transition: 0.2s; margin-bottom: 2px; cursor: pointer; }
-        .nav-link i { width: 18px; text-align: center; }
+        .nav-link i { width: 18px; text-align: center; color: #fff; }
         .nav-link:hover, .nav-link.active { background: rgba(107, 70, 193, 0.1); color: var(--primary-light); }
         
         /* TAB NAVIGATION FOR PARENT PAGES */

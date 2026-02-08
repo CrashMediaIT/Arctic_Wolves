@@ -9,11 +9,17 @@ try {
 }
 
 // Get mileage rates and unit preference from system settings
-$rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate', 'mileage_rate_per_km', 'mileage_rate_per_mile', 'mileage_unit')");
+$rate_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate', 'mileage_rate_per_km', 'mileage_rate_after_5000_per_km', 'mileage_rate_per_mile', 'mileage_unit')");
 $rates = $rate_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $mileage_rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? $rates['mileage_rate'] ?? 0.65);
-$mileage_rate_per_km = floatval($rates['mileage_rate_per_km'] ?? ($mileage_rate_per_mile / 1.60934));
+$mileage_rate_per_km = floatval($rates['mileage_rate_per_km'] ?? 0.70);
+$mileage_rate_after_5000_per_km = floatval($rates['mileage_rate_after_5000_per_km'] ?? 0.64);
 $mileage_unit = $rates['mileage_unit'] ?? 'km';
+
+// Calculate total km driven this year for the current user (for CRA tiered rate)
+$year_km_stmt = $pdo->prepare("SELECT COALESCE(SUM(total_distance_km), 0) FROM mileage_logs WHERE user_id = ? AND YEAR(trip_date) = YEAR(CURDATE())");
+$year_km_stmt->execute([$user_id]);
+$year_km_total = floatval($year_km_stmt->fetchColumn());
 
 // Get filter parameters
 $filter_period = $_GET['period'] ?? 'month';
@@ -306,8 +312,15 @@ foreach ($mileage_entries as $entry) {
                         <label>Rate per Mile</label>
                         <input type="number" name="rate_per_mile" class="form-input" value="<?= $mileage_rate_per_mile ?>" step="0.01" min="0" readonly data-field="rate">
                         <?php else: ?>
-                        <label>Rate per Kilometer</label>
-                        <input type="number" name="rate_per_km" class="form-input" value="<?= $mileage_rate_per_km ?>" step="0.01" min="0" readonly data-field="rate">
+                        <label>Rate per Kilometer (CRA Tiered)</label>
+                        <input type="hidden" name="rate_per_km" data-field="rate" value="<?= $mileage_rate_per_km ?>">
+                        <input type="hidden" name="rate_after_5000_per_km" data-field="rate-after-5000" value="<?= $mileage_rate_after_5000_per_km ?>">
+                        <input type="hidden" data-field="year-km-total" value="<?= $year_km_total ?>">
+                        <div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <div>First 5,000 km: <strong style="color: #fff;">$<?= number_format($mileage_rate_per_km, 2) ?>/km</strong></div>
+                            <div>After 5,000 km: <strong style="color: #fff;">$<?= number_format($mileage_rate_after_5000_per_km, 2) ?>/km</strong></div>
+                            <div style="margin-top: 4px; font-size: 0.8rem; color: rgba(255,255,255,0.5);">Year-to-date: <?= number_format($year_km_total, 1) ?> km driven</div>
+                        </div>
                         <?php endif; ?>
                     </div>
                     <div class="form-group">
@@ -911,16 +924,35 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
     }
     
-    // Calculate total amount on distance change
+    // Calculate total amount on distance change (CRA tiered rates)
     var distanceField = document.querySelector('[data-field="distance"]');
     var rateField = document.querySelector('[data-field="rate"]');
+    var rateAfter5000Field = document.querySelector('[data-field="rate-after-5000"]');
+    var yearKmTotalField = document.querySelector('[data-field="year-km-total"]');
     var totalDisplay = document.querySelector('[data-field="total-display"]');
+    
+    function calculateTieredReimbursement(distanceKm) {
+        var rate = parseFloat(rateField ? rateField.value : 0) || 0;
+        var rateAfter5000 = rateAfter5000Field ? (parseFloat(rateAfter5000Field.value) || rate) : rate;
+        var yearKmTotal = yearKmTotalField ? (parseFloat(yearKmTotalField.value) || 0) : 0;
+        
+        if (!rateAfter5000Field) {
+            // Miles mode or no tiered rate - simple calculation
+            return distanceKm * rate;
+        }
+        
+        // CRA tiered calculation
+        var remainingFirst5000 = Math.max(0, 5000 - yearKmTotal);
+        var kmAtHighRate = Math.min(distanceKm, remainingFirst5000);
+        var kmAtLowRate = Math.max(0, distanceKm - kmAtHighRate);
+        
+        return (kmAtHighRate * rate) + (kmAtLowRate * rateAfter5000);
+    }
     
     if (distanceField && rateField && totalDisplay) {
         distanceField.addEventListener('input', function() {
             var distance = parseFloat(this.value) || 0;
-            var rate = parseFloat(rateField.value) || 0;
-            var total = distance * rate;
+            var total = calculateTieredReimbursement(distance);
             totalDisplay.value = '$' + total.toFixed(2);
         });
     }

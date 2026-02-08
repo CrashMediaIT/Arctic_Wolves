@@ -224,7 +224,7 @@ try {
                 <div class="empty-state-card" id="eval-library-empty" style="display: none;">
                     <i class="fas fa-book-open"></i>
                     <h4>No Saved Evaluations</h4>
-                    <p>Go to the <a href="?page=eval_framework&tab=builder">Evaluation Builder</a> tab to create categories and skills, then save them as an evaluation.</p>
+                    <p>Go to the <a href="?page=eval_framework&tab=builder" style="color: var(--primary-light); text-decoration: none; font-weight: 600;">Evaluation Builder</a> tab to create categories and skills, then save them as an evaluation.</p>
                 </div>
                 <div id="eval-library-loading" style="text-align: center; padding: 40px;">
                     <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: var(--primary-light);"></i>

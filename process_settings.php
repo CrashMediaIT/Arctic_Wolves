@@ -241,12 +241,20 @@ try {
             $session_duration = intval($_POST['session_duration'] ?? 60);
             $notifications_enabled = isset($_POST['notifications_enabled']) ? '1' : '0';
             $maintenance_mode = isset($_POST['maintenance_mode']) ? '1' : '0';
+            $province = trim($_POST['province'] ?? 'ON');
+            
+            // Validate province code
+            $valid_provinces = ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'];
+            if (!in_array($province, $valid_provinces)) {
+                $province = 'ON';
+            }
             
             updateSetting($pdo, 'site_title', $site_title);
             updateSetting($pdo, 'site_email', $site_email);
             updateSetting($pdo, 'session_duration', $session_duration);
             updateSetting($pdo, 'notifications_enabled', $notifications_enabled);
             updateSetting($pdo, 'maintenance_mode', $maintenance_mode);
+            updateSetting($pdo, 'province', $province);
             
             header('Location: dashboard.php?page=system_tools&success=1');
             exit;
@@ -322,6 +330,7 @@ try {
             
         case 'update_mileage_rates':
             $rate_km = floatval($_POST['mileage_rate_per_km']);
+            $rate_after_5000_km = floatval($_POST['mileage_rate_after_5000_per_km']);
             $rate_mile = floatval($_POST['mileage_rate_per_mile']);
             $mileage_unit = trim($_POST['mileage_unit'] ?? 'km');
             
@@ -331,6 +340,7 @@ try {
             }
             
             updateSetting($pdo, 'mileage_rate_per_km', $rate_km);
+            updateSetting($pdo, 'mileage_rate_after_5000_per_km', $rate_after_5000_km);
             updateSetting($pdo, 'mileage_rate_per_mile', $rate_mile);
             updateSetting($pdo, 'mileage_unit', $mileage_unit);
             
