@@ -562,6 +562,16 @@ if ($action === 'create') {
             
             $pdo->commit();
             
+            // Send welcome email with credentials (after commit to ensure account exists)
+            if ($createAccount && $tempPassword) {
+                require_once 'mailer.php';
+                sendEmail($email, 'manual_welcome', [
+                    'name' => $firstName . ' ' . $lastName,
+                    'email' => $email,
+                    'password' => $tempPassword
+                ]);
+            }
+            
             $successMsg = 'Onboarding started for ' . $firstName . ' ' . $lastName;
             if ($createAccount) {
                 $successMsg .= '. User account created with temporary password.';
