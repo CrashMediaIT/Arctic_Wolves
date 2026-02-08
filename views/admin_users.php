@@ -1131,12 +1131,6 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label">New Password (leave blank to keep current)</label>
-                        <input type="password" name="password" class="form-input" placeholder="Enter new password if changing">
-                        <small style="color: var(--text-dim);">Leave empty to keep current password</small>
-                    </div>
-                    
                     <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-save"></i> Update Details</button>
                 </form>
             </div>
