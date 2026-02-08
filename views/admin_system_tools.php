@@ -1238,7 +1238,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </div>
                         <h4 style="margin-bottom: 8px; color: var(--text-white);">Restore Database</h4>
                         <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 16px;">Restore from a previous backup file</p>
-                        <a href="dashboard.php?page=database_restore" class="btn btn-secondary">
+                        <a href="dashboard.php?page=admin_database_restore" class="btn btn-secondary">
                             <i class="fas fa-upload"></i> Restore
                         </a>
                     </div>
