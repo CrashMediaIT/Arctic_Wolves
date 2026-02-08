@@ -650,7 +650,7 @@ $is_demo_data = false;
 
 .session-card:hover {
     border-color: var(--primary);
-    box-shadow: 0 4px 20px rgba(255, 77, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(107, 70, 193, 0.1);
 }
 
 .date-box {
@@ -712,7 +712,7 @@ $is_demo_data = false;
 }
 
 .tag {
-    background: rgba(255, 77, 0, 0.1);
+    background: rgba(107, 70, 193, 0.1);
     color: var(--primary);
     padding: 4px 12px;
     border-radius: 4px;
