@@ -364,8 +364,14 @@ function calculateDistance($waypoints) {
         
         $data = json_decode($response, true);
         
-        if ($data['status'] !== 'OK' || !isset($data['rows'][0]['elements'][0]['distance'])) {
-            throw new Exception('Google Maps API error: ' . ($data['error_message'] ?? 'Unknown error'));
+        if (!$data || ($data['status'] ?? '') !== 'OK') {
+            throw new Exception('Google Maps API error: ' . ($data['error_message'] ?? $data['status'] ?? 'Unknown error'));
+        }
+        
+        $element = $data['rows'][0]['elements'][0] ?? null;
+        if (!$element || !isset($element['distance'])) {
+            $elementStatus = $element['status'] ?? 'Unknown';
+            throw new Exception('Could not calculate distance between stops ' . ($i + 1) . ' and ' . ($i + 2) . ': ' . $elementStatus);
         }
         
         $distance_meters = $data['rows'][0]['elements'][0]['distance']['value'];

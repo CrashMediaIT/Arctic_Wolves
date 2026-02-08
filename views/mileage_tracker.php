@@ -244,7 +244,7 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
 </style>
 
 <?php if (!empty($google_maps_api_key)): ?>
-<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
 <?php endif; ?>
 
 <div class="dash-content mileage-container">
