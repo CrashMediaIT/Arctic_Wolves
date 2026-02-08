@@ -176,7 +176,7 @@ function sendEmail($to, $type, $data) {
     $successClr = htmlspecialchars($theme['success_color'], ENT_QUOTES, 'UTF-8');
     $errorClr   = htmlspecialchars($theme['error_color'], ENT_QUOTES, 'UTF-8');
     $warningClr = htmlspecialchars($theme['warning_color'], ENT_QUOTES, 'UTF-8');
-    $logoUrl    = $theme['logo_url'] ?? '';
+    $logoUrl    = $theme['logo_url'];
     
     // --- TEMPLATE LOGIC ---
     $subject = "Arctic Wolves Notification"; 
@@ -186,7 +186,7 @@ function sendEmail($to, $type, $data) {
     $logoHtml = '';
     if (!empty($logoUrl)) {
         $safeLogo = htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8');
-        $logoHtml = "<img src='$safeLogo' alt='Arctic Wolves' style='max-height: 60px; max-width: 200px;'>";
+        $logoHtml = "<img src='$safeLogo' alt='Arctic Wolves Performance Logo' style='max-height: 60px; max-width: 200px;'>";
     }
     $header = "
     <div style='text-align: center; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid $borderClr;'>
