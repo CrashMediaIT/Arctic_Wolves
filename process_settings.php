@@ -5,6 +5,7 @@ require 'db_config.php';
 require 'security.php';
 require 'cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/lib/blocklist.php';
 
 setSecurityHeaders();
 
@@ -17,7 +18,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps', 'add_blocklist_entry', 'remove_blocklist_entry'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -699,6 +700,61 @@ try {
             echo json_encode($result);
             exit;
             
+        case 'add_blocklist_entry':
+            $block_type = trim($_POST['block_type'] ?? '');
+            $block_value = trim($_POST['block_value'] ?? '');
+            $reason = trim($_POST['reason'] ?? '');
+
+            if (!in_array($block_type, ['email', 'name', 'ip'])) {
+                echo json_encode(['success' => false, 'message' => 'Invalid block type']);
+                exit;
+            }
+            if (empty($block_value)) {
+                echo json_encode(['success' => false, 'message' => 'Block value is required']);
+                exit;
+            }
+            // Normalize before validation: lowercase email/name but not IP
+            if ($block_type !== 'ip') {
+                $block_value = strtolower($block_value);
+            }
+            if ($block_type === 'email' && !filter_var($block_value, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid email address format']);
+                exit;
+            }
+            if ($block_type === 'ip' && !filter_var($block_value, FILTER_VALIDATE_IP)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid IP address format']);
+                exit;
+            }
+
+            $result = Blocklist::addEntry($pdo, $block_type, $block_value, $reason ?: null, $user_id);
+            if ($result) {
+                Auditor::log($pdo, $user_id, 'create', 'registration_blocklist', null, [
+                    'block_type' => $block_type,
+                    'block_value' => $block_value,
+                    'reason' => $reason
+                ]);
+                echo json_encode(['success' => true, 'message' => 'Blocklist entry added successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to add entry. It may already exist.']);
+            }
+            exit;
+
+        case 'remove_blocklist_entry':
+            $entry_id = intval($_POST['entry_id'] ?? 0);
+            if ($entry_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid entry ID']);
+                exit;
+            }
+
+            $result = Blocklist::removeEntry($pdo, $entry_id);
+            if ($result) {
+                Auditor::log($pdo, $user_id, 'delete', 'registration_blocklist', $entry_id);
+                echo json_encode(['success' => true, 'message' => 'Blocklist entry removed']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Entry not found or already removed']);
+            }
+            exit;
+
         default:
             throw new Exception('Invalid action');
     }

@@ -1,10 +1,11 @@
 <?php
 /**
  * Admin Security Center
- * Comprehensive security management with Login History, Audit Logs, and Error Logs tabs
+ * Comprehensive security management with Login History, Audit Logs, Error Logs, and Registration Blocklist
  */
 
 require_once __DIR__ . '/../security.php';
+require_once __DIR__ . '/../lib/blocklist.php';
 
 // Check if user is admin (or actual admin in persona mode)
 $actualRole = $_SESSION['persona_original_role'] ?? $user_role;
@@ -187,17 +188,25 @@ try {
     $all_users_for_filter = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as name FROM users ORDER BY first_name, last_name")->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { /* ignore */ }
 
+// ---- BLOCKLIST DATA ----
+$blocklist_entries = [];
+$blocklist_total = 0;
+$filter_blocklist_type = $_GET['blocklist_type'] ?? '';
+
+if ($security_tab === 'blocklist') {
+    $blocklist_entries = Blocklist::getEntries($pdo, $filter_blocklist_type ?: null);
+    $blocklist_total = count($blocklist_entries);
+}
+
 $login_total_pages = ceil($login_total / $per_page);
 $audit_total_pages = ceil($audit_total / $per_page);
 $error_total_pages = ceil($error_total / $per_page);
 ?>
 
 <style>
-    .security-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border, #2D2D3F); margin-bottom: 24px; }
-    .security-tab-btn { padding: 12px 20px; background: none; border: none; border-bottom: 3px solid transparent; color: var(--text, #94a3b8); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; margin-bottom: -2px; }
-    .security-tab-btn:hover { color: var(--primary-light, #a78bfa); background: rgba(107, 70, 193, 0.05); }
-    .security-tab-btn.active { color: var(--primary, #6B46C1); border-bottom-color: var(--primary, #6B46C1); }
-    .security-tab-btn .badge { padding: 2px 8px; background: rgba(107, 70, 193, 0.15); color: var(--primary-light, #a78bfa); border-radius: 10px; font-size: 11px; font-weight: 700; }
+    /* Use standard .tabs/.tab from shared_styles.css for tab navigation */
+    .tabs a.tab { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+    .tabs a.tab .badge { padding: 2px 8px; background: rgba(107, 70, 193, 0.15); color: var(--primary-light, #a78bfa); border-radius: 10px; font-size: 11px; font-weight: 700; }
     .security-filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
     .security-filters .form-group { margin-bottom: 0; }
     .security-filters .form-group label { font-size: 11px; font-weight: 700; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; }
@@ -231,12 +240,16 @@ $error_total_pages = ceil($error_total / $per_page);
     .detail-modal-overlay.active { display: flex; }
     .detail-modal { background: var(--card-bg, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 24px; }
     .ip-cell { font-family: monospace; font-size: 12px; color: var(--text-dim, #64748b); }
+    .blocklist-type-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .blocklist-type-pill.email { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .blocklist-type-pill.name { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+    .blocklist-type-pill.ip { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 </style>
 
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-shield-halved"></i> Security Center</h1>
-        <p class="page-description">Monitor login activity, audit trails, and system errors</p>
+        <p class="page-description">Monitor login activity, audit trails, system errors, and registration blocklist</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
@@ -250,16 +263,22 @@ $error_total_pages = ceil($error_total / $per_page);
     </div>
 </div>
 
-<!-- Security Tabs -->
-<div class="security-tabs">
-    <a href="?page=admin_security&tab=login_history" class="security-tab-btn <?= $security_tab === 'login_history' ? 'active' : '' ?>">
+<!-- Security Tabs - using standard .tabs/.tab classes -->
+<div class="tabs">
+    <a href="?page=admin_security&tab=login_history" class="tab <?= $security_tab === 'login_history' ? 'active' : '' ?>">
         <i class="fas fa-clock-rotate-left"></i> Login History
     </a>
-    <a href="?page=admin_security&tab=audit_logs" class="security-tab-btn <?= $security_tab === 'audit_logs' ? 'active' : '' ?>">
+    <a href="?page=admin_security&tab=audit_logs" class="tab <?= $security_tab === 'audit_logs' ? 'active' : '' ?>">
         <i class="fas fa-list-check"></i> Audit Log
     </a>
-    <a href="?page=admin_security&tab=error_logs" class="security-tab-btn <?= $security_tab === 'error_logs' ? 'active' : '' ?>">
+    <a href="?page=admin_security&tab=error_logs" class="tab <?= $security_tab === 'error_logs' ? 'active' : '' ?>">
         <i class="fas fa-bug"></i> Error Log
+    </a>
+    <a href="?page=admin_security&tab=blocklist" class="tab <?= $security_tab === 'blocklist' ? 'active' : '' ?>">
+        <i class="fas fa-ban"></i> Registration Blocklist
+        <?php if ($security_tab === 'blocklist' && $blocklist_total > 0): ?>
+        <span class="badge"><?php echo $blocklist_total; ?></span>
+        <?php endif; ?>
     </a>
 </div>
 
@@ -644,4 +663,193 @@ function restoreAuditEntry(logId) {
         <?php endif; ?>
     </div>
 </div>
+<?php elseif ($security_tab === 'blocklist'): ?>
+
+<!-- Blocklist Action Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+    <div class="security-filters" style="margin-bottom: 0;">
+        <form method="GET" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+            <input type="hidden" name="page" value="admin_security">
+            <input type="hidden" name="tab" value="blocklist">
+            <div class="form-group">
+                <label>Type</label>
+                <select name="blocklist_type" class="form-input">
+                    <option value="">All Types</option>
+                    <option value="email" <?= $filter_blocklist_type === 'email' ? 'selected' : '' ?>>Email</option>
+                    <option value="name" <?= $filter_blocklist_type === 'name' ? 'selected' : '' ?>>Name</option>
+                    <option value="ip" <?= $filter_blocklist_type === 'ip' ? 'selected' : '' ?>>IP Address</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-filter"></i> Filter</button>
+        </form>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="document.getElementById('blocklist-add-modal').classList.add('active')">
+        <i class="fas fa-plus"></i> Add Block Rule
+    </button>
+</div>
+
+<!-- Blocklist Table -->
+<div class="card">
+    <div class="card-body" style="overflow-x: auto;">
+        <table class="log-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Value</th>
+                    <th>Reason</th>
+                    <th>Created By</th>
+                    <th>Date Added</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($blocklist_entries)): ?>
+                <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <i class="fas fa-ban" style="font-size: 24px; margin-bottom: 8px; display: block; opacity: 0.3;"></i>
+                    No blocklist entries found. Click "Add Block Rule" to create one.
+                </td></tr>
+                <?php else: ?>
+                <?php foreach ($blocklist_entries as $entry): ?>
+                <tr id="blocklist-row-<?php echo $entry['id']; ?>">
+                    <td><span class="blocklist-type-pill <?php echo htmlspecialchars($entry['block_type']); ?>">
+                        <i class="fas fa-<?php echo $entry['block_type'] === 'email' ? 'envelope' : ($entry['block_type'] === 'name' ? 'user' : 'globe'); ?>"></i>
+                        <?php echo ucfirst(htmlspecialchars($entry['block_type'])); ?>
+                    </span></td>
+                    <td style="font-weight: 600;"><?php echo htmlspecialchars($entry['block_value']); ?></td>
+                    <td style="font-size: 12px; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?php echo htmlspecialchars($entry['reason'] ?? ''); ?>"><?php echo htmlspecialchars($entry['reason'] ?? '—'); ?></td>
+                    <td style="font-size: 13px;"><?php echo htmlspecialchars($entry['created_by_name'] ?? 'System'); ?></td>
+                    <td style="font-size: 12px;"><?php echo date('M d, Y g:i a', strtotime($entry['created_at'])); ?></td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="removeBlocklistEntry(<?php echo (int)$entry['id']; ?>)" title="Remove">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Blocklist Entry Modal -->
+<div id="blocklist-add-modal" class="detail-modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="detail-modal">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fas fa-ban" style="color: var(--primary, #6B46C1);"></i> Add Block Rule</h3>
+            <button onclick="document.getElementById('blocklist-add-modal').classList.remove('active')" style="background: none; border: none; color: #9CA3AF; font-size: 20px; cursor: pointer; padding: 4px 8px;">&times;</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted, #64748b); margin-bottom: 20px;">
+            Add an email address, full name, or IP address to prevent registration. Only one criterion is needed per rule.
+        </p>
+        <form id="blocklist-add-form" onsubmit="return addBlocklistEntry(event)">
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Block Type <span style="color: #ef4444;">*</span></label>
+                <select name="block_type" id="blocklist-type" class="form-input" required onchange="updateBlocklistPlaceholder()" style="width: 100%;">
+                    <option value="email">Email Address</option>
+                    <option value="name">Full Name</option>
+                    <option value="ip">IP Address</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Value <span style="color: #ef4444;">*</span></label>
+                <input type="text" name="block_value" id="blocklist-value" class="form-input" required placeholder="user@example.com" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Reason (optional)</label>
+                <input type="text" name="reason" id="blocklist-reason" class="form-input" placeholder="Reason for blocking..." style="width: 100%;">
+            </div>
+            <div id="blocklist-form-message" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('blocklist-add-modal').classList.remove('active')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" id="blocklist-submit-btn"><i class="fas fa-plus"></i> Add Rule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+var blocklistCsrfToken = '<?php echo htmlspecialchars($csrf_token, ENT_QUOTES); ?>';
+
+function updateBlocklistPlaceholder() {
+    var type = document.getElementById('blocklist-type').value;
+    var input = document.getElementById('blocklist-value');
+    switch (type) {
+        case 'email': input.placeholder = 'user@example.com'; break;
+        case 'name': input.placeholder = 'John Smith'; break;
+        case 'ip': input.placeholder = '192.168.1.100'; break;
+    }
+}
+
+function addBlocklistEntry(e) {
+    e.preventDefault();
+    var form = document.getElementById('blocklist-add-form');
+    var btn = document.getElementById('blocklist-submit-btn');
+    var msg = document.getElementById('blocklist-form-message');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+    var formData = new FormData(form);
+    formData.append('action', 'add_blocklist_entry');
+    formData.append('csrf_token', blocklistCsrfToken);
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(16,185,129,0.15)';
+            msg.style.color = '#10b981';
+            msg.textContent = data.message;
+            setTimeout(function() { location.reload(); }, 800);
+        } else {
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(239,68,68,0.15)';
+            msg.style.color = '#ef4444';
+            msg.textContent = data.message || 'Failed to add entry';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus"></i> Add Rule';
+        }
+    })
+    .catch(function() {
+        msg.style.display = 'block';
+        msg.style.background = 'rgba(239,68,68,0.15)';
+        msg.style.color = '#ef4444';
+        msg.textContent = 'An error occurred. Please try again.';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i> Add Rule';
+    });
+    return false;
+}
+
+function removeBlocklistEntry(entryId) {
+    if (!confirm('Are you sure you want to remove this blocklist entry?')) return;
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=remove_blocklist_entry&entry_id=' + entryId + '&csrf_token=' + encodeURIComponent(blocklistCsrfToken)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var row = document.getElementById('blocklist-row-' + entryId);
+            if (row) {
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(function() { row.remove(); }, 300);
+            }
+        } else {
+            alert('Error: ' + (data.message || 'Failed to remove entry'));
+        }
+    })
+    .catch(function() { alert('An error occurred'); });
+}
+</script>
+
 <?php endif; ?>
