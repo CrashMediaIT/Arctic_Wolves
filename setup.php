@@ -6,6 +6,7 @@
 // It should be removed or restricted in production
 
 session_start();
+require_once __DIR__ . '/lib/encryption.php';
 
 // =========================================================
 // AUTOMATIC PERMISSION SETUP FOR DOCKER ENVIRONMENTS
@@ -216,8 +217,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Passwords do not match";
                 } else {
                     $hashed = password_hash($password, PASSWORD_DEFAULT);
+                    $enc_fn = FieldEncryption::encrypt($first_name);
+                    $enc_ln = FieldEncryption::encrypt($last_name);
                     $stmt = $pdo->prepare("INSERT INTO users (email, password, first_name, last_name, role, is_verified) VALUES (?, ?, ?, ?, 'admin', 1)");
-                    $stmt->execute([$email, $hashed, $first_name, $last_name]);
+                    $stmt->execute([$email, $hashed, $enc_fn, $enc_ln]);
                     
                     $_SESSION['setup']['admin'] = true;
                     header("Location: setup.php?step=3");
