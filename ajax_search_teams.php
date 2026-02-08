@@ -29,7 +29,7 @@ try {
     $searchTerm = '%' . $query . '%';
 
     // Return team-season combinations so each selection includes the year
-    $sql = "SELECT ts.id as team_season_id, t.id as team_id, t.name as team_name, t.division,
+    $sql = "SELECT t.id as team_id, t.name as team_name, t.division,
                    s.id as season_id, s.name as season_name, s.is_active
             FROM team_seasons ts
             INNER JOIN teams t ON ts.team_id = t.id

@@ -1303,7 +1303,7 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
                 var label = t.team_name;
                 if (t.season_name) label += ' — ' + t.season_name;
                 preTeamItems.push({
-                    id: t.team_id + '|' + (t.season_id || ''),
+                    id: t.team_id + '|' + (t.season_id !== null && t.season_id !== undefined ? t.season_id : ''),
                     name: label,
                     role: t.season_name ? 'Season' : ''
                 });
