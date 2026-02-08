@@ -410,9 +410,13 @@ async function initializeAutocomplete() {
 
                 autocompleteEl.addEventListener('gmp-placeselect', async (event) => {
                     const place = event.place;
-                    await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
-                    autocompleteEl.dataset.address = place.formattedAddress || '';
-                    autocompleteEl.dataset.name = place.displayName || '';
+                    try {
+                        await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
+                        autocompleteEl.dataset.address = place.formattedAddress || '';
+                        autocompleteEl.dataset.name = place.displayName || '';
+                    } catch (err) {
+                        console.error('Failed to fetch place details:', err);
+                    }
                 });
 
                 input.parentNode.replaceChild(autocompleteEl, input);

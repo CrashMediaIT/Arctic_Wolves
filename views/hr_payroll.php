@@ -1112,27 +1112,31 @@ document.querySelectorAll('.remove-payroll').forEach(btn => {
 
                 autocompleteEl.addEventListener('gmp-placeselect', async function(event) {
                     var place = event.place;
-                    await place.fetchFields({ fields: ['formattedAddress', 'addressComponents'] });
-                    var form = autocompleteEl.closest('form');
-                    if (!form || !place.addressComponents) return;
-                    var city = '', province = '', postal = '';
-                    place.addressComponents.forEach(function(c) {
-                        if (c.types.includes('locality')) city = c.longText;
-                        if (c.types.includes('administrative_area_level_1')) province = c.shortText;
-                        if (c.types.includes('postal_code')) postal = c.longText;
-                    });
-                    var cityInput = form.querySelector('input[name="city"]');
-                    var postalInput = form.querySelector('input[name="postal_code"]');
-                    var provinceSelect = form.querySelector('select[name="address_province"], select[name="province"]');
-                    if (cityInput && city) cityInput.value = city;
-                    if (postalInput && postal) postalInput.value = postal;
-                    if (provinceSelect && province) {
-                        for (var i = 0; i < provinceSelect.options.length; i++) {
-                            if (provinceSelect.options[i].value === province) {
-                                provinceSelect.selectedIndex = i;
-                                break;
+                    try {
+                        await place.fetchFields({ fields: ['formattedAddress', 'addressComponents'] });
+                        var form = autocompleteEl.closest('form');
+                        if (!form || !place.addressComponents) return;
+                        var city = '', province = '', postal = '';
+                        place.addressComponents.forEach(function(c) {
+                            if (c.types.includes('locality')) city = c.longText;
+                            if (c.types.includes('administrative_area_level_1')) province = c.shortText;
+                            if (c.types.includes('postal_code')) postal = c.longText;
+                        });
+                        var cityInput = form.querySelector('input[name="city"]');
+                        var postalInput = form.querySelector('input[name="postal_code"]');
+                        var provinceSelect = form.querySelector('select[name="address_province"], select[name="province"]');
+                        if (cityInput && city) cityInput.value = city;
+                        if (postalInput && postal) postalInput.value = postal;
+                        if (provinceSelect && province) {
+                            for (var i = 0; i < provinceSelect.options.length; i++) {
+                                if (provinceSelect.options[i].value === province) {
+                                    provinceSelect.selectedIndex = i;
+                                    break;
+                                }
                             }
                         }
+                    } catch (err) {
+                        console.error('Failed to fetch place details:', err);
                     }
                 });
 

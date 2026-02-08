@@ -821,9 +821,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     autocompleteEl.addEventListener('gmp-placeselect', async function(event) {
                         var place = event.place;
-                        await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
-                        autocompleteEl.dataset.address = place.formattedAddress || '';
-                        autocompleteEl.dataset.name = place.displayName || '';
+                        try {
+                            await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
+                            autocompleteEl.dataset.address = place.formattedAddress || '';
+                            autocompleteEl.dataset.name = place.displayName || '';
+                        } catch (err) {
+                            console.error('Failed to fetch place details:', err);
+                        }
                     });
 
                     input.parentNode.replaceChild(autocompleteEl, input);
@@ -848,8 +852,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     autocompleteEl.addEventListener('gmp-placeselect', async function(event) {
                         var place = event.place;
-                        await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
-                        autocompleteEl.dataset.address = place.formattedAddress || '';
+                        try {
+                            await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
+                            autocompleteEl.dataset.address = place.formattedAddress || '';
+                        } catch (err) {
+                            console.error('Failed to fetch place details:', err);
+                        }
                     });
 
                     field.parentNode.replaceChild(autocompleteEl, field);
