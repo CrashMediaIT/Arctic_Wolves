@@ -30,11 +30,21 @@ try {
     $where = ["u.is_active = 1"];
     $params = [];
 
-    // Search by name (first, last, or combined)
-    $where[] = "(CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR u.email LIKE ?)";
-    $searchTerm = '%' . $query . '%';
-    $params[] = $searchTerm;
-    $params[] = $searchTerm;
+    // Split query into individual words for approximate matching
+    $words = preg_split('/\s+/', $query);
+    $words = array_filter($words, function($w) { return strlen($w) >= 1; });
+
+    // Build LIKE conditions: each word must match somewhere in name or email
+    $wordConditions = [];
+    foreach ($words as $word) {
+        $wordConditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR u.email LIKE ?)";
+        $searchTerm = '%' . $word . '%';
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+    }
+    $where[] = '(' . implode(' AND ', $wordConditions) . ')';
 
     // Filter by roles if specified
     if (!empty($roles)) {
