@@ -37,9 +37,8 @@ try {
     // Build LIKE conditions: each word must match somewhere in name or email
     $wordConditions = [];
     foreach ($words as $word) {
-        $wordConditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR u.email LIKE ?)";
+        $wordConditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)";
         $searchTerm = '%' . $word . '%';
-        $params[] = $searchTerm;
         $params[] = $searchTerm;
         $params[] = $searchTerm;
         $params[] = $searchTerm;

@@ -87,9 +87,10 @@ try {
         $remaining = $limit - count($results);
         $sql2 = "SELECT t.id as team_id, t.name as team_name, t.division
                  FROM teams t
+                 LEFT JOIN team_seasons ts2 ON t.id = ts2.team_id
                  WHERE t.is_active = 1
                    AND ($teamWordClause)
-                   AND t.id NOT IN (SELECT ts2.team_id FROM team_seasons ts2)
+                   AND ts2.team_id IS NULL
                  ORDER BY t.name
                  LIMIT ?";
 
