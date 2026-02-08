@@ -58,12 +58,21 @@ try {
                 ];
             }
             
-            // Handle distance - can come as distance_km or distance_miles
-            $distance_miles = floatval($_POST['distance_miles'] ?? 0);
-            $distance_km = floatval($_POST['distance_km'] ?? ($distance_miles * 1.60934));
+            // Try to calculate distance via Google Maps API first
+            // Only fall back to manual distance if API fails (e.g., service is down)
+            $distance_data = tryCalculateDistanceFromWaypoints($waypoints);
             
-            if ($distance_miles > 0 && floatval($_POST['distance_km'] ?? 0) == 0) {
-                $distance_km = $distance_miles * 1.60934;
+            if ($distance_data) {
+                $distance_km = floatval($distance_data['distance_km']);
+                $distance_miles = floatval($distance_data['distance_miles']);
+            } else {
+                // Fall back to manual distance only if API calculation failed
+                $distance_miles = floatval($_POST['distance_miles'] ?? 0);
+                $distance_km = floatval($_POST['distance_km'] ?? ($distance_miles * 1.60934));
+                
+                if ($distance_miles > 0 && floatval($_POST['distance_km'] ?? 0) == 0) {
+                    $distance_km = $distance_miles * 1.60934;
+                }
             }
             
             // Get mileage rate from settings
@@ -127,8 +136,18 @@ try {
             $session_id = intval($_POST['session_id'] ?? 0);
             $purpose = trim($_POST['purpose']);
             $waypoints = json_decode($_POST['waypoints'], true);
-            $distance_km = floatval($_POST['distance_km']);
-            $distance_miles = floatval($_POST['distance_miles']);
+            
+            // Try to calculate distance via Google Maps API first
+            $distance_data = tryCalculateDistanceFromWaypoints($waypoints);
+            
+            if ($distance_data) {
+                $distance_km = floatval($distance_data['distance_km']);
+                $distance_miles = floatval($distance_data['distance_miles']);
+            } else {
+                // Fall back to manual distance only if API calculation failed
+                $distance_km = floatval($_POST['distance_km']);
+                $distance_miles = floatval($_POST['distance_miles']);
+            }
             
             // Get mileage rate from settings
             $rate_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_per_mile')");
@@ -325,6 +344,28 @@ try {
 } catch (Exception $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+}
+
+/**
+ * Try to calculate distance via Google Maps API, return null on failure
+ */
+function tryCalculateDistanceFromWaypoints($waypoints) {
+    if (!$waypoints || count($waypoints) < 2) {
+        return null;
+    }
+    
+    foreach ($waypoints as $wp) {
+        if (empty(trim($wp['address'] ?? ''))) {
+            return null;
+        }
+    }
+    
+    try {
+        return calculateDistance($waypoints);
+    } catch (Exception $e) {
+        error_log('Google Maps distance calculation failed, using manual entry: ' . $e->getMessage());
+        return null;
+    }
 }
 
 /**

@@ -284,14 +284,21 @@ foreach ($mileage_entries as $entry) {
 
                 <hr style="border-color: var(--border); margin: 20px 0;">
 
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                    <button type="button" class="btn-secondary" id="calcDistanceBtn">
+                        <i class="fas fa-route"></i> Calculate Distance
+                    </button>
+                    <span id="distanceStatus" style="font-size: 13px; color: var(--text-dim);"></span>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <?php if ($mileage_unit === 'miles'): ?>
                         <label>Distance (miles) *</label>
-                        <input type="number" name="distance_miles" class="form-input" placeholder="0.0" step="0.1" min="0" required data-field="distance">
+                        <input type="number" name="distance_miles" class="form-input" placeholder="Calculated by Google Maps" step="0.1" min="0" required data-field="distance" readonly>
                         <?php else: ?>
                         <label>Distance (km) *</label>
-                        <input type="number" name="distance_km" class="form-input" placeholder="0.0" step="0.1" min="0" required data-field="distance">
+                        <input type="number" name="distance_km" class="form-input" placeholder="Calculated by Google Maps" step="0.1" min="0" required data-field="distance" readonly>
                         <?php endif; ?>
                     </div>
                     <div class="form-group">
@@ -825,6 +832,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
                             autocompleteEl.dataset.address = place.formattedAddress || '';
                             autocompleteEl.dataset.name = place.displayName || '';
+                            // Auto-calculate distance when a stop address is selected
+                            if (typeof autoCalculateDistance === 'function') {
+                                autoCalculateDistance();
+                            }
                         } catch (err) {
                             console.error('Failed to fetch place details:', err);
                         }
@@ -912,6 +923,91 @@ document.addEventListener('DOMContentLoaded', function() {
             var total = distance * rate;
             totalDisplay.value = '$' + total.toFixed(2);
         });
+    }
+    
+    // Auto-calculate distance via Google Maps API
+    var calcDistanceBtn = document.getElementById('calcDistanceBtn');
+    var distanceStatus = document.getElementById('distanceStatus');
+    
+    function getWaypointsFromForm() {
+        var waypoints = [];
+        var stopAddresses = document.querySelectorAll('gmp-place-autocomplete.stop-address, input.stop-address');
+        var stopNames = document.querySelectorAll('.stop-name');
+        
+        stopAddresses.forEach(function(el, i) {
+            var address = el.dataset.address || el.value || '';
+            if (address.trim()) {
+                waypoints.push({
+                    name: stopNames[i]?.value || 'Stop',
+                    address: address.trim()
+                });
+            }
+        });
+        return waypoints;
+    }
+    
+    function autoCalculateDistance() {
+        var waypoints = getWaypointsFromForm();
+        
+        if (waypoints.length < 2) {
+            distanceStatus.textContent = 'Enter at least 2 locations to calculate distance.';
+            distanceStatus.style.color = 'var(--text-dim)';
+            return;
+        }
+        
+        // Show calculating state
+        calcDistanceBtn.disabled = true;
+        calcDistanceBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        distanceStatus.textContent = '';
+        
+        var formData = new FormData();
+        formData.append('action', 'get_distance');
+        formData.append('waypoints', JSON.stringify(waypoints));
+        formData.append('csrf_token', csrfToken);
+        
+        fetch('process_mileage.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            calcDistanceBtn.disabled = false;
+            calcDistanceBtn.innerHTML = '<i class="fas fa-route"></i> Calculate Distance';
+            
+            if (data.success && data.data) {
+                var distField = document.querySelector('[data-field="distance"]');
+                var mileageUnit = '<?= $mileage_unit ?>';
+                if (mileageUnit === 'miles') {
+                    distField.value = data.data.distance_miles;
+                } else {
+                    distField.value = data.data.distance_km;
+                }
+                distField.readOnly = true;
+                distField.dispatchEvent(new Event('input'));
+                distanceStatus.textContent = 'Distance calculated via Google Maps.';
+                distanceStatus.style.color = '#10b981';
+            } else {
+                enableManualDistance('API error: ' + (data.message || 'Could not calculate distance.'));
+            }
+        })
+        .catch(function(err) {
+            calcDistanceBtn.disabled = false;
+            calcDistanceBtn.innerHTML = '<i class="fas fa-route"></i> Calculate Distance';
+            enableManualDistance('Could not reach Google Maps. Enter distance manually.');
+        });
+    }
+    
+    function enableManualDistance(reason) {
+        var distField = document.querySelector('[data-field="distance"]');
+        distField.readOnly = false;
+        distField.placeholder = 'Enter distance manually';
+        distanceStatus.textContent = reason;
+        distanceStatus.style.color = '#ef4444';
+    }
+    
+    if (calcDistanceBtn) {
+        calcDistanceBtn.addEventListener('click', autoCalculateDistance);
     }
     
     // Add stop functionality
