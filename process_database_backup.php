@@ -17,6 +17,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
     exit;
 }
 
+// Ensure database connection is available
+if (!$db_connected || $pdo === null) {
+    echo json_encode(['success' => false, 'message' => 'Database connection not available. Please check your configuration.']);
+    exit;
+}
+
 $user_id = $_SESSION['user_id'];
 $action = $_POST['action'] ?? '';
 
@@ -322,10 +328,40 @@ function performBackup($pdo, $job) {
         $gz_file = $sql_file . '.gz';
         
         // Get database credentials from environment variables (set by db_config.php)
+        // Also try loading from env file directly as fallback for reliability
         $db_host = $_ENV['DB_HOST'] ?? null;
         $db_name = $_ENV['DB_NAME'] ?? null;
         $db_user = $_ENV['DB_USER'] ?? null;
         $db_pass = $_ENV['DB_PASS'] ?? '';
+        
+        // Fallback: if $_ENV is not populated, re-read from environment file
+        if (empty($db_host) || empty($db_name) || empty($db_user)) {
+            $env_paths = [
+                '/config/arctic_wolves.env',
+                __DIR__ . '/arctic_wolves.env',
+                __DIR__ . '/.env',
+                '/var/www/html/arctic_wolves/.env'
+            ];
+            foreach ($env_paths as $env_path) {
+                if (file_exists($env_path)) {
+                    $lines = file($env_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                    foreach ($lines as $line) {
+                        $line = trim($line);
+                        if (strpos($line, '#') === 0 || empty($line)) continue;
+                        $parts = explode('=', $line, 2);
+                        if (count($parts) === 2) {
+                            $name = trim($parts[0]);
+                            $value = trim(trim($parts[1]), '"\'');
+                            if ($name === 'DB_HOST') $db_host = $value;
+                            if ($name === 'DB_NAME') $db_name = $value;
+                            if ($name === 'DB_USER') $db_user = $value;
+                            if ($name === 'DB_PASS') $db_pass = $value;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
         
         // Validate required credentials are set
         if (empty($db_host) || empty($db_name) || empty($db_user)) {
