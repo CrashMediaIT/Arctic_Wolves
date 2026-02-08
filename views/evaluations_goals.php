@@ -26,12 +26,14 @@ if ($isCoach) {
         ORDER BY u.last_name, u.first_name
     ";
     $athletes = $pdo->query($athletes_query)->fetchAll();
+    $athletes = decryptUserRows($athletes);
 }
 
 // Get athlete info
 $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
 $athlete_stmt->execute([$viewing_athlete_id]);
 $athlete_info = $athlete_stmt->fetch();
+$athlete_info = decryptUserRow($athlete_info);
 
 // Get all evaluations for viewing athlete
 $evals_stmt = $pdo->prepare("

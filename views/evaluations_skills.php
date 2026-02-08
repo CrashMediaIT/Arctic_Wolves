@@ -28,12 +28,14 @@ if ($isCoach) {
         WHERE role = 'athlete' AND is_active = 1
         ORDER BY last_name, first_name
     ")->fetchAll();
+    $athletes = decryptUserRows($athletes);
 }
 
 // Get athlete info
 $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
 $athlete_stmt->execute([$viewing_athlete_id]);
 $athlete_info = $athlete_stmt->fetch();
+$athlete_info = decryptUserRow($athlete_info);
 
 // In team mode, load all categories and skills for evaluation
 $all_categories = [];

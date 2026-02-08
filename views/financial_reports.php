@@ -79,6 +79,7 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$user_id]);
 $scheduled_reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$scheduled_reports = decryptUserRows($scheduled_reports);
 
 // Calculate schedule stats
 $active_schedules = count(array_filter($scheduled_reports, fn($s) => $s['is_active'] == 1));
@@ -94,6 +95,7 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute();
 $report_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$report_history = decryptUserRows($report_history);
 
 // Find next scheduled report
 $next_scheduled = null;

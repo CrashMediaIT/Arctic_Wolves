@@ -35,6 +35,7 @@ try {
     ");
     $stmt->execute([$evaluation_id]);
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $athletes = decryptUserRows($athletes);
     
     // Get categories and skills
     $stmt = $pdo->prepare("

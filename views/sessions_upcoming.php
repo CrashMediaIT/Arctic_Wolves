@@ -261,6 +261,7 @@ if ($user_role === 'athlete') {
     $coaches_stmt->execute([]);
 }
 $coaches = $coaches_stmt->fetchAll();
+$coaches = decryptUserRows($coaches);
 
 // Get current view mode
 $view_mode = $_GET['view'] ?? 'list';

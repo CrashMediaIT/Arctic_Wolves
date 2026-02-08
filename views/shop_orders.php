@@ -83,6 +83,7 @@ try {
     $params[] = $offset;
     $stmt->execute($params);
     $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $orders = decryptUserRows($orders);
     
     // Get order stats
     $statsStmt = $pdo->query("

@@ -52,6 +52,7 @@ try {
     ");
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
     
     $total_users = count($users);
 } catch (PDOException $e) {
@@ -71,6 +72,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
         ");
         $stmt->execute([$_GET['user_id']]);
         $selected_user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $selected_user = decryptUserRow($selected_user);
     } catch (PDOException $e) {
         error_log("Selected user fetch error: " . $e->getMessage());
     }

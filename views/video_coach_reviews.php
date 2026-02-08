@@ -48,6 +48,7 @@ if ($isAnyCoach) {
     $athletes_stmt = $pdo->prepare($athletes_query);
     $athletes_stmt->execute([$user_id]);
     $athletes = $athletes_stmt->fetchAll();
+    $athletes = decryptUserRows($athletes);
     
     if (empty($athletes)) {
         $athletes_query = "
@@ -58,6 +59,7 @@ if ($isAnyCoach) {
         ";
         $athletes_stmt = $pdo->query($athletes_query);
         $athletes = $athletes_stmt->fetchAll();
+        $athletes = decryptUserRows($athletes);
     }
 }
 

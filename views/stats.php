@@ -23,6 +23,7 @@ if ($isCoach) {
             ORDER BY u.last_name, u.first_name
         ";
         $athletes = $pdo->query($athletes_query)->fetchAll();
+        $athletes = decryptUserRows($athletes);
     } catch (PDOException $e) {
         error_log("Stats - fetch athletes error: " . $e->getMessage());
     }
@@ -35,6 +36,7 @@ if ($viewing_athlete_id != $user_id) {
         $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $athlete_stmt->execute([$viewing_athlete_id]);
         $athlete_info = $athlete_stmt->fetch();
+        $athlete_info = decryptUserRow($athlete_info);
     } catch (PDOException $e) {
         error_log("Stats - fetch athlete info error: " . $e->getMessage());
     }

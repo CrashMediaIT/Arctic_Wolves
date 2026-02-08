@@ -71,6 +71,7 @@ $posUsers = [];
 try {
     $usersStmt = $pdo->query("SELECT id, first_name, last_name, email, role FROM users WHERE is_active = 1 ORDER BY first_name, last_name");
     $posUsers = $usersStmt->fetchAll(PDO::FETCH_ASSOC);
+    $posUsers = decryptUserRows($posUsers);
 } catch (PDOException $e) {
     error_log("POS users fetch error: " . $e->getMessage());
     $posUsers = [];

@@ -21,6 +21,7 @@ if ($isParent) {
     ");
     $athletes_stmt->execute([$user_id]);
     $managed_athletes = $athletes_stmt->fetchAll();
+    $managed_athletes = decryptUserRows($managed_athletes);
 }
 
 // Get filter parameters

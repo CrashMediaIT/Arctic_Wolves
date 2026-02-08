@@ -75,6 +75,7 @@ try {
     $invoicesStmt = $pdo->prepare($invoicesQuery);
     $invoicesStmt->execute([':start_date' => $invoiceStartDate, ':end_date' => $invoiceEndDate]);
     $invoices = $invoicesStmt->fetchAll(PDO::FETCH_ASSOC);
+    $invoices = decryptUserRows($invoices);
 } catch (PDOException $e) {
     error_log("Invoice fetch error: " . $e->getMessage());
     $invoices = [];
@@ -91,6 +92,7 @@ try {
     $paymentsStmt = $pdo->prepare($paymentsQuery);
     $paymentsStmt->execute([':start_date' => $paymentStartDate, ':end_date' => $paymentEndDate]);
     $payments = $paymentsStmt->fetchAll(PDO::FETCH_ASSOC);
+    $payments = decryptUserRows($payments);
 } catch (PDOException $e) {
     error_log("Payments fetch error: " . $e->getMessage());
     $payments = [];
@@ -151,6 +153,7 @@ try {
 try {
     $usersStmt = $pdo->query("SELECT id, first_name, last_name, email FROM users WHERE role IN ('athlete', 'parent') AND is_active = 1 ORDER BY first_name, last_name");
     $users = $usersStmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
 } catch (PDOException $e) {
     $users = [];
 }
@@ -162,6 +165,7 @@ try {
         WHERE i.status IN ('sent', 'pending', 'overdue', 'draft') 
         ORDER BY i.invoice_date DESC");
     $unpaidInvoices = $unpaidStmt->fetchAll(PDO::FETCH_ASSOC);
+    $unpaidInvoices = decryptUserRows($unpaidInvoices);
 } catch (PDOException $e) {
     $unpaidInvoices = [];
 }

@@ -152,6 +152,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
                                     ");
                                     $athletes_stmt->execute([$user_id]);
                                     $athletes = $athletes_stmt->fetchAll(PDO::FETCH_ASSOC);
+                                    $athletes = decryptUserRows($athletes);
                                     
                                     foreach ($athletes as $athlete): ?>
                                         <label class="athlete-option">

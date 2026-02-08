@@ -16,6 +16,7 @@ $coaches_query = "
     ORDER BY u.last_name, u.first_name
 ";
 $coaches = $pdo->query($coaches_query)->fetchAll();
+$coaches = decryptUserRows($coaches);
 
 // Get session types
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
