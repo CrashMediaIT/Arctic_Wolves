@@ -769,6 +769,8 @@ function restoreAuditEntry(logId) {
 </div>
 
 <script>
+var blocklistCsrfToken = '<?php echo htmlspecialchars($csrf_token, ENT_QUOTES); ?>';
+
 function updateBlocklistPlaceholder() {
     var type = document.getElementById('blocklist-type').value;
     var input = document.getElementById('blocklist-value');
@@ -784,14 +786,13 @@ function addBlocklistEntry(e) {
     var form = document.getElementById('blocklist-add-form');
     var btn = document.getElementById('blocklist-submit-btn');
     var msg = document.getElementById('blocklist-form-message');
-    var csrfToken = '<?php echo htmlspecialchars($csrf_token, ENT_QUOTES); ?>';
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
 
     var formData = new FormData(form);
     formData.append('action', 'add_blocklist_entry');
-    formData.append('csrf_token', csrfToken);
+    formData.append('csrf_token', blocklistCsrfToken);
 
     fetch('process_settings.php', {
         method: 'POST',
@@ -828,12 +829,11 @@ function addBlocklistEntry(e) {
 
 function removeBlocklistEntry(entryId) {
     if (!confirm('Are you sure you want to remove this blocklist entry?')) return;
-    var csrfToken = '<?php echo htmlspecialchars($csrf_token, ENT_QUOTES); ?>';
 
     fetch('process_settings.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-        body: 'action=remove_blocklist_entry&entry_id=' + entryId + '&csrf_token=' + encodeURIComponent(csrfToken)
+        body: 'action=remove_blocklist_entry&entry_id=' + entryId + '&csrf_token=' + encodeURIComponent(blocklistCsrfToken)
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {

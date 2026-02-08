@@ -126,7 +126,10 @@ class Blocklist {
             if (!in_array($type, ['email', 'name', 'ip'])) {
                 return false;
             }
-            $value = strtolower(trim($value));
+            $value = trim($value);
+            if ($type !== 'ip') {
+                $value = strtolower($value);
+            }
             if (empty($value)) {
                 return false;
             }

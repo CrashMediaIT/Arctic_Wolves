@@ -713,6 +713,10 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Block value is required']);
                 exit;
             }
+            // Normalize before validation: lowercase email/name but not IP
+            if ($block_type !== 'ip') {
+                $block_value = strtolower($block_value);
+            }
             if ($block_type === 'email' && !filter_var($block_value, FILTER_VALIDATE_EMAIL)) {
                 echo json_encode(['success' => false, 'message' => 'Invalid email address format']);
                 exit;
