@@ -205,7 +205,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                                     <a href="?page=athlete_detail&id=<?= $athlete['id'] ?>" class="btn-icon" title="View Profile"><i class="fas fa-eye"></i></a>
                                     <a href="?page=stats&tab=goals&athlete_id=<?= $athlete['id'] ?>" class="btn-icon" title="Manage Goals"><i class="fas fa-bullseye"></i></a>
                                     <a href="?page=coach_calendar" class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></a>
-                                    <a href="mailto:<?= htmlspecialchars($athlete['email']) ?>" class="btn-icon" title="Message"><i class="fas fa-envelope"></i></a>
+                                    <a href="?page=messages&user_id=<?= $athlete['id'] ?>" class="btn-icon" title="Message"><i class="fas fa-envelope"></i></a>
                                 </div>
                             </td>
                         </tr>
@@ -239,7 +239,7 @@ $programs = $pdo->query("SELECT id, name FROM programs WHERE is_active = 1 ORDER
                             <a href="?page=athlete_detail&id=<?= $athlete['id'] ?>" class="btn-icon" title="View Profile"><i class="fas fa-eye"></i></a>
                             <a href="?page=stats&tab=goals&athlete_id=<?= $athlete['id'] ?>" class="btn-icon" title="Manage Goals"><i class="fas fa-bullseye"></i></a>
                             <a href="?page=coach_calendar" class="btn-icon" title="Schedule Session"><i class="fas fa-calendar-plus"></i></a>
-                            <a href="mailto:<?= htmlspecialchars($athlete['email']) ?>" class="btn-icon" title="Message"><i class="fas fa-envelope"></i></a>
+                            <a href="?page=messages&user_id=<?= $athlete['id'] ?>" class="btn-icon" title="Message"><i class="fas fa-envelope"></i></a>
                         </div>
                     </div>
                     <?php endforeach; ?>

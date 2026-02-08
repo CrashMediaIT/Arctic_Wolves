@@ -2161,9 +2161,25 @@ CREATE TABLE IF NOT EXISTS `waitlists` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Conversations (links two users in a messaging thread)
+CREATE TABLE IF NOT EXISTS `conversations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `participant_one_id` INT NOT NULL,
+    `participant_two_id` INT NOT NULL,
+    `last_message_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`participant_one_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`participant_two_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_conversation` (`participant_one_id`, `participant_two_id`),
+    INDEX `idx_participant_one` (`participant_one_id`),
+    INDEX `idx_participant_two` (`participant_two_id`),
+    INDEX `idx_last_message` (`last_message_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Messages/communication
 CREATE TABLE IF NOT EXISTS `messages` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `conversation_id` INT DEFAULT NULL,
     `from_user_id` INT NOT NULL,
     `to_user_id` INT NOT NULL,
     `subject` VARCHAR(255) DEFAULT NULL,
@@ -2172,9 +2188,11 @@ CREATE TABLE IF NOT EXISTS `messages` (
     `read_at` TIMESTAMP NULL,
     `parent_message_id` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`conversation_id`) REFERENCES `conversations`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`from_user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`to_user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`parent_message_id`) REFERENCES `messages`(`id`) ON DELETE SET NULL,
+    INDEX `idx_conversation` (`conversation_id`),
     INDEX `idx_from` (`from_user_id`),
     INDEX `idx_to` (`to_user_id`),
     INDEX `idx_read` (`is_read`)
