@@ -727,10 +727,5 @@ function exportAuditLogs() {
     window.location.href = exportUrl;
 }
 
-// Close modal when clicking outside
-document.getElementById('viewModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeViewModal();
-    }
-});
+
 </script>

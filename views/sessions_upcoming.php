@@ -1370,12 +1370,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, true); // Use capture phase
     });
     
-    // Close modal when clicking overlay
-    document.getElementById('sessionDetailModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeSessionModal();
-        }
-    });
     
     // Close modal with Escape key
     document.addEventListener('keydown', function(e) {

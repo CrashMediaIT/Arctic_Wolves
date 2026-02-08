@@ -1089,10 +1089,7 @@ document.querySelectorAll('.remove-payroll').forEach(btn => {
     });
 });
 
-// Close modal on outside click
-document.getElementById('editPayrollModal')?.addEventListener('click', function(e) {
-    if (e.target === this) closeEditPayrollModal();
-});
+
 </script>
 
 <?php if (!empty($google_maps_api_key)): ?>

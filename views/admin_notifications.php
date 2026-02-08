@@ -671,12 +671,6 @@ document.getElementById('notification-form').addEventListener('submit', function
     });
 });
 
-// Close modal when clicking outside
-document.getElementById('notification-modal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeModal();
-    }
-});
 
 // Close modal with Escape key
 document.addEventListener('keydown', function(e) {

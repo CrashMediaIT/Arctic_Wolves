@@ -19,11 +19,11 @@ function setSecurityHeaders() {
     
     // Content Security Policy (aligned with NGINX config)
     $csp = "default-src 'self'; " .
-           "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; " .
+           "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://maps.googleapis.com; " .
            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " .
            "img-src 'self' data: https:; " .
            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
-           "connect-src 'self'; " .
+           "connect-src 'self' https://maps.googleapis.com; " .
            "frame-ancestors 'self';";
     header("Content-Security-Policy: $csp");
 }

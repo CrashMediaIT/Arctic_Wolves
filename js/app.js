@@ -939,16 +939,6 @@
      * Initialize modals
      */
     function initializeModals() {
-        // Close on background click
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    const modalId = this.id || this.getAttribute('data-modal-id');
-                    closeModal(modalId);
-                }
-            });
-        });
-        
         // Close buttons
         document.querySelectorAll('[data-close-modal]').forEach(btn => {
             btn.addEventListener('click', function() {

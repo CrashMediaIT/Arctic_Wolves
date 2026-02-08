@@ -1695,12 +1695,6 @@ async function removeCenterIceLogo() {
     }
 }
 
-// Close modal on outside click
-document.getElementById('programModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeProgramModal();
-    }
-});
 
 // Initialize preview
 updatePreview();

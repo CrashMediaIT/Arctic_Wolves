@@ -369,10 +369,5 @@ document.getElementById('typeForm').addEventListener('submit', function(e) {
     });
 });
 
-// Close modal when clicking outside
-document.getElementById('typeModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeModal();
-    }
-});
+
 </script>

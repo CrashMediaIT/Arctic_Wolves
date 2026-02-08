@@ -923,12 +923,5 @@ function closeModal(modalId) {
     modal.style.display = 'none';
 }
 
-// Close modal on outside click
-document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeModal(this.id);
-        }
-    });
-});
+
 </script>

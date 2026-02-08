@@ -1149,15 +1149,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Close modals on backdrop click
-document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeScheduleModal();
-            closePinModal();
-        }
-    });
-});
+
 </script>
 
 </div><!-- End page-tab-content -->

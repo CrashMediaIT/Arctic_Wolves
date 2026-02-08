@@ -818,10 +818,6 @@ document.getElementById('editScheduleForm').addEventListener('submit', async fun
     }
 });
 
-// Close modal on outside click
-document.getElementById('editScheduleModal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-});
 
 // Notification helper
 function showNotification(message, type) {

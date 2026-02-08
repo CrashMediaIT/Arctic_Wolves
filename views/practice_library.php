@@ -825,10 +825,5 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// Close modal when clicking outside
-document.getElementById('practice-view-modal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closePlanViewModal();
-    }
-});
+
 </script>
