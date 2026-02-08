@@ -414,7 +414,11 @@ function performBackup($pdo, $job) {
                 $connection = connectNextcloud($nc_settings);
                 
                 $remote_path = rtrim($job['nextcloud_folder'], '/') . '/' . $filename;
-                $result = uploadToNextcloud($connection, $gz_file, $remote_path);
+                $file_content = file_get_contents($gz_file);
+                if ($file_content === false) {
+                    throw new Exception('Failed to read backup file for upload');
+                }
+                $result = uploadToNextcloud($connection, $remote_path, $file_content, 'application/gzip');
                 
                 if ($result) {
                     $success_destinations[] = 'Nextcloud: ' . $remote_path;
@@ -483,29 +487,6 @@ function performBackup($pdo, $job) {
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
     }
-}
-
-/**
- * Upload file to Nextcloud
- */
-function uploadToNextcloud($connection, $local_file, $remote_path) {
-    $webdav_url = $connection['url'] . '/remote.php/dav/files/' . $connection['username'] . $remote_path;
-    
-    $ch = curl_init($webdav_url);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-    curl_setopt($ch, CURLOPT_USERPWD, $connection['username'] . ':' . $connection['password']);
-    curl_setopt($ch, CURLOPT_INFILE, fopen($local_file, 'r'));
-    curl_setopt($ch, CURLOPT_INFILESIZE, filesize($local_file));
-    curl_setopt($ch, CURLOPT_UPLOAD, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    return ($http_code === 201 || $http_code === 204);
 }
 
 /**
