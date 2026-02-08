@@ -932,9 +932,12 @@ document.addEventListener('DOMContentLoaded', function() {
     var totalDisplay = document.querySelector('[data-field="total-display"]');
     
     function calculateTieredReimbursement(distanceKm) {
-        var rate = parseFloat(rateField ? rateField.value : 0) || 0;
-        var rateAfter5000 = rateAfter5000Field ? (parseFloat(rateAfter5000Field.value) || rate) : rate;
-        var yearKmTotal = yearKmTotalField ? (parseFloat(yearKmTotalField.value) || 0) : 0;
+        var rate = parseFloat(rateField ? rateField.value : '0');
+        if (isNaN(rate)) rate = 0;
+        var rateAfter5000 = rateAfter5000Field ? parseFloat(rateAfter5000Field.value) : null;
+        if (rateAfter5000 === null || isNaN(rateAfter5000)) rateAfter5000 = rate;
+        var yearKmTotal = yearKmTotalField ? parseFloat(yearKmTotalField.value) : 0;
+        if (isNaN(yearKmTotal)) yearKmTotal = 0;
         
         if (!rateAfter5000Field) {
             // Miles mode or no tiered rate - simple calculation

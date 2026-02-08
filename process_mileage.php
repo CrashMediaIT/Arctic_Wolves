@@ -93,6 +93,9 @@ try {
             $km_at_low_rate = max(0, $distance_km - $km_at_high_rate);
             $reimbursement_amount = ($km_at_high_rate * $rate_per_km) + ($km_at_low_rate * $rate_after_5000_per_km);
             
+            // Store the effective blended rate for this trip
+            $effective_rate = $distance_km > 0 ? ($reimbursement_amount / $distance_km) : $rate_per_km;
+            
             // Insert mileage log
             $stmt = $pdo->prepare("
                 INSERT INTO mileage_logs (user_id, trip_date, title, description, athlete_id, session_id, purpose, 
@@ -103,7 +106,7 @@ try {
             $stmt->execute([
                 $user_id, $trip_date, $title ?: null, $description ?: null,
                 $athlete_id ?: null, $session_id ?: null, $purpose,
-                $distance_km, $distance_miles, $rate_per_km, $reimbursement_amount
+                $distance_km, $distance_miles, $effective_rate, $reimbursement_amount
             ]);
             
             $mileage_log_id = $pdo->lastInsertId();
@@ -177,6 +180,9 @@ try {
             $km_at_low_rate = max(0, $distance_km - $km_at_high_rate);
             $reimbursement_amount = ($km_at_high_rate * $rate_per_km) + ($km_at_low_rate * $rate_after_5000_per_km);
             
+            // Store the effective blended rate for this trip
+            $effective_rate = $distance_km > 0 ? ($reimbursement_amount / $distance_km) : $rate_per_km;
+            
             // Update mileage log
             $stmt = $pdo->prepare("
                 UPDATE mileage_logs 
@@ -188,7 +194,7 @@ try {
             $stmt->execute([
                 $trip_date, $title ?: null, $description ?: null,
                 $athlete_id ?: null, $session_id ?: null, $purpose,
-                $distance_km, $distance_miles, $rate_per_km,
+                $distance_km, $distance_miles, $effective_rate,
                 $reimbursement_amount, $log_id, $user_id
             ]);
             
