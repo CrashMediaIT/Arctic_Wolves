@@ -1,7 +1,7 @@
 <?php
 // Determine which tab should be active based on URL parameter
 $activeTab = $_GET['tab'] ?? 'skills';
-$validTabs = ['skills', 'drills', 'merchandise', 'teams', 'locations', 'skill_levels'];
+$validTabs = ['skills', 'drills', 'merchandise', 'teams', 'locations', 'skill_levels', 'seasons', 'age_groups'];
 if (!in_array($activeTab, $validTabs)) {
     $activeTab = 'skills';
 }
@@ -9,6 +9,15 @@ if (!in_array($activeTab, $validTabs)) {
 // Fetch skill levels for the Skill Levels tab
 $skill_levels_stmt = $pdo->query("SELECT * FROM skill_levels ORDER BY display_order ASC, name ASC");
 $skill_levels = $skill_levels_stmt->fetchAll();
+
+// Fetch age groups for the Age Groups tab
+$age_groups = [];
+try {
+    $age_groups_stmt = $pdo->query("SELECT * FROM age_groups ORDER BY display_order ASC, name ASC");
+    $age_groups = $age_groups_stmt->fetchAll();
+} catch (PDOException $e) {
+    // age_groups table may not exist yet
+}
 
 // Get Google Maps API key from system settings for Locations tab
 try {
@@ -67,7 +76,7 @@ try {
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-layer-group"></i> Resource Management</h1>
-        <p class="page-description">Manage skills, drill types, merchandise categories, teams, training locations, and skill levels</p>
+        <p class="page-description">Manage skills, drill types, merchandise categories, teams, training locations, skill levels, seasons, and age groups</p>
     </div>
 </div>
 
@@ -90,6 +99,12 @@ try {
     </button>
     <button type="button" class="page-tab <?= $activeTab === 'skill_levels' ? 'active' : '' ?>" data-tab="skill_levels" data-action="switch-tab" data-tab-handled="true">
         <i class="fas fa-chart-line"></i> Skill Levels
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'seasons' ? 'active' : '' ?>" data-tab="seasons" data-action="switch-tab" data-tab-handled="true">
+        <i class="fas fa-calendar-alt"></i> Seasons
+    </button>
+    <button type="button" class="page-tab <?= $activeTab === 'age_groups' ? 'active' : '' ?>" data-tab="age_groups" data-action="switch-tab" data-tab-handled="true">
+        <i class="fas fa-birthday-cake"></i> Age Groups
     </button>
 </div>
 
@@ -543,6 +558,139 @@ try {
                         <i class="fas fa-chart-line"></i>
                         <h4>No Skill Levels Found</h4>
                         <p>Add your first skill level to get started.</p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seasons Tab -->
+    <div class="tab-content <?= $activeTab === 'seasons' ? 'active' : '' ?>" id="seasons-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-calendar-alt"></i> Seasons</h3>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-season-modal">
+                    <i class="fas fa-plus"></i> Add Season
+                </button>
+            </div>
+            <div class="card-body">
+                <p class="info-text">
+                    <i class="fas fa-info-circle"></i>
+                    Seasons define time periods for team assignments, rosters, and coach management. Only one season can be active at a time.
+                </p>
+                <div class="categories-grid">
+                    <?php if (!empty($seasons_for_teams)): ?>
+                        <?php foreach ($seasons_for_teams as $season): ?>
+                    <div class="category-card <?= !$season['is_active'] ? 'inactive' : '' ?>">
+                        <div class="category-card-icon" style="background: linear-gradient(135deg, #6366F1, #4F46E5);">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="category-card-content">
+                            <h4>
+                                <?= htmlspecialchars($season['name']) ?>
+                                <?php if ($season['is_active']): ?>
+                                <span class="status-badge" style="background: rgba(34,197,94,0.15); color: #22c55e;">Active</span>
+                                <?php endif; ?>
+                            </h4>
+                            <p>
+                                <strong>Start:</strong> <?= date('M d, Y', strtotime($season['start_date'])) ?><br>
+                                <strong>End:</strong> <?= date('M d, Y', strtotime($season['end_date'])) ?>
+                            </p>
+                        </div>
+                        <div class="category-card-actions">
+                            <?php if (!$season['is_active']): ?>
+                            <form method="POST" action="process_admin_team_coaches.php" style="display: inline;">
+                                <?= csrfTokenInput() ?>
+                                <input type="hidden" name="action" value="activate_season">
+                                <input type="hidden" name="season_id" value="<?= $season['id'] ?>">
+                                <input type="hidden" name="redirect_page" value="categories">
+                                <button type="submit" class="btn-icon" title="Activate">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </form>
+                            <?php endif; ?>
+                            <form method="POST" action="process_admin_team_coaches.php" style="display: inline;">
+                                <?= csrfTokenInput() ?>
+                                <input type="hidden" name="action" value="delete_season">
+                                <input type="hidden" name="season_id" value="<?= $season['id'] ?>">
+                                <input type="hidden" name="redirect_page" value="categories">
+                                <button type="submit" class="btn-icon btn-icon-danger" title="Delete"
+                                        onclick="return confirm('Delete this season? This will fail if there are assignments using it.');">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h4>No Seasons Found</h4>
+                        <p>Create your first season to start organizing teams and rosters.</p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Age Groups Tab -->
+    <div class="tab-content <?= $activeTab === 'age_groups' ? 'active' : '' ?>" id="age_groups-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-birthday-cake"></i> Age Groups</h3>
+                <button type="button" class="btn btn-primary" data-action="add" data-modal="add-age-group-modal">
+                    <i class="fas fa-plus"></i> Add Age Group
+                </button>
+            </div>
+            <div class="card-body">
+                <p class="info-text">
+                    <i class="fas fa-info-circle"></i>
+                    Age groups are used to categorize teams, sessions, and athletes by age range (e.g., U8, U10, U14).
+                </p>
+                <div class="categories-grid">
+                    <?php if (!empty($age_groups)): ?>
+                        <?php foreach ($age_groups as $ag): ?>
+                    <div class="category-card">
+                        <div class="category-card-icon" style="background: linear-gradient(135deg, #EC4899, #DB2777);">
+                            <i class="fas fa-birthday-cake"></i>
+                        </div>
+                        <div class="category-card-content">
+                            <h4><?= htmlspecialchars($ag['name']) ?></h4>
+                            <p>
+                                <?php if ($ag['min_age'] || $ag['max_age']): ?>
+                                    <strong>Ages:</strong> <?= $ag['min_age'] ?? '?' ?> - <?= $ag['max_age'] ?? '?' ?><br>
+                                <?php endif; ?>
+                                <?php if ($ag['description']): ?>
+                                    <?= htmlspecialchars($ag['description']) ?>
+                                <?php else: ?>
+                                    No description
+                                <?php endif; ?>
+                            </p>
+                            <span class="category-tag" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">
+                                Order: <?= $ag['display_order'] ?>
+                            </span>
+                        </div>
+                        <div class="category-card-actions">
+                            <form action="process_admin_age_skill.php" method="POST" style="display: inline;">
+                                <?= csrfTokenInput() ?>
+                                <input type="hidden" name="action" value="delete_age_group">
+                                <input type="hidden" name="id" value="<?= $ag['id'] ?>">
+                                <input type="hidden" name="redirect_page" value="categories">
+                                <button type="submit" class="btn-icon btn-icon-danger" title="Delete"
+                                        onclick="return confirm('Delete this age group? Sessions using it will have the field set to NULL.');">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                    <div class="empty-state">
+                        <i class="fas fa-birthday-cake"></i>
+                        <h4>No Age Groups Found</h4>
+                        <p>Create your first age group to categorize teams and sessions.</p>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -1397,6 +1545,107 @@ try {
     <input type="hidden" name="action" value="delete_skill_level">
     <input type="hidden" id="delete-skill-level-id" name="id" value="">
 </form>
+
+<!-- Add Season Modal -->
+<div id="add-season-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-calendar-alt"></i> Add Season</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-season-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_admin_team_coaches.php">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_season">
+            <input type="hidden" name="redirect_page" value="categories">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Season Name *</label>
+                    <input type="text" name="season_name" class="form-input" required placeholder="e.g., 2024-2025">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Start Date *</label>
+                    <input type="date" name="start_date" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">End Date *</label>
+                    <input type="date" name="end_date" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Active Season</label>
+                    <select name="is_active" class="form-input">
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                    <small class="form-help">Setting as active will deactivate any other active season</small>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-season-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Season
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Age Group Modal -->
+<div id="add-age-group-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-birthday-cake"></i> Add Age Group</h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-age-group-modal')">&times;</button>
+        </div>
+        <form action="process_admin_age_skill.php" method="POST">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create_age_group">
+            <input type="hidden" name="redirect_page" value="categories">
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" name="name" class="form-input" required placeholder="e.g., Bantam (U14)">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Min Age</label>
+                    <input type="number" name="min_age" class="form-input" placeholder="e.g., 13">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Max Age</label>
+                    <input type="number" name="max_age" class="form-input" placeholder="e.g., 14">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-textarea" rows="3" placeholder="Brief description of this age group"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Display Order</label>
+                    <input type="number" name="display_order" class="form-input" value="0" placeholder="Lower numbers appear first">
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-age-group-modal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Age Group
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- Load Google Maps API with Places library -->
 <?php if (!empty($google_maps_api_key)): ?>

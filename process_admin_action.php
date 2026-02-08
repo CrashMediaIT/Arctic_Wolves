@@ -1470,6 +1470,14 @@ if ($action == 'create_user') {
             }
         }
         
+        // Send welcome email with credentials
+        require_once 'mailer.php';
+        sendEmail($email, 'manual_welcome', [
+            'name' => $first_name . ' ' . $last_name,
+            'email' => $email,
+            'password' => $password
+        ]);
+        
         header("Location: dashboard.php?page=all_users&status=success");
     } catch (PDOException $e) {
         error_log("Create user error: " . $e->getMessage());

@@ -59,6 +59,14 @@ if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
 
 $action = $_POST['action'] ?? '';
 
+// Determine redirect target - if a redirect_page was specified, use it
+$age_group_redirect = 'admin_age_skill';
+$age_group_redirect_params = '';
+if (!empty($_POST['redirect_page']) && $_POST['redirect_page'] === 'categories') {
+    $age_group_redirect = 'categories';
+    $age_group_redirect_params = 'tab=age_groups';
+}
+
 try {
     switch ($action) {
         case 'create_age_group':
@@ -74,7 +82,7 @@ try {
             
             logSecurityEvent($pdo, 'age_group_created', "Created age group: $name", $_SESSION['user_id']);
             
-            respond(true, "Age group '$name' created successfully!", 'admin_age_skill', 'age_group_created');
+            respond(true, "Age group '$name' created successfully!", $age_group_redirect, 'age_group_created', $age_group_redirect_params);
             break;
             
         case 'delete_age_group':
@@ -90,7 +98,7 @@ try {
                 logSecurityEvent($pdo, 'age_group_deleted', "Deleted age group: {$ag['name']}", $_SESSION['user_id']);
             }
             
-            respond(true, 'Age group deleted successfully!', 'admin_age_skill', 'age_group_deleted');
+            respond(true, 'Age group deleted successfully!', $age_group_redirect, 'age_group_deleted', $age_group_redirect_params);
             break;
             
         case 'create_skill_level':
