@@ -244,7 +244,10 @@ $rate_per_mile = floatval($rates['mileage_rate_per_mile'] ?? 1.10);
 </style>
 
 <?php if (!empty($google_maps_api_key)): ?>
-<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($google_maps_api_key) ?>&libraries=places" async defer></script>
+<script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+  key: "<?= htmlspecialchars($google_maps_api_key) ?>",
+  v: "weekly"
+});</script>
 <?php endif; ?>
 
 <div class="dash-content mileage-container">
@@ -385,39 +388,44 @@ let waypointCount = 2;
 let autocompleteFields = [];
 const ratePerKm = <?= $rate_per_km ?>;
 
-// Constants for Google Maps initialization
-var MAX_GOOGLE_MAPS_INIT_ATTEMPTS = 20;
-var GOOGLE_MAPS_INIT_RETRY_DELAY_MS = 250;
-
 // Initialize autocomplete on existing waypoint inputs
 document.addEventListener('DOMContentLoaded', function() {
-    tryInitAutocomplete();
+    initializeAutocomplete();
     loadLogs();
 });
 
-function initializeAutocomplete() {
-    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-        return;
-    }
-    document.querySelectorAll('.waypoint-input').forEach(input => {
-        if (!input.dataset.autocompleteInit) {
-            const autocomplete = new google.maps.places.Autocomplete(input, {
-                fields: ['formatted_address', 'name']
-            });
-            input.dataset.autocompleteInit = 'true';
-            autocompleteFields.push(autocomplete);
-        }
-    });
-}
+async function initializeAutocomplete() {
+    try {
+        const { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
+        document.querySelectorAll('.waypoint-input').forEach(input => {
+            if (!input.dataset.autocompleteInit) {
+                const autocompleteEl = new PlaceAutocompleteElement();
+                autocompleteEl.style.cssText = 'width: 100%;';
+                autocompleteEl.setAttribute('placeholder', input.placeholder || 'Enter address');
+                if (input.value) {
+                    autocompleteEl.value = input.value;
+                }
+                autocompleteEl.className = input.className;
+                autocompleteEl.dataset.index = input.dataset.index;
 
-// Initialize with retry for async Google Maps loading
-var initAttempts = 0;
-function tryInitAutocomplete() {
-    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-        initializeAutocomplete();
-    } else if (initAttempts < MAX_GOOGLE_MAPS_INIT_ATTEMPTS) {
-        initAttempts++;
-        setTimeout(tryInitAutocomplete, GOOGLE_MAPS_INIT_RETRY_DELAY_MS);
+                autocompleteEl.addEventListener('gmp-placeselect', async (event) => {
+                    const place = event.place;
+                    try {
+                        await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
+                        autocompleteEl.dataset.address = place.formattedAddress || '';
+                        autocompleteEl.dataset.name = place.displayName || '';
+                    } catch (err) {
+                        console.error('Failed to fetch place details:', err);
+                    }
+                });
+
+                input.parentNode.replaceChild(autocompleteEl, input);
+                autocompleteEl.dataset.autocompleteInit = 'true';
+                autocompleteFields.push(autocompleteEl);
+            }
+        });
+    } catch (e) {
+        console.error('Failed to initialize Google Maps Places:', e);
     }
 }
 
@@ -460,14 +468,15 @@ function renumberWaypoints() {
 }
 
 function getWaypoints() {
-    const inputs = document.querySelectorAll('.waypoint-input');
+    const elements = document.querySelectorAll('gmp-place-autocomplete.waypoint-input, input.waypoint-input');
     const waypoints = [];
     
-    inputs.forEach(input => {
-        if (input.value.trim()) {
+    elements.forEach(el => {
+        const address = el.dataset.address || el.value || '';
+        if (address.trim()) {
             waypoints.push({
-                address: input.value.trim(),
-                name: input.value.trim().split(',')[0]
+                address: address.trim(),
+                name: el.dataset.name || address.trim().split(',')[0]
             });
         }
     });
