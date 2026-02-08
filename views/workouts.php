@@ -27,6 +27,7 @@ $workouts_stmt = $pdo->prepare("
 ");
 $workouts_stmt->execute([$viewing_user_id]);
 $workouts = $workouts_stmt->fetchAll();
+$workouts = decryptUserRows($workouts);
 
 // Get simple workouts (legacy)
 $simple_workouts_stmt = $pdo->prepare("
@@ -38,6 +39,7 @@ $simple_workouts_stmt = $pdo->prepare("
 ");
 $simple_workouts_stmt->execute([$viewing_user_id]);
 $simple_workouts = $simple_workouts_stmt->fetchAll();
+$simple_workouts = decryptUserRows($simple_workouts);
 ?>
 
 <style>

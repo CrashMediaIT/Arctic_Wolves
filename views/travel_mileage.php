@@ -30,6 +30,7 @@ $filter_session = isset($_GET['session_id']) ? intval($_GET['session_id']) : 0;
 // Get athletes for filter dropdown
 $athletes_stmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role = 'athlete' AND is_active = 1 ORDER BY first_name, last_name");
 $athletes = $athletes_stmt->fetchAll(PDO::FETCH_ASSOC);
+$athletes = decryptUserRows($athletes);
 
 // Get sessions for filter dropdown
 $sessions_stmt = $pdo->query("

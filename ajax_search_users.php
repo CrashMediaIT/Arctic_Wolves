@@ -69,6 +69,7 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
 
     $results = array_map(function($u) {
         $roleLabel = '';

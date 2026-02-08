@@ -46,6 +46,7 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute($params);
 $plans = $stmt->fetchAll();
+$plans = decryptUserRows($plans);
 
 // Get all available drills for the create modal
 $drills = $pdo->query("

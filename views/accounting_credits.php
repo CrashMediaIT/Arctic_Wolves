@@ -6,6 +6,8 @@ $creditsQuery = "SELECT cr.*, u.first_name, u.last_name
     ORDER BY cr.created_at DESC
     LIMIT 20";
 $credits = $pdo->query($creditsQuery);
+$creditRows = $credits->fetchAll();
+$creditRows = decryptUserRows($creditRows);
 
 // Fetch credit stats
 $creditStatsQuery = "SELECT 
@@ -108,8 +110,8 @@ try {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if($credits && $credits->rowCount() > 0): ?>
-                            <?php while($credit = $credits->fetch()): 
+                        <?php if(!empty($creditRows)): ?>
+                            <?php foreach($creditRows as $credit): 
                                 $typeClass = strtolower($credit['type']);
                                 $statusClass = strtolower($credit['status']);
                             ?>
@@ -136,7 +138,7 @@ try {
                                     </div>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="8" class="empty-state">
@@ -359,7 +361,9 @@ try {
                         // Fetch users for dropdown
                         try {
                             $userStmt = $pdo->query("SELECT id, first_name, last_name, email FROM users WHERE role IN ('athlete', 'parent') ORDER BY first_name, last_name");
-                            while ($user = $userStmt->fetch(PDO::FETCH_ASSOC)) {
+                            $modalUsers = $userStmt->fetchAll(PDO::FETCH_ASSOC);
+                            $modalUsers = decryptUserRows($modalUsers);
+                            foreach ($modalUsers as $user) {
                                 echo '<option value="' . $user['id'] . '">' . 
                                      htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) . 
                                      ' (' . htmlspecialchars($user['email']) . ')</option>';

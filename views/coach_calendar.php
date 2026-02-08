@@ -59,6 +59,7 @@ $sessions = $sessions_stmt->fetchAll();
 
 // Get coaches, locations, practice plans, session types
 $coaches = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role IN ('coach', 'coach_plus', 'admin', 'team_coach', 'health_coach') AND is_active = 1 ORDER BY last_name, first_name")->fetchAll();
+$coaches = decryptUserRows($coaches);
 $locations = $pdo->query("SELECT * FROM locations WHERE is_active = 1 ORDER BY name")->fetchAll();
 $practice_plans = $pdo->query("SELECT id, name FROM practice_plans ORDER BY created_at DESC LIMIT 50")->fetchAll();
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
@@ -67,6 +68,7 @@ $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetch
 $assigned_athletes_stmt = $pdo->prepare("SELECT u.id, u.first_name, u.last_name, u.role FROM users u WHERE u.is_active = 1 AND (u.assigned_coach_id = ? OR u.created_by_coach_id = ?) ORDER BY u.last_name, u.first_name");
 $assigned_athletes_stmt->execute([$user_id, $user_id]);
 $assigned_athletes = $assigned_athletes_stmt->fetchAll();
+$assigned_athletes = decryptUserRows($assigned_athletes);
 
 // No demo data - show actual data from database only
 $is_demo_data = false;

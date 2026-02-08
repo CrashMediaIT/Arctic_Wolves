@@ -19,6 +19,7 @@ try {
     ");
     $stmt->execute([$user_id]);
     $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $athletes = decryptUserRows($athletes);
     
     // Get selected athlete
     $selected_athlete_id = $_GET['athlete_id'] ?? ($athletes[0]['id'] ?? null);
