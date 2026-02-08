@@ -58,12 +58,41 @@ try {
                 ];
             }
             
-            // Handle distance - can come as distance_km or distance_miles
-            $distance_miles = floatval($_POST['distance_miles'] ?? 0);
-            $distance_km = floatval($_POST['distance_km'] ?? ($distance_miles * 1.60934));
+            // Try to calculate distance via Google Maps API first
+            // Only fall back to manual distance if API fails (e.g., service is down)
+            $distance_miles = 0;
+            $distance_km = 0;
+            $api_used = false;
             
-            if ($distance_miles > 0 && floatval($_POST['distance_km'] ?? 0) == 0) {
-                $distance_km = $distance_miles * 1.60934;
+            if ($waypoints && count($waypoints) >= 2) {
+                $has_valid_addresses = true;
+                foreach ($waypoints as $wp) {
+                    if (empty(trim($wp['address'] ?? ''))) {
+                        $has_valid_addresses = false;
+                        break;
+                    }
+                }
+                
+                if ($has_valid_addresses) {
+                    try {
+                        $distance_data = calculateDistance($waypoints);
+                        $distance_km = floatval($distance_data['distance_km']);
+                        $distance_miles = floatval($distance_data['distance_miles']);
+                        $api_used = true;
+                    } catch (Exception $e) {
+                        error_log('Google Maps distance calculation failed, using manual entry: ' . $e->getMessage());
+                    }
+                }
+            }
+            
+            // Fall back to manual distance only if API calculation failed
+            if (!$api_used) {
+                $distance_miles = floatval($_POST['distance_miles'] ?? 0);
+                $distance_km = floatval($_POST['distance_km'] ?? ($distance_miles * 1.60934));
+                
+                if ($distance_miles > 0 && floatval($_POST['distance_km'] ?? 0) == 0) {
+                    $distance_km = $distance_miles * 1.60934;
+                }
             }
             
             // Get mileage rate from settings
@@ -127,8 +156,38 @@ try {
             $session_id = intval($_POST['session_id'] ?? 0);
             $purpose = trim($_POST['purpose']);
             $waypoints = json_decode($_POST['waypoints'], true);
-            $distance_km = floatval($_POST['distance_km']);
-            $distance_miles = floatval($_POST['distance_miles']);
+            
+            // Try to calculate distance via Google Maps API first
+            $distance_miles = 0;
+            $distance_km = 0;
+            $api_used = false;
+            
+            if ($waypoints && count($waypoints) >= 2) {
+                $has_valid_addresses = true;
+                foreach ($waypoints as $wp) {
+                    if (empty(trim($wp['address'] ?? ''))) {
+                        $has_valid_addresses = false;
+                        break;
+                    }
+                }
+                
+                if ($has_valid_addresses) {
+                    try {
+                        $distance_data = calculateDistance($waypoints);
+                        $distance_km = floatval($distance_data['distance_km']);
+                        $distance_miles = floatval($distance_data['distance_miles']);
+                        $api_used = true;
+                    } catch (Exception $e) {
+                        error_log('Google Maps distance calculation failed on update, using manual entry: ' . $e->getMessage());
+                    }
+                }
+            }
+            
+            // Fall back to manual distance only if API calculation failed
+            if (!$api_used) {
+                $distance_km = floatval($_POST['distance_km']);
+                $distance_miles = floatval($_POST['distance_miles']);
+            }
             
             // Get mileage rate from settings
             $rate_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_per_mile')");

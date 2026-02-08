@@ -50,25 +50,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // is_verified = 1 (Instant Access)
         // force_pass_change = 1 (Must change password immediately)
         // is_active = 1 (Active immediately so they appear in rosters)
-        // Set assigned_coach_id and created_by_coach_id for all coach types so athletes show in "My Athletes"
-        if (in_array($user_role, ['coach', 'coach_plus', 'health_coach', 'team_coach']) || ($user_role === 'admin' && $assign_to_health_coach)) {
-            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, is_active, assigned_coach_id, created_by_coach_id) 
-                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, 1, ?, ?)";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob, $coach_id, $coach_id]);
-        } else {
-            // Admin creating without health coach assignment
-            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, is_active) 
-                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, 1)";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob]);
-        }
+        // Set assigned_coach_id and created_by_coach_id for all coach/admin types so athletes show in "My Athletes"
+        $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, is_active, assigned_coach_id, created_by_coach_id) 
+                VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, 1, ?, ?)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob, $coach_id, $coach_id]);
         
         $athlete_id = $pdo->lastInsertId();
         
-        // 4. ASSIGN ATHLETE TO COACH ROSTER (for all coach roles)
+        // 4. ASSIGN ATHLETE TO COACH/ADMIN ROSTER
         // Note: managed_athletes is for coach rosters, parent_athlete_relationships is for parents
-        if (in_array($user_role, ['coach', 'coach_plus', 'health_coach', 'team_coach'])) {
+        // Auto-assign for all coach types AND admins so athletes appear in their roster
+        if (in_array($user_role, ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'])) {
             $assign_stmt = $pdo->prepare("
                 INSERT INTO managed_athletes (coach_id, athlete_id, start_date, status) 
                 VALUES (?, ?, CURDATE(), 'active')
