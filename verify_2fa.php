@@ -138,7 +138,11 @@ unset($_SESSION['2fa_error']);
                         errorDiv.className = 'error-msg';
                         form.parentNode.insertBefore(errorDiv, form);
                     }
-                    errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.message || 'Invalid code');
+                    errorDiv.textContent = '';
+                    var icon = document.createElement('i');
+                    icon.className = 'fas fa-exclamation-circle';
+                    errorDiv.appendChild(icon);
+                    errorDiv.appendChild(document.createTextNode(' ' + (data.message || 'Invalid code')));
                 }
             })
             .catch(function() {
