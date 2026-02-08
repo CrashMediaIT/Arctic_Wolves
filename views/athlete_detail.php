@@ -12,6 +12,7 @@ $athlete_id = isset($_GET['id']) ? intval($_GET['id']) : $user_id;
 $athlete_stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? AND role IN ('athlete', 'coach', 'coach_plus')");
 $athlete_stmt->execute([$athlete_id]);
 $athlete = $athlete_stmt->fetch();
+$athlete = $athlete ? decryptUserRow($athlete) : $athlete;
 
 if (!$athlete) {
     echo "<div class='alert alert-error'>Athlete not found.</div>";
@@ -51,6 +52,7 @@ $eval_stmt = $pdo->prepare("
 ");
 $eval_stmt->execute([$athlete_id]);
 $evaluations = $eval_stmt->fetchAll();
+$evaluations = decryptUserRows($evaluations);
 
 // Get assigned teams
 $teams_stmt = $pdo->prepare("

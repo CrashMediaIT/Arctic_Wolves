@@ -67,6 +67,7 @@ $athletes_query .= " ORDER BY u.last_name, u.first_name LIMIT 100";
 $athletes_stmt = $pdo->prepare($athletes_query);
 $athletes_stmt->execute($params);
 $athletes = $athletes_stmt->fetchAll();
+$athletes = decryptUserRows($athletes);
 ?>
 
 <!-- Health Coach Roster View -->

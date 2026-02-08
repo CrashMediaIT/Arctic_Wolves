@@ -20,6 +20,7 @@ $athletes_stmt = $pdo->prepare("
 ");
 $athletes_stmt->execute([$user_id]);
 $athletes = $athletes_stmt->fetchAll();
+$athletes = decryptUserRows($athletes);
 
 // Get total upcoming sessions for all athletes
 $total_upcoming = 0;

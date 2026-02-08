@@ -66,6 +66,7 @@ try {
         ");
         $stmt->execute([$user_id]);
         $coachNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $coachNotes = decryptUserRows($coachNotes);
     } elseif (in_array($user_role, ['coach', 'health_coach', 'team_coach', 'admin'])) {
         // Get upcoming sessions (next 7 days) - including both regular sessions and training session templates
         $stmt = $pdo->prepare("
@@ -107,6 +108,7 @@ try {
         ");
         $stmt->execute();
         $pendingReviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $pendingReviews = decryptUserRows($pendingReviews);
         
         // Get recent athlete updates
         $stmt = $pdo->prepare("
@@ -119,6 +121,7 @@ try {
         ");
         $stmt->execute();
         $athleteUpdates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $athleteUpdates = decryptUserRows($athleteUpdates);
     }
 } catch (PDOException $e) {
     error_log("Dashboard data fetch error: " . $e->getMessage());
@@ -887,6 +890,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ");
         $stmt->execute([$user_id]);
         $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $athletes = decryptUserRows($athletes);
         ?>
         
         <div class="parent-dashboard">

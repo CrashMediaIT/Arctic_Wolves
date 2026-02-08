@@ -75,6 +75,7 @@ $query .= " ORDER BY u.last_name, u.first_name";
 $athletes_stmt = $pdo->prepare($query);
 $athletes_stmt->execute($params);
 $athletes = $athletes_stmt->fetchAll();
+$athletes = decryptUserRows($athletes);
 
 // Get teams for filter dropdown
 $teams_stmt = $pdo->query("SELECT id, name FROM teams ORDER BY name");
