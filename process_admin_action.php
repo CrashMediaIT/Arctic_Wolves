@@ -1408,7 +1408,12 @@ if ($action == 'create_user') {
     }
     // Use first coach as primary assigned_coach_id for backward compatibility
     $primary_coach_id = !empty($assigned_coach_ids) ? $assigned_coach_ids[0] : null;
-    $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
+    // Support multiple team assignments with seasons
+    $team_season_ids_raw = isset($_POST['team_season_ids']) && is_array($_POST['team_season_ids']) ? $_POST['team_season_ids'] : [];
+    // Backward compatibility: also check for single team_id
+    if (empty($team_season_ids_raw) && !empty($_POST['team_id'])) {
+        $team_season_ids_raw = [$_POST['team_id'] . '|'];
+    }
     
     // Validate required fields
     if (empty($first_name) || empty($last_name) || empty($email) || empty($password)) {
@@ -1449,9 +1454,20 @@ if ($action == 'create_user') {
             }
         }
         
-        // Assign team if provided
-        if ($team_id && $role === 'athlete') {
-            $pdo->prepare("INSERT INTO team_roster (team_id, athlete_id) VALUES (?, ?)")->execute([$team_id, $new_user_id]);
+        // Assign teams if provided (multiple teams with seasons)
+        if (!empty($team_season_ids_raw) && $role === 'athlete') {
+            $insert_team_stmt = $pdo->prepare("
+                INSERT INTO team_roster (team_id, athlete_id, season_id) VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE athlete_id = VALUES(athlete_id)
+            ");
+            foreach ($team_season_ids_raw as $combo) {
+                $parts = explode('|', $combo);
+                $tid = intval($parts[0] ?? 0);
+                $sid = !empty($parts[1]) ? intval($parts[1]) : null;
+                if ($tid > 0) {
+                    $insert_team_stmt->execute([$tid, $new_user_id, $sid]);
+                }
+            }
         }
         
         header("Location: dashboard.php?page=all_users&status=success");
@@ -1479,7 +1495,12 @@ if ($action == 'update_user') {
     }
     // Use first coach as primary assigned_coach_id for backward compatibility
     $primary_coach_id = !empty($assigned_coach_ids) ? $assigned_coach_ids[0] : null;
-    $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
+    // Support multiple team assignments with seasons
+    $team_season_ids_update = isset($_POST['team_season_ids']) && is_array($_POST['team_season_ids']) ? $_POST['team_season_ids'] : [];
+    // Backward compatibility: also check for single team_id
+    if (empty($team_season_ids_update) && !empty($_POST['team_id'])) {
+        $team_season_ids_update = [$_POST['team_id'] . '|'];
+    }
     
     // Validate required fields
     if (empty($first_name) || empty($last_name) || empty($email)) {
@@ -1529,17 +1550,25 @@ if ($action == 'update_user') {
             }
         }
         
-        // Handle team assignment if provided
-        if ($role === 'athlete' && $team_id) {
-            // Check if user already has a team roster entry
-            $check_stmt = $pdo->prepare("SELECT id FROM team_roster WHERE athlete_id = ?");
-            $check_stmt->execute([$user_id_to_update]);
-            $existing = $check_stmt->fetch();
+        // Handle team assignments (multiple teams with seasons)
+        if ($role === 'athlete') {
+            // Remove all existing team roster entries
+            $pdo->prepare("DELETE FROM team_roster WHERE athlete_id = ?")->execute([$user_id_to_update]);
             
-            if ($existing) {
-                $pdo->prepare("UPDATE team_roster SET team_id = ? WHERE athlete_id = ?")->execute([$team_id, $user_id_to_update]);
-            } else {
-                $pdo->prepare("INSERT INTO team_roster (team_id, athlete_id) VALUES (?, ?)")->execute([$team_id, $user_id_to_update]);
+            // Insert new team assignments
+            if (!empty($team_season_ids_update)) {
+                $insert_team_stmt = $pdo->prepare("
+                    INSERT INTO team_roster (team_id, athlete_id, season_id) VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE athlete_id = VALUES(athlete_id)
+                ");
+                foreach ($team_season_ids_update as $combo) {
+                    $parts = explode('|', $combo);
+                    $tid = intval($parts[0] ?? 0);
+                    $sid = !empty($parts[1]) ? intval($parts[1]) : null;
+                    if ($tid > 0) {
+                        $insert_team_stmt->execute([$tid, $user_id_to_update, $sid]);
+                    }
+                }
             }
         }
         
@@ -1876,7 +1905,6 @@ if ($action == 'admin_update_assignments') {
         }
         // Use first coach as primary assigned_coach_id for backward compatibility
         $primary_coach_id = !empty($assigned_coach_ids) ? $assigned_coach_ids[0] : null;
-        $team_id = !empty($_POST['team_id']) ? intval($_POST['team_id']) : null;
         $jersey_number = !empty($_POST['jersey_number']) ? intval($_POST['jersey_number']) : null;
         $position = trim($_POST['position'] ?? '');
         
@@ -1904,25 +1932,37 @@ if ($action == 'admin_update_assignments') {
             }
         }
         
-        // Handle team assignment
-        if ($team_id) {
-            // Check if user already has a team roster entry
-            $check_stmt = $pdo->prepare("SELECT id FROM team_roster WHERE athlete_id = ?");
-            $check_stmt->execute([$user_id_to_update]);
-            $existing = $check_stmt->fetch();
-            
-            if ($existing) {
-                // Update existing entry
-                $pdo->prepare("UPDATE team_roster SET team_id = ?, jersey_number = ?, position = ? WHERE athlete_id = ?")
-                    ->execute([$team_id, $jersey_number, $position, $user_id_to_update]);
-            } else {
-                // Insert new entry
-                $pdo->prepare("INSERT INTO team_roster (team_id, athlete_id, jersey_number, position) VALUES (?, ?, ?, ?)")
-                    ->execute([$team_id, $user_id_to_update, $jersey_number, $position]);
+        // Handle team assignments (multiple teams with seasons)
+        // Parse team_season_ids[] format: "team_id|season_id"
+        $team_season_ids = isset($_POST['team_season_ids']) && is_array($_POST['team_season_ids']) ? $_POST['team_season_ids'] : [];
+        // Backward compatibility: also check for single team_id
+        if (empty($team_season_ids) && !empty($_POST['team_id'])) {
+            $team_season_ids = [$_POST['team_id'] . '|'];
+        }
+        
+        $team_assignments = [];
+        foreach ($team_season_ids as $combo) {
+            $parts = explode('|', $combo);
+            $tid = intval($parts[0] ?? 0);
+            $sid = !empty($parts[1]) ? intval($parts[1]) : null;
+            if ($tid > 0) {
+                $team_assignments[] = ['team_id' => $tid, 'season_id' => $sid];
             }
-        } else {
-            // Remove from team roster if team_id is null
-            $pdo->prepare("DELETE FROM team_roster WHERE athlete_id = ?")->execute([$user_id_to_update]);
+        }
+        
+        // Remove all existing team roster entries for this athlete
+        $pdo->prepare("DELETE FROM team_roster WHERE athlete_id = ?")->execute([$user_id_to_update]);
+        
+        // Insert new team assignments
+        if (!empty($team_assignments)) {
+            $insert_team_stmt = $pdo->prepare("
+                INSERT INTO team_roster (team_id, athlete_id, season_id, jersey_number, position) 
+                VALUES (?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE jersey_number = VALUES(jersey_number), position = VALUES(position)
+            ");
+            foreach ($team_assignments as $ta) {
+                $insert_team_stmt->execute([$ta['team_id'], $user_id_to_update, $ta['season_id'], $jersey_number, $position]);
+            }
         }
         
         echo json_encode(['success' => true, 'message' => 'Assignments updated successfully']);
