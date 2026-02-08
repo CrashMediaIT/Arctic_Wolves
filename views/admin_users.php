@@ -470,6 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var modal = document.getElementById(modalId);
             if (modal) {
                 modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
             }
         });
     });
@@ -506,6 +507,7 @@ function closeModal(modalId) {
     var modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.remove('active');
+        document.body.style.overflow = '';
         var form = modal.querySelector('form');
         if (form) form.reset();
     }
@@ -902,6 +904,12 @@ function closeModal(modalId) {
     color: var(--text-muted);
 }
 
+
+/* Modal Tabs - prevent scrollbars on the tab bar */
+.modal .tabs {
+    overflow: hidden;
+    flex-wrap: wrap;
+}
 
 @media (max-width: 768px) {
     .action-bar-enhanced {
@@ -1319,6 +1327,7 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         document.getElementById('edit-details-tab').classList.add('active');
         
         modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
     });
 });
 
@@ -1560,6 +1569,7 @@ document.querySelectorAll('[data-action="security"]').forEach(function(btn) {
             document.getElementById('security-password-tab').classList.add('active');
             
             modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
     });
 });
