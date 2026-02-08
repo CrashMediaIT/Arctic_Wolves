@@ -23,7 +23,7 @@ function setSecurityHeaders() {
            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " .
            "img-src 'self' data: https:; " .
            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
-           "connect-src 'self' https://maps.googleapis.com; " .
+           "connect-src 'self' https://maps.googleapis.com https://places.googleapis.com; " .
            "frame-ancestors 'self';";
     header("Content-Security-Policy: $csp");
 }
