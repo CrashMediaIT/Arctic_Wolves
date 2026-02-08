@@ -200,6 +200,27 @@ if ($security_tab === 'blocklist') {
     $blocklist_total = count($blocklist_entries);
 }
 
+// ---- POS IP WHITELIST DATA ----
+$pos_whitelist_entries = [];
+$pos_whitelist_total = 0;
+
+if ($security_tab === 'pos_whitelist') {
+    try {
+        $wl_stmt = $pdo->query("
+            SELECT pw.*, CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+            FROM pos_allowed_ips pw
+            LEFT JOIN users u ON pw.created_by = u.id
+            ORDER BY pw.created_at DESC
+        ");
+        $pos_whitelist_entries = $wl_stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Decrypt creator names
+        $pos_whitelist_entries = FieldEncryption::decryptRows($pos_whitelist_entries, ['created_by_name']);
+        $pos_whitelist_total = count($pos_whitelist_entries);
+    } catch (PDOException $e) {
+        error_log("Security center - POS whitelist error: " . $e->getMessage());
+    }
+}
+
 $login_total_pages = ceil($login_total / $per_page);
 $audit_total_pages = ceil($audit_total / $per_page);
 $error_total_pages = ceil($error_total / $per_page);
@@ -280,6 +301,12 @@ $error_total_pages = ceil($error_total / $per_page);
         <i class="fas fa-ban"></i> Registration Blocklist
         <?php if ($security_tab === 'blocklist' && $blocklist_total > 0): ?>
         <span class="badge"><?php echo $blocklist_total; ?></span>
+        <?php endif; ?>
+    </a>
+    <a href="?page=admin_security&tab=pos_whitelist" class="tab <?= $security_tab === 'pos_whitelist' ? 'active' : '' ?>">
+        <i class="fas fa-cash-register"></i> POS IP Whitelist
+        <?php if ($security_tab === 'pos_whitelist' && $pos_whitelist_total > 0): ?>
+        <span class="badge"><?php echo $pos_whitelist_total; ?></span>
         <?php endif; ?>
     </a>
 </div>
@@ -841,6 +868,192 @@ function removeBlocklistEntry(entryId) {
     .then(function(data) {
         if (data.success) {
             var row = document.getElementById('blocklist-row-' + entryId);
+            if (row) {
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(function() { row.remove(); }, 300);
+            }
+        } else {
+            alert('Error: ' + (data.message || 'Failed to remove entry'));
+        }
+    })
+    .catch(function() { alert('An error occurred'); });
+}
+</script>
+
+<?php elseif ($security_tab === 'pos_whitelist'): ?>
+
+<!-- POS IP Whitelist Action Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+    <div>
+        <p style="font-size: 13px; color: var(--text-muted, #64748b); margin: 0;">
+            <i class="fas fa-info-circle"></i> Configure which IP addresses are allowed to access the POS system. Admins are always exempt from IP restrictions.
+            <?php if ($pos_whitelist_total === 0): ?>
+            <br><strong>No IPs configured — POS access is currently open to all locations.</strong>
+            <?php endif; ?>
+        </p>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="document.getElementById('pos-whitelist-add-modal').classList.add('active')">
+        <i class="fas fa-plus"></i> Add Allowed IP
+    </button>
+</div>
+
+<!-- POS IP Whitelist Table -->
+<div class="card">
+    <div class="card-body" style="overflow-x: auto;">
+        <table class="log-table">
+            <thead>
+                <tr>
+                    <th>IP Address</th>
+                    <th>Label</th>
+                    <th>Status</th>
+                    <th>Created By</th>
+                    <th>Date Added</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($pos_whitelist_entries)): ?>
+                <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <i class="fas fa-cash-register" style="font-size: 24px; margin-bottom: 8px; display: block; opacity: 0.3;"></i>
+                    No POS IP whitelist entries. Click "Add Allowed IP" to restrict POS access to specific locations.
+                </td></tr>
+                <?php else: ?>
+                <?php foreach ($pos_whitelist_entries as $entry): ?>
+                <tr id="pos-wl-row-<?php echo $entry['id']; ?>">
+                    <td class="ip-cell" style="font-weight: 600;"><?php echo htmlspecialchars($entry['ip_address']); ?></td>
+                    <td><?php echo htmlspecialchars($entry['label'] ?? '—'); ?></td>
+                    <td>
+                        <span class="status-pill <?php echo $entry['is_active'] ? 'success' : 'blocked'; ?>" style="cursor: pointer;" onclick="togglePosWhitelistEntry(<?php echo (int)$entry['id']; ?>, <?php echo $entry['is_active'] ? '0' : '1'; ?>)" title="Click to <?php echo $entry['is_active'] ? 'disable' : 'enable'; ?>">
+                            <i class="fas fa-<?php echo $entry['is_active'] ? 'check-circle' : 'pause-circle'; ?>"></i>
+                            <?php echo $entry['is_active'] ? 'Active' : 'Inactive'; ?>
+                        </span>
+                    </td>
+                    <td style="font-size: 13px;"><?php echo htmlspecialchars($entry['created_by_name'] ?? 'System'); ?></td>
+                    <td style="font-size: 12px;"><?php echo date('M d, Y g:i a', strtotime($entry['created_at'])); ?></td>
+                    <td>
+                        <button class="btn-icon" onclick="togglePosWhitelistEntry(<?php echo (int)$entry['id']; ?>, <?php echo $entry['is_active'] ? '0' : '1'; ?>)" title="<?php echo $entry['is_active'] ? 'Disable' : 'Enable'; ?>" style="margin-right: 4px;">
+                            <i class="fas fa-<?php echo $entry['is_active'] ? 'toggle-on' : 'toggle-off'; ?>" style="color: <?php echo $entry['is_active'] ? '#10b981' : '#64748b'; ?>;"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="removePosWhitelistEntry(<?php echo (int)$entry['id']; ?>)" title="Remove">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add POS IP Whitelist Modal -->
+<div id="pos-whitelist-add-modal" class="detail-modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="detail-modal">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fas fa-cash-register" style="color: var(--primary, #6B46C1);"></i> Add Allowed IP Address</h3>
+            <button onclick="document.getElementById('pos-whitelist-add-modal').classList.remove('active')" style="background: none; border: none; color: #9CA3AF; font-size: 20px; cursor: pointer; padding: 4px 8px;">&times;</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted, #64748b); margin-bottom: 20px;">
+            Add an IP address that is allowed to access the POS system. Non-admin staff will only be able to use the POS from whitelisted IP addresses.
+        </p>
+        <form id="pos-whitelist-add-form" onsubmit="return addPosWhitelistEntry(event)">
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">IP Address <span style="color: #ef4444;">*</span></label>
+                <input type="text" name="ip_address" id="pos-wl-ip" class="form-input" required placeholder="e.g. 192.168.1.100" style="width: 100%;" pattern="^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$">
+                <small style="color: var(--text-muted, #64748b); font-size: 11px;">Enter a valid IPv4 or IPv6 address</small>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Label (optional)</label>
+                <input type="text" name="label" id="pos-wl-label" class="form-input" placeholder="e.g. Front Desk Terminal, Main Register" style="width: 100%;">
+            </div>
+            <div id="pos-wl-form-message" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pos-whitelist-add-modal').classList.remove('active')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" id="pos-wl-submit-btn"><i class="fas fa-plus"></i> Add IP</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+var posWlCsrfToken = '<?php echo htmlspecialchars($csrf_token, ENT_QUOTES); ?>';
+
+function addPosWhitelistEntry(e) {
+    e.preventDefault();
+    var form = document.getElementById('pos-whitelist-add-form');
+    var btn = document.getElementById('pos-wl-submit-btn');
+    var msg = document.getElementById('pos-wl-form-message');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+    var formData = new FormData(form);
+    formData.append('action', 'add_pos_whitelist_entry');
+    formData.append('csrf_token', posWlCsrfToken);
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(16,185,129,0.15)';
+            msg.style.color = '#10b981';
+            msg.textContent = data.message;
+            setTimeout(function() { location.reload(); }, 800);
+        } else {
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(239,68,68,0.15)';
+            msg.style.color = '#ef4444';
+            msg.textContent = data.message || 'Failed to add entry';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus"></i> Add IP';
+        }
+    })
+    .catch(function() {
+        msg.style.display = 'block';
+        msg.style.background = 'rgba(239,68,68,0.15)';
+        msg.style.color = '#ef4444';
+        msg.textContent = 'An error occurred. Please try again.';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i> Add IP';
+    });
+    return false;
+}
+
+function togglePosWhitelistEntry(entryId, newStatus) {
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=toggle_pos_whitelist_entry&entry_id=' + entryId + '&is_active=' + newStatus + '&csrf_token=' + encodeURIComponent(posWlCsrfToken)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to update entry'));
+        }
+    })
+    .catch(function() { alert('An error occurred'); });
+}
+
+function removePosWhitelistEntry(entryId) {
+    if (!confirm('Are you sure you want to remove this IP from the POS whitelist?')) return;
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=remove_pos_whitelist_entry&entry_id=' + entryId + '&csrf_token=' + encodeURIComponent(posWlCsrfToken)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var row = document.getElementById('pos-wl-row-' + entryId);
             if (row) {
                 row.style.transition = 'opacity 0.3s';
                 row.style.opacity = '0';

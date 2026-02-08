@@ -18,7 +18,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps', 'add_blocklist_entry', 'remove_blocklist_entry'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -752,6 +752,87 @@ try {
                 echo json_encode(['success' => true, 'message' => 'Blocklist entry removed']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Entry not found or already removed']);
+            }
+            exit;
+
+        case 'add_pos_whitelist_entry':
+            $ip_address = trim($_POST['ip_address'] ?? '');
+            $label = trim($_POST['label'] ?? '');
+
+            if (empty($ip_address)) {
+                echo json_encode(['success' => false, 'message' => 'IP address is required']);
+                exit;
+            }
+            if (!filter_var($ip_address, FILTER_VALIDATE_IP)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid IP address format']);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO pos_allowed_ips (ip_address, label, is_active, created_by)
+                    VALUES (?, ?, 1, ?)
+                ");
+                $stmt->execute([$ip_address, $label ?: null, $user_id]);
+                Auditor::log($pdo, $user_id, 'create', 'pos_allowed_ips', null, [
+                    'ip_address' => $ip_address,
+                    'label' => $label
+                ]);
+                echo json_encode(['success' => true, 'message' => 'POS IP whitelist entry added successfully']);
+            } catch (PDOException $e) {
+                if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                    echo json_encode(['success' => false, 'message' => 'This IP address is already in the whitelist']);
+                } else {
+                    error_log("Add POS whitelist error: " . $e->getMessage());
+                    echo json_encode(['success' => false, 'message' => 'Failed to add entry']);
+                }
+            }
+            exit;
+
+        case 'remove_pos_whitelist_entry':
+            $entry_id = intval($_POST['entry_id'] ?? 0);
+            if ($entry_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid entry ID']);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare("DELETE FROM pos_allowed_ips WHERE id = ?");
+                $stmt->execute([$entry_id]);
+                if ($stmt->rowCount() > 0) {
+                    Auditor::log($pdo, $user_id, 'delete', 'pos_allowed_ips', $entry_id);
+                    echo json_encode(['success' => true, 'message' => 'POS IP whitelist entry removed']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Entry not found or already removed']);
+                }
+            } catch (PDOException $e) {
+                error_log("Remove POS whitelist error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to remove entry']);
+            }
+            exit;
+
+        case 'toggle_pos_whitelist_entry':
+            $entry_id = intval($_POST['entry_id'] ?? 0);
+            $is_active = intval($_POST['is_active'] ?? 0);
+            if ($entry_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid entry ID']);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare("UPDATE pos_allowed_ips SET is_active = ? WHERE id = ?");
+                $stmt->execute([$is_active ? 1 : 0, $entry_id]);
+                if ($stmt->rowCount() > 0) {
+                    Auditor::log($pdo, $user_id, 'update', 'pos_allowed_ips', $entry_id, [
+                        'is_active' => $is_active ? 1 : 0
+                    ]);
+                    echo json_encode(['success' => true, 'message' => 'POS IP whitelist entry ' . ($is_active ? 'enabled' : 'disabled')]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Entry not found or no change needed']);
+                }
+            } catch (PDOException $e) {
+                error_log("Toggle POS whitelist error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to update entry']);
             }
             exit;
 
