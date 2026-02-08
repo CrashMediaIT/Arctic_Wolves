@@ -99,7 +99,8 @@ try {
                COUNT(DISTINCT s.id) as session_count,
                coach.first_name as coach_first_name,
                coach.last_name as coach_last_name,
-               t.name as team_name
+               t.name as team_name,
+               (SELECT lh.login_time FROM login_history lh WHERE lh.user_id = u.id AND lh.login_status = 'success' ORDER BY lh.login_time DESC LIMIT 1) as last_login
         FROM users u
         LEFT JOIN sessions s ON u.id = s.coach_id
         LEFT JOIN users coach ON u.assigned_coach_id = coach.id
@@ -261,6 +262,7 @@ foreach ($users as $u) {
                                 <th>Contact</th>
                                 <th>Coach/Team</th>
                                 <th>Joined</th>
+                                <th>Last Login</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -321,6 +323,13 @@ foreach ($users as $u) {
                                         </div>
                                     </td>
                                     <td class="date-cell"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
+                                    <td class="date-cell">
+                                        <?php if (!empty($user['last_login'])): ?>
+                                            <?php echo date('M d, Y g:ia', strtotime($user['last_login'])); ?>
+                                        <?php else: ?>
+                                            <span style="color: var(--text-dim);">Never</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <span class="status-badge <?php echo $user['is_verified'] ? 'active' : 'inactive'; ?>">
                                             <i class="fas fa-<?php echo $user['is_verified'] ? 'check-circle' : 'clock'; ?>"></i>

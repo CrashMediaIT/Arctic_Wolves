@@ -250,7 +250,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ['smtp_port', $smtp_port],
                 ['smtp_user', $smtp_user],
                 ['smtp_pass', $smtp_pass],
-                ['smtp_from', $smtp_from]
+                ['smtp_from_email', $smtp_from],
+                ['smtp_from_name', 'Arctic Wolves'],
+                ['smtp_encryption', 'tls']
             ];
             
             foreach ($settings as $setting) {

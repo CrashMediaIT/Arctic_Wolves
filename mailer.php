@@ -125,7 +125,8 @@ function logEmailAttempt($to, $subject, $type, $status, $errorMsg = null, $data 
     try {
         $payload = json_encode($data); // Save data for resending
         // Schema uses: to_email, from_email, subject, body, status, error_message, sent_at
-        $from = getEmailConfig()['from_email'] ?? 'noreply@arcticwolves.ca';
+        $config = getEmailConfig();
+        $from = $config['smtp_from_email'] ?? $config['smtp_user'] ?? 'noreply@arcticwolves.ca';
         $stmt = $pdo->prepare("INSERT INTO email_logs (to_email, from_email, subject, body, status, error_message, sent_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([$to, $from, $subject, $payload, $status, $errorMsg]);
     } catch (Exception $e) { /* Silent fail if DB issue */ }

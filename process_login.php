@@ -5,6 +5,27 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/error_logger.php';
 require_once __DIR__ . '/security.php';
 
+/**
+ * Record login attempt in login_history table
+ */
+function recordLoginHistory($pdo, $user_id, $status, $failure_reason = null) {
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO login_history (user_id, login_time, ip_address, user_agent, login_status, failure_reason)
+            VALUES (?, NOW(), ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $user_id,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            $_SERVER['HTTP_USER_AGENT'] ?? null,
+            $status,
+            $failure_reason
+        ]);
+    } catch (PDOException $e) {
+        error_log("Failed to record login history: " . $e->getMessage());
+    }
+}
+
 // Check database connection
 if (!$db_connected || $pdo === null) {
     ErrorLogger::error("Database connection failed during login", ['error' => $db_error ?? 'Unknown']);
@@ -43,6 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (isset($user['is_verified']) && $user['is_verified'] === 0) {
                 $_SESSION['login_error'] = "Your account has been disabled. Please contact an administrator for assistance.";
                 ErrorLogger::security("Login attempt for disabled account", ['email' => $email]);
+                recordLoginHistory($pdo, $user['id'], 'blocked', 'Account disabled');
                 header("Location: login.php");
                 exit();
             }
@@ -63,6 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     'email' => $email,
                     'role' => $user['role']
                 ]);
+                recordLoginHistory($pdo, $user['id'], 'success');
 
                 // Check if password change is required (for coach-created accounts)
                 if (isset($user['force_pass_change']) && $user['force_pass_change'] === 1) {
@@ -77,6 +100,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 // Invalid password
                 $_SESSION['login_error'] = "Invalid email or password.";
                 ErrorLogger::security("Failed login attempt - invalid password", ['email' => $email]);
+                recordLoginHistory($pdo, $user['id'], 'failed', 'Invalid password');
                 header("Location: login.php");
                 exit();
             }
