@@ -173,7 +173,7 @@ class Blocklist {
             self::ensureTable($pdo);
             if ($type && in_array($type, ['email', 'name', 'ip'])) {
                 $stmt = $pdo->prepare("
-                    SELECT bl.*, CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+                    SELECT bl.*, u.first_name as creator_first_name, u.last_name as creator_last_name
                     FROM registration_blocklist bl
                     LEFT JOIN users u ON bl.created_by = u.id
                     WHERE bl.block_type = ?
@@ -182,13 +182,28 @@ class Blocklist {
                 $stmt->execute([$type]);
             } else {
                 $stmt = $pdo->query("
-                    SELECT bl.*, CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+                    SELECT bl.*, u.first_name as creator_first_name, u.last_name as creator_last_name
                     FROM registration_blocklist bl
                     LEFT JOIN users u ON bl.created_by = u.id
                     ORDER BY bl.created_at DESC
                 ");
             }
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Decrypt creator names and build display name
+            if (class_exists('FieldEncryption')) {
+                foreach ($rows as &$row) {
+                    $row['creator_first_name'] = FieldEncryption::decrypt($row['creator_first_name'] ?? '');
+                    $row['creator_last_name'] = FieldEncryption::decrypt($row['creator_last_name'] ?? '');
+                    $row['created_by_name'] = trim(($row['creator_first_name'] ?? '') . ' ' . ($row['creator_last_name'] ?? ''));
+                }
+                unset($row);
+            } else {
+                foreach ($rows as &$row) {
+                    $row['created_by_name'] = trim(($row['creator_first_name'] ?? '') . ' ' . ($row['creator_last_name'] ?? ''));
+                }
+                unset($row);
+            }
+            return $rows;
         } catch (PDOException $e) {
             error_log("Blocklist::getEntries error: " . $e->getMessage());
             return [];

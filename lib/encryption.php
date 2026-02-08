@@ -156,9 +156,11 @@ class FieldEncryption {
 
     /**
      * Standard PII fields found in the users table.
+     * Note: email is listed for reference but should NOT be encrypted
+     * in practice because it is used in WHERE clauses and UNIQUE constraints.
      */
     const USER_PII_FIELDS = [
-        'first_name', 'last_name', 'email', 'phone', 'birth_date', 'date_of_birth'
+        'first_name', 'last_name', 'phone', 'birth_date', 'date_of_birth'
     ];
 
     /**

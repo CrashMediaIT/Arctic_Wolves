@@ -1477,8 +1477,8 @@ if ($action == 'create_user') {
         // Encrypt PII fields before storing (email kept as-is for login lookups)
         $enc_first_name = FieldEncryption::encrypt($first_name);
         $enc_last_name = FieldEncryption::encrypt($last_name);
-        $enc_phone = $phone ? FieldEncryption::encrypt($phone) : $phone;
-        $enc_birth_date = $birth_date ? FieldEncryption::encrypt($birth_date) : $birth_date;
+        $enc_phone = $phone ? FieldEncryption::encrypt($phone) : null;
+        $enc_birth_date = $birth_date ? FieldEncryption::encrypt($birth_date) : null;
         
         // Insert new user
         $stmt = $pdo->prepare("

@@ -82,7 +82,7 @@ if ($security_tab === 'login_history') {
         $params[] = $offset;
         $log_stmt = $pdo->prepare("
             SELECT lh.*, 
-                   CONCAT(u.first_name, ' ', u.last_name) as user_name,
+                   u.first_name as user_first_name, u.last_name as user_last_name,
                    u.role as user_role_name, u.email as user_email
             FROM login_history lh
             LEFT JOIN users u ON lh.user_id = u.id
@@ -92,6 +92,13 @@ if ($security_tab === 'login_history') {
         ");
         $log_stmt->execute($params);
         $login_logs = $log_stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Decrypt PII and build display names
+        foreach ($login_logs as &$ll) {
+            $ll['user_first_name'] = FieldEncryption::decrypt($ll['user_first_name'] ?? '');
+            $ll['user_last_name'] = FieldEncryption::decrypt($ll['user_last_name'] ?? '');
+            $ll['user_name'] = trim(($ll['user_first_name'] ?? '') . ' ' . ($ll['user_last_name'] ?? ''));
+        }
+        unset($ll);
         
     } catch (PDOException $e) {
         error_log("Security center - login history error: " . $e->getMessage());
@@ -127,7 +134,7 @@ if ($security_tab === 'audit_logs') {
         $params[] = $per_page;
         $params[] = $offset;
         $log_stmt = $pdo->prepare("
-            SELECT al.*, CONCAT(u.first_name, ' ', u.last_name) as user_name, u.role as user_role_name
+            SELECT al.*, u.first_name as user_first_name, u.last_name as user_last_name, u.role as user_role_name
             FROM audit_logs al
             LEFT JOIN users u ON al.user_id = u.id
             $where_clause
@@ -135,10 +142,24 @@ if ($security_tab === 'audit_logs') {
         ");
         $log_stmt->execute($params);
         $audit_logs = $log_stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Decrypt PII and build display names
+        foreach ($audit_logs as &$al_row) {
+            $al_row['user_first_name'] = FieldEncryption::decrypt($al_row['user_first_name'] ?? '');
+            $al_row['user_last_name'] = FieldEncryption::decrypt($al_row['user_last_name'] ?? '');
+            $al_row['user_name'] = trim(($al_row['user_first_name'] ?? '') . ' ' . ($al_row['user_last_name'] ?? ''));
+        }
+        unset($al_row);
         
         // Get unique tables/users for filters
         $audit_tables = $pdo->query("SELECT DISTINCT table_name FROM audit_logs ORDER BY table_name")->fetchAll(PDO::FETCH_COLUMN);
-        $audit_users = $pdo->query("SELECT DISTINCT u.id, CONCAT(u.first_name, ' ', u.last_name) as name FROM users u INNER JOIN audit_logs al ON al.user_id = u.id ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+        $audit_users = $pdo->query("SELECT DISTINCT u.id, u.first_name, u.last_name FROM users u INNER JOIN audit_logs al ON al.user_id = u.id ORDER BY u.first_name, u.last_name")->fetchAll(PDO::FETCH_ASSOC);
+        // Decrypt and build display names
+        foreach ($audit_users as &$au) {
+            $au['first_name'] = FieldEncryption::decrypt($au['first_name']);
+            $au['last_name'] = FieldEncryption::decrypt($au['last_name']);
+            $au['name'] = $au['first_name'] . ' ' . $au['last_name'];
+        }
+        unset($au);
         
     } catch (PDOException $e) {
         error_log("Security center - audit logs error: " . $e->getMessage());
@@ -169,7 +190,7 @@ if ($security_tab === 'error_logs') {
         $params[] = $per_page;
         $params[] = $offset;
         $log_stmt = $pdo->prepare("
-            SELECT el.*, CONCAT(u.first_name, ' ', u.last_name) as user_name
+            SELECT el.*, u.first_name as user_first_name, u.last_name as user_last_name
             FROM error_logs el
             LEFT JOIN users u ON el.user_id = u.id
             $where_clause
@@ -177,6 +198,13 @@ if ($security_tab === 'error_logs') {
         ");
         $log_stmt->execute($params);
         $error_logs = $log_stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Decrypt PII and build display names
+        foreach ($error_logs as &$el_row) {
+            $el_row['user_first_name'] = FieldEncryption::decrypt($el_row['user_first_name'] ?? '');
+            $el_row['user_last_name'] = FieldEncryption::decrypt($el_row['user_last_name'] ?? '');
+            $el_row['user_name'] = trim(($el_row['user_first_name'] ?? '') . ' ' . ($el_row['user_last_name'] ?? ''));
+        }
+        unset($el_row);
         
     } catch (PDOException $e) {
         error_log("Security center - error logs error: " . $e->getMessage());
@@ -187,7 +215,14 @@ if ($security_tab === 'error_logs') {
 // Get all users for filter dropdowns
 $all_users_for_filter = [];
 try {
-    $all_users_for_filter = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as name FROM users ORDER BY first_name, last_name")->fetchAll(PDO::FETCH_ASSOC);
+    $all_users_for_filter = $pdo->query("SELECT id, first_name, last_name FROM users ORDER BY first_name, last_name")->fetchAll(PDO::FETCH_ASSOC);
+    // Decrypt and build display names
+    foreach ($all_users_for_filter as &$uf) {
+        $uf['first_name'] = FieldEncryption::decrypt($uf['first_name']);
+        $uf['last_name'] = FieldEncryption::decrypt($uf['last_name']);
+        $uf['name'] = $uf['first_name'] . ' ' . $uf['last_name'];
+    }
+    unset($uf);
 } catch (PDOException $e) { /* ignore */ }
 
 // ---- BLOCKLIST DATA ----
@@ -207,14 +242,19 @@ $pos_whitelist_total = 0;
 if ($security_tab === 'pos_whitelist') {
     try {
         $wl_stmt = $pdo->query("
-            SELECT pw.*, CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+            SELECT pw.*, u.first_name as creator_first_name, u.last_name as creator_last_name
             FROM pos_allowed_ips pw
             LEFT JOIN users u ON pw.created_by = u.id
             ORDER BY pw.created_at DESC
         ");
         $pos_whitelist_entries = $wl_stmt->fetchAll(PDO::FETCH_ASSOC);
-        // Decrypt creator names
-        $pos_whitelist_entries = FieldEncryption::decryptRows($pos_whitelist_entries, ['created_by_name']);
+        // Decrypt creator names and build display name
+        foreach ($pos_whitelist_entries as &$pw_row) {
+            $pw_row['creator_first_name'] = FieldEncryption::decrypt($pw_row['creator_first_name'] ?? '');
+            $pw_row['creator_last_name'] = FieldEncryption::decrypt($pw_row['creator_last_name'] ?? '');
+            $pw_row['created_by_name'] = trim(($pw_row['creator_first_name'] ?? '') . ' ' . ($pw_row['creator_last_name'] ?? ''));
+        }
+        unset($pw_row);
         $pos_whitelist_total = count($pos_whitelist_entries);
     } catch (PDOException $e) {
         error_log("Security center - POS whitelist error: " . $e->getMessage());
