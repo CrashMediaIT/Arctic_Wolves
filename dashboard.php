@@ -61,6 +61,7 @@ $allowed_pages = [
     'home'                    => 'views/home.php',
     'stats'                   => 'views/stats.php',
     'goals'                   => 'views/goals.php',
+    'messages'                => 'views/messages.php',
     
     // Sessions - Parent page with tabs
     'sessions'                => 'views/sessions.php',
@@ -573,6 +574,10 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=stats" class="nav-link <?= in_array($page, ['stats', 'goals'])?'active':'' ?>">
                 <i class="fa-solid fa-chart-line icon"></i> Performance Stats
             </a>
+            <a href="?page=messages" class="nav-link <?= $page=='messages'?'active':'' ?>">
+                <i class="fa-solid fa-comments icon"></i> Messages
+                <span id="nav-msg-badge" style="display:none; background:var(--primary,#6B46C1); color:#fff; font-size:10px; font-weight:700; padding:1px 6px; border-radius:10px; margin-left:auto;"></span>
+            </a>
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>">
                 <i class="fa-solid fa-calendar-check icon"></i> Sessions
             </a>
@@ -892,6 +897,30 @@ function switchAthlete(athleteId) {
 
 <!-- Main Application JavaScript -->
 <script src="js/app.js"></script>
+
+<script>
+// Unread message badge polling
+(function() {
+    function updateMsgBadge() {
+        fetch('process_messages.php?action=unread_count')
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('nav-msg-badge');
+                if (badge && data.success) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count > 99 ? '99+' : data.count;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            })
+            .catch(function() {});
+    }
+    updateMsgBadge();
+    setInterval(updateMsgBadge, 30000);
+})();
+</script>
 
 </body>
 </html>

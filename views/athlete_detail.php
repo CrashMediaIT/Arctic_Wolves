@@ -54,9 +54,8 @@ $evaluations = $eval_stmt->fetchAll();
 
 // Get assigned teams
 $teams_stmt = $pdo->prepare("
-    SELECT at.*, s.season_name 
+    SELECT at.* 
     FROM athlete_teams at 
-    LEFT JOIN seasons s ON at.season_id = s.id
     WHERE at.athlete_id = ?
     ORDER BY at.created_at DESC
 ");
@@ -203,7 +202,7 @@ $teams = $teams_stmt->fetchAll();
                 <?php foreach ($teams as $team): ?>
                     <tr>
                         <td><?= htmlspecialchars($team['team_name']) ?></td>
-                        <td><?= htmlspecialchars($team['season_name'] ?? 'N/A') ?></td>
+                        <td><?= htmlspecialchars($team['season'] ?? 'N/A') ?></td>
                         <td><?= htmlspecialchars($team['position'] ?? 'N/A') ?></td>
                         <td><?= htmlspecialchars($team['jersey_number'] ?? 'N/A') ?></td>
                     </tr>
@@ -218,10 +217,11 @@ $teams = $teams_stmt->fetchAll();
 <?php if ($isAdmin || $isCoach): ?>
     <div class="detail-card">
         <h2>Management Actions</h2>
-        <div style="display: flex; gap: 10px; margin-top: 12px;">
+        <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
             <a href="?page=manage_athletes&id=<?= $athlete_id ?>" class="btn-primary"><i class="fas fa-user-edit"></i> Edit Profile</a>
             <a href="?page=evaluations_skills&athlete_id=<?= $athlete_id ?>" class="btn-primary"><i class="fas fa-clipboard-check"></i> New Evaluation</a>
             <a href="?page=stats&athlete_id=<?= $athlete_id ?>" class="btn-primary"><i class="fas fa-chart-line"></i> Update Stats</a>
+            <a href="?page=messages&user_id=<?= $athlete_id ?>" class="btn-primary"><i class="fas fa-comments"></i> Message</a>
         </div>
     </div>
 <?php endif; ?>

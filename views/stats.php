@@ -4,8 +4,8 @@
 $viewing_athlete_id = $user_id;
 $current_user_role = $user_role;
 
-// Coaches can switch between athletes
-if ($isCoach && isset($_GET['athlete_id'])) {
+// Coaches and parents can switch between athletes
+if (($isCoach || $isParent || $isAdmin) && isset($_GET['athlete_id'])) {
     $viewing_athlete_id = intval($_GET['athlete_id']);
 }
 
@@ -45,11 +45,15 @@ if ($viewing_athlete_id != $user_id) {
     <div class="page-header-content">
         <h1 class="page-title">
             <i class="fas fa-chart-line"></i> Performance Stats
+            <?php if ($athlete_info): ?>
+                <span style="font-size: 20px; color: #a78bfa;"> — <?php echo htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']); ?></span>
+            <?php endif; ?>
         </h1>
         <p class="page-description">
-            Track your progress and achieve your goals
             <?php if ($athlete_info): ?>
-                - <strong><?php echo htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']); ?></strong>
+                Viewing stats and goals for <strong><?php echo htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']); ?></strong>
+            <?php else: ?>
+                Track your progress and achieve your goals
             <?php endif; ?>
         </p>
     </div>

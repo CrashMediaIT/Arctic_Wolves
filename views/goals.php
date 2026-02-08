@@ -13,8 +13,8 @@ $current_user_role = $user_role;
 // Determine which athlete's goals to view
 $viewing_athlete_id = $current_user_id;
 
-// Coaches can switch between athletes
-if ($isCoach && isset($_GET['athlete_id'])) {
+// Coaches and parents can switch between athletes
+if (($isCoach || $isParent || $isAdmin) && isset($_GET['athlete_id'])) {
     $viewing_athlete_id = intval($_GET['athlete_id']);
 }
 
@@ -711,10 +711,13 @@ sort($all_tags);
         <div>
             <h1 class="page-title">
                 <i class="fas fa-bullseye"></i> Goals & Progress
+                <?php if ($athlete_info && $viewing_athlete_id != $current_user_id): ?>
+                    <span style="font-size: 20px; color: #a78bfa;"> — <?php echo htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']); ?></span>
+                <?php endif; ?>
             </h1>
-            <?php if ($athlete_info): ?>
+            <?php if ($athlete_info && $viewing_athlete_id != $current_user_id): ?>
                 <p style="color: #94a3b8; margin-top: 8px;">
-                    <?php echo htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']); ?>
+                    Viewing goals for <strong><?php echo htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']); ?></strong>
                 </p>
             <?php endif; ?>
         </div>
