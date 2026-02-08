@@ -54,9 +54,8 @@ $evaluations = $eval_stmt->fetchAll();
 
 // Get assigned teams
 $teams_stmt = $pdo->prepare("
-    SELECT at.*, s.season_name 
+    SELECT at.* 
     FROM athlete_teams at 
-    LEFT JOIN seasons s ON at.season_id = s.id
     WHERE at.athlete_id = ?
     ORDER BY at.created_at DESC
 ");
@@ -203,7 +202,7 @@ $teams = $teams_stmt->fetchAll();
                 <?php foreach ($teams as $team): ?>
                     <tr>
                         <td><?= htmlspecialchars($team['team_name']) ?></td>
-                        <td><?= htmlspecialchars($team['season_name'] ?? 'N/A') ?></td>
+                        <td><?= htmlspecialchars($team['season'] ?? 'N/A') ?></td>
                         <td><?= htmlspecialchars($team['position'] ?? 'N/A') ?></td>
                         <td><?= htmlspecialchars($team['jersey_number'] ?? 'N/A') ?></td>
                     </tr>
