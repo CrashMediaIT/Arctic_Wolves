@@ -994,12 +994,14 @@ function closeModal(modalId) {
 <script>
 // Toggle athlete/coach fields based on role selection
 document.getElementById('add-user-role').addEventListener('change', function() {
-    var athleteFields = this.closest('form').querySelector('.athlete-coach-fields');
-    if (this.value === 'athlete') {
-        athleteFields.style.display = 'grid';
-    } else {
-        athleteFields.style.display = 'none';
-    }
+    var athleteFields = this.closest('form').querySelectorAll('.athlete-coach-fields');
+    athleteFields.forEach(function(field) {
+        if (this.value === 'athlete') {
+            field.style.display = 'grid';
+        } else {
+            field.style.display = 'none';
+        }
+    }.bind(this));
 });
 </script>
 

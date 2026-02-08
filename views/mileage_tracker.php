@@ -22,8 +22,12 @@ $sessions_stmt = $pdo->query("
 $sessions = $sessions_stmt->fetchAll();
 
 // Get Google Maps API key
-$api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
-$google_maps_api_key = $api_key_stmt->fetchColumn();
+try {
+    $api_key_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'google_maps_api_key'");
+    $google_maps_api_key = $api_key_stmt->fetchColumn() ?: '';
+} catch (Exception $e) {
+    $google_maps_api_key = '';
+}
 
 // Get mileage rates
 $rates_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('mileage_rate_per_km', 'mileage_rate_per_mile')");

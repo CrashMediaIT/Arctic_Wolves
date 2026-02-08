@@ -353,8 +353,14 @@ function calculateDistance($waypoints) {
         
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         $response = curl_exec($ch);
+        $curl_error = curl_error($ch);
         curl_close($ch);
+        
+        if ($response === false) {
+            throw new Exception('Failed to connect to Google Maps API: ' . $curl_error);
+        }
         
         $data = json_decode($response, true);
         
