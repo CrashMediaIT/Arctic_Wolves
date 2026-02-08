@@ -176,7 +176,7 @@ CREATE TABLE IF NOT EXISTS `locations` (
     `postal_code` VARCHAR(10) DEFAULT NULL,
     `phone` VARCHAR(20) DEFAULT NULL,
     `google_place_id` VARCHAR(255) DEFAULT NULL,
-    `image_url` VARCHAR(500) DEFAULT NULL,
+    `image_url` TEXT DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
     `is_demo` TINYINT(1) DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -3634,3 +3634,6 @@ CREATE TABLE IF NOT EXISTS `evaluation_template_categories` (
 ALTER TABLE `session_evaluations`
 ADD COLUMN IF NOT EXISTS `template_id` INT DEFAULT NULL COMMENT 'Reference to evaluation template used',
 ADD INDEX IF NOT EXISTS `idx_template` (`template_id`);
+
+-- Fix locations image_url column to support long Google Places API photo URLs
+ALTER TABLE `locations` MODIFY COLUMN `image_url` TEXT DEFAULT NULL;

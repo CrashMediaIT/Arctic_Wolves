@@ -182,7 +182,8 @@ function testNextcloudConnection($settings) {
         $connection = connectNextcloud($settings);
         $folder = $settings['nextcloud_receipt_folder'] ?? '/receipts';
         $files = listNextcloudFiles($connection, $folder);
-        return ['success' => true, 'message' => 'Connection successful', 'file_count' => count($files)];
+        $server_name = parse_url($connection['url'], PHP_URL_HOST) ?: $connection['url'];
+        return ['success' => true, 'message' => 'Connection successful', 'file_count' => count($files), 'server_name' => $server_name];
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
     }
