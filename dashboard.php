@@ -52,7 +52,7 @@ $isParent      = ($user_role === 'parent');
 $isFrontDesk   = ($user_role === 'front_desk_staff');
 
 // Combined role checks for sections
-$isAnyCoach    = ($isCoach || $isHealthCoach || $isAdmin);
+$isAnyCoach    = ($isCoach || $isAdmin);
 $isTeamStaff   = ($isTeamCoach);
 $canAccessPOS  = ($isAdmin || $isFrontDesk);
 $canAccessHealthManagement = ($isHealthCoach || $isAdmin);
@@ -701,7 +701,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     </div>
     <?php endif; ?>
 
-    <!-- COACHES CORNER (Coaches, Health Coaches, and Admins) -->
+    <!-- COACHES CORNER (On-ice Coaches and Admins only, not Health Coaches) -->
     <?php if($isAnyCoach): ?>
     <div class="nav-group">
         <span class="nav-label">Coaches Corner</span>
