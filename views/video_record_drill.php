@@ -56,6 +56,7 @@ $athletes_query = "
     ORDER BY u.last_name, u.first_name
 ";
 $athletes = $pdo->query($athletes_query)->fetchAll();
+$athletes = decryptUserRows($athletes);
 
 // Check Nextcloud connection status
 $nextcloud_available = false;

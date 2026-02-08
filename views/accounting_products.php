@@ -39,6 +39,7 @@ try {
         ORDER BY last_name, first_name
     ");
     $coaches = $coachesStmt->fetchAll(PDO::FETCH_ASSOC);
+    $coaches = decryptUserRows($coaches);
 } catch (PDOException $e) {
     error_log("Coaches fetch error: " . $e->getMessage());
     $coaches = [];
