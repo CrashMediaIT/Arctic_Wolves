@@ -483,6 +483,7 @@ function requirePermission($pdo, $user_id, $user_role, $permission, $json = fals
  * Admins are always allowed. Non-admin users are restricted to
  * IP addresses listed in the pos_allowed_ips table.
  * If no IPs are configured in the table, all users are allowed (open access).
+ * Returns true if the table doesn't exist yet (graceful degradation).
  *
  * @param PDO $pdo Database connection
  * @param string $user_role User role
@@ -500,20 +501,18 @@ function checkPOSIPAccess($pdo, $user_role) {
     }
 
     try {
-        // Check if any allowed IPs are configured
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM pos_allowed_ips WHERE is_active = 1");
-        $stmt->execute();
-        $count = (int) $stmt->fetchColumn();
-
-        // If no IPs configured, allow open access (table not yet set up)
-        if ($count === 0) {
+        // First check if the client IP is explicitly allowed
+        $stmt = $pdo->prepare("SELECT 1 FROM pos_allowed_ips WHERE ip_address = ? AND is_active = 1 LIMIT 1");
+        $stmt->execute([$client_ip]);
+        if ($stmt->fetch()) {
             return true;
         }
 
-        // Check if client IP is in the allowed list
-        $stmt = $pdo->prepare("SELECT 1 FROM pos_allowed_ips WHERE ip_address = ? AND is_active = 1 LIMIT 1");
-        $stmt->execute([$client_ip]);
-        return (bool) $stmt->fetch();
+        // IP not found - check if any IPs are configured at all
+        // If none configured, allow open access (table not yet set up)
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM pos_allowed_ips WHERE is_active = 1");
+        $stmt->execute();
+        return ((int) $stmt->fetchColumn() === 0);
     } catch (PDOException $e) {
         // If table doesn't exist yet, allow access (graceful degradation)
         error_log("POS IP check error: " . $e->getMessage());
