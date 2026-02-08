@@ -405,28 +405,28 @@ foreach ($users as $u) {
 </div>
 
 <script>
+// Show notification helper (global scope for use across script blocks)
+function showNotification(message, type) {
+    var existing = document.querySelector('.notification-widget');
+    if (existing) existing.remove();
+    
+    var div = document.createElement('div');
+    div.className = 'notification-widget';
+    div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px;';
+    if (type === 'success') {
+        div.style.background = 'rgba(16, 185, 129, 0.95)';
+        div.style.color = '#fff';
+    } else {
+        div.style.background = 'rgba(239, 68, 68, 0.95)';
+        div.style.color = '#fff';
+    }
+    div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
+    document.body.appendChild(div);
+    setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
-    
-    // Show notification helper
-    function showNotification(message, type) {
-        var existing = document.querySelector('.notification-widget');
-        if (existing) existing.remove();
-        
-        var div = document.createElement('div');
-        div.className = 'notification-widget';
-        div.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px;';
-        if (type === 'success') {
-            div.style.background = 'rgba(16, 185, 129, 0.95)';
-            div.style.color = '#fff';
-        } else {
-            div.style.background = 'rgba(239, 68, 68, 0.95)';
-            div.style.color = '#fff';
-        }
-        div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message + '<button onclick="this.parentElement.remove()" style="margin-left: 16px; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">&times;</button>';
-        document.body.appendChild(div);
-        setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
-    }
     
     // Handle toggle-status buttons for users
     document.querySelectorAll('[data-action="toggle-status"]').forEach(function(btn) {
