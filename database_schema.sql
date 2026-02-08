@@ -1407,6 +1407,7 @@ CREATE TABLE IF NOT EXISTS `managed_athletes` (
 
 -- Athlete Coaches (multiple coach assignments to athletes)
 -- This table supports assigning multiple coaches to a single athlete
+-- A single coach can hold multiple roles for the same athlete (e.g. on-ice coach and health coach)
 CREATE TABLE IF NOT EXISTS `athlete_coaches` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `athlete_id` INT NOT NULL,
@@ -1419,7 +1420,7 @@ CREATE TABLE IF NOT EXISTS `athlete_coaches` (
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
-    UNIQUE KEY `unique_athlete_coach` (`athlete_id`, `coach_id`),
+    UNIQUE KEY `unique_athlete_coach_role` (`athlete_id`, `coach_id`, `role_type`),
     INDEX `idx_athlete` (`athlete_id`),
     INDEX `idx_coach` (`coach_id`),
     INDEX `idx_status` (`status`)
@@ -3697,6 +3698,20 @@ CREATE TABLE IF NOT EXISTS `error_logs` (
     INDEX `idx_user` (`user_id`),
     INDEX `idx_level` (`error_level`),
     INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- POS Allowed IP Addresses (restrict POS access to specific IPs, admins exempt)
+CREATE TABLE IF NOT EXISTS `pos_allowed_ips` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ip_address` VARCHAR(45) NOT NULL,
+    `label` VARCHAR(100) DEFAULT NULL,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_ip` (`ip_address`),
+    INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Registration blocklist for blocking users by email, name, or IP address

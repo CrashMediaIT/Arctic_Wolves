@@ -57,7 +57,7 @@ try {
         
         // Get recent coach notes (feedback)
         $stmt = $pdo->prepare("
-            SELECT vr.*, u.name as coach_name
+            SELECT vr.*, CONCAT(u.first_name, ' ', u.last_name) as coach_name
             FROM video_reviews vr
             LEFT JOIN users u ON vr.coach_id = u.id
             WHERE vr.athlete_id = ?
@@ -98,7 +98,7 @@ try {
         
         // Get pending video reviews
         $stmt = $pdo->prepare("
-            SELECT vr.*, u.name as athlete_name
+            SELECT vr.*, CONCAT(u.first_name, ' ', u.last_name) as athlete_name
             FROM video_drill_reviews vr
             LEFT JOIN users u ON vr.athlete_id = u.id
             WHERE vr.status = 'pending'
@@ -110,7 +110,7 @@ try {
         
         // Get recent athlete updates
         $stmt = $pdo->prepare("
-            SELECT n.*, u.name as athlete_name
+            SELECT n.*, CONCAT(u.first_name, ' ', u.last_name) as athlete_name
             FROM notifications n
             LEFT JOIN users u ON n.user_id = u.id
             WHERE n.type IN ('injury', 'absence', 'alert')
@@ -879,11 +879,11 @@ document.addEventListener('DOMContentLoaded', function() {
         <?php
         // Get parent's associated athletes
         $stmt = $pdo->prepare("
-            SELECT u.id, u.name, u.email
+            SELECT u.id, CONCAT(u.first_name, ' ', u.last_name) as name, u.email
             FROM users u
             INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
             WHERE par.parent_id = ?
-            ORDER BY u.name ASC
+            ORDER BY u.last_name ASC, u.first_name ASC
         ");
         $stmt->execute([$user_id]);
         $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);

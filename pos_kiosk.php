@@ -33,6 +33,14 @@ if (!$db_connected || !$pdo) {
 
 $error = '';
 
+// Check IP whitelist for POS kiosk access (admins exempt)
+// For kiosk login page, users are not yet authenticated so treat as non-admin
+$kiosk_user_role = $_SESSION['user_role'] ?? '';
+if (!checkPOSIPAccess($pdo, $kiosk_user_role)) {
+    logSecurityEvent('pos_ip_blocked', 'POS kiosk access denied from unauthorized IP', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
+    die('<div style="text-align: center; padding: 60px; font-family: sans-serif; color: #ef4444;"><h2>Access Denied</h2><p>POS kiosk access is not available from this location. Please contact an administrator.</p></div>');
+}
+
 // Handle PIN login
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'pin_login') {
     // Validate CSRF

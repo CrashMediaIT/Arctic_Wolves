@@ -4,6 +4,7 @@
  */
 session_start();
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/security.php';
 
 // Check authentication
 if (!isset($_SESSION['user_id'])) {
@@ -17,6 +18,14 @@ $userRole = $_SESSION['user_role'] ?? '';
 if (!in_array($userRole, ['admin', 'front_desk_staff'])) {
     http_response_code(403);
     echo '<p style="color: #ef4444;">Access denied</p>';
+    exit();
+}
+
+// Check IP whitelist for POS access (admins exempt)
+if (!checkPOSIPAccess($pdo, $userRole)) {
+    logSecurityEvent('pos_ip_blocked', 'POS transaction access denied from unauthorized IP', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
+    http_response_code(403);
+    echo '<p style="color: #ef4444;">POS access is not available from this location</p>';
     exit();
 }
 

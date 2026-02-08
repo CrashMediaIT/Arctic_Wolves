@@ -10,6 +10,8 @@ if (!isset($_SESSION['user_id']) || !$canAccessPOS) {
     return;
 }
 
+// Note: Schedule is viewable from any location (no IP restriction)
+
 $currentUserId = $_SESSION['user_id'];
 
 // Fetch upcoming schedules for the next month

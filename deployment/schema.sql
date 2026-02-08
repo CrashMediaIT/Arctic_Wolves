@@ -1126,6 +1126,7 @@ CREATE TABLE IF NOT EXISTS `managed_athletes` (
 
 -- Athlete Coaches (multiple coach assignments to athletes)
 -- This table supports assigning multiple coaches to a single athlete
+-- A single coach can hold multiple roles for the same athlete (e.g. on-ice coach and health coach)
 CREATE TABLE IF NOT EXISTS `athlete_coaches` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `athlete_id` INT NOT NULL,
@@ -1138,7 +1139,7 @@ CREATE TABLE IF NOT EXISTS `athlete_coaches` (
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
-    UNIQUE KEY `unique_athlete_coach` (`athlete_id`, `coach_id`),
+    UNIQUE KEY `unique_athlete_coach_role` (`athlete_id`, `coach_id`, `role_type`),
     INDEX `idx_athlete` (`athlete_id`),
     INDEX `idx_coach` (`coach_id`),
     INDEX `idx_status` (`status`)
