@@ -348,7 +348,7 @@ foreach ($mileage_entries as $entry) {
             <form method="GET" action="" class="filter-group" id="filterForm">
                 <input type="hidden" name="page" value="mileage">
                 
-                <select name="period" class="form-input-small" data-action="auto-submit">
+                <select name="period" class="form-input-small" aria-label="Filter by period" data-action="auto-submit">
                     <option value="week" <?= $filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
                     <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
                     <option value="last_month" <?= $filter_period === 'last_month' ? 'selected' : '' ?>>Last Month</option>
@@ -359,16 +359,16 @@ foreach ($mileage_entries as $entry) {
                     <option value="all" <?= $filter_period === 'all' ? 'selected' : '' ?>>All Time</option>
                 </select>
                 
-                <input type="text" name="search" class="form-input-small" placeholder="Search title/purpose..." value="<?= htmlspecialchars($filter_search) ?>">
+                <input type="text" name="search" class="form-input-small" aria-label="Search title or purpose" placeholder="Search title/purpose..." value="<?= htmlspecialchars($filter_search) ?>">
                 
-                <select name="athlete_id" class="form-input-small" data-action="auto-submit">
+                <select name="athlete_id" class="form-input-small" aria-label="Filter by athlete" data-action="auto-submit">
                     <option value="">All Athletes</option>
                     <?php foreach ($athletes as $athlete): ?>
                         <option value="<?= $athlete['id'] ?>" <?= $filter_athlete == $athlete['id'] ? 'selected' : '' ?>><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 
-                <select name="session_id" class="form-input-small" data-action="auto-submit">
+                <select name="session_id" class="form-input-small" aria-label="Filter by session" data-action="auto-submit">
                     <option value="">All Sessions</option>
                     <?php foreach ($sessions as $session): ?>
                         <option value="<?= $session['id'] ?>" <?= $filter_session == $session['id'] ? 'selected' : '' ?>><?= htmlspecialchars($session['session_name']) ?></option>
