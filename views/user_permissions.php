@@ -20,6 +20,7 @@ if ($target_user_id) {
     $user_stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
     $user_stmt->execute([$target_user_id]);
     $target_user = $user_stmt->fetch();
+    $target_user = decryptUserRow($target_user);
 }
 
 // Get current permissions for this user
@@ -138,6 +139,7 @@ $role_perm_ids = array_column($role_permissions, 'id');
         <?php
         $users_stmt = $pdo->query("SELECT id, first_name, last_name, email, role FROM users ORDER BY last_name, first_name");
         $all_users = $users_stmt->fetchAll();
+        $all_users = decryptUserRows($all_users);
         ?>
         
         <table style="width: 100%;">

@@ -22,6 +22,7 @@ $terminations_stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
 $terminations_stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $terminations_stmt->execute();
 $terminations = $terminations_stmt->fetchAll();
+$terminations = decryptUserRows($terminations);
 
 // Fetch termination documents for modal
 $docsQuery = "SELECT td.*, et.id as termination_id 
@@ -52,6 +53,7 @@ try {
 $employeesQuery = "SELECT id, first_name, last_name, role, email FROM users WHERE is_active = 1 AND role IN ('admin', 'coach', 'health_coach', 'team_coach') ORDER BY first_name, last_name";
 $employees_stmt = $pdo->query($employeesQuery);
 $employees = $employees_stmt->fetchAll();
+$employees = decryptUserRows($employees);
 ?>
 <!-- HR Termination View -->
 

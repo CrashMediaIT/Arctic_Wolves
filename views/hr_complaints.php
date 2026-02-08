@@ -68,6 +68,7 @@ try {
     $complaints_stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $complaints_stmt->execute();
     $complaints = $complaints_stmt->fetchAll();
+    $complaints = decryptUserRows($complaints);
 } catch (PDOException $e) {
     $complaints = [];
     error_log("HR Complaints fetch error: " . $e->getMessage());
@@ -95,6 +96,7 @@ try {
         WHERE is_active = 1 AND role IN ('admin', 'coach', 'health_coach', 'team_coach', 'front_desk_staff') 
         ORDER BY first_name, last_name";
     $staff = $pdo->query($staffQuery)->fetchAll();
+    $staff = decryptUserRows($staff);
 } catch (PDOException $e) {
     $staff = [];
 }

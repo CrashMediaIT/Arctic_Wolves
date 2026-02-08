@@ -32,6 +32,7 @@ $coaches_query = $pdo->query("
     ORDER BY u.first_name, u.last_name
 ");
 $coaches = $coaches_query->fetchAll(PDO::FETCH_ASSOC);
+$coaches = decryptUserRows($coaches);
 
 $csrf_token = generateCsrfToken();
 ?>

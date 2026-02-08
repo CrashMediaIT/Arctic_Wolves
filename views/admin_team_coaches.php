@@ -28,6 +28,7 @@ $coaches_stmt = $pdo->query("
     ORDER BY last_name, first_name
 ");
 $coaches = $coaches_stmt->fetchAll();
+$coaches = decryptUserRows($coaches);
 
 // Get all teams
 $teams_stmt = $pdo->query("
@@ -52,6 +53,7 @@ $assignments_stmt = $pdo->query("
     ORDER BY s.is_active DESC, s.start_date DESC, u.last_name, t.name
 ");
 $assignments = $assignments_stmt->fetchAll();
+$assignments = decryptUserRows($assignments);
 
 // Get team-season associations
 $team_seasons_stmt = $pdo->query("
@@ -74,6 +76,7 @@ $athletes_stmt = $pdo->query("
     ORDER BY last_name, first_name
 ");
 $athletes = $athletes_stmt->fetchAll();
+$athletes = decryptUserRows($athletes);
 
 // Get roster entries grouped by team and season
 $roster_stmt = $pdo->query("
@@ -89,6 +92,7 @@ $roster_stmt = $pdo->query("
     ORDER BY s.is_active DESC, s.start_date DESC, t.name, u.last_name
 ");
 $roster_entries = $roster_stmt->fetchAll();
+$roster_entries = decryptUserRows($roster_entries);
 
 // Build list of team-season combos that exist (for roster assignment dropdown)
 $team_season_combos = [];

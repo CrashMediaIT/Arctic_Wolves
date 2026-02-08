@@ -27,6 +27,7 @@ try {
         ORDER BY u.first_name, u.last_name
     ");
     $staffMembers = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
+    $staffMembers = decryptUserRows($staffMembers);
     
     // Get all upcoming schedules
     $scheduleStmt = $pdo->query("
@@ -38,6 +39,7 @@ try {
         LIMIT 100
     ");
     $allSchedules = $scheduleStmt->fetchAll(PDO::FETCH_ASSOC);
+    $allSchedules = decryptUserRows($allSchedules);
     
     // Get schedule history (past 90 days)
     $historyStmt = $pdo->query("
@@ -50,6 +52,7 @@ try {
         LIMIT 200
     ");
     $historySchedules = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
+    $historySchedules = decryptUserRows($historySchedules);
     
 } catch (PDOException $e) {
     error_log("Admin staff scheduling error: " . $e->getMessage());

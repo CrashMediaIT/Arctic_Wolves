@@ -59,6 +59,7 @@ $params[] = $per_page;
 $params[] = $offset;
 $logs_query->execute($params);
 $logs = $logs_query->fetchAll(PDO::FETCH_ASSOC);
+$logs = decryptUserRows($logs);
 
 // Get total count
 $count_query = $pdo->prepare("SELECT COUNT(*) FROM audit_logs al $where_clause");
@@ -78,6 +79,7 @@ $users_query = $pdo->query("
     ORDER BY name
 ");
 $users = $users_query->fetchAll(PDO::FETCH_ASSOC);
+$users = decryptUserRows($users);
 
 // Count by action type
 $insert_count = 0;

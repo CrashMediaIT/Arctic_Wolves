@@ -41,6 +41,7 @@ $users = $pdo->query("
     WHERE role != 'athlete'
     ORDER BY role, first_name
 ")->fetchAll();
+$users = decryptUserRows($users);
 ?>
 
 <style>
