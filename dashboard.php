@@ -28,6 +28,16 @@ $user_id   = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 $user_name = $_SESSION['user_name'] ?? 'Guest';
 
+// Update last_activity for online status tracking (at most once per minute)
+if (!isset($_SESSION['last_activity_update']) || (time() - $_SESSION['last_activity_update']) > 60) {
+    try {
+        $pdo->prepare("UPDATE login_history SET last_activity = NOW() WHERE user_id = ? AND logout_time IS NULL ORDER BY login_time DESC LIMIT 1")->execute([$user_id]);
+        $_SESSION['last_activity_update'] = time();
+    } catch (PDOException $e) {
+        // Silently fail - column may not exist yet
+    }
+}
+
 // Persona mode: check if admin is impersonating another role
 $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original_role']) && $_SESSION['persona_original_role'] === 'admin'));
 $personaActive = !empty($_SESSION['persona_active']);
@@ -170,6 +180,7 @@ $allowed_pages = [
     'admin_coach_termination' => 'views/admin_coach_termination.php',
     'admin_feature_import'    => 'views/admin_feature_import.php',
     'admin_theme_settings'    => 'views/admin_theme_settings.php',
+    'admin_security'          => 'views/admin_security.php',
     'ihs_import'              => 'views/ihs_import.php',
     'session_templates'       => 'views/library_sessions.php',
     
@@ -829,6 +840,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=audit_log" class="nav-link <?= $page=='audit_log'?'active':'' ?>">
                 <i class="fa-solid fa-list-check icon"></i> Audit Log
+            </a>
+            <a href="?page=admin_security" class="nav-link <?= $page=='admin_security'?'active':'' ?>">
+                <i class="fa-solid fa-shield-halved icon"></i> Security
             </a>
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>">
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools
