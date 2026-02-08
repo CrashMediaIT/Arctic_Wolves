@@ -614,7 +614,7 @@ $is_demo_data = false;
 }
 
 .view-btn.active {
-    background: var(--neon);
+    background: var(--primary);
     color: white;
 }
 
@@ -649,12 +649,12 @@ $is_demo_data = false;
 }
 
 .session-card:hover {
-    border-color: var(--neon);
+    border-color: var(--primary);
     box-shadow: 0 4px 20px rgba(255, 77, 0, 0.1);
 }
 
 .date-box {
-    background: linear-gradient(135deg, var(--neon), var(--accent));
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     border-radius: 8px;
     padding: 16px;
     text-align: center;
@@ -701,7 +701,7 @@ $is_demo_data = false;
 }
 
 .session-meta i {
-    color: var(--neon);
+    color: var(--primary);
     margin-right: 5px;
 }
 
@@ -713,7 +713,7 @@ $is_demo_data = false;
 
 .tag {
     background: rgba(255, 77, 0, 0.1);
-    color: var(--neon);
+    color: var(--primary);
     padding: 4px 12px;
     border-radius: 4px;
     font-size: 12px;
@@ -772,6 +772,7 @@ $is_demo_data = false;
 }
 
 .calendar-grid {
+    display: block;
     min-height: 400px;
 }
 
@@ -783,6 +784,7 @@ $is_demo_data = false;
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
+    padding: 0;
 }
 
 .calendar-day-header {
@@ -815,7 +817,7 @@ $is_demo_data = false;
 
 .calendar-day.today {
     background: rgba(107, 70, 193, 0.1);
-    border: 2px solid var(--neon);
+    border: 2px solid var(--primary);
 }
 
 .calendar-day.has-sessions {
@@ -830,7 +832,7 @@ $is_demo_data = false;
 }
 
 .calendar-day.today .day-number {
-    color: var(--neon);
+    color: var(--primary);
 }
 
 .day-sessions {
@@ -840,7 +842,7 @@ $is_demo_data = false;
 }
 
 .session-indicator {
-    background: linear-gradient(135deg, var(--neon), var(--accent));
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: white;
     padding: 4px 6px;
     border-radius: 4px;
@@ -879,8 +881,8 @@ $is_demo_data = false;
 }
 
 .btn-icon:hover {
-    background: var(--neon);
-    border-color: var(--neon);
+    background: var(--primary);
+    border-color: var(--primary);
 }
 
 @media (max-width: 768px) {
@@ -1071,7 +1073,7 @@ $is_demo_data = false;
 }
 
 .demo-badge {
-    background: linear-gradient(135deg, var(--neon), var(--accent));
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: white;
     padding: 4px 10px;
     border-radius: 4px;
