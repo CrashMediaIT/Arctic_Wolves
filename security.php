@@ -477,3 +477,46 @@ function requirePermission($pdo, $user_id, $user_role, $permission, $json = fals
         }
     }
 }
+
+/**
+ * Check if the current IP is allowed to access POS systems.
+ * Admins are always allowed. Non-admin users are restricted to
+ * IP addresses listed in the pos_allowed_ips table.
+ * If no IPs are configured in the table, all users are allowed (open access).
+ *
+ * @param PDO $pdo Database connection
+ * @param string $user_role User role
+ * @return bool True if access is allowed, false otherwise
+ */
+function checkPOSIPAccess($pdo, $user_role) {
+    // Admins are always exempt from IP restrictions
+    if ($user_role === 'admin') {
+        return true;
+    }
+
+    $client_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    if (empty($client_ip)) {
+        return false;
+    }
+
+    try {
+        // Check if any allowed IPs are configured
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM pos_allowed_ips WHERE is_active = 1");
+        $stmt->execute();
+        $count = (int) $stmt->fetchColumn();
+
+        // If no IPs configured, allow open access (table not yet set up)
+        if ($count === 0) {
+            return true;
+        }
+
+        // Check if client IP is in the allowed list
+        $stmt = $pdo->prepare("SELECT 1 FROM pos_allowed_ips WHERE ip_address = ? AND is_active = 1 LIMIT 1");
+        $stmt->execute([$client_ip]);
+        return (bool) $stmt->fetch();
+    } catch (PDOException $e) {
+        // If table doesn't exist yet, allow access (graceful degradation)
+        error_log("POS IP check error: " . $e->getMessage());
+        return true;
+    }
+}

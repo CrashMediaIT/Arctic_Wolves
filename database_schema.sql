@@ -3699,6 +3699,20 @@ CREATE TABLE IF NOT EXISTS `error_logs` (
     INDEX `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- POS Allowed IP Addresses (restrict POS access to specific IPs, admins exempt)
+CREATE TABLE IF NOT EXISTS `pos_allowed_ips` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `ip_address` VARCHAR(45) NOT NULL,
+    `label` VARCHAR(100) DEFAULT NULL,
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_ip` (`ip_address`),
+    INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Registration blocklist for blocking users by email, name, or IP address
 CREATE TABLE IF NOT EXISTS `registration_blocklist` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

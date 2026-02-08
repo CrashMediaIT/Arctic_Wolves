@@ -49,6 +49,12 @@ if (!$canAccessPOS) {
     exit();
 }
 
+// Check IP whitelist for POS access (admins exempt)
+if (!checkPOSIPAccess($pdo, $user_role)) {
+    logSecurityEvent('pos_ip_blocked', 'POS kiosk dashboard access denied from unauthorized IP', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
+    die('<div style="text-align: center; padding: 60px; font-family: sans-serif; color: #ef4444;"><h2>Access Denied</h2><p>POS access is not available from this location. Please contact an administrator.</p></div>');
+}
+
 // Fetch all active products
 try {
     $stmt = $pdo->prepare("
