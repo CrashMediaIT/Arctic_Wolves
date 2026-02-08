@@ -5,7 +5,7 @@ try {
     $templatesStmt = $pdo->query("
         SELECT tst.*, 
                st.name as session_type_name,
-               CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+               u.first_name as coach_first_name, u.last_name as coach_last_name,
                l.name as location_name,
                pp.name as practice_plan_name
         FROM training_session_templates tst
@@ -16,6 +16,7 @@ try {
         ORDER BY tst.created_at DESC
     ");
     $sessionTemplates = $templatesStmt->fetchAll(PDO::FETCH_ASSOC);
+    $sessionTemplates = decryptUserRows($sessionTemplates);
 } catch (PDOException $e) {
     error_log("Session templates fetch error: " . $e->getMessage());
     $sessionTemplates = [];
@@ -347,8 +348,9 @@ $activeTab = $_GET['tab'] ?? 'sessions';
                                 <?php if ($maxParticipants): ?>
                                 <p><i class="fas fa-users"></i> Max <?= $maxParticipants ?> participants</p>
                                 <?php endif; ?>
-                                <?php if (!empty($session['coach_name'])): ?>
-                                <p><i class="fas fa-user-tie"></i> <?= htmlspecialchars($session['coach_name']) ?></p>
+                                <?php $acct_coach_name = trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')); ?>
+                                <?php if (!empty($acct_coach_name)): ?>
+                                <p><i class="fas fa-user-tie"></i> <?= htmlspecialchars($acct_coach_name) ?></p>
                                 <?php endif; ?>
                                 <?php if (!empty($session['description'])): ?>
                                 <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars(substr($session['description'], 0, 50)) ?><?= strlen($session['description']) > 50 ? '...' : '' ?></p>

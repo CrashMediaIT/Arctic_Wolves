@@ -262,7 +262,7 @@ $filter_category = $_GET['category'] ?? '';
 try {
     $goals_query = "
         SELECT g.*,
-               CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+               u.first_name as creator_first_name, u.last_name as creator_last_name,
                (SELECT COUNT(*) FROM goal_steps WHERE goal_id = g.id) as total_steps,
                (SELECT COUNT(*) FROM goal_steps WHERE goal_id = g.id AND is_completed = 1) as completed_steps
         FROM goals g
@@ -292,6 +292,7 @@ try {
     $goals_stmt = $pdo->prepare($goals_query);
     $goals_stmt->execute($params);
     $allGoals = $goals_stmt->fetchAll();
+    $allGoals = decryptUserRows($allGoals);
 } catch (PDOException $e) {
     error_log("Stats - all goals error: " . $e->getMessage());
 }

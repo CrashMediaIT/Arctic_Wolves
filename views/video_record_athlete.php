@@ -15,9 +15,13 @@ if ($user_role === 'athlete' || $user_role === 'parent') {
     $assigned_coach_id = $coach_row['assigned_coach_id'] ?? null;
     
     if ($assigned_coach_id) {
-        $coach_name_stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM users WHERE id = ?");
+        $coach_name_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $coach_name_stmt->execute([$assigned_coach_id]);
-        $assigned_coach_name = $coach_name_stmt->fetchColumn() ?: '';
+        $coach_row_data = $coach_name_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($coach_row_data) {
+            $coach_row_data = decryptUserRow($coach_row_data);
+            $assigned_coach_name = trim(($coach_row_data['first_name'] ?? '') . ' ' . ($coach_row_data['last_name'] ?? ''));
+        }
     }
 }
 

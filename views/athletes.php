@@ -64,8 +64,10 @@ if (!empty($filter_age_group)) {
 }
 
 if (!empty($filter_name)) {
-    $query .= " AND (CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR u.email LIKE ?)";
+    $query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR u.email LIKE ?)";
     $search_term = '%' . $filter_name . '%';
+    $params[] = $search_term;
+    $params[] = $search_term;
     $params[] = $search_term;
     $params[] = $search_term;
 }

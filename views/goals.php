@@ -49,7 +49,7 @@ $msg = $_GET['msg'] ?? '';
 // Build query for goals
 $goals_query = "
     SELECT g.*,
-           CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+           u.first_name as creator_first_name, u.last_name as creator_last_name,
            (SELECT COUNT(*) FROM goal_steps WHERE goal_id = g.id) as total_steps,
            (SELECT COUNT(*) FROM goal_steps WHERE goal_id = g.id AND is_completed = 1) as completed_steps
     FROM goals g
@@ -88,6 +88,7 @@ $goals_query .= " ORDER BY " . ($group_by === 'category' ? "g.category ASC, " : 
 $goals_stmt = $pdo->prepare($goals_query);
 $goals_stmt->execute($params);
 $goals = $goals_stmt->fetchAll();
+$goals = decryptUserRows($goals);
 
 // Get all categories for filter
 $categories = $pdo->query("SELECT DISTINCT category FROM goals WHERE category IS NOT NULL AND category != '' ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);

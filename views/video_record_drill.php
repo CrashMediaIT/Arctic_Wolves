@@ -16,7 +16,7 @@ if (!in_array($user_role, $allowed_roles)) {
 $today = date('Y-m-d');
 $sessions_query = "
     SELECT s.*, st.name as session_type_name, 
-           CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+           u.first_name as coach_first_name, u.last_name as coach_last_name,
            (SELECT COUNT(*) FROM session_attendance sa WHERE sa.session_id = s.id) as attendee_count
     FROM sessions s
     LEFT JOIN session_types st ON s.session_type_id = st.id
@@ -27,6 +27,7 @@ $sessions_query = "
 $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute([$today]);
 $todays_sessions = $sessions_stmt->fetchAll();
+$todays_sessions = decryptUserRows($todays_sessions);
 
 // Get all active sessions for selection (last 7 days)
 $recent_sessions_query = "

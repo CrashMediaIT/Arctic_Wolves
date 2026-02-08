@@ -38,7 +38,7 @@ $athlete_info = decryptUserRow($athlete_info);
 // Get all evaluations for viewing athlete
 $evals_stmt = $pdo->prepare("
     SELECT ge.*, 
-           CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+           u.first_name as creator_first_name, u.last_name as creator_last_name,
            (SELECT COUNT(*) FROM goal_eval_steps WHERE goal_eval_id = ge.id) as total_steps,
            (SELECT COUNT(*) FROM goal_eval_steps WHERE goal_eval_id = ge.id AND is_completed = 1) as completed_steps
     FROM goal_evaluations ge
@@ -48,6 +48,7 @@ $evals_stmt = $pdo->prepare("
 ");
 $evals_stmt->execute([$viewing_athlete_id]);
 $evaluations = $evals_stmt->fetchAll();
+$evaluations = decryptUserRows($evaluations);
 ?>
 
 <style>
@@ -584,7 +585,7 @@ $evaluations = $evals_stmt->fetchAll();
                         <div>
                             <h3 class="eval-title"><?php echo htmlspecialchars($eval['title']); ?></h3>
                             <p class="eval-meta">
-                                Created by <?php echo htmlspecialchars($eval['creator_name']); ?><br>
+                                Created by <?php echo htmlspecialchars(trim(($eval['creator_first_name'] ?? '') . ' ' . ($eval['creator_last_name'] ?? ''))); ?><br>
                                 <?php echo date('M j, Y', strtotime($eval['created_at'])); ?>
                             </p>
                         </div>
@@ -763,7 +764,7 @@ function renderEvaluationDetail(evaluation, steps) {
             <div>
                 <h2 style="color: #fff; margin-bottom: 8px;">${escapeHtml(evaluation.title)}</h2>
                 <p style="color: var(--text-light); font-size: 14px;">
-                    Created by ${escapeHtml(evaluation.creator_name)} on ${formatDate(evaluation.created_at)}
+                    Created by ${escapeHtml((evaluation.creator_first_name || '') + ' ' + (evaluation.creator_last_name || ''))} on ${formatDate(evaluation.created_at)}
                 </p>
                 ${evaluation.description ? `<p style="color: var(--text-light); margin-top: 12px;">${escapeHtml(evaluation.description)}</p>` : ''}
             </div>

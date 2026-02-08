@@ -20,7 +20,7 @@ if ($is_admin) {
                u.assigned_coach_id, u.created_by_coach_id,
                (SELECT COUNT(*) FROM athlete_workout_assignments awa WHERE awa.athlete_id = u.id AND awa.status = 'active') as active_workout_plans,
                (SELECT COUNT(*) FROM athlete_nutrition_assignments ana WHERE ana.athlete_id = u.id AND ana.status = 'active') as active_nutrition_plans,
-               CONCAT(coach.first_name, ' ', coach.last_name) as assigned_coach_name
+               coach.first_name as coach_first_name, coach.last_name as coach_last_name
         FROM users u
         LEFT JOIN users coach ON u.assigned_coach_id = coach.id
         WHERE u.is_active = 1
@@ -33,7 +33,7 @@ if ($is_admin) {
                u.assigned_coach_id, u.created_by_coach_id,
                (SELECT COUNT(*) FROM athlete_workout_assignments awa WHERE awa.athlete_id = u.id AND awa.status = 'active') as active_workout_plans,
                (SELECT COUNT(*) FROM athlete_nutrition_assignments ana WHERE ana.athlete_id = u.id AND ana.status = 'active') as active_nutrition_plans,
-               CONCAT(coach.first_name, ' ', coach.last_name) as assigned_coach_name
+               coach.first_name as coach_first_name, coach.last_name as coach_last_name
         FROM users u
         LEFT JOIN users coach ON u.assigned_coach_id = coach.id
         WHERE u.is_active = 1

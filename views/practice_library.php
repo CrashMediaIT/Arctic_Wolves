@@ -27,7 +27,7 @@ try {
     // Build practice plans query
     $plans_query = "
         SELECT pp.*, 
-               CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+               u.first_name as creator_first_name, u.last_name as creator_last_name,
                (SELECT COUNT(*) FROM practice_plan_drills WHERE practice_plan_id = pp.id) as drill_count
         FROM practice_plans pp
         LEFT JOIN users u ON pp.created_by = u.id
@@ -90,7 +90,7 @@ try {
                     <div class="practice-title-section">
                         <h3 class="practice-title"><?= htmlspecialchars($plan['name']) ?></h3>
                         <div class="practice-meta">
-                            <span><i class="fas fa-user"></i> <?= htmlspecialchars($plan['creator_name'] ?? 'Unknown') ?></span>
+                            <span><i class="fas fa-user"></i> <?= htmlspecialchars(trim(($plan['creator_first_name'] ?? '') . ' ' . ($plan['creator_last_name'] ?? '')) ?: 'Unknown') ?></span>
                             <span><i class="fas fa-list"></i> <?= $plan['drill_count'] ?> drills</span>
                             <span><i class="fas fa-clock"></i> <?= date('M d, Y', strtotime($plan['created_at'])) ?></span>
                         </div>
@@ -757,7 +757,7 @@ function displayPracticePlan(plan, drills) {
     var html = '<div class="plan-view-header">';
     html += '<h2>' + escapeHtml(plan.name) + '</h2>';
     html += '<div class="plan-view-meta">';
-    html += '<span><i class="fas fa-user"></i> ' + escapeHtml(plan.creator_name || 'Unknown') + '</span>';
+    html += '<span><i class="fas fa-user"></i> ' + escapeHtml(((plan.creator_first_name || '') + ' ' + (plan.creator_last_name || '')).trim() || 'Unknown') + '</span>';
     html += '<span><i class="fas fa-list"></i> ' + drills.length + ' drills</span>';
     html += '<span><i class="fas fa-clock"></i> ' + totalDuration + ' minutes</span>';
     html += '<span><i class="fas fa-calendar"></i> ' + formatDate(plan.created_at) + '</span>';

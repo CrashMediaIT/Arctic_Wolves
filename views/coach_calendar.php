@@ -21,7 +21,7 @@ $view_mode = $_GET['view'] ?? 'calendar';
 // Get all sessions for the company
 $sessions_query = "
     SELECT s.*, 
-           CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+           c.first_name as coach_first_name, c.last_name as coach_last_name,
            c.id as coach_user_id,
            st.name as session_type_name,
            l.name as location_name,
@@ -56,6 +56,7 @@ $sessions_query .= " GROUP BY s.id ORDER BY s.session_date LIMIT 100";
 $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute($params);
 $sessions = $sessions_stmt->fetchAll();
+$sessions = decryptUserRows($sessions);
 
 // Get coaches, locations, practice plans, session types
 $coaches = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role IN ('coach', 'coach_plus', 'admin', 'team_coach', 'health_coach') AND is_active = 1 ORDER BY last_name, first_name")->fetchAll();
@@ -146,7 +147,7 @@ $is_demo_data = false;
                 $end = $dt + ($session['duration_minutes'] ?? 60) * 60;
                 $is_mine = ($session['coach_user_id'] == $user_id || $session['is_assigned_coach'] > 0);
             ?>
-            <div class="session-card <?= $is_mine ? 'my-session' : '' ?>" data-session-id="<?= $session['id'] ?>" data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? 'Session') ?>" data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $dt) ?>" data-session-end-time="<?= date('g:i A', $end) ?>" data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-session-coach="<?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?>" data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-session-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>">
+            <div class="session-card <?= $is_mine ? 'my-session' : '' ?>" data-session-id="<?= $session['id'] ?>" data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? 'Session') ?>" data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $dt) ?>" data-session-end-time="<?= date('g:i A', $end) ?>" data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-session-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?>" data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-session-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>">
                 <div class="session-date">
                     <div class="date-box <?= $is_mine ? 'my-session-badge' : '' ?>">
                         <span class="date-day"><?= date('d', $dt) ?></span>
@@ -158,7 +159,7 @@ $is_demo_data = false;
                     <h3 class="session-title"><?= htmlspecialchars($session['session_type_name'] ?? 'Session') ?></h3>
                     <div class="session-meta">
                         <span><i class="fas fa-clock"></i> <?= date('g:i A', $dt) ?> - <?= date('g:i A', $end) ?></span>
-                        <span><i class="fas fa-user"></i> <?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?></span>
+                        <span><i class="fas fa-user"></i> <?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?></span>
                         <?php if (!empty($session['location_name'])): ?><span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span><?php endif; ?>
                         <span><i class="fas fa-users"></i> <?= $session['registered_count'] ?? 0 ?> registered</span>
                     </div>
