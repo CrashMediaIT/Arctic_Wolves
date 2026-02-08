@@ -4,6 +4,7 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/error_logger.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 /**
  * Record login attempt in login_history table
@@ -60,6 +61,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $user = $stmt->fetch();
 
         if ($user) {
+            // Decrypt PII fields
+            $user['first_name'] = FieldEncryption::decrypt($user['first_name']);
+            $user['last_name'] = FieldEncryption::decrypt($user['last_name']);
             // Check if account is verified/enabled
             if (isset($user['is_verified']) && $user['is_verified'] === 0) {
                 $_SESSION['login_error'] = "Your account has been disabled. Please contact an administrator for assistance.";

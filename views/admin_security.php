@@ -46,6 +46,8 @@ if ($security_tab === 'login_history') {
             ORDER BY COALESCE(lh.last_activity, lh.login_time) DESC
         ");
         $online_users = $online_stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Decrypt PII fields
+        $online_users = FieldEncryption::decryptRows($online_users, ['first_name', 'last_name']);
         
         // Build login history query with filters
         $where = [];

@@ -49,6 +49,9 @@ foreach ($possible_paths as $path) {
 // Only use fallback defaults if no env file exists (pre-setup state)
 $db_config_valid = true;
 
+// Load field-level encryption library (PII at rest)
+require_once __DIR__ . '/lib/encryption.php';
+
 if ($env_loaded) {
     // Use configuration from the env file set up during setup.php
     $host = $_ENV['DB_HOST'] ?? '';

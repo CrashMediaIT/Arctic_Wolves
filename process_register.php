@@ -9,6 +9,7 @@ require 'db_config.php';
 require 'mailer.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/blocklist.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 /**
  * Generate a unique email for an athlete based on parent's email
@@ -120,17 +121,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     try {
         // Start transaction
         $pdo->beginTransaction();
+
+        // Encrypt PII fields before storing (email kept as-is for login lookups)
+        $enc_first = FieldEncryption::encrypt($first);
+        $enc_last = FieldEncryption::encrypt($last);
+        $enc_phone = $phone ? FieldEncryption::encrypt($phone) : null;
         
         if ($role === 'athlete') {
             // ATHLETE REGISTRATION
             $pos = $_POST['position'] ?? '';
             $dob = $_POST['birth_date'] ?? null;
+            $enc_dob = $dob ? FieldEncryption::encrypt($dob) : null;
             
             $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, phone, is_verified, verification_code) 
                     VALUES (?, ?, ?, ?, 'athlete', ?, ?, ?, 0, ?)";
             
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$first, $last, $email, $hash_pass, $pos ?: null, $dob ?: null, $phone ?: null, $verify_code]);
+            $stmt->execute([$enc_first, $enc_last, $email, $hash_pass, $pos ?: null, $enc_dob, $enc_phone, $verify_code]);
             
         } else {
             // PARENT REGISTRATION
@@ -138,7 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     VALUES (?, ?, ?, ?, 'parent', ?, 0, ?)";
             
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$first, $last, $email, $hash_pass, $phone ?: null, $verify_code]);
+            $stmt->execute([$enc_first, $enc_last, $email, $hash_pass, $enc_phone, $verify_code]);
             
             $parent_id = $pdo->lastInsertId();
             
@@ -181,18 +188,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $athlete_password = generateSecurePassword(16);
                 $athlete_hash_pass = password_hash($athlete_password, PASSWORD_DEFAULT);
                 
-                // Insert athlete
+                // Insert athlete with encrypted PII
+                $enc_athlete_first = FieldEncryption::encrypt($athlete_first);
+                $enc_athlete_last = FieldEncryption::encrypt($athlete_last);
+                $enc_athlete_dob = $athlete_dob ? FieldEncryption::encrypt($athlete_dob) : null;
+
                 $athlete_sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change) 
                                 VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1)";
                 
                 $athlete_stmt = $pdo->prepare($athlete_sql);
                 $athlete_stmt->execute([
-                    $athlete_first, 
-                    $athlete_last, 
+                    $enc_athlete_first, 
+                    $enc_athlete_last, 
                     $athlete_email, 
                     $athlete_hash_pass, 
                     $athlete_pos ?: null, 
-                    $athlete_dob ?: null
+                    $enc_athlete_dob
                 ]);
                 
                 $athlete_id = $pdo->lastInsertId();
