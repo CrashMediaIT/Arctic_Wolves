@@ -57,7 +57,66 @@ try {
             
             header('Location: dashboard.php?page=system_tools&tab=encryption&success=1');
             exit;
+
+        case 'save_encryption_key':
+            $encryption_key = trim($_POST['encryption_key'] ?? '');
             
+            // Validate the key is exactly 64 hex characters
+            if (!preg_match('/^[a-fA-F0-9]{64}$/', $encryption_key)) {
+                header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('Invalid encryption key. Must be exactly 64 hexadecimal characters.'));
+                exit;
+            }
+            
+            // Find the env file path
+            $env_paths = [
+                '/config/arctic_wolves.env',
+                __DIR__ . '/arctic_wolves.env',
+                __DIR__ . '/.env',
+                '/var/www/html/arctic_wolves/.env'
+            ];
+            
+            $env_file = null;
+            foreach ($env_paths as $path) {
+                if (file_exists($path) && is_writable($path)) {
+                    $env_file = $path;
+                    break;
+                }
+            }
+            
+            if ($env_file === null) {
+                // Try to create the default local env file
+                $env_file = __DIR__ . '/arctic_wolves.env';
+                if (!is_writable(__DIR__)) {
+                    header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('No writable environment file found. Please check file permissions.'));
+                    exit;
+                }
+            }
+            
+            // Read current env file content
+            $env_content = file_exists($env_file) ? file_get_contents($env_file) : '';
+            
+            // Update or add ENCRYPTION_KEY
+            if (preg_match('/^ENCRYPTION_KEY=.*$/m', $env_content)) {
+                $env_content = preg_replace('/^ENCRYPTION_KEY=.*$/m', 'ENCRYPTION_KEY=' . $encryption_key, $env_content);
+            } else {
+                $env_content = rtrim($env_content) . "\nENCRYPTION_KEY=" . $encryption_key . "\n";
+            }
+            
+            if (file_put_contents($env_file, $env_content) === false) {
+                header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('Failed to write encryption key to environment file.'));
+                exit;
+            }
+            
+            // Load the key into the current environment so it takes effect immediately
+            $_ENV['ENCRYPTION_KEY'] = $encryption_key;
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'save_encryption_key',
+                'key_configured' => true
+            ]);
+            
+            header('Location: dashboard.php?page=system_tools&tab=encryption&success=1');
+            exit;
         case 'update_smtp':
             $smtp_host = trim($_POST['smtp_host']);
             $smtp_port = trim($_POST['smtp_port']);

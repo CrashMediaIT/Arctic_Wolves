@@ -103,13 +103,13 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=database" class="page-tab <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
         <i class="fas fa-database"></i> Database
     </a>
-    <a href="?page=system_tools&tab=encryption" class="page-tab <?php echo $activeTab === 'encryption' ? 'active' : ''; ?>">
-        <i class="fas fa-lock"></i> Encryption
-    </a>
 </div>
 
 <!-- System Tools Tabs - Secondary Row (System Status) -->
 <div class="page-tabs page-tabs-secondary" style="flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
+    <a href="?page=system_tools&tab=encryption" class="page-tab <?php echo $activeTab === 'encryption' ? 'active' : ''; ?>">
+        <i class="fas fa-lock"></i> Encryption
+    </a>
     <a href="?page=system_tools&tab=landing" class="page-tab <?php echo $activeTab === 'landing' ? 'active' : ''; ?>">
         <i class="fas fa-home"></i> Landing Page
     </a>
@@ -1710,26 +1710,35 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
 
             <!-- Setup Instructions -->
             <?php if (!$encryption_configured): ?>
-            <div class="card" style="border-color: #f59e0b;">
+            <div class="card" style="border-color: #f59e0b; margin-bottom: 20px;">
                 <div class="card-header" style="border-bottom-color: #f59e0b;">
-                    <h3><i class="fas fa-wrench" style="color: #f59e0b;"></i> Setup Instructions</h3>
+                    <h3><i class="fas fa-wrench" style="color: #f59e0b;"></i> Setup Encryption Key</h3>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-warning" style="margin-bottom: 16px;">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <span>Encryption key is not configured. Follow these steps to enable PII encryption.</span>
+                        <span>Encryption key is not configured. Enter or generate a key below to enable PII encryption.</span>
                     </div>
-                    <ol style="color: var(--text-dim); font-size: 13px; line-height: 2; padding-left: 20px;">
-                        <li>Generate a random encryption key by running in your terminal:<br>
-                            <code style="background: var(--bg-main); padding: 4px 10px; border-radius: 4px; font-family: monospace; color: #10b981; border: 1px solid var(--border);">php -r "echo bin2hex(openssl_random_pseudo_bytes(32));"</code>
-                        </li>
-                        <li>Open your environment configuration file (e.g., <code style="background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: var(--primary);">arctic_wolves.env</code> or <code style="background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: var(--primary);">.env</code>)</li>
-                        <li>Add the following line with your generated key:<br>
-                            <code style="background: var(--bg-main); padding: 4px 10px; border-radius: 4px; font-family: monospace; color: #10b981; border: 1px solid var(--border);">ENCRYPTION_KEY=your_64_character_hex_key_here</code>
-                        </li>
-                        <li>Restart your web server (Apache/Nginx) to load the new environment variable</li>
-                        <li>Return to this page to verify the encryption key is detected</li>
-                    </ol>
+                    <form method="POST" action="process_settings.php" onsubmit="return validateEncryptionKey()">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="save_encryption_key">
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label class="form-label" style="color: var(--text-white); font-weight: 600;">Encryption Key (64-character hex string)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" name="encryption_key" id="encryption-key-input" class="form-input" 
+                                       placeholder="Enter or generate a 64-character hex key" 
+                                       pattern="[a-fA-F0-9]{64}" maxlength="64" required
+                                       style="font-family: monospace; flex: 1;">
+                                <button type="button" class="btn btn-secondary" onclick="generateEncryptionKey()" title="Generate a random key">
+                                    <i class="fas fa-random"></i> Generate
+                                </button>
+                            </div>
+                            <p style="color: var(--text-dim); font-size: 11px; margin-top: 4px;">Must be exactly 64 hexadecimal characters (0-9, a-f). This key will be saved to your environment file.</p>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Encryption Key</button>
+                        </div>
+                    </form>
                     <div class="alert alert-error" style="margin-top: 16px;">
                         <i class="fas fa-exclamation-circle"></i>
                         <div>
@@ -1737,6 +1746,38 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                             Store a copy in a secure password manager or offline backup.
                         </div>
                     </div>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3><i class="fas fa-key"></i> Update Encryption Key</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="process_settings.php" onsubmit="return validateEncryptionKey() && confirm('Are you sure you want to change the encryption key? Existing encrypted data will become unreadable unless you decrypt it first with the current key.')">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="save_encryption_key">
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label class="form-label" style="color: var(--text-white); font-weight: 600;">New Encryption Key (64-character hex string)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" name="encryption_key" id="encryption-key-input" class="form-input" 
+                                       placeholder="Enter a new 64-character hex key" 
+                                       pattern="[a-fA-F0-9]{64}" maxlength="64" required
+                                       style="font-family: monospace; flex: 1;">
+                                <button type="button" class="btn btn-secondary" onclick="generateEncryptionKey()" title="Generate a random key">
+                                    <i class="fas fa-random"></i> Generate
+                                </button>
+                            </div>
+                            <p style="color: var(--text-dim); font-size: 11px; margin-top: 4px;">Must be exactly 64 hexadecimal characters (0-9, a-f).</p>
+                        </div>
+                        <div class="alert alert-warning" style="margin-bottom: 16px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Changing the encryption key will make all previously encrypted data unreadable. Only change this if you know what you are doing.</span>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button type="submit" class="btn btn-warning"><i class="fas fa-save"></i> Update Encryption Key</button>
+                        </div>
+                    </form>
                 </div>
             </div>
             <?php endif; ?>
@@ -3628,5 +3669,22 @@ function syncNow() {
         alert('Error syncing files');
         console.error('Error:', error);
     });
+}
+
+// Encryption Key Functions
+function generateEncryptionKey() {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    const hex = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+    document.getElementById('encryption-key-input').value = hex;
+}
+
+function validateEncryptionKey() {
+    const key = document.getElementById('encryption-key-input').value.trim();
+    if (!/^[a-fA-F0-9]{64}$/.test(key)) {
+        alert('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+        return false;
+    }
+    return true;
 }
 </script>
