@@ -110,10 +110,13 @@ try {
                 }
             }
             
-            // Mark reminder as sent
-            $update_stmt = $pdo->prepare("UPDATE recurring_expenses SET $reminder_field = 1 WHERE id = ?");
-            $update_stmt->execute([$contract['id']]);
-            echo "  -> Marked $reminder_field as sent for contract #{$contract['id']}\n";
+            // Mark reminder as sent (whitelist validation for column name)
+            $valid_fields = ['reminder_60_sent', 'reminder_30_sent', 'reminder_15_sent'];
+            if (in_array($reminder_field, $valid_fields, true)) {
+                $update_stmt = $pdo->prepare("UPDATE recurring_expenses SET $reminder_field = 1 WHERE id = ?");
+                $update_stmt->execute([$contract['id']]);
+                echo "  -> Marked $reminder_field as sent for contract #{$contract['id']}\n";
+            }
         }
     }
     

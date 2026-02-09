@@ -25,6 +25,15 @@ checkCsrfToken();
 $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'];
 
+// Allowed MIME types for contract document uploads
+$allowed_mime_types = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png'
+];
+
 /**
  * Upload contract document to Nextcloud
  * Structure: /accounting/contracts/{CompanyName}/{ContractPurpose}_{StartDate}/
@@ -119,10 +128,17 @@ try {
             
             // Handle contract file upload
             if (!empty($_FILES['contract_file']['name']) && $_FILES['contract_file']['error'] === UPLOAD_ERR_OK) {
+                $validation = validateFileUpload($_FILES['contract_file'], $allowed_mime_types);
+                if (!$validation['success']) {
+                    header("Location: dashboard.php?page=expenses&expenses_tab=recurring&status=error&message=" . urlencode('Contract file: ' . $validation['error']));
+                    exit();
+                }
                 $tmp_path = $_FILES['contract_file']['tmp_name'];
                 $original_name = $_FILES['contract_file']['name'];
                 $file_size = $_FILES['contract_file']['size'];
-                $mime_type = $_FILES['contract_file']['type'];
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime_type = finfo_file($finfo, $tmp_path);
+                finfo_close($finfo);
                 
                 // Upload to Nextcloud
                 $upload_result = null;
@@ -151,10 +167,16 @@ try {
                 for ($i = 0; $i < count($_FILES['additional_files']['name']); $i++) {
                     if ($_FILES['additional_files']['error'][$i] !== UPLOAD_ERR_OK) continue;
                     
+                    // Validate file type server-side
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $detected_mime = finfo_file($finfo, $_FILES['additional_files']['tmp_name'][$i]);
+                    finfo_close($finfo);
+                    if (!in_array($detected_mime, $allowed_mime_types)) continue;
+                    
                     $tmp_path = $_FILES['additional_files']['tmp_name'][$i];
                     $original_name = $_FILES['additional_files']['name'][$i];
                     $file_size = $_FILES['additional_files']['size'][$i];
-                    $mime_type = $_FILES['additional_files']['type'][$i];
+                    $mime_type = $detected_mime;
                     
                     $upload_result = null;
                     if (function_exists('getNextcloudSettings')) {
@@ -213,10 +235,16 @@ try {
                 for ($i = 0; $i < count($_FILES['documents']['name']); $i++) {
                     if ($_FILES['documents']['error'][$i] !== UPLOAD_ERR_OK) continue;
                     
+                    // Validate file type server-side
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $detected_mime = finfo_file($finfo, $_FILES['documents']['tmp_name'][$i]);
+                    finfo_close($finfo);
+                    if (!in_array($detected_mime, $allowed_mime_types)) continue;
+                    
                     $tmp_path = $_FILES['documents']['tmp_name'][$i];
                     $original_name = $_FILES['documents']['name'][$i];
                     $file_size = $_FILES['documents']['size'][$i];
-                    $mime_type = $_FILES['documents']['type'][$i];
+                    $mime_type = $detected_mime;
                     
                     $upload_result = null;
                     if (function_exists('getNextcloudSettings')) {
