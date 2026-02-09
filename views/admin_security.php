@@ -766,7 +766,7 @@ function restoreAuditEntry(logId) {
                 </span>
             </div>
             <div style="display: flex; gap: 8px;">
-                <button class="btn btn-primary btn-sm" onclick="openAddEntryModal(<?php echo (int)$restriction['id']; ?>, '<?php echo htmlspecialchars(addslashes($restriction['title']), ENT_QUOTES); ?>')">
+                <button class="btn btn-primary btn-sm" onclick="openAddEntryModal(<?php echo (int)$restriction['id']; ?>, <?php echo htmlspecialchars(json_encode($restriction['title']), ENT_QUOTES); ?>)">
                     <i class="fas fa-plus"></i> Add Entry
                 </button>
                 <button class="btn btn-danger btn-sm" onclick="removeRestriction(<?php echo (int)$restriction['id']; ?>)" title="Delete restriction and all entries">
@@ -885,7 +885,6 @@ function updateBlocklistPlaceholder() {
 }
 
 function openAddEntryModal(restrictionId, restrictionTitle) {
-    document.getElementById('entry-restriction-id').value = restrictionId;
     document.getElementById('entry-modal-restriction-title').textContent = restrictionTitle;
     document.getElementById('blocklist-add-form').reset();
     document.getElementById('entry-restriction-id').value = restrictionId;
