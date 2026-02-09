@@ -559,6 +559,15 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                        value="<?php echo htmlspecialchars($settings['nextcloud_terminations_dir'] ?? '/Arctic_Wolves/HR/Terminations'); ?>"
                                        placeholder="/Arctic_Wolves/HR/Terminations">
                             </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4><i class="fas fa-file-contract" style="color: #f59e0b; margin-right: 8px;"></i>Contracts Directory</h4>
+                                    <p>Recurring expense contracts and insurance documents (organized by Company/ContractType_Date)</p>
+                                </div>
+                                <input type="text" name="nextcloud_contracts_dir" class="form-input" 
+                                       value="<?php echo htmlspecialchars($settings['nextcloud_contracts_dir'] ?? '/accounting/contracts'); ?>"
+                                       placeholder="/accounting/contracts">
+                            </div>
                         </div>
                     </div>
                     
@@ -596,6 +605,11 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                 <input type="checkbox" name="sync_terminations" 
                                        <?php echo ($settings['sync_terminations'] ?? true) ? 'checked' : ''; ?>>
                                 <span>Termination Documents</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sync_contracts" 
+                                       <?php echo ($settings['sync_contracts'] ?? true) ? 'checked' : ''; ?>>
+                                <span>Contract Documents</span>
                             </label>
                         </div>
                     </div>

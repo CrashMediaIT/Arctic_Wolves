@@ -1,4 +1,6 @@
 <?php
+$expenses_tab = $_GET['expenses_tab'] ?? 'expenses';
+
 // Fetch expense categories
 $categoriesQuery = "SELECT * FROM expense_categories WHERE is_active = 1 ORDER BY display_order, name";
 try {
@@ -79,6 +81,19 @@ if ($expenseStats['last_month'] > 0) {
         <p class="page-description">Track, manage, and categorize business expenses (CRA Best Practices)</p>
     </div>
 </div>
+
+<!-- Expense Tabs -->
+<div class="page-tabs" style="margin-bottom: 24px;">
+    <a href="?page=expenses&expenses_tab=expenses" class="page-tab <?= $expenses_tab === 'expenses' ? 'active' : '' ?>">
+        <i class="fas fa-receipt"></i> Expenses
+    </a>
+    <a href="?page=expenses&expenses_tab=recurring" class="page-tab <?= $expenses_tab === 'recurring' ? 'active' : '' ?>">
+        <i class="fas fa-sync-alt"></i> Recurring Expenses & Contracts
+    </a>
+</div>
+
+<?php if ($expenses_tab === 'expenses'): ?>
+<!-- Regular Expenses Content -->
 
 <style>
 /* Expense Stats Cards */
@@ -809,3 +824,435 @@ document.getElementById('expenseForm').addEventListener('submit', function(e) {
     .catch(function() { submitBtn.innerHTML = originalText; submitBtn.disabled = false; showNotification('An error occurred', 'error'); });
 });
 </script>
+<?php endif; ?>
+
+<?php if ($expenses_tab === 'recurring'): ?>
+<!-- Recurring Expenses & Contracts Tab -->
+<?php
+// Fetch recurring expenses
+$recurring_status_filter = $_GET['rec_status'] ?? '';
+$recurring_expenses = [];
+try {
+    $rec_query = "SELECT re.*, 
+                  (SELECT COUNT(*) FROM recurring_expense_documents WHERE recurring_expense_id = re.id) as doc_count
+                  FROM recurring_expenses re WHERE 1=1";
+    $rec_params = [];
+    if ($recurring_status_filter && in_array($recurring_status_filter, ['active', 'paused', 'expired', 'cancelled'])) {
+        $rec_query .= " AND re.status = ?";
+        $rec_params[] = $recurring_status_filter;
+    }
+    $rec_query .= " ORDER BY re.renewal_date ASC, re.created_at DESC";
+    $rec_stmt = $pdo->prepare($rec_query);
+    $rec_stmt->execute($rec_params);
+    $recurring_expenses = $rec_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $recurring_expenses = [];
+}
+
+// Get categories for the form
+$expense_categories = [];
+try {
+    $expense_categories = $pdo->query("SELECT * FROM expense_categories WHERE is_active = 1 ORDER BY display_order, name")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $expense_categories = [];
+}
+
+$rec_status_colors = [
+    'active' => 'success',
+    'paused' => 'warning',
+    'expired' => 'error',
+    'cancelled' => 'secondary'
+];
+?>
+
+<style>
+.recurring-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.recurring-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.recurring-stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+.renewal-warning { background: rgba(245, 158, 11, 0.1); border-color: #f59e0b; }
+.renewal-urgent { background: rgba(239, 68, 68, 0.1); border-color: #ef4444; }
+</style>
+
+<?php
+// Calculate stats
+$active_count = 0;
+$total_monthly = 0;
+$upcoming_renewals = 0;
+$urgent_renewals = 0;
+foreach ($recurring_expenses as $re) {
+    if ($re['status'] === 'active') {
+        $active_count++;
+        switch ($re['frequency']) {
+            case 'monthly': $total_monthly += $re['amount']; break;
+            case 'quarterly': $total_monthly += $re['amount'] / 3; break;
+            case 'semi_annual': $total_monthly += $re['amount'] / 6; break;
+            case 'annual': $total_monthly += $re['amount'] / 12; break;
+        }
+    }
+    if ($re['renewal_date'] && $re['status'] === 'active') {
+        $days_until = (strtotime($re['renewal_date']) - time()) / 86400;
+        if ($days_until <= 60 && $days_until > 0) $upcoming_renewals++;
+        if ($days_until <= 15 && $days_until > 0) $urgent_renewals++;
+    }
+}
+?>
+
+<!-- Stats -->
+<div class="recurring-stats">
+    <div class="recurring-stat-card">
+        <div class="stat-icon" style="background: rgba(16,185,129,0.15); color: #10b981;"><i class="fas fa-sync-alt"></i></div>
+        <div class="stat-info">
+            <div class="stat-value"><?= $active_count ?></div>
+            <div class="stat-label">Active Contracts</div>
+        </div>
+    </div>
+    <div class="recurring-stat-card">
+        <div class="stat-icon" style="background: rgba(107,70,193,0.15); color: var(--primary);"><i class="fas fa-dollar-sign"></i></div>
+        <div class="stat-info">
+            <div class="stat-value">$<?= number_format($total_monthly, 2) ?></div>
+            <div class="stat-label">Est. Monthly Cost</div>
+        </div>
+    </div>
+    <div class="recurring-stat-card">
+        <div class="stat-icon" style="background: rgba(245,158,11,0.15); color: #f59e0b;"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <div class="stat-value"><?= $upcoming_renewals ?></div>
+            <div class="stat-label">Renewals within 60 Days</div>
+        </div>
+    </div>
+    <div class="recurring-stat-card">
+        <div class="stat-icon" style="background: rgba(239,68,68,0.15); color: #ef4444;"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-info">
+            <div class="stat-value"><?= $urgent_renewals ?></div>
+            <div class="stat-label">Urgent (≤15 Days)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Recurring Expenses List -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h3><i class="fas fa-file-contract"></i> Recurring Expenses & Contracts</h3>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <select onchange="window.location.href='?page=expenses&expenses_tab=recurring&rec_status='+this.value" class="form-input" style="width: auto;">
+                <option value="">All Statuses</option>
+                <option value="active" <?= $recurring_status_filter === 'active' ? 'selected' : '' ?>>Active</option>
+                <option value="paused" <?= $recurring_status_filter === 'paused' ? 'selected' : '' ?>>Paused</option>
+                <option value="expired" <?= $recurring_status_filter === 'expired' ? 'selected' : '' ?>>Expired</option>
+                <option value="cancelled" <?= $recurring_status_filter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('newRecurringForm').style.display = document.getElementById('newRecurringForm').style.display === 'none' ? 'block' : 'none'">
+                <i class="fas fa-plus"></i> New Recurring Expense
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Frequency</th>
+                        <th>Renewal Date</th>
+                        <th>Days Until Renewal</th>
+                        <th>Status</th>
+                        <th>Docs</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($recurring_expenses)): ?>
+                    <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">No recurring expenses found. Click "New Recurring Expense" to add one.</td></tr>
+                    <?php else: ?>
+                    <?php foreach ($recurring_expenses as $re): 
+                        $days_until_renewal = $re['renewal_date'] ? round((strtotime($re['renewal_date']) - time()) / 86400) : null;
+                        $renewal_class = '';
+                        if ($days_until_renewal !== null && $days_until_renewal > 0 && $days_until_renewal <= 15) $renewal_class = 'renewal-urgent';
+                        elseif ($days_until_renewal !== null && $days_until_renewal > 0 && $days_until_renewal <= 60) $renewal_class = 'renewal-warning';
+                    ?>
+                    <tr class="<?= $renewal_class ?>">
+                        <td><strong><?= htmlspecialchars($re['vendor_name']) ?></strong>
+                            <?php if ($re['description']): ?><br><span style="color:var(--text-muted);font-size:11px;"><?= htmlspecialchars(substr($re['description'], 0, 60)) ?></span><?php endif; ?>
+                        </td>
+                        <td><?= htmlspecialchars($re['contract_type'] ?? '-') ?></td>
+                        <td style="font-weight:700;">$<?= number_format($re['amount'], 2) ?></td>
+                        <td><span class="badge badge-secondary"><?= ucfirst(str_replace('_', ' ', $re['frequency'])) ?></span></td>
+                        <td><?= $re['renewal_date'] ? date('M j, Y', strtotime($re['renewal_date'])) : '-' ?></td>
+                        <td>
+                            <?php if ($days_until_renewal !== null): ?>
+                                <?php if ($days_until_renewal <= 0): ?>
+                                    <span class="badge badge-error">Overdue</span>
+                                <?php elseif ($days_until_renewal <= 15): ?>
+                                    <span class="badge badge-error"><i class="fas fa-exclamation-triangle"></i> <?= $days_until_renewal ?> days</span>
+                                <?php elseif ($days_until_renewal <= 30): ?>
+                                    <span class="badge badge-warning"><?= $days_until_renewal ?> days</span>
+                                <?php elseif ($days_until_renewal <= 60): ?>
+                                    <span class="badge badge-primary"><?= $days_until_renewal ?> days</span>
+                                <?php else: ?>
+                                    <span style="color:var(--text-muted);"><?= $days_until_renewal ?> days</span>
+                                <?php endif; ?>
+                            <?php else: ?>-<?php endif; ?>
+                        </td>
+                        <td><span class="badge badge-<?= $rec_status_colors[$re['status']] ?? 'secondary' ?>"><?= ucfirst($re['status']) ?></span></td>
+                        <td><span class="badge badge-secondary"><?= $re['doc_count'] ?> files</span></td>
+                        <td>
+                            <div style="display:flex;gap:6px;">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="toggleRecurringDetails(<?= $re['id'] ?>)" title="View Details"><i class="fas fa-eye"></i></button>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="showUploadDocs(<?= $re['id'] ?>)" title="Upload Documents"><i class="fas fa-upload"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- Details Row -->
+                    <tr id="recurring-details-<?= $re['id'] ?>" style="display:none;">
+                        <td colspan="9" style="padding:20px; background:var(--bg-main);">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                                <div>
+                                    <h4 style="color:var(--text-white); margin-bottom:12px;"><i class="fas fa-info-circle" style="color:var(--primary); margin-right:8px;"></i> Contract Details</h4>
+                                    <p style="color:var(--text-dim); font-size:13px;"><strong>Contract Start:</strong> <?= $re['contract_start_date'] ? date('M j, Y', strtotime($re['contract_start_date'])) : '-' ?></p>
+                                    <p style="color:var(--text-dim); font-size:13px;"><strong>Contract End:</strong> <?= $re['contract_end_date'] ? date('M j, Y', strtotime($re['contract_end_date'])) : '-' ?></p>
+                                    <p style="color:var(--text-dim); font-size:13px;"><strong>Next Payment:</strong> <?= $re['next_payment_date'] ? date('M j, Y', strtotime($re['next_payment_date'])) : '-' ?></p>
+                                    <p style="color:var(--text-dim); font-size:13px;"><strong>Auto-Renew:</strong> <?= $re['auto_renew'] ? 'Yes' : 'No' ?></p>
+                                    <p style="color:var(--text-dim); font-size:13px;"><strong>Payment Method:</strong> <?= htmlspecialchars($re['payment_method'] ?? '-') ?></p>
+                                    <p style="color:var(--text-dim); font-size:13px;"><strong>Category:</strong> <?= htmlspecialchars($re['category'] ?? '-') ?></p>
+                                    <?php if ($re['notes']): ?><p style="color:var(--text-dim); font-size:13px;"><strong>Notes:</strong> <?= htmlspecialchars($re['notes']) ?></p><?php endif; ?>
+                                </div>
+                                <div>
+                                    <h4 style="color:var(--text-white); margin-bottom:12px;"><i class="fas fa-bell" style="color:#f59e0b; margin-right:8px;"></i> Reminder Status</h4>
+                                    <p style="color:var(--text-dim); font-size:13px;"><i class="fas <?= $re['reminder_60_sent'] ? 'fa-check-circle' : 'fa-circle' ?>" style="color:<?= $re['reminder_60_sent'] ? '#10b981' : 'var(--text-dim)' ?>; margin-right:6px;"></i> 60-Day Reminder <?= $re['reminder_60_sent'] ? '(Sent)' : '(Pending)' ?></p>
+                                    <p style="color:var(--text-dim); font-size:13px;"><i class="fas <?= $re['reminder_30_sent'] ? 'fa-check-circle' : 'fa-circle' ?>" style="color:<?= $re['reminder_30_sent'] ? '#10b981' : 'var(--text-dim)' ?>; margin-right:6px;"></i> 30-Day Reminder <?= $re['reminder_30_sent'] ? '(Sent)' : '(Pending)' ?></p>
+                                    <p style="color:var(--text-dim); font-size:13px;"><i class="fas <?= $re['reminder_15_sent'] ? 'fa-check-circle' : 'fa-circle' ?>" style="color:<?= $re['reminder_15_sent'] ? '#10b981' : 'var(--text-dim)' ?>; margin-right:6px;"></i> 15-Day Reminder <?= $re['reminder_15_sent'] ? '(Sent)' : '(Pending)' ?></p>
+                                    
+                                    <h4 style="color:var(--text-white); margin:20px 0 12px;"><i class="fas fa-file" style="color:var(--primary); margin-right:8px;"></i> Documents</h4>
+                                    <?php
+                                    $docs = [];
+                                    try {
+                                        $doc_stmt = $pdo->prepare("SELECT * FROM recurring_expense_documents WHERE recurring_expense_id = ? ORDER BY created_at DESC");
+                                        $doc_stmt->execute([$re['id']]);
+                                        $docs = $doc_stmt->fetchAll(PDO::FETCH_ASSOC);
+                                    } catch (PDOException $e) { $docs = []; }
+                                    ?>
+                                    <?php if (empty($docs)): ?>
+                                        <p style="color:var(--text-muted); font-size:13px;">No documents uploaded yet.</p>
+                                    <?php else: ?>
+                                        <?php foreach ($docs as $doc): ?>
+                                        <div style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; color:var(--text);">
+                                            <i class="fas fa-file-alt" style="color:var(--primary);"></i>
+                                            <span><?= htmlspecialchars($doc['file_name']) ?></span>
+                                            <span class="badge badge-secondary" style="font-size:10px;"><?= ucfirst($doc['document_type']) ?></span>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- New Recurring Expense Form -->
+<div id="newRecurringForm" class="card" style="display: none;">
+    <div class="card-header">
+        <h3><i class="fas fa-plus-circle"></i> Create Recurring Expense / Contract</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="process_recurring_expenses.php" enctype="multipart/form-data">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="create">
+            
+            <div class="form-group-inline" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Vendor / Company Name *</label>
+                    <input type="text" name="vendor_name" class="form-input" required placeholder="Company name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contract Type</label>
+                    <input type="text" name="contract_type" class="form-input" placeholder="e.g., Lease, Software, Insurance">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-input" rows="3" placeholder="Describe what this contract/expense is for"></textarea>
+            </div>
+            
+            <div class="form-group-inline" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Amount *</label>
+                    <input type="number" name="amount" step="0.01" min="0" class="form-input" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Frequency *</label>
+                    <select name="frequency" class="form-input" required>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="semi_annual">Semi-Annual</option>
+                        <option value="annual">Annual</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-input">
+                        <option value="">Select Category</option>
+                        <?php foreach ($expense_categories as $cat): ?>
+                        <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                        <?php endforeach; ?>
+                        <option value="Software">Software</option>
+                        <option value="Insurance">Insurance</option>
+                        <option value="Lease">Lease/Rent</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Services">Services</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group-inline" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Contract Start Date *</label>
+                    <input type="date" name="contract_start_date" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contract End Date</label>
+                    <input type="date" name="contract_end_date" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Renewal Date</label>
+                    <input type="date" name="renewal_date" class="form-input">
+                </div>
+            </div>
+            
+            <div class="form-group-inline" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Next Payment Date</label>
+                    <input type="date" name="next_payment_date" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Method</label>
+                    <select name="payment_method" class="form-input">
+                        <option value="">Select Method</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="credit_card">Credit Card</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="e_transfer">E-Transfer</option>
+                        <option value="cash">Cash</option>
+                        <option value="stripe">Stripe</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <textarea name="notes" class="form-input" rows="2" placeholder="Additional notes about this contract"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="auto_renew">
+                    <span class="form-label" style="margin-bottom:0;">Auto-renew this contract</span>
+                </label>
+            </div>
+            
+            <div class="card" style="margin-bottom:20px;">
+                <div class="card-header">
+                    <h3><i class="fas fa-upload"></i> Upload Contract & Documents</h3>
+                </div>
+                <div class="card-body">
+                    <p style="color:var(--text-dim); font-size:12px; margin-bottom:16px;">Upload the contract document and any additional files (e.g., insurance policy). Files will be stored in Nextcloud under the configured contracts directory.</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Contract Document</label>
+                        <input type="file" name="contract_file" class="form-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Additional Documents (Insurance, Amendments, etc.)</label>
+                        <input type="file" name="additional_files[]" class="form-input" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display:flex; gap:12px;">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Recurring Expense</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('newRecurringForm').style.display='none'"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Upload Documents Modal -->
+<div class="modal" id="uploadDocsModal">
+    <div class="modal-content" style="max-width:500px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-upload"></i> Upload Documents</h2>
+            <button class="modal-close" onclick="document.getElementById('uploadDocsModal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form method="POST" action="process_recurring_expenses.php" enctype="multipart/form-data">
+                <?php echo csrfTokenInput(); ?>
+                <input type="hidden" name="action" value="upload_documents">
+                <input type="hidden" name="recurring_expense_id" id="uploadDocExpenseId" value="">
+                
+                <div class="form-group">
+                    <label class="form-label">Document Type</label>
+                    <select name="document_type" class="form-input">
+                        <option value="contract">Contract</option>
+                        <option value="insurance">Insurance Policy</option>
+                        <option value="invoice">Invoice</option>
+                        <option value="amendment">Amendment</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Files</label>
+                    <input type="file" name="documents[]" class="form-input" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block" style="width:100%;"><i class="fas fa-upload"></i> Upload</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleRecurringDetails(id) {
+    var row = document.getElementById('recurring-details-' + id);
+    if (row) {
+        row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    }
+}
+
+function showUploadDocs(id) {
+    document.getElementById('uploadDocExpenseId').value = id;
+    document.getElementById('uploadDocsModal').classList.add('active');
+}
+</script>
+<?php endif; ?>

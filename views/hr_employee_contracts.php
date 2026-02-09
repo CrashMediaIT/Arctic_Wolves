@@ -168,6 +168,12 @@ $statusColors = [
     <a href="?page=employee_contracts&tab=templates" class="page-tab <?= $active_tab === 'templates' ? 'active' : '' ?>">
         <i class="fas fa-file-alt"></i> Templates
     </a>
+    <a href="?page=employee_contracts&tab=agreements" class="page-tab <?= $active_tab === 'agreements' ? 'active' : '' ?>">
+        <i class="fas fa-file-signature"></i> Agreements
+    </a>
+    <a href="?page=employee_contracts&tab=promo_optout" class="page-tab <?= $active_tab === 'promo_optout' ? 'active' : '' ?>">
+        <i class="fas fa-camera-slash"></i> Promo Opt-Out
+    </a>
 </div>
 
 <div class="page-tab-content">
@@ -669,7 +675,249 @@ $statusColors = [
 
 <?php endif; ?>
 
+<?php if ($active_tab === 'agreements'): ?>
+<!-- Agreements Management Tab -->
+<?php
+// Fetch agreement templates
+$agreement_templates_list = [];
+try {
+    $agreement_templates_list = $pdo->query("SELECT * FROM agreement_templates ORDER BY agreement_type, version DESC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $agreement_templates_list = [];
+}
+?>
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-file-signature"></i> Agreement Templates (Waiver & Privacy Policy)</h3>
+        <span class="badge badge-primary"><?= count($agreement_templates_list) ?> Templates</span>
+    </div>
+    <div class="card-body">
+        <p style="color: var(--text-dim); margin-bottom: 20px;">Edit the waiver and privacy policy content that users must accept during registration or first sign-in. These agreements are presented to users for e-signature via DocuSeal when configured.</p>
+        
+        <?php if (empty($agreement_templates_list)): ?>
+        <div style="text-align: center; padding: 40px; color: var(--text-dim);">
+            <i class="fas fa-file-alt" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px; display: block;"></i>
+            <p>No agreement templates found. They will be created automatically when the database is initialized.</p>
+        </div>
+        <?php else: ?>
+        <?php foreach ($agreement_templates_list as $agr_tpl): ?>
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
+                <div>
+                    <h3>
+                        <i class="fas <?= $agr_tpl['agreement_type'] === 'waiver' ? 'fa-shield-halved' : 'fa-lock' ?>"></i>
+                        <?= htmlspecialchars($agr_tpl['title']) ?>
+                    </h3>
+                    <div style="margin-top: 8px;">
+                        <span class="badge badge-<?= $agr_tpl['is_active'] ? 'success' : 'secondary' ?>"><?= $agr_tpl['is_active'] ? 'Active' : 'Inactive' ?></span>
+                        <span class="badge badge-primary">v<?= htmlspecialchars($agr_tpl['version']) ?></span>
+                        <span class="badge badge-secondary"><?= ucfirst(str_replace('_', ' ', $agr_tpl['agreement_type'])) ?></span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="agreement-preview-<?= $agr_tpl['id'] ?>" style="color: var(--text-dim); font-size: 13px; line-height: 1.7; max-height: 150px; overflow-y: auto; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px;">
+                    <?= $agr_tpl['content'] ?>
+                </div>
+                
+                <form id="agreement-edit-<?= $agr_tpl['id'] ?>" method="POST" action="process_agreements.php" style="display: none; margin-top: 16px;">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_template">
+                    <input type="hidden" name="template_id" value="<?= $agr_tpl['id'] ?>">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Title</label>
+                        <input type="text" name="title" value="<?= htmlspecialchars($agr_tpl['title']) ?>" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Version</label>
+                        <input type="text" name="version" value="<?= htmlspecialchars($agr_tpl['version']) ?>" class="form-input" required style="max-width: 100px;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Content (HTML)</label>
+                        <textarea name="content" rows="15" class="form-input" style="font-family: monospace; font-size: 12px;"><?= htmlspecialchars($agr_tpl['content']) ?></textarea>
+                    </div>
+                    
+                    <?php if ($docuseal_enabled): ?>
+                    <div class="form-group">
+                        <label class="form-label">DocuSeal Template ID (Optional)</label>
+                        <input type="number" name="docuseal_template_id" value="<?= htmlspecialchars($agr_tpl['docuseal_template_id'] ?? '') ?>" class="form-input" style="max-width: 200px;" placeholder="DocuSeal template ID">
+                        <p style="color: var(--text-dim); font-size: 11px; margin-top: 4px;">Link to a DocuSeal template for e-signature workflow</p>
+                    </div>
+                    <?php endif; ?>
+                
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="is_active" <?= $agr_tpl['is_active'] ? 'checked' : '' ?>>
+                            <span class="form-label" style="margin-bottom: 0;">Active</span>
+                        </label>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)"><i class="fas fa-times"></i> Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
 </div>
+
+<script>
+function toggleEditAgreement(id) {
+    const preview = document.getElementById('agreement-preview-' + id);
+    const form = document.getElementById('agreement-edit-' + id);
+    if (form.style.display === 'none') {
+        form.style.display = 'block';
+        preview.style.display = 'none';
+    } else {
+        form.style.display = 'none';
+        preview.style.display = 'block';
+    }
+}
+</script>
+<?php endif; ?>
+
+<?php if ($active_tab === 'promo_optout'): ?>
+<!-- Promotional Opt-Out Filter -->
+<?php
+$promo_filter = $_GET['promo_filter'] ?? 'opted_out';
+$promo_role_filter = $_GET['promo_role'] ?? '';
+$promo_search = $_GET['promo_search'] ?? '';
+
+$promo_users = [];
+try {
+    $promo_query = "SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.promotional_opt_in, u.agreements_accepted, u.created_at
+                    FROM users u WHERE 1=1";
+    $promo_params = [];
+
+    if ($promo_filter === 'opted_out') {
+        $promo_query .= " AND u.promotional_opt_in = 0";
+    } elseif ($promo_filter === 'opted_in') {
+        $promo_query .= " AND u.promotional_opt_in = 1";
+    }
+
+    if ($promo_role_filter && in_array($promo_role_filter, ['athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff'])) {
+        $promo_query .= " AND u.role = ?";
+        $promo_params[] = $promo_role_filter;
+    }
+
+    $promo_query .= " ORDER BY u.last_name, u.first_name";
+
+    $promo_stmt = $pdo->prepare($promo_query);
+    $promo_stmt->execute($promo_params);
+    $promo_users = $promo_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $promo_users = decryptUserRows($promo_users);
+} catch (PDOException $e) {
+    $promo_users = [];
+}
+
+// Filter by search term after decryption
+if (!empty($promo_search)) {
+    $search_lower = strtolower($promo_search);
+    $promo_users = array_filter($promo_users, function($u) use ($search_lower) {
+        return strpos(strtolower($u['first_name'] ?? ''), $search_lower) !== false
+            || strpos(strtolower($u['last_name'] ?? ''), $search_lower) !== false
+            || strpos(strtolower($u['email'] ?? ''), $search_lower) !== false;
+    });
+}
+?>
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-camera-slash"></i> Promotional Material Opt-Out Report</h3>
+        <span class="badge badge-<?= $promo_filter === 'opted_out' ? 'error' : 'primary' ?>"><?= count($promo_users) ?> Users</span>
+    </div>
+    <div class="card-body">
+        <p style="color: var(--text-dim); margin-bottom: 20px;">View and filter users who have opted out of having their photos and videos used in promotional materials. These users should not appear in marketing content.</p>
+        
+        <!-- Filters -->
+        <form method="GET" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: flex-end;">
+            <input type="hidden" name="page" value="employee_contracts">
+            <input type="hidden" name="tab" value="promo_optout">
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">STATUS</label>
+                <select name="promo_filter" class="form-input" style="width: auto; min-width: 150px;">
+                    <option value="opted_out" <?= $promo_filter === 'opted_out' ? 'selected' : '' ?>>Opted Out</option>
+                    <option value="opted_in" <?= $promo_filter === 'opted_in' ? 'selected' : '' ?>>Opted In</option>
+                    <option value="all" <?= $promo_filter === 'all' ? 'selected' : '' ?>>All Users</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">ROLE</label>
+                <select name="promo_role" class="form-input" style="width: auto; min-width: 150px;">
+                    <option value="">All Roles</option>
+                    <option value="athlete" <?= $promo_role_filter === 'athlete' ? 'selected' : '' ?>>Athlete</option>
+                    <option value="coach" <?= $promo_role_filter === 'coach' ? 'selected' : '' ?>>Coach</option>
+                    <option value="parent" <?= $promo_role_filter === 'parent' ? 'selected' : '' ?>>Parent</option>
+                    <option value="admin" <?= $promo_role_filter === 'admin' ? 'selected' : '' ?>>Admin</option>
+                    <option value="health_coach" <?= $promo_role_filter === 'health_coach' ? 'selected' : '' ?>>Health Coach</option>
+                    <option value="team_coach" <?= $promo_role_filter === 'team_coach' ? 'selected' : '' ?>>Team Coach</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">SEARCH</label>
+                <input type="text" name="promo_search" value="<?= htmlspecialchars($promo_search) ?>" class="form-input" placeholder="Search by name or email..." style="min-width: 200px;">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Apply Filters</button>
+        </form>
+        
+        <!-- Results Table -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Promotional Status</th>
+                        <th>Agreements</th>
+                        <th>Registered</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($promo_users)): ?>
+                    <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">No users found matching the filters.</td></tr>
+                    <?php else: ?>
+                    <?php foreach ($promo_users as $pu): ?>
+                    <tr>
+                        <td><strong><?= htmlspecialchars(($pu['first_name'] ?? '') . ' ' . ($pu['last_name'] ?? '')) ?></strong></td>
+                        <td><?= htmlspecialchars($pu['email'] ?? '') ?></td>
+                        <td><span class="badge badge-secondary"><?= ucfirst(str_replace('_', ' ', $pu['role'])) ?></span></td>
+                        <td>
+                            <?php if (intval($pu['promotional_opt_in'] ?? 1) === 0): ?>
+                            <span class="badge badge-error"><i class="fas fa-times-circle"></i> Opted Out</span>
+                            <?php else: ?>
+                            <span class="badge badge-success"><i class="fas fa-check-circle"></i> Opted In</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if (intval($pu['agreements_accepted'] ?? 0) === 1): ?>
+                            <span class="badge badge-success">Accepted</span>
+                            <?php else: ?>
+                            <span class="badge badge-warning">Pending</span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="color: var(--text-muted); font-size: 12px;"><?= date('M j, Y', strtotime($pu['created_at'])) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <style>
 .form-section {
