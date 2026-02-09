@@ -1,5 +1,12 @@
 <!-- Admin Business Partners View -->
 <?php
+// Check if user is admin (or actual admin in persona mode)
+$actualRole = $_SESSION['persona_original_role'] ?? $user_role;
+if ($actualRole !== 'admin') {
+    header('Location: dashboard.php?page=home');
+    exit;
+}
+
 $activeTab = $_GET['tab'] ?? 'partners';
 
 // Fetch business partners
