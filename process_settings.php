@@ -45,6 +45,18 @@ try {
             
             header('Location: dashboard.php?page=admin_settings&success=1');
             exit;
+
+        case 'toggle_pii_encryption':
+            $pii_enabled = isset($_POST['pii_encryption_enabled']) ? '1' : '0';
+            updateSetting($pdo, 'pii_encryption_enabled', $pii_enabled);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'toggle_pii_encryption',
+                'pii_encryption_enabled' => $pii_enabled
+            ]);
+            
+            header('Location: dashboard.php?page=system_tools&tab=encryption&success=1');
+            exit;
             
         case 'update_smtp':
             $smtp_host = trim($_POST['smtp_host']);

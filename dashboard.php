@@ -198,6 +198,7 @@ $allowed_pages = [
     'admin_feature_import'    => 'views/admin_feature_import.php',
     'admin_theme_settings'    => 'views/admin_theme_settings.php',
     'admin_security'          => 'views/admin_security.php',
+    'business_partners'       => 'views/admin_business_partners.php',
     'ihs_import'              => 'views/ihs_import.php',
     'session_templates'       => 'views/library_sessions.php',
     
@@ -857,6 +858,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=admin_security" class="nav-link <?= $page=='admin_security'?'active':'' ?>">
                 <i class="fa-solid fa-shield-halved icon"></i> Security
+            </a>
+            <a href="?page=business_partners" class="nav-link <?= $page=='business_partners'?'active':'' ?>">
+                <i class="fa-solid fa-handshake icon"></i> Business Partners
             </a>
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>">
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools

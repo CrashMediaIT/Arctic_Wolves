@@ -103,6 +103,11 @@ try {
             $category = $_POST['category'] ?? null;
             $notes = trim($_POST['notes'] ?? '');
             $auto_renew = isset($_POST['auto_renew']) ? 1 : 0;
+            $contact_name = trim($_POST['contact_name'] ?? '');
+            $contact_email = trim($_POST['contact_email'] ?? '');
+            $contact_phone = trim($_POST['contact_phone'] ?? '');
+            $company_phone = trim($_POST['company_phone'] ?? '');
+            $company_email = trim($_POST['company_email'] ?? '');
             
             if (empty($vendor_name) || $amount <= 0 || empty($contract_start_date)) {
                 header("Location: dashboard.php?page=expenses&expenses_tab=recurring&status=error&message=" . urlencode('Vendor name, amount, and start date are required'));
@@ -115,12 +120,15 @@ try {
             
             $stmt = $pdo->prepare("INSERT INTO recurring_expenses 
                 (vendor_name, description, contract_type, amount, frequency, contract_start_date, contract_end_date, 
-                 renewal_date, next_payment_date, payment_method, category, notes, auto_renew, status, created_by) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)");
+                 renewal_date, next_payment_date, payment_method, category, notes, auto_renew, 
+                 contact_name, contact_email, contact_phone, company_phone, company_email, status, created_by) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)");
             $stmt->execute([
                 $vendor_name, $description, $contract_type, $amount, $frequency,
                 $contract_start_date, $contract_end_date, $renewal_date, $next_payment_date,
-                $payment_method, $category, $notes, $auto_renew, $user_id
+                $payment_method, $category, $notes, $auto_renew,
+                $contact_name ?: null, $contact_email ?: null, $contact_phone ?: null,
+                $company_phone ?: null, $company_email ?: null, $user_id
             ]);
             
             $recurring_id = $pdo->lastInsertId();

@@ -1038,6 +1038,15 @@ foreach ($recurring_expenses as $re) {
                                     <p style="color:var(--text-dim); font-size:13px;"><strong>Payment Method:</strong> <?= htmlspecialchars($re['payment_method'] ?? '-') ?></p>
                                     <p style="color:var(--text-dim); font-size:13px;"><strong>Category:</strong> <?= htmlspecialchars($re['category'] ?? '-') ?></p>
                                     <?php if ($re['notes']): ?><p style="color:var(--text-dim); font-size:13px;"><strong>Notes:</strong> <?= htmlspecialchars($re['notes']) ?></p><?php endif; ?>
+                                    
+                                    <?php if (!empty($re['contact_name']) || !empty($re['contact_email']) || !empty($re['contact_phone']) || !empty($re['company_phone']) || !empty($re['company_email'])): ?>
+                                    <h4 style="color:var(--text-white); margin:20px 0 12px;"><i class="fas fa-user-tie" style="color:var(--primary); margin-right:8px;"></i> Contact Information</h4>
+                                    <?php if ($re['contact_name']): ?><p style="color:var(--text-dim); font-size:13px;"><strong>Point of Contact:</strong> <?= htmlspecialchars($re['contact_name']) ?></p><?php endif; ?>
+                                    <?php if ($re['contact_email']): ?><p style="color:var(--text-dim); font-size:13px;"><strong>Contact Email:</strong> <a href="mailto:<?= htmlspecialchars($re['contact_email']) ?>" style="color:var(--primary-light);"><?= htmlspecialchars($re['contact_email']) ?></a></p><?php endif; ?>
+                                    <?php if ($re['contact_phone']): ?><p style="color:var(--text-dim); font-size:13px;"><strong>Contact Phone:</strong> <?= htmlspecialchars($re['contact_phone']) ?></p><?php endif; ?>
+                                    <?php if ($re['company_phone']): ?><p style="color:var(--text-dim); font-size:13px;"><strong>Company Phone:</strong> <?= htmlspecialchars($re['company_phone']) ?></p><?php endif; ?>
+                                    <?php if ($re['company_email']): ?><p style="color:var(--text-dim); font-size:13px;"><strong>Company Email:</strong> <a href="mailto:<?= htmlspecialchars($re['company_email']) ?>" style="color:var(--primary-light);"><?= htmlspecialchars($re['company_email']) ?></a></p><?php endif; ?>
+                                    <?php endif; ?>
                                 </div>
                                 <div>
                                     <h4 style="color:var(--text-white); margin-bottom:12px;"><i class="fas fa-bell" style="color:#f59e0b; margin-right:8px;"></i> Reminder Status</h4>
@@ -1171,6 +1180,39 @@ foreach ($recurring_expenses as $re) {
             <div class="form-group">
                 <label class="form-label">Notes</label>
                 <textarea name="notes" class="form-input" rows="2" placeholder="Additional notes about this contract"></textarea>
+            </div>
+
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3><i class="fas fa-user-tie"></i> Point of Contact &amp; Company Contact</h3>
+                </div>
+                <div class="card-body">
+                    <p style="color:var(--text-dim); font-size:12px; margin-bottom:16px;">Enter the point of contact for this contract and the company's contact information.</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">Point of Contact Name</label>
+                            <input type="text" name="contact_name" class="form-input" placeholder="Full name of contact person">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Contact Email</label>
+                            <input type="email" name="contact_email" class="form-input" placeholder="contact@company.com">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">Contact Phone</label>
+                            <input type="tel" name="contact_phone" class="form-input" placeholder="(555) 123-4567">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Company Phone</label>
+                            <input type="tel" name="company_phone" class="form-input" placeholder="(555) 987-6543">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Company Email</label>
+                        <input type="email" name="company_email" class="form-input" placeholder="info@company.com">
+                    </div>
+                </div>
             </div>
             
             <div class="form-group">
