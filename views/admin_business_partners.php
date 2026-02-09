@@ -112,7 +112,7 @@ if ($selected_partner_id > 0) {
                             <td>
                                 <strong><?= htmlspecialchars($partner['company_name']) ?></strong>
                                 <?php if ($partner['description']): ?>
-                                <br><span style="color: var(--text-muted); font-size: 11px;"><?= htmlspecialchars(substr($partner['description'], 0, 60)) ?></span>
+                                <br><span style="color: var(--text-muted); font-size: 11px;"><?= htmlspecialchars(substr($partner['description'], 0, 60)) ?><?= strlen($partner['description']) > 60 ? '...' : '' ?></span>
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($partner['contact_name'] ?? '-') ?></td>
@@ -132,7 +132,7 @@ if ($selected_partner_id > 0) {
                             <td>
                                 <div style="display: flex; gap: 6px;">
                                     <a href="?page=business_partners&tab=contracts&partner_id=<?= $partner['id'] ?>" class="btn btn-sm btn-primary" title="View Contracts"><i class="fas fa-file-contract"></i></a>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="editPartner(<?= htmlspecialchars(json_encode($partner), ENT_QUOTES) ?>)" title="Edit"><i class="fas fa-edit"></i></button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick='editPartner(<?= json_encode($partner, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
                                     <form method="POST" action="process_business_partners.php" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this partner and all associated contracts?')">
                                         <?php echo csrfTokenInput(); ?>
                                         <input type="hidden" name="action" value="delete_partner">

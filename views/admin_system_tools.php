@@ -1723,7 +1723,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         <li>Generate a random encryption key by running in your terminal:<br>
                             <code style="background: var(--bg-main); padding: 4px 10px; border-radius: 4px; font-family: monospace; color: #10b981; border: 1px solid var(--border);">php -r "echo bin2hex(openssl_random_pseudo_bytes(32));"</code>
                         </li>
-                        <li>Open your environment configuration file (e.g., <code style="background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: var(--primary);">/config/arctic_wolves.env</code>)</li>
+                        <li>Open your environment configuration file (e.g., <code style="background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: var(--primary);">arctic_wolves.env</code> or <code style="background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: var(--primary);">.env</code>)</li>
                         <li>Add the following line with your generated key:<br>
                             <code style="background: var(--bg-main); padding: 4px 10px; border-radius: 4px; font-family: monospace; color: #10b981; border: 1px solid var(--border);">ENCRYPTION_KEY=your_64_character_hex_key_here</code>
                         </li>
