@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS `users` (
     `assigned_coach_id` INT DEFAULT NULL, -- Primary coach assigned to this athlete
     `created_by_coach_id` INT DEFAULT NULL, -- Coach who created this athlete account
     `profile_image` VARCHAR(255) DEFAULT NULL,
+    `agreements_accepted` TINYINT(1) DEFAULT 0 COMMENT 'Whether user has accepted waiver and privacy policy',
+    `promotional_opt_in` TINYINT(1) DEFAULT 1 COMMENT 'Whether user opts in to promotional material usage',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`assigned_coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
@@ -3735,4 +3737,153 @@ CREATE TABLE IF NOT EXISTS `registration_blocklist` (
     INDEX `idx_type` (`block_type`),
     INDEX `idx_value` (`block_value`),
     INDEX `idx_restriction` (`restriction_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- USER AGREEMENTS (Waivers, Privacy Policies)
+-- Tracks waiver/privacy policy acceptance by users
+-- =========================================================
+CREATE TABLE IF NOT EXISTS `user_agreements` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `agreement_type` ENUM('waiver', 'privacy_policy') NOT NULL,
+    `agreement_version` VARCHAR(20) DEFAULT '1.0',
+    `accepted_at` TIMESTAMP NULL DEFAULT NULL,
+    `ip_address` VARCHAR(45) DEFAULT NULL,
+    `user_agent` TEXT DEFAULT NULL,
+    `docuseal_submission_id` INT DEFAULT NULL COMMENT 'External: DocuSeal submission ID for e-signature tracking',
+    `signing_url` VARCHAR(500) DEFAULT NULL COMMENT 'DocuSeal signing URL',
+    `signature_status` ENUM('pending', 'signed', 'expired', 'declined') DEFAULT 'pending',
+    `promotional_opt_in` TINYINT(1) DEFAULT 1 COMMENT 'Opt-in for promotional material (photos/videos)',
+    `share_evaluations_potential_teams` TINYINT(1) DEFAULT 0 COMMENT 'Allow sharing evaluations with potential teams',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_type` (`agreement_type`),
+    INDEX `idx_status` (`signature_status`),
+    INDEX `idx_promo` (`promotional_opt_in`),
+    UNIQUE KEY `unique_user_agreement` (`user_id`, `agreement_type`, `agreement_version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- AGREEMENT TEMPLATES (Admin-editable waiver/privacy policy content)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS `agreement_templates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `agreement_type` ENUM('waiver', 'privacy_policy') NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `content` LONGTEXT NOT NULL COMMENT 'HTML content of the agreement',
+    `version` VARCHAR(20) DEFAULT '1.0',
+    `docuseal_template_id` INT DEFAULT NULL COMMENT 'External: DocuSeal template ID for e-signature',
+    `is_active` TINYINT(1) DEFAULT 1,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_type` (`agreement_type`),
+    INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default agreement templates
+INSERT INTO `agreement_templates` (`agreement_type`, `title`, `content`, `version`, `is_active`) VALUES
+('waiver', 'Hockey Player Safety Waiver', '<h3>Hockey Player Safety Waiver</h3>
+<p>Based on Hockey Canada Best Practices</p>
+<p>By signing this waiver, I acknowledge and agree to the following:</p>
+<ol>
+<li><strong>Assumption of Risk:</strong> I understand that participation in hockey activities involves inherent risks including, but not limited to, physical injury, concussion, sprains, fractures, and other bodily harm.</li>
+<li><strong>Safety Compliance:</strong> I agree to follow all safety guidelines and protocols as outlined by Hockey Canada, including proper equipment usage, fair play rules, and concussion protocols.</li>
+<li><strong>Medical Disclosure:</strong> I confirm that I have disclosed any medical conditions that may affect my ability to safely participate in hockey activities.</li>
+<li><strong>Equipment Responsibility:</strong> I agree to wear all required protective equipment during practices and games, including helmet with full cage/visor, shoulder pads, shin guards, hockey pants, gloves, and skates in good condition.</li>
+<li><strong>Concussion Protocol:</strong> I understand and agree to comply with Hockey Canada''s concussion protocol, including immediate removal from play if a concussion is suspected and obtaining medical clearance before returning to play.</li>
+<li><strong>Code of Conduct:</strong> I agree to conduct myself in a respectful and sportsmanlike manner at all times during hockey activities.</li>
+<li><strong>Release of Liability:</strong> I release and hold harmless the organization, its coaches, volunteers, and staff from any claims arising from my participation in hockey activities, except in cases of gross negligence.</li>
+</ol>
+<p>I have read, understood, and agree to the terms of this waiver.</p>', '1.0', 1),
+('privacy_policy', 'Privacy Policy & Data Usage Agreement', '<h3>Privacy Policy & Data Usage Agreement</h3>
+<p><strong>Your Privacy Matters to Us</strong></p>
+<p>We are committed to protecting your personal information. This policy outlines how we collect, use, and safeguard your data.</p>
+
+<h4>Data Collection & Usage</h4>
+<ul>
+<li>We collect personal information necessary for hockey program registration and participation.</li>
+<li><strong>We will NOT share any personal information with outside companies for data mining purposes.</strong></li>
+<li>Your data is used solely for the operation of our hockey programs and related services.</li>
+</ul>
+
+<h4>Evaluation Sharing</h4>
+<ul>
+<li><strong>Current Teams:</strong> Your evaluations will be accessible by coaches of teams you are currently rostered on. This is necessary for your development and team management.</li>
+<li><strong>Potential Teams:</strong> Evaluations may be shared with potential teams you may play for, but only with your explicit consent (opt-in required below).</li>
+</ul>
+
+<h4>Technology & Media Usage</h4>
+<ul>
+<li>To provide the best experience and development tools, we use technology including photos and videos during sessions, games, and events.</li>
+<li>These materials are used for training analysis, skill development, and coaching purposes.</li>
+<li><strong>Promotional Material:</strong> We may wish to use photos and videos in promotional materials (website, social media, marketing). You may opt in or out of this below.</li>
+</ul>
+
+<h4>Data Security</h4>
+<ul>
+<li>All personal information is encrypted at rest and in transit.</li>
+<li>Access to your data is restricted to authorized personnel only.</li>
+<li>We follow Canadian privacy laws (PIPEDA) in all data handling practices.</li>
+</ul>
+
+<p>I have read, understood, and agree to the terms of this privacy policy.</p>', '1.0', 1)
+ON DUPLICATE KEY UPDATE `title` = VALUES(`title`);
+
+-- =========================================================
+-- RECURRING EXPENSES (Contracts with renewal reminders)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS `recurring_expenses` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `vendor_name` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `contract_type` VARCHAR(100) DEFAULT NULL COMMENT 'Type of contract (e.g., lease, software, insurance)',
+    `amount` DECIMAL(10,2) NOT NULL,
+    `frequency` ENUM('monthly', 'quarterly', 'semi_annual', 'annual') DEFAULT 'monthly',
+    `contract_start_date` DATE NOT NULL,
+    `contract_end_date` DATE DEFAULT NULL,
+    `next_payment_date` DATE DEFAULT NULL,
+    `renewal_date` DATE DEFAULT NULL COMMENT 'When the contract needs to be renewed',
+    `auto_renew` TINYINT(1) DEFAULT 0,
+    `reminder_60_sent` TINYINT(1) DEFAULT 0,
+    `reminder_30_sent` TINYINT(1) DEFAULT 0,
+    `reminder_15_sent` TINYINT(1) DEFAULT 0,
+    `payment_method` VARCHAR(50) DEFAULT NULL,
+    `account_number` VARCHAR(100) DEFAULT NULL,
+    `category` VARCHAR(100) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Path to contract documents in Nextcloud',
+    `status` ENUM('active', 'paused', 'expired', 'cancelled') DEFAULT 'active',
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_vendor` (`vendor_name`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_renewal` (`renewal_date`),
+    INDEX `idx_next_payment` (`next_payment_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- RECURRING EXPENSE DOCUMENTS (Contract uploads, insurance, etc.)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS `recurring_expense_documents` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `recurring_expense_id` INT NOT NULL,
+    `document_type` ENUM('contract', 'insurance', 'invoice', 'amendment', 'other') DEFAULT 'contract',
+    `file_name` VARCHAR(255) NOT NULL,
+    `file_path` VARCHAR(500) DEFAULT NULL COMMENT 'Local file path',
+    `nextcloud_path` VARCHAR(500) DEFAULT NULL COMMENT 'Nextcloud storage path',
+    `file_size` INT DEFAULT NULL,
+    `mime_type` VARCHAR(100) DEFAULT NULL,
+    `uploaded_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`recurring_expense_id`) REFERENCES `recurring_expenses`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_expense` (`recurring_expense_id`),
+    INDEX `idx_type` (`document_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

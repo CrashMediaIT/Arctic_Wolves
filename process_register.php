@@ -98,6 +98,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!in_array($role, ['athlete', 'parent'])) {
         $role = 'athlete';
     }
+
+    // Validate agreements
+    $waiver_accepted = isset($_POST['waiver_accepted']);
+    $privacy_accepted = isset($_POST['privacy_accepted']);
+    $promotional_opt_in = isset($_POST['promotional_opt_in']) ? 1 : 0;
+    $share_evaluations_potential = isset($_POST['share_evaluations_potential_teams']) ? 1 : 0;
+
+    if (!$waiver_accepted || !$privacy_accepted) {
+        header("Location: register.php?error=agreements_not_accepted");
+        exit();
+    }
     
     // 1. CHECK DUPLICATE EMAIL
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
@@ -133,21 +144,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $dob = $_POST['birth_date'] ?? null;
             $enc_dob = $dob ? FieldEncryption::encrypt($dob) : null;
             
-            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, phone, is_verified, verification_code) 
-                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, ?, 0, ?)";
+            $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, phone, is_verified, verification_code, agreements_accepted, promotional_opt_in) 
+                    VALUES (?, ?, ?, ?, 'athlete', ?, ?, ?, 0, ?, 1, ?)";
             
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$enc_first, $enc_last, $email, $hash_pass, $pos ?: null, $enc_dob, $enc_phone, $verify_code]);
+            $stmt->execute([$enc_first, $enc_last, $email, $hash_pass, $pos ?: null, $enc_dob, $enc_phone, $verify_code, $promotional_opt_in]);
+
+            $new_user_id = $pdo->lastInsertId();
+
+            // Record agreement acceptance
+            $client_ip = $_SERVER['REMOTE_ADDR'] ?? null;
+            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+            $agree_sql = "INSERT INTO user_agreements (user_id, agreement_type, agreement_version, accepted_at, ip_address, user_agent, signature_status, promotional_opt_in, share_evaluations_potential_teams) VALUES (?, ?, '1.0', NOW(), ?, ?, 'signed', ?, ?)";
+            $agree_stmt = $pdo->prepare($agree_sql);
+            $agree_stmt->execute([$new_user_id, 'waiver', $client_ip, $user_agent, $promotional_opt_in, $share_evaluations_potential]);
+            $agree_stmt->execute([$new_user_id, 'privacy_policy', $client_ip, $user_agent, $promotional_opt_in, $share_evaluations_potential]);
             
         } else {
             // PARENT REGISTRATION
-            $sql = "INSERT INTO users (first_name, last_name, email, password, role, phone, is_verified, verification_code) 
-                    VALUES (?, ?, ?, ?, 'parent', ?, 0, ?)";
+            $sql = "INSERT INTO users (first_name, last_name, email, password, role, phone, is_verified, verification_code, agreements_accepted, promotional_opt_in) 
+                    VALUES (?, ?, ?, ?, 'parent', ?, 0, ?, 1, ?)";
             
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$enc_first, $enc_last, $email, $hash_pass, $enc_phone, $verify_code]);
+            $stmt->execute([$enc_first, $enc_last, $email, $hash_pass, $enc_phone, $verify_code, $promotional_opt_in]);
             
             $parent_id = $pdo->lastInsertId();
+
+            // Record agreement acceptance for parent
+            $client_ip = $_SERVER['REMOTE_ADDR'] ?? null;
+            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+            $agree_sql = "INSERT INTO user_agreements (user_id, agreement_type, agreement_version, accepted_at, ip_address, user_agent, signature_status, promotional_opt_in, share_evaluations_potential_teams) VALUES (?, ?, '1.0', NOW(), ?, ?, 'signed', ?, ?)";
+            $agree_stmt = $pdo->prepare($agree_sql);
+            $agree_stmt->execute([$parent_id, 'waiver', $client_ip, $user_agent, $promotional_opt_in, $share_evaluations_potential]);
+            $agree_stmt->execute([$parent_id, 'privacy_policy', $client_ip, $user_agent, $promotional_opt_in, $share_evaluations_potential]);
             
             // Process athletes if any
             $athletes = $_POST['athletes'] ?? [];
