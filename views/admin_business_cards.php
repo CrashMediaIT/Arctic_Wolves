@@ -141,6 +141,9 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
     <button class="marketing-tab" onclick="switchMarketingTab('email-signatures')" id="tab-email-signatures">
         <i class="fas fa-envelope"></i> Email Signatures
     </button>
+    <button class="marketing-tab" onclick="switchMarketingTab('business-partners')" id="tab-business-partners">
+        <i class="fas fa-handshake"></i> Business Partners
+    </button>
 </div>
 
 <!-- Business Cards Section -->
@@ -620,6 +623,12 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
         </div>
     </div>
 </div>
+
+<!-- Business Partners Section -->
+<div class="business-partners-content marketing-section" id="section-business-partners" style="display: none;">
+<?php include __DIR__ . '/admin_business_partners.php'; ?>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <!-- QR Code Library -->
