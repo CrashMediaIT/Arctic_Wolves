@@ -68,7 +68,7 @@ if ($action === 'accept_agreements') {
 }
 
 if ($action === 'update_template') {
-    // Admin only - update agreement template content
+    // Admin only - update agreement template content (save draft without forcing re-sign)
     if ($_SESSION['user_role'] !== 'admin') {
         header("Location: dashboard.php?page=employee_contracts&tab=agreements&error=unauthorized");
         exit();
@@ -94,6 +94,57 @@ if ($action === 'update_template') {
         exit();
     } catch (PDOException $e) {
         error_log("Agreement template update error: " . $e->getMessage());
+        header("Location: dashboard.php?page=employee_contracts&tab=agreements&error=database_error");
+        exit();
+    }
+}
+
+if ($action === 'publish_and_force_resign') {
+    // Admin only - update template AND force all users to re-sign
+    if ($_SESSION['user_role'] !== 'admin') {
+        header("Location: dashboard.php?page=employee_contracts&tab=agreements&error=unauthorized");
+        exit();
+    }
+
+    $template_id = intval($_POST['template_id'] ?? 0);
+    $title = trim($_POST['title'] ?? '');
+    $version = trim($_POST['version'] ?? '1.0');
+    $content = $_POST['content'] ?? '';
+    $docuseal_template_id = !empty($_POST['docuseal_template_id']) ? intval($_POST['docuseal_template_id']) : null;
+    $is_active = isset($_POST['is_active']) ? 1 : 0;
+
+    if ($template_id <= 0 || empty($title) || empty($content)) {
+        header("Location: dashboard.php?page=employee_contracts&tab=agreements&error=invalid_data");
+        exit();
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        // Update the template with new content/version
+        $stmt = $pdo->prepare("UPDATE agreement_templates SET title = ?, content = ?, version = ?, docuseal_template_id = ?, is_active = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->execute([$title, $content, $version, $docuseal_template_id, $is_active, $template_id]);
+
+        // Get the agreement type for this template
+        $type_stmt = $pdo->prepare("SELECT agreement_type FROM agreement_templates WHERE id = ?");
+        $type_stmt->execute([$template_id]);
+        $agreement_type = $type_stmt->fetchColumn();
+
+        // Reset all non-admin users' agreements_accepted to 0 so they must re-sign
+        $pdo->exec("UPDATE users SET agreements_accepted = 0 WHERE role != 'admin'");
+
+        // Update existing user_agreements for this type to expired so they need to re-accept
+        if ($agreement_type) {
+            $pdo->prepare("UPDATE user_agreements SET signature_status = 'expired' WHERE agreement_type = ? AND signature_status = 'signed'")->execute([$agreement_type]);
+        }
+
+        $pdo->commit();
+
+        header("Location: dashboard.php?page=employee_contracts&tab=agreements&status=success&message=" . urlencode('Agreement published. All users will be required to re-sign.'));
+        exit();
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        error_log("Agreement publish & force resign error: " . $e->getMessage());
         header("Location: dashboard.php?page=employee_contracts&tab=agreements&error=database_error");
         exit();
     }

@@ -103,6 +103,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=database" class="page-tab <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
         <i class="fas fa-database"></i> Database
     </a>
+    <a href="?page=system_tools&tab=encryption" class="page-tab <?php echo $activeTab === 'encryption' ? 'active' : ''; ?>">
+        <i class="fas fa-lock"></i> Encryption
+    </a>
 </div>
 
 <!-- System Tools Tabs - Secondary Row (System Status) -->
@@ -1584,6 +1587,160 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Encryption Tab -->
+<div class="tab-content <?php echo $activeTab === 'encryption' ? 'active' : ''; ?>" id="encryption-tab">
+    <?php
+    require_once __DIR__ . '/../lib/encryption.php';
+    $encryption_configured = FieldEncryption::isConfigured();
+    
+    // Check encryption_enabled setting
+    $encryption_enabled_setting = '1'; // default enabled
+    try {
+        $enc_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pii_encryption_enabled'");
+        $enc_stmt->execute();
+        $enc_row = $enc_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($enc_row) {
+            $encryption_enabled_setting = $enc_row['setting_value'];
+        }
+    } catch (PDOException $e) {
+        // Setting may not exist yet
+    }
+    ?>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-shield-halved"></i> PII Encryption at Rest</h3>
+            <?php if ($encryption_configured && $encryption_enabled_setting === '1'): ?>
+                <span class="badge badge-success"><i class="fas fa-check-circle"></i> Active</span>
+            <?php elseif ($encryption_configured && $encryption_enabled_setting !== '1'): ?>
+                <span class="badge badge-warning"><i class="fas fa-pause-circle"></i> Key Configured, Encryption Disabled</span>
+            <?php else: ?>
+                <span class="badge badge-error"><i class="fas fa-exclamation-triangle"></i> Not Configured</span>
+            <?php endif; ?>
+        </div>
+        <div class="card-body">
+            <p style="color: var(--text-dim); margin-bottom: 20px;">
+                Personal Identifiable Information (PII) such as names, phone numbers, addresses, and birthdates can be encrypted at rest in the database using AES-256-CBC encryption. 
+                This ensures that even if the database is compromised, sensitive data remains protected.
+            </p>
+
+            <!-- Status Overview -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <div style="padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; text-align: center;">
+                    <i class="fas fa-key" style="font-size: 24px; color: <?= $encryption_configured ? '#10b981' : '#ef4444' ?>; margin-bottom: 8px; display: block;"></i>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-white);">Encryption Key</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;"><?= $encryption_configured ? 'Configured' : 'Not Set' ?></div>
+                </div>
+                <div style="padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; text-align: center;">
+                    <i class="fas fa-toggle-<?= $encryption_enabled_setting === '1' ? 'on' : 'off' ?>" style="font-size: 24px; color: <?= $encryption_enabled_setting === '1' ? '#10b981' : '#ef4444' ?>; margin-bottom: 8px; display: block;"></i>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-white);">Encryption Status</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;"><?= $encryption_enabled_setting === '1' ? 'Enabled' : 'Disabled' ?></div>
+                </div>
+                <div style="padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; text-align: center;">
+                    <i class="fas fa-shield-halved" style="font-size: 24px; color: var(--primary); margin-bottom: 8px; display: block;"></i>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text-white);">Algorithm</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">AES-256-CBC</div>
+                </div>
+            </div>
+
+            <!-- Toggle Encryption -->
+            <?php if ($encryption_configured): ?>
+            <form method="POST" action="process_settings.php">
+                <?php echo csrfTokenInput(); ?>
+                <input type="hidden" name="action" value="toggle_pii_encryption">
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header">
+                        <h3><i class="fas fa-toggle-on"></i> Enable / Disable PII Encryption</h3>
+                    </div>
+                    <div class="card-body">
+                        <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 12px; background: rgba(107, 70, 193, 0.05); border: 1px solid var(--border); border-radius: 8px;">
+                            <input type="checkbox" name="pii_encryption_enabled" value="1" <?= $encryption_enabled_setting === '1' ? 'checked' : '' ?>>
+                            <div>
+                                <span style="color: var(--text-white); font-weight: 600;">Enable PII Encryption at Rest</span>
+                                <p style="color: var(--text-dim); font-size: 12px; margin: 4px 0 0 0;">When enabled, all PII fields (names, phone numbers, addresses, birthdates) will be encrypted before being stored in the database.</p>
+                            </div>
+                        </label>
+                        <div style="margin-top: 16px;">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Encryption Setting</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <?php endif; ?>
+
+            <!-- Protected Fields -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3><i class="fas fa-list-check"></i> Protected PII Fields</h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h4 style="color: var(--text-white); margin-bottom: 12px; font-size: 14px;"><i class="fas fa-user" style="color: var(--primary); margin-right: 6px;"></i> User PII Fields</h4>
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> First Name</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Last Name</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Phone Number</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Birth Date</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--text-white); margin-bottom: 12px; font-size: 14px;"><i class="fas fa-user-tie" style="color: var(--primary); margin-right: 6px;"></i> Employee PII Fields</h4>
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Name &amp; Email</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Phone &amp; DOB</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Address</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Emergency Contact</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--text-white); margin-bottom: 12px; font-size: 14px;"><i class="fas fa-shopping-cart" style="color: var(--primary); margin-right: 6px;"></i> Customer PII Fields</h4>
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Customer Name &amp; Email</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Phone Number</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Billing Address</li>
+                                <li style="padding: 6px 0; color: var(--text-dim); font-size: 13px;"><i class="fas fa-check" style="color: #10b981; margin-right: 8px;"></i> Shipping Address</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Setup Instructions -->
+            <?php if (!$encryption_configured): ?>
+            <div class="card" style="border-color: #f59e0b;">
+                <div class="card-header" style="border-bottom-color: #f59e0b;">
+                    <h3><i class="fas fa-wrench" style="color: #f59e0b;"></i> Setup Instructions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" style="margin-bottom: 16px;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Encryption key is not configured. Follow these steps to enable PII encryption.</span>
+                    </div>
+                    <ol style="color: var(--text-dim); font-size: 13px; line-height: 2; padding-left: 20px;">
+                        <li>Generate a random encryption key by running in your terminal:<br>
+                            <code style="background: var(--bg-main); padding: 4px 10px; border-radius: 4px; font-family: monospace; color: #10b981; border: 1px solid var(--border);">php -r "echo bin2hex(openssl_random_pseudo_bytes(32));"</code>
+                        </li>
+                        <li>Open your environment configuration file (e.g., <code style="background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: var(--primary);">/config/arctic_wolves.env</code>)</li>
+                        <li>Add the following line with your generated key:<br>
+                            <code style="background: var(--bg-main); padding: 4px 10px; border-radius: 4px; font-family: monospace; color: #10b981; border: 1px solid var(--border);">ENCRYPTION_KEY=your_64_character_hex_key_here</code>
+                        </li>
+                        <li>Restart your web server (Apache/Nginx) to load the new environment variable</li>
+                        <li>Return to this page to verify the encryption key is detected</li>
+                    </ol>
+                    <div class="alert alert-error" style="margin-top: 16px;">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <div>
+                            <strong>Important:</strong> Back up your encryption key securely. If the key is lost, encrypted data cannot be recovered. 
+                            Store a copy in a secure password manager or offline backup.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 

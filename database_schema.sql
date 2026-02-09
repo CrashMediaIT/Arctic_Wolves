@@ -3887,3 +3887,60 @@ CREATE TABLE IF NOT EXISTS `recurring_expense_documents` (
     INDEX `idx_expense` (`recurring_expense_id`),
     INDEX `idx_type` (`document_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- RECURRING EXPENSES - Contact fields for point of contact
+-- =========================================================
+ALTER TABLE `recurring_expenses`
+    ADD COLUMN IF NOT EXISTS `contact_name` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact name for the contract',
+    ADD COLUMN IF NOT EXISTS `contact_email` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact email',
+    ADD COLUMN IF NOT EXISTS `contact_phone` VARCHAR(50) DEFAULT NULL COMMENT 'Point of contact phone number',
+    ADD COLUMN IF NOT EXISTS `company_phone` VARCHAR(50) DEFAULT NULL COMMENT 'Company general phone number',
+    ADD COLUMN IF NOT EXISTS `company_email` VARCHAR(255) DEFAULT NULL COMMENT 'Company general email address';
+
+-- =========================================================
+-- BUSINESS PARTNERS (Admin-managed partnership tracking)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS `business_partners` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `company_name` VARCHAR(255) NOT NULL,
+    `company_email` VARCHAR(255) DEFAULT NULL,
+    `company_phone` VARCHAR(50) DEFAULT NULL,
+    `company_website` VARCHAR(500) DEFAULT NULL,
+    `company_address` TEXT DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
+    `contact_name` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact full name',
+    `contact_title` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact title/role',
+    `contact_email` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact email',
+    `contact_phone` VARCHAR(50) DEFAULT NULL COMMENT 'Point of contact phone',
+    `status` ENUM('active', 'inactive', 'pending') DEFAULT 'active',
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_company` (`company_name`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- PARTNER CONTRACTS (Contracts associated with business partners)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS `partner_contracts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `partner_id` INT NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `partnership_items` TEXT DEFAULT NULL COMMENT 'Items/benefits included in partnership (e.g., 30 hockey sticks)',
+    `value` DECIMAL(10,2) DEFAULT NULL COMMENT 'Monetary value of the contract',
+    `start_date` DATE DEFAULT NULL,
+    `end_date` DATE DEFAULT NULL,
+    `status` ENUM('active', 'pending', 'expired', 'cancelled') DEFAULT 'active',
+    `notes` TEXT DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`partner_id`) REFERENCES `business_partners`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_partner` (`partner_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

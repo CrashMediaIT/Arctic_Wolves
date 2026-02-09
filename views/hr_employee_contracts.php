@@ -685,6 +685,15 @@ try {
 } catch (PDOException $e) {
     $agreement_templates_list = [];
 }
+
+// Count users who need to re-sign
+$pending_resign_count = 0;
+try {
+    $resign_stmt = $pdo->query("SELECT COUNT(DISTINCT u.id) FROM users u WHERE u.agreements_accepted = 0 AND u.role != 'admin'");
+    $pending_resign_count = $resign_stmt->fetchColumn();
+} catch (PDOException $e) {
+    $pending_resign_count = 0;
+}
 ?>
 <div class="card">
     <div class="card-header">
@@ -692,7 +701,14 @@ try {
         <span class="badge badge-primary"><?= count($agreement_templates_list) ?> Templates</span>
     </div>
     <div class="card-body">
-        <p style="color: var(--text-dim); margin-bottom: 20px;">Edit the waiver and privacy policy content that users must accept during registration or first sign-in. These agreements are presented to users for e-signature via DocuSeal when configured.</p>
+        <p style="color: var(--text-dim); margin-bottom: 20px;">Edit the waiver and privacy policy content that users must accept during registration or first sign-in. You can make multiple edits before publishing. When you publish changes, all users will be required to re-sign the updated agreement.</p>
+        
+        <?php if ($pending_resign_count > 0): ?>
+        <div class="alert alert-warning" style="margin-bottom: 20px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span><strong><?= $pending_resign_count ?> user(s)</strong> have pending agreement re-signatures. They will be prompted to accept the updated agreements on their next login.</span>
+        </div>
+        <?php endif; ?>
         
         <?php if (empty($agreement_templates_list)): ?>
         <div style="text-align: center; padding: 40px; color: var(--text-dim);">
@@ -714,9 +730,11 @@ try {
                         <span class="badge badge-secondary"><?= ucfirst(str_replace('_', ' ', $agr_tpl['agreement_type'])) ?></span>
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <div id="agreement-preview-<?= $agr_tpl['id'] ?>" style="color: var(--text-dim); font-size: 13px; line-height: 1.7; max-height: 150px; overflow-y: auto; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px;">
@@ -725,7 +743,6 @@ try {
                 
                 <form id="agreement-edit-<?= $agr_tpl['id'] ?>" method="POST" action="process_agreements.php" style="display: none; margin-top: 16px;">
                     <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="update_template">
                     <input type="hidden" name="template_id" value="<?= $agr_tpl['id'] ?>">
                     
                     <div class="form-group">
@@ -736,6 +753,7 @@ try {
                     <div class="form-group">
                         <label class="form-label">Version</label>
                         <input type="text" name="version" value="<?= htmlspecialchars($agr_tpl['version']) ?>" class="form-input" required style="max-width: 100px;">
+                        <p style="color: var(--text-dim); font-size: 11px; margin-top: 4px;">Increment the version number when publishing changes (e.g., 1.0 → 1.1 or 2.0)</p>
                     </div>
                     
                     <div class="form-group">
@@ -758,8 +776,19 @@ try {
                         </label>
                     </div>
                     
-                    <div style="display: flex; gap: 12px;">
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                    <div class="alert alert-info" style="margin-bottom: 16px;">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Save Draft vs Publish &amp; Force Re-sign</strong>
+                            <p style="margin: 4px 0 0 0; font-size: 12px;">Use <strong>Save Draft</strong> to save your changes without requiring users to re-sign. You can make multiple edits this way. When you are ready, use <strong>Publish &amp; Force Re-sign</strong> to push the update to all users — they will be required to accept the updated agreement on their next login.</p>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button type="submit" name="action" value="update_template" class="btn btn-secondary"><i class="fas fa-save"></i> Save Draft</button>
+                        <button type="submit" name="action" value="publish_and_force_resign" class="btn btn-primary" onclick="return confirm('This will require ALL users to re-accept the updated <?= htmlspecialchars($agr_tpl['agreement_type'] === 'waiver' ? 'waiver' : 'privacy policy') ?> on their next login. Continue?')">
+                            <i class="fas fa-bullhorn"></i> Publish &amp; Force Re-sign
+                        </button>
                         <button type="button" class="btn btn-secondary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)"><i class="fas fa-times"></i> Cancel</button>
                     </div>
                 </form>
