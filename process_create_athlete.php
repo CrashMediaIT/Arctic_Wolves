@@ -4,6 +4,7 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 require 'mailer.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // 1. SECURITY: Only Coach, Coach Plus, Health Coach, Team Coach, or Admin can run this
 $coach_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
@@ -46,15 +47,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     try {
         $pdo->beginTransaction();
         
-        // 3. INSERT USER
+        // 3. INSERT USER with encrypted PII
         // is_verified = 1 (Instant Access)
         // force_pass_change = 1 (Must change password immediately)
         // is_active = 1 (Active immediately so they appear in rosters)
         // Set assigned_coach_id and created_by_coach_id for all coach/admin types so athletes show in "My Athletes"
+        $enc_first = FieldEncryption::encrypt($first);
+        $enc_last = FieldEncryption::encrypt($last);
+        $enc_dob = $dob ? FieldEncryption::encrypt($dob) : null;
+
         $sql = "INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change, is_active, assigned_coach_id, created_by_coach_id) 
                 VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1, 1, ?, ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$first, $last, $email, $hash_pass, $pos, $dob, $coach_id, $coach_id]);
+        $stmt->execute([$enc_first, $enc_last, $email, $hash_pass, $pos, $enc_dob, $coach_id, $coach_id]);
         
         $athlete_id = $pdo->lastInsertId();
         

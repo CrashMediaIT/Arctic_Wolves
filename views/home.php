@@ -57,7 +57,7 @@ try {
         
         // Get recent coach notes (feedback)
         $stmt = $pdo->prepare("
-            SELECT vr.*, CONCAT(u.first_name, ' ', u.last_name) as coach_name
+            SELECT vr.*, u.first_name as coach_first_name, u.last_name as coach_last_name
             FROM video_reviews vr
             LEFT JOIN users u ON vr.coach_id = u.id
             WHERE vr.athlete_id = ?
@@ -66,6 +66,7 @@ try {
         ");
         $stmt->execute([$user_id]);
         $coachNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $coachNotes = decryptUserRows($coachNotes);
     } elseif (in_array($user_role, ['coach', 'health_coach', 'team_coach', 'admin'])) {
         // Get upcoming sessions (next 7 days) - including both regular sessions and training session templates
         $stmt = $pdo->prepare("
@@ -98,7 +99,7 @@ try {
         
         // Get pending video reviews
         $stmt = $pdo->prepare("
-            SELECT vr.*, CONCAT(u.first_name, ' ', u.last_name) as athlete_name
+            SELECT vr.*, u.first_name as athlete_first_name, u.last_name as athlete_last_name
             FROM video_drill_reviews vr
             LEFT JOIN users u ON vr.athlete_id = u.id
             WHERE vr.status = 'pending'
@@ -107,10 +108,11 @@ try {
         ");
         $stmt->execute();
         $pendingReviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $pendingReviews = decryptUserRows($pendingReviews);
         
         // Get recent athlete updates
         $stmt = $pdo->prepare("
-            SELECT n.*, CONCAT(u.first_name, ' ', u.last_name) as athlete_name
+            Select n.*, u.first_name as athlete_first_name, u.last_name as athlete_last_name
             FROM notifications n
             LEFT JOIN users u ON n.user_id = u.id
             WHERE n.type IN ('injury', 'absence', 'alert')
@@ -119,6 +121,7 @@ try {
         ");
         $stmt->execute();
         $athleteUpdates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $athleteUpdates = decryptUserRows($athleteUpdates);
     }
 } catch (PDOException $e) {
     error_log("Dashboard data fetch error: " . $e->getMessage());
@@ -767,7 +770,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <?php foreach ($coachNotes as $note): ?>
                                 <div class="note-item">
                                     <div class="note-header">
-                                        <strong><?php echo htmlspecialchars($note['coach_name'] ?? 'Coach'); ?></strong>
+                                        <strong><?php echo htmlspecialchars(trim(($note['coach_first_name'] ?? '') . ' ' . ($note['coach_last_name'] ?? '')) ?: 'Coach'); ?></strong>
                                         <span class="note-date">
                                             <?php echo date('M d', strtotime($note['created_at'])); ?>
                                         </span>
@@ -833,7 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <i class="fas fa-exclamation-circle"></i>
                                     </div>
                                     <div class="notification-content">
-                                        <strong><?php echo htmlspecialchars($update['athlete_name'] ?? 'Athlete'); ?></strong>
+                                        <strong><?php echo htmlspecialchars(trim(($update['athlete_first_name'] ?? '') . ' ' . ($update['athlete_last_name'] ?? '')) ?: 'Athlete'); ?></strong>
                                         <p><?php echo htmlspecialchars($update['message']); ?></p>
                                         <span class="notification-time">
                                             <?php echo date('M d, Y', strtotime($update['created_at'])); ?>
@@ -858,7 +861,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <?php foreach ($pendingReviews as $review): ?>
                                 <div class="review-item">
                                     <div class="review-info">
-                                        <strong><?php echo htmlspecialchars($review['athlete_name'] ?? 'Athlete'); ?></strong>
+                                        <strong><?php echo htmlspecialchars(trim(($review['athlete_first_name'] ?? '') . ' ' . ($review['athlete_last_name'] ?? '')) ?: 'Athlete'); ?></strong>
                                         <span class="review-type">Video Review</span>
                                     </div>
                                     <a href="?page=video_review&id=<?php echo $review['id']; ?>" class="btn-sm btn-primary">
@@ -879,7 +882,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <?php
         // Get parent's associated athletes
         $stmt = $pdo->prepare("
-            SELECT u.id, CONCAT(u.first_name, ' ', u.last_name) as name, u.email
+            SELECT u.id, u.first_name, u.last_name, u.email
             FROM users u
             INNER JOIN parent_athlete_relationships par ON u.id = par.athlete_id
             WHERE par.parent_id = ?
@@ -887,6 +890,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ");
         $stmt->execute([$user_id]);
         $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $athletes = decryptUserRows($athletes);
         ?>
         
         <div class="parent-dashboard">
@@ -896,7 +900,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <option value="">-- Select an athlete --</option>
                     <?php foreach ($athletes as $athlete): ?>
                         <option value="<?php echo $athlete['id']; ?>">
-                            <?php echo htmlspecialchars($athlete['name']); ?>
+                            <?php echo htmlspecialchars(trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? ''))); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

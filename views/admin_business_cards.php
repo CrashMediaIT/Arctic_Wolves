@@ -45,13 +45,14 @@ try {
     
     $stmt = $pdo->prepare("
         SELECT u.*, 
-               CONCAT(u.first_name, ' ', u.last_name) as full_name
+               u.first_name, u.last_name
         FROM users u
         $where_clause
         ORDER BY u.first_name ASC, u.last_name ASC
     ");
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
     
     $total_users = count($users);
 } catch (PDOException $e) {
@@ -65,12 +66,13 @@ $selected_user = null;
 if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
     try {
         $stmt = $pdo->prepare("
-            SELECT u.*, CONCAT(u.first_name, ' ', u.last_name) as full_name
+            SELECT u.*, u.first_name, u.last_name
             FROM users u
             WHERE u.id = ?
         ");
         $stmt->execute([$_GET['user_id']]);
         $selected_user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $selected_user = decryptUserRow($selected_user);
     } catch (PDOException $e) {
         error_log("Selected user fetch error: " . $e->getMessage());
     }
@@ -196,7 +198,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                                 ?>
                             </div>
                             <div class="user-info">
-                                <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
+                                <div class="user-name"><?php echo htmlspecialchars(trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''))); ?></div>
                                 <div class="user-email"><?php echo htmlspecialchars($user['email']); ?></div>
                                 <span class="role-badge <?php echo $user['role']; ?>">
                                     <?php echo ucfirst(str_replace('_', ' ', $user['role'])); ?>
@@ -423,7 +425,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                                 <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves Logo">
                             </div>
                             <div class="card-main-info">
-                                <h2 class="card-name" id="preview-name"><?php echo $selected_user ? htmlspecialchars($selected_user['full_name']) : 'Full Name'; ?></h2>
+                                <h2 class="card-name" id="preview-name"><?php echo $selected_user ? htmlspecialchars(trim(($selected_user['first_name'] ?? '') . ' ' . ($selected_user['last_name'] ?? ''))) : 'Full Name'; ?></h2>
                                 <p class="card-title" id="preview-title"><?php echo $selected_user ? ucfirst(str_replace('_', ' ', $selected_user['role'])) : 'Job Title'; ?></p>
                             </div>
                             <div class="card-contact-info">
@@ -492,7 +494,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                                 ?>
                             </div>
                             <div class="user-info">
-                                <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
+                                <div class="user-name"><?php echo htmlspecialchars(trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''))); ?></div>
                                 <div class="user-email"><?php echo htmlspecialchars($user['email']); ?></div>
                                 <span class="role-badge <?php echo $user['role']; ?>">
                                     <?php echo ucfirst(str_replace('_', ' ', $user['role'])); ?>

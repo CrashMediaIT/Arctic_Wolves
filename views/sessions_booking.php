@@ -16,6 +16,7 @@ $coaches_query = "
     ORDER BY u.last_name, u.first_name
 ";
 $coaches = $pdo->query($coaches_query)->fetchAll();
+$coaches = decryptUserRows($coaches);
 
 // Get session types
 $session_types = $pdo->query("SELECT * FROM session_types ORDER BY name")->fetchAll();
@@ -26,7 +27,7 @@ $available_sessions_query = "
            s.session_date, s.session_time,
            s.duration_minutes, COALESCE(s.price, st.default_price, 0) as session_price,
            s.max_participants, 'session' as source_type, NULL as date_id,
-           CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+           c.first_name as coach_first_name, c.last_name as coach_last_name,
            l.name as location_name,
            COUNT(DISTINCT b.id) as registered_count
     FROM sessions s
@@ -46,7 +47,7 @@ $available_sessions_query = "
            tst.duration_minutes, COALESCE(tst.price, 0) as session_price,
            COALESCE(tsd.max_participants, tst.max_participants) as max_participants,
            'template' as source_type, tsd.id as date_id,
-           CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+           c.first_name as coach_first_name, c.last_name as coach_last_name,
            l.name as location_name,
            0 as registered_count
     FROM training_session_templates tst
@@ -60,6 +61,13 @@ $available_sessions_query = "
     LIMIT 20
 ";
 $available_sessions = $pdo->query($available_sessions_query)->fetchAll();
+// Decrypt coach PII fields in session rows
+foreach ($available_sessions as &$s) {
+    foreach (['coach_first_name', 'coach_last_name'] as $f) {
+        if (!empty($s[$f])) $s[$f] = FieldEncryption::decrypt($s[$f]);
+    }
+}
+unset($s);
 
 // No demo data - show empty state when no real data exists
 $is_demo_packages = false;
@@ -122,7 +130,7 @@ $is_demo_sessions = false;
                     <div class="session-details-column">
                         <h4 class="session-title"><?= htmlspecialchars($session['session_type_name'] ?? 'Training Session') ?></h4>
                         <div class="session-meta">
-                            <span class="meta-item"><i class="fas fa-user-tie"></i> <?= htmlspecialchars($session['coach_name'] ?? 'TBD') ?></span>
+                            <span class="meta-item"><i class="fas fa-user-tie"></i> <?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?></span>
                             <?php if (!empty($session['location_name'])): ?>
                             <span class="meta-item"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($session['location_name']) ?></span>
                             <?php endif; ?>

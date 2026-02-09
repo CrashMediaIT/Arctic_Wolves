@@ -10,6 +10,7 @@ try {
     ");
     $stmt->execute([$user_id]);
     $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+    $userData = $userData ? decryptUserRow($userData) : $userData;
     
     // Get additional player data (available for ALL users, not just athletes)
     $playerData = null;

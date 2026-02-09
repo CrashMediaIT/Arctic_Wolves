@@ -28,12 +28,14 @@ if ($isCoach) {
         WHERE role = 'athlete' AND is_active = 1
         ORDER BY last_name, first_name
     ")->fetchAll();
+    $athletes = decryptUserRows($athletes);
 }
 
 // Get athlete info
 $athlete_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
 $athlete_stmt->execute([$viewing_athlete_id]);
 $athlete_info = $athlete_stmt->fetch();
+$athlete_info = decryptUserRow($athlete_info);
 
 // In team mode, load all categories and skills for evaluation
 $all_categories = [];
@@ -72,13 +74,14 @@ $categories = [];
 if ($eval_id) {
     // Load evaluation
     $eval_stmt = $pdo->prepare("
-        SELECT ae.*, CONCAT(u.first_name, ' ', u.last_name) as creator_name
+        Select ae.*, u.first_name as creator_first_name, u.last_name as creator_last_name
         FROM athlete_evaluations ae
         LEFT JOIN users u ON ae.created_by = u.id
         WHERE ae.id = ? AND ae.athlete_id = ?
     ");
     $eval_stmt->execute([$eval_id, $viewing_athlete_id]);
     $evaluation = $eval_stmt->fetch();
+    $evaluation = decryptUserRow($evaluation);
     
     if ($evaluation) {
         // Load scores
@@ -137,7 +140,7 @@ if ($eval_id) {
 // Get all evaluations list
 $evals_stmt = $pdo->prepare("
     SELECT ae.*, 
-           CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+           u.first_name as creator_first_name, u.last_name as creator_last_name,
            (SELECT COUNT(*) FROM evaluation_scores WHERE evaluation_id = ae.id AND score IS NOT NULL) as completed_scores,
            (SELECT COUNT(*) FROM evaluation_scores WHERE evaluation_id = ae.id) as total_scores
     FROM athlete_evaluations ae
@@ -147,6 +150,7 @@ $evals_stmt = $pdo->prepare("
 ");
 $evals_stmt->execute([$viewing_athlete_id]);
 $evaluations_list = $evals_stmt->fetchAll();
+$evaluations_list = decryptUserRows($evaluations_list);
 
 // Get historical evaluations for comparison (if viewing evaluation)
 $historical = [];
@@ -865,7 +869,7 @@ if ($eval_id && $evaluation) {
                     <div class="eval-detail-meta">
                         <strong><?= htmlspecialchars($athlete_info['first_name'] . ' ' . $athlete_info['last_name']) ?></strong>
                         • <?= date('F j, Y', strtotime($evaluation['evaluation_date'])) ?>
-                        • Created by <?= htmlspecialchars($evaluation['creator_name']) ?>
+                        • Created by <?= htmlspecialchars(trim(($evaluation['creator_first_name'] ?? '') . ' ' . ($evaluation['creator_last_name'] ?? ''))) ?>
                     </div>
                 </div>
                 <div class="eval-actions">
@@ -1157,7 +1161,7 @@ if ($eval_id && $evaluation) {
                             </span>
                         </div>
                         <div style="font-size: 14px; color: var(--text-light); margin-top: 10px;">
-                            Created by <?= htmlspecialchars($eval['creator_name']) ?>
+                            Created by <?= htmlspecialchars(trim(($eval['creator_first_name'] ?? '') . ' ' . ($eval['creator_last_name'] ?? ''))) ?>
                         </div>
                         <div class="eval-card-progress">
                             <div class="progress-text">

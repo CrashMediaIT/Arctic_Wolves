@@ -64,8 +64,10 @@ if (!empty($filter_age_group)) {
 }
 
 if (!empty($filter_name)) {
-    $query .= " AND (CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR u.email LIKE ?)";
+    $query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR u.email LIKE ?)";
     $search_term = '%' . $filter_name . '%';
+    $params[] = $search_term;
+    $params[] = $search_term;
     $params[] = $search_term;
     $params[] = $search_term;
 }
@@ -75,6 +77,7 @@ $query .= " ORDER BY u.last_name, u.first_name";
 $athletes_stmt = $pdo->prepare($query);
 $athletes_stmt->execute($params);
 $athletes = $athletes_stmt->fetchAll();
+$athletes = decryptUserRows($athletes);
 
 // Get teams for filter dropdown
 $teams_stmt = $pdo->query("SELECT id, name FROM teams ORDER BY name");

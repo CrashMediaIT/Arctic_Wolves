@@ -30,7 +30,7 @@ if ($planId) {
             SELECT pp.*, 
                    COALESCE(pp.title, pp.name) as title,
                    COALESCE(pp.total_duration, pp.duration_minutes, 60) as total_duration,
-                   CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+                   u.first_name as creator_first_name, u.last_name as creator_last_name,
                    u.first_name, u.last_name
             FROM practice_plans pp
             LEFT JOIN users u ON pp.created_by = u.id
@@ -38,6 +38,7 @@ if ($planId) {
         ");
         $stmt->execute([$planId]);
         $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+        $plan = decryptUserRow($plan);
         
         if ($plan) {
             // Get the drills for this plan
@@ -66,7 +67,7 @@ if (!$plan) {
     return;
 }
 
-$creatorName = htmlspecialchars($plan['creator_name'] ?? '');
+$creatorName = htmlspecialchars(trim(($plan['creator_first_name'] ?? '') . ' ' . ($plan['creator_last_name'] ?? '')));
 
 // Build share URL
 $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';

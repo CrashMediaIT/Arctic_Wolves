@@ -8,6 +8,7 @@ session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -292,6 +293,12 @@ if ($action === 'create') {
             if ($createAccount) {
                 $tempPassword = generateTemporaryPassword();
                 $hashedPassword = password_hash($tempPassword, PASSWORD_DEFAULT);
+
+                // Encrypt PII before storing (email kept as-is for login lookups)
+                $enc_firstName = FieldEncryption::encrypt($firstName);
+                $enc_lastName = FieldEncryption::encrypt($lastName);
+                $enc_phone = $phone ? FieldEncryption::encrypt($phone) : null;
+                $enc_dob = $dateOfBirth ? FieldEncryption::encrypt($dateOfBirth) : null;
                 
                 $userStmt = $pdo->prepare("
                     INSERT INTO users (email, password, first_name, last_name, role, phone, birth_date, 
@@ -299,8 +306,8 @@ if ($action === 'create') {
                     VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, 1, NOW())
                 ");
                 $userStmt->execute([
-                    $email, $hashedPassword, $firstName, $lastName, $role, 
-                    $phone ?: null, $dateOfBirth ?: null
+                    $email, $hashedPassword, $enc_firstName, $enc_lastName, $role, 
+                    $enc_phone, $enc_dob
                 ]);
                 $newUserId = $pdo->lastInsertId();
             }

@@ -25,6 +25,7 @@ try {
         ORDER BY u.first_name, u.last_name
     ");
     $staffMembers = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
+    $staffMembers = decryptUserRows($staffMembers);
 } catch (PDOException $e) {
     error_log("Time tracking staff fetch error: " . $e->getMessage());
 }
@@ -101,6 +102,7 @@ try {
     }
     $reportStmt->execute($params);
     $reportData = $reportStmt->fetchAll(PDO::FETCH_ASSOC);
+    $reportData = decryptUserRows($reportData);
     
     // Calculate summary
     $summaryQuery = "
@@ -124,6 +126,7 @@ try {
     $summaryStmt = $pdo->prepare($summaryQuery);
     $summaryStmt->execute($params);
     $summaryData = $summaryStmt->fetchAll(PDO::FETCH_ASSOC);
+    $summaryData = decryptUserRows($summaryData);
     
 } catch (PDOException $e) {
     error_log("Time tracking report error: " . $e->getMessage());

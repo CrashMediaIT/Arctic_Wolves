@@ -23,6 +23,7 @@ $athletes_stmt = $pdo->prepare("
 ");
 $athletes_stmt->execute([$selected_year]);
 $athletes = $athletes_stmt->fetchAll(PDO::FETCH_ASSOC);
+$athletes = decryptUserRows($athletes);
 
 // Get detailed billing for selected athlete
 $bookings = [];
@@ -45,6 +46,7 @@ if ($athlete_id) {
     $athlete_info = $pdo->prepare("SELECT * FROM users WHERE id = ?");
     $athlete_info->execute([$athlete_id]);
     $athlete = $athlete_info->fetch(PDO::FETCH_ASSOC);
+    $athlete = decryptUserRow($athlete);
 }
 
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);

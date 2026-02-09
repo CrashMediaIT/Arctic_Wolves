@@ -99,6 +99,7 @@ try {
     $stmt = $pdo->prepare($contractQuery);
     $stmt->execute($params);
     $contracts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $contracts = decryptUserRows($contracts);
 } catch (PDOException $e) {
     $contracts = [];
 }
@@ -112,6 +113,7 @@ try {
         WHERE onboarding_status IN ('pending', 'in_progress')
         ORDER BY created_at DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
+    $onboardings = decryptUserRows($onboardings);
 } catch (PDOException $e) {
     $onboardings = [];
 }

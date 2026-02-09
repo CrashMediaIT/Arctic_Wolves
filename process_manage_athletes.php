@@ -8,6 +8,7 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -135,13 +136,16 @@ try {
                 INSERT INTO users (first_name, last_name, email, password, role, position, birth_date, is_verified, force_pass_change)
                 VALUES (?, ?, ?, ?, 'athlete', ?, ?, 1, 1)
             ");
+            $enc_first = FieldEncryption::encrypt($first_name);
+            $enc_last = FieldEncryption::encrypt($last_name);
+            $enc_birth = $birth_date ? FieldEncryption::encrypt($birth_date) : null;
             $create_stmt->execute([
-                $first_name,
-                $last_name,
+                $enc_first,
+                $enc_last,
                 $email,
                 $hashed_password,
                 $position ?: null,
-                $birth_date ?: null
+                $enc_birth
             ]);
             
             $athlete_id = $pdo->lastInsertId();

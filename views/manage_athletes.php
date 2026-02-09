@@ -19,6 +19,7 @@ if ($user_role === 'parent') {
     ");
     $athletes_stmt->execute([$user_id]);
     $athletes = $athletes_stmt->fetchAll();
+    $athletes = decryptUserRows($athletes);
 } else {
     // For coaches/admins, use managed_athletes table (coach_id column)
     $athletes_stmt = $pdo->prepare("
@@ -30,6 +31,7 @@ if ($user_role === 'parent') {
     ");
     $athletes_stmt->execute([$user_id]);
     $athletes = $athletes_stmt->fetchAll();
+    $athletes = decryptUserRows($athletes);
 }
 
 // Get success/error messages

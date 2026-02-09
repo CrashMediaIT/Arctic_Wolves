@@ -16,6 +16,7 @@ try {
     ");
     $stmt->execute();
     $drills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $drills = decryptUserRows($drills);
 } catch (PDOException $e) {
     error_log("Drills fetch error: " . $e->getMessage());
     $categories = [];

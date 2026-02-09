@@ -28,7 +28,7 @@ if ($booking_id > 0) {
                s.description as session_description, s.price as session_price,
                COALESCE(l.name, s.arena) as location_name,
                COALESCE(l.city, s.city) as location_city,
-               CONCAT(coach.first_name, ' ', coach.last_name) as coach_name
+               coach.first_name as coach_first_name, coach.last_name as coach_last_name
         FROM bookings b
         JOIN sessions s ON b.session_id = s.id
         LEFT JOIN locations l ON s.location_id = l.id
@@ -37,6 +37,7 @@ if ($booking_id > 0) {
     ");
     $stmt->execute([$booking_id, $user_id]);
     $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+    $booking = decryptUserRow($booking);
 }
 
 // Handle payment via Stripe
@@ -353,12 +354,13 @@ $payment_cancelled = isset($_GET['payment']) && $_GET['payment'] === 'cancelled'
                         </span>
                     </div>
                     
-                    <?php if ($booking['coach_name']): ?>
+                    <?php $coach_name = trim(($booking['coach_first_name'] ?? '') . ' ' . ($booking['coach_last_name'] ?? '')); ?>
+                    <?php if ($coach_name): ?>
                     <div class="detail-row">
                         <span class="detail-label">Coach</span>
                         <span class="detail-value">
                             <i class="fas fa-user-tie"></i>
-                            <?= htmlspecialchars($booking['coach_name']) ?>
+                            <?= htmlspecialchars($coach_name) ?>
                         </span>
                     </div>
                     <?php endif; ?>

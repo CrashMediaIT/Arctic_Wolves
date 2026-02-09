@@ -49,6 +49,9 @@ foreach ($possible_paths as $path) {
 // Only use fallback defaults if no env file exists (pre-setup state)
 $db_config_valid = true;
 
+// Load field-level encryption library (PII at rest)
+require_once __DIR__ . '/lib/encryption.php';
+
 if ($env_loaded) {
     // Use configuration from the env file set up during setup.php
     $host = $_ENV['DB_HOST'] ?? '';
@@ -147,6 +150,48 @@ if (!function_exists('dbQuery')) {
             error_log("[DB QUERY ERROR] " . $e->getMessage());
             return false;
         }
+    }
+}
+
+// 7. PII DECRYPTION HELPERS
+// These functions transparently decrypt encrypted PII fields in query results.
+// They are safe to call on unencrypted data (returns value unchanged).
+if (!function_exists('decryptUserRow')) {
+    /**
+     * Decrypt PII fields in a single user row from the database.
+     * Safe to call on already-decrypted or plain-text data.
+     *
+     * @param array|null $row A single database row (associative array)
+     * @return array|null The row with PII fields decrypted
+     */
+    function decryptUserRow($row) {
+        if (!$row || !is_array($row)) return $row;
+        $piiFields = ['first_name', 'last_name', 'phone', 'birth_date', 'date_of_birth',
+                       'street_address', 'city', 'emergency_contact_name', 'emergency_contact_phone',
+                       'customer_first_name', 'customer_last_name', 'customer_phone',
+                       'billing_address_line1', 'billing_address_line2', 'billing_city',
+                       'shipping_address_line1', 'shipping_address_line2', 'shipping_city'];
+        foreach ($piiFields as $field) {
+            if (isset($row[$field]) && $row[$field] !== '') {
+                $row[$field] = FieldEncryption::decrypt($row[$field]);
+            }
+        }
+        return $row;
+    }
+
+    /**
+     * Decrypt PII fields in multiple user rows from the database.
+     *
+     * @param array $rows Array of database rows
+     * @return array Rows with PII fields decrypted
+     */
+    function decryptUserRows($rows) {
+        if (!$rows || !is_array($rows)) return $rows;
+        foreach ($rows as &$row) {
+            $row = decryptUserRow($row);
+        }
+        unset($row);
+        return $rows;
     }
 }
 

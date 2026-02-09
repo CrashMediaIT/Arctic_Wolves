@@ -16,6 +16,7 @@ class DemoDataSeeder {
     public function __construct($pdo) {
         $this->pdo = $pdo;
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        require_once __DIR__ . '/lib/encryption.php';
     }
     
     /**
@@ -139,9 +140,15 @@ class DemoDataSeeder {
             $phone = sprintf('555-%03d-%04d', rand(100, 999), rand(1000, 9999));
             $position = $user[3] === 'athlete' ? ['Forward', 'Defense', 'Goalie'][rand(0, 2)] : null;
             
+            // Encrypt PII fields
+            $enc_first = FieldEncryption::encrypt($user[1]);
+            $enc_last = FieldEncryption::encrypt($user[2]);
+            $enc_birth = FieldEncryption::encrypt($birth_date);
+            $enc_phone = FieldEncryption::encrypt($phone);
+            
             $stmt->execute([
-                $user[0], $password, $user[1], $user[2], $user[3], $user[4], $user[5],
-                $birth_date, $phone, $position
+                $user[0], $password, $enc_first, $enc_last, $user[3], $user[4], $user[5],
+                $enc_birth, $enc_phone, $position
             ]);
             
             $this->demo_ids['users'][$user[3]][] = $this->pdo->lastInsertId();

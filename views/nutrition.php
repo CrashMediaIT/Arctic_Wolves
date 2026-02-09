@@ -25,6 +25,7 @@ $plans_stmt = $pdo->prepare("
 ");
 $plans_stmt->execute([$viewing_user_id]);
 $plans = $plans_stmt->fetchAll();
+$plans = decryptUserRows($plans);
 ?>
 
 <style>

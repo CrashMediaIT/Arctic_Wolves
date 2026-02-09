@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token'])) {
 
 // Get recent maintenance logs
 $logs_stmt = $pdo->prepare("
-    SELECT dml.*, CONCAT(u.first_name, ' ', u.last_name) as performed_by_name
+    SELECT dml.*, u.first_name as performed_by_first_name, u.last_name as performed_by_last_name
     FROM database_maintenance_logs dml
     LEFT JOIN users u ON dml.performed_by = u.id
     ORDER BY dml.start_time DESC
@@ -76,6 +76,7 @@ $logs_stmt = $pdo->prepare("
 ");
 $logs_stmt->execute();
 $recent_logs = $logs_stmt->fetchAll();
+$recent_logs = decryptUserRows($recent_logs);
 
 // Get table status
 $tables_status = [];
@@ -681,7 +682,7 @@ function analyzePerformance() {
                 </div>
             </div>
             <div class="log-details">
-                Run by: <?= htmlspecialchars($log['run_by_name']) ?>
+                Run by: <?= htmlspecialchars(trim(($log['performed_by_first_name'] ?? '') . ' ' . ($log['performed_by_last_name'] ?? '')) ?: 'System') ?>
             </div>
         </div>
         <?php endforeach; ?>

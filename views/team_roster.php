@@ -115,6 +115,7 @@ if ($team) {
         $roster_stmt = $pdo->prepare($roster_query);
         $roster_stmt->execute($params);
         $players = $roster_stmt->fetchAll();
+        $players = decryptUserRows($players);
     } catch (PDOException $e) {
         error_log("Team roster fetch error: " . $e->getMessage());
         $players = [];

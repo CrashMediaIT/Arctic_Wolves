@@ -46,6 +46,7 @@ try {
     $ob_stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $ob_stmt->execute();
     $onboardings = $ob_stmt->fetchAll();
+    $onboardings = decryptUserRows($onboardings);
 } catch (PDOException $e) {
     $onboardings = [];
 }

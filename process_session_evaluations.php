@@ -7,6 +7,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // Helper function to check if this is an AJAX request
 function isAjaxRequest() {
@@ -190,16 +191,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         // Create new user as athlete
                         $temp_password = bin2hex(random_bytes(8));
+                        $enc_fn = FieldEncryption::encrypt($first_name);
+                        $enc_ln = FieldEncryption::encrypt($last_name);
+                        $enc_dob = $date_of_birth ? FieldEncryption::encrypt($date_of_birth) : null;
                         $stmt = $pdo->prepare("
                             INSERT INTO users (first_name, last_name, email, password, role, date_of_birth, is_active, created_at)
                             VALUES (?, ?, ?, ?, 'athlete', ?, 1, NOW())
                         ");
                         $stmt->execute([
-                            $first_name, 
-                            $last_name, 
+                            $enc_fn, 
+                            $enc_ln, 
                             $email, 
                             password_hash($temp_password, PASSWORD_DEFAULT),
-                            $date_of_birth
+                            $enc_dob
                         ]);
                         $new_user_id = $pdo->lastInsertId();
                         
@@ -207,7 +211,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 
-                // Add athlete to evaluation
+                // Add athlete to evaluation (also encrypt PII)
+                $enc_eval_fn = FieldEncryption::encrypt($first_name);
+                $enc_eval_ln = FieldEncryption::encrypt($last_name);
+                $enc_eval_dob = $date_of_birth ? FieldEncryption::encrypt($date_of_birth) : null;
                 $stmt = $pdo->prepare("
                     INSERT INTO session_evaluation_athletes 
                     (session_evaluation_id, user_id, first_name, last_name, email, date_of_birth, notes, created_at)
@@ -216,10 +223,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([
                     $evaluation_id,
                     $new_user_id > 0 ? $new_user_id : null,
-                    $first_name,
-                    $last_name,
+                    $enc_eval_fn,
+                    $enc_eval_ln,
                     $email ?: null,
-                    $date_of_birth ?: null,
+                    $enc_eval_dob,
                     $notes ?: null
                 ]);
                 $athlete_id = $pdo->lastInsertId();
@@ -343,17 +350,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         } else {
                             // Create new user
                             $temp_password = bin2hex(random_bytes(8));
+                            $enc_fn2 = FieldEncryption::encrypt($first_name);
+                            $enc_ln2 = FieldEncryption::encrypt($last_name);
+                            $dob = parseDateSafely($date_of_birth);
+                            $enc_dob2 = $dob ? FieldEncryption::encrypt($dob) : null;
                             $stmt = $pdo->prepare("
                                 INSERT INTO users (first_name, last_name, email, password, role, date_of_birth, is_active, created_at)
                                 VALUES (?, ?, ?, ?, 'athlete', ?, 1, NOW())
                             ");
-                            $dob = parseDateSafely($date_of_birth);
                             $stmt->execute([
-                                $first_name,
-                                $last_name,
+                                $enc_fn2,
+                                $enc_ln2,
                                 $email,
                                 password_hash($temp_password, PASSWORD_DEFAULT),
-                                $dob
+                                $enc_dob2
                             ]);
                             $new_user_id = $pdo->lastInsertId();
                         }
@@ -369,20 +379,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                     
-                    // Add athlete
+                    // Add athlete (encrypt PII)
+                    $enc_csv_fn = FieldEncryption::encrypt($first_name);
+                    $enc_csv_ln = FieldEncryption::encrypt($last_name);
+                    $dob = parseDateSafely($date_of_birth);
+                    $enc_csv_dob = $dob ? FieldEncryption::encrypt($dob) : null;
                     $stmt = $pdo->prepare("
                         INSERT INTO session_evaluation_athletes 
                         (session_evaluation_id, user_id, first_name, last_name, email, date_of_birth, notes, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
                     ");
-                    $dob = parseDateSafely($date_of_birth);
                     $stmt->execute([
                         $evaluation_id,
                         $new_user_id,
-                        $first_name,
-                        $last_name,
+                        $enc_csv_fn,
+                        $enc_csv_ln,
                         $email ?: null,
-                        $dob,
+                        $enc_csv_dob,
                         $notes ?: null
                     ]);
                     $imported++;

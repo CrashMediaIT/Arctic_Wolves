@@ -25,21 +25,22 @@ $skill_types = $skill_types_stmt->fetchAll();
 
 // Fetch coaches who have uploaded videos for this athlete
 $coaches_stmt = $pdo->prepare("
-    SELECT DISTINCT u.id, CONCAT(u.first_name, ' ', u.last_name) as coach_name
+    SELECT DISTINCT u.id, u.first_name as coach_first_name, u.last_name as coach_last_name
     FROM users u
     INNER JOIN videos v ON v.coach_id = u.id
     WHERE v.athlete_id = ?
-    ORDER BY coach_name
+    ORDER BY u.last_name, u.first_name
 ");
 $coaches_stmt->execute([$user_id]);
 $coaches = $coaches_stmt->fetchAll();
+$coaches = decryptUserRows($coaches);
 
 // ========================================
 // VIEW 1: Drills by Skill Type
 // ========================================
 $drills_query = "
     SELECT v.*, 
-           CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+           u.first_name as coach_first_name, u.last_name as coach_last_name,
            s.session_date,
            st.name as session_type_name,
            d.title as drill_name,
@@ -67,7 +68,8 @@ if ($filter_coach !== 'all') {
 }
 
 if (!empty($search_drill)) {
-    $drills_query .= " AND (v.title LIKE ? OR d.title LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)";
+    $drills_query .= " AND (v.title LIKE ? OR d.title LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)";
+    $drills_params[] = "%$search_drill%";
     $drills_params[] = "%$search_drill%";
     $drills_params[] = "%$search_drill%";
     $drills_params[] = "%$search_drill%";
@@ -78,6 +80,7 @@ $drills_query .= " ORDER BY dc.name, v.upload_date DESC";
 $drills_stmt = $pdo->prepare($drills_query);
 $drills_stmt->execute($drills_params);
 $drill_videos = $drills_stmt->fetchAll();
+$drill_videos = decryptUserRows($drill_videos);
 
 // Group videos by skill type
 $videos_by_skill = [];
@@ -94,7 +97,7 @@ foreach ($drill_videos as $video) {
 // ========================================
 $sessions_query = "
     SELECT DISTINCT s.id, s.title, s.session_date, s.duration_minutes,
-           CONCAT(u.first_name, ' ', u.last_name) as coach_name,
+           u.first_name as coach_first_name, u.last_name as coach_last_name,
            st.name as session_type_name,
            COUNT(v.id) as video_count
     FROM sessions s
@@ -118,6 +121,7 @@ $sessions_query .= " GROUP BY s.id ORDER BY s.session_date DESC";
 $sessions_stmt = $pdo->prepare($sessions_query);
 $sessions_stmt->execute($session_params);
 $attended_sessions = $sessions_stmt->fetchAll();
+$attended_sessions = decryptUserRows($attended_sessions);
 
 // Build calendar data if in calendar mode
 $calendar_data = [];
@@ -191,7 +195,7 @@ $is_demo_data = false;
                     <option value="all">All Coaches</option>
                     <?php foreach ($coaches as $coach): ?>
                         <option value="<?= $coach['id'] ?>" <?= $filter_coach == $coach['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($coach['coach_name']) ?>
+                            <?= htmlspecialchars(trim(($coach['coach_first_name'] ?? '') . ' ' . ($coach['coach_last_name'] ?? ''))) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -240,8 +244,9 @@ $is_demo_data = false;
                             <h4 class="video-title"><?= htmlspecialchars($video['drill_name'] ?? 'Untitled') ?></h4>
                             <div class="video-meta">
                                 <span><i class="fas fa-calendar"></i> <?= date('M d, Y', strtotime($video['upload_date'])) ?></span>
-                                <?php if (!empty($video['coach_name'])): ?>
-                                    <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($video['coach_name']) ?></span>
+                                <?php $video_coach_name = trim(($video['coach_first_name'] ?? '') . ' ' . ($video['coach_last_name'] ?? '')); ?>
+                                <?php if (!empty($video_coach_name)): ?>
+                                    <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($video_coach_name) ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -324,8 +329,9 @@ $is_demo_data = false;
                         <?php if (!empty($session['session_type_name'])): ?>
                             <span class="session-type"><i class="fas fa-tag"></i> <?= htmlspecialchars($session['session_type_name']) ?></span>
                         <?php endif; ?>
-                        <?php if (!empty($session['coach_name'])): ?>
-                            <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($session['coach_name']) ?></span>
+                        <?php $session_coach_name = trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')); ?>
+                        <?php if (!empty($session_coach_name)): ?>
+                            <span><i class="fas fa-user-tie"></i> <?= htmlspecialchars($session_coach_name) ?></span>
                         <?php endif; ?>
                         <span><i class="fas fa-clock"></i> <?= $session['duration_minutes'] ?> min</span>
                     </div>

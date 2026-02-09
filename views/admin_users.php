@@ -14,8 +14,9 @@ try {
     $teams = $teams_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Fetch coaches for assignment dropdown (includes admin, coach, team_coach, health_coach)
-    $coaches_stmt = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as name, role FROM users WHERE role IN ('admin', 'coach', 'team_coach', 'health_coach') AND is_verified = 1 ORDER BY first_name");
+    $coaches_stmt = $pdo->query("SELECT id, first_name, last_name, role FROM users WHERE role IN ('admin', 'coach', 'team_coach', 'health_coach') AND is_verified = 1 ORDER BY first_name");
     $coaches = $coaches_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $coaches = decryptUserRows($coaches);
     
     // Fetch existing athlete-coach assignments (for multiple coach support)
     $athlete_coaches_map = [];
@@ -120,7 +121,6 @@ try {
     
     $stmt = $pdo->prepare("
         SELECT u.*, 
-               CONCAT(u.first_name, ' ', u.last_name) as full_name,
                COUNT(DISTINCT s.id) as session_count,
                coach.first_name as coach_first_name,
                coach.last_name as coach_last_name,
@@ -138,6 +138,7 @@ try {
     ");
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
     
     $total_users = count($users);
 } catch (PDOException $e) {
@@ -316,7 +317,7 @@ foreach ($users as $u) {
                                                 </div>
                                             <?php endif; ?>
                                             <div class="user-info-cell">
-                                                <span class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></span>
+                                                <span class="user-name"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></span>
                                                 <span class="user-id">#<?php echo $user['id']; ?></span>
                                             </div>
                                         </div>
@@ -371,12 +372,12 @@ foreach ($users as $u) {
                                                     data-role="<?php echo htmlspecialchars($user['role']); ?>"
                                                     data-coach-id="<?php echo htmlspecialchars($user['assigned_coach_id'] ?? ''); ?>"
                                                     data-birth-date="<?php echo htmlspecialchars($user['birth_date'] ?? ''); ?>"
-                                                    data-name="<?php echo htmlspecialchars($user['full_name']); ?>"
+                                                    data-name="<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>"
                                                     title="Edit User">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <button class="btn-icon" data-action="security" data-id="<?php echo $user['id']; ?>" 
-                                                    data-name="<?php echo htmlspecialchars($user['full_name']); ?>"
+                                                    data-name="<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>"
                                                     data-role="<?php echo htmlspecialchars($user['role']); ?>"
                                                     title="Password & PIN">
                                                 <i class="fas fa-lock"></i>
@@ -1769,7 +1770,7 @@ window._coachNamesMap = <?php
             case 'team_coach': $roleLabel = 'Team Coach'; break;
             case 'coach': $roleLabel = 'Coach'; break;
         }
-        $coachMap[$c['id']] = ['name' => $c['name'], 'role' => $roleLabel];
+        $coachMap[$c['id']] = ['name' => $c['first_name'] . ' ' . $c['last_name'], 'role' => $roleLabel];
     }
     echo json_encode($coachMap);
 ?>;

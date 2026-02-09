@@ -3,6 +3,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // Disable error display for AJAX (errors go to logs only)
 ini_set('display_errors', 0);
@@ -1472,13 +1473,19 @@ if ($action == 'create_user') {
         // Hash the password
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
         $force_pass_change = 1; // Require password change on first login
+
+        // Encrypt PII fields before storing (email kept as-is for login lookups)
+        $enc_first_name = FieldEncryption::encrypt($first_name);
+        $enc_last_name = FieldEncryption::encrypt($last_name);
+        $enc_phone = $phone ? FieldEncryption::encrypt($phone) : null;
+        $enc_birth_date = $birth_date ? FieldEncryption::encrypt($birth_date) : null;
         
         // Insert new user
         $stmt = $pdo->prepare("
             INSERT INTO users (email, password, first_name, last_name, role, phone, is_verified, force_pass_change, birth_date, assigned_coach_id, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$email, $hashed_password, $first_name, $last_name, $role, $phone, $is_verified, $force_pass_change, $birth_date, $primary_coach_id]);
+        $stmt->execute([$email, $hashed_password, $enc_first_name, $enc_last_name, $role, $enc_phone, $is_verified, $force_pass_change, $enc_birth_date, $primary_coach_id]);
         
         $new_user_id = $pdo->lastInsertId();
         

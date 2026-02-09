@@ -10,6 +10,7 @@ if (!in_array($user_role, ['admin', 'coach', 'coach_plus'])) {
 // Get athletes for dropdown
 $athletes_stmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role = 'athlete' ORDER BY first_name, last_name");
 $athletes = $athletes_stmt->fetchAll();
+$athletes = decryptUserRows($athletes);
 
 // Get recent sessions for dropdown
 $sessions_stmt = $pdo->query("

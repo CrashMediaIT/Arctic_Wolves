@@ -26,6 +26,7 @@ $exercises = $pdo->query("
     LEFT JOIN users u ON el.created_by = u.id
     ORDER BY el.name ASC
 ")->fetchAll();
+$exercises = decryptUserRows($exercises);
 
 // Fetch all workout plans with assigned athlete count
 $workoutPlans = $pdo->query("
@@ -36,6 +37,7 @@ $workoutPlans = $pdo->query("
     LEFT JOIN users u ON wp.created_by = u.id
     ORDER BY wp.created_at DESC
 ")->fetchAll();
+$workoutPlans = decryptUserRows($workoutPlans);
 
 // For edit modal - fetch exercises for each plan
 $planExercises = [];
@@ -61,7 +63,7 @@ foreach ($workoutPlans as $plan) {
         WHERE awa.workout_plan_id = ? AND awa.status = 'active'
     ");
     $stmt->execute([$plan['id']]);
-    $assignedAthletes[$plan['id']] = $stmt->fetchAll();
+    $assignedAthletes[$plan['id']] = decryptUserRows($stmt->fetchAll());
 }
 
 // Fetch all active users for assignment modal (all roles can receive workout assignments)
@@ -71,6 +73,7 @@ $allAthletes = $pdo->query("
     WHERE is_active = 1 
     ORDER BY last_name, first_name
 ")->fetchAll();
+$allAthletes = decryptUserRows($allAthletes);
 ?>
 
 <div class="page-header">

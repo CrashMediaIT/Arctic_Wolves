@@ -47,6 +47,7 @@ try {
     $payroll_stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $payroll_stmt->execute();
     $payroll_employees = $payroll_stmt->fetchAll();
+    $payroll_employees = decryptUserRows($payroll_employees);
 } catch (PDOException $e) {
     $payroll_employees = [];
 }
@@ -59,6 +60,7 @@ try {
         ORDER BY ph.pay_date DESC
         LIMIT 10";
     $recentPay = $pdo->query($recentPayQuery)->fetchAll();
+    $recentPay = decryptUserRows($recentPay);
 } catch (PDOException $e) {
     $recentPay = [];
 }
@@ -90,6 +92,7 @@ try {
     $t4_stmt = $pdo->prepare($t4Query);
     $t4_stmt->execute(['year' => $currentYear - 1]);
     $t4Slips = $t4_stmt->fetchAll();
+    $t4Slips = decryptUserRows($t4Slips);
 } catch (PDOException $e) {
     $t4Slips = [];
 }
@@ -101,6 +104,7 @@ try {
         WHERE u.is_active = 1 AND u.role IN ('admin', 'coach', 'health_coach', 'team_coach')
         AND ep.id IS NULL ORDER BY u.first_name, u.last_name";
     $availableStaff = $pdo->query($staffQuery)->fetchAll();
+    $availableStaff = decryptUserRows($availableStaff);
 } catch (PDOException $e) {
     $availableStaff = [];
 }

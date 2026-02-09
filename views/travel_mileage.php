@@ -30,6 +30,7 @@ $filter_session = isset($_GET['session_id']) ? intval($_GET['session_id']) : 0;
 // Get athletes for filter dropdown
 $athletes_stmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role = 'athlete' AND is_active = 1 ORDER BY first_name, last_name");
 $athletes = $athletes_stmt->fetchAll(PDO::FETCH_ASSOC);
+$athletes = decryptUserRows($athletes);
 
 // Get sessions for filter dropdown
 $sessions_stmt = $pdo->query("
@@ -92,7 +93,7 @@ $mileage_query = "
            m.reimbursement_amount as calculated_amount,
            start_stop.address as from_location,
            end_stop.address as to_location,
-           CONCAT(a.first_name, ' ', a.last_name) as athlete_name,
+           a.first_name as athlete_first_name, a.last_name as athlete_last_name,
            s.title as session_name,
            (SELECT COUNT(*) FROM mileage_stops WHERE mileage_log_id = m.id) as stop_count
     FROM mileage_logs m
@@ -116,6 +117,7 @@ $mileage_query = "
 $mileage_stmt = $pdo->prepare($mileage_query);
 $mileage_stmt->execute($date_params);
 $mileage_entries = $mileage_stmt->fetchAll();
+$mileage_entries = decryptUserRows($mileage_entries);
 
 // Calculate summary
 $summary = [
@@ -422,13 +424,14 @@ foreach ($mileage_entries as $entry) {
                                 </div>
                             </td>
                             <td>
-                                <?php if (!empty($entry['athlete_name'])): ?>
-                                <div style="font-size: 12px;"><i class="fas fa-user" style="color: var(--primary);"></i> <?= htmlspecialchars($entry['athlete_name']) ?></div>
+                                <?php $athlete_name = trim(($entry['athlete_first_name'] ?? '') . ' ' . ($entry['athlete_last_name'] ?? '')); ?>
+                                <?php if (!empty($athlete_name)): ?>
+                                <div style="font-size: 12px;"><i class="fas fa-user" style="color: var(--primary);"></i> <?= htmlspecialchars($athlete_name) ?></div>
                                 <?php endif; ?>
                                 <?php if (!empty($entry['session_name'])): ?>
                                 <div style="font-size: 11px; color: var(--text-dim);"><i class="fas fa-calendar-alt"></i> <?= htmlspecialchars($entry['session_name']) ?></div>
                                 <?php endif; ?>
-                                <?php if (empty($entry['athlete_name']) && empty($entry['session_name'])): ?>
+                                <?php if (empty($athlete_name) && empty($entry['session_name'])): ?>
                                 <span style="color: var(--text-dim);">-</span>
                                 <?php endif; ?>
                             </td>

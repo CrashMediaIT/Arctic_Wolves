@@ -10,6 +10,7 @@ try {
     ");
     $notifications_stmt->execute();
     $notifications = $notifications_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $notifications = decryptUserRows($notifications);
 } catch (PDOException $e) {
     error_log("System notifications fetch error: " . $e->getMessage());
     $notifications = [];

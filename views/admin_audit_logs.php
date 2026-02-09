@@ -47,7 +47,7 @@ $where_clause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 $logs_query = $pdo->prepare("
     SELECT 
         al.*,
-        CONCAT(u.first_name, ' ', u.last_name) as user_name,
+        u.first_name as user_first_name, u.last_name as user_last_name,
         u.role as user_role
     FROM audit_logs al
     LEFT JOIN users u ON al.user_id = u.id
@@ -59,6 +59,7 @@ $params[] = $per_page;
 $params[] = $offset;
 $logs_query->execute($params);
 $logs = $logs_query->fetchAll(PDO::FETCH_ASSOC);
+$logs = decryptUserRows($logs);
 
 // Get total count
 $count_query = $pdo->prepare("SELECT COUNT(*) FROM audit_logs al $where_clause");
@@ -72,12 +73,13 @@ $tables = $tables_query->fetchAll(PDO::FETCH_COLUMN);
 
 // Get users for filter
 $users_query = $pdo->query("
-    SELECT DISTINCT u.id, CONCAT(u.first_name, ' ', u.last_name) as name
+    SELECT DISTINCT u.id, u.first_name, u.last_name
     FROM users u
     INNER JOIN audit_logs al ON al.user_id = u.id
-    ORDER BY name
+    ORDER BY u.last_name, u.first_name
 ");
 $users = $users_query->fetchAll(PDO::FETCH_ASSOC);
+$users = decryptUserRows($users);
 
 // Count by action type
 $insert_count = 0;
@@ -500,7 +502,7 @@ $csrf_token = generateCsrfToken();
             <select name="user" class="filter-select">
                 <option value="">All Users</option>
                 <?php foreach ($users as $user): ?>
-                    <option value="<?= $user['id'] ?>" <?= $filter_user == $user['id'] ? 'selected' : '' ?>><?= htmlspecialchars($user['name']) ?></option>
+                    <option value="<?= $user['id'] ?>" <?= $filter_user == $user['id'] ? 'selected' : '' ?>><?= htmlspecialchars(trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''))) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -547,9 +549,10 @@ $csrf_token = generateCsrfToken();
                                 <div class="user-info">
                                     <div class="user-avatar">
                                         <?php 
+                                            $log_user_name = trim(($log['user_first_name'] ?? '') . ' ' . ($log['user_last_name'] ?? ''));
                                             $initials = '';
-                                            if ($log['user_name']) {
-                                                $parts = explode(' ', $log['user_name']);
+                                            if ($log_user_name) {
+                                                $parts = explode(' ', $log_user_name);
                                                 $initials = strtoupper(substr($parts[0], 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
                                             } else {
                                                 $initials = 'SY';
@@ -558,7 +561,7 @@ $csrf_token = generateCsrfToken();
                                         ?>
                                     </div>
                                     <div class="user-details">
-                                        <span class="user-name"><?= htmlspecialchars($log['user_name'] ?? 'System') ?></span>
+                                        <span class="user-name"><?= htmlspecialchars($log_user_name ?: 'System') ?></span>
                                         <span class="user-role-badge"><?= htmlspecialchars($log['user_role'] ?? 'system') ?></span>
                                     </div>
                                 </div>
@@ -635,7 +638,7 @@ function viewLogDetails(logId) {
                 </tr>
                 <tr>
                     <td style="padding: 12px 16px; color: #64748b; border-bottom: 1px solid #1e293b;">User</td>
-                    <td style="padding: 12px 16px; color: #fff; border-bottom: 1px solid #1e293b;">${log.user_name || 'System'} (${log.user_role || 'system'})</td>
+                    <td style="padding: 12px 16px; color: #fff; border-bottom: 1px solid #1e293b;">${((log.user_first_name || '') + ' ' + (log.user_last_name || '')).trim() || 'System'} (${log.user_role || 'system'})</td>
                 </tr>
                 <tr>
                     <td style="padding: 12px 16px; color: #64748b; border-bottom: 1px solid #1e293b;">Action</td>

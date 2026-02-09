@@ -15,6 +15,7 @@ if ($user_role === 'admin' && isset($_GET['user_id'])) {
 $user_stmt = $pdo->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
 $user_stmt->execute([$viewing_user_id]);
 $viewing_user = $user_stmt->fetch();
+$viewing_user = decryptUserRow($viewing_user);
 
 if (!$viewing_user) {
     die('User not found');
@@ -74,6 +75,7 @@ if ($user_role === 'admin') {
     ");
     $all_users_stmt->execute();
     $all_users = $all_users_stmt->fetchAll();
+    $all_users = decryptUserRows($all_users);
 }
 ?>
 

@@ -148,6 +148,7 @@ try {
     ");
     $stmt->execute();
     $recentPayments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $recentPayments = decryptUserRows($recentPayments);
     
     // Get recent shop orders
     $stmt = $pdo->prepare("
@@ -160,6 +161,7 @@ try {
     ");
     $stmt->execute();
     $recentShopOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $recentShopOrders = decryptUserRows($recentShopOrders);
     
     // Get recent POS transactions
     $stmt = $pdo->prepare("
@@ -173,6 +175,7 @@ try {
     ");
     $stmt->execute();
     $recentPOSTransactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $recentPOSTransactions = decryptUserRows($recentPOSTransactions);
     
     $stmt = $pdo->prepare("
         SELECT 'expense' as type, e.id, e.amount, e.expense_date as trans_date,

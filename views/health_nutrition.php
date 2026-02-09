@@ -2,7 +2,7 @@
 // Get nutrition plan for athlete
 $nutrition_query = "
     SELECT np.*, 
-           CONCAT(c.first_name, ' ', c.last_name) as coach_name
+           c.first_name as coach_first_name, c.last_name as coach_last_name
     FROM nutrition_plans np
     LEFT JOIN users c ON np.coach_id = c.id
     WHERE np.user_id = ?
@@ -12,6 +12,7 @@ $nutrition_query = "
 $nutrition_stmt = $pdo->prepare($nutrition_query);
 $nutrition_stmt->execute([$user_id]);
 $nutrition_plan = $nutrition_stmt->fetch();
+$nutrition_plan = decryptUserRow($nutrition_plan);
 
 // Initialize daily totals - will be set properly below based on plan existence
 $daily_totals = [

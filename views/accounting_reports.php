@@ -262,6 +262,7 @@ exit;
                 ");
                 $reportsStmt->execute();
                 $recentReports = $reportsStmt->fetchAll(PDO::FETCH_ASSOC);
+                $recentReports = decryptUserRows($recentReports);
             } catch (PDOException $e) {
                 error_log("Reports fetch error: " . $e->getMessage());
                 $recentReports = [];

@@ -43,6 +43,7 @@ $bookings_stmt = $pdo->prepare("
 ");
 $bookings_stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
 $bookings = $bookings_stmt->fetchAll(PDO::FETCH_ASSOC);
+$bookings = decryptUserRows($bookings);
 
 // Calculate totals
 $subtotal = array_sum(array_column($bookings, 'original_price'));

@@ -21,6 +21,7 @@ try {
     ");
     $stmt->execute([$user_id]);
     $evaluations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $evaluations = decryptUserRows($evaluations);
     
 } catch (PDOException $e) {
     error_log("Athlete evaluations fetch error: " . $e->getMessage());

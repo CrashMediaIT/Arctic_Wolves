@@ -26,6 +26,7 @@ $meals = $pdo->query("
     LEFT JOIN users u ON fl.created_by = u.id
     ORDER BY fl.name ASC
 ")->fetchAll();
+$meals = decryptUserRows($meals);
 
 // Fetch all nutrition plans with assigned athlete count
 $nutritionPlans = $pdo->query("
@@ -36,6 +37,7 @@ $nutritionPlans = $pdo->query("
     LEFT JOIN users u ON np.created_by = u.id
     ORDER BY np.created_at DESC
 ")->fetchAll();
+$nutritionPlans = decryptUserRows($nutritionPlans);
 
 // For edit modal - fetch meals for each plan
 $planMeals = [];
@@ -62,7 +64,7 @@ foreach ($nutritionPlans as $plan) {
         WHERE ana.nutrition_plan_id = ? AND ana.status = 'active'
     ");
     $stmt->execute([$plan['id']]);
-    $assignedAthletes[$plan['id']] = $stmt->fetchAll();
+    $assignedAthletes[$plan['id']] = decryptUserRows($stmt->fetchAll());
 }
 
 // Fetch all active users for assignment modal (all roles can receive nutrition assignments)
@@ -72,6 +74,7 @@ $allAthletes = $pdo->query("
     WHERE is_active = 1 
     ORDER BY last_name, first_name
 ")->fetchAll();
+$allAthletes = decryptUserRows($allAthletes);
 ?>
 
 <div class="page-header">
