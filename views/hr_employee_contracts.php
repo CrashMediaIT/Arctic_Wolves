@@ -692,75 +692,78 @@ try {
         <span class="badge badge-primary"><?= count($agreement_templates_list) ?> Templates</span>
     </div>
     <div class="card-body">
-        <p style="color: var(--text); margin-bottom: 20px;">Edit the waiver and privacy policy content that users must accept during registration or first sign-in. These agreements are presented to users for e-signature via DocuSeal when configured.</p>
+        <p style="color: var(--text-dim); margin-bottom: 20px;">Edit the waiver and privacy policy content that users must accept during registration or first sign-in. These agreements are presented to users for e-signature via DocuSeal when configured.</p>
         
         <?php if (empty($agreement_templates_list)): ?>
-        <div style="text-align: center; padding: 40px; color: var(--text);">
-            <i class="fas fa-file-alt" style="font-size: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+        <div style="text-align: center; padding: 40px; color: var(--text-dim);">
+            <i class="fas fa-file-alt" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px; display: block;"></i>
             <p>No agreement templates found. They will be created automatically when the database is initialized.</p>
         </div>
         <?php else: ?>
         <?php foreach ($agreement_templates_list as $agr_tpl): ?>
-        <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
                 <div>
-                    <h4 style="color: #fff; margin-bottom: 4px;">
-                        <i class="fas <?= $agr_tpl['agreement_type'] === 'waiver' ? 'fa-shield-halved' : 'fa-lock' ?>" style="color: var(--primary); margin-right: 8px;"></i>
+                    <h3>
+                        <i class="fas <?= $agr_tpl['agreement_type'] === 'waiver' ? 'fa-shield-halved' : 'fa-lock' ?>"></i>
                         <?= htmlspecialchars($agr_tpl['title']) ?>
-                    </h4>
-                    <span class="badge badge-<?= $agr_tpl['is_active'] ? 'success' : 'secondary' ?>"><?= $agr_tpl['is_active'] ? 'Active' : 'Inactive' ?></span>
-                    <span class="badge badge-primary">v<?= htmlspecialchars($agr_tpl['version']) ?></span>
-                    <span class="badge badge-secondary"><?= ucfirst(str_replace('_', ' ', $agr_tpl['agreement_type'])) ?></span>
+                    </h3>
+                    <div style="margin-top: 8px;">
+                        <span class="badge badge-<?= $agr_tpl['is_active'] ? 'success' : 'secondary' ?>"><?= $agr_tpl['is_active'] ? 'Active' : 'Inactive' ?></span>
+                        <span class="badge badge-primary">v<?= htmlspecialchars($agr_tpl['version']) ?></span>
+                        <span class="badge badge-secondary"><?= ucfirst(str_replace('_', ' ', $agr_tpl['agreement_type'])) ?></span>
+                    </div>
                 </div>
                 <button type="button" class="btn btn-sm btn-primary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)">
                     <i class="fas fa-edit"></i> Edit
                 </button>
             </div>
-            
-            <div id="agreement-preview-<?= $agr_tpl['id'] ?>" style="color: var(--text); font-size: 13px; line-height: 1.7; max-height: 150px; overflow-y: auto; padding: 16px; background: var(--bg-card); border-radius: 8px;">
-                <?= $agr_tpl['content'] ?>
+            <div class="card-body">
+                <div id="agreement-preview-<?= $agr_tpl['id'] ?>" style="color: var(--text-dim); font-size: 13px; line-height: 1.7; max-height: 150px; overflow-y: auto; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px;">
+                    <?= $agr_tpl['content'] ?>
+                </div>
+                
+                <form id="agreement-edit-<?= $agr_tpl['id'] ?>" method="POST" action="process_agreements.php" style="display: none; margin-top: 16px;">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_template">
+                    <input type="hidden" name="template_id" value="<?= $agr_tpl['id'] ?>">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Title</label>
+                        <input type="text" name="title" value="<?= htmlspecialchars($agr_tpl['title']) ?>" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Version</label>
+                        <input type="text" name="version" value="<?= htmlspecialchars($agr_tpl['version']) ?>" class="form-input" required style="max-width: 100px;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Content (HTML)</label>
+                        <textarea name="content" rows="15" class="form-input" style="font-family: monospace; font-size: 12px;"><?= htmlspecialchars($agr_tpl['content']) ?></textarea>
+                    </div>
+                    
+                    <?php if ($docuseal_enabled): ?>
+                    <div class="form-group">
+                        <label class="form-label">DocuSeal Template ID (Optional)</label>
+                        <input type="number" name="docuseal_template_id" value="<?= htmlspecialchars($agr_tpl['docuseal_template_id'] ?? '') ?>" class="form-input" style="max-width: 200px;" placeholder="DocuSeal template ID">
+                        <p style="color: var(--text-dim); font-size: 11px; margin-top: 4px;">Link to a DocuSeal template for e-signature workflow</p>
+                    </div>
+                    <?php endif; ?>
+                
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="is_active" <?= $agr_tpl['is_active'] ? 'checked' : '' ?>>
+                            <span class="form-label" style="margin-bottom: 0;">Active</span>
+                        </label>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)"><i class="fas fa-times"></i> Cancel</button>
+                    </div>
+                </form>
             </div>
-            
-            <form id="agreement-edit-<?= $agr_tpl['id'] ?>" method="POST" action="process_agreements.php" style="display: none; margin-top: 16px;">
-                <?php echo csrfTokenInput(); ?>
-                <input type="hidden" name="action" value="update_template">
-                <input type="hidden" name="template_id" value="<?= $agr_tpl['id'] ?>">
-                
-                <div style="margin-bottom: 16px;">
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 6px;">Title</label>
-                    <input type="text" name="title" value="<?= htmlspecialchars($agr_tpl['title']) ?>" class="form-input" required>
-                </div>
-                
-                <div style="margin-bottom: 16px;">
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 6px;">Version</label>
-                    <input type="text" name="version" value="<?= htmlspecialchars($agr_tpl['version']) ?>" class="form-input" required style="max-width: 100px;">
-                </div>
-                
-                <div style="margin-bottom: 16px;">
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 6px;">Content (HTML)</label>
-                    <textarea name="content" rows="15" class="form-input" style="font-family: monospace; font-size: 12px;"><?= htmlspecialchars($agr_tpl['content']) ?></textarea>
-                </div>
-                
-                <?php if ($docuseal_enabled): ?>
-                <div style="margin-bottom: 16px;">
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 6px;">DocuSeal Template ID (Optional)</label>
-                    <input type="number" name="docuseal_template_id" value="<?= htmlspecialchars($agr_tpl['docuseal_template_id'] ?? '') ?>" class="form-input" style="max-width: 200px;" placeholder="DocuSeal template ID">
-                    <p style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">Link to a DocuSeal template for e-signature workflow</p>
-                </div>
-                <?php endif; ?>
-                
-                <div style="margin-bottom: 16px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" name="is_active" <?= $agr_tpl['is_active'] ? 'checked' : '' ?>>
-                        <span style="color: var(--text); font-size: 13px;">Active</span>
-                    </label>
-                </div>
-                
-                <div style="display: flex; gap: 12px;">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
-                    <button type="button" class="btn btn-secondary" onclick="toggleEditAgreement(<?= $agr_tpl['id'] ?>)"><i class="fas fa-times"></i> Cancel</button>
-                </div>
-            </form>
         </div>
         <?php endforeach; ?>
         <?php endif; ?>
@@ -832,15 +835,15 @@ if (!empty($promo_search)) {
         <span class="badge badge-<?= $promo_filter === 'opted_out' ? 'error' : 'primary' ?>"><?= count($promo_users) ?> Users</span>
     </div>
     <div class="card-body">
-        <p style="color: var(--text); margin-bottom: 20px;">View and filter users who have opted out of having their photos and videos used in promotional materials. These users should not appear in marketing content.</p>
+        <p style="color: var(--text-dim); margin-bottom: 20px;">View and filter users who have opted out of having their photos and videos used in promotional materials. These users should not appear in marketing content.</p>
         
         <!-- Filters -->
         <form method="GET" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: flex-end;">
             <input type="hidden" name="page" value="employee_contracts">
             <input type="hidden" name="tab" value="promo_optout">
             
-            <div>
-                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 4px;">STATUS</label>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">STATUS</label>
                 <select name="promo_filter" class="form-input" style="width: auto; min-width: 150px;">
                     <option value="opted_out" <?= $promo_filter === 'opted_out' ? 'selected' : '' ?>>Opted Out</option>
                     <option value="opted_in" <?= $promo_filter === 'opted_in' ? 'selected' : '' ?>>Opted In</option>
@@ -848,8 +851,8 @@ if (!empty($promo_search)) {
                 </select>
             </div>
             
-            <div>
-                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 4px;">ROLE</label>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">ROLE</label>
                 <select name="promo_role" class="form-input" style="width: auto; min-width: 150px;">
                     <option value="">All Roles</option>
                     <option value="athlete" <?= $promo_role_filter === 'athlete' ? 'selected' : '' ?>>Athlete</option>
@@ -861,8 +864,8 @@ if (!empty($promo_search)) {
                 </select>
             </div>
             
-            <div>
-                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 4px;">SEARCH</label>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">SEARCH</label>
                 <input type="text" name="promo_search" value="<?= htmlspecialchars($promo_search) ?>" class="form-input" placeholder="Search by name or email..." style="min-width: 200px;">
             </div>
             
