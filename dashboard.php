@@ -43,6 +43,23 @@ $isActualAdmin = (($user_role === 'admin') || (isset($_SESSION['persona_original
 $personaActive = !empty($_SESSION['persona_active']);
 $personaOriginalRole = $_SESSION['persona_original_role'] ?? null;
 
+// Check if user needs to accept agreements (for users created by admin/coach)
+$showAgreementsModal = false;
+$agreementTemplates = [];
+try {
+    $agreeCheck = $pdo->prepare("SELECT agreements_accepted FROM users WHERE id = ?");
+    $agreeCheck->execute([$user_id]);
+    $agreeRow = $agreeCheck->fetch(PDO::FETCH_ASSOC);
+    if ($agreeRow && intval($agreeRow['agreements_accepted'] ?? 0) === 0) {
+        $showAgreementsModal = true;
+        // Fetch active agreement templates
+        $tplStmt = $pdo->query("SELECT * FROM agreement_templates WHERE is_active = 1 ORDER BY agreement_type");
+        $agreementTemplates = $tplStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (PDOException $e) {
+    // Table may not exist yet - silently continue
+}
+
 // Role checks including new roles
 $isAdmin       = ($user_role === 'admin');
 $isCoach       = ($user_role === 'coach');
@@ -1014,6 +1031,57 @@ function switchAthlete(athleteId) {
     setInterval(updateMsgBadge, 30000);
 })();
 </script>
+
+<?php if ($showAgreementsModal): ?>
+<!-- First Sign-In Agreements Modal -->
+<div id="agreementsOverlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); z-index:99999; display:flex; justify-content:center; align-items:center; padding:20px;">
+    <div style="background:#16161F; border:1px solid #2D2D3F; border-radius:16px; max-width:750px; width:100%; max-height:90vh; overflow-y:auto; padding:40px; position:relative;">
+        <div style="text-align:center; margin-bottom:30px;">
+            <i class="fas fa-file-signature" style="font-size:48px; color:#6B46C1; margin-bottom:15px;"></i>
+            <h2 style="color:#fff; font-size:24px; margin-bottom:8px;">Welcome! Please Review & Accept Agreements</h2>
+            <p style="color:#94a3b8; font-size:14px;">Before accessing the dashboard, please review and accept the following agreements.</p>
+        </div>
+
+        <form id="dashboardAgreementsForm" method="POST" action="process_agreements.php">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+            <input type="hidden" name="action" value="accept_agreements">
+
+            <?php foreach ($agreementTemplates as $tpl): ?>
+            <div style="background:#0A0A0F; border:1px solid #2D2D3F; border-radius:12px; padding:24px; margin-bottom:20px;">
+                <h3 style="color:#fff; margin-bottom:12px;"><i class="fas <?= $tpl['agreement_type'] === 'waiver' ? 'fa-shield-halved' : 'fa-lock' ?>" style="color:#6B46C1; margin-right:8px;"></i><?= htmlspecialchars($tpl['title']) ?></h3>
+                <div style="color:#ccc; font-size:13px; line-height:1.8; max-height:200px; overflow-y:auto; padding:12px; background:#16161F; border-radius:8px; margin-bottom:15px;">
+                    <?= $tpl['content'] ?>
+                </div>
+                <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:12px; background:rgba(107,70,193,0.05); border:1px solid #2D2D3F; border-radius:8px;">
+                    <input type="checkbox" name="agree_<?= htmlspecialchars($tpl['agreement_type']) ?>" required style="margin-top:3px; accent-color:#6B46C1; width:18px; height:18px;">
+                    <span style="color:#fff; font-size:13px;">I have read, understood, and agree to the <strong><?= htmlspecialchars($tpl['title']) ?></strong></span>
+                </label>
+            </div>
+            <?php endforeach; ?>
+
+            <div style="background:#0A0A0F; border:1px solid #2D2D3F; border-radius:12px; padding:24px; margin-bottom:20px;">
+                <h3 style="color:#fff; margin-bottom:12px;"><i class="fas fa-share-alt" style="color:#6B46C1; margin-right:8px;"></i>Evaluation Sharing Preferences</h3>
+                <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:12px; background:rgba(107,70,193,0.05); border:1px solid #2D2D3F; border-radius:8px; margin-bottom:10px;">
+                    <input type="checkbox" name="share_evaluations_potential_teams" style="margin-top:3px; accent-color:#6B46C1; width:18px; height:18px;">
+                    <span style="color:#ccc; font-size:13px;"><strong style="color:#fff;">Share evaluations with potential teams</strong><br>Allow your evaluations to be shared with teams you may play for in the future.</span>
+                </label>
+            </div>
+
+            <div style="background:#0A0A0F; border:1px solid #2D2D3F; border-radius:12px; padding:24px; margin-bottom:20px;">
+                <h3 style="color:#fff; margin-bottom:12px;"><i class="fas fa-camera" style="color:#6B46C1; margin-right:8px;"></i>Promotional Material</h3>
+                <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:12px; background:rgba(107,70,193,0.05); border:1px solid #2D2D3F; border-radius:8px;">
+                    <input type="checkbox" name="promotional_opt_in" checked style="margin-top:3px; accent-color:#6B46C1; width:18px; height:18px;">
+                    <span style="color:#ccc; font-size:13px;"><strong style="color:#fff;">Allow use in promotional materials</strong><br>I consent to photos and videos being used in promotional materials. Uncheck to opt out (training analysis will still use technology).</span>
+                </label>
+            </div>
+
+            <button type="submit" style="width:100%; padding:16px; background:#6B46C1; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:700; cursor:pointer; transition:all 0.2s;">
+                <i class="fas fa-check-circle"></i> Accept & Continue to Dashboard
+            </button>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 </body>
 </html>
