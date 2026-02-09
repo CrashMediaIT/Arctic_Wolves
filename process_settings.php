@@ -107,7 +107,8 @@ try {
                 exit;
             }
             
-            // Load the key into the current environment so it takes effect immediately
+            // Load the key into the current environment so it takes effect immediately for this request.
+            // Note: The key is persisted in the env file and will be loaded on subsequent requests by db_config.php.
             $_ENV['ENCRYPTION_KEY'] = $encryption_key;
             
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
