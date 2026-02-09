@@ -18,7 +18,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -700,11 +700,47 @@ try {
             echo json_encode($result);
             exit;
             
+        case 'create_restriction':
+            $title = trim($_POST['title'] ?? '');
+            if (empty($title)) {
+                echo json_encode(['success' => false, 'message' => 'Restriction title is required']);
+                exit;
+            }
+            $restrictionId = Blocklist::createRestriction($pdo, $title, $user_id);
+            if ($restrictionId) {
+                Auditor::log($pdo, $user_id, 'create', 'registration_restrictions', $restrictionId, [
+                    'title' => $title
+                ]);
+                echo json_encode(['success' => true, 'message' => 'Restriction created successfully', 'restriction_id' => $restrictionId]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to create restriction']);
+            }
+            exit;
+
+        case 'remove_restriction':
+            $restriction_id = intval($_POST['restriction_id'] ?? 0);
+            if ($restriction_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid restriction ID']);
+                exit;
+            }
+            $result = Blocklist::removeRestriction($pdo, $restriction_id);
+            if ($result) {
+                Auditor::log($pdo, $user_id, 'delete', 'registration_restrictions', $restriction_id);
+                echo json_encode(['success' => true, 'message' => 'Restriction removed']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Restriction not found or already removed']);
+            }
+            exit;
+
         case 'add_blocklist_entry':
+            $restriction_id = intval($_POST['restriction_id'] ?? 0);
             $block_type = trim($_POST['block_type'] ?? '');
             $block_value = trim($_POST['block_value'] ?? '');
-            $reason = trim($_POST['reason'] ?? '');
 
+            if ($restriction_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid restriction ID']);
+                exit;
+            }
             if (!in_array($block_type, ['email', 'name', 'ip'])) {
                 echo json_encode(['success' => false, 'message' => 'Invalid block type']);
                 exit;
@@ -726,14 +762,14 @@ try {
                 exit;
             }
 
-            $result = Blocklist::addEntry($pdo, $block_type, $block_value, $reason ?: null, $user_id);
+            $result = Blocklist::addEntry($pdo, $restriction_id, $block_type, $block_value);
             if ($result) {
                 Auditor::log($pdo, $user_id, 'create', 'registration_blocklist', null, [
+                    'restriction_id' => $restriction_id,
                     'block_type' => $block_type,
-                    'block_value' => $block_value,
-                    'reason' => $reason
+                    'block_value' => $block_value
                 ]);
-                echo json_encode(['success' => true, 'message' => 'Blocklist entry added successfully']);
+                echo json_encode(['success' => true, 'message' => 'Entry added successfully']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Failed to add entry. It may already exist.']);
             }
@@ -749,7 +785,7 @@ try {
             $result = Blocklist::removeEntry($pdo, $entry_id);
             if ($result) {
                 Auditor::log($pdo, $user_id, 'delete', 'registration_blocklist', $entry_id);
-                echo json_encode(['success' => true, 'message' => 'Blocklist entry removed']);
+                echo json_encode(['success' => true, 'message' => 'Entry removed']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Entry not found or already removed']);
             }

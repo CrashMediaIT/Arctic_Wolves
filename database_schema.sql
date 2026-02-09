@@ -3714,16 +3714,25 @@ CREATE TABLE IF NOT EXISTS `pos_allowed_ips` (
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Registration blocklist for blocking users by email, name, or IP address
-CREATE TABLE IF NOT EXISTS `registration_blocklist` (
+-- Registration restrictions (named groups of block rules)
+CREATE TABLE IF NOT EXISTS `registration_restrictions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `block_type` ENUM('email', 'name', 'ip') NOT NULL,
-    `block_value` VARCHAR(255) NOT NULL,
-    `reason` TEXT DEFAULT NULL,
+    `title` VARCHAR(255) NOT NULL,
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Registration blocklist entries linked to a restriction
+CREATE TABLE IF NOT EXISTS `registration_blocklist` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `restriction_id` INT NOT NULL,
+    `block_type` ENUM('email', 'name', 'ip') NOT NULL,
+    `block_value` VARCHAR(255) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`restriction_id`) REFERENCES `registration_restrictions`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_block` (`block_type`, `block_value`),
     INDEX `idx_type` (`block_type`),
-    INDEX `idx_value` (`block_value`)
+    INDEX `idx_value` (`block_value`),
+    INDEX `idx_restriction` (`restriction_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

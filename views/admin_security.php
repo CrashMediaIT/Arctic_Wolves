@@ -226,13 +226,14 @@ try {
 } catch (PDOException $e) { /* ignore */ }
 
 // ---- BLOCKLIST DATA ----
-$blocklist_entries = [];
+$restrictions = [];
 $blocklist_total = 0;
-$filter_blocklist_type = $_GET['blocklist_type'] ?? '';
 
 if ($security_tab === 'blocklist') {
-    $blocklist_entries = Blocklist::getEntries($pdo, $filter_blocklist_type ?: null);
-    $blocklist_total = count($blocklist_entries);
+    $restrictions = Blocklist::getRestrictions($pdo);
+    foreach ($restrictions as $r) {
+        $blocklist_total += count($r['entries']);
+    }
 }
 
 // ---- POS IP WHITELIST DATA ----
@@ -312,7 +313,7 @@ $error_total_pages = ceil($error_total / $per_page);
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-shield-halved"></i> Security Center</h1>
-        <p class="page-description">Monitor login activity, audit trails, system errors, and registration blocklist</p>
+        <p class="page-description">Monitor login activity, audit trails, system errors, and registration restrictions</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
@@ -338,9 +339,9 @@ $error_total_pages = ceil($error_total / $per_page);
         <i class="fas fa-bug"></i> Error Log
     </a>
     <a href="?page=admin_security&tab=blocklist" class="tab <?= $security_tab === 'blocklist' ? 'active' : '' ?>">
-        <i class="fas fa-ban"></i> Registration Blocklist
-        <?php if ($security_tab === 'blocklist' && $blocklist_total > 0): ?>
-        <span class="badge"><?php echo $blocklist_total; ?></span>
+        <i class="fas fa-ban"></i> Registration Restrictions
+        <?php if ($security_tab === 'blocklist' && count($restrictions) > 0): ?>
+        <span class="badge"><?php echo count($restrictions); ?></span>
         <?php endif; ?>
     </a>
     <a href="?page=admin_security&tab=pos_whitelist" class="tab <?= $security_tab === 'pos_whitelist' ? 'active' : '' ?>">
@@ -734,104 +735,137 @@ function restoreAuditEntry(logId) {
 </div>
 <?php elseif ($security_tab === 'blocklist'): ?>
 
-<!-- Blocklist Action Bar -->
+<!-- Restrictions Action Bar -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-    <div class="security-filters" style="margin-bottom: 0;">
-        <form method="GET" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
-            <input type="hidden" name="page" value="admin_security">
-            <input type="hidden" name="tab" value="blocklist">
-            <div class="form-group">
-                <label>Type</label>
-                <select name="blocklist_type" class="form-input">
-                    <option value="">All Types</option>
-                    <option value="email" <?= $filter_blocklist_type === 'email' ? 'selected' : '' ?>>Email</option>
-                    <option value="name" <?= $filter_blocklist_type === 'name' ? 'selected' : '' ?>>Name</option>
-                    <option value="ip" <?= $filter_blocklist_type === 'ip' ? 'selected' : '' ?>>IP Address</option>
-                </select>
-            </div>
-            <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-filter"></i> Filter</button>
-        </form>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="document.getElementById('blocklist-add-modal').classList.add('active')">
-        <i class="fas fa-plus"></i> Add Block Rule
+    <p style="font-size: 13px; color: var(--text-muted, #64748b); margin: 0;">
+        <i class="fas fa-info-circle"></i> Create named restrictions and add multiple trigger entries (email, name, or IP) to each one.
+    </p>
+    <button class="btn btn-primary btn-sm" onclick="document.getElementById('restriction-create-modal').classList.add('active')">
+        <i class="fas fa-plus"></i> Create Restriction
     </button>
 </div>
 
-<!-- Blocklist Table -->
+<!-- Restrictions List -->
+<?php if (empty($restrictions)): ?>
 <div class="card">
-    <div class="card-body" style="overflow-x: auto;">
-        <table class="log-table">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Value</th>
-                    <th>Reason</th>
-                    <th>Created By</th>
-                    <th>Date Added</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($blocklist_entries)): ?>
-                <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                    <i class="fas fa-ban" style="font-size: 24px; margin-bottom: 8px; display: block; opacity: 0.3;"></i>
-                    No blocklist entries found. Click "Add Block Rule" to create one.
-                </td></tr>
-                <?php else: ?>
-                <?php foreach ($blocklist_entries as $entry): ?>
-                <tr id="blocklist-row-<?php echo $entry['id']; ?>">
-                    <td><span class="blocklist-type-pill <?php echo htmlspecialchars($entry['block_type']); ?>">
-                        <i class="fas fa-<?php echo $entry['block_type'] === 'email' ? 'envelope' : ($entry['block_type'] === 'name' ? 'user' : 'globe'); ?>"></i>
-                        <?php echo ucfirst(htmlspecialchars($entry['block_type'])); ?>
-                    </span></td>
-                    <td style="font-weight: 600;"><?php echo htmlspecialchars($entry['block_value']); ?></td>
-                    <td style="font-size: 12px; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?php echo htmlspecialchars($entry['reason'] ?? ''); ?>"><?php echo htmlspecialchars($entry['reason'] ?? '—'); ?></td>
-                    <td style="font-size: 13px;"><?php echo htmlspecialchars($entry['created_by_name'] ?? 'System'); ?></td>
-                    <td style="font-size: 12px;"><?php echo date('M d, Y g:i a', strtotime($entry['created_at'])); ?></td>
-                    <td>
-                        <button class="btn btn-danger btn-sm" onclick="removeBlocklistEntry(<?php echo (int)$entry['id']; ?>)" title="Remove">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+    <div class="card-body" style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <i class="fas fa-ban" style="font-size: 24px; margin-bottom: 8px; display: block; opacity: 0.3;"></i>
+        No restrictions found. Click "Create Restriction" to create one.
+    </div>
+</div>
+<?php else: ?>
+<?php foreach ($restrictions as $restriction): ?>
+<div class="card" id="restriction-card-<?php echo (int)$restriction['id']; ?>" style="margin-bottom: 16px;">
+    <div class="card-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div>
+                <h4 style="margin: 0; font-size: 15px; font-weight: 700;"><?php echo htmlspecialchars($restriction['title']); ?></h4>
+                <span style="font-size: 11px; color: var(--text-muted, #64748b);">
+                    Created by <?php echo htmlspecialchars($restriction['created_by_name'] ?: 'System'); ?> on <?php echo date('M d, Y', strtotime($restriction['created_at'])); ?>
+                    &bull; <?php echo count($restriction['entries']); ?> trigger<?php echo count($restriction['entries']) !== 1 ? 's' : ''; ?>
+                </span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn btn-primary btn-sm" onclick="openAddEntryModal(<?php echo (int)$restriction['id']; ?>, '<?php echo htmlspecialchars(addslashes($restriction['title']), ENT_QUOTES); ?>')">
+                    <i class="fas fa-plus"></i> Add Entry
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="removeRestriction(<?php echo (int)$restriction['id']; ?>)" title="Delete restriction and all entries">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <?php if (!empty($restriction['entries'])): ?>
+        <div style="overflow-x: auto;">
+            <table class="log-table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Value</th>
+                        <th>Date Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($restriction['entries'] as $entry): ?>
+                    <tr id="blocklist-row-<?php echo $entry['id']; ?>">
+                        <td><span class="blocklist-type-pill <?php echo htmlspecialchars($entry['block_type']); ?>">
+                            <i class="fas fa-<?php echo $entry['block_type'] === 'email' ? 'envelope' : ($entry['block_type'] === 'name' ? 'user' : 'globe'); ?>"></i>
+                            <?php echo ucfirst(htmlspecialchars($entry['block_type'])); ?>
+                        </span></td>
+                        <td style="font-weight: 600;"><?php echo htmlspecialchars($entry['block_value']); ?></td>
+                        <td style="font-size: 12px;"><?php echo date('M d, Y g:i a', strtotime($entry['created_at'])); ?></td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="removeBlocklistEntry(<?php echo (int)$entry['id']; ?>)" title="Remove entry">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php else: ?>
+        <p style="font-size: 13px; color: var(--text-muted, #64748b); margin: 8px 0 0; text-align: center; padding: 16px 0;">
+            No trigger entries yet. Click "Add Entry" to add one.
+        </p>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endforeach; ?>
+<?php endif; ?>
+
+<!-- Create Restriction Modal -->
+<div id="restriction-create-modal" class="detail-modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="detail-modal">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fas fa-ban" style="color: var(--primary, #6B46C1);"></i> Create Restriction</h3>
+            <button onclick="document.getElementById('restriction-create-modal').classList.remove('active')" style="background: none; border: none; color: #9CA3AF; font-size: 20px; cursor: pointer; padding: 4px 8px;">&times;</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted, #64748b); margin-bottom: 20px;">
+            Give this restriction a title. You can then add multiple trigger entries to it.
+        </p>
+        <form id="restriction-create-form" onsubmit="return createRestriction(event)">
+            <div style="margin-bottom: 20px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Title <span style="color: #ef4444;">*</span></label>
+                <input type="text" name="title" id="restriction-title" class="form-input" required placeholder="e.g. Banned User - John Doe" style="width: 100%;">
+            </div>
+            <div id="restriction-form-message" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('restriction-create-modal').classList.remove('active')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" id="restriction-submit-btn"><i class="fas fa-plus"></i> Create</button>
+            </div>
+        </form>
     </div>
 </div>
 
-<!-- Add Blocklist Entry Modal -->
+<!-- Add Entry to Restriction Modal -->
 <div id="blocklist-add-modal" class="detail-modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
     <div class="detail-modal">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fas fa-ban" style="color: var(--primary, #6B46C1);"></i> Add Block Rule</h3>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fas fa-plus-circle" style="color: var(--primary, #6B46C1);"></i> Add Entry</h3>
             <button onclick="document.getElementById('blocklist-add-modal').classList.remove('active')" style="background: none; border: none; color: #9CA3AF; font-size: 20px; cursor: pointer; padding: 4px 8px;">&times;</button>
         </div>
         <p style="font-size: 13px; color: var(--text-muted, #64748b); margin-bottom: 20px;">
-            Add an email address, full name, or IP address to prevent registration. Only one criterion is needed per rule.
+            Adding entry to: <strong id="entry-modal-restriction-title"></strong>
         </p>
         <form id="blocklist-add-form" onsubmit="return addBlocklistEntry(event)">
+            <input type="hidden" name="restriction_id" id="entry-restriction-id" value="">
             <div style="margin-bottom: 16px;">
-                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Block Type <span style="color: #ef4444;">*</span></label>
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Trigger Type <span style="color: #ef4444;">*</span></label>
                 <select name="block_type" id="blocklist-type" class="form-input" required onchange="updateBlocklistPlaceholder()" style="width: 100%;">
                     <option value="email">Email Address</option>
                     <option value="name">Full Name</option>
                     <option value="ip">IP Address</option>
                 </select>
             </div>
-            <div style="margin-bottom: 16px;">
+            <div style="margin-bottom: 20px;">
                 <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Value <span style="color: #ef4444;">*</span></label>
                 <input type="text" name="block_value" id="blocklist-value" class="form-input" required placeholder="user@example.com" style="width: 100%;">
-            </div>
-            <div style="margin-bottom: 20px;">
-                <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Reason (optional)</label>
-                <input type="text" name="reason" id="blocklist-reason" class="form-input" placeholder="Reason for blocking..." style="width: 100%;">
             </div>
             <div id="blocklist-form-message" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;"></div>
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('blocklist-add-modal').classList.remove('active')">Cancel</button>
-                <button type="submit" class="btn btn-primary btn-sm" id="blocklist-submit-btn"><i class="fas fa-plus"></i> Add Rule</button>
+                <button type="submit" class="btn btn-primary btn-sm" id="blocklist-submit-btn"><i class="fas fa-plus"></i> Add Entry</button>
             </div>
         </form>
     </div>
@@ -848,6 +882,62 @@ function updateBlocklistPlaceholder() {
         case 'name': input.placeholder = 'John Smith'; break;
         case 'ip': input.placeholder = '192.168.1.100'; break;
     }
+}
+
+function openAddEntryModal(restrictionId, restrictionTitle) {
+    document.getElementById('entry-restriction-id').value = restrictionId;
+    document.getElementById('entry-modal-restriction-title').textContent = restrictionTitle;
+    document.getElementById('blocklist-add-form').reset();
+    document.getElementById('entry-restriction-id').value = restrictionId;
+    document.getElementById('blocklist-form-message').style.display = 'none';
+    updateBlocklistPlaceholder();
+    document.getElementById('blocklist-add-modal').classList.add('active');
+}
+
+function createRestriction(e) {
+    e.preventDefault();
+    var form = document.getElementById('restriction-create-form');
+    var btn = document.getElementById('restriction-submit-btn');
+    var msg = document.getElementById('restriction-form-message');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+    var formData = new FormData(form);
+    formData.append('action', 'create_restriction');
+    formData.append('csrf_token', blocklistCsrfToken);
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(16,185,129,0.15)';
+            msg.style.color = '#10b981';
+            msg.textContent = data.message;
+            setTimeout(function() { location.reload(); }, 800);
+        } else {
+            msg.style.display = 'block';
+            msg.style.background = 'rgba(239,68,68,0.15)';
+            msg.style.color = '#ef4444';
+            msg.textContent = data.message || 'Failed to create restriction';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus"></i> Create';
+        }
+    })
+    .catch(function() {
+        msg.style.display = 'block';
+        msg.style.background = 'rgba(239,68,68,0.15)';
+        msg.style.color = '#ef4444';
+        msg.textContent = 'An error occurred. Please try again.';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i> Create';
+    });
+    return false;
 }
 
 function addBlocklistEntry(e) {
@@ -882,7 +972,7 @@ function addBlocklistEntry(e) {
             msg.style.color = '#ef4444';
             msg.textContent = data.message || 'Failed to add entry';
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-plus"></i> Add Rule';
+            btn.innerHTML = '<i class="fas fa-plus"></i> Add Entry';
         }
     })
     .catch(function() {
@@ -891,13 +981,13 @@ function addBlocklistEntry(e) {
         msg.style.color = '#ef4444';
         msg.textContent = 'An error occurred. Please try again.';
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-plus"></i> Add Rule';
+        btn.innerHTML = '<i class="fas fa-plus"></i> Add Entry';
     });
     return false;
 }
 
 function removeBlocklistEntry(entryId) {
-    if (!confirm('Are you sure you want to remove this blocklist entry?')) return;
+    if (!confirm('Are you sure you want to remove this entry?')) return;
 
     fetch('process_settings.php', {
         method: 'POST',
@@ -915,6 +1005,30 @@ function removeBlocklistEntry(entryId) {
             }
         } else {
             alert('Error: ' + (data.message || 'Failed to remove entry'));
+        }
+    })
+    .catch(function() { alert('An error occurred'); });
+}
+
+function removeRestriction(restrictionId) {
+    if (!confirm('Are you sure you want to delete this restriction and all its entries?')) return;
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=remove_restriction&restriction_id=' + restrictionId + '&csrf_token=' + encodeURIComponent(blocklistCsrfToken)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var card = document.getElementById('restriction-card-' + restrictionId);
+            if (card) {
+                card.style.transition = 'opacity 0.3s';
+                card.style.opacity = '0';
+                setTimeout(function() { card.remove(); }, 300);
+            }
+        } else {
+            alert('Error: ' + (data.message || 'Failed to remove restriction'));
         }
     })
     .catch(function() { alert('An error occurred'); });
