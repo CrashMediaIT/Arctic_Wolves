@@ -1185,7 +1185,7 @@ foreach ($recurring_expenses as $re) {
                     <h3><i class="fas fa-upload"></i> Upload Contract & Documents</h3>
                 </div>
                 <div class="card-body">
-                    <p style="color:var(--text-dim); font-size:12px; margin-bottom:16px;">Upload the contract document and any additional files (e.g., insurance policy). Files will be stored in Nextcloud under /accounting/contracts/.</p>
+                    <p style="color:var(--text-dim); font-size:12px; margin-bottom:16px;">Upload the contract document and any additional files (e.g., insurance policy). Files will be stored in Nextcloud under the configured contracts directory.</p>
                     
                     <div class="form-group">
                         <label class="form-label">Contract Document</label>
