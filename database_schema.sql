@@ -2456,10 +2456,10 @@ CREATE TABLE IF NOT EXISTS `session_evaluation_athletes` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `session_evaluation_id` INT NOT NULL,
     `user_id` INT DEFAULT NULL COMMENT 'Link to users table if athlete is a registered user',
-    `first_name` VARCHAR(100) NOT NULL,
-    `last_name` VARCHAR(100) NOT NULL,
+    `first_name` VARCHAR(512) NOT NULL,
+    `last_name` VARCHAR(512) NOT NULL,
     `email` VARCHAR(255) DEFAULT NULL COMMENT 'Email for creating user account if provided',
-    `date_of_birth` DATE DEFAULT NULL,
+    `date_of_birth` VARCHAR(512) DEFAULT NULL,
     `external_id` VARCHAR(100) DEFAULT NULL COMMENT 'External identifier for imported athletes',
     `notes` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -3892,9 +3892,9 @@ CREATE TABLE IF NOT EXISTS `recurring_expense_documents` (
 -- RECURRING EXPENSES - Contact fields for point of contact
 -- =========================================================
 ALTER TABLE `recurring_expenses`
-    ADD COLUMN IF NOT EXISTS `contact_name` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact name for the contract',
+    ADD COLUMN IF NOT EXISTS `contact_name` VARCHAR(512) DEFAULT NULL COMMENT 'Point of contact name for the contract',
     ADD COLUMN IF NOT EXISTS `contact_email` VARCHAR(255) DEFAULT NULL COMMENT 'Point of contact email',
-    ADD COLUMN IF NOT EXISTS `contact_phone` VARCHAR(50) DEFAULT NULL COMMENT 'Point of contact phone number',
+    ADD COLUMN IF NOT EXISTS `contact_phone` VARCHAR(512) DEFAULT NULL COMMENT 'Point of contact phone number',
     ADD COLUMN IF NOT EXISTS `company_phone` VARCHAR(50) DEFAULT NULL COMMENT 'Company general phone number',
     ADD COLUMN IF NOT EXISTS `company_email` VARCHAR(255) DEFAULT NULL COMMENT 'Company general email address';
 

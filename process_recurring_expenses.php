@@ -7,6 +7,7 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // Conditionally load cloud_config if available
 if (file_exists(__DIR__ . '/cloud_config.php')) {
@@ -118,6 +119,9 @@ try {
                 $frequency = 'monthly';
             }
             
+            $enc_contact_name = $contact_name ? FieldEncryption::encrypt($contact_name) : null;
+            $enc_contact_phone = $contact_phone ? FieldEncryption::encrypt($contact_phone) : null;
+
             $stmt = $pdo->prepare("INSERT INTO recurring_expenses 
                 (vendor_name, description, contract_type, amount, frequency, contract_start_date, contract_end_date, 
                  renewal_date, next_payment_date, payment_method, category, notes, auto_renew, 
@@ -127,7 +131,7 @@ try {
                 $vendor_name, $description, $contract_type, $amount, $frequency,
                 $contract_start_date, $contract_end_date, $renewal_date, $next_payment_date,
                 $payment_method, $category, $notes, $auto_renew,
-                $contact_name ?: null, $contact_email ?: null, $contact_phone ?: null,
+                $enc_contact_name, $contact_email ?: null, $enc_contact_phone,
                 $company_phone ?: null, $company_email ?: null, $user_id
             ]);
             

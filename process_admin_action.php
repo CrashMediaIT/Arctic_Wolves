@@ -2196,6 +2196,7 @@ if ($action == 'export_users') {
         ");
         $stmt->execute($params);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $users = decryptUserRows($users);
         
         // Set CSV headers
         header('Content-Type: text/csv');
@@ -2252,6 +2253,7 @@ if ($action == 'export') {
         ");
         $stmt->execute();
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $users = decryptUserRows($users);
         
         // Set CSV headers
         header('Content-Type: text/csv');
