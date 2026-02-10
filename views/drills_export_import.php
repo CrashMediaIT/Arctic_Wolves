@@ -27,6 +27,18 @@ $category_count = (int)$pdo->query("SELECT COUNT(*) FROM drill_categories")->fet
             grid-template-columns: 1fr;
         }
     }
+    .ei-card-title {
+        color: var(--text-white);
+        font-weight: var(--font-weight-black);
+        font-size: var(--font-size-xl);
+        margin-bottom: var(--space-2);
+    }
+    .ei-card-desc {
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+        line-height: 1.6;
+        margin-bottom: var(--space-5);
+    }
     .ei-card-icon {
         width: 60px;
         height: 60px;
@@ -97,8 +109,8 @@ $category_count = (int)$pdo->query("SELECT COUNT(*) FROM drill_categories")->fet
     <div class="card">
         <div class="card-body">
             <div class="ei-card-icon"><i class="fas fa-file-export"></i></div>
-            <h3 style="color: var(--text-white); font-weight: var(--font-weight-black); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">Export All Drills</h3>
-            <p style="color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-5);">
+            <h3 class="ei-card-title">Export All Drills</h3>
+            <p class="ei-card-desc">
                 Download all drills, categories, and tags as a JSON file. Use this to back up your drill library or transfer drills to another system.
             </p>
             
@@ -111,7 +123,7 @@ $category_count = (int)$pdo->query("SELECT COUNT(*) FROM drill_categories")->fet
                 <span class="ei-stat-value"><?= number_format($category_count) ?></span>
             </div>
             
-            <a href="process_drills_export.php?csrf_token=<?= urlencode($csrf_token) ?>" class="btn btn-primary" style="width:100%;text-decoration:none;" <?= $drill_count === 0 ? 'style="pointer-events:none;opacity:0.5;"' : '' ?>>
+            <a href="process_drills_export.php?csrf_token=<?= urlencode($csrf_token) ?>" class="btn btn-primary" style="width:100%;text-decoration:none;<?= $drill_count === 0 ? 'pointer-events:none;opacity:0.5;' : '' ?>">
                 <i class="fas fa-download"></i> Export All Drills (JSON)
             </a>
         </div>
@@ -121,8 +133,8 @@ $category_count = (int)$pdo->query("SELECT COUNT(*) FROM drill_categories")->fet
     <div class="card">
         <div class="card-body">
             <div class="ei-card-icon"><i class="fas fa-file-import"></i></div>
-            <h3 style="color: var(--text-white); font-weight: var(--font-weight-black); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">Import Drills from File</h3>
-            <p style="color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-5);">
+            <h3 class="ei-card-title">Import Drills from File</h3>
+            <p class="ei-card-desc">
                 Upload a JSON file previously exported from this system to import drills, categories, and tags.
             </p>
             

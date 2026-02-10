@@ -386,8 +386,8 @@ const stopwatch = new Stopwatch(swDisplay);
 const csrfToken = '<?= htmlspecialchars($csrf_token) ?>';
 
 const athleteOptions = <?= json_encode(array_map(function($a) {
-    return ['id' => $a['id'], 'name' => htmlspecialchars(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? ''))];
-}, $athletes)) ?>;
+    return ['id' => $a['id'], 'name' => ($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? '')];
+}, $athletes), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
 function swStart() {
     stopwatch.start();

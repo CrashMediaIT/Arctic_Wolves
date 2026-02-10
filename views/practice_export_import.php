@@ -27,6 +27,18 @@ $drill_count = (int)$pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
             grid-template-columns: 1fr;
         }
     }
+    .ei-card-title {
+        color: var(--text-white);
+        font-weight: var(--font-weight-black);
+        font-size: var(--font-size-xl);
+        margin-bottom: var(--space-2);
+    }
+    .ei-card-desc {
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+        line-height: 1.6;
+        margin-bottom: var(--space-5);
+    }
     .ei-card-icon {
         width: 60px;
         height: 60px;
@@ -97,8 +109,8 @@ $drill_count = (int)$pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
     <div class="card">
         <div class="card-body">
             <div class="ei-card-icon"><i class="fas fa-file-export"></i></div>
-            <h3 style="color: var(--text-white); font-weight: var(--font-weight-black); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">Export All Practice Plans</h3>
-            <p style="color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-5);">
+            <h3 class="ei-card-title">Export All Practice Plans</h3>
+            <p class="ei-card-desc">
                 Download all practice plans with their associated drills as a JSON file. Use this to back up your practice library or transfer plans to another system.
             </p>
             
@@ -111,7 +123,7 @@ $drill_count = (int)$pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
                 <span class="ei-stat-value"><?= number_format($drill_count) ?></span>
             </div>
             
-            <a href="process_practice_plans_export.php?csrf_token=<?= urlencode($csrf_token) ?>" class="btn btn-primary" style="width:100%;text-decoration:none;" <?= $plan_count === 0 ? 'style="pointer-events:none;opacity:0.5;"' : '' ?>>
+            <a href="process_practice_plans_export.php?csrf_token=<?= urlencode($csrf_token) ?>" class="btn btn-primary" style="width:100%;text-decoration:none;<?= $plan_count === 0 ? 'pointer-events:none;opacity:0.5;' : '' ?>">
                 <i class="fas fa-download"></i> Export All Practice Plans (JSON)
             </a>
         </div>
@@ -121,8 +133,8 @@ $drill_count = (int)$pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
     <div class="card">
         <div class="card-body">
             <div class="ei-card-icon"><i class="fas fa-file-import"></i></div>
-            <h3 style="color: var(--text-white); font-weight: var(--font-weight-black); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">Import Practice Plans from File</h3>
-            <p style="color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: var(--space-5);">
+            <h3 class="ei-card-title">Import Practice Plans from File</h3>
+            <p class="ei-card-desc">
                 Upload a JSON file previously exported from this system to import practice plans and their associated drills.
             </p>
             
