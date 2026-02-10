@@ -137,6 +137,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit();
     }
     
+    // Fetch merchandise product data
+    if ($action === 'get_merchandise_product') {
+        header('Content-Type: application/json');
+        try {
+            $productId = intval($_GET['id'] ?? 0);
+            if ($productId <= 0) {
+                throw new Exception('Invalid product ID');
+            }
+            
+            $stmt = $pdo->prepare("SELECT * FROM merchandise_products WHERE id = ?");
+            $stmt->execute([$productId]);
+            $product = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$product) {
+                throw new Exception('Merchandise product not found');
+            }
+            
+            echo json_encode(['success' => true, 'data' => $product]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit();
+    }
+    
     // Get user 2FA status (for admin security modal)
     if ($action === 'get_user_2fa_status') {
         header('Content-Type: application/json');
