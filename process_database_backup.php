@@ -200,6 +200,68 @@ try {
             }
             break;
             
+        case 'force_nextcloud':
+            // Force backup directly to Nextcloud
+            $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/Arctic_Wolves/Backups/');
+            
+            $job = [
+                'id' => 0,
+                'name' => 'Force Nextcloud Backup',
+                'destination_type' => 'nextcloud',
+                'nextcloud_folder' => $nextcloud_folder,
+                'smb_path' => '',
+                'smb_username' => '',
+                'smb_password' => '',
+                'smb_domain' => '',
+                'retention_days' => 30
+            ];
+            
+            $result = performBackup($pdo, $job);
+            
+            if ($result['success']) {
+                logAction($pdo, $user_id, 'force_nextcloud_backup', 'Forced backup to Nextcloud: ' . $nextcloud_folder);
+                echo json_encode(['success' => true, 'message' => $result['message']]);
+            } else {
+                throw new Exception($result['message']);
+            }
+            break;
+            
+        case 'backup_to_file':
+            // Create backup and return it as a downloadable file
+            $job = [
+                'id' => 0,
+                'name' => 'Download Backup',
+                'destination_type' => 'local',
+                'nextcloud_folder' => '',
+                'smb_path' => '',
+                'smb_username' => '',
+                'smb_password' => '',
+                'smb_domain' => '',
+                'retention_days' => 30
+            ];
+            
+            $result = performBackup($pdo, $job);
+            
+            if ($result['success'] && !empty($result['file_path'])) {
+                logAction($pdo, $user_id, 'backup_download', 'Downloaded backup file');
+                
+                // Send file as download
+                $filepath = $result['file_path'];
+                $filename = basename($filepath);
+                $content_type = str_ends_with($filename, '.gz') ? 'application/gzip' : 'application/sql';
+                
+                header('Content-Type: ' . $content_type);
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Content-Length: ' . filesize($filepath));
+                header('Cache-Control: no-cache, no-store, must-revalidate');
+                
+                readfile($filepath);
+                exit;
+            } else {
+                throw new Exception($result['message'] ?? 'Backup failed');
+            }
+            break;
+            
         case 'test_smb':
             $smb_path = trim($_POST['smb_path'] ?? '');
             $smb_username = trim($_POST['smb_username'] ?? '');
@@ -368,28 +430,116 @@ function performBackup($pdo, $job) {
             throw new Exception('Database credentials not configured. Please check your environment configuration.');
         }
         
-        // Create mysqldump command
-        $command = sprintf(
-            'mysqldump -h%s -u%s -p%s %s > %s 2>&1',
-            escapeshellarg($db_host),
-            escapeshellarg($db_user),
-            escapeshellarg($db_pass),
-            escapeshellarg($db_name),
-            escapeshellarg($sql_file)
-        );
+        $dump_success = false;
         
-        // Execute dump
-        exec($command, $output, $return_var);
+        // Try mysqldump first
+        $mysqldump_path = trim(shell_exec('which mysqldump 2>/dev/null') ?? '');
+        if (!empty($mysqldump_path)) {
+            // Build mysqldump command with proper argument formatting
+            $cmd_parts = [
+                escapeshellarg($mysqldump_path),
+                '--host=' . escapeshellarg($db_host),
+                '--user=' . escapeshellarg($db_user),
+            ];
+            
+            if (!empty($db_pass)) {
+                $cmd_parts[] = '--password=' . escapeshellarg($db_pass);
+            }
+            
+            $cmd_parts[] = '--single-transaction';
+            $cmd_parts[] = '--routines';
+            $cmd_parts[] = '--triggers';
+            $cmd_parts[] = escapeshellarg($db_name);
+            
+            $command = implode(' ', $cmd_parts) . ' > ' . escapeshellarg($sql_file) . ' 2>&1';
+            
+            exec($command, $output, $return_var);
+            
+            if ($return_var === 0 && file_exists($sql_file) && filesize($sql_file) > 0) {
+                $dump_success = true;
+            }
+        }
         
-        if ($return_var !== 0 || !file_exists($sql_file)) {
-            throw new Exception('Database dump failed: ' . implode("\n", $output));
+        // PHP-based fallback if mysqldump is not available or failed
+        if (!$dump_success) {
+            $sql_content = "-- Arctic Wolves Database Backup\n";
+            $sql_content .= "-- Generated: " . date('Y-m-d H:i:s') . "\n";
+            $sql_content .= "-- Method: PHP PDO Export\n\n";
+            $sql_content .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+            
+            // Get all tables
+            $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+            
+            foreach ($tables as $table) {
+                // Validate table name
+                if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
+                    continue;
+                }
+                
+                // Get CREATE TABLE statement
+                $create_stmt = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(PDO::FETCH_ASSOC);
+                $sql_content .= "DROP TABLE IF EXISTS `{$table}`;\n";
+                $sql_content .= $create_stmt['Create Table'] . ";\n\n";
+                
+                // Get all data
+                $rows = $pdo->query("SELECT * FROM `{$table}`")->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (!empty($rows)) {
+                    $columns = array_keys($rows[0]);
+                    $col_list = implode('`, `', $columns);
+                    
+                    foreach ($rows as $row) {
+                        $values = [];
+                        foreach ($row as $value) {
+                            if ($value === null) {
+                                $values[] = 'NULL';
+                            } else {
+                                $values[] = $pdo->quote($value);
+                            }
+                        }
+                        $sql_content .= "INSERT INTO `{$table}` (`{$col_list}`) VALUES (" . implode(', ', $values) . ");\n";
+                    }
+                    $sql_content .= "\n";
+                }
+            }
+            
+            $sql_content .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+            
+            if (file_put_contents($sql_file, $sql_content) === false) {
+                throw new Exception('Failed to write backup file');
+            }
+            
+            $dump_success = true;
+        }
+        
+        if (!$dump_success) {
+            throw new Exception('Database backup failed. Neither mysqldump nor PHP export succeeded.');
         }
         
         // Compress SQL file
-        exec('gzip -9 ' . escapeshellarg($sql_file), $output, $return_var);
-        
-        if ($return_var !== 0 || !file_exists($gz_file)) {
-            throw new Exception('Compression failed');
+        if (function_exists('gzopen')) {
+            $gz = gzopen($gz_file, 'wb9');
+            if ($gz) {
+                $fp = fopen($sql_file, 'rb');
+                while (!feof($fp)) {
+                    gzwrite($gz, fread($fp, 8192));
+                }
+                fclose($fp);
+                gzclose($gz);
+                @unlink($sql_file);
+            } else {
+                // If gzip fails, use the uncompressed file
+                $gz_file = $sql_file;
+                $filename = str_replace('.sql.gz', '.sql', $filename);
+            }
+        } else {
+            // Try command-line gzip
+            exec('gzip -9 ' . escapeshellarg($sql_file), $gzip_output, $gzip_return);
+            if ($gzip_return !== 0 || !file_exists($gz_file)) {
+                // Fall back to uncompressed
+                $gz_file = $sql_file;
+                $filename = str_replace('.sql.gz', '.sql', $filename);
+            }
         }
         
         $file_size = filesize($gz_file);
@@ -475,12 +625,15 @@ function performBackup($pdo, $job) {
             $dest_message = !empty($success_destinations) ? implode(', ', $success_destinations) : 'Backup created';
             return [
                 'success' => true,
-                'message' => 'Backup completed successfully. ' . $dest_message
+                'message' => 'Backup completed successfully. ' . $dest_message,
+                'file_path' => $gz_file,
+                'filename' => $filename
             ];
         } else {
             return [
                 'success' => false,
-                'message' => 'Backup completed with errors: ' . implode('; ', $errors)
+                'message' => 'Backup completed with errors: ' . implode('; ', $errors),
+                'file_path' => file_exists($gz_file) ? $gz_file : null
             ];
         }
         

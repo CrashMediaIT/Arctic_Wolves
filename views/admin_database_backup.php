@@ -598,9 +598,17 @@ $csrf_token = $_SESSION['csrf_token'];
         <h1>Database Backups</h1>
         <p>Configure automated backups and manage backup history</p>
     </div>
-    <button class="btn-create" onclick="showJobModal()">
-        <span>➕</span> Create Backup Job
-    </button>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn-create" onclick="backupToFile()" title="Download a backup file to your computer">
+            <span>💾</span> Backup to File
+        </button>
+        <button class="btn-create" onclick="forceNextcloudBackup()" title="Force an immediate backup to Nextcloud" style="background: #3b82f6;">
+            <span>☁️</span> Force to Nextcloud
+        </button>
+        <button class="btn-create" onclick="showJobModal()">
+            <span>➕</span> Create Backup Job
+        </button>
+    </div>
 </div>
 
 <div class="alert alert-success" id="success-alert">
@@ -1207,6 +1215,62 @@ function filterHistory() {
 // Download backup
 function downloadBackup(filename) {
     window.location.href = `process_database_backup.php?action=download&filename=${encodeURIComponent(filename)}&csrf_token=<?= $csrf_token ?>`;
+}
+
+// Backup to file (download directly)
+function backupToFile() {
+    if (!confirm('Create a backup and download it to your computer?')) {
+        return;
+    }
+    
+    showAlert('success', 'Creating backup file... Please wait.');
+    
+    // Use a form submission to trigger download via POST
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'process_database_backup.php';
+    form.style.display = 'none';
+    
+    const actionInput = document.createElement('input');
+    actionInput.name = 'action';
+    actionInput.value = 'backup_to_file';
+    form.appendChild(actionInput);
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = '<?= $csrf_token ?>';
+    form.appendChild(csrfInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+// Force backup to Nextcloud
+function forceNextcloudBackup() {
+    if (!confirm('Force an immediate backup to Nextcloud?')) {
+        return;
+    }
+    
+    showAlert('success', 'Sending backup to Nextcloud... This may take a moment.');
+    
+    fetch('process_database_backup.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `action=force_nextcloud&csrf_token=<?= $csrf_token ?>`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+        } else {
+            showAlert('error', data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to create Nextcloud backup: ' + error.message);
+        console.error(error);
+    });
 }
 
 

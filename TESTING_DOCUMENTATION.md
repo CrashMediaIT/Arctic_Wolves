@@ -528,6 +528,29 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Category mapping works
 - Bulk import handles multiple items
 
+#### 11.4 Export / Import All
+**Page:** `?page=export_import_drills`  
+**File:** `views/drills_export_import.php`
+
+**Goal:** Bulk export all drills to JSON and import drills from a JSON backup file.
+
+**Features:**
+- Export all drills, categories, and tags as a single JSON file
+- Shows total drill and category counts before export
+- Import drills from a previously exported JSON file
+- Skip duplicates option (matches by drill title)
+- Category mapping during import (matches existing categories by name, creates new ones as needed)
+- Drill tags preserved during export/import
+
+**Testing Focus:**
+- Export button downloads a valid JSON file
+- Exported file contains all drills, categories, and tags
+- Import accepts only `.json` files
+- Import creates new drills and categories correctly
+- Skip duplicates option prevents duplicate drill entries
+- Import error messages display correctly for invalid files
+- Round-trip export → import produces identical data
+
 ---
 
 ### 12. Practice Plans
@@ -607,6 +630,31 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Preview displays properly
 - Import saves to database
 - Edit during import functional
+
+#### 12.4 Export / Import All
+**Page:** `?page=export_import_plans`  
+**File:** `views/practice_export_import.php`
+
+**Goal:** Bulk export all practice plans to JSON and import plans from a JSON backup file.
+
+**Features:**
+- Export all practice plans with associated drills as a single JSON file
+- Includes drill details (title, description, coaching points, etc.) in the export
+- Shows total plan and drill counts before export
+- Import practice plans from a previously exported JSON file
+- Automatically creates missing drills during import
+- Skip duplicates option (matches by plan name)
+- Drill categories preserved during export/import
+
+**Testing Focus:**
+- Export button downloads a valid JSON file
+- Exported file contains all plans with their associated drills
+- Import accepts only `.json` files
+- Import creates new plans and links drills correctly
+- Missing drills are created during import
+- Skip duplicates option prevents duplicate plan entries
+- Import error messages display correctly for invalid files
+- Round-trip export → import produces identical data
 
 ---
 
@@ -1786,20 +1834,33 @@ These features are restricted to Administrators for system management.
 **Goal:** Database backup, restore, and maintenance.
 
 **Features:**
-- Manual backup trigger
-- Scheduled backups configuration
+- Manual backup trigger (Quick Backup to local storage)
+- Backup to File — downloads a backup file directly to the user's computer
+- Force to Nextcloud — forces an immediate backup upload to Nextcloud cloud storage
+- Scheduled backups configuration (cron-based with retention policies)
 - Backup history/downloads
-- Database restore
-- Optimization tools
-- Table repair
+- Database restore from uploaded `.sql` or `.sql.gz` files (wizard-style interface)
+- Database import for full application recovery
+- PHP-based backup fallback when mysqldump is unavailable
+- Optimization tools (repair, optimize, analyze tables)
+- Table integrity checks and foreign key validation
 - Storage usage report
 - Export data (SQL, CSV)
 
 **Testing Focus:**
-- Manual backup creates file
-- Scheduled backups run automatically
-- Backup files downloadable
-- Restore rebuilds database correctly (TEST WITH CAUTION)
+- **Backup to File** button creates and downloads a backup file to the user's computer
+- **Force to Nextcloud** button uploads backup to configured Nextcloud folder
+- Manual backup creates file without error 500
+- Scheduled backups run automatically via cron
+- Backup files downloadable from history
+- Restore wizard uploads, validates, and restores database correctly (TEST WITH CAUTION)
+- Database import restores the application from a backup file
+- PHP fallback backup works when mysqldump command is not available
+- Gzip compression works (both PHP gzopen and command-line gzip)
+- Optimization runs without errors
+- Table repair fixes issues
+- Storage report accurate
+- Exports complete and downloadable
 - Optimization runs without errors
 - Table repair fixes issues
 - Storage report accurate
@@ -2100,19 +2161,49 @@ This section provides important test scenarios that span multiple features.
 
 ### 10. Database Backup and Restore (CRITICAL)
 
-**Objective:** Verify backup/restore functionality. **Test in staging only.**
+**Objective:** Verify all backup, restore, and database tool functionality. **Test in staging only.**
 
-**Steps:**
-1. Create database backup
-2. Make test data changes
-3. Restore from backup
-4. Verify data matches pre-change state
+**Steps — Backup to File:**
+1. Navigate to Administration → System Tools → Database
+2. Click "Backup to File" button
+3. Verify a `.sql.gz` file downloads to the browser
+4. Verify the file is non-empty and contains valid SQL statements
+
+**Steps — Force Backup to Nextcloud:**
+1. Ensure Nextcloud is configured in system settings
+2. Click "Force to Nextcloud" button
+3. Verify success message appears
+4. Verify file appears in Nextcloud under `/Arctic_Wolves/Backups/`
+
+**Steps — Manual Backup (Quick Backup):**
+1. Click "Run" on an existing backup job, or trigger a quick manual backup
+2. Verify backup completes without error 500
+3. Verify backup appears in backup history
+
+**Steps — Database Restore / Import:**
+1. Navigate to Administration → System Tools → Database Restore
+2. Upload a valid `.sql` or `.sql.gz` backup file
+3. Review the validation summary (table count, insert count, file size)
+4. Confirm restore
+5. Verify all critical tables exist after restore (users, sessions, system_settings)
+6. Verify data matches the backup
+
+**Steps — Database Maintenance Tools:**
+1. Run "Check Database Integrity" — verify orphaned record scan
+2. Run "Repair Tables" — verify all tables repaired
+3. Run "Optimize Tables" — verify tables optimized
+4. Run "Check Foreign Keys" — verify constraint validation
+5. Run "Performance Analysis" — verify large table and missing index reporting
 
 **Validation:**
-- Backup file downloads successfully
+- Backup to File downloads a valid backup without error 500
+- Force to Nextcloud uploads successfully when Nextcloud is configured
 - Backup file is complete (not corrupted)
-- Restore rebuilds database accurately
-- No data loss in restore process
+- PHP-based backup fallback works when mysqldump is unavailable
+- Restore wizard uploads, validates, and restores correctly
+- Database import function can fully recover the application from a backup
+- Maintenance tools (integrity check, repair, optimize, foreign keys) all run without errors
+- Backup history records are saved with correct status and metadata
 
 **WARNING:** Test database restore ONLY on staging/test environment, never on production.
 
@@ -2204,6 +2295,9 @@ This section provides important test scenarios that span multiple features.
 - Transaction history (CSV)
 - Timesheet export (CSV)
 - Schedule export (PDF/iCal)
+- **Drill library export (JSON)** — via Drills → Export / Import All tab
+- **Practice plans export (JSON)** — via Practice Plans → Export / Import All tab
+- **Database backup export (SQL.GZ)** — via System Tools → Database → Backup to File
 
 **Validation:**
 - Files download successfully
@@ -2368,6 +2462,7 @@ This section provides important test scenarios that span multiple features.
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | February 2026 | Initial comprehensive testing documentation created |
+| 1.1 | February 2026 | Added drill/practice plan export/import all tabs (11.4, 12.4), updated database backup/restore testing (40.3, scenario 10), added backup-to-file and force-to-Nextcloud features, added database import for recovery, updated data export section (14) |
 
 ---
 
