@@ -548,7 +548,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'get_available_sessions':
                 header('Content-Type: application/json');
                 $stmt = $pdo->prepare("
-                    SELECT s.id, s.title, s.session_date, 
+                    SELECT s.id, s.title, s.session_date, s.session_time,
                            COALESCE(l.name, 'TBD') as location_name,
                            GROUP_CONCAT(DISTINCT pkg.name ORDER BY pkg.name SEPARATOR ', ') as package_names
                     FROM sessions s
@@ -556,7 +556,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     LEFT JOIN package_sessions ps ON ps.session_id = s.id
                     LEFT JOIN packages pkg ON ps.package_id = pkg.id
                     WHERE s.session_date >= CURDATE()
-                    GROUP BY s.id, s.title, s.session_date, l.name
+                    GROUP BY s.id, s.title, s.session_date, s.session_time, l.name
                     ORDER BY s.session_date ASC
                     LIMIT 100
                 ");

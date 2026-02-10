@@ -3,7 +3,8 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 
-if (!isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'coach')) {
+$allowed_roles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'];
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $allowed_roles)) {
     header("Location: dashboard.php"); exit();
 }
 
@@ -12,8 +13,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();
 }
 
-$action = $_POST['action'];
-$id     = $_POST['id'];
+$action = $_POST['action'] ?? '';
+$id     = $_POST['id'] ?? $_POST['session_id'] ?? 0;
+
+// ASSIGN PRACTICE PLAN to a specific session date
+if ($action == 'assign_practice_plan') {
+    $session_id = intval($_POST['session_id'] ?? 0);
+    $practice_plan_id = intval($_POST['practice_plan_id'] ?? 0);
+
+    if ($session_id <= 0 || $practice_plan_id <= 0) {
+        header("Location: dashboard.php?page=coach_calendar&status=error&message=" . urlencode('Invalid session or practice plan'));
+        exit();
+    }
+
+    try {
+        // Verify session exists
+        $check = $pdo->prepare("SELECT id FROM sessions WHERE id = ?");
+        $check->execute([$session_id]);
+        if (!$check->fetch()) {
+            header("Location: dashboard.php?page=coach_calendar&status=error&message=" . urlencode('Session not found'));
+            exit();
+        }
+
+        // Verify practice plan exists
+        $check = $pdo->prepare("SELECT id FROM practice_plans WHERE id = ?");
+        $check->execute([$practice_plan_id]);
+        if (!$check->fetch()) {
+            header("Location: dashboard.php?page=coach_calendar&status=error&message=" . urlencode('Practice plan not found'));
+            exit();
+        }
+
+        // Remove existing practice plan assignment for this session
+        $pdo->prepare("DELETE FROM session_practice_plans WHERE session_id = ?")->execute([$session_id]);
+
+        // Insert new assignment
+        $stmt = $pdo->prepare("INSERT INTO session_practice_plans (session_id, practice_plan_id) VALUES (?, ?)");
+        $stmt->execute([$session_id, $practice_plan_id]);
+
+        // Also update the practice_plan_id column on the sessions table for backward compatibility
+        $pdo->prepare("UPDATE sessions SET practice_plan_id = ? WHERE id = ?")->execute([$practice_plan_id, $session_id]);
+
+        header("Location: dashboard.php?page=coach_calendar&status=success&message=" . urlencode('Practice plan assigned successfully'));
+        exit();
+    } catch (PDOException $e) {
+        error_log("Error assigning practice plan: " . $e->getMessage());
+        header("Location: dashboard.php?page=coach_calendar&status=error&message=" . urlencode('Database error occurred'));
+        exit();
+    }
+}
 
 // DELETE
 if ($action == 'delete') {
