@@ -107,6 +107,13 @@ function getConversations($pdo, $user_id) {
         $stmt->execute([$user_id, $user_id, $user_id, $user_id, $user_id]);
         $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $conversations = decryptUserRows($conversations);
+        // Decrypt encrypted message content (last_message is an alias for message_body)
+        foreach ($conversations as &$conv) {
+            if (!empty($conv['last_message'])) {
+                $conv['last_message'] = FieldEncryption::decrypt($conv['last_message']);
+            }
+        }
+        unset($conv);
         
         echo json_encode(['success' => true, 'conversations' => $conversations]);
     } catch (PDOException $e) {
@@ -140,6 +147,8 @@ function getMessages($pdo, $user_id, $conversation_id) {
         $stmt->execute([$conversation_id]);
         $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $messages = decryptUserRows($messages);
+        // Decrypt encrypted message content
+        $messages = FieldEncryption::decryptRows($messages, FieldEncryption::MESSAGE_ENCRYPTED_FIELDS);
         
         // Mark messages as read
         $update = $pdo->prepare("
@@ -284,12 +293,13 @@ function sendMessage($pdo, $user_id) {
             $conversation_id = $pdo->lastInsertId();
         }
         
-        // Insert message
+        // Insert message (encrypt message body for end-to-end encryption)
+        $encrypted_body = FieldEncryption::encrypt($message_body);
         $stmt = $pdo->prepare("
             INSERT INTO messages (conversation_id, from_user_id, to_user_id, message_body, created_at) 
             VALUES (?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$conversation_id, $user_id, $to_user_id, $message_body]);
+        $stmt->execute([$conversation_id, $user_id, $to_user_id, $encrypted_body]);
         $message_id = $pdo->lastInsertId();
         
         // Update conversation last_message_at

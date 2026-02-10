@@ -106,7 +106,9 @@ try {
                 throw new Exception('No recipient found. Please contact support.');
             }
             
-            // Store message in database
+            // Store message in database (encrypt subject and message for end-to-end encryption)
+            $encrypted_subject = FieldEncryption::encrypt($subject);
+            $encrypted_message = FieldEncryption::encrypt($message);
             $msg_stmt = $pdo->prepare("
                 INSERT INTO messages (sender_id, recipient_id, subject, message, priority, created_at)
                 VALUES (?, ?, ?, ?, ?, NOW())
@@ -120,12 +122,12 @@ try {
             
             $sent_count = 0;
             foreach ($recipients as $recipient) {
-                // Store message
+                // Store message (use encrypted values for database storage)
                 $msg_stmt->execute([
                     $user_id,
                     $recipient['id'],
-                    $subject,
-                    $message,
+                    $encrypted_subject,
+                    $encrypted_message,
                     $priority
                 ]);
                 
