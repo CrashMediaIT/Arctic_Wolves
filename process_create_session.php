@@ -73,8 +73,8 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
         $stmt = $pdo->prepare("
             INSERT INTO sessions (
                 session_type_id, coach_id, location_id, title, description, 
-                session_date, start_time, duration_minutes, 
-                practice_plan_id, is_private, status, max_capacity, price,
+                session_date, session_time, duration_minutes, 
+                practice_plan_id, is_private, status, max_participants, price,
                 arena, city, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?, NOW())
         ");
