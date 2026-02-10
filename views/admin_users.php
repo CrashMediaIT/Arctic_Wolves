@@ -1837,15 +1837,15 @@ function removeParentAssignment(managedId, userId) {
         
         <div class="modal-body">
             <!-- Security Tabs -->
-            <div class="tabs security-tabs">
+            <div class="tabs edit-user-tabs security-tabs">
                 <button type="button" class="tab active" data-tab="security-password-tab">
-                    <i class="fas fa-key"></i> Password
+                    <i class="fas fa-key"></i> <span>Password</span>
                 </button>
                 <button type="button" class="tab" data-tab="security-pin-tab" id="security-pin-tab-btn">
-                    <i class="fas fa-th"></i> PIN
+                    <i class="fas fa-th"></i> <span>PIN</span>
                 </button>
                 <button type="button" class="tab" data-tab="security-2fa-tab">
-                    <i class="fas fa-shield-halved"></i> 2FA
+                    <i class="fas fa-shield-halved"></i> <span>2FA</span>
                 </button>
             </div>
             
