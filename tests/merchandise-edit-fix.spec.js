@@ -28,28 +28,24 @@ test.describe('Merchandise Product Edit', () => {
   });
 
   test('should use correct endpoint for merchandise product edit', async ({ page }) => {
-    // Listen for network requests
-    let fetchRequest = null;
-    page.on('request', request => {
-      if (request.url().includes('process_admin_action.php') && 
-          request.url().includes('action=get_merchandise_product')) {
-        fetchRequest = request;
-      }
-    });
-
     // Find and click the first edit button for a merchandise product
     const editButton = page.locator('button[data-action="edit"][data-type="merch-product"]').first();
     
     if (await editButton.count() > 0) {
+      // Wait for the API request when clicking edit button
+      const responsePromise = page.waitForResponse(
+        response => response.url().includes('process_admin_action.php') && 
+                    response.url().includes('action=get_merchandise_product')
+      );
+      
       await editButton.click();
       
-      // Wait a bit for the request to be made
-      await page.waitForTimeout(1000);
+      // Wait for the response
+      const response = await responsePromise;
       
       // Verify the correct endpoint was called
-      expect(fetchRequest).not.toBeNull();
-      expect(fetchRequest.url()).toContain('action=get_merchandise_product');
-      expect(fetchRequest.url()).not.toContain('action=get_discount');
+      expect(response.url()).toContain('action=get_merchandise_product');
+      expect(response.url()).not.toContain('action=get_discount');
     } else {
       test.skip('No merchandise products available to test');
     }
@@ -84,14 +80,6 @@ test.describe('Merchandise Product Edit', () => {
   });
 
   test('should not throw "Discount not found" error', async ({ page }) => {
-    // Listen for console errors
-    const errors = [];
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
-        errors.push(msg.text());
-      }
-    });
-
     // Listen for response errors
     let responseError = null;
     page.on('response', async response => {
@@ -113,16 +101,23 @@ test.describe('Merchandise Product Edit', () => {
     const editButton = page.locator('button[data-action="edit"][data-type="merch-product"]').first();
     
     if (await editButton.count() > 0) {
-      await editButton.click();
+      // Wait for the response when clicking edit button
+      const responsePromise = page.waitForResponse(
+        response => response.url().includes('process_admin_action.php')
+      );
       
-      // Wait for modal
-      await page.waitForTimeout(2000);
+      await editButton.click();
+      await responsePromise;
+      
+      // Wait for modal to be fully loaded
+      const modal = page.locator('#edit-merchandise-product-modal');
+      await expect(modal).toBeVisible();
+      await expect(modal.locator('form')).toBeVisible();
       
       // Verify no "Discount not found" error occurred
       expect(responseError).toBeNull();
       
       // Verify modal doesn't show error message
-      const modal = page.locator('#edit-merchandise-product-modal');
       const errorText = await modal.locator('.modal-body').textContent();
       expect(errorText).not.toContain('Discount not found');
     } else {

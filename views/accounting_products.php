@@ -1811,11 +1811,18 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.classList.add('active');
             
             // Determine the action based on type
-            var action = 'get_' + itemType.replace('-', '_');
+            var action = '';
             if (itemType === 'session') action = 'get_session';
             else if (itemType === 'package') action = 'get_package';
             else if (itemType === 'discount') action = 'get_discount';
             else if (itemType === 'merch-product') action = 'get_merchandise_product';
+            else {
+                console.error('Unknown item type: ' + itemType);
+                modalBody.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 40px;">' +
+                    '<i class="fas fa-exclamation-circle" style="font-size: 32px; margin-bottom: 16px; display: block;"></i>' +
+                    'Unknown item type. Please refresh and try again.</p>';
+                return;
+            }
             
             // Fetch the data
             fetch('process_admin_action.php?action=' + action + '&id=' + itemId)
