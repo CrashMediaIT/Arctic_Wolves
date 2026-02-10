@@ -155,6 +155,78 @@ try {
     error_log("Stats - active goals error: " . $e->getMessage());
 }
 
+// Get lap times (recent and stats)
+$lapTimes = [];
+$lapTimeStats = ['best' => null, 'avg' => null, 'count' => 0];
+try {
+    // Get recent lap times
+    $stmt = $pdo->prepare("
+        SELECT ps.stat_value as lap_time, ps.stat_date, ps.notes, ps.created_at
+        FROM performance_stats ps
+        WHERE ps.athlete_id = ? AND ps.stat_type = 'lap_time'
+        ORDER BY ps.created_at DESC
+        LIMIT 10
+    ");
+    $stmt->execute([$viewing_athlete_id]);
+    $lapTimes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get lap time statistics
+    $stmt = $pdo->prepare("
+        SELECT 
+            MIN(stat_value) as best,
+            AVG(stat_value) as avg,
+            COUNT(*) as count
+        FROM performance_stats
+        WHERE athlete_id = ? AND stat_type = 'lap_time'
+    ");
+    $stmt->execute([$viewing_athlete_id]);
+    $lapTimeStats = $stmt->fetch(PDO::FETCH_ASSOC) ?: $lapTimeStats;
+} catch (PDOException $e) {
+    error_log("Stats - lap times error: " . $e->getMessage());
+}
+
+// Get shot speeds (recent and stats)
+$shotSpeeds = [];
+$shotSpeedStats = ['max_mph' => null, 'avg_mph' => null, 'max_kmh' => null, 'avg_kmh' => null, 'count' => 0];
+try {
+    // Get recent shot speeds
+    $stmt = $pdo->prepare("
+        SELECT ps.stat_value as speed, ps.stat_unit as unit, ps.stat_date, ps.notes, ps.created_at
+        FROM performance_stats ps
+        WHERE ps.athlete_id = ? AND ps.stat_type = 'shot_speed'
+        ORDER BY ps.created_at DESC
+        LIMIT 10
+    ");
+    $stmt->execute([$viewing_athlete_id]);
+    $shotSpeeds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get shot speed statistics (grouped by unit)
+    $stmt = $pdo->prepare("
+        SELECT 
+            stat_unit,
+            MAX(stat_value) as max_speed,
+            AVG(stat_value) as avg_speed,
+            COUNT(*) as count
+        FROM performance_stats
+        WHERE athlete_id = ? AND stat_type = 'shot_speed'
+        GROUP BY stat_unit
+    ");
+    $stmt->execute([$viewing_athlete_id]);
+    $speedsByUnit = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($speedsByUnit as $row) {
+        if ($row['stat_unit'] === 'mph') {
+            $shotSpeedStats['max_mph'] = $row['max_speed'];
+            $shotSpeedStats['avg_mph'] = $row['avg_speed'];
+            $shotSpeedStats['count'] += $row['count'];
+        } elseif ($row['stat_unit'] === 'km/h') {
+            $shotSpeedStats['max_kmh'] = $row['max_speed'];
+            $shotSpeedStats['avg_kmh'] = $row['avg_speed'];
+        }
+    }
+} catch (PDOException $e) {
+    error_log("Stats - shot speeds error: " . $e->getMessage());
+}
+
 // Get recent performance stats
 try {
     $stmt = $pdo->prepare("
@@ -567,6 +639,124 @@ try {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Speed & Power Metrics -->
+        <?php if (count($lapTimes) > 0 || count($shotSpeeds) > 0): ?>
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-bolt"></i> Speed & Power</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                    
+                    <!-- Lap Times Section -->
+                    <?php if (count($lapTimes) > 0): ?>
+                    <div>
+                        <h4 style="margin-bottom: 16px; color: var(--text-white); display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-stopwatch"></i> Lap Times
+                        </h4>
+                        
+                        <!-- Stats Summary -->
+                        <?php if ($lapTimeStats['count'] > 0): ?>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                            <div class="stat-box">
+                                <div class="stat-label">Best Time</div>
+                                <div class="stat-value"><?php echo number_format($lapTimeStats['best'], 2); ?>s</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Average</div>
+                                <div class="stat-value"><?php echo number_format($lapTimeStats['avg'], 2); ?>s</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Total Laps</div>
+                                <div class="stat-value"><?php echo $lapTimeStats['count']; ?></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Recent Lap Times -->
+                        <div class="metric-list">
+                            <div class="metric-header">
+                                <span>Recent Times</span>
+                                <span>Date</span>
+                            </div>
+                            <?php foreach (array_slice($lapTimes, 0, 5) as $lap): ?>
+                                <div class="metric-item">
+                                    <div>
+                                        <span class="metric-value" style="font-family: monospace; font-weight: bold; color: var(--primary-light);">
+                                            <?php echo number_format($lap['lap_time'], 2); ?>s
+                                        </span>
+                                        <?php if ($lap['notes']): ?>
+                                            <span class="metric-note"><?php echo htmlspecialchars($lap['notes']); ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span class="metric-date"><?php echo date('M j, Y', strtotime($lap['created_at'])); ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <!-- Shot Speed Section -->
+                    <?php if (count($shotSpeeds) > 0): ?>
+                    <div>
+                        <h4 style="margin-bottom: 16px; color: var(--text-white); display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-hockey-puck"></i> Shot Speed
+                        </h4>
+                        
+                        <!-- Stats Summary -->
+                        <?php if ($shotSpeedStats['count'] > 0): ?>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                            <?php if ($shotSpeedStats['max_mph']): ?>
+                            <div class="stat-box">
+                                <div class="stat-label">Max Speed</div>
+                                <div class="stat-value"><?php echo number_format($shotSpeedStats['max_mph'], 1); ?> MPH</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Average</div>
+                                <div class="stat-value"><?php echo number_format($shotSpeedStats['avg_mph'], 1); ?> MPH</div>
+                            </div>
+                            <?php endif; ?>
+                            <?php if ($shotSpeedStats['max_kmh']): ?>
+                            <div class="stat-box">
+                                <div class="stat-label">Max Speed</div>
+                                <div class="stat-value"><?php echo number_format($shotSpeedStats['max_kmh'], 1); ?> KM/H</div>
+                            </div>
+                            <?php endif; ?>
+                            <div class="stat-box">
+                                <div class="stat-label">Total Shots</div>
+                                <div class="stat-value"><?php echo $shotSpeedStats['count']; ?></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Recent Shot Speeds -->
+                        <div class="metric-list">
+                            <div class="metric-header">
+                                <span>Recent Shots</span>
+                                <span>Date</span>
+                            </div>
+                            <?php foreach (array_slice($shotSpeeds, 0, 5) as $shot): ?>
+                                <div class="metric-item">
+                                    <div>
+                                        <span class="metric-value" style="font-family: monospace; font-weight: bold; color: var(--success);">
+                                            <?php echo number_format($shot['speed'], 1); ?> <?php echo htmlspecialchars($shot['unit']); ?>
+                                        </span>
+                                        <?php if ($shot['notes']): ?>
+                                            <span class="metric-note"><?php echo htmlspecialchars($shot['notes']); ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span class="metric-date"><?php echo date('M j, Y', strtotime($shot['created_at'])); ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
                 </div>
             </div>
         </div>
@@ -1767,6 +1957,81 @@ try {
     .athlete-selector {
         width: 100%;
     }
+}
+
+/* Speed & Power Styles */
+.stat-box {
+    background: var(--bg-secondary);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.stat-box .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.stat-box .stat-value {
+    font-size: 20px;
+    font-weight: var(--font-weight-bold);
+    color: var(--primary-light);
+    font-family: 'Courier New', monospace;
+}
+
+.metric-list {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-main);
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+}
+
+.metric-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.metric-item:last-child {
+    border-bottom: none;
+}
+
+.metric-item:hover {
+    background: rgba(107, 70, 193, 0.05);
+}
+
+.metric-value {
+    font-size: 18px;
+}
+
+.metric-note {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.metric-date {
+    font-size: 12px;
+    color: var(--text-muted);
 }
 </style>
 

@@ -69,6 +69,12 @@ try {
                 INSERT INTO stopwatch_times (session_id, athlete_id, lap_number, lap_time_ms, total_time_ms, created_at)
                 VALUES (?, ?, ?, ?, ?, NOW())
             ");
+            
+            $perf_stmt = $pdo->prepare("
+                INSERT INTO performance_stats 
+                (athlete_id, stat_date, stat_type, stat_value, stat_unit, session_id, recorded_by, notes, created_at)
+                VALUES (?, CURDATE(), 'lap_time', ?, 'seconds', ?, ?, ?, NOW())
+            ");
 
             foreach ($laps as $lap) {
                 $athlete_id = !empty($lap['athleteId']) ? (int) $lap['athleteId'] : null;
@@ -87,7 +93,15 @@ try {
                     }
                 }
 
+                // Insert into stopwatch_times table
                 $stmt->execute([$session_id, $athlete_id, $lap_number, $lap_time_ms, $total_time_ms]);
+                
+                // Also insert into performance_stats if athlete is assigned
+                if ($athlete_id) {
+                    $lap_time_seconds = $lap_time_ms / 1000.0; // Convert to seconds
+                    $notes = "Lap $lap_number - $session_name";
+                    $perf_stmt->execute([$athlete_id, $lap_time_seconds, $session_id, $user_id, $notes]);
+                }
             }
 
             $pdo->commit();
