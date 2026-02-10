@@ -266,6 +266,18 @@ $action_value = $is_editing ? 'update' : 'create';
     </div>
 </div>
 
+<script>
+// Export drills data to JavaScript for programmatic access
+const allDrillsData = <?php echo json_encode(array_map(function($drill) {
+    return [
+        'id' => intval($drill['id']),
+        'title' => $drill['title'],
+        'category' => $drill['category_name'] ?? '',
+        'description' => $drill['description'] ?? ''
+    ];
+}, $drillsForSelector)); ?>;
+</script>
+
 <style>
 .drills-timeline {
     display: flex;
@@ -1048,20 +1060,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (drillsToAddStr) {
         try {
             const drillIds = JSON.parse(drillsToAddStr);
-            // Get drill data from the selector modal
+            // Get drill data from the allDrillsData array
             drillIds.forEach(drillId => {
-                const drillCard = document.querySelector(`.drill-selector-grid .drill-card[data-drill-id="${drillId}"]`);
-                if (drillCard) {
-                    const id = parseInt(drillCard.dataset.drillId, 10);
-                    const title = drillCard.dataset.title || '';
-                    const category = drillCard.dataset.category || '';
-                    
+                const drill = allDrillsData.find(d => d.id === drillId);
+                if (drill) {
                     // Check if already added
-                    if (!practiceDrills.find(d => d.id === id)) {
+                    if (!practiceDrills.find(d => d.id === drill.id)) {
                         practiceDrills.push({
-                            id: id,
-                            title: title,
-                            category: category,
+                            id: drill.id,
+                            title: drill.title,
+                            category: drill.category,
                             duration: 10,
                             notes: ''
                         });

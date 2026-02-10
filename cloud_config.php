@@ -186,7 +186,7 @@ function testNextcloudConnection($settings, $server_type = 'primary') {
         $server_label = ($server_type === 'backup') ? 'Backup Server' : 'Primary Server';
         return [
             'success' => true, 
-            'message' => "Connection successful to $server_label ($server_name)", 
+            'message' => "Connection successful to $server_label: $server_name", 
             'file_count' => count($files), 
             'server_name' => $server_name,
             'server_type' => $server_type

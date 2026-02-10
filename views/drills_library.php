@@ -924,7 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Add drill to practice plan
 function addDrillToPracticePlan(drillId) {
     // Find the drill data
-    const drill = drillsData.find(d => d.id == drillId);
+    const drill = drillsData.find(d => d.id === drillId);
     if (!drill) {
         alert('Error: Drill not found');
         return;
