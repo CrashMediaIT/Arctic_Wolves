@@ -1,6 +1,6 @@
 # Arctic Wolves Application - Testing Documentation
 
-**Version:** 1.0  
+**Version:** 1.3  
 **Last Updated:** February 2026  
 **Purpose:** This document provides a comprehensive breakdown of all views, tabs, and functionality within the Arctic Wolves hockey training management system. It is designed for testers to understand what each part of the site is designed to do.
 
@@ -550,6 +550,9 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Skip duplicates option prevents duplicate drill entries
 - Import error messages display correctly for invalid files
 - Round-trip export → import produces identical data
+- Page route (`?page=export_import_drills`) loads correctly (not redirecting to home)
+- Drills sidebar nav highlights as active when on this tab
+- Page uses standard site-wide card, button, and alert styling
 
 ---
 
@@ -655,6 +658,9 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Skip duplicates option prevents duplicate plan entries
 - Import error messages display correctly for invalid files
 - Round-trip export → import produces identical data
+- Page route (`?page=export_import_plans`) loads correctly (not redirecting to home)
+- Practice Plans sidebar nav highlights as active when on this tab
+- Page uses standard site-wide card, button, and alert styling
 
 ---
 
@@ -739,6 +745,57 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Draft saves without submitting
 - Submit finalizes evaluation
 - Evaluation appears in athlete history
+
+---
+
+### 14.3 Stopwatch
+**Page:** `?page=coach_stopwatch`  
+**Icon:** Stopwatch  
+**File:** `views/coach_stopwatch.php`
+
+**Purpose:** High-performance sports stopwatch for coaches to record timed drills, sprints, and skill evaluations with lap/split timing, time history, and athlete assignment.
+
+**Features:**
+- Start / Stop / Lap / Reset controls
+- High-precision timing display (MM:SS.cc format)
+- Lap/split time recording with automatic best/worst highlighting
+- Assign individual lap times to athletes via dropdown
+- Link timing sessions to stopwatch-enabled skills
+- Save sessions with all lap data for historical tracking
+- View session history with lap details in modal
+- Session list shows lap count and linked skill name
+- **Dual-Camera Trigger Mode**: Use two separate device cameras for absolute-accuracy timing
+  - Camera 1 (Start Line) detects motion to automatically start the timer
+  - Camera 2 (Finish Line) detects motion to automatically record lap and stop
+  - Adjustable motion sensitivity and trigger threshold sliders
+  - Live video preview feeds with motion level indicators
+  - Camera status indicators (Armed, Triggered, Waiting)
+  - Re-Arm button for consecutive timing runs
+  - Auto-detects available cameras and pre-selects if two are available
+
+**Testing Focus:**
+- Start button begins timer, display updates in real time
+- Stop button pauses timer, display freezes at current time
+- Lap button records split time while timer continues running
+- Reset clears timer and all lap data
+- Lap table shows lap number, lap time, total elapsed, and athlete assignment
+- Best lap highlighted green, worst highlighted red (when 3+ laps)
+- Athlete dropdown populates with active athletes
+- Save Session requires a session name and at least one lap
+- Saved sessions appear in Session History panel
+- Clicking a history item opens modal with full lap details
+- Skill dropdown shows only skills with stopwatch enabled
+- All timing data persists correctly in database
+- CSRF token validation on all save/load operations
+- **Camera Mode toggle** shows/hides camera panel and changes button state
+- **Camera selection** populates with available device cameras
+- **Activate Cameras** opens both camera feeds with live preview
+- **Start Line camera** motion triggers stopwatch start automatically
+- **Finish Line camera** motion records lap and stops timer automatically
+- **Re-Arm** button resets camera triggers for next timing run
+- **Deactivate** releases camera streams and hides feeds
+- **Sensitivity/Threshold sliders** adjust motion detection parameters in real time
+- Camera mode follows site-wide design style (cards, buttons, alerts, CSS variables)
 
 ---
 
@@ -1689,6 +1746,7 @@ These features are restricted to Administrators for system management.
 - Template versioning
 - Assign to session types
 - Preview template
+- **Stopwatch option**: When creating a new skill, optionally enable the stopwatch flag so the skill appears in the Coaches Corner stopwatch for timed evaluations
 
 **Testing Focus:**
 - Templates save completely
@@ -1698,6 +1756,8 @@ These features are restricted to Administrators for system management.
 - Versioning tracks changes
 - Assigned templates appear in evaluations
 - Preview displays accurately
+- **Stopwatch checkbox** appears when creating a new skill via the "Add Skill" modal
+- Skills created with stopwatch enabled appear in the Stopwatch skill dropdown (`?page=coach_stopwatch`)
 
 ---
 
@@ -1854,13 +1914,12 @@ These features are restricted to Administrators for system management.
 - Scheduled backups run automatically via cron
 - Backup files downloadable from history
 - Restore wizard uploads, validates, and restores database correctly (TEST WITH CAUTION)
+- Restore page uses standard site-wide page-header and card components (not custom styling)
+- Restore page shows navigation link back to Backups page
 - Database import restores the application from a backup file
 - PHP fallback backup works when mysqldump command is not available
 - Gzip compression works (both PHP gzopen and command-line gzip)
-- Optimization runs without errors
-- Table repair fixes issues
-- Storage report accurate
-- Exports complete and downloadable
+- Security logs record backup/restore events using correct `event_type`/`description` columns
 - Optimization runs without errors
 - Table repair fixes issues
 - Storage report accurate
@@ -1900,6 +1959,8 @@ These features are restricted to Administrators for system management.
 **Features:**
 - Business card designer
 - Partner/sponsor management
+- User filter with search, role, and status dropdowns
+- Filter Apply/Clear buttons in separate action row below filter fields
 - Discount campaigns
 - Email marketing templates
 - Social media integration
@@ -1908,6 +1969,8 @@ These features are restricted to Administrators for system management.
 **Testing Focus:**
 - Business card designer generates cards
 - Partner information saves
+- Filter Apply and Clear buttons are not clipped or overlapping filter fields
+- Filter buttons appear in a dedicated row below the filter dropdowns
 - Discount campaigns activate
 - Email templates send
 - Referral tracking works
@@ -2201,9 +2264,11 @@ This section provides important test scenarios that span multiple features.
 - Backup file is complete (not corrupted)
 - PHP-based backup fallback works when mysqldump is unavailable
 - Restore wizard uploads, validates, and restores correctly
+- Restore page uses standard site-wide design (page-header, card components)
 - Database import function can fully recover the application from a backup
 - Maintenance tools (integrity check, repair, optimize, foreign keys) all run without errors
 - Backup history records are saved with correct status and metadata
+- Security logs use correct column names (`event_type`, `description`) — not the deprecated `action`/`details` columns
 
 **WARNING:** Test database restore ONLY on staging/test environment, never on production.
 
@@ -2330,6 +2395,7 @@ This section provides important test scenarios that span multiple features.
 - Clear filters
 - Empty search results
 - Special characters in search
+- Filter Apply/Clear buttons do not overflow or get clipped by their container
 
 **Validation:**
 - Results match search criteria
@@ -2338,6 +2404,7 @@ This section provides important test scenarios that span multiple features.
 - Clear filters restores full list
 - Search is case-insensitive
 - No errors on empty results
+- Filter buttons with hover transform effects are not clipped by `.filter-box` overflow
 
 ---
 
@@ -2463,6 +2530,8 @@ This section provides important test scenarios that span multiple features.
 |---------|------|---------|
 | 1.0 | February 2026 | Initial comprehensive testing documentation created |
 | 1.1 | February 2026 | Added drill/practice plan export/import all tabs (11.4, 12.4), updated database backup/restore testing (40.3, scenario 10), added backup-to-file and force-to-Nextcloud features, added database import for recovery, updated data export section (14) |
+| 1.2 | February 2026 | Added security_logs column fix documentation (40.3, scenario 10), restore page design consistency notes, filter button overflow fix (15, 41), export/import route registration and style guide compliance (11.4, 12.4), business card filter layout fix (41), added Stopwatch feature (14.3), added stopwatch option to skill creation (37) |
+| 1.3 | February 2026 | Added Dual-Camera Trigger Mode to Stopwatch (14.3) — motion-detection-based start/stop using two separate device cameras for precision timing |
 
 ---
 

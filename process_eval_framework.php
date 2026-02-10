@@ -104,11 +104,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     sendResponse(true, 'Skill added to category successfully');
                 } elseif (!empty($new_skill_name)) {
                     // Create a new skill and assign to this category
+                    $has_stopwatch = !empty($_POST['has_stopwatch']) ? 1 : 0;
                     $stmt = $pdo->prepare("
-                        INSERT INTO eval_skills (category_id, name, description, created_at)
-                        VALUES (?, ?, ?, NOW())
+                        INSERT INTO eval_skills (category_id, name, description, has_stopwatch, created_at)
+                        VALUES (?, ?, ?, ?, NOW())
                     ");
-                    $stmt->execute([$category_id, $new_skill_name, $new_skill_description]);
+                    $stmt->execute([$category_id, $new_skill_name, $new_skill_description, $has_stopwatch]);
                     sendResponse(true, 'New skill created and added to category', 'admin_eval_framework', ['skill_id' => $pdo->lastInsertId()]);
                 } else {
                     throw new Exception('Please select a skill from the library or create a new one');
@@ -195,6 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $category_id = intval($_POST['category_id']);
                 $name = trim($_POST['name']);
                 $description = trim($_POST['description']);
+                $has_stopwatch = !empty($_POST['has_stopwatch']) ? 1 : 0;
                 
                 if (empty($name) || empty($description)) {
                     throw new Exception('Skill name and description are required');
@@ -208,10 +210,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $stmt = $pdo->prepare("
-                    INSERT INTO eval_skills (category_id, name, description, created_at)
-                    VALUES (?, ?, ?, NOW())
+                    INSERT INTO eval_skills (category_id, name, description, has_stopwatch, created_at)
+                    VALUES (?, ?, ?, ?, NOW())
                 ");
-                $stmt->execute([$category_id, $name, $description]);
+                $stmt->execute([$category_id, $name, $description, $has_stopwatch]);
                 
                 sendResponse(true, 'Skill created successfully', 'admin_eval_framework', ['skill_id' => $pdo->lastInsertId()]);
                 break;
