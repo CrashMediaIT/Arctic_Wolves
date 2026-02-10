@@ -1632,6 +1632,7 @@ var editCoaches = <?= json_encode(array_map(function($c) { return ['id' => $c['i
 var editLocations = <?= json_encode(array_map(function($l) { return ['id' => $l['id'], 'name' => $l['name'], 'city' => $l['city'] ?? '']; }, $locations)) ?>;
 var editPracticePlans = <?= json_encode(array_map(function($p) { return ['id' => $p['id'], 'name' => $p['name']]; }, $practicePlans)) ?>;
 var editSessionTypes = <?= json_encode(array_map(function($t) { return ['id' => $t['id'], 'name' => $t['name']]; }, $sessionTypes)) ?>;
+var editMerchCategories = <?= json_encode(array_map(function($c) { return ['id' => $c['id'], 'name' => $c['name']]; }, $merchCategories)) ?>;
 
 document.addEventListener('DOMContentLoaded', function() {
     var csrfToken = document.querySelector('[name="csrf_token"]')?.value || '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
@@ -1810,10 +1811,11 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.classList.add('active');
             
             // Determine the action based on type
-            var action = 'get_' + itemType.replace('merch-product', 'discount').replace('-', '_');
+            var action = 'get_' + itemType.replace('-', '_');
             if (itemType === 'session') action = 'get_session';
             else if (itemType === 'package') action = 'get_package';
             else if (itemType === 'discount') action = 'get_discount';
+            else if (itemType === 'merch-product') action = 'get_merchandise_product';
             
             // Fetch the data
             fetch('process_admin_action.php?action=' + action + '&id=' + itemId)
@@ -2304,6 +2306,75 @@ document.addEventListener('DOMContentLoaded', function() {
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
                     '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-discount-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
+                    '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>' +
+                '</div>' +
+                '</form>';
+            attachFormSubmitHandler(container.querySelector('form'));
+        } else if (type === 'merch-product') {
+            // Build category options
+            var categoryOptions = '<option value="">No Category</option>';
+            editMerchCategories.forEach(function(cat) {
+                var selected = data.category_id == cat.id ? ' selected' : '';
+                categoryOptions += '<option value="' + cat.id + '"' + selected + '>' + escapeHtml(cat.name) + '</option>';
+            });
+            
+            container.innerHTML = 
+                '<form method="POST" action="process_merchandise_products.php" id="edit-merchandise-product-form" enctype="multipart/form-data">' +
+                '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
+                '<input type="hidden" name="action" value="update">' +
+                '<input type="hidden" name="id" value="' + itemId + '">' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Product Name *</label>' +
+                    '<input type="text" name="name" class="form-input" required value="' + escapeHtml(data.name || '') + '">' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">SKU</label>' +
+                        '<input type="text" name="sku" class="form-input" value="' + escapeHtml(data.sku || '') + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Category</label>' +
+                        '<select name="category_id" class="form-input">' +
+                            categoryOptions +
+                        '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Description</label>' +
+                    '<textarea name="description" class="form-textarea" rows="3">' + escapeHtml(data.description || '') + '</textarea>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Price ($) *</label>' +
+                        '<input type="number" name="price" class="form-input" step="0.01" min="0" required value="' + (data.price || 0) + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Cost Price ($)</label>' +
+                        '<input type="number" name="cost_price" class="form-input" step="0.01" min="0" value="' + (data.cost_price || '') + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Product Image</label>' +
+                    '<input type="file" name="image" class="form-input" accept="image/*">' +
+                    (data.image_url ? '<div style="margin-top: 8px;"><img src="' + escapeHtml(data.image_url) + '" style="max-width: 150px; max-height: 100px; border-radius: 8px; object-fit: cover;"></div>' : '') +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Status</label>' +
+                        '<select name="is_active" class="form-input">' +
+                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
+                            '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="skill-checkbox" style="display: flex; align-items: center; margin-top: 32px;">' +
+                            '<input type="checkbox" name="track_inventory" value="1"' + (data.track_inventory == 1 ? ' checked' : '') + ' style="margin-right: 8px;">' +
+                            '<span>Track Inventory</span>' +
+                        '</label>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
+                    '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-merchandise-product-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
                     '<button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>' +
                 '</div>' +
                 '</form>';
