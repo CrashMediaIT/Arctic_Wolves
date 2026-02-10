@@ -782,7 +782,12 @@ function editProduct(product) {
     
     // Fetch and populate sizes
     fetch('process_merchandise_products.php?action=get_sizes&product_id=' + encodeURIComponent(product.id))
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch sizes');
+            }
+            return response.json();
+        })
         .then(data => {
             const container = document.getElementById('edit-sizes-container');
             container.innerHTML = '';
@@ -792,14 +797,40 @@ function editProduct(product) {
                     const row = document.createElement('div');
                     row.className = 'size-row';
                     row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 40px; gap: 12px; margin-bottom: 12px;';
-                    row.innerHTML = `
-                        <input type="hidden" name="size_ids[]" value="${size.id}">
-                        <input type="text" name="sizes[]" class="form-input" value="${size.size}" placeholder="Size">
-                        <input type="number" name="quantities[]" class="form-input" value="${size.quantity}" min="0">
-                        <button type="button" class="btn-remove-size" onclick="this.parentElement.remove()" style="padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;" title="Remove">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    `;
+                    
+                    // Create inputs with proper escaping
+                    const sizeIdInput = document.createElement('input');
+                    sizeIdInput.type = 'hidden';
+                    sizeIdInput.name = 'size_ids[]';
+                    sizeIdInput.value = size.id;
+                    
+                    const sizeInput = document.createElement('input');
+                    sizeInput.type = 'text';
+                    sizeInput.name = 'sizes[]';
+                    sizeInput.className = 'form-input';
+                    sizeInput.value = size.size;
+                    sizeInput.placeholder = 'Size';
+                    
+                    const quantityInput = document.createElement('input');
+                    quantityInput.type = 'number';
+                    quantityInput.name = 'quantities[]';
+                    quantityInput.className = 'form-input';
+                    quantityInput.value = size.quantity;
+                    quantityInput.min = '0';
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'btn-remove-size';
+                    removeBtn.onclick = function() { this.parentElement.remove(); };
+                    removeBtn.style.cssText = 'padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;';
+                    removeBtn.title = 'Remove';
+                    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    
+                    row.appendChild(sizeIdInput);
+                    row.appendChild(sizeInput);
+                    row.appendChild(quantityInput);
+                    row.appendChild(removeBtn);
+                    
                     container.appendChild(row);
                 });
             } else {

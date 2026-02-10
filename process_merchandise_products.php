@@ -233,6 +233,8 @@ try {
                 throw new Exception('Price must be a positive number');
             }
             
+            $pdo->beginTransaction();
+            
             // Handle image upload
             $imageUrl = null;
             $updateImage = false;
@@ -240,8 +242,6 @@ try {
                 $imageUrl = handleProductImageUpload($_FILES['image']);
                 $updateImage = true;
             }
-            
-            $pdo->beginTransaction();
             
             if ($updateImage) {
                 $stmt = $pdo->prepare("
