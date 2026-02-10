@@ -1608,6 +1608,19 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     } catch (PDOException $e) {
         // Setting may not exist yet
     }
+    
+    // Determine if the current user is the first admin (lowest ID with admin role)
+    $is_first_admin = false;
+    try {
+        $first_admin_stmt = $pdo->prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+        $first_admin_stmt->execute();
+        $first_admin_row = $first_admin_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($first_admin_row && (int)$first_admin_row['id'] === (int)$user_id) {
+            $is_first_admin = true;
+        }
+    } catch (PDOException $e) {
+        // If we can't determine, default to not allowing
+    }
     ?>
     <div class="card">
         <div class="card-header">
@@ -1708,8 +1721,20 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                 </div>
             </div>
 
-            <!-- Setup Instructions -->
-            <?php if (!$encryption_configured): ?>
+            <!-- Setup / Update Encryption Key -->
+            <?php if (!$is_first_admin): ?>
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3><i class="fas fa-lock"></i> Encryption Key Management</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" style="margin: 0;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Only the original administrator account (first created during setup) can configure or change the encryption key.</span>
+                    </div>
+                </div>
+            </div>
+            <?php elseif (!$encryption_configured): ?>
             <div class="card" style="border-color: #f59e0b; margin-bottom: 20px;">
                 <div class="card-header" style="border-bottom-color: #f59e0b;">
                     <h3><i class="fas fa-wrench" style="color: #f59e0b;"></i> Setup Encryption Key</h3>
@@ -1754,9 +1779,17 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                     <h3><i class="fas fa-key"></i> Update Encryption Key</h3>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="process_settings.php" onsubmit="return validateEncryptionKey() && confirm('Are you sure you want to change the encryption key? Existing encrypted data will become unreadable unless you decrypt it first with the current key.')">
+                    <form method="POST" action="process_settings.php" onsubmit="return validateEncryptionKeyUpdate()">
                         <?php echo csrfTokenInput(); ?>
                         <input type="hidden" name="action" value="save_encryption_key">
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label class="form-label" style="color: var(--text-white); font-weight: 600;">Current Encryption Key</label>
+                            <input type="text" name="current_encryption_key" id="current-encryption-key-input" class="form-input" 
+                                   placeholder="Enter your current 64-character hex key to verify" 
+                                   pattern="[a-fA-F0-9]{64}" maxlength="64" required
+                                   style="font-family: monospace;">
+                            <p style="color: var(--text-dim); font-size: 11px; margin-top: 4px;">You must enter the current encryption key before you can change it.</p>
+                        </div>
                         <div class="form-group" style="margin-bottom: 16px;">
                             <label class="form-label" style="color: var(--text-white); font-weight: 600;">New Encryption Key (64-character hex string)</label>
                             <div style="display: flex; gap: 8px;">
@@ -1770,9 +1803,11 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                             </div>
                             <p style="color: var(--text-dim); font-size: 11px; margin-top: 4px;">Must be exactly 64 hexadecimal characters (0-9, a-f).</p>
                         </div>
-                        <div class="alert alert-warning" style="margin-bottom: 16px;">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>Changing the encryption key will make all previously encrypted data unreadable. Only change this if you know what you are doing.</span>
+                        <div class="alert alert-error" style="margin-bottom: 16px;">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <div>
+                                <strong>Critical Warning:</strong> Changing the encryption key will make all previously encrypted data unreadable unless you decrypt it first with the current key. This action cannot be undone. Only change this if you know what you are doing.
+                            </div>
                         </div>
                         <div style="display: flex; gap: 12px;">
                             <button type="submit" class="btn btn-warning"><i class="fas fa-save"></i> Update Encryption Key</button>
@@ -3685,6 +3720,36 @@ function validateEncryptionKey() {
         alert('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
         return false;
     }
+    return true;
+}
+
+function validateEncryptionKeyUpdate() {
+    // Validate the current key field
+    const currentKeyInput = document.getElementById('current-encryption-key-input');
+    if (currentKeyInput) {
+        const currentKey = currentKeyInput.value.trim();
+        if (!/^[a-fA-F0-9]{64}$/.test(currentKey)) {
+            alert('The current encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+            return false;
+        }
+    }
+    
+    // Validate the new key field
+    const newKey = document.getElementById('encryption-key-input').value.trim();
+    if (!/^[a-fA-F0-9]{64}$/.test(newKey)) {
+        alert('The new encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+        return false;
+    }
+    
+    // Multiple verification prompts
+    if (!confirm('WARNING: You are about to change the encryption key.\n\nChanging the encryption key will make ALL previously encrypted data unreadable unless you decrypt it first with the current key.\n\nAre you sure you want to proceed?')) {
+        return false;
+    }
+    
+    if (!confirm('FINAL CONFIRMATION: This action cannot be undone.\n\nPlease confirm that you have:\n1. Backed up your current encryption key\n2. Backed up your database\n3. Understand that existing encrypted data will become unreadable\n\nDo you want to continue with the key change?')) {
+        return false;
+    }
+    
     return true;
 }
 </script>

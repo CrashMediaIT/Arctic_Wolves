@@ -90,6 +90,7 @@ $success = '';
 if (!isset($_SESSION['setup'])) {
     $_SESSION['setup'] = [
         'database' => false,
+        'encryption' => false,
         'admin' => false,
         'smtp' => false
     ];
@@ -195,6 +196,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = $e->getMessage();
         }
     } elseif ($step == 2) {
+        // Encryption Key Configuration
+        $encryption_key = trim($_POST['encryption_key'] ?? '');
+        
+        // Validate the key is exactly 64 hex characters
+        if (!preg_match('/^[a-fA-F0-9]{64}$/', $encryption_key)) {
+            $error = "Invalid encryption key. Must be exactly 64 hexadecimal characters (0-9, a-f).";
+        } else {
+            // Save the encryption key to the .env file
+            $env_file = __DIR__ . '/arctic_wolves.env';
+            $env_content = file_exists($env_file) ? file_get_contents($env_file) : '';
+            
+            // Update or add ENCRYPTION_KEY
+            if (preg_match('/^ENCRYPTION_KEY=.*$/m', $env_content)) {
+                $env_content = preg_replace('/^ENCRYPTION_KEY=.*$/m', 'ENCRYPTION_KEY=' . $encryption_key, $env_content);
+            } else {
+                $env_content = rtrim($env_content) . "\nENCRYPTION_KEY=" . $encryption_key . "\n";
+            }
+            
+            if (file_put_contents($env_file, $env_content) === false) {
+                $error = "Failed to write encryption key to configuration file. Please check directory permissions.";
+            } else {
+                // Load the key into the current environment so it takes effect immediately
+                $_ENV['ENCRYPTION_KEY'] = $encryption_key;
+                
+                $_SESSION['setup']['encryption'] = true;
+                header("Location: setup.php?step=3");
+                exit();
+            }
+        }
+    } elseif ($step == 3) {
         // Admin User Creation
         // Recreate PDO connection from session credentials
         if (!isset($_SESSION['db_credentials'])) {
@@ -223,14 +254,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([$email, $hashed, $enc_fn, $enc_ln]);
                     
                     $_SESSION['setup']['admin'] = true;
-                    header("Location: setup.php?step=3");
+                    header("Location: setup.php?step=4");
                     exit();
                 }
             } catch (PDOException $e) {
                 $error = "Failed to create admin user: " . $e->getMessage();
             }
         }
-    } elseif ($step == 3) {
+    } elseif ($step == 4) {
         // SMTP Configuration
         // Recreate PDO connection from session credentials
         if (!isset($_SESSION['db_credentials'])) {
@@ -267,13 +298,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // ... smtp test code ...
                 
                 $_SESSION['setup']['smtp'] = true;
-                header("Location: setup.php?step=4");
+                header("Location: setup.php?step=5");
                 exit();
             } catch (PDOException $e) {
                 $error = "Failed to save SMTP settings: " . $e->getMessage();
             }
         }
-    } elseif ($step == 4) {
+    } elseif ($step == 5) {
         // Finalize Setup - Verify database connection one more time
         try {
             // Clear any session-based DB credentials to force reading from .env
@@ -381,6 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="progress-step <?= $step >= 2 ? 'active' : '' ?>"></div>
             <div class="progress-step <?= $step >= 3 ? 'active' : '' ?>"></div>
             <div class="progress-step <?= $step >= 4 ? 'active' : '' ?>"></div>
+            <div class="progress-step <?= $step >= 5 ? 'active' : '' ?>"></div>
         </div>
         
         <?php if ($error): ?>
@@ -430,7 +462,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn-primary">Continue to Step 2</button>
             </form>
         <?php elseif ($step == 2): ?>
-            <h2>Step 2: Create Admin User</h2>
+            <h2>Step 2: Encryption Key Setup</h2>
+            <p>Configure the encryption key used to protect sensitive data at rest</p>
+            <div class="step-info">
+                <i class="fa-solid fa-info-circle"></i> This key is used for AES-256-CBC encryption of personal data (names, phone numbers, addresses). Only the first admin account can change this key later in System Tools.
+            </div>
+            <form method="POST" onsubmit="return validateSetupEncryptionKey()">
+                <div class="form-group">
+                    <label>Encryption Key (64-character hex string)</label>
+                    <input type="text" name="encryption_key" id="setup-encryption-key" 
+                           placeholder="Enter or generate a 64-character hex key" 
+                           pattern="[a-fA-F0-9]{64}" maxlength="64" required
+                           style="font-family: monospace;">
+                    <div style="margin-top: 8px;">
+                        <button type="button" onclick="generateSetupKey()" style="background: none; border: 1px solid var(--border); color: var(--primary); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: 'Inter', sans-serif;">
+                            <i class="fa-solid fa-random"></i> Generate Random Key
+                        </button>
+                    </div>
+                    <p style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Must be exactly 64 hexadecimal characters (0-9, a-f). This key will be saved to your environment file.</p>
+                </div>
+                <div class="alert alert-warning" style="margin-bottom: 20px;">
+                    <i class="fa-solid fa-exclamation-triangle"></i> <strong>Important:</strong> Back up your encryption key securely. If the key is lost, encrypted data cannot be recovered. Store a copy in a secure password manager or offline backup.
+                </div>
+                <button type="submit" class="btn-primary">Continue to Step 3</button>
+            </form>
+            <script>
+            function generateSetupKey() {
+                var array = new Uint8Array(32);
+                crypto.getRandomValues(array);
+                var hex = Array.from(array).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+                document.getElementById('setup-encryption-key').value = hex;
+            }
+            function validateSetupEncryptionKey() {
+                var key = document.getElementById('setup-encryption-key').value.trim();
+                if (!/^[a-fA-F0-9]{64}$/.test(key)) {
+                    alert('The encryption key must be exactly 64 hexadecimal characters (0-9, a-f).');
+                    return false;
+                }
+                return true;
+            }
+            </script>
+        <?php elseif ($step == 3): ?>
+            <h2>Step 3: Create Admin User</h2>
             <p>Set up the initial administrator account</p>
             <form method="POST">
                 <div class="form-group">
@@ -453,10 +526,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label>Confirm Password</label>
                     <input type="password" name="admin_password_confirm" required minlength="8">
                 </div>
-                <button type="submit" class="btn-primary">Continue to Step 3</button>
+                <button type="submit" class="btn-primary">Continue to Step 4</button>
             </form>
-        <?php elseif ($step == 3): ?>
-            <h2>Step 3: SMTP Configuration</h2>
+        <?php elseif ($step == 4): ?>
+            <h2>Step 4: SMTP Configuration</h2>
             <p>Configure email settings for notifications</p>
             <div class="step-info">
                 <i class="fa-solid fa-info-circle"></i> SMTP is required for sending verification emails and notifications.
@@ -482,10 +555,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label>From Email Address</label>
                     <input type="email" name="smtp_from" required>
                 </div>
-                <button type="submit" class="btn-primary">Continue to Step 4</button>
+                <button type="submit" class="btn-primary">Continue to Step 5</button>
             </form>
-        <?php elseif ($step == 4): ?>
-            <h2>Step 4: Complete Setup</h2>
+        <?php elseif ($step == 5): ?>
+            <h2>Step 5: Complete Setup</h2>
             <p>Setup is complete! Click below to finalize and access your dashboard.</p>
             <div class="step-info">
                 <i class="fa-solid fa-check-circle"></i> All configuration has been saved successfully.

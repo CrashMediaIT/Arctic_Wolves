@@ -59,12 +59,41 @@ try {
             exit;
 
         case 'save_encryption_key':
+            // Only the first admin (lowest ID with admin role) can change the encryption key
+            $first_admin_check = $pdo->prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+            $first_admin_check->execute();
+            $first_admin = $first_admin_check->fetch(PDO::FETCH_ASSOC);
+            if (!$first_admin || (int)$first_admin['id'] !== (int)$user_id) {
+                header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('Only the first administrator account can change the encryption key.'));
+                exit;
+            }
+            
             $encryption_key = trim($_POST['encryption_key'] ?? '');
             
             // Validate the key is exactly 64 hex characters
             if (!preg_match('/^[a-fA-F0-9]{64}$/', $encryption_key)) {
                 header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('Invalid encryption key. Must be exactly 64 hexadecimal characters.'));
                 exit;
+            }
+            
+            // If encryption is already configured, verify the current key before allowing a change
+            require_once __DIR__ . '/lib/encryption.php';
+            if (FieldEncryption::isConfigured()) {
+                $current_key = trim($_POST['current_encryption_key'] ?? '');
+                if (empty($current_key)) {
+                    header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('You must enter the current encryption key to verify your identity before changing it.'));
+                    exit;
+                }
+                if (!preg_match('/^[a-fA-F0-9]{64}$/', $current_key)) {
+                    header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('Invalid current encryption key format. Must be exactly 64 hexadecimal characters.'));
+                    exit;
+                }
+                // Verify the current key matches what's in the environment
+                $existing_key = $_ENV['ENCRYPTION_KEY'] ?? '';
+                if ($current_key !== $existing_key) {
+                    header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('The current encryption key you entered does not match. Key change denied.'));
+                    exit;
+                }
             }
             
             // Find the env file path
