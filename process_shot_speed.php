@@ -46,7 +46,12 @@ try {
             }
             
             // Verify athlete exists
-            $athlete_check = $pdo->prepare("SELECT id FROM users WHERE id = ? AND role = 'athlete' AND is_active = 1");
+            $athlete_check = $pdo->prepare("
+                SELECT u.id 
+                FROM users u
+                JOIN user_roles ur ON u.id = ur.user_id
+                WHERE u.id = ? AND ur.role = 'athlete' AND u.is_active = 1
+            ");
             $athlete_check->execute([$athlete_id]);
             if (!$athlete_check->fetch()) {
                 echo json_encode(['success' => false, 'message' => 'Athlete not found']);

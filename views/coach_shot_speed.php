@@ -401,7 +401,8 @@ document.getElementById('speed-form').addEventListener('submit', function(e) {
         console.error('Error:', error);
     })
     .finally(() => {
-        recordBtn.disabled = false;
+        const speedInput = document.getElementById('speed-input');
+        recordBtn.disabled = !(currentAthleteId && speedInput.value);
         recordBtn.innerHTML = '<i class="fas fa-save"></i> Record Speed';
     });
 });
@@ -464,24 +465,26 @@ function renderSpeeds(speeds) {
     }
     
     noSpeeds.style.display = 'none';
-    measurementCount.textContent = speeds.length + ' measurement' + (speeds.length !== 1 ? 's' : '');
+    measurementCount.textContent = `${speeds.length} measurement${speeds.length !== 1 ? 's' : ''}`;
     
     // Find max speed
     let maxSpeed = 0;
     speeds.forEach(s => {
-        if (parseFloat(s.speed) > maxSpeed) maxSpeed = parseFloat(s.speed);
+        const speedValue = parseFloat(s.speed);
+        if (speedValue > maxSpeed) maxSpeed = speedValue;
     });
     
     let html = '';
     speeds.forEach(speed => {
-        const isMax = parseFloat(speed.speed) === maxSpeed && speeds.length > 1;
+        const speedValue = parseFloat(speed.speed);
+        const isMax = speedValue === maxSpeed && speeds.length > 1;
         const speedClass = isMax ? 'speed-value speed-max' : 'speed-value';
         const date = new Date(speed.created_at);
         const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         
         html += '<tr>';
         html += '<td>' + dateStr + '</td>';
-        html += '<td class="' + speedClass + '">' + parseFloat(speed.speed).toFixed(1) + ' ' + speed.unit + '</td>';
+        html += '<td class="' + speedClass + '">' + speedValue.toFixed(1) + ' ' + speed.unit + '</td>';
         html += '<td>' + (speed.notes || '-') + '</td>';
         html += '<td>' + (speed.first_name ? speed.first_name + ' ' + speed.last_name : '-') + '</td>';
         html += '<td><button class="delete-btn" onclick="deleteSpeed(' + speed.id + ')"><i class="fas fa-trash"></i></button></td>';
