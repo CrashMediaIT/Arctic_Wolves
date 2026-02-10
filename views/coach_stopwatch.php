@@ -66,6 +66,11 @@ try {
         <h1 class="page-title"><i class="fas fa-stopwatch"></i> Stopwatch</h1>
         <p class="page-description">High-performance sports stopwatch with lap timing, time history, and athlete assignment</p>
     </div>
+    <div class="page-header-actions">
+        <button class="btn btn-secondary" id="sw-camera-toggle" onclick="swToggleCameraMode()">
+            <i class="fas fa-video"></i> Camera Mode
+        </button>
+    </div>
 </div>
 
 <style>
@@ -247,7 +252,221 @@ try {
         border-radius: 10px;
         font-weight: var(--font-weight-bold);
     }
+
+    /* Camera Mode Styles */
+    .sw-camera-panel {
+        display: none;
+        margin-bottom: var(--space-6);
+    }
+    .sw-camera-panel.active {
+        display: block;
+    }
+    .sw-camera-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-5);
+    }
+    @media (max-width: 768px) {
+        .sw-camera-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .sw-camera-feed {
+        position: relative;
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        background: var(--bg-main);
+        aspect-ratio: 4/3;
+    }
+    .sw-camera-feed video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .sw-camera-feed canvas {
+        display: none;
+    }
+    .sw-camera-label {
+        position: absolute;
+        top: var(--space-2);
+        left: var(--space-2);
+        background: rgba(0,0,0,0.7);
+        color: #fff;
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-bold);
+        padding: 4px 10px;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        z-index: 2;
+    }
+    .sw-camera-label .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--error);
+    }
+    .sw-camera-label .dot.live {
+        background: var(--success);
+        animation: camPulse 1.5s infinite;
+    }
+    @keyframes camPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+    .sw-camera-indicator {
+        position: absolute;
+        bottom: var(--space-2);
+        right: var(--space-2);
+        background: rgba(0,0,0,0.7);
+        color: var(--text-muted);
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: var(--radius-sm);
+        z-index: 2;
+    }
+    .sw-camera-indicator.triggered {
+        background: var(--success);
+        color: #fff;
+    }
+    .sw-motion-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 4px;
+        background: var(--primary);
+        transition: width 0.1s;
+        z-index: 2;
+    }
+    .sw-camera-setup {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-4);
+        align-items: end;
+    }
+    @media (max-width: 768px) {
+        .sw-camera-setup {
+            grid-template-columns: 1fr;
+        }
+    }
+    .sw-sensitivity-slider {
+        width: 100%;
+        accent-color: var(--primary);
+        height: 6px;
+    }
+    .sw-cam-status {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--font-size-sm);
+        color: var(--text-muted);
+        padding: var(--space-2) var(--space-3);
+        background: var(--bg-secondary);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+    }
+    .sw-cam-status.ready {
+        color: var(--success);
+        border-color: var(--success);
+    }
+    .sw-cam-status.active {
+        color: var(--primary-light);
+        border-color: var(--primary);
+    }
 </style>
+
+<!-- Camera Mode Panel -->
+<div id="sw-camera-panel" class="sw-camera-panel">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-video"></i> Dual-Camera Trigger Mode</h3>
+            <span id="sw-cam-global-status" class="sw-cam-status">
+                <i class="fas fa-circle" style="font-size:8px;"></i> Inactive
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info" style="margin-bottom: var(--space-5);">
+                <i class="fas fa-info-circle"></i>
+                Use two separate cameras for precision timing. Camera 1 (Start Line) detects motion to start the timer. Camera 2 (Finish Line) detects motion to record a lap/stop. Position cameras at the start and finish of a sprint or drill.
+            </div>
+
+            <!-- Camera Selection -->
+            <div class="sw-camera-setup" style="margin-bottom: var(--space-5);">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-play-circle" style="color:var(--success);"></i> Start Line Camera</label>
+                    <select id="sw-cam-start-select" class="form-select">
+                        <option value="">-- Select Camera --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-flag-checkered" style="color:var(--error);"></i> Finish Line Camera</label>
+                    <select id="sw-cam-finish-select" class="form-select">
+                        <option value="">-- Select Camera --</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Sensitivity Controls -->
+            <div class="sw-camera-setup" style="margin-bottom: var(--space-5);">
+                <div class="form-group">
+                    <label class="form-label">Motion Sensitivity: <span id="sw-cam-sensitivity-val">30</span></label>
+                    <input type="range" id="sw-cam-sensitivity" class="sw-sensitivity-slider" min="5" max="100" value="30" oninput="swCamUpdateSensitivity(this.value)">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:2px;">
+                        <span>Less Sensitive</span><span>More Sensitive</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Trigger Threshold: <span id="sw-cam-threshold-val">8</span>%</label>
+                    <input type="range" id="sw-cam-threshold" class="sw-sensitivity-slider" min="1" max="50" value="8" oninput="swCamUpdateThreshold(this.value)">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:2px;">
+                        <span>Hair Trigger</span><span>Requires More Motion</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Camera Action Buttons -->
+            <div style="display:flex; gap:var(--space-3); flex-wrap:wrap; margin-bottom: var(--space-5);">
+                <button class="btn btn-primary" id="sw-cam-activate-btn" onclick="swCamActivate()">
+                    <i class="fas fa-power-off"></i> Activate Cameras
+                </button>
+                <button class="btn btn-secondary" id="sw-cam-deactivate-btn" onclick="swCamDeactivate()" style="display:none;">
+                    <i class="fas fa-stop"></i> Deactivate Cameras
+                </button>
+                <button class="btn btn-secondary" id="sw-cam-arm-btn" onclick="swCamArm()" style="display:none;">
+                    <i class="fas fa-crosshairs"></i> Re-Arm Start
+                </button>
+            </div>
+
+            <!-- Live Camera Feeds -->
+            <div id="sw-cam-feeds" class="sw-camera-grid" style="display:none;">
+                <div>
+                    <div class="sw-camera-feed" id="sw-cam-start-feed">
+                        <video id="sw-cam-start-video" autoplay playsinline muted></video>
+                        <canvas id="sw-cam-start-canvas"></canvas>
+                        <div class="sw-camera-label"><span class="dot" id="sw-cam-start-dot"></span> Start Line</div>
+                        <div class="sw-camera-indicator" id="sw-cam-start-indicator">Waiting</div>
+                        <div class="sw-motion-bar" id="sw-cam-start-motion" style="width:0%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="sw-camera-feed" id="sw-cam-finish-feed">
+                        <video id="sw-cam-finish-video" autoplay playsinline muted></video>
+                        <canvas id="sw-cam-finish-canvas"></canvas>
+                        <div class="sw-camera-label"><span class="dot" id="sw-cam-finish-dot"></span> Finish Line</div>
+                        <div class="sw-camera-indicator" id="sw-cam-finish-indicator">Waiting</div>
+                        <div class="sw-motion-bar" id="sw-cam-finish-motion" style="width:0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sw-cam-alert" class="alert alert-success" style="display:none; margin-top: var(--space-4);">
+                <i class="fas fa-check-circle"></i> <span id="sw-cam-alert-msg"></span>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="sw-container">
     <!-- Stopwatch Panel -->
@@ -380,6 +599,7 @@ try {
 </div>
 
 <script src="js/stopwatch.js"></script>
+<script src="js/camera_trigger.js"></script>
 <script>
 const swDisplay = document.getElementById('sw-display');
 const stopwatch = new Stopwatch(swDisplay);
@@ -591,5 +811,193 @@ function escHtml(str) {
 
 function closeModal(id) {
     document.getElementById(id).style.display = 'none';
+}
+
+// ==========================================
+// Dual-Camera Trigger Mode
+// ==========================================
+const cameraTrigger = new CameraTrigger();
+let cameraMode = false;
+
+function swToggleCameraMode() {
+    const panel = document.getElementById('sw-camera-panel');
+    const btn = document.getElementById('sw-camera-toggle');
+    cameraMode = !cameraMode;
+
+    if (cameraMode) {
+        panel.classList.add('active');
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+        btn.innerHTML = '<i class="fas fa-video"></i> Camera Mode ON';
+        swCamLoadDevices();
+    } else {
+        panel.classList.remove('active');
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+        btn.innerHTML = '<i class="fas fa-video"></i> Camera Mode';
+        swCamDeactivate();
+    }
+}
+
+async function swCamLoadDevices() {
+    const cameras = await cameraTrigger.getAvailableCameras();
+    const startSelect = document.getElementById('sw-cam-start-select');
+    const finishSelect = document.getElementById('sw-cam-finish-select');
+
+    startSelect.innerHTML = '<option value="">-- Select Camera --</option>';
+    finishSelect.innerHTML = '<option value="">-- Select Camera --</option>';
+
+    cameras.forEach((cam, i) => {
+        const label = cam.label || ('Camera ' + (i + 1));
+        startSelect.innerHTML += '<option value="' + cam.deviceId + '">' + escHtml(label) + '</option>';
+        finishSelect.innerHTML += '<option value="' + cam.deviceId + '">' + escHtml(label) + '</option>';
+    });
+
+    if (cameras.length >= 2) {
+        startSelect.value = cameras[0].deviceId;
+        finishSelect.value = cameras[1].deviceId;
+    } else if (cameras.length === 1) {
+        startSelect.value = cameras[0].deviceId;
+        swCamShowAlert('info', 'Only one camera detected. For best results, connect a second camera for the finish line. You can use the same camera for both if needed.');
+    } else {
+        swCamShowAlert('error', 'No cameras found. Please ensure camera access is allowed in your browser settings.');
+    }
+}
+
+async function swCamActivate() {
+    const startDeviceId = document.getElementById('sw-cam-start-select').value;
+    const finishDeviceId = document.getElementById('sw-cam-finish-select').value;
+
+    if (!startDeviceId || !finishDeviceId) {
+        swCamShowAlert('error', 'Please select both a start line camera and a finish line camera.');
+        return;
+    }
+
+    const activateBtn = document.getElementById('sw-cam-activate-btn');
+    activateBtn.disabled = true;
+    activateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+
+    try {
+        await cameraTrigger.startMonitoring({
+            startVideoEl: document.getElementById('sw-cam-start-video'),
+            finishVideoEl: document.getElementById('sw-cam-finish-video'),
+            startCanvasEl: document.getElementById('sw-cam-start-canvas'),
+            finishCanvasEl: document.getElementById('sw-cam-finish-canvas'),
+            startDeviceId: startDeviceId,
+            finishDeviceId: finishDeviceId,
+            onStartTrigger: swCamOnStart,
+            onFinishTrigger: swCamOnFinish,
+            onMotionLevel: swCamOnMotion
+        });
+
+        document.getElementById('sw-cam-feeds').style.display = 'grid';
+        activateBtn.style.display = 'none';
+        document.getElementById('sw-cam-deactivate-btn').style.display = '';
+        document.getElementById('sw-cam-arm-btn').style.display = '';
+        document.getElementById('sw-cam-start-dot').classList.add('live');
+        document.getElementById('sw-cam-finish-dot').classList.add('live');
+
+        swCamUpdateStatus('ready', 'Armed — Waiting for Start');
+        document.getElementById('sw-cam-start-indicator').textContent = 'Armed';
+        document.getElementById('sw-cam-start-indicator').classList.remove('triggered');
+        document.getElementById('sw-cam-finish-indicator').textContent = 'Waiting';
+        document.getElementById('sw-cam-finish-indicator').classList.remove('triggered');
+
+        swCamShowAlert('success', 'Cameras activated! Motion at Start Line will begin the timer.');
+    } catch (e) {
+        swCamShowAlert('error', 'Failed to access cameras: ' + e.message);
+    } finally {
+        activateBtn.disabled = false;
+        activateBtn.innerHTML = '<i class="fas fa-power-off"></i> Activate Cameras';
+    }
+}
+
+function swCamDeactivate() {
+    cameraTrigger.stopMonitoring();
+
+    document.getElementById('sw-cam-feeds').style.display = 'none';
+    document.getElementById('sw-cam-activate-btn').style.display = '';
+    document.getElementById('sw-cam-deactivate-btn').style.display = 'none';
+    document.getElementById('sw-cam-arm-btn').style.display = 'none';
+    document.getElementById('sw-cam-start-dot').classList.remove('live');
+    document.getElementById('sw-cam-finish-dot').classList.remove('live');
+
+    swCamUpdateStatus('', 'Inactive');
+}
+
+function swCamArm() {
+    cameraTrigger.armStart();
+    cameraTrigger.finishArmed = false;
+
+    document.getElementById('sw-cam-start-indicator').textContent = 'Armed';
+    document.getElementById('sw-cam-start-indicator').classList.remove('triggered');
+    document.getElementById('sw-cam-finish-indicator').textContent = 'Waiting';
+    document.getElementById('sw-cam-finish-indicator').classList.remove('triggered');
+
+    swCamUpdateStatus('ready', 'Armed — Waiting for Start');
+    swCamShowAlert('success', 'Start camera re-armed. Motion at Start Line will begin a new timing run.');
+}
+
+function swCamOnStart(timestamp) {
+    // Auto-reset if timer is stopped with laps
+    if (!stopwatch.running && stopwatch.getLaps().length > 0) {
+        swReset();
+    }
+    swStart();
+
+    document.getElementById('sw-cam-start-indicator').textContent = 'Triggered!';
+    document.getElementById('sw-cam-start-indicator').classList.add('triggered');
+    document.getElementById('sw-cam-finish-indicator').textContent = 'Armed';
+    document.getElementById('sw-cam-finish-indicator').classList.remove('triggered');
+
+    swCamUpdateStatus('active', 'Running — Finish Line Armed');
+}
+
+function swCamOnFinish(timestamp) {
+    swLap();
+    swStop();
+
+    document.getElementById('sw-cam-finish-indicator').textContent = 'Triggered!';
+    document.getElementById('sw-cam-finish-indicator').classList.add('triggered');
+
+    swCamUpdateStatus('ready', 'Finished — Use Re-Arm for next run');
+}
+
+function swCamOnMotion(which, level) {
+    const barId = which === 'start' ? 'sw-cam-start-motion' : 'sw-cam-finish-motion';
+    const bar = document.getElementById(barId);
+    if (bar) {
+        bar.style.width = Math.min(level * 3, 100) + '%';
+        bar.style.background = level > cameraTrigger.motionThreshold ? 'var(--success)' : 'var(--primary)';
+    }
+}
+
+function swCamUpdateSensitivity(val) {
+    document.getElementById('sw-cam-sensitivity-val').textContent = val;
+    cameraTrigger.setSensitivity(parseInt(val));
+}
+
+function swCamUpdateThreshold(val) {
+    document.getElementById('sw-cam-threshold-val').textContent = val;
+    cameraTrigger.setMotionThreshold(parseInt(val));
+}
+
+function swCamUpdateStatus(cls, text) {
+    const el = document.getElementById('sw-cam-global-status');
+    el.className = 'sw-cam-status' + (cls ? ' ' + cls : '');
+    el.innerHTML = '<i class="fas fa-circle" style="font-size:8px;"></i> ' + escHtml(text);
+}
+
+function swCamShowAlert(type, message) {
+    const alertEl = document.getElementById('sw-cam-alert');
+    const msgEl = document.getElementById('sw-cam-alert-msg');
+    const cls = type === 'error' ? 'alert-error' : type === 'info' ? 'alert-info' : 'alert-success';
+    alertEl.className = 'alert ' + cls;
+    alertEl.querySelector('i').className = type === 'error' ? 'fas fa-exclamation-circle' : type === 'info' ? 'fas fa-info-circle' : 'fas fa-check-circle';
+    msgEl.textContent = message;
+    alertEl.style.display = 'flex';
+    if (type !== 'info') {
+        setTimeout(() => { alertEl.style.display = 'none'; }, 6000);
+    }
 }
 </script>

@@ -1,6 +1,6 @@
 # Arctic Wolves Application - Testing Documentation
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Last Updated:** February 2026  
 **Purpose:** This document provides a comprehensive breakdown of all views, tabs, and functionality within the Arctic Wolves hockey training management system. It is designed for testers to understand what each part of the site is designed to do.
 
@@ -764,6 +764,14 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Save sessions with all lap data for historical tracking
 - View session history with lap details in modal
 - Session list shows lap count and linked skill name
+- **Dual-Camera Trigger Mode**: Use two separate device cameras for absolute-accuracy timing
+  - Camera 1 (Start Line) detects motion to automatically start the timer
+  - Camera 2 (Finish Line) detects motion to automatically record lap and stop
+  - Adjustable motion sensitivity and trigger threshold sliders
+  - Live video preview feeds with motion level indicators
+  - Camera status indicators (Armed, Triggered, Waiting)
+  - Re-Arm button for consecutive timing runs
+  - Auto-detects available cameras and pre-selects if two are available
 
 **Testing Focus:**
 - Start button begins timer, display updates in real time
@@ -779,6 +787,15 @@ These pages are available to On-ice Coaches and Administrators only (not Health 
 - Skill dropdown shows only skills with stopwatch enabled
 - All timing data persists correctly in database
 - CSRF token validation on all save/load operations
+- **Camera Mode toggle** shows/hides camera panel and changes button state
+- **Camera selection** populates with available device cameras
+- **Activate Cameras** opens both camera feeds with live preview
+- **Start Line camera** motion triggers stopwatch start automatically
+- **Finish Line camera** motion records lap and stops timer automatically
+- **Re-Arm** button resets camera triggers for next timing run
+- **Deactivate** releases camera streams and hides feeds
+- **Sensitivity/Threshold sliders** adjust motion detection parameters in real time
+- Camera mode follows site-wide design style (cards, buttons, alerts, CSS variables)
 
 ---
 
@@ -2514,6 +2531,7 @@ This section provides important test scenarios that span multiple features.
 | 1.0 | February 2026 | Initial comprehensive testing documentation created |
 | 1.1 | February 2026 | Added drill/practice plan export/import all tabs (11.4, 12.4), updated database backup/restore testing (40.3, scenario 10), added backup-to-file and force-to-Nextcloud features, added database import for recovery, updated data export section (14) |
 | 1.2 | February 2026 | Added security_logs column fix documentation (40.3, scenario 10), restore page design consistency notes, filter button overflow fix (15, 41), export/import route registration and style guide compliance (11.4, 12.4), business card filter layout fix (41), added Stopwatch feature (14.3), added stopwatch option to skill creation (37) |
+| 1.3 | February 2026 | Added Dual-Camera Trigger Mode to Stopwatch (14.3) — motion-detection-based start/stop using two separate device cameras for precision timing |
 
 ---
 
