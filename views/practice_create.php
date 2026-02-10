@@ -1042,6 +1042,45 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+    
+    // Check for drills to add from session storage (from drills library)
+    const drillsToAddStr = sessionStorage.getItem('drillsToAdd');
+    if (drillsToAddStr) {
+        try {
+            const drillIds = JSON.parse(drillsToAddStr);
+            // Get drill data from the selector modal
+            drillIds.forEach(drillId => {
+                const drillCard = document.querySelector(`.drill-selector-grid .drill-card[data-drill-id="${drillId}"]`);
+                if (drillCard) {
+                    const id = parseInt(drillCard.dataset.drillId, 10);
+                    const title = drillCard.dataset.title || '';
+                    const category = drillCard.dataset.category || '';
+                    
+                    // Check if already added
+                    if (!practiceDrills.find(d => d.id === id)) {
+                        practiceDrills.push({
+                            id: id,
+                            title: title,
+                            category: category,
+                            duration: 10,
+                            notes: ''
+                        });
+                    }
+                }
+            });
+            
+            // Update display if any drills were added
+            if (drillIds.length > 0) {
+                updateDrillsDisplay();
+            }
+            
+            // Clear the session storage
+            sessionStorage.removeItem('drillsToAdd');
+        } catch (e) {
+            console.error('Error loading drills from session storage:', e);
+            sessionStorage.removeItem('drillsToAdd');
+        }
+    }
     <?php endif; ?>
     
     // Update summary when duration changes

@@ -907,9 +907,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    document.querySelectorAll('[data-action="add-to-plan"]').forEach(btn => {
+        const drillId = btn.getAttribute('data-id');
+        if (drillId) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                addDrillToPracticePlan(drillId);
+            });
+        }
+    });
+    
     // Render ice rink thumbnails for drills
     renderDrillThumbnails();
 });
+
+// Add drill to practice plan
+function addDrillToPracticePlan(drillId) {
+    // Find the drill data
+    const drill = drillsData.find(d => d.id == drillId);
+    if (!drill) {
+        alert('Error: Drill not found');
+        return;
+    }
+    
+    // Store drill ID in sessionStorage to be picked up by practice plan page
+    const drillsToAdd = sessionStorage.getItem('drillsToAdd');
+    let drillIds = drillsToAdd ? JSON.parse(drillsToAdd) : [];
+    
+    // Avoid duplicates
+    if (!drillIds.includes(parseInt(drillId))) {
+        drillIds.push(parseInt(drillId));
+        sessionStorage.setItem('drillsToAdd', JSON.stringify(drillIds));
+    }
+    
+    // Redirect to practice plan creation page
+    window.location.href = '?page=practice_create';
+}
 
 // Render ice rink thumbnails for all drill cards using shared IceCanvasRenderer
 function renderDrillThumbnails() {
