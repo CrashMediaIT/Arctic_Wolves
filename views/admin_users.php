@@ -1007,7 +1007,12 @@ function closeModal(modalId) {
                 
                 <div class="form-group">
                     <label class="form-label">Temporary Password *</label>
-                    <input type="password" name="password" class="form-input" required>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="password" id="admin-add-password" class="form-input" required style="padding-right: 40px;">
+                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('admin-add-password', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px;">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                     <small class="form-hint">User will be prompted to change on first login</small>
                 </div>
             </div>
@@ -1478,13 +1483,23 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
                     
                     <div class="form-group">
                         <label class="form-label">New Password *</label>
-                        <input type="password" name="new_password" class="form-input" required minlength="8" placeholder="Enter new password">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" name="new_password" id="admin-reset-new-password" class="form-input" required minlength="8" placeholder="Enter new password" style="padding-right: 40px;">
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('admin-reset-new-password', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px;">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                         <small class="form-hint">Minimum 8 characters</small>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">Confirm Password *</label>
-                        <input type="password" name="confirm_password" class="form-input" required minlength="8" placeholder="Confirm new password">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" name="confirm_password" id="admin-reset-confirm-password" class="form-input" required minlength="8" placeholder="Confirm new password" style="padding-right: 40px;">
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('admin-reset-confirm-password', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px;">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1511,13 +1526,23 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
                     
                     <div class="form-group">
                         <label class="form-label">New PIN (4 digits) *</label>
-                        <input type="password" name="new_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" name="new_pin" id="admin-reset-new-pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off" style="padding-right: 40px;">
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('admin-reset-new-pin', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px;">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                         <small class="form-hint">Must be exactly 4 digits</small>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">Confirm PIN *</label>
-                        <input type="password" name="confirm_pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" name="confirm_pin" id="admin-reset-confirm-pin" class="form-input" required pattern="\d{4}" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off" style="padding-right: 40px;">
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('admin-reset-confirm-pin', this)" aria-label="Toggle password visibility" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px;">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     
                     <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-th"></i> Set PIN</button>
@@ -1810,4 +1835,18 @@ window._editTeamTypeahead = new ArcticTypeahead({
     searchUrl: 'ajax_search_teams.php',
     multiple: true
 });
+
+function togglePasswordVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
 </script>
