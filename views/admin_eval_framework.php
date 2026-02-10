@@ -1508,8 +1508,18 @@ function openAssignToSessionModal(templateId, evalName) {
             data.sessions.forEach(function(s) {
                 var opt = document.createElement('option');
                 opt.value = s.id;
-                var dateStr = s.session_date ? new Date(s.session_date).toLocaleDateString() : '';
-                opt.textContent = (s.title || 'Session') + ' - ' + dateStr + ' (' + s.location_name + ')';
+                var dateStr = s.session_date ? new Date(s.session_date + 'T00:00:00').toLocaleDateString() : '';
+                var timeStr = '';
+                if (s.session_time) {
+                    var parts = s.session_time.split(':');
+                    var td = new Date(2000, 0, 1, parts[0], parts[1]);
+                    timeStr = ' ' + td.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+                var label = (s.title || 'Session') + ' - ' + dateStr + timeStr + ' (' + s.location_name + ')';
+                if (s.package_names) {
+                    label += ' [' + s.package_names + ']';
+                }
+                opt.textContent = label;
                 select.appendChild(opt);
             });
         }

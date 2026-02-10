@@ -69,7 +69,7 @@ $activeView = $_GET['view'] ?? 'list';
             <i class="fas fa-calendar-alt"></i> Calendar View
         </button>
     </div>
-    <?php if ($user_role === 'admin' || $user_role === 'coach_plus'): ?>
+    <?php if ($user_role === 'admin' || $user_role === 'coach_plus' || $user_role === 'coach'): ?>
     <div class="page-tabs-action">
         <button type="button" class="btn btn-primary" onclick="openAssignModal()">
             <i class="fas fa-plus"></i> Assign Evaluation to Session
@@ -1064,10 +1064,17 @@ async function openAssignModal() {
         
         if (data.success && data.sessions) {
             data.sessions.forEach(session => {
-                const date = new Date(session.session_date);
+                const date = new Date(session.session_date + 'T00:00:00');
                 const option = document.createElement('option');
                 option.value = session.id;
-                option.textContent = `${session.title} - ${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} @ ${session.location_name}`;
+                let label = session.title + ' - ' + date.toLocaleDateString();
+                if (session.session_time) {
+                    const timeParts = session.session_time.split(':');
+                    const timeDate = new Date(2000, 0, 1, timeParts[0], timeParts[1]);
+                    label += ' ' + timeDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+                label += ' @ ' + session.location_name;
+                option.textContent = label;
                 select.appendChild(option);
             });
         }

@@ -58,6 +58,20 @@ try {
         $athlete_teams_map = [];
     }
     
+    // Fetch user_roles for multi-role support
+    $user_roles_map = [];
+    try {
+        $ur_stmt = $pdo->query("SELECT user_id, role FROM user_roles ORDER BY user_id");
+        while ($row = $ur_stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!isset($user_roles_map[$row['user_id']])) {
+                $user_roles_map[$row['user_id']] = [];
+            }
+            $user_roles_map[$row['user_id']][] = $row['role'];
+        }
+    } catch (PDOException $e) {
+        $user_roles_map = [];
+    }
+    
     // Build query
     $where = [];
     $params = [];
@@ -906,10 +920,137 @@ function closeModal(modalId) {
 }
 
 
-/* Modal Tabs - prevent scrollbars on the tab bar */
-.modal .tabs {
-    overflow: hidden;
-    flex-wrap: wrap;
+/* Modal Tabs - styled consistently with profile tabs */
+.modal .tabs.edit-user-tabs {
+    display: flex;
+    gap: 0;
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 12px 12px 0 0;
+    overflow-x: auto;
+    margin-bottom: 0;
+    border-bottom: none;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal .tabs.edit-user-tabs .tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim, #6B7280);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    position: static;
+    bottom: auto;
+}
+
+.modal .tabs.edit-user-tabs .tab:hover {
+    background: rgba(139, 92, 246, 0.05);
+    color: var(--text-white, #fff);
+}
+
+.modal .tabs.edit-user-tabs .tab.active {
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--primary, #6B46C1);
+    border-bottom-color: var(--primary, #6B46C1);
+}
+
+.modal .tabs.edit-user-tabs .tab i {
+    font-size: 14px;
+}
+
+/* Roles checkbox grid */
+.roles-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.role-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.role-checkbox-item:hover {
+    border-color: var(--primary, #6B46C1);
+    background: rgba(107, 70, 193, 0.05);
+}
+
+.role-checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.role-checkbox-item .role-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #E0E0E0);
+}
+
+.role-checkbox-item .role-desc {
+    font-size: 11px;
+    color: var(--text-muted, #6B6B7B);
+    margin-top: 2px;
+}
+
+/* Parent assignment section */
+.parent-assignment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.parent-assignment-item .parent-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.parent-assignment-item .parent-name {
+    font-weight: 600;
+    color: var(--text-primary, #E0E0E0);
+    font-size: 14px;
+}
+
+.parent-assignment-item .parent-relationship {
+    font-size: 12px;
+    color: var(--text-muted, #6B6B7B);
+}
+
+@media (max-width: 768px) {
+    .modal .tabs.edit-user-tabs .tab span {
+        display: none;
+    }
+    .modal .tabs.edit-user-tabs .tab {
+        padding: 12px;
+    }
+    .roles-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1064,16 +1205,19 @@ document.getElementById('add-user-role').addEventListener('change', function() {
             <!-- Edit User Tabs -->
             <div class="tabs edit-user-tabs">
                 <button type="button" class="tab active" data-tab="edit-details-tab">
-                    <i class="fas fa-user"></i> Details
+                    <i class="fas fa-user"></i> <span>Details</span>
+                </button>
+                <button type="button" class="tab" data-tab="edit-roles-tab">
+                    <i class="fas fa-user-tag"></i> <span>Roles</span>
                 </button>
                 <button type="button" class="tab" data-tab="edit-assignments-tab">
-                    <i class="fas fa-users"></i> Assignments
+                    <i class="fas fa-users"></i> <span>Assignments</span>
                 </button>
                 <button type="button" class="tab" data-tab="edit-profile-tab">
-                    <i class="fas fa-user-circle"></i> Profile Image
+                    <i class="fas fa-user-circle"></i> <span>Profile</span>
                 </button>
                 <button type="button" class="tab" data-tab="edit-notifications-tab">
-                    <i class="fas fa-bell"></i> Notifications
+                    <i class="fas fa-bell"></i> <span>Notifications</span>
                 </button>
             </div>
             
@@ -1108,7 +1252,7 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                     
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Role *</label>
+                            <label class="form-label">Primary Role *</label>
                             <select name="role" id="edit-user-role" class="form-input" required>
                                 <option value="">Select Role</option>
                                 <option value="admin">Admin</option>
@@ -1117,6 +1261,7 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                                 <option value="team_coach">Team Coach</option>
                                 <option value="athlete">Athlete</option>
                                 <option value="parent">Parent</option>
+                                <option value="front_desk_staff">Front Desk Staff</option>
                             </select>
                         </div>
                         
@@ -1128,6 +1273,110 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                     
                     <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Update Details</button>
                 </form>
+            </div>
+            
+            <!-- Roles Tab -->
+            <div id="edit-roles-tab" class="tab-content">
+                <form id="edit-roles-form">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="admin_update_roles">
+                    <input type="hidden" name="user_id" class="edit-form-user-id" value="">
+                    
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+                        Assign additional roles to this user. The primary role is set in the Details tab. 
+                        Additional roles grant access to those role's menus and features.
+                    </p>
+                    
+                    <div class="roles-grid">
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="admin" id="edit-role-admin">
+                            <div>
+                                <div class="role-label">Admin</div>
+                                <div class="role-desc">Full system access</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="coach" id="edit-role-coach">
+                            <div>
+                                <div class="role-label">Coach</div>
+                                <div class="role-desc">Coaches corner, drills, practice</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="health_coach" id="edit-role-health_coach">
+                            <div>
+                                <div class="role-label">Health Coach</div>
+                                <div class="role-desc">Health management, nutrition</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="team_coach" id="edit-role-team_coach">
+                            <div>
+                                <div class="role-label">Team Coach</div>
+                                <div class="role-desc">Team roster management</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="athlete" id="edit-role-athlete">
+                            <div>
+                                <div class="role-label">Athlete</div>
+                                <div class="role-desc">Stats, goals, sessions</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="parent" id="edit-role-parent">
+                            <div>
+                                <div class="role-label">Parent</div>
+                                <div class="role-desc">Manage child athletes</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="front_desk_staff" id="edit-role-front_desk_staff">
+                            <div>
+                                <div class="role-label">Front Desk</div>
+                                <div class="role-desc">POS, time tracking</div>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save Roles</button>
+                    </div>
+                </form>
+                
+                <!-- Parent Assignment Section -->
+                <div style="border-top: 1px solid var(--border, #2D2D3F); margin-top: 24px; padding-top: 24px;">
+                    <h4 style="margin: 0 0 8px 0; color: var(--text-white, #fff); font-size: 16px;">
+                        <i class="fas fa-child" style="color: var(--primary, #6B46C1);"></i> Parent Assignment
+                    </h4>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+                        Assign a parent user to manage this user as a child athlete, or assign children to this user.
+                    </p>
+                    
+                    <div id="edit-parent-assignments-list" style="margin-bottom: 16px;">
+                        <!-- Populated via JavaScript -->
+                    </div>
+                    
+                    <form id="edit-assign-parent-form" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="admin_assign_parent">
+                        <input type="hidden" name="user_id" class="edit-form-user-id" value="">
+                        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                            <label class="form-label">Parent User</label>
+                            <select name="parent_id" id="edit-assign-parent-select" class="form-input">
+                                <option value="">Select a user...</option>
+                                <?php foreach ($users as $u): ?>
+                                    <option value="<?= $u['id'] ?>"><?= htmlspecialchars(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '')) ?> (<?= htmlspecialchars($u['role'] ?? '') ?>)</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group" style="min-width: 120px; margin-bottom: 0;">
+                            <label class="form-label">Relationship</label>
+                            <input type="text" name="relationship" class="form-input" value="Parent" placeholder="Parent">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-link"></i> Assign</button>
+                    </form>
+                </div>
             </div>
             
             <!-- Assignments Tab -->
@@ -1325,6 +1574,22 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
             window._editTeamTypeahead.setPreSelected(preTeamItems);
         }
         
+        // Pre-populate roles checkboxes
+        var userRolesMap = <?php echo json_encode($user_roles_map); ?>;
+        var allRoleCheckboxes = ['admin', 'coach', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff'];
+        allRoleCheckboxes.forEach(function(r) {
+            var cb = document.getElementById('edit-role-' + r);
+            if (cb) cb.checked = false;
+        });
+        var extraRoles = userRolesMap[id] || [];
+        extraRoles.forEach(function(r) {
+            var cb = document.getElementById('edit-role-' + r);
+            if (cb) cb.checked = true;
+        });
+        
+        // Load parent assignments for this user
+        loadParentAssignments(id);
+        
         // Reset to first tab
         var modal = document.getElementById('edit-user-modal');
         modal.querySelectorAll('.edit-user-tabs .tab').forEach(function(t) { t.classList.remove('active'); });
@@ -1450,9 +1715,119 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
         showNotification('An error occurred. Please try again.', 'error');
     });
 });
-</script>
 
-<!-- Security Modal (Password & PIN) -->
+// Roles form submit (edit modal)
+document.getElementById('edit-roles-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var formData = new FormData(this);
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Roles updated!', 'success');
+            setTimeout(function() { location.reload(); }, 1000);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to update roles'), 'error');
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    });
+});
+
+// Parent assignment form submit
+document.getElementById('edit-assign-parent-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var formData = new FormData(this);
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Parent assigned!', 'success');
+            var userId = document.getElementById('edit-user-id').value;
+            loadParentAssignments(userId);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to assign parent'), 'error');
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    });
+});
+
+// Load parent assignments for a user
+function loadParentAssignments(userId) {
+    var listEl = document.getElementById('edit-parent-assignments-list');
+    listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">Loading...</p>';
+    
+    fetch('process_admin_action.php?action=get_parent_assignments&user_id=' + userId, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success && data.assignments && data.assignments.length > 0) {
+            var html = '';
+            data.assignments.forEach(function(a) {
+                html += '<div class="parent-assignment-item">';
+                html += '  <div class="parent-info">';
+                html += '    <i class="fas fa-user" style="color: var(--primary, #6B46C1);"></i>';
+                html += '    <div>';
+                html += '      <div class="parent-name">' + (a.parent_name || 'Unknown') + '</div>';
+                html += '      <div class="parent-relationship">' + (a.relationship || 'Parent') + '</div>';
+                html += '    </div>';
+                html += '  </div>';
+                html += '  <button type="button" class="btn btn-danger btn-sm" onclick="removeParentAssignment(' + a.id + ', ' + userId + ')">';
+                html += '    <i class="fas fa-trash"></i>';
+                html += '  </button>';
+                html += '</div>';
+            });
+            listEl.innerHTML = html;
+        } else {
+            listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">No parent assignments.</p>';
+        }
+    })
+    .catch(function() {
+        listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">No parent assignments.</p>';
+    });
+}
+
+// Remove parent assignment
+function removeParentAssignment(managedId, userId) {
+    if (!confirm('Remove this parent assignment?')) return;
+    
+    var formData = new FormData();
+    formData.append('action', 'admin_remove_parent');
+    formData.append('managed_id', managedId);
+    formData.append('csrf_token', document.querySelector('[name="csrf_token"]').value);
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showNotification('Parent assignment removed.', 'success');
+            loadParentAssignments(userId);
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed'), 'error');
+        }
+    });
+}
+</script>
 <div id="security-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -1462,15 +1837,15 @@ document.getElementById('edit-notifications-form').addEventListener('submit', fu
         
         <div class="modal-body">
             <!-- Security Tabs -->
-            <div class="tabs security-tabs">
+            <div class="tabs edit-user-tabs security-tabs">
                 <button type="button" class="tab active" data-tab="security-password-tab">
-                    <i class="fas fa-key"></i> Password
+                    <i class="fas fa-key"></i> <span>Password</span>
                 </button>
                 <button type="button" class="tab" data-tab="security-pin-tab" id="security-pin-tab-btn">
-                    <i class="fas fa-th"></i> PIN
+                    <i class="fas fa-th"></i> <span>PIN</span>
                 </button>
                 <button type="button" class="tab" data-tab="security-2fa-tab">
-                    <i class="fas fa-shield-halved"></i> 2FA
+                    <i class="fas fa-shield-halved"></i> <span>2FA</span>
                 </button>
             </div>
             

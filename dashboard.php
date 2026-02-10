@@ -69,13 +69,25 @@ try {
     // Table may not exist yet - silently continue
 }
 
-// Role checks including new roles
-$isAdmin       = ($user_role === 'admin');
-$isCoach       = ($user_role === 'coach');
-$isHealthCoach = ($user_role === 'health_coach');
-$isTeamCoach   = ($user_role === 'team_coach');
-$isParent      = ($user_role === 'parent');
-$isFrontDesk   = ($user_role === 'front_desk_staff');
+// Role checks including new roles - support multiple roles from user_roles table
+$user_roles_list = [$user_role]; // primary role always included
+try {
+    $rolesStmt = $pdo->prepare("SELECT role FROM user_roles WHERE user_id = ?");
+    $rolesStmt->execute([$user_id]);
+    $extraRoles = $rolesStmt->fetchAll(PDO::FETCH_COLUMN);
+    if ($extraRoles) {
+        $user_roles_list = array_unique(array_merge($user_roles_list, $extraRoles));
+    }
+} catch (PDOException $e) {
+    // user_roles table may not exist yet
+}
+
+$isAdmin       = in_array('admin', $user_roles_list);
+$isCoach       = in_array('coach', $user_roles_list);
+$isHealthCoach = in_array('health_coach', $user_roles_list);
+$isTeamCoach   = in_array('team_coach', $user_roles_list);
+$isParent      = in_array('parent', $user_roles_list);
+$isFrontDesk   = in_array('front_desk_staff', $user_roles_list);
 
 // Combined role checks for sections
 $isAnyCoach    = ($isCoach || $isAdmin);

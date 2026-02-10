@@ -138,6 +138,35 @@ try {
 
 $activeTab = $_GET['tab'] ?? 'personal';
 
+// Determine if user can manage children (show Children tab)
+// Users who are parents, have the parent role, or are not assigned as a child themselves
+$canManageChildren = false;
+$managedChildren = [];
+$isAssignedAsChild = false;
+try {
+    // Check if user is assigned as a child to any parent
+    $childCheck = $pdo->prepare("SELECT id FROM managed_athletes WHERE athlete_id = ? LIMIT 1");
+    $childCheck->execute([$user_id]);
+    $isAssignedAsChild = (bool)$childCheck->fetch();
+
+    if (!$isAssignedAsChild) {
+        $canManageChildren = true;
+        // Fetch managed children
+        $childrenStmt = $pdo->prepare("
+            SELECT u.id, u.first_name, u.last_name, u.email, u.role, ma.relationship, ma.id as managed_id
+            FROM managed_athletes ma
+            INNER JOIN users u ON ma.athlete_id = u.id
+            WHERE ma.parent_id = ?
+            ORDER BY u.first_name, u.last_name
+        ");
+        $childrenStmt->execute([$user_id]);
+        $managedChildren = $childrenStmt->fetchAll(PDO::FETCH_ASSOC);
+        $managedChildren = decryptUserRows($managedChildren);
+    }
+} catch (PDOException $e) {
+    // Table may not exist yet
+}
+
 // Helper function to check if preference is enabled (defaults: email_notifications=true, session_reminders=true, goal_updates=true, marketing_emails=false)
 function isPreferenceEnabled($preferences, $key) {
     $defaults = [
@@ -198,6 +227,13 @@ function isPreferenceEnabled($preferences, $key) {
             <i class="fas fa-bell"></i>
             <span>Notifications</span>
         </button>
+        <?php if ($canManageChildren): ?>
+        <button class="profile-tab-btn <?php echo $activeTab === 'children' ? 'active' : ''; ?>" 
+                data-tab="children" onclick="switchTab('children')">
+            <i class="fas fa-child"></i>
+            <span>Children</span>
+        </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -1215,6 +1251,157 @@ $errors = [
         </div>
     </div>
 </div>
+
+<?php if ($canManageChildren): ?>
+<!-- Children Tab -->
+<div class="tab-content <?php echo $activeTab === 'children' ? 'active' : ''; ?>" id="children-tab">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-users"></i> My Children / Athletes (<?= count($managedChildren) ?>)</h3>
+        </div>
+        <div class="card-body">
+            <?php if (isset($_GET['child_success'])): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <?php
+                    switch ($_GET['child_success']) {
+                        case 'athlete_added': echo 'Child athlete linked successfully!'; break;
+                        case 'athlete_created': echo 'New child athlete account created and linked!'; break;
+                        case 'athlete_removed': echo 'Child athlete removed from your list.'; break;
+                        default: echo 'Action completed successfully.';
+                    }
+                    ?>
+                </div>
+            <?php endif; ?>
+            <?php if (isset($_GET['child_error'])): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <?php
+                    switch ($_GET['child_error']) {
+                        case 'athlete_not_found': echo 'No athlete found with that email address.'; break;
+                        case 'already_managed': echo 'This athlete is already in your list.'; break;
+                        case 'invalid_data': echo 'Please fill in all required fields.'; break;
+                        case 'email_exists': echo 'An account with this email already exists.'; break;
+                        default: echo 'An error occurred. Please try again.';
+                    }
+                    ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (empty($managedChildren)): ?>
+                <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                    <i class="fas fa-child" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px; display: block;"></i>
+                    <p>No children or athletes linked yet. Use the forms below to add one.</p>
+                </div>
+            <?php else: ?>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <?php foreach ($managedChildren as $child): ?>
+                        <div class="card" style="margin-bottom: 0;">
+                            <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px;">
+                                <div style="display: flex; align-items: center; gap: 14px;">
+                                    <div style="width: 44px; height: 44px; background: linear-gradient(135deg, var(--primary, #6B46C1), var(--primary-hover, #7C3AED)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0;">
+                                        <?= strtoupper(substr($child['first_name'] ?? 'U', 0, 1)) ?>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text-white, #fff);">
+                                            <?= htmlspecialchars(($child['first_name'] ?? '') . ' ' . ($child['last_name'] ?? '')) ?>
+                                        </div>
+                                        <div style="font-size: 13px; color: var(--text-muted, #6B6B7B);">
+                                            <?= htmlspecialchars($child['email'] ?? '') ?>
+                                            <?php if (!empty($child['relationship'])): ?>
+                                                &bull; <?= htmlspecialchars($child['relationship']) ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <form method="POST" action="process_manage_athletes.php" style="display: inline;" 
+                                      onsubmit="return confirm('Remove this child from your managed list?');">
+                                    <?= csrfTokenInput() ?>
+                                    <input type="hidden" name="action" value="remove_athlete">
+                                    <input type="hidden" name="managed_id" value="<?= $child['managed_id'] ?>">
+                                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Remove</button>
+                                </form>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Link Existing Athlete -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-link"></i> Link Existing Athlete</h3>
+        </div>
+        <div class="card-body">
+            <p style="color: var(--text-muted, #6B6B7B); font-size: 14px; margin-bottom: 20px;">
+                Add an existing athlete account to your managed list by their email address.
+            </p>
+            <form method="POST" action="process_manage_athletes.php">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="add_athlete">
+                <input type="hidden" name="redirect" value="profile_children">
+                <div class="form-group">
+                    <label>Athlete Email Address</label>
+                    <input type="email" name="athlete_email" placeholder="athlete@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Relationship</label>
+                    <input type="text" name="relationship" value="Parent" placeholder="e.g., Parent, Guardian">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-link"></i> Link Athlete</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create New Athlete -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-user-plus"></i> Create New Child Athlete</h3>
+        </div>
+        <div class="card-body">
+            <p style="color: var(--text-muted, #6B6B7B); font-size: 14px; margin-bottom: 20px;">
+                Create a new athlete account and automatically link it to your profile.
+            </p>
+            <form method="POST" action="process_manage_athletes.php">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="create_athlete">
+                <input type="hidden" name="redirect" value="profile_children">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>First Name *</label>
+                        <input type="text" name="first_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name *</label>
+                        <input type="text" name="last_name" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Email Address *</label>
+                    <input type="email" name="email" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Birth Date</label>
+                        <input type="date" name="birth_date">
+                    </div>
+                    <div class="form-group">
+                        <label>Position</label>
+                        <input type="text" name="position" placeholder="e.g., Forward, Defense, Goalie">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Relationship</label>
+                    <input type="text" name="relationship" value="Parent" placeholder="e.g., Parent, Guardian">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Create Athlete Account</button>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <script>
 function switchTab(tabName) {

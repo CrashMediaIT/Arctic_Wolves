@@ -638,7 +638,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'get_available_sessions':
                 // Get sessions that don't have evaluations yet
                 $stmt = $pdo->prepare("
-                    SELECT s.id, s.title, s.session_date, s.duration_minutes,
+                    SELECT s.id, s.title, s.session_date, s.session_time, s.duration_minutes,
                            COALESCE(l.name, 'TBD') as location_name
                     FROM sessions s
                     LEFT JOIN locations l ON s.location_id = l.id

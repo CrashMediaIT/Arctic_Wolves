@@ -1523,13 +1523,16 @@ CREATE TABLE IF NOT EXISTS `nutrition_template_items` (
 CREATE TABLE IF NOT EXISTS `package_sessions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `package_id` INT NOT NULL,
+    `session_id` INT DEFAULT NULL COMMENT 'Specific session linked to package',
     `session_type_id` INT DEFAULT NULL,
     `num_sessions` INT DEFAULT 1,
     `session_description` VARCHAR(255) DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`session_type_id`) REFERENCES `session_types`(`id`) ON DELETE SET NULL,
-    INDEX `idx_package` (`package_id`)
+    INDEX `idx_package` (`package_id`),
+    INDEX `idx_session` (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- User permissions
@@ -4023,4 +4026,21 @@ CREATE TABLE IF NOT EXISTS `camp_checkin_codes` (
     INDEX `idx_athlete_session` (`athlete_id`, `session_id`),
     INDEX `idx_code_type` (`code_type`),
     INDEX `idx_used` (`is_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- Multi-Role Support
+-- Allows users to hold multiple roles simultaneously
+-- =========================================================
+CREATE TABLE IF NOT EXISTS `user_roles` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff') NOT NULL,
+    `assigned_by` INT DEFAULT NULL COMMENT 'Admin who assigned this role',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_user_role` (`user_id`, `role`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_role` (`role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
