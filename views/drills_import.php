@@ -12,7 +12,8 @@ $recentImportsQuery = "SELECT d.*, u.first_name, u.last_name
     WHERE d.ihs_source_url IS NOT NULL 
     ORDER BY d.created_at DESC 
     LIMIT 10";
-$recentImports = $pdo->query($recentImportsQuery);
+$recentImports = $pdo->query($recentImportsQuery)->fetchAll(PDO::FETCH_ASSOC);
+$recentImports = decryptUserRows($recentImports);
 
 // Handle error and status messages
 $error = $_GET['error'] ?? null;
@@ -185,8 +186,8 @@ $status_messages = [
         </div>
         <div class="card-body">
             <div class="recent-imports-list">
-                <?php if($recentImports && $recentImports->rowCount() > 0): ?>
-                    <?php while($import = $recentImports->fetch()): ?>
+                <?php if(!empty($recentImports)): ?>
+                    <?php foreach($recentImports as $import): ?>
                         <div class="import-history-item">
                             <div class="import-thumbnail">
                                 <?php if (!empty($import['custom_image'])): ?>
@@ -209,7 +210,7 @@ $status_messages = [
                             </div>
                             <a href="?page=view_drill&id=<?= $import['id'] ?>" class="btn-secondary btn-small"><i class="fas fa-eye"></i> View</a>
                         </div>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
                     <p class="placeholder-text">No imported drills yet. Import your first drill using the form above.</p>
                 <?php endif; ?>

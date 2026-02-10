@@ -31,13 +31,22 @@ try {
 // Fetch teams for the Teams tab
 $teams_stmt = $pdo->query("
     SELECT t.*, 
-           (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.id = t.coach_id) as head_coach_name,
-           (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.id = t.assistant_coach_id) as assistant_coach_name,
+           coach.first_name as coach_first_name, coach.last_name as coach_last_name,
+           asst.first_name as asst_first_name, asst.last_name as asst_last_name,
            (SELECT COUNT(*) FROM sessions WHERE team_id = t.id) as session_count
     FROM teams t
+    LEFT JOIN users coach ON coach.id = t.coach_id
+    LEFT JOIN users asst ON asst.id = t.assistant_coach_id
     ORDER BY t.is_active DESC, t.name ASC
 ");
 $teams = $teams_stmt->fetchAll();
+$teams = decryptUserRows($teams);
+// Build display names from decrypted fields
+foreach ($teams as &$team) {
+    $team['head_coach_name'] = (!empty($team['coach_first_name'])) ? $team['coach_first_name'] . ' ' . $team['coach_last_name'] : null;
+    $team['assistant_coach_name'] = (!empty($team['asst_first_name'])) ? $team['asst_first_name'] . ' ' . $team['asst_last_name'] : null;
+}
+unset($team);
 
 // Fetch locations for the Locations tab
 $locations_stmt = $pdo->query("
@@ -51,6 +60,7 @@ $locations = $locations_stmt->fetchAll();
 // Fetch coaches for team assignment dropdown
 $coaches_stmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role IN ('coach', 'team_coach', 'admin') ORDER BY last_name, first_name");
 $coaches = $coaches_stmt->fetchAll();
+$coaches = decryptUserRows($coaches);
 
 // Fetch seasons for team assignment
 $seasons_for_teams = [];

@@ -49,6 +49,7 @@ try {
     ");
     $stmt->execute([$tomorrow]);
     $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $bookings = decryptUserRows($bookings);
     
     if (empty($bookings)) {
         echo "No sessions scheduled for tomorrow.\n";

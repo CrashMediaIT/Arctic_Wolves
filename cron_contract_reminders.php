@@ -41,6 +41,7 @@ try {
     // Get admin and accounting email addresses for notifications
     $admin_stmt = $pdo->query("SELECT id, email, first_name, last_name FROM users WHERE role = 'admin' AND is_verified = 1");
     $admins = $admin_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $admins = decryptUserRows($admins);
     
     if (empty($admins)) {
         echo "No admin users found to send reminders to. Exiting.\n";

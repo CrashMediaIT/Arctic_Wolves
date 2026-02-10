@@ -4,7 +4,7 @@
 try {
     $stmt = $pdo->prepare("
         SELECT mc.*, 
-               CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+               u.first_name as creator_first_name, u.last_name as creator_last_name,
                pc.name as parent_name,
                (SELECT COUNT(*) FROM merchandise_products mp WHERE mp.category_id = mc.id) as product_count
         FROM merchandise_categories mc
@@ -14,6 +14,12 @@ try {
     ");
     $stmt->execute();
     $allCategories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $allCategories = decryptUserRows($allCategories);
+    // Build created_by_name from decrypted fields
+    foreach ($allCategories as &$cat) {
+        $cat['created_by_name'] = (!empty($cat['creator_first_name'])) ? $cat['creator_first_name'] . ' ' . $cat['creator_last_name'] : null;
+    }
+    unset($cat);
     
     // Separate parent and child categories
     $categories = [];

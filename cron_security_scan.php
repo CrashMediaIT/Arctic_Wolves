@@ -350,6 +350,7 @@ function notifyAdmins($count, $vulnerabilities, $scan_id) {
     // Get all admins
     $stmt = $pdo->query("SELECT id, email, first_name, last_name FROM users WHERE role = 'admin'");
     $admins = $stmt->fetchAll();
+    $admins = decryptUserRows($admins);
     
     $summary = generateSummary($vulnerabilities);
     

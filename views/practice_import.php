@@ -12,7 +12,8 @@ $recentImportsQuery = "SELECT pp.*, u.first_name, u.last_name
     WHERE pp.description LIKE '%Imported from IHS%'
     ORDER BY pp.created_at DESC 
     LIMIT 10";
-$recentImports = $pdo->query($recentImportsQuery);
+$recentImports = $pdo->query($recentImportsQuery)->fetchAll(PDO::FETCH_ASSOC);
+$recentImports = decryptUserRows($recentImports);
 
 // Handle error and status messages
 $error = $_GET['error'] ?? null;
@@ -177,8 +178,8 @@ $status_messages = [
         </div>
         <div class="card-body">
             <div class="recent-imports-list">
-                <?php if($recentImports && $recentImports->rowCount() > 0): ?>
-                    <?php while($import = $recentImports->fetch()): ?>
+                <?php if(!empty($recentImports)): ?>
+                    <?php foreach($recentImports as $import): ?>
                         <div class="import-history-item">
                             <div class="import-thumbnail">
                                 <i class="fas fa-clipboard-list"></i>
@@ -192,7 +193,7 @@ $status_messages = [
                             </div>
                             <a href="?page=practice_library" class="btn-secondary btn-small"><i class="fas fa-eye"></i> View</a>
                         </div>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
                     <p class="placeholder-text">No imported practice plans yet. Import your first plan using the form above.</p>
                 <?php endif; ?>

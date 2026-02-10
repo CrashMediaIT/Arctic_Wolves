@@ -26,6 +26,7 @@ if ($isLoggedIn) {
     $stmt = $pdo->prepare("SELECT first_name, last_name, email, phone FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+    $userInfo = decryptUserRow($userInfo);
 }
 
 // Get Google Maps API key for address autocomplete
