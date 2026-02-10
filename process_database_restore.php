@@ -349,7 +349,7 @@ function splitSQLStatements($sql_content) {
 function logAction($pdo, $user_id, $action, $details) {
     try {
         $stmt = $pdo->prepare("
-            INSERT INTO security_logs (user_id, action, ip_address, details, created_at)
+            INSERT INTO security_logs (user_id, event_type, ip_address, description, created_at)
             VALUES (?, ?, ?, ?, NOW())
         ");
         $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? 'unknown', $details]);
