@@ -18,7 +18,7 @@ $filter_coach = $_GET['filter_coach'] ?? 'all';
 $filter_location = $_GET['filter_location'] ?? 'all';
 $view_mode = $_GET['view'] ?? 'calendar';
 
-// Get all sessions for the company
+// Get all sessions for the company (includes sessions linked from packages)
 $sessions_query = "
     SELECT s.*, 
            c.first_name as coach_first_name, c.last_name as coach_last_name,
@@ -28,7 +28,8 @@ $sessions_query = "
            pp.name as practice_plan_name,
            pp.id as practice_plan_id,
            COUNT(DISTINCT b.id) as registered_count,
-           MAX(CASE WHEN sc.coach_id = ? THEN 1 ELSE 0 END) as is_assigned_coach
+           MAX(CASE WHEN sc.coach_id = ? THEN 1 ELSE 0 END) as is_assigned_coach,
+           GROUP_CONCAT(DISTINCT pkg.name ORDER BY pkg.name SEPARATOR ', ') as package_names
     FROM sessions s
     LEFT JOIN users c ON s.coach_id = c.id
     LEFT JOIN session_coaches sc ON sc.session_id = s.id
@@ -37,6 +38,8 @@ $sessions_query = "
     LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
     LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
     LEFT JOIN bookings b ON b.session_id = s.id
+    LEFT JOIN package_sessions ps ON ps.session_id = s.id
+    LEFT JOIN packages pkg ON ps.package_id = pkg.id
     WHERE s.session_date >= DATE_SUB(NOW(), INTERVAL 1 DAY)
       AND s.status = 'scheduled'
 ";

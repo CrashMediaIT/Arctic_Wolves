@@ -146,6 +146,49 @@ try {
             header("Location: dashboard.php?page=products&tab=packages&status=success&action=delete");
             exit();
             
+        case 'update_sessions':
+            // Save session assignments for a bundled package
+            $package_id = intval($_POST['package_id'] ?? 0);
+            $session_ids = $_POST['session_ids'] ?? [];
+            
+            if ($package_id <= 0) {
+                throw new Exception('Invalid package ID');
+            }
+            
+            // Verify package exists
+            $check = $pdo->prepare("SELECT id FROM packages WHERE id = ?");
+            $check->execute([$package_id]);
+            if (!$check->fetch()) {
+                throw new Exception('Package not found');
+            }
+            
+            $pdo->beginTransaction();
+            
+            // Remove existing session links
+            $delete_stmt = $pdo->prepare("DELETE FROM package_sessions WHERE package_id = ?");
+            $delete_stmt->execute([$package_id]);
+            
+            // Insert new session links
+            if (!empty($session_ids) && is_array($session_ids)) {
+                $insert_stmt = $pdo->prepare("INSERT INTO package_sessions (package_id, session_id) VALUES (?, ?)");
+                foreach ($session_ids as $sid) {
+                    $sid = intval($sid);
+                    if ($sid > 0) {
+                        $insert_stmt->execute([$package_id, $sid]);
+                    }
+                }
+            }
+            
+            $pdo->commit();
+            
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Package sessions updated successfully!']);
+                exit();
+            }
+            header("Location: dashboard.php?page=products&tab=packages&status=success");
+            exit();
+            
         case 'toggle_status':
             header('Content-Type: application/json');
             $package_id = intval($_POST['id'] ?? $_POST['package_id'] ?? 0);

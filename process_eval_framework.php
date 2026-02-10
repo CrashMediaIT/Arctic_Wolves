@@ -549,10 +549,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Content-Type: application/json');
                 $stmt = $pdo->prepare("
                     SELECT s.id, s.title, s.session_date, 
-                           COALESCE(l.name, 'TBD') as location_name
+                           COALESCE(l.name, 'TBD') as location_name,
+                           GROUP_CONCAT(DISTINCT pkg.name ORDER BY pkg.name SEPARATOR ', ') as package_names
                     FROM sessions s
                     LEFT JOIN locations l ON s.location_id = l.id
+                    LEFT JOIN package_sessions ps ON ps.session_id = s.id
+                    LEFT JOIN packages pkg ON ps.package_id = pkg.id
                     WHERE s.session_date >= CURDATE()
+                    GROUP BY s.id, s.title, s.session_date, l.name
                     ORDER BY s.session_date ASC
                     LIMIT 100
                 ");

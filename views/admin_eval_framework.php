@@ -1509,7 +1509,11 @@ function openAssignToSessionModal(templateId, evalName) {
                 var opt = document.createElement('option');
                 opt.value = s.id;
                 var dateStr = s.session_date ? new Date(s.session_date).toLocaleDateString() : '';
-                opt.textContent = (s.title || 'Session') + ' - ' + dateStr + ' (' + s.location_name + ')';
+                var label = (s.title || 'Session') + ' - ' + dateStr + ' (' + s.location_name + ')';
+                if (s.package_names) {
+                    label += ' [' + s.package_names + ']';
+                }
+                opt.textContent = label;
                 select.appendChild(opt);
             });
         }

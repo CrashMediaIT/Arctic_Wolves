@@ -176,6 +176,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         exit();
     }
+    
+    if ($action === 'get_parent_assignments') {
+        header('Content-Type: application/json');
+        try {
+            $userId = intval($_GET['user_id'] ?? 0);
+            if ($userId <= 0) {
+                throw new Exception('Invalid user ID');
+            }
+            
+            // Get parents who manage this user as a child
+            $stmt = $pdo->prepare("
+                SELECT ma.id, ma.parent_id, ma.relationship,
+                       u.first_name, u.last_name
+                FROM managed_athletes ma
+                INNER JOIN users u ON ma.parent_id = u.id
+                WHERE ma.athlete_id = ?
+                ORDER BY u.first_name, u.last_name
+            ");
+            $stmt->execute([$userId]);
+            $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $parents = decryptUserRows($parents);
+            
+            $assignments = [];
+            foreach ($parents as $p) {
+                $assignments[] = [
+                    'id' => $p['id'],
+                    'parent_id' => $p['parent_id'],
+                    'parent_name' => ($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''),
+                    'relationship' => $p['relationship'] ?? 'Parent'
+                ];
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'assignments' => $assignments
+            ]);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit();
+    }
 }
 
 // Validate CSRF token for POST requests
@@ -2103,6 +2145,124 @@ if ($action == 'admin_update_notifications') {
         echo json_encode(['success' => true, 'message' => 'Notification settings updated successfully']);
     } catch (PDOException $e) {
         error_log("Admin notifications update error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
+// =========================================================
+// MODULE 8.7: ADMIN ROLE MANAGEMENT
+// =========================================================
+if ($action == 'admin_update_roles') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id_to_update = intval($_POST['user_id'] ?? 0);
+        
+        if ($user_id_to_update <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
+            exit();
+        }
+        
+        $extra_roles = $_POST['extra_roles'] ?? [];
+        $valid_roles = ['admin', 'coach', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff'];
+        $admin_id = $_SESSION['user_id'];
+        
+        // Ensure user_roles table exists
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `user_roles` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `role` VARCHAR(50) NOT NULL,
+            `assigned_by` INT DEFAULT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `unique_user_role` (`user_id`, `role`),
+            INDEX `idx_user` (`user_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        
+        $pdo->beginTransaction();
+        
+        // Remove all existing extra roles
+        $pdo->prepare("DELETE FROM user_roles WHERE user_id = ?")->execute([$user_id_to_update]);
+        
+        // Insert new extra roles
+        if (is_array($extra_roles) && !empty($extra_roles)) {
+            $insert_stmt = $pdo->prepare("INSERT INTO user_roles (user_id, role, assigned_by) VALUES (?, ?, ?)");
+            foreach ($extra_roles as $role) {
+                $role = trim($role);
+                if (in_array($role, $valid_roles)) {
+                    $insert_stmt->execute([$user_id_to_update, $role, $admin_id]);
+                }
+            }
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode(['success' => true, 'message' => 'User roles updated successfully']);
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        error_log("Admin roles update error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
+// =========================================================
+// MODULE 8.8: ADMIN PARENT ASSIGNMENT
+// =========================================================
+if ($action == 'admin_assign_parent') {
+    header('Content-Type: application/json');
+    
+    try {
+        $athlete_id = intval($_POST['user_id'] ?? 0);
+        $parent_id = intval($_POST['parent_id'] ?? 0);
+        $relationship = trim($_POST['relationship'] ?? 'Parent');
+        
+        if ($athlete_id <= 0 || $parent_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user or parent ID']);
+            exit();
+        }
+        
+        if ($athlete_id === $parent_id) {
+            echo json_encode(['success' => false, 'message' => 'Cannot assign a user as their own parent']);
+            exit();
+        }
+        
+        // Check if already assigned
+        $check = $pdo->prepare("SELECT id FROM managed_athletes WHERE parent_id = ? AND athlete_id = ?");
+        $check->execute([$parent_id, $athlete_id]);
+        if ($check->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'This parent is already assigned to this user']);
+            exit();
+        }
+        
+        // Create the assignment
+        $stmt = $pdo->prepare("INSERT INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats) VALUES (?, ?, ?, 1, 1)");
+        $stmt->execute([$parent_id, $athlete_id, $relationship]);
+        
+        echo json_encode(['success' => true, 'message' => 'Parent assigned successfully']);
+    } catch (PDOException $e) {
+        error_log("Admin parent assignment error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+    exit();
+}
+
+if ($action == 'admin_remove_parent') {
+    header('Content-Type: application/json');
+    
+    try {
+        $managed_id = intval($_POST['managed_id'] ?? 0);
+        
+        if ($managed_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid assignment ID']);
+            exit();
+        }
+        
+        $pdo->prepare("DELETE FROM managed_athletes WHERE id = ?")->execute([$managed_id]);
+        
+        echo json_encode(['success' => true, 'message' => 'Parent assignment removed']);
+    } catch (PDOException $e) {
+        error_log("Admin remove parent error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
