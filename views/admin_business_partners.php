@@ -520,6 +520,8 @@ function editPartner(partner) {
 
 <?php if ($embeddedInMarketing): ?>
 function switchPartnerTab(tab) {
+    var validTabs = ['partners', 'add', 'contracts'];
+    if (validTabs.indexOf(tab) === -1) return;
     document.querySelectorAll('.partner-section').forEach(function(section) {
         section.style.display = 'none';
     });
