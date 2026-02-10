@@ -268,7 +268,7 @@ $is_demo_data = false;
                     <button class="btn btn-secondary" onclick="openSessionDetailModal(this.closest('.session-card'))"><i class="fas fa-eye"></i> View</button>
                     <?php if ($is_mine || $user_role === 'admin'): ?>
                     <button class="btn btn-secondary" onclick="openAssignPlanModal('<?= $session['id'] ?>', '<?= $session['practice_plan_id'] ?? '' ?>')"><i class="fas fa-clipboard-list"></i> <?= !empty($session['practice_plan_name']) ? 'Change' : 'Add' ?> Plan</button>
-                    <a href="?page=coach_session_evaluations&session_id=<?= $session['id'] ?>" class="btn btn-secondary"><i class="fas fa-clipboard-check"></i> Evaluation</a>
+                    <a href="?page=coach_session_evaluations&session_id=<?= intval($session['id']) ?>" class="btn btn-secondary"><i class="fas fa-clipboard-check"></i> Evaluation</a>
                     <?php endif; ?>
                     <a href="?page=record_drill_video&session_id=<?= $session['id'] ?>" class="btn btn-secondary"><i class="fas fa-video"></i> Record</a>
                 </div>
