@@ -268,9 +268,8 @@ $error_total_pages = ceil($error_total / $per_page);
 ?>
 
 <style>
-    /* Use standard .tabs/.tab from shared_styles.css for tab navigation */
-    .tabs a.tab { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-    .tabs a.tab .badge { padding: 2px 8px; background: rgba(107, 70, 193, 0.15); color: var(--primary-light, #a78bfa); border-radius: 10px; font-size: 11px; font-weight: 700; }
+    /* Use standard .page-tabs/.page-tab from style-guide.css for tab navigation */
+    .page-tabs a.page-tab .badge { padding: 2px 8px; background: rgba(107, 70, 193, 0.15); color: var(--primary-light, #a78bfa); border-radius: 10px; font-size: 11px; font-weight: 700; }
     .security-filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
     .security-filters .form-group { margin-bottom: 0; }
     .security-filters .form-group label { font-size: 11px; font-weight: 700; color: var(--text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; }
@@ -327,30 +326,32 @@ $error_total_pages = ceil($error_total / $per_page);
     </div>
 </div>
 
-<!-- Security Tabs - using standard .tabs/.tab classes -->
-<div class="tabs">
-    <a href="?page=admin_security&tab=login_history" class="tab <?= $security_tab === 'login_history' ? 'active' : '' ?>">
+<!-- Security Tabs - using standard .page-tabs/.page-tab classes matching system tools -->
+<div class="page-tabs" style="flex-wrap: wrap;">
+    <a href="?page=admin_security&tab=login_history" class="page-tab <?= $security_tab === 'login_history' ? 'active' : '' ?>">
         <i class="fas fa-clock-rotate-left"></i> Login History
     </a>
-    <a href="?page=admin_security&tab=audit_logs" class="tab <?= $security_tab === 'audit_logs' ? 'active' : '' ?>">
+    <a href="?page=admin_security&tab=audit_logs" class="page-tab <?= $security_tab === 'audit_logs' ? 'active' : '' ?>">
         <i class="fas fa-list-check"></i> Audit Log
     </a>
-    <a href="?page=admin_security&tab=error_logs" class="tab <?= $security_tab === 'error_logs' ? 'active' : '' ?>">
+    <a href="?page=admin_security&tab=error_logs" class="page-tab <?= $security_tab === 'error_logs' ? 'active' : '' ?>">
         <i class="fas fa-bug"></i> Error Log
     </a>
-    <a href="?page=admin_security&tab=blocklist" class="tab <?= $security_tab === 'blocklist' ? 'active' : '' ?>">
+    <a href="?page=admin_security&tab=blocklist" class="page-tab <?= $security_tab === 'blocklist' ? 'active' : '' ?>">
         <i class="fas fa-ban"></i> Registration Restrictions
         <?php if ($security_tab === 'blocklist' && count($restrictions) > 0): ?>
         <span class="badge"><?php echo count($restrictions); ?></span>
         <?php endif; ?>
     </a>
-    <a href="?page=admin_security&tab=pos_whitelist" class="tab <?= $security_tab === 'pos_whitelist' ? 'active' : '' ?>">
+    <a href="?page=admin_security&tab=pos_whitelist" class="page-tab <?= $security_tab === 'pos_whitelist' ? 'active' : '' ?>">
         <i class="fas fa-cash-register"></i> POS IP Whitelist
         <?php if ($security_tab === 'pos_whitelist' && $pos_whitelist_total > 0): ?>
         <span class="badge"><?php echo $pos_whitelist_total; ?></span>
         <?php endif; ?>
     </a>
 </div>
+
+<div class="page-tab-content">
 
 <?php if ($security_tab === 'login_history'): ?>
 <!-- Online Users Section -->
@@ -1221,3 +1222,4 @@ function removePosWhitelistEntry(entryId) {
 </script>
 
 <?php endif; ?>
+</div>
