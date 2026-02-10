@@ -99,37 +99,14 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         color: var(--text-secondary, #A8A8B8);
         font-size: 14px;
     }
-    .filters-bar {
-        background: var(--bg-card, #16161F);
-        border: 1px solid var(--border, #2D2D3F);
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 24px;
-        display: flex;
-        gap: 15px;
-        flex-wrap: wrap;
-    }
-    .filter-group {
-        flex: 1;
-        min-width: 200px;
-    }
-    .filter-label {
-        display: block;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--text-secondary, #A8A8B8);
-        margin-bottom: 8px;
-        text-transform: uppercase;
-    }
-    .filter-select {
-        width: 100%;
-        padding: 10px;
-        background: var(--bg-main, #0A0A0F);
-        border: 1px solid var(--border, #2D2D3F);
-        border-radius: 6px;
-        color: #fff;
-        font-size: 14px;
-    }
+    .filter-box { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
+    .filter-box-header { background: var(--bg-main, #0A0A0F); padding: 14px 20px; font-weight: 700; color: var(--text-white, #fff); font-size: 14px; border-bottom: 1px solid var(--border, #2D2D3F); display: flex; align-items: center; gap: 10px; }
+    .filter-box-header i { color: var(--primary, #6B46C1); }
+    .filter-box-content { padding: 20px; }
+    .filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+    .filter-field { display: flex; flex-direction: column; gap: 8px; }
+    .filter-field label { font-size: 12px; font-weight: 600; color: var(--text-dim, #9CA3AF); text-transform: uppercase; }
+    .filter-actions { display: flex; flex-direction: row !important; gap: 8px !important; }
     .sessions-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -341,8 +318,8 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
         .sessions-grid {
             grid-template-columns: 1fr;
         }
-        .filters-bar {
-            flex-direction: column;
+        .filter-row {
+            grid-template-columns: 1fr;
         }
     }
 </style>
@@ -367,42 +344,45 @@ $available_credits = floatval($user_credits_stmt->fetchColumn());
 </div>
 
 <!-- Filters -->
-<div class="filters-bar">
-    <div class="filter-group">
-        <label class="filter-label">Age Group</label>
-        <select class="filter-select" onchange="applyFilters(this, 'age_group')">
-            <option value="">All Age Groups</option>
-            <?php foreach ($age_groups as $ag): ?>
-                <option value="<?= $ag['id'] ?>" <?= $age_group_filter == $ag['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($ag['name']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    
-    <div class="filter-group">
-        <label class="filter-label">Skill Level</label>
-        <select class="filter-select" onchange="applyFilters(this, 'skill_level')">
-            <option value="">All Skill Levels</option>
-            <?php foreach ($skill_levels as $sl): ?>
-                <option value="<?= $sl['id'] ?>" <?= $skill_level_filter == $sl['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($sl['name']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    
-    <div class="filter-group">
-        <label class="filter-label">Session Type</label>
-        <select class="filter-select" onchange="applyFilters(this, 'session_type')">
-            <option value="">All Types</option>
-            <?php foreach ($session_types as $st): ?>
-                <option value="<?= htmlspecialchars($st['session_type']) ?>" 
-                        <?= $session_type_filter == $st['session_type'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($st['session_type']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
+<div class="filter-box">
+    <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Schedule</div>
+    <div class="filter-box-content">
+        <div class="filter-row">
+            <div class="filter-field">
+                <label>Age Group</label>
+                <select class="form-select" onchange="applyFilters(this, 'age_group')">
+                    <option value="">All Age Groups</option>
+                    <?php foreach ($age_groups as $ag): ?>
+                        <option value="<?= $ag['id'] ?>" <?= $age_group_filter == $ag['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($ag['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Skill Level</label>
+                <select class="form-select" onchange="applyFilters(this, 'skill_level')">
+                    <option value="">All Skill Levels</option>
+                    <?php foreach ($skill_levels as $sl): ?>
+                        <option value="<?= $sl['id'] ?>" <?= $skill_level_filter == $sl['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($sl['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Session Type</label>
+                <select class="form-select" onchange="applyFilters(this, 'session_type')">
+                    <option value="">All Types</option>
+                    <?php foreach ($session_types as $st): ?>
+                        <option value="<?= htmlspecialchars($st['session_type']) ?>" 
+                                <?= $session_type_filter == $st['session_type'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($st['session_type']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
     </div>
 </div>
 

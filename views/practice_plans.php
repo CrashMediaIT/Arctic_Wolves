@@ -121,43 +121,14 @@ try {
     .btn-secondary:hover {
         background: #2d3b52;
     }
-    .filter-bar {
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 24px;
-        display: flex;
-        gap: 15px;
-        flex-wrap: wrap;
-        align-items: flex-end;
-    }
-    .filter-group {
-        flex: 1;
-        min-width: 200px;
-    }
-    .filter-label {
-        display: block;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #64748b;
-        margin-bottom: 8px;
-        letter-spacing: 0.5px;
-    }
-    .filter-select {
-        width: 100%;
-        padding: 10px 12px;
-        background: #06080b;
-        border: 1px solid #1e293b;
-        border-radius: 6px;
-        color: #fff;
-        font-size: 13px;
-    }
-    .filter-select:focus {
-        outline: none;
-        border-color: var(--primary);
-    }
+    .filter-box { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
+    .filter-box-header { background: var(--bg-main, #0A0A0F); padding: 14px 20px; font-weight: 700; color: var(--text-white, #fff); font-size: 14px; border-bottom: 1px solid var(--border, #2D2D3F); display: flex; align-items: center; gap: 10px; }
+    .filter-box-header i { color: var(--primary, #6B46C1); }
+    .filter-box-content { padding: 20px; }
+    .filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+    .filter-field { display: flex; flex-direction: column; gap: 8px; }
+    .filter-field label { font-size: 12px; font-weight: 600; color: var(--text-dim, #9CA3AF); text-transform: uppercase; }
+    .filter-actions { display: flex; flex-direction: row !important; gap: 8px !important; }
     .plans-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -855,36 +826,41 @@ try {
     </div>
 <?php endif; ?>
 
-<div class="filter-bar">
-    <div class="filter-group">
-        <label class="filter-label">Search Plans</label>
-        <input type="text" class="form-input" placeholder="Search practice plans..." data-search-table="plans" id="planSearchInput">
+<div class="filter-box">
+    <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Practice Plans</div>
+    <div class="filter-box-content">
+        <div class="filter-row">
+            <div class="filter-field">
+                <label>Search Plans</label>
+                <input type="text" class="form-select" placeholder="Search practice plans..." data-search-table="plans" id="planSearchInput">
+            </div>
+            <div class="filter-field">
+                <label>Age Group</label>
+                <select class="form-select" id="ageGroupFilter" data-filter-table="plans" data-filter-column="age_group">
+                    <option value="">All Age Groups</option>
+                    <?php foreach ($age_groups as $age): ?>
+                        <option value="<?= htmlspecialchars($age) ?>" <?= $age_group_filter == $age ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($age) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Focus Area</label>
+                <select class="form-select" id="focusFilter" data-filter-table="plans" data-filter-column="focus_area">
+                    <option value="">All Focus Areas</option>
+                    <?php foreach ($focus_areas as $focus): ?>
+                        <option value="<?= htmlspecialchars($focus) ?>" <?= $focus_filter == $focus ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($focus) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-field filter-actions">
+                <button class="btn btn-primary" onclick="applyFilters()"><i class="fas fa-search"></i> Apply</button>
+            </div>
+        </div>
     </div>
-    <div class="filter-group">
-        <label class="filter-label">Age Group</label>
-        <select class="form-select filter-select" id="ageGroupFilter" data-filter-table="plans" data-filter-column="age_group">
-            <option value="">All Age Groups</option>
-            <?php foreach ($age_groups as $age): ?>
-                <option value="<?= htmlspecialchars($age) ?>" <?= $age_group_filter == $age ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($age) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <div class="filter-group">
-        <label class="filter-label">Focus Area</label>
-        <select class="form-select filter-select" id="focusFilter" data-filter-table="plans" data-filter-column="focus_area">
-            <option value="">All Focus Areas</option>
-            <?php foreach ($focus_areas as $focus): ?>
-                <option value="<?= htmlspecialchars($focus) ?>" <?= $focus_filter == $focus ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($focus) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <button class="btn" onclick="applyFilters()">
-        <i class="fas fa-filter"></i> Apply
-    </button>
 </div>
 
 <?php if (empty($plans)): ?>

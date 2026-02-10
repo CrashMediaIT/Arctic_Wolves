@@ -343,43 +343,60 @@ foreach ($mileage_entries as $entry) {
         </div>
     </div>
 
+    <!-- Mileage Filters -->
+    <div class="filter-box">
+        <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Mileage Log</div>
+        <div class="filter-box-content">
+            <form method="GET" action="" class="filter-row" id="filterForm">
+                <input type="hidden" name="page" value="mileage">
+                <div class="filter-field">
+                    <label>Time Period</label>
+                    <select name="period" class="form-select" aria-label="Filter by period" data-action="auto-submit">
+                        <option value="week" <?= $filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
+                        <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
+                        <option value="last_month" <?= $filter_period === 'last_month' ? 'selected' : '' ?>>Last Month</option>
+                        <option value="3months" <?= $filter_period === '3months' ? 'selected' : '' ?>>Last 3 Months</option>
+                        <option value="6months" <?= $filter_period === '6months' ? 'selected' : '' ?>>Last 6 Months</option>
+                        <option value="year" <?= $filter_period === 'year' ? 'selected' : '' ?>>This Year</option>
+                        <option value="last_year" <?= $filter_period === 'last_year' ? 'selected' : '' ?>>Last Year</option>
+                        <option value="all" <?= $filter_period === 'all' ? 'selected' : '' ?>>All Time</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Search</label>
+                    <input type="text" name="search" class="form-select" aria-label="Search title or purpose" placeholder="Search title/purpose..." value="<?= htmlspecialchars($filter_search) ?>">
+                </div>
+                <div class="filter-field">
+                    <label>Athlete</label>
+                    <select name="athlete_id" class="form-select" aria-label="Filter by athlete" data-action="auto-submit">
+                        <option value="">All Athletes</option>
+                        <?php foreach ($athletes as $athlete): ?>
+                            <option value="<?= $athlete['id'] ?>" <?= $filter_athlete == $athlete['id'] ? 'selected' : '' ?>><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Session</label>
+                    <select name="session_id" class="form-select" aria-label="Filter by session" data-action="auto-submit">
+                        <option value="">All Sessions</option>
+                        <?php foreach ($sessions as $session): ?>
+                            <option value="<?= $session['id'] ?>" <?= $filter_session == $session['id'] ? 'selected' : '' ?>><?= htmlspecialchars($session['session_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field filter-actions">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                    <a href="?page=mileage" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                    <button type="button" class="btn btn-secondary" data-action="export-mileage"><i class="fas fa-file-export"></i> Export</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Mileage Log -->
     <div class="content-card">
-        <div class="card-header mileage-log-header">
+        <div class="card-header">
             <h3><i class="fas fa-list"></i> Mileage Log</h3>
-            <form method="GET" action="" class="filter-group" id="filterForm">
-                <input type="hidden" name="page" value="mileage">
-                
-                <select name="period" class="form-input-small" aria-label="Filter by period" data-action="auto-submit">
-                    <option value="week" <?= $filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
-                    <option value="month" <?= $filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
-                    <option value="last_month" <?= $filter_period === 'last_month' ? 'selected' : '' ?>>Last Month</option>
-                    <option value="3months" <?= $filter_period === '3months' ? 'selected' : '' ?>>Last 3 Months</option>
-                    <option value="6months" <?= $filter_period === '6months' ? 'selected' : '' ?>>Last 6 Months</option>
-                    <option value="year" <?= $filter_period === 'year' ? 'selected' : '' ?>>This Year</option>
-                    <option value="last_year" <?= $filter_period === 'last_year' ? 'selected' : '' ?>>Last Year</option>
-                    <option value="all" <?= $filter_period === 'all' ? 'selected' : '' ?>>All Time</option>
-                </select>
-                
-                <input type="text" name="search" class="form-input-small" aria-label="Search title or purpose" placeholder="Search title/purpose..." value="<?= htmlspecialchars($filter_search) ?>">
-                
-                <select name="athlete_id" class="form-input-small" aria-label="Filter by athlete" data-action="auto-submit">
-                    <option value="">All Athletes</option>
-                    <?php foreach ($athletes as $athlete): ?>
-                        <option value="<?= $athlete['id'] ?>" <?= $filter_athlete == $athlete['id'] ? 'selected' : '' ?>><?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                
-                <select name="session_id" class="form-input-small" aria-label="Filter by session" data-action="auto-submit">
-                    <option value="">All Sessions</option>
-                    <?php foreach ($sessions as $session): ?>
-                        <option value="<?= $session['id'] ?>" <?= $filter_session == $session['id'] ? 'selected' : '' ?>><?= htmlspecialchars($session['session_name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                
-                <button type="submit" class="btn-secondary" style="height: fit-content;"><i class="fas fa-search"></i> Filter</button>
-                <button type="button" class="btn-secondary" data-action="export-mileage" style="height: fit-content;"><i class="fas fa-file-export"></i> Export</button>
-            </form>
         </div>
         <div class="card-body">
             <?php if (count($mileage_entries) > 0): ?>
@@ -617,45 +634,17 @@ foreach ($mileage_entries as $entry) {
     background: #dc2626;
 }
 
-.filter-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    flex: 1;
-    margin-left: auto;
-    justify-content: flex-end;
-}
+.filter-box { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
+.filter-box-header { background: var(--bg-main, #0A0A0F); padding: 14px 20px; font-weight: 700; color: var(--text-white, #fff); font-size: 14px; border-bottom: 1px solid var(--border, #2D2D3F); display: flex; align-items: center; gap: 10px; }
+.filter-box-header i { color: var(--primary, #6B46C1); }
+.filter-box-content { padding: 20px; }
+.filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+.filter-field { display: flex; flex-direction: column; gap: 8px; }
+.filter-field label { font-size: 12px; font-weight: 600; color: var(--text-dim, #9CA3AF); text-transform: uppercase; }
+.filter-actions { display: flex; flex-direction: row !important; gap: 8px !important; }
 
-.card-header.mileage-log-header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-}
-
-.card-header.mileage-log-header h3 {
-    margin: 0;
-    flex-shrink: 0;
-}
-
-/* Responsive adjustments for filter group */
 @media (max-width: 768px) {
-    .card-header.mileage-log-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .filter-group {
-        margin-left: 0;
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    .filter-group select,
-    .filter-group input[name="search"] {
-        width: 100%;
-    }
+    .filter-row { grid-template-columns: 1fr; }
 }
 
 .form-input-small {
