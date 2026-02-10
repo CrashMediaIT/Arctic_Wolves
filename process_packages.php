@@ -174,7 +174,12 @@ try {
                 foreach ($session_ids as $sid) {
                     $sid = intval($sid);
                     if ($sid > 0) {
-                        $insert_stmt->execute([$package_id, $sid]);
+                        // Verify session exists before inserting
+                        $verify = $pdo->prepare("SELECT id FROM sessions WHERE id = ?");
+                        $verify->execute([$sid]);
+                        if ($verify->fetch()) {
+                            $insert_stmt->execute([$package_id, $sid]);
+                        }
                     }
                 }
             }

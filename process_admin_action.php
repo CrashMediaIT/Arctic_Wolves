@@ -2172,7 +2172,7 @@ if ($action == 'admin_update_roles') {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `user_roles` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `user_id` INT NOT NULL,
-            `role` VARCHAR(50) NOT NULL,
+            `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff') NOT NULL,
             `assigned_by` INT DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY `unique_user_role` (`user_id`, `role`),
