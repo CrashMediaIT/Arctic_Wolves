@@ -143,6 +143,7 @@ $allowed_pages = [
     'drill_library'           => 'views/drills.php',
     'create_drill'            => 'views/drills.php',
     'import_drill'            => 'views/drills.php',
+    'export_import_drills'    => 'views/drills.php',
     'view_drill'              => 'views/view_drill.php',
     'view_practice_plan'      => 'views/view_practice_plan.php',
     
@@ -151,6 +152,7 @@ $allowed_pages = [
     'create_practice'         => 'views/practice.php',
     'practice_create'         => 'views/practice.php',
     'practice_import'         => 'views/practice.php',
+    'export_import_plans'     => 'views/practice.php',
     
     'roster'                  => 'views/coach_roster.php',
     
@@ -749,10 +751,10 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=coach_calendar" class="nav-link <?= $page=='coach_calendar'?'active':'' ?>">
                 <i class="fa-solid fa-calendar icon"></i> Calendar
             </a>
-            <a href="?page=drills" class="nav-link <?= in_array($page, ['drills','drill_library','create_drill','import_drill'])?'active':'' ?>">
+            <a href="?page=drills" class="nav-link <?= in_array($page, ['drills','drill_library','create_drill','import_drill','export_import_drills'])?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-list icon"></i> Drills
             </a>
-            <a href="?page=practice" class="nav-link <?= in_array($page, ['practice','practice_library','create_practice','practice_create','practice_import'])?'active':'' ?>">
+            <a href="?page=practice" class="nav-link <?= in_array($page, ['practice','practice_library','create_practice','practice_create','practice_import','export_import_plans'])?'active':'' ?>">
                 <i class="fa-solid fa-file-lines icon"></i> Practice Plans
             </a>
             <a href="?page=roster" class="nav-link <?= $page=='roster'?'active':'' ?>">
