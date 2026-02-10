@@ -90,7 +90,7 @@ try {
                 }
                 // Verify the current key matches what's in the environment
                 $existing_key = $_ENV['ENCRYPTION_KEY'] ?? '';
-                if (strtolower($current_key) !== strtolower($existing_key)) {
+                if ($current_key !== $existing_key) {
                     header('Location: dashboard.php?page=system_tools&tab=encryption&error=' . urlencode('The current encryption key you entered does not match. Key change denied.'));
                     exit;
                 }

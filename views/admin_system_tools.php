@@ -1730,7 +1730,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                 <div class="card-body">
                     <div class="alert alert-warning" style="margin: 0;">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <span>Only the first administrator account can configure or change the encryption key. Contact your system administrator for encryption key changes.</span>
+                        <span>Only the original administrator account (first created during setup) can configure or change the encryption key.</span>
                     </div>
                 </div>
             </div>
