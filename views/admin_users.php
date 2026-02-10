@@ -225,47 +225,72 @@ foreach ($users as $u) {
 
 <div class="users-content">
     <!-- Filter and Actions -->
-    <div class="action-bar-enhanced">
-        <form method="GET" action="" class="filter-form-enhanced">
-            <input type="hidden" name="page" value="all_users">
-            <div class="search-input-wrapper">
-                <i class="fas fa-search"></i>
-                <input type="text" name="search" class="form-input" placeholder="Search by name, email, or phone..." 
-                       value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
-            </div>
-            <select name="role" class="form-select" id="roleFilter">
-                <option value="">All Roles</option>
-                <option value="admin" <?php echo $role_filter === 'admin' ? 'selected' : ''; ?>>Admin</option>
-                <option value="coach" <?php echo $role_filter === 'coach' ? 'selected' : ''; ?>>Coach</option>
-                <option value="health_coach" <?php echo $role_filter === 'health_coach' ? 'selected' : ''; ?>>Health Coach</option>
-                <option value="team_coach" <?php echo $role_filter === 'team_coach' ? 'selected' : ''; ?>>Team Coach</option>
-                <option value="athlete" <?php echo $role_filter === 'athlete' ? 'selected' : ''; ?>>Athlete</option>
-                <option value="parent" <?php echo $role_filter === 'parent' ? 'selected' : ''; ?>>Parent</option>
-            </select>
-            <select name="status" class="form-select" id="statusFilter">
-                <option value="">All Status</option>
-                <option value="active" <?php echo $status_filter === 'active' ? 'selected' : ''; ?>>Active</option>
-                <option value="inactive" <?php echo $status_filter === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
-            </select>
-            <select name="team" class="form-select" id="teamFilter">
-                <option value="">All Teams</option>
-                <?php foreach ($teams as $team): ?>
-                    <option value="<?php echo $team['id']; ?>" <?php echo $team_filter == $team['id'] ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($team['name']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <select name="age" class="form-select" id="ageFilter">
-                <option value="">All Ages</option>
-                <option value="u10" <?php echo $age_filter === 'u10' ? 'selected' : ''; ?>>Under 10</option>
-                <option value="u12" <?php echo $age_filter === 'u12' ? 'selected' : ''; ?>>U12 (10-11)</option>
-                <option value="u14" <?php echo $age_filter === 'u14' ? 'selected' : ''; ?>>U14 (12-13)</option>
-                <option value="u16" <?php echo $age_filter === 'u16' ? 'selected' : ''; ?>>U16 (14-15)</option>
-                <option value="u18" <?php echo $age_filter === 'u18' ? 'selected' : ''; ?>>U18 (16-17)</option>
-                <option value="18plus" <?php echo $age_filter === '18plus' ? 'selected' : ''; ?>>18+</option>
-            </select>
-            <button type="submit" class="btn btn-secondary"><i class="fas fa-filter"></i> Filter</button>
-        </form>
+    <div class="filter-box">
+        <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Users</div>
+        <div class="filter-box-content">
+            <form method="GET" action="" class="filter-row">
+                <input type="hidden" name="page" value="all_users">
+                <div class="filter-field" style="grid-column: span 2;">
+                    <label>Search</label>
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" name="search" class="form-input" placeholder="Search by name, email, or phone..." 
+                               value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
+                    </div>
+                </div>
+                <div class="filter-field">
+                    <label>Role</label>
+                    <select name="role" class="form-select" id="roleFilter">
+                        <option value="">All Roles</option>
+                        <option value="admin" <?php echo $role_filter === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                        <option value="coach" <?php echo $role_filter === 'coach' ? 'selected' : ''; ?>>Coach</option>
+                        <option value="health_coach" <?php echo $role_filter === 'health_coach' ? 'selected' : ''; ?>>Health Coach</option>
+                        <option value="team_coach" <?php echo $role_filter === 'team_coach' ? 'selected' : ''; ?>>Team Coach</option>
+                        <option value="athlete" <?php echo $role_filter === 'athlete' ? 'selected' : ''; ?>>Athlete</option>
+                        <option value="parent" <?php echo $role_filter === 'parent' ? 'selected' : ''; ?>>Parent</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Status</label>
+                    <select name="status" class="form-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="active" <?php echo $status_filter === 'active' ? 'selected' : ''; ?>>Active</option>
+                        <option value="inactive" <?php echo $status_filter === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Team</label>
+                    <select name="team" class="form-select" id="teamFilter">
+                        <option value="">All Teams</option>
+                        <?php foreach ($teams as $team): ?>
+                            <option value="<?php echo $team['id']; ?>" <?php echo $team_filter == $team['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($team['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Age</label>
+                    <select name="age" class="form-select" id="ageFilter">
+                        <option value="">All Ages</option>
+                        <option value="u10" <?php echo $age_filter === 'u10' ? 'selected' : ''; ?>>Under 10</option>
+                        <option value="u12" <?php echo $age_filter === 'u12' ? 'selected' : ''; ?>>U12 (10-11)</option>
+                        <option value="u14" <?php echo $age_filter === 'u14' ? 'selected' : ''; ?>>U14 (12-13)</option>
+                        <option value="u16" <?php echo $age_filter === 'u16' ? 'selected' : ''; ?>>U16 (14-15)</option>
+                        <option value="u18" <?php echo $age_filter === 'u18' ? 'selected' : ''; ?>>U18 (16-17)</option>
+                        <option value="18plus" <?php echo $age_filter === '18plus' ? 'selected' : ''; ?>>18+</option>
+                    </select>
+                </div>
+                <div class="filter-field filter-actions">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                    <a href="?page=all_users" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <div class="results-info"><span><?php echo $total_users; ?> user<?php echo $total_users !== 1 ? 's' : ''; ?></span></div>
         <div class="action-buttons">
             <form method="POST" action="process_admin_action.php" style="display: inline;" id="exportForm">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
@@ -530,24 +555,7 @@ function closeModal(modalId) {
 </script>
 
 <style>
-/* Users Page - Action Bar Enhanced */
-.action-bar-enhanced {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-}
-
-.filter-form-enhanced {
-    display: flex;
-    gap: 12px;
-    flex: 1;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
+/* Users Page - Search Input */
 .search-input-wrapper {
     position: relative;
     flex: 1;
@@ -1055,15 +1063,6 @@ function closeModal(modalId) {
 }
 
 @media (max-width: 768px) {
-    .action-bar-enhanced {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .filter-form-enhanced {
-        flex-direction: column;
-    }
-    
     .action-buttons {
         width: 100%;
         justify-content: flex-end;
