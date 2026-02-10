@@ -20,6 +20,9 @@ if ($tab === 'practice') $tab = 'practice_library'; // Default tab
     <a href="?page=practice_import" class="page-tab <?= $tab === 'practice_import' ? 'active' : '' ?>">
         <i class="fas fa-download"></i> Import Practice Plan
     </a>
+    <a href="?page=export_import_plans" class="page-tab <?= $tab === 'export_import_plans' ? 'active' : '' ?>">
+        <i class="fas fa-exchange-alt"></i> Export / Import All
+    </a>
 </div>
 
 <div class="page-tab-content">
@@ -30,6 +33,8 @@ if ($tab === 'practice') $tab = 'practice_library'; // Default tab
         include __DIR__ . '/practice_create.php';
     } elseif ($tab === 'practice_import') {
         include __DIR__ . '/practice_import.php';
+    } elseif ($tab === 'export_import_plans') {
+        include __DIR__ . '/practice_export_import.php';
     }
     ?>
 </div>

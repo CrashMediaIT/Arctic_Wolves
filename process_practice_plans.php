@@ -923,6 +923,184 @@ function downloadAndSaveDrillImage($image_url, $user_id) {
     return '';
 }
 
+// =========================================================
+// IMPORT PRACTICE PLANS FROM JSON FILE
+// =========================================================
+if ($action === 'import_json') {
+    requirePermission($pdo, $user_id, $user_role, 'create_practice_plans');
+    
+    header('Content-Type: application/json');
+    
+    try {
+        if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('File upload failed');
+        }
+        
+        $file = $_FILES['import_file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        if ($ext !== 'json') {
+            throw new Exception('Invalid file type. Only .json files are allowed.');
+        }
+        
+        $content = file_get_contents($file['tmp_name']);
+        if (empty($content)) {
+            throw new Exception('File is empty');
+        }
+        
+        $data = json_decode($content, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception('Invalid JSON format: ' . json_last_error_msg());
+        }
+        
+        if (!isset($data['export_type']) || $data['export_type'] !== 'practice_plans') {
+            throw new Exception('Invalid export file. Expected practice_plans export.');
+        }
+        
+        $imported_plans = 0;
+        $imported_drills = 0;
+        $skipped = 0;
+        $category_map = []; // old_id => new_id for drill categories
+        
+        $pdo->beginTransaction();
+        
+        // Import drill categories first if present
+        if (!empty($data['drill_categories'])) {
+            foreach ($data['drill_categories'] as $cat) {
+                $check = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+                $check->execute([$cat['name']]);
+                $existing = $check->fetch(PDO::FETCH_ASSOC);
+                
+                if ($existing) {
+                    $category_map[$cat['id']] = $existing['id'];
+                } else {
+                    $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description, position_type) VALUES (?, ?, ?)");
+                    $stmt->execute([
+                        $cat['name'],
+                        $cat['description'] ?? null,
+                        $cat['position_type'] ?? 'both'
+                    ]);
+                    $category_map[$cat['id']] = $pdo->lastInsertId();
+                }
+            }
+        }
+        
+        // Import practice plans
+        if (!empty($data['practice_plans'])) {
+            $skip_duplicates = !empty($_POST['skip_duplicates']);
+            
+            foreach ($data['practice_plans'] as $plan) {
+                $plan_name = $plan['name'] ?? $plan['title'] ?? '';
+                
+                if (empty($plan_name)) {
+                    $skipped++;
+                    continue;
+                }
+                
+                // Check for duplicate by name if skip_duplicates is set
+                if ($skip_duplicates) {
+                    $check = $pdo->prepare("SELECT id FROM practice_plans WHERE name = ?");
+                    $check->execute([$plan_name]);
+                    if ($check->fetch()) {
+                        $skipped++;
+                        continue;
+                    }
+                }
+                
+                $stmt = $pdo->prepare("
+                    INSERT INTO practice_plans (name, description, focus_area, age_group,
+                        duration_minutes, difficulty_level, created_by, total_duration, title)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $plan_name,
+                    $plan['description'] ?? null,
+                    $plan['focus_area'] ?? null,
+                    $plan['age_group'] ?? null,
+                    $plan['duration_minutes'] ?? 60,
+                    $plan['difficulty_level'] ?? 'intermediate',
+                    $user_id,
+                    $plan['total_duration'] ?? 60,
+                    $plan['title'] ?? null
+                ]);
+                
+                $new_plan_id = $pdo->lastInsertId();
+                
+                // Import associated drills
+                if (!empty($plan['drills'])) {
+                    foreach ($plan['drills'] as $drill_assoc) {
+                        $drill_title = $drill_assoc['drill_title'] ?? '';
+                        
+                        if (empty($drill_title)) continue;
+                        
+                        // Find or create the drill
+                        $drill_check = $pdo->prepare("SELECT id FROM drills WHERE title = ?");
+                        $drill_check->execute([$drill_title]);
+                        $existing_drill = $drill_check->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($existing_drill) {
+                            $drill_id = $existing_drill['id'];
+                        } else {
+                            // Create the drill
+                            $drill_stmt = $pdo->prepare("
+                                INSERT INTO drills (title, description, setup, coaching_points, progression,
+                                    created_by, diagram_data, video_url, ihs_source_url)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ");
+                            $drill_stmt->execute([
+                                $drill_title,
+                                $drill_assoc['drill_description'] ?? null,
+                                $drill_assoc['setup'] ?? null,
+                                $drill_assoc['coaching_points'] ?? null,
+                                $drill_assoc['progression'] ?? null,
+                                $user_id,
+                                $drill_assoc['diagram_data'] ?? null,
+                                $drill_assoc['video_url'] ?? null,
+                                $drill_assoc['ihs_source_url'] ?? null
+                            ]);
+                            $drill_id = $pdo->lastInsertId();
+                            $imported_drills++;
+                        }
+                        
+                        // Create the plan-drill association
+                        $assoc_stmt = $pdo->prepare("
+                            INSERT INTO practice_plan_drills (practice_plan_id, drill_id, drill_order, duration_minutes, notes)
+                            VALUES (?, ?, ?, ?, ?)
+                        ");
+                        $assoc_stmt->execute([
+                            $new_plan_id,
+                            $drill_id,
+                            $drill_assoc['drill_order'] ?? 0,
+                            $drill_assoc['duration_minutes'] ?? null,
+                            $drill_assoc['notes'] ?? null
+                        ]);
+                    }
+                }
+                
+                $imported_plans++;
+            }
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => "Import complete: {$imported_plans} practice plans imported" . ($imported_drills > 0 ? ", {$imported_drills} new drills created" : '') . ($skipped > 0 ? ", {$skipped} skipped" : ''),
+            'imported_plans' => $imported_plans,
+            'imported_drills' => $imported_drills,
+            'skipped' => $skipped
+        ]);
+        exit();
+        
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit();
+    }
+}
+
 // Fallback
 header("Location: dashboard.php?page=practice_plans");
 exit();

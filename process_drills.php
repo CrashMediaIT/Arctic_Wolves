@@ -840,6 +840,143 @@ function downloadAndSaveImage($image_url, $user_id) {
     return '';
 }
 
+// =========================================================
+// IMPORT DRILLS FROM JSON FILE
+// =========================================================
+if ($action === 'import_json') {
+    requirePermission($pdo, $user_id, $user_role, 'create_drills');
+    
+    header('Content-Type: application/json');
+    
+    try {
+        if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('File upload failed');
+        }
+        
+        $file = $_FILES['import_file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        if ($ext !== 'json') {
+            throw new Exception('Invalid file type. Only .json files are allowed.');
+        }
+        
+        $content = file_get_contents($file['tmp_name']);
+        if (empty($content)) {
+            throw new Exception('File is empty');
+        }
+        
+        $data = json_decode($content, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception('Invalid JSON format: ' . json_last_error_msg());
+        }
+        
+        if (!isset($data['export_type']) || $data['export_type'] !== 'drills') {
+            throw new Exception('Invalid export file. Expected drills export.');
+        }
+        
+        $imported_categories = 0;
+        $imported_drills = 0;
+        $skipped = 0;
+        $category_map = []; // old_id => new_id
+        
+        $pdo->beginTransaction();
+        
+        // Import categories first
+        if (!empty($data['categories'])) {
+            foreach ($data['categories'] as $cat) {
+                // Check if category with same name already exists
+                $check = $pdo->prepare("SELECT id FROM drill_categories WHERE name = ?");
+                $check->execute([$cat['name']]);
+                $existing = $check->fetch(PDO::FETCH_ASSOC);
+                
+                if ($existing) {
+                    $category_map[$cat['id']] = $existing['id'];
+                } else {
+                    $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description, position_type) VALUES (?, ?, ?)");
+                    $stmt->execute([
+                        $cat['name'],
+                        $cat['description'] ?? null,
+                        $cat['position_type'] ?? 'both'
+                    ]);
+                    $category_map[$cat['id']] = $pdo->lastInsertId();
+                    $imported_categories++;
+                }
+            }
+        }
+        
+        // Import drills
+        if (!empty($data['drills'])) {
+            $skip_duplicates = !empty($_POST['skip_duplicates']);
+            
+            foreach ($data['drills'] as $drill) {
+                // Check for duplicate by title if skip_duplicates is set
+                if ($skip_duplicates) {
+                    $check = $pdo->prepare("SELECT id FROM drills WHERE title = ?");
+                    $check->execute([$drill['title']]);
+                    if ($check->fetch()) {
+                        $skipped++;
+                        continue;
+                    }
+                }
+                
+                // Map category
+                $new_category_id = null;
+                if (!empty($drill['category_id']) && isset($category_map[$drill['category_id']])) {
+                    $new_category_id = $category_map[$drill['category_id']];
+                }
+                
+                $stmt = $pdo->prepare("
+                    INSERT INTO drills (title, description, setup, coaching_points, progression,
+                        category_id, created_by, diagram_data, video_url, ihs_source_url)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $drill['title'],
+                    $drill['description'] ?? null,
+                    $drill['setup'] ?? null,
+                    $drill['coaching_points'] ?? null,
+                    $drill['progression'] ?? null,
+                    $new_category_id,
+                    $user_id,
+                    $drill['diagram_data'] ?? null,
+                    $drill['video_url'] ?? null,
+                    $drill['ihs_source_url'] ?? null
+                ]);
+                
+                $new_drill_id = $pdo->lastInsertId();
+                
+                // Import tags
+                if (!empty($drill['tags'])) {
+                    $tag_stmt = $pdo->prepare("INSERT INTO drill_tags (drill_id, tag_name) VALUES (?, ?)");
+                    foreach ($drill['tags'] as $tag) {
+                        $tag_stmt->execute([$new_drill_id, $tag]);
+                    }
+                }
+                
+                $imported_drills++;
+            }
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => "Import complete: {$imported_drills} drills and {$imported_categories} categories imported" . ($skipped > 0 ? ", {$skipped} duplicates skipped" : ''),
+            'imported_drills' => $imported_drills,
+            'imported_categories' => $imported_categories,
+            'skipped' => $skipped
+        ]);
+        exit();
+        
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit();
+    }
+}
+
 // Fallback
 header("Location: dashboard.php?page=drills");
 exit();
