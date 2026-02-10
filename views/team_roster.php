@@ -197,19 +197,32 @@ if ($team) {
     </div>
 
     <!-- Filter and Search -->
-    <div class="filter-bar">
-        <form method="GET" action="" class="filter-group">
-            <input type="hidden" name="page" value="team_roster">
-            <input type="hidden" name="team_id" value="<?= $team['id'] ?>">
-            <select name="position" class="form-input-small" onchange="this.form.submit()">
-                <option value="all">All Positions</option>
-                <option value="Forward" <?= $filter_position === 'Forward' ? 'selected' : '' ?>>Forward</option>
-                <option value="Defense" <?= $filter_position === 'Defense' ? 'selected' : '' ?>>Defense</option>
-                <option value="Goalie" <?= $filter_position === 'Goalie' ? 'selected' : '' ?>>Goalie</option>
-            </select>
-            <input type="text" name="search" class="form-input-small" placeholder="Search players..." value="<?= htmlspecialchars($search) ?>">
-            <button type="submit" class="btn-secondary btn-sm"><i class="fas fa-search"></i></button>
-        </form>
+    <div class="filter-box">
+        <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Roster</div>
+        <div class="filter-box-content">
+            <form method="GET" action="" class="filter-row">
+                <input type="hidden" name="page" value="team_roster">
+                <input type="hidden" name="team_id" value="<?= $team['id'] ?>">
+                <div class="filter-field">
+                    <label>Position</label>
+                    <select name="position" class="form-select" onchange="this.form.submit()">
+                        <option value="all">All Positions</option>
+                        <option value="Forward" <?= $filter_position === 'Forward' ? 'selected' : '' ?>>Forward</option>
+                        <option value="Defense" <?= $filter_position === 'Defense' ? 'selected' : '' ?>>Defense</option>
+                        <option value="Goalie" <?= $filter_position === 'Goalie' ? 'selected' : '' ?>>Goalie</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Search</label>
+                    <input type="text" name="search" class="form-select" placeholder="Search players..." value="<?= htmlspecialchars($search) ?>">
+                </div>
+                <div class="filter-field filter-actions">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="view-controls" style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
         <div class="view-toggle">
             <button class="view-btn active" data-view="grid"><i class="fas fa-th"></i></button>
             <button class="view-btn" data-view="list"><i class="fas fa-list"></i></button>
@@ -603,22 +616,15 @@ if ($team) {
     line-height: 1.6;
 }
 
-/* Filter bar styling */
-.filter-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    gap: 16px;
-}
-
-.filter-group {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: center;
-}
+/* Filter box styling */
+.filter-box { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
+.filter-box-header { background: var(--bg-main, #0A0A0F); padding: 14px 20px; font-weight: 700; color: var(--text-white, #fff); font-size: 14px; border-bottom: 1px solid var(--border, #2D2D3F); display: flex; align-items: center; gap: 10px; }
+.filter-box-header i { color: var(--primary, #6B46C1); }
+.filter-box-content { padding: 20px; }
+.filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+.filter-field { display: flex; flex-direction: column; gap: 8px; }
+.filter-field label { font-size: 12px; font-weight: 600; color: var(--text-dim, #9CA3AF); text-transform: uppercase; }
+.filter-actions { display: flex; flex-direction: row !important; gap: 8px !important; }
 
 .form-input-small {
     padding: 10px 14px;
