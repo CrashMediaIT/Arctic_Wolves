@@ -109,7 +109,7 @@ function getConversations($pdo, $user_id) {
         $conversations = decryptUserRows($conversations);
         // Decrypt encrypted message content (last_message is an alias for message_body)
         foreach ($conversations as &$conv) {
-            if (isset($conv['last_message']) && $conv['last_message'] !== '') {
+            if (!empty($conv['last_message'])) {
                 $conv['last_message'] = FieldEncryption::decrypt($conv['last_message']);
             }
         }

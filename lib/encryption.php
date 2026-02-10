@@ -182,6 +182,8 @@ class FieldEncryption {
 
     /**
      * Sensitive fields in the messages table that require end-to-end encryption.
+     * Includes 'message_body' (used in process_messages.php), 'subject' and
+     * 'message' (used in process_contact.php) across the messages table schema.
      */
     const MESSAGE_ENCRYPTED_FIELDS = [
         'message_body', 'subject', 'message'
