@@ -375,6 +375,10 @@ try {
         color: var(--primary-light);
         border-color: var(--primary);
     }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+    }
 </style>
 
 <!-- Camera Mode Panel -->
@@ -472,7 +476,48 @@ try {
     <!-- Stopwatch Panel -->
     <div>
         <div class="card">
+            <div class="card-header">
+                <h3 id="sw-mode-title"><i class="fas fa-stopwatch"></i> Stopwatch Mode</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <label class="toggle-switch" style="margin: 0;">
+                        <input type="checkbox" id="sw-mode-toggle" onchange="swToggleMode()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span id="sw-mode-label" style="font-size: 14px; color: var(--text-muted);">Countdown</span>
+                </div>
+            </div>
             <div class="card-body sw-display-wrapper">
+                <!-- Countdown Time Input (hidden by default) -->
+                <div id="sw-countdown-input" style="display: none; margin-bottom: var(--space-4);">
+                    <div style="display: flex; gap: var(--space-3); justify-content: center; align-items: center; flex-wrap: wrap;">
+                        <div style="text-align: center;">
+                            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Minutes</label>
+                            <input type="number" id="sw-countdown-minutes" min="0" max="99" value="0" 
+                                   style="width: 70px; text-align: center; font-size: 20px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-white);" 
+                                   oninput="swUpdateCountdownPreview()">
+                        </div>
+                        <span style="font-size: 28px; color: var(--text-muted); padding-top: 20px;">:</span>
+                        <div style="text-align: center;">
+                            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Seconds</label>
+                            <input type="number" id="sw-countdown-seconds" min="0" max="59" value="30" 
+                                   style="width: 70px; text-align: center; font-size: 20px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-white);" 
+                                   oninput="swUpdateCountdownPreview()">
+                        </div>
+                        <button onclick="swSetCountdown()" class="btn btn-sm btn-primary" style="margin-top: 20px;">
+                            <i class="fas fa-check"></i> Set
+                        </button>
+                    </div>
+                    <div style="text-align: center; margin-top: var(--space-2);">
+                        <div style="display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                            <button onclick="swQuickCountdown(30)" class="btn btn-sm btn-secondary">30s</button>
+                            <button onclick="swQuickCountdown(60)" class="btn btn-sm btn-secondary">1m</button>
+                            <button onclick="swQuickCountdown(120)" class="btn btn-sm btn-secondary">2m</button>
+                            <button onclick="swQuickCountdown(300)" class="btn btn-sm btn-secondary">5m</button>
+                            <button onclick="swQuickCountdown(600)" class="btn btn-sm btn-secondary">10m</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="sw-display" class="sw-time-display">00:00.00</div>
                 <div class="sw-controls">
                     <button id="sw-start-btn" class="sw-btn sw-btn-start" onclick="swStart()">
@@ -638,6 +683,136 @@ function swReset() {
     document.getElementById('sw-lap-btn').disabled = true;
     document.getElementById('sw-save-btn').disabled = true;
     renderLaps();
+}
+
+// Countdown Timer Mode Functions
+function swToggleMode() {
+    const toggle = document.getElementById('sw-mode-toggle');
+    const modeTitle = document.getElementById('sw-mode-title');
+    const modeLabel = document.getElementById('sw-mode-label');
+    const countdownInput = document.getElementById('sw-countdown-input');
+    const lapBtn = document.getElementById('sw-lap-btn');
+    
+    if (toggle.checked) {
+        // Switch to countdown mode
+        modeTitle.innerHTML = '<i class="fas fa-hourglass-half"></i> Countdown Timer';
+        modeLabel.textContent = 'Countdown';
+        countdownInput.style.display = 'block';
+        lapBtn.style.display = 'none'; // Hide lap button in countdown mode
+        
+        // Set initial countdown time
+        const minutes = parseInt(document.getElementById('sw-countdown-minutes').value) || 0;
+        const seconds = parseInt(document.getElementById('sw-countdown-seconds').value) || 0;
+        const totalSeconds = minutes * 60 + seconds;
+        
+        if (totalSeconds > 0) {
+            stopwatch.setCountdownMode(totalSeconds, onCountdownComplete);
+        }
+    } else {
+        // Switch to stopwatch mode
+        modeTitle.innerHTML = '<i class="fas fa-stopwatch"></i> Stopwatch Mode';
+        modeLabel.textContent = 'Countdown';
+        countdownInput.style.display = 'none';
+        lapBtn.style.display = 'inline-flex'; // Show lap button in stopwatch mode
+        stopwatch.setStopwatchMode();
+    }
+    
+    // Reset buttons
+    document.getElementById('sw-start-btn').disabled = false;
+    document.getElementById('sw-stop-btn').disabled = true;
+    document.getElementById('sw-lap-btn').disabled = true;
+}
+
+function swUpdateCountdownPreview() {
+    // Optional: Could update display to show preview
+}
+
+function swSetCountdown() {
+    const minutes = parseInt(document.getElementById('sw-countdown-minutes').value) || 0;
+    const seconds = parseInt(document.getElementById('sw-countdown-seconds').value) || 0;
+    const totalSeconds = minutes * 60 + seconds;
+    
+    if (totalSeconds <= 0) {
+        alert('Please enter a valid countdown time');
+        return;
+    }
+    
+    stopwatch.setCountdownMode(totalSeconds, onCountdownComplete);
+    document.getElementById('sw-start-btn').disabled = false;
+}
+
+function swQuickCountdown(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    
+    document.getElementById('sw-countdown-minutes').value = minutes;
+    document.getElementById('sw-countdown-seconds').value = secs;
+    
+    stopwatch.setCountdownMode(seconds, onCountdownComplete);
+    document.getElementById('sw-start-btn').disabled = false;
+}
+
+function onCountdownComplete() {
+    // Visual and audio feedback when countdown reaches zero
+    const display = document.getElementById('sw-display');
+    display.style.color = 'var(--error)';
+    display.style.animation = 'pulse 0.5s ease-in-out 3';
+    
+    // Play beep sound (if audio is available)
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        gainNode.gain.value = 0.3;
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+        
+        // Second beep
+        setTimeout(() => {
+            const osc2 = audioContext.createOscillator();
+            const gain2 = audioContext.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            osc2.frequency.value = 800;
+            osc2.type = 'sine';
+            gain2.gain.value = 0.3;
+            osc2.start(audioContext.currentTime);
+            osc2.stop(audioContext.currentTime + 0.2);
+        }, 250);
+        
+        // Third beep
+        setTimeout(() => {
+            const osc3 = audioContext.createOscillator();
+            const gain3 = audioContext.createGain();
+            osc3.connect(gain3);
+            gain3.connect(audioContext.destination);
+            osc3.frequency.value = 1000;
+            osc3.type = 'sine';
+            gain3.gain.value = 0.4;
+            osc3.start(audioContext.currentTime);
+            osc3.stop(audioContext.currentTime + 0.5);
+        }, 500);
+    } catch (e) {
+        console.log('Audio not available');
+    }
+    
+    // Alert user
+    setTimeout(() => {
+        display.style.color = '';
+        display.style.animation = '';
+        alert('⏰ Time\'s up!');
+    }, 1500);
+    
+    // Update buttons
+    document.getElementById('sw-start-btn').disabled = false;
+    document.getElementById('sw-stop-btn').disabled = true;
 }
 
 function renderLaps() {
