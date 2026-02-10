@@ -9,15 +9,17 @@
 ## Table of Contents
 
 1. [User Roles & Access Levels](#user-roles--access-levels)
-2. [Main Menu (All Users)](#main-menu-all-users)
-3. [Team Section](#team-section-team-coaches)
-4. [Coaches Corner](#coaches-corner-coaches--admins)
-5. [Health Management](#health-management-health-coaches--admins)
-6. [Accounting & Reports](#accounting--reports-admins-only)
-7. [Point of Sale (POS)](#point-of-sale-pos-admins--front-desk)
-8. [HR Section](#hr-section-admins-only)
-9. [Administration](#administration-admins-only)
-10. [Testing Scenarios](#key-testing-scenarios)
+2. [Navigation Structure Overview](#navigation-structure-overview)
+3. [Main Menu (All Users)](#main-menu-all-users)
+4. [Team Section (Team Coaches)](#team-section-team-coaches)
+5. [Coaches Corner (Coaches & Admins)](#coaches-corner-coaches--admins)
+6. [Health Management (Health Coaches & Admins)](#health-management-health-coaches--admins)
+7. [Accounting & Reports (Admins Only)](#accounting--reports-admins-only)
+8. [Point of Sale (Admins & Front Desk)](#point-of-sale-admins--front-desk)
+9. [HR Section (Admins Only)](#hr-section-admins-only)
+10. [Administration (Admins Only)](#administration-admins-only)
+11. [Profile & Settings](#profile--settings)
+12. [Key Testing Scenarios](#key-testing-scenarios)
 
 ---
 
@@ -42,12 +44,31 @@ The Arctic Wolves application has multiple user roles with different access perm
 
 ---
 
+## Navigation Structure Overview
+
+The Arctic Wolves application uses a hierarchical navigation menu organized into the following sections:
+
+1. **Main Menu** - Available to all users (Athletes, Parents, Coaches, Admins)
+2. **Team** - Team Coaches only
+3. **Coaches Corner** - On-ice Coaches and Admins (not Health Coaches)
+4. **Health Management** - Health Coaches and Admins
+5. **Accounting & Reports** - Admins only
+6. **Point of Sale** - Admins and Front Desk Staff only
+7. **HR** - Admins only
+8. **Administration** - Admins only
+9. **Profile & Settings** - Available to all users (footer section)
+
+The following documentation follows the exact order of items as they appear in the dashboard navigation menu.
+
+---
+
 ## Main Menu (All Users)
 
-These pages are accessible to all authenticated users (Athlete, Parent, Coach, Admin).
+These pages are accessible to all authenticated users (Athlete, Parent, Coach, Admin). Items appear in this exact order:
 
-### 1. Home Dashboard
+### 1. Home
 **Page:** `?page=home`  
+**Icon:** House  
 **File:** `views/home.php`
 
 **Purpose:** Central landing page providing personalized overview based on user role.
@@ -73,6 +94,7 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 ### 2. Performance Stats
 **Page:** `?page=stats`  
+**Icon:** Chart Line  
 **File:** `views/stats.php`
 
 **Purpose:** Track athlete performance metrics, goals, and skill development over time.
@@ -107,6 +129,7 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 ### 3. Messages
 **Page:** `?page=messages`  
+**Icon:** Comments  
 **File:** `views/messages.php`
 
 **Purpose:** Internal messaging system for communication between users.
@@ -128,6 +151,7 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 ### 4. Sessions
 **Page:** `?page=sessions`  
+**Icon:** Calendar Check  
 **File:** `views/sessions.php` (parent page with tabs)
 
 **Purpose:** Manage training session scheduling and bookings.
@@ -184,6 +208,7 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 ### 5. Video
 **Page:** `?page=video`  
+**Icon:** Video  
 **File:** `views/video.php` (parent page)
 
 **Purpose:** Video recording, review, and feedback system for skill development.
@@ -254,6 +279,7 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 ### 6. Health
 **Page:** `?page=health`  
+**Icon:** Heart Pulse  
 **File:** `views/health.php` (parent page)
 
 **Purpose:** Manage strength, conditioning, and nutrition programs.
@@ -307,6 +333,7 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 ### 7. Shop
 **Page:** `?page=shop`  
+**Icon:** Store  
 **File:** `views/shop.php`
 
 **Purpose:** E-commerce store for team merchandise and equipment.
@@ -332,8 +359,9 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 ---
 
-### 8. Payment History
+### 8. Purchase History
 **Page:** `?page=payment_history`  
+**Icon:** Receipt  
 **File:** `views/payment_history.php`
 
 **Purpose:** View complete transaction and payment history.
@@ -361,8 +389,9 @@ These pages are accessible to all authenticated users (Athlete, Parent, Coach, A
 
 These features are available only to users with the Team Coach role.
 
-### 9. Team Roster
+### 9. Roster
 **Page:** `?page=team_roster`  
+**Icon:** Users  
 **File:** `views/team_roster.php`
 
 **Purpose:** Manage team roster, player information, and team assignments.
@@ -388,10 +417,11 @@ These features are available only to users with the Team Coach role.
 
 ## Coaches Corner (Coaches & Admins)
 
-These pages are available to Coaches and Administrators only.
+These pages are available to On-ice Coaches and Administrators only (not Health Coaches).
 
-### 10. Coach Calendar
+### 10. Calendar
 **Page:** `?page=coach_calendar`  
+**Icon:** Calendar  
 **File:** `views/coach_calendar.php`
 
 **Purpose:** Coach's personal calendar showing all sessions, practices, and commitments.
@@ -417,6 +447,7 @@ These pages are available to Coaches and Administrators only.
 
 ### 11. Drills
 **Page:** `?page=drills`  
+**Icon:** Clipboard List  
 **File:** `views/drills.php` (parent page)
 
 **Purpose:** Manage drill library, create new drills, and import drills.
@@ -501,6 +532,7 @@ These pages are available to Coaches and Administrators only.
 
 ### 12. Practice Plans
 **Page:** `?page=practice`  
+**Icon:** File Lines  
 **File:** `views/practice.php` (parent page)
 
 **Purpose:** Create and manage complete practice plans with multiple drills.
@@ -578,8 +610,9 @@ These pages are available to Coaches and Administrators only.
 
 ---
 
-### 13. Coach Roster
+### 13. Roster
 **Page:** `?page=roster`  
+**Icon:** Users Gear  
 **File:** `views/coach_roster.php`
 
 **Purpose:** Coach's view of all their assigned athletes.
@@ -608,6 +641,7 @@ These pages are available to Coaches and Administrators only.
 
 ### 14. Session Evaluations
 **Page:** `?page=coach_session_evaluations`  
+**Icon:** Clipboard Check  
 **File:** `views/coach_session_evaluations.php` (parent page)
 
 **Purpose:** Evaluate athlete performance during training sessions.
@@ -660,8 +694,9 @@ These pages are available to Coaches and Administrators only.
 
 ---
 
-### 15. Travel / Mileage
+### 15. Travel
 **Page:** `?page=travel` or `?page=mileage`  
+**Icon:** Plane  
 **File:** `views/travel_mileage.php`
 
 **Purpose:** Track mileage and travel expenses for reimbursement.
@@ -693,8 +728,9 @@ These pages are available to Coaches and Administrators only.
 
 ---
 
-### 16. Record Drill Video (Coach)
+### 16. Video Recording
 **Page:** `?page=record_drill_video`  
+**Icon:** Video  
 **File:** `views/video_record_drill.php`
 
 **Purpose:** Coaches record demonstration videos or athlete performances.
@@ -719,8 +755,9 @@ These pages are available to Coaches and Administrators only.
 
 These pages are available to Health Coaches and Administrators.
 
-### 17. Strength & Conditioning Library
+### 17. Strength & Conditioning
 **Page:** `?page=library_workouts`  
+**Icon:** Dumbbell  
 **File:** `views/library_workouts.php`
 
 **Purpose:** Manage workout templates and programs library.
@@ -745,8 +782,9 @@ These pages are available to Health Coaches and Administrators.
 
 ---
 
-### 18. Nutrition Library
+### 18. Nutrition
 **Page:** `?page=library_nutrition`  
+**Icon:** Utensils  
 **File:** `views/library_nutrition.php`
 
 **Purpose:** Manage nutrition plan templates and recipes.
@@ -772,8 +810,9 @@ These pages are available to Health Coaches and Administrators.
 
 ---
 
-### 19. Health Coach Roster
+### 19. Roster
 **Page:** `?page=roster` or `?page=health_coach_roster`  
+**Icon:** Users Gear  
 **File:** `views/health_coach_roster.php`
 
 **Purpose:** Health coach's view of assigned athletes with health metrics.
@@ -804,6 +843,7 @@ These features are restricted to Administrators only.
 
 ### 20. Finance Dashboard
 **Page:** `?page=finance_dashboard`  
+**Icon:** Chart Pie  
 **File:** `views/finance_dashboard.php` (parent page)
 
 **Purpose:** Central hub for financial management and reporting.
@@ -909,8 +949,9 @@ These features are restricted to Administrators only.
 
 ---
 
-### 21. Financial Reports
+### 21. Financial Reports Hub
 **Page:** `?page=financial_reports` or `?page=reports`  
+**Icon:** Chart Pie  
 **File:** `views/financial_reports.php`
 
 **Purpose:** Generate comprehensive financial reports.
@@ -945,6 +986,7 @@ These features are restricted to Administrators only.
 
 ### 22. Credits & Refunds
 **Page:** `?page=credits_refunds`  
+**Icon:** Money Bill Transfer  
 **File:** `views/accounting_credits.php`
 
 **Purpose:** Manage customer credits, refunds, and account adjustments.
@@ -973,6 +1015,7 @@ These features are restricted to Administrators only.
 
 ### 23. Expenses
 **Page:** `?page=expenses`  
+**Icon:** Receipt  
 **File:** `views/accounting_expenses.php`
 
 **Purpose:** Track and categorize business expenses.
@@ -1007,6 +1050,7 @@ These features are restricted to Administrators only.
 
 ### 24. Products
 **Page:** `?page=products`  
+**Icon:** Box Open  
 **File:** `views/accounting_products.php` (parent page with tabs)
 
 **Purpose:** Manage all revenue-generating products and services.
@@ -1103,12 +1147,13 @@ These features are restricted to Administrators only.
 
 ---
 
-## Point of Sale (POS) (Admins & Front Desk)
+## Point of Sale (Admins & Front Desk)
 
 These features are available to Front Desk Staff and Administrators.
 
 ### 25. POS Terminal
 **Page:** `?page=pos_terminal`  
+**Icon:** Cash Register  
 **File:** `views/pos_terminal.php`
 
 **Purpose:** Process in-person sales and transactions.
@@ -1143,8 +1188,9 @@ These features are available to Front Desk Staff and Administrators.
 
 ---
 
-### 26. POS Time Tracking
+### 26. Time Tracking
 **Page:** `?page=pos_time_tracking`  
+**Icon:** Clock  
 **File:** `views/pos_time_tracking.php`
 
 **Purpose:** Clock in/out for front desk staff shifts.
@@ -1168,8 +1214,9 @@ These features are available to Front Desk Staff and Administrators.
 
 ---
 
-### 27. POS Schedule
+### 27. My Schedule
 **Page:** `?page=pos_schedule`  
+**Icon:** Calendar Alt  
 **File:** `views/pos_schedule.php`
 
 **Purpose:** View work schedule for front desk staff.
@@ -1197,6 +1244,7 @@ These features are restricted to Administrators for HR management.
 
 ### 28. Staff Scheduling
 **Page:** `?page=admin_staff_scheduling`  
+**Icon:** Calendar Check  
 **File:** `views/admin_staff_scheduling.php`
 
 **Purpose:** Create and manage staff work schedules.
@@ -1223,8 +1271,9 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 29. HR Time Tracking
+### 29. Time Tracking
 **Page:** `?page=hr_time_tracking`  
+**Icon:** Clock  
 **File:** `views/hr_time_tracking.php`
 
 **Purpose:** Monitor all staff time tracking and attendance.
@@ -1250,6 +1299,7 @@ These features are restricted to Administrators for HR management.
 
 ### 30. Payroll
 **Page:** `?page=payroll`  
+**Icon:** Money Check Dollar  
 **File:** `views/hr_payroll.php`
 
 **Purpose:** Process staff payroll and payments.
@@ -1279,6 +1329,7 @@ These features are restricted to Administrators for HR management.
 
 ### 31. Onboarding
 **Page:** `?page=onboarding`  
+**Icon:** User Plus  
 **File:** `views/hr_onboarding.php`
 
 **Purpose:** Manage new employee onboarding process.
@@ -1308,8 +1359,9 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 32. Employee Contracts
+### 32. Contracts
 **Page:** `?page=employee_contracts`  
+**Icon:** File Signature  
 **File:** `views/hr_employee_contracts.php`
 
 **Purpose:** Manage employment contracts and agreements.
@@ -1336,8 +1388,9 @@ These features are restricted to Administrators for HR management.
 
 ---
 
-### 33. HR Complaints
+### 33. Complaints
 **Page:** `?page=complaints`  
+**Icon:** Exclamation Triangle  
 **File:** `views/hr_complaints.php`
 
 **Purpose:** Track and manage HR complaints and incidents.
@@ -1366,6 +1419,7 @@ These features are restricted to Administrators for HR management.
 
 ### 34. Termination
 **Page:** `?page=termination`  
+**Icon:** User Slash  
 **File:** `views/hr_termination.php`
 
 **Purpose:** Manage employee termination process.
@@ -1399,6 +1453,7 @@ These features are restricted to Administrators for system management.
 
 ### 35. All Users
 **Page:** `?page=all_users`  
+**Icon:** Users  
 **File:** `views/admin_users.php`
 
 **Purpose:** Manage all user accounts in the system.
@@ -1432,8 +1487,9 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 36. Resource Management (Categories)
+### 36. Resource Management
 **Page:** `?page=categories`  
+**Icon:** Layer Group  
 **File:** `views/admin_categories.php` (parent page with tabs)
 
 **Purpose:** Manage system-wide resources and categories.
@@ -1569,8 +1625,9 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 37. Evaluation Framework
+### 37. Eval Framework
 **Page:** `?page=eval_framework`  
+**Icon:** Clipboard Check  
 **File:** `views/admin_eval_framework.php`
 
 **Purpose:** Configure evaluation templates and criteria.
@@ -1596,8 +1653,9 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 38. System Notifications
+### 38. System Notification
 **Page:** `?page=system_notification`  
+**Icon:** Bell  
 **File:** `views/admin_notifications.php`
 
 **Purpose:** Send system-wide announcements and notifications.
@@ -1629,8 +1687,9 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 39. Security Settings
+### 39. Security
 **Page:** `?page=admin_security`  
+**Icon:** Shield Halved  
 **File:** `views/admin_security.php`
 
 **Purpose:** Configure system security settings and view security logs.
@@ -1661,6 +1720,7 @@ These features are restricted to Administrators for system management.
 
 ### 40. System Tools
 **Page:** `?page=system_tools`  
+**Icon:** Screwdriver Wrench  
 **File:** `views/admin_system_tools.php` (parent page with tabs)
 
 **Purpose:** System configuration, maintenance, and database management.
@@ -1771,7 +1831,8 @@ These features are restricted to Administrators for system management.
 
 ### 41. Marketing
 **Page:** `?page=marketing`  
-**File:** Various marketing-related views
+**Icon:** Bullhorn  
+**File:** `views/admin_business_cards.php`
 
 **Purpose:** Marketing tools including business cards and partnerships.
 
@@ -1792,10 +1853,13 @@ These features are restricted to Administrators for system management.
 
 ---
 
-## Additional Supporting Pages
+## Profile & Settings
+
+These features are available to all users in the sidebar footer.
 
 ### 42. Profile Settings
 **Page:** `?page=profile`  
+**Icon:** User Gear  
 **File:** `views/profile.php`
 
 **Purpose:** User's personal account settings.
@@ -1824,7 +1888,9 @@ These features are restricted to Administrators for system management.
 
 ---
 
-### 43. Session Detail
+## Additional Supporting Pages
+
+### Session Detail
 **Page:** `?page=session_detail&id=X`  
 **File:** `views/session_detail.php`
 
