@@ -659,7 +659,7 @@ function sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video
         $stmt->execute([$athlete_id]);
         $athlete = $stmt->fetch();
         $athlete = decryptUserRow($athlete);
-        $athlete_name = ($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? '') ?: 'An athlete';
+        $athlete_name = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? '')) ?: 'An athlete';
         
         // Get coach email
         $stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
@@ -724,7 +724,7 @@ function sendVideoReviewNotificationToAthlete($pdo, $athlete_id, $coach_id, $vid
         $stmt->execute([$coach_id]);
         $coach = $stmt->fetch();
         $coach = decryptUserRow($coach);
-        $coach_name = ($coach['first_name'] ?? '') . ' ' . ($coach['last_name'] ?? '') ?: 'Your coach';
+        $coach_name = trim(($coach['first_name'] ?? '') . ' ' . ($coach['last_name'] ?? '')) ?: 'Your coach';
         
         // Get athlete email
         $stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
