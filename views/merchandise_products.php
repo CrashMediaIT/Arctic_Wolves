@@ -739,24 +739,40 @@ function addSizeRow(context) {
     row.className = 'size-row';
     row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 40px; gap: 12px; margin-bottom: 12px;';
     
+    // Create inputs using DOM methods for security
     if (context === 'inventory' || context === 'edit') {
-        row.innerHTML = `
-            <input type="hidden" name="size_ids[]" value="">
-            <input type="text" name="sizes[]" class="form-input" placeholder="Size (e.g., S, M, L)">
-            <input type="number" name="quantities[]" class="form-input" placeholder="Quantity" min="0" value="0">
-            <button type="button" class="btn-remove-size" onclick="this.parentElement.remove()" style="padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;" title="Remove">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-    } else {
-        row.innerHTML = `
-            <input type="text" name="sizes[]" class="form-input" placeholder="Size (e.g., S, M, L)">
-            <input type="number" name="quantities[]" class="form-input" placeholder="Quantity" min="0" value="0">
-            <button type="button" class="btn-remove-size" onclick="this.parentElement.remove()" style="padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;" title="Remove">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
+        const sizeIdInput = document.createElement('input');
+        sizeIdInput.type = 'hidden';
+        sizeIdInput.name = 'size_ids[]';
+        sizeIdInput.value = '';
+        row.appendChild(sizeIdInput);
     }
+    
+    const sizeInput = document.createElement('input');
+    sizeInput.type = 'text';
+    sizeInput.name = 'sizes[]';
+    sizeInput.className = 'form-input';
+    sizeInput.placeholder = 'Size (e.g., S, M, L)';
+    
+    const quantityInput = document.createElement('input');
+    quantityInput.type = 'number';
+    quantityInput.name = 'quantities[]';
+    quantityInput.className = 'form-input';
+    quantityInput.placeholder = 'Quantity';
+    quantityInput.min = '0';
+    quantityInput.value = '0';
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-remove-size';
+    removeBtn.onclick = function() { this.parentElement.remove(); };
+    removeBtn.style.cssText = 'padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;';
+    removeBtn.title = 'Remove';
+    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    
+    row.appendChild(sizeInput);
+    row.appendChild(quantityInput);
+    row.appendChild(removeBtn);
     
     container.appendChild(row);
 }

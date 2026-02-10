@@ -155,15 +155,17 @@ document.getElementById('field-1').style.display = type === 'option1' ? 'block' 
 
 | Modal | Status | Est. Time | Actual Time | Completed |
 |-------|--------|-----------|-------------|-----------|
-| Merchandise Product | 🔴 Not Started | 4-5 hrs | - | ☐ |
+| Merchandise Product (merchandise_products.php) | ✅ Complete | 4-5 hrs | ~5 hrs | ☑ |
+| Merchandise Product (accounting_products.php) | 🔴 Not Started | 4-5 hrs | - | ☐ |
 | Session Edit | 🔴 Not Started | 4-6 hrs | - | ☐ |
 | HR Payroll | 🔴 Not Started | 5-8 hrs | - | ☐ |
 | Package Edit | 🔴 Not Started | 5-7 hrs | - | ☐ |
 | User Edit | 🔴 Not Started | 3-4 hrs | - | ☐ |
 | Discount Edit | 🔴 Not Started | 2-3 hrs | - | ☐ |
 
-**Total Estimated Time:** 23-33 hours
-**Total Actual Time:** _____
+**Total Estimated Time:** 27-38 hours (includes both merchandise systems)
+**Total Completed:** 5 hours
+**Remaining:** 22-33 hours
 
 ---
 
