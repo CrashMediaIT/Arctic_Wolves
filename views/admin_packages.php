@@ -621,6 +621,7 @@ function openPackageModal() {
     document.getElementById('packageForm').reset();
     document.getElementById('packageId').value = '';
     document.getElementById('packageActive').checked = true;
+    document.getElementById('packageChildCheckin').checked = false;
     togglePackageFields();
     document.getElementById('packageModal').style.display = 'block';
 }
@@ -642,6 +643,7 @@ function editPackage(pkg) {
     document.getElementById('packageAgeGroup').value = pkg.age_group_id || '';
     document.getElementById('packageSkillLevel').value = pkg.skill_level_id || '';
     document.getElementById('packageActive').checked = pkg.is_active == 1;
+    document.getElementById('packageChildCheckin').checked = pkg.enable_child_checkin == 1;
     togglePackageFields();
     document.getElementById('packageModal').style.display = 'block';
 }
