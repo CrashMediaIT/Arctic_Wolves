@@ -32,6 +32,9 @@ try {
         <h1 class="page-title"><i class="fas fa-hockey-puck"></i> Shot Speed Tracker</h1>
         <p class="page-description">Measure and track shot velocity for athletes</p>
     </div>
+    <div class="page-header-actions">
+        <!-- Optional: Add action buttons here if needed -->
+    </div>
 </div>
 
 <style>
@@ -108,33 +111,6 @@ try {
         flex-wrap: wrap;
         margin-top: var(--space-4);
     }
-    .speed-btn {
-        min-width: 140px;
-        height: 50px;
-        border: none;
-        border-radius: var(--radius-lg);
-        font-size: var(--font-size-md);
-        font-weight: var(--font-weight-bold);
-        cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: var(--space-2);
-    }
-    .speed-btn-record {
-        background: var(--success);
-        color: #fff;
-    }
-    .speed-btn-record:hover {
-        background: #0ea572;
-        transform: translateY(-2px);
-    }
-    .speed-btn-record:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none !important;
-    }
     .speed-table {
         width: 100%;
         border-collapse: collapse;
@@ -202,14 +178,18 @@ try {
         background: var(--error);
         color: #fff;
         border: none;
-        padding: 4px 12px;
+        padding: 6px 12px;
         border-radius: var(--radius-sm);
         cursor: pointer;
         font-size: var(--font-size-sm);
-        transition: all 0.2s;
+        transition: all var(--transition-fast);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
     .delete-btn:hover {
-        background: #dc2626;
+        background: var(--error-hover);
+        transform: translateY(-1px);
     }
 </style>
 
@@ -268,7 +248,7 @@ try {
                         </div>
                         
                         <div class="speed-controls">
-                            <button type="submit" id="record-btn" class="speed-btn speed-btn-record" disabled>
+                            <button type="submit" id="record-btn" class="btn btn-primary" disabled style="min-width: 180px; height: 50px;">
                                 <i class="fas fa-save"></i> Record Speed
                             </button>
                         </div>
@@ -402,8 +382,9 @@ document.getElementById('speed-form').addEventListener('submit', function(e) {
     })
     .finally(() => {
         const speedInput = document.getElementById('speed-input');
-        recordBtn.disabled = !(currentAthleteId && speedInput.value);
-        recordBtn.innerHTML = '<i class="fas fa-save"></i> Record Speed';
+        const btn = document.getElementById('record-btn');
+        btn.disabled = !(currentAthleteId && speedInput.value);
+        btn.innerHTML = '<i class="fas fa-save"></i> Record Speed';
     });
 });
 

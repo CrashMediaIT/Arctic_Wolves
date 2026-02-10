@@ -491,16 +491,18 @@ try {
                 <div id="sw-countdown-input" style="display: none; margin-bottom: var(--space-4);">
                     <div style="display: flex; gap: var(--space-3); justify-content: center; align-items: center; flex-wrap: wrap;">
                         <div style="text-align: center;">
-                            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Minutes</label>
+                            <label class="form-label" style="display: block; margin-bottom: 4px;">Minutes</label>
                             <input type="number" id="sw-countdown-minutes" min="0" max="99" value="0" 
-                                   style="width: 70px; text-align: center; font-size: 20px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-white);" 
+                                   class="form-input" 
+                                   style="width: 70px; text-align: center; font-size: 20px; padding: 8px;" 
                                    oninput="swUpdateCountdownPreview()">
                         </div>
                         <span style="font-size: 28px; color: var(--text-muted); padding-top: 20px;">:</span>
                         <div style="text-align: center;">
-                            <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Seconds</label>
+                            <label class="form-label" style="display: block; margin-bottom: 4px;">Seconds</label>
                             <input type="number" id="sw-countdown-seconds" min="0" max="59" value="30" 
-                                   style="width: 70px; text-align: center; font-size: 20px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-white);" 
+                                   class="form-input" 
+                                   style="width: 70px; text-align: center; font-size: 20px; padding: 8px;" 
                                    oninput="swUpdateCountdownPreview()">
                         </div>
                         <button onclick="swSetCountdown()" class="btn btn-sm btn-primary" style="margin-top: 20px;">
