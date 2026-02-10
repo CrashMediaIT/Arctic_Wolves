@@ -182,7 +182,12 @@ if (!function_exists('decryptUserRow')) {
                        'processor_first', 'processor_last',
                        'creator_first_name', 'creator_last_name',
                        'athlete_first_name', 'athlete_last_name',
-                       'admin_first_name', 'admin_last_name'];
+                       'admin_first_name', 'admin_last_name',
+                       'staff_first_name', 'staff_last_name',
+                       'requested_by_first_name', 'requested_by_last_name',
+                       'completed_by_first_name', 'completed_by_last_name',
+                       'approved_by_first_name', 'approved_by_last_name',
+                       'user_first_name', 'user_last_name'];
         foreach ($piiFields as $field) {
             if (isset($row[$field]) && $row[$field] !== '') {
                 $row[$field] = FieldEncryption::decrypt($row[$field]);

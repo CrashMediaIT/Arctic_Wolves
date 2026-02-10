@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 // Get evaluation
                 $stmt = $pdo->prepare("
                     SELECT ge.*, 
-                           CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+                           u.first_name as creator_first_name, u.last_name as creator_last_name,
                            (SELECT COUNT(*) FROM goal_eval_steps WHERE goal_eval_id = ge.id) as total_steps,
                            (SELECT COUNT(*) FROM goal_eval_steps WHERE goal_eval_id = ge.id AND is_completed = 1) as completed_steps
                     FROM goal_evaluations ge
@@ -72,6 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ");
                 $stmt->execute([$eval_id]);
                 $evaluation = $stmt->fetch();
+                $evaluation = decryptUserRow($evaluation);
+                if ($evaluation) {
+                    $evaluation['creator_name'] = trim(($evaluation['creator_first_name'] ?? '') . ' ' . ($evaluation['creator_last_name'] ?? ''));
+                }
                 
                 if (!$evaluation) {
                     echo json_encode(['success' => false, 'message' => 'Evaluation not found']);
@@ -81,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 // Get steps
                 $steps_stmt = $pdo->prepare("
                     SELECT ges.*,
-                           CONCAT(u1.first_name, ' ', u1.last_name) as completed_by_name,
-                           CONCAT(u2.first_name, ' ', u2.last_name) as approved_by_name,
+                           u1.first_name as completed_by_first_name, u1.last_name as completed_by_last_name,
+                           u2.first_name as approved_by_first_name, u2.last_name as approved_by_last_name,
                            gea.status as approval_status,
                            gea.approval_note
                     FROM goal_eval_steps ges
@@ -94,6 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ");
                 $steps_stmt->execute([$eval_id]);
                 $steps = $steps_stmt->fetchAll();
+                $steps = decryptUserRows($steps);
+                foreach ($steps as &$s) {
+                    $s['completed_by_name'] = trim(($s['completed_by_first_name'] ?? '') . ' ' . ($s['completed_by_last_name'] ?? ''));
+                    $s['approved_by_name'] = trim(($s['approved_by_first_name'] ?? '') . ' ' . ($s['approved_by_last_name'] ?? ''));
+                }
+                unset($s);
                 
                 echo json_encode([
                     'success' => true,
@@ -107,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 
                 $media_stmt = $pdo->prepare("
                     SELECT gep.*,
-                           CONCAT(u.first_name, ' ', u.last_name) as user_name
+                           u.first_name as user_first_name, u.last_name as user_last_name
                     FROM goal_eval_progress gep
                     LEFT JOIN users u ON gep.user_id = u.id
                     WHERE gep.goal_eval_step_id = ?
@@ -115,6 +125,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ");
                 $media_stmt->execute([$step_id]);
                 $media = $media_stmt->fetchAll();
+                $media = decryptUserRows($media);
+                foreach ($media as &$m) {
+                    $m['user_name'] = trim(($m['user_first_name'] ?? '') . ' ' . ($m['user_last_name'] ?? ''));
+                }
+                unset($m);
                 
                 echo json_encode([
                     'success' => true,

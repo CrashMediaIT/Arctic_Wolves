@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Get step and evaluation info
                 $step_stmt = $pdo->prepare("
                     SELECT ges.*, ge.athlete_id, ge.created_by,
-                           CONCAT(u.first_name, ' ', u.last_name) as athlete_name
+                           u.first_name as athlete_first_name, u.last_name as athlete_last_name
                     FROM goal_eval_steps ges
                     JOIN goal_evaluations ge ON ges.goal_eval_id = ge.id
                     JOIN users u ON ge.athlete_id = u.id
@@ -116,6 +116,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $step_stmt->execute([$step_id]);
                 $step = $step_stmt->fetch();
+                $step = decryptUserRow($step);
+                if ($step) {
+                    $step['athlete_name'] = trim(($step['athlete_first_name'] ?? '') . ' ' . ($step['athlete_last_name'] ?? ''));
+                }
                 
                 if (!$step) {
                     echo json_encode(['success' => false, 'message' => 'Step not found']);
@@ -340,8 +344,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                            ges.title as step_title,
                            ges.description as step_description,
                            ge.title as eval_title,
-                           CONCAT(u1.first_name, ' ', u1.last_name) as requested_by_name,
-                           CONCAT(u2.first_name, ' ', u2.last_name) as athlete_name
+                           u1.first_name as requested_by_first_name, u1.last_name as requested_by_last_name,
+                           u2.first_name as athlete_first_name, u2.last_name as athlete_last_name
                     FROM goal_eval_approvals gea
                     JOIN goal_eval_steps ges ON gea.goal_eval_step_id = ges.id
                     JOIN goal_evaluations ge ON ges.goal_eval_id = ge.id
@@ -352,6 +356,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $approvals_stmt->execute();
                 $approvals = $approvals_stmt->fetchAll();
+                $approvals = decryptUserRows($approvals);
+                foreach ($approvals as &$a) {
+                    $a['requested_by_name'] = trim(($a['requested_by_first_name'] ?? '') . ' ' . ($a['requested_by_last_name'] ?? ''));
+                    $a['athlete_name'] = trim(($a['athlete_first_name'] ?? '') . ' ' . ($a['athlete_last_name'] ?? ''));
+                }
+                unset($a);
                 
                 echo json_encode([
                     'success' => true,
@@ -387,8 +397,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                            ges.title as step_title,
                            ges.description as step_description,
                            ge.title as eval_title,
-                           CONCAT(u1.first_name, ' ', u1.last_name) as requested_by_name,
-                           CONCAT(u2.first_name, ' ', u2.last_name) as athlete_name
+                           u1.first_name as requested_by_first_name, u1.last_name as requested_by_last_name,
+                           u2.first_name as athlete_first_name, u2.last_name as athlete_last_name
                     FROM goal_eval_approvals gea
                     JOIN goal_eval_steps ges ON gea.goal_eval_step_id = ges.id
                     JOIN goal_evaluations ge ON ges.goal_eval_id = ge.id
@@ -399,6 +409,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ");
                 $approvals_stmt->execute();
                 $approvals = $approvals_stmt->fetchAll();
+                $approvals = decryptUserRows($approvals);
+                foreach ($approvals as &$a) {
+                    $a['requested_by_name'] = trim(($a['requested_by_first_name'] ?? '') . ' ' . ($a['requested_by_last_name'] ?? ''));
+                    $a['athlete_name'] = trim(($a['athlete_first_name'] ?? '') . ' ' . ($a['athlete_last_name'] ?? ''));
+                }
+                unset($a);
                 
                 echo json_encode([
                     'success' => true,

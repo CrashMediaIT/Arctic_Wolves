@@ -659,7 +659,7 @@ function getAllAthletesData($parameters) {
     
     $stmt = $pdo->prepare("
         SELECT u.*,
-               CONCAT(c.first_name, ' ', c.last_name) as coach_name,
+               c.first_name as coach_first_name, c.last_name as coach_last_name,
                (SELECT COUNT(*) FROM bookings b 
                 INNER JOIN sessions s ON b.session_id = s.id 
                 WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id) 
@@ -672,7 +672,13 @@ function getAllAthletesData($parameters) {
     ");
     $stmt->execute([$parameters['date_from'], $parameters['date_to']]);
     
-    return $stmt->fetchAll();
+    $rows = $stmt->fetchAll();
+    $rows = decryptUserRows($rows);
+    foreach ($rows as &$r) {
+        $r['coach_name'] = trim(($r['coach_first_name'] ?? '') . ' ' . ($r['coach_last_name'] ?? ''));
+    }
+    unset($r);
+    return $rows;
 }
 
 function getAllTeamsData() {
@@ -680,17 +686,36 @@ function getAllTeamsData() {
     
     $stmt = $pdo->query("
         SELECT t.*, 
-               COUNT(DISTINCT at.user_id) as member_count,
-               GROUP_CONCAT(DISTINCT CONCAT(u.first_name, ' ', u.last_name) SEPARATOR ', ') as coaches
+               COUNT(DISTINCT at.user_id) as member_count
         FROM athlete_teams t
         LEFT JOIN team_coach_assignments tca ON t.id = tca.team_id
-        LEFT JOIN users u ON tca.coach_id = u.id
         LEFT JOIN users at ON at.id IN (SELECT user_id FROM athlete_teams WHERE id = t.id)
         GROUP BY t.id
         ORDER BY t.name
     ");
     
-    return $stmt->fetchAll();
+    $teams = $stmt->fetchAll();
+    
+    // Build coaches string per team with decryption
+    foreach ($teams as &$team) {
+        $coach_stmt = $pdo->prepare("
+            SELECT u.first_name, u.last_name
+            FROM team_coach_assignments tca
+            JOIN users u ON tca.coach_id = u.id
+            WHERE tca.team_id = ?
+        ");
+        $coach_stmt->execute([$team['id']]);
+        $coaches = $coach_stmt->fetchAll();
+        $coaches = decryptUserRows($coaches);
+        $coachNames = [];
+        foreach ($coaches as $c) {
+            $coachNames[] = trim(($c['first_name'] ?? '') . ' ' . ($c['last_name'] ?? ''));
+        }
+        $team['coaches'] = implode(', ', $coachNames);
+    }
+    unset($team);
+    
+    return $teams;
 }
 
 function getPackagesDiscountsData($parameters) {

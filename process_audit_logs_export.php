@@ -49,7 +49,7 @@ try {
             al.table_name,
             al.record_id,
             al.action_type,
-            CONCAT(u.first_name, ' ', u.last_name) as user_name,
+            u.first_name, u.last_name,
             u.role as user_role,
             al.created_at
         FROM audit_logs al
@@ -60,6 +60,12 @@ try {
     ");
     $query->execute($params);
     $logs = $query->fetchAll(PDO::FETCH_ASSOC);
+    $logs = decryptUserRows($logs);
+    // Build user_name from decrypted fields
+    foreach ($logs as &$log) {
+        $log['user_name'] = (!empty($log['first_name'])) ? $log['first_name'] . ' ' . $log['last_name'] : null;
+    }
+    unset($log);
     
     // Set headers for CSV download
     $filename = 'audit_logs_' . date('Y-m-d_His') . '.csv';

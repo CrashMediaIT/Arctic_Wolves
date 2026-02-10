@@ -303,7 +303,7 @@ try {
             
             $stmt = $pdo->prepare("
                 SELECT ml.*, u.first_name, u.last_name,
-                       CONCAT(a.first_name, ' ', a.last_name) as athlete_name,
+                       a.first_name as athlete_first_name, a.last_name as athlete_last_name,
                        s.title as session_name
                 FROM mileage_logs ml
                 LEFT JOIN users u ON ml.user_id = u.id
@@ -314,6 +314,12 @@ try {
             ");
             $stmt->execute($params);
             $logs = $stmt->fetchAll();
+            $logs = decryptUserRows($logs);
+            // Build athlete_name from decrypted fields
+            foreach ($logs as &$log) {
+                $log['athlete_name'] = (!empty($log['athlete_first_name'])) ? $log['athlete_first_name'] . ' ' . $log['athlete_last_name'] : null;
+            }
+            unset($log);
             
             header('Content-Type: text/csv');
             header('Content-Disposition: attachment; filename="mileage_logs_' . date('Y-m-d') . '.csv"');
@@ -347,7 +353,7 @@ try {
             
             $stmt = $pdo->prepare("
                 SELECT ml.*, u.first_name, u.last_name,
-                       CONCAT(a.first_name, ' ', a.last_name) as athlete_name,
+                       a.first_name as athlete_first_name, a.last_name as athlete_last_name,
                        GROUP_CONCAT(ms.address ORDER BY ms.stop_order SEPARATOR ' → ') as route
                 FROM mileage_logs ml
                 LEFT JOIN users u ON ml.user_id = u.id
@@ -359,6 +365,12 @@ try {
             ");
             $stmt->execute([$start_date, $end_date]);
             $logs = $stmt->fetchAll();
+            $logs = decryptUserRows($logs);
+            // Build athlete_name from decrypted fields
+            foreach ($logs as &$log) {
+                $log['athlete_name'] = (!empty($log['athlete_first_name'])) ? $log['athlete_first_name'] . ' ' . $log['athlete_last_name'] : null;
+            }
+            unset($log);
             
             echo json_encode(['success' => true, 'logs' => $logs]);
             break;
