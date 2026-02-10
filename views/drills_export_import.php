@@ -11,8 +11,8 @@ if (empty($csrf_token)) {
 }
 
 // Count drills and categories for display
-$drill_count = $pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
-$category_count = $pdo->query("SELECT COUNT(*) FROM drill_categories")->fetchColumn();
+$drill_count = (int)$pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
+$category_count = (int)$pdo->query("SELECT COUNT(*) FROM drill_categories")->fetchColumn();
 ?>
 
 <style>
@@ -192,7 +192,7 @@ $category_count = $pdo->query("SELECT COUNT(*) FROM drill_categories")->fetchCol
             <span class="ei-stat-value"><?= number_format($category_count) ?></span>
         </div>
         
-        <a href="process_drills_export.php?csrf_token=<?= urlencode($csrf_token) ?>" class="ei-btn ei-btn-export" <?= $drill_count == 0 ? 'style="pointer-events:none;opacity:0.5;"' : '' ?>>
+        <a href="process_drills_export.php?csrf_token=<?= urlencode($csrf_token) ?>" class="ei-btn ei-btn-export" <?= $drill_count === 0 ? 'style="pointer-events:none;opacity:0.5;"' : '' ?>>
             <i class="fas fa-download"></i> Export All Drills (JSON)
         </a>
     </div>

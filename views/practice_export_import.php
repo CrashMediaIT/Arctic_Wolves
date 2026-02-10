@@ -11,8 +11,8 @@ if (empty($csrf_token)) {
 }
 
 // Count plans for display
-$plan_count = $pdo->query("SELECT COUNT(*) FROM practice_plans")->fetchColumn();
-$drill_count = $pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
+$plan_count = (int)$pdo->query("SELECT COUNT(*) FROM practice_plans")->fetchColumn();
+$drill_count = (int)$pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
 ?>
 
 <style>
@@ -193,7 +193,7 @@ $drill_count = $pdo->query("SELECT COUNT(*) FROM drills")->fetchColumn();
             <span class="ei-stat-value"><?= number_format($drill_count) ?></span>
         </div>
         
-        <a href="process_practice_plans_export.php?csrf_token=<?= urlencode($csrf_token) ?>" class="ei-btn ei-btn-export" <?= $plan_count == 0 ? 'style="pointer-events:none;opacity:0.5;"' : '' ?>>
+        <a href="process_practice_plans_export.php?csrf_token=<?= urlencode($csrf_token) ?>" class="ei-btn ei-btn-export" <?= $plan_count === 0 ? 'style="pointer-events:none;opacity:0.5;"' : '' ?>>
             <i class="fas fa-download"></i> Export All Practice Plans (JSON)
         </a>
     </div>
