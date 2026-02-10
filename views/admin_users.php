@@ -936,7 +936,7 @@ function closeModal(modalId) {
 
 .modal .tabs.edit-user-tabs .tab {
     flex: 1 1 auto;
-    min-width: 0;
+    min-width: fit-content;
     display: flex;
     align-items: center;
     justify-content: center;
