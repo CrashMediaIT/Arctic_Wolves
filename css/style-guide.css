@@ -355,7 +355,6 @@ button:disabled {
     border: 1px solid var(--border);
     border-radius: var(--radius-2xl);
     margin-bottom: var(--space-6);
-    overflow: hidden;
 }
 
 .filter-box-header {
@@ -368,6 +367,7 @@ button:disabled {
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
 }
 
 .filter-box-header i {

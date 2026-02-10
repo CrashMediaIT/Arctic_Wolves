@@ -44,60 +44,6 @@ try {
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-        --danger: #dc2626;
-        --warning: #f59e0b;
-        --success: #10b981;
-    }
-    
-    .restore-header {
-        margin-bottom: 24px;
-    }
-    
-    .restore-header h1 {
-        font-size: 32px;
-        font-weight: 900;
-        margin: 0 0 8px 0;
-        color: #fff;
-    }
-    
-    .restore-header p {
-        color: #94a3b8;
-        font-size: 14px;
-        margin: 0;
-    }
-    
-    .danger-banner {
-        background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(220, 38, 38, 0.1));
-        border: 2px solid var(--danger);
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 24px;
-        display: flex;
-        align-items: start;
-        gap: 15px;
-    }
-    
-    .danger-banner-icon {
-        font-size: 32px;
-        flex-shrink: 0;
-    }
-    
-    .danger-banner-content h3 {
-        color: var(--danger);
-        font-size: 18px;
-        font-weight: 700;
-        margin: 0 0 8px 0;
-    }
-    
-    .danger-banner-content p {
-        color: #e2e8f0;
-        font-size: 14px;
-        margin: 0;
-        line-height: 1.6;
-    }
-    
     /* Wizard Steps */
     .wizard-steps {
         display: flex;
@@ -173,9 +119,6 @@ try {
     
     /* Wizard Content */
     .wizard-content {
-        background: #0d1117;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
         padding: 40px;
         min-height: 400px;
     }
@@ -746,55 +689,6 @@ try {
         justify-content: space-between;
     }
     
-    .btn {
-        padding: 12px 30px;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .btn-primary {
-        background: var(--primary);
-        color: #fff;
-    }
-    
-    .btn-primary:hover:not(:disabled) {
-        background: #5a0083;
-    }
-    
-    .btn-danger {
-        background: var(--danger);
-        color: #fff;
-    }
-    
-    .btn-danger:hover:not(:disabled) {
-        background: #b91c1c;
-    }
-    
-    .btn-secondary {
-        background: #1e293b;
-        color: #fff;
-    }
-    
-    .btn-secondary:hover {
-        background: #334155;
-    }
-    
-    .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    
-    .btn i {
-        font-size: 16px;
-    }
-    
     /* Responsive */
     @media (max-width: 768px) {
         .wizard-steps::before {
@@ -827,16 +721,23 @@ try {
     }
 </style>
 
-<div class="restore-header">
-    <h1>🔄 Database Restore</h1>
-    <p>Restore your database from a backup file</p>
+<div class="page-header">
+    <div class="page-header-content">
+        <h1 class="page-title"><i class="fas fa-undo-alt"></i> Database Restore</h1>
+        <p class="page-description">Restore your database from a backup file</p>
+    </div>
+    <div class="page-header-actions">
+        <a href="?page=admin_database_backup" class="btn btn-secondary"><i class="fas fa-database"></i> Backups</a>
+    </div>
 </div>
 
-<div class="danger-banner">
-    <div class="danger-banner-icon">⚠️</div>
-    <div class="danger-banner-content">
-        <h3>CRITICAL: This Operation Will Overwrite All Data</h3>
-        <p>Database restoration is a destructive operation that will replace ALL current data with the backup. This action cannot be undone. Please ensure you have a current backup before proceeding.</p>
+<div class="card" style="border-color: var(--danger); margin-bottom: 24px;">
+    <div class="card-body" style="display: flex; align-items: start; gap: 15px; background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.05));">
+        <i class="fas fa-exclamation-triangle" style="font-size: 28px; color: var(--danger); flex-shrink: 0; margin-top: 2px;"></i>
+        <div>
+            <h3 style="color: var(--danger); font-size: 16px; font-weight: 700; margin: 0 0 8px 0;">CRITICAL: This Operation Will Overwrite All Data</h3>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0; line-height: 1.6;">Database restoration is a destructive operation that will replace ALL current data with the backup. This action cannot be undone. Please ensure you have a current backup before proceeding.</p>
+        </div>
     </div>
 </div>
 
@@ -863,7 +764,7 @@ try {
 </div>
 
 <!-- Wizard Content -->
-<div class="wizard-content">
+<div class="card wizard-content" style="overflow: visible;">
     <!-- Step 1: Upload Backup -->
     <div class="step-content active" data-step="1">
         <h2 class="step-title">📤 Step 1: Upload Backup File</h2>
