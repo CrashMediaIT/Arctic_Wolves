@@ -19,10 +19,31 @@ if (!isset($_SESSION['logged_in']) || !isset($_SESSION['user_id'])) {
     exit();
 }
 
-// Check if user is a parent
-if ($_SESSION['user_role'] !== 'parent') {
-    header("Location: dashboard.php?error=permission_denied");
-    exit();
+// Check if user is a parent or has no parent assigned (can manage children)
+// Admins performing parent assignment use a separate endpoint
+$isParentRole = ($_SESSION['user_role'] === 'parent');
+$hasParentRole = $isParentRole;
+if (!$hasParentRole) {
+    // Check user_roles table for parent role
+    try {
+        $roleCheck = $pdo->prepare("SELECT id FROM user_roles WHERE user_id = ? AND role = 'parent'");
+        $roleCheck->execute([$_SESSION['user_id']]);
+        $hasParentRole = (bool)$roleCheck->fetch();
+    } catch (PDOException $e) {
+        // Table may not exist yet
+    }
+}
+
+// Allow any user who is not already assigned as a child to a parent
+if (!$hasParentRole) {
+    $childCheck = $pdo->prepare("SELECT id FROM managed_athletes WHERE athlete_id = ? LIMIT 1");
+    $childCheck->execute([$_SESSION['user_id']]);
+    $isChild = (bool)$childCheck->fetch();
+    if ($isChild) {
+        header("Location: dashboard.php?error=permission_denied");
+        exit();
+    }
+    // User is not a child, allow them to manage children
 }
 
 // Validate CSRF token
@@ -35,6 +56,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $user_id = $_SESSION['user_id'];
 $action = $_POST['action'] ?? '';
+$redirect_source = $_POST['redirect'] ?? '';
+
+// Build redirect URL based on source
+function buildRedirectUrl($source, $page, $params) {
+    if ($source === 'profile_children') {
+        $url = "dashboard.php?page=profile&tab=children";
+        foreach ($params as $key => $val) {
+            $url .= "&child_{$key}={$val}";
+        }
+        return $url;
+    }
+    $url = "dashboard.php?page={$page}";
+    foreach ($params as $key => $val) {
+        $url .= "&{$key}={$val}";
+    }
+    return $url;
+}
 
 try {
     switch ($action) {
@@ -44,7 +82,7 @@ try {
             $relationship = trim($_POST['relationship'] ?? 'Parent');
             
             if (empty($athlete_email)) {
-                header("Location: dashboard.php?page=manage_athletes&error=invalid_data");
+                header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'invalid_data']));
                 exit();
             }
             
@@ -55,7 +93,7 @@ try {
             
             if (!$athlete) {
                 logSecurityEvent($pdo, 'athlete_link_failed', "Parent $user_id attempted to link non-existent athlete: $athlete_email", $user_id);
-                header("Location: dashboard.php?page=manage_athletes&error=athlete_not_found");
+                header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'athlete_not_found']));
                 exit();
             }
             
@@ -64,7 +102,7 @@ try {
             $check_stmt->execute([$user_id, $athlete['id']]);
             
             if ($check_stmt->fetch()) {
-                header("Location: dashboard.php?page=manage_athletes&error=already_managed");
+                header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'already_managed']));
                 exit();
             }
             
@@ -94,7 +132,7 @@ try {
                 );
             }
             
-            header("Location: dashboard.php?page=manage_athletes&success=athlete_added");
+            header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['success' => 'athlete_added']));
             exit();
             
         case 'create_athlete':
@@ -108,13 +146,13 @@ try {
             
             // Validate required fields
             if (empty($first_name) || empty($last_name) || empty($email)) {
-                header("Location: dashboard.php?page=manage_athletes&error=invalid_data");
+                header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'invalid_data']));
                 exit();
             }
             
             // Validate email
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                header("Location: dashboard.php?page=manage_athletes&error=invalid_data");
+                header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'invalid_data']));
                 exit();
             }
             
@@ -123,7 +161,7 @@ try {
             $check_email->execute([$email]);
             
             if ($check_email->fetch()) {
-                header("Location: dashboard.php?page=manage_athletes&error=email_exists");
+                header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'email_exists']));
                 exit();
             }
             
@@ -184,7 +222,7 @@ try {
                 false // Don't send email notification since we already sent welcome email
             );
             
-            header("Location: dashboard.php?page=manage_athletes&success=athlete_created");
+            header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['success' => 'athlete_created']));
             exit();
             
         case 'remove_athlete':
@@ -192,7 +230,7 @@ try {
             $managed_id = intval($_POST['managed_id'] ?? 0);
             
             if ($managed_id == 0) {
-                header("Location: dashboard.php?page=manage_athletes&error=invalid_data");
+                header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'invalid_data']));
                 exit();
             }
             
@@ -203,7 +241,7 @@ try {
             
             if (!$managed) {
                 logSecurityEvent($pdo, 'athlete_removal_denied', "Parent $user_id attempted to remove managed athlete $managed_id without permission", $user_id);
-                header("Location: dashboard.php?page=manage_athletes&error=permission_denied");
+                header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'permission_denied']));
                 exit();
             }
             
@@ -214,20 +252,20 @@ try {
             // Log security event
             logSecurityEvent($pdo, 'athlete_removed', "Parent $user_id removed athlete {$managed['athlete_id']} from managed list", $user_id);
             
-            header("Location: dashboard.php?page=manage_athletes&success=athlete_removed");
+            header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['success' => 'athlete_removed']));
             exit();
             
         default:
-            header("Location: dashboard.php?page=manage_athletes&error=invalid_action");
+            header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'invalid_action']));
             exit();
     }
     
 } catch (PDOException $e) {
     error_log("Database error in process_manage_athletes.php: " . $e->getMessage());
-    header("Location: dashboard.php?page=manage_athletes&error=database_error");
+    header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'database_error']));
     exit();
 } catch (Exception $e) {
     error_log("Error in process_manage_athletes.php: " . $e->getMessage());
-    header("Location: dashboard.php?page=manage_athletes&error=unknown_error");
+    header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'unknown_error']));
     exit();
 }
