@@ -44,8 +44,8 @@ class RateLimiter {
             $stmt = $this->pdo->prepare("
                 SELECT COUNT(*) as count
                 FROM security_logs
-                WHERE identifier = ?
-                AND action = ?
+                WHERE request_uri = ?
+                AND event_type = ?
                 AND created_at > ?
             ");
             $stmt->execute([$identifier, $action, $window_start]);
@@ -99,7 +99,7 @@ class RateLimiter {
         try {
             $stmt = $this->pdo->prepare("
                 INSERT INTO security_logs (
-                    identifier, action, ip_address, user_agent, created_at
+                    request_uri, event_type, ip_address, user_agent, created_at
                 ) VALUES (?, ?, ?, ?, NOW())
             ");
             
@@ -123,7 +123,7 @@ class RateLimiter {
         try {
             $stmt = $this->pdo->prepare("
                 INSERT INTO security_logs (
-                    identifier, action, ip_address, user_agent, details, created_at
+                    request_uri, event_type, ip_address, user_agent, description, created_at
                 ) VALUES (?, ?, ?, ?, ?, NOW())
             ");
             

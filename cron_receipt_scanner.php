@@ -104,8 +104,8 @@ try {
     
     // Log results
     $log_stmt = $pdo->prepare("
-        INSERT INTO security_logs (user_id, action, ip_address, user_agent, status)
-        VALUES (0, ?, '127.0.0.1', 'Cron Job', 'success')
+        INSERT INTO security_logs (user_id, event_type, ip_address, user_agent, description)
+        VALUES (0, 'receipt_scan', '127.0.0.1', 'Cron Job', ?)
     ");
     $log_stmt->execute(["Receipt scan: $processed_count new, " . count($files) . " total"]);
     
@@ -118,8 +118,8 @@ try {
     // Log error
     try {
         $log_stmt = $pdo->prepare("
-            INSERT INTO security_logs (user_id, action, ip_address, user_agent, status)
-            VALUES (0, ?, '127.0.0.1', 'Cron Job', 'failure')
+            INSERT INTO security_logs (user_id, event_type, ip_address, user_agent, description)
+            VALUES (0, 'receipt_scan_error', '127.0.0.1', 'Cron Job', ?)
         ");
         $log_stmt->execute(["Receipt scan error: " . $e->getMessage()]);
     } catch (Exception $log_e) {
