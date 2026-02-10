@@ -286,7 +286,7 @@ try {
                 'nextcloud_webdav_path' => trim($_POST['nextcloud_webdav_path'])
             ];
             
-            $result = testNextcloudConnection($settings);
+            $result = testNextcloudConnection($settings, 'primary');
             echo json_encode($result);
             exit;
             
@@ -573,7 +573,7 @@ try {
                 'nextcloud_webdav_path' => ''
             ];
             
-            $result = testNextcloudConnection($settings);
+            $result = testNextcloudConnection($settings, 'backup');
             echo json_encode($result);
             exit;
             

@@ -1,6 +1,7 @@
 /**
  * Arctic Wolves Sports Stopwatch
  * Full-featured stopwatch with lap/split timing, time history, and athlete assignment
+ * Now includes countdown timer mode
  */
 class Stopwatch {
     constructor(displayEl) {
@@ -11,19 +12,63 @@ class Stopwatch {
         this.lastLapTime = 0;
         this.laps = [];
         this.intervalId = null;
+        // Countdown mode properties
+        this.isCountdownMode = false;
+        this.countdownDuration = 0; // in milliseconds
+        this.countdownRemaining = 0;
+        this.onCountdownComplete = null; // callback when countdown reaches zero
+    }
+
+    // Set countdown mode with duration in seconds
+    setCountdownMode(durationSeconds, onComplete = null) {
+        this.isCountdownMode = true;
+        this.countdownDuration = durationSeconds * 1000;
+        this.countdownRemaining = this.countdownDuration;
+        this.onCountdownComplete = onComplete;
+        this.elapsed = 0;
+        this.lastLapTime = 0;
+        this.laps = [];
+        this._updateDisplay();
+    }
+
+    // Switch to stopwatch mode
+    setStopwatchMode() {
+        this.isCountdownMode = false;
+        this.countdownDuration = 0;
+        this.countdownRemaining = 0;
+        this.onCountdownComplete = null;
+        this.reset();
     }
 
     start() {
         if (this.running) return;
         this.running = true;
-        this.startTime = performance.now() - this.elapsed;
+        
+        if (this.isCountdownMode) {
+            this.startTime = performance.now();
+            // If countdown was paused, adjust start time
+            if (this.countdownRemaining < this.countdownDuration) {
+                this.startTime = performance.now() - (this.countdownDuration - this.countdownRemaining);
+            }
+        } else {
+            this.startTime = performance.now() - this.elapsed;
+        }
+        
         this.intervalId = requestAnimationFrame(() => this._tick());
     }
 
     stop() {
         if (!this.running) return;
         this.running = false;
-        this.elapsed = performance.now() - this.startTime;
+        
+        if (this.isCountdownMode) {
+            const now = performance.now();
+            const elapsed = now - this.startTime;
+            this.countdownRemaining = Math.max(0, this.countdownDuration - elapsed);
+        } else {
+            this.elapsed = performance.now() - this.startTime;
+        }
+        
         if (this.intervalId) {
             cancelAnimationFrame(this.intervalId);
             this.intervalId = null;
@@ -49,17 +94,30 @@ class Stopwatch {
 
     reset() {
         this.stop();
-        this.elapsed = 0;
+        if (this.isCountdownMode) {
+            this.countdownRemaining = this.countdownDuration;
+        } else {
+            this.elapsed = 0;
+        }
         this.lastLapTime = 0;
         this.laps = [];
         this._updateDisplay();
     }
 
     getElapsed() {
-        if (this.running) {
-            return performance.now() - this.startTime;
+        if (this.isCountdownMode) {
+            if (this.running) {
+                const now = performance.now();
+                const elapsed = now - this.startTime;
+                return Math.max(0, this.countdownDuration - elapsed);
+            }
+            return this.countdownRemaining;
+        } else {
+            if (this.running) {
+                return performance.now() - this.startTime;
+            }
+            return this.elapsed;
         }
-        return this.elapsed;
     }
 
     getLaps() {
@@ -68,14 +126,36 @@ class Stopwatch {
 
     _tick() {
         if (!this.running) return;
-        this.elapsed = performance.now() - this.startTime;
+        
+        if (this.isCountdownMode) {
+            const now = performance.now();
+            const elapsed = now - this.startTime;
+            this.countdownRemaining = Math.max(0, this.countdownDuration - elapsed);
+            
+            // Check if countdown complete
+            if (this.countdownRemaining <= 0) {
+                this.stop();
+                this._updateDisplay();
+                if (this.onCountdownComplete) {
+                    this.onCountdownComplete();
+                }
+                return;
+            }
+        } else {
+            this.elapsed = performance.now() - this.startTime;
+        }
+        
         this._updateDisplay();
         this.intervalId = requestAnimationFrame(() => this._tick());
     }
 
     _updateDisplay() {
         if (this.displayEl) {
-            this.displayEl.textContent = Stopwatch.formatTime(this.elapsed);
+            if (this.isCountdownMode) {
+                this.displayEl.textContent = Stopwatch.formatTime(this.countdownRemaining);
+            } else {
+                this.displayEl.textContent = Stopwatch.formatTime(this.elapsed);
+            }
         }
     }
 

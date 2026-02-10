@@ -177,15 +177,27 @@ function listNextcloudFilesRecursive($connection, $folder, &$allFiles = []) {
 /**
  * Test Nextcloud connection
  */
-function testNextcloudConnection($settings) {
+function testNextcloudConnection($settings, $server_type = 'primary') {
     try {
         $connection = connectNextcloud($settings);
         $folder = $settings['nextcloud_receipt_folder'] ?? '/receipts';
         $files = listNextcloudFiles($connection, $folder);
         $server_name = parse_url($connection['url'], PHP_URL_HOST) ?: $connection['url'];
-        return ['success' => true, 'message' => 'Connection successful', 'file_count' => count($files), 'server_name' => $server_name];
+        $server_label = ($server_type === 'backup') ? 'Backup Server' : 'Primary Server';
+        return [
+            'success' => true, 
+            'message' => "Connection successful to $server_label: $server_name", 
+            'file_count' => count($files), 
+            'server_name' => $server_name,
+            'server_type' => $server_type
+        ];
     } catch (Exception $e) {
-        return ['success' => false, 'message' => $e->getMessage()];
+        $server_label = ($server_type === 'backup') ? 'Backup Server' : 'Primary Server';
+        return [
+            'success' => false, 
+            'message' => "Failed to connect to $server_label: " . $e->getMessage(),
+            'server_type' => $server_type
+        ];
     }
 }
 

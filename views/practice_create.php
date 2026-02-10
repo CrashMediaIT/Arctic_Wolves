@@ -266,6 +266,18 @@ $action_value = $is_editing ? 'update' : 'create';
     </div>
 </div>
 
+<script>
+// Export drills data to JavaScript for programmatic access
+const allDrillsData = <?php echo json_encode(array_map(function($drill) {
+    return [
+        'id' => intval($drill['id']),
+        'title' => $drill['title'],
+        'category' => $drill['category_name'] ?? '',
+        'description' => $drill['description'] ?? ''
+    ];
+}, $drillsForSelector), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+</script>
+
 <style>
 .drills-timeline {
     display: flex;
@@ -1040,6 +1052,41 @@ document.addEventListener('DOMContentLoaded', function() {
             if (draftData.title) {
                 document.getElementById('practiceTitle').value = draftData.title;
             }
+        }
+    }
+    
+    // Check for drills to add from session storage (from drills library)
+    const drillsToAddStr = sessionStorage.getItem('drillsToAdd');
+    if (drillsToAddStr) {
+        try {
+            const drillIds = JSON.parse(drillsToAddStr);
+            // Get drill data from the allDrillsData array
+            drillIds.forEach(drillId => {
+                const drill = allDrillsData.find(d => d.id === drillId);
+                if (drill) {
+                    // Check if already added
+                    if (!practiceDrills.find(d => d.id === drill.id)) {
+                        practiceDrills.push({
+                            id: drill.id,
+                            title: drill.title,
+                            category: drill.category,
+                            duration: 10,
+                            notes: ''
+                        });
+                    }
+                }
+            });
+            
+            // Update display if any drills were added
+            if (drillIds.length > 0) {
+                updateDrillsDisplay();
+            }
+            
+            // Clear the session storage
+            sessionStorage.removeItem('drillsToAdd');
+        } catch (e) {
+            console.error('Error loading drills from session storage:', e);
+            sessionStorage.removeItem('drillsToAdd');
         }
     }
     <?php endif; ?>
