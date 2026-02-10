@@ -711,7 +711,7 @@ function swToggleMode() {
     } else {
         // Switch to stopwatch mode
         modeTitle.innerHTML = '<i class="fas fa-stopwatch"></i> Stopwatch Mode';
-        modeLabel.textContent = 'Countdown';
+        modeLabel.textContent = 'Stopwatch';
         countdownInput.style.display = 'none';
         lapBtn.style.display = 'inline-flex'; // Show lap button in stopwatch mode
         stopwatch.setStopwatchMode();
@@ -733,7 +733,15 @@ function swSetCountdown() {
     const totalSeconds = minutes * 60 + seconds;
     
     if (totalSeconds <= 0) {
-        alert('Please enter a valid countdown time');
+        // Show inline error instead of alert
+        const display = document.getElementById('sw-display');
+        const originalColor = display.style.color;
+        display.style.color = 'var(--error)';
+        display.textContent = 'Invalid Time';
+        setTimeout(() => {
+            display.style.color = originalColor;
+            display.textContent = '00:00.00';
+        }, 2000);
         return;
     }
     
@@ -803,11 +811,26 @@ function onCountdownComplete() {
         console.log('Audio not available');
     }
     
-    // Alert user
+    // Show non-blocking notification - use existing notification system if available
     setTimeout(() => {
         display.style.color = '';
         display.style.animation = '';
-        alert('⏰ Time\'s up!');
+        
+        // Try to use existing notification system
+        if (typeof showNotification === 'function') {
+            showNotification('⏰ Time\'s up!', 'info');
+        } else if (typeof swShowAlert === 'function') {
+            swShowAlert('info', '⏰ Time\'s up!');
+        } else {
+            // Fallback: Show visual notification in display
+            const originalText = display.textContent;
+            display.textContent = '⏰ TIME UP!';
+            display.style.color = 'var(--success)';
+            setTimeout(() => {
+                display.textContent = originalText;
+                display.style.color = '';
+            }, 3000);
+        }
     }, 1500);
     
     // Update buttons

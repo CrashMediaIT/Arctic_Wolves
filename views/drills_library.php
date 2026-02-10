@@ -926,7 +926,12 @@ function addDrillToPracticePlan(drillId) {
     // Find the drill data
     const drill = drillsData.find(d => d.id === drillId);
     if (!drill) {
-        alert('Error: Drill not found');
+        // Show error using existing notification system if available
+        if (typeof showNotification === 'function') {
+            showNotification('Error: Drill not found', 'error');
+        } else {
+            console.error('Drill not found:', drillId);
+        }
         return;
     }
     

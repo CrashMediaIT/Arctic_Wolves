@@ -275,7 +275,7 @@ const allDrillsData = <?php echo json_encode(array_map(function($drill) {
         'category' => $drill['category_name'] ?? '',
         'description' => $drill['description'] ?? ''
     ];
-}, $drillsForSelector)); ?>;
+}, $drillsForSelector), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 </script>
 
 <style>
