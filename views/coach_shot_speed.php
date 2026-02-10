@@ -482,16 +482,27 @@ function renderSpeeds(speeds) {
         const date = new Date(speed.created_at);
         const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         
+        // Escape user-provided data
+        const escapedNotes = speed.notes ? escapeHtml(speed.notes) : '-';
+        const escapedName = speed.first_name ? escapeHtml(speed.first_name + ' ' + speed.last_name) : '-';
+        
         html += '<tr>';
         html += '<td>' + dateStr + '</td>';
-        html += '<td class="' + speedClass + '">' + speedValue.toFixed(1) + ' ' + speed.unit + '</td>';
-        html += '<td>' + (speed.notes || '-') + '</td>';
-        html += '<td>' + (speed.first_name ? speed.first_name + ' ' + speed.last_name : '-') + '</td>';
+        html += '<td class="' + speedClass + '">' + speedValue.toFixed(1) + ' ' + escapeHtml(speed.unit) + '</td>';
+        html += '<td>' + escapedNotes + '</td>';
+        html += '<td>' + escapedName + '</td>';
         html += '<td><button class="delete-btn" onclick="deleteSpeed(' + speed.id + ')"><i class="fas fa-trash"></i></button></td>';
         html += '</tr>';
     });
     
     tbody.innerHTML = html;
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Render statistics

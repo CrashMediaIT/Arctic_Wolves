@@ -99,7 +99,9 @@ try {
                 // Also insert into performance_stats if athlete is assigned
                 if ($athlete_id) {
                     $lap_time_seconds = $lap_time_ms / 1000.0; // Convert to seconds
-                    $notes = "Lap $lap_number - $session_name";
+                    // Sanitize session name for notes
+                    $safe_session_name = htmlspecialchars($session_name, ENT_QUOTES, 'UTF-8');
+                    $notes = "Lap $lap_number - $safe_session_name";
                     $perf_stmt->execute([$athlete_id, $lap_time_seconds, $session_id, $user_id, $notes]);
                 }
             }

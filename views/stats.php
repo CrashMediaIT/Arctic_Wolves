@@ -217,11 +217,11 @@ try {
         if ($row['stat_unit'] === 'mph') {
             $shotSpeedStats['max_mph'] = $row['max_speed'];
             $shotSpeedStats['avg_mph'] = $row['avg_speed'];
-            $shotSpeedStats['count'] += $row['count'];
         } elseif ($row['stat_unit'] === 'km/h') {
             $shotSpeedStats['max_kmh'] = $row['max_speed'];
             $shotSpeedStats['avg_kmh'] = $row['avg_speed'];
         }
+        $shotSpeedStats['count'] += $row['count'];
     }
 } catch (PDOException $e) {
     error_log("Stats - shot speeds error: " . $e->getMessage());
