@@ -311,91 +311,15 @@ $age_groups = $age_groups_stmt->fetchAll();
         font-size: 14px;
     }
     
-    /* Filter Bar Enhancement */
-    .filter-bar {
-        background: #16161f;
-        border: 1px solid #2d2d3f;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 28px;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        align-items: end;
-    }
-    
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .filter-label {
-        font-size: 11px;
-        font-weight: 700;
-        color: #9ca3af;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .filter-control {
-        padding: 12px 14px;
-        background: #0d1117;
-        border: 1px solid #2d2d3f;
-        border-radius: 8px;
-        color: #fff;
-        font-size: 14px;
-        transition: all 0.3s ease;
-    }
-    
-    .filter-control:focus {
-        outline: none;
-        border-color: #6B46C1;
-        box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
-    }
-    
-    .filter-control::placeholder {
-        color: #6b6b7b;
-    }
-    
-    .btn-filter {
-        padding: 12px 20px;
-        background: #6B46C1;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 13px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    
-    .btn-filter:hover {
-        background: #7C3AED;
-    }
-    
-    .btn-clear {
-        padding: 12px 20px;
-        background: transparent;
-        color: #9ca3af;
-        border: 1px solid #2d2d3f;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 13px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    
-    .btn-clear:hover {
-        border-color: #6B46C1;
-        color: #6B46C1;
-    }
+    /* Filter Box */
+    .filter-box { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
+    .filter-box-header { background: var(--bg-main, #0A0A0F); padding: 14px 20px; font-weight: 700; color: var(--text-white, #fff); font-size: 14px; border-bottom: 1px solid var(--border, #2D2D3F); display: flex; align-items: center; gap: 10px; }
+    .filter-box-header i { color: var(--primary, #6B46C1); }
+    .filter-box-content { padding: 20px; }
+    .filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+    .filter-field { display: flex; flex-direction: column; gap: 8px; }
+    .filter-field label { font-size: 12px; font-weight: 600; color: var(--text-dim, #9CA3AF); text-transform: uppercase; }
+    .filter-actions { display: flex; flex-direction: row !important; gap: 8px !important; }
     
     /* Responsive Design */
     @media (max-width: 768px) {
@@ -403,7 +327,7 @@ $age_groups = $age_groups_stmt->fetchAll();
             grid-template-columns: 1fr;
         }
         
-        .filter-bar {
+        .filter-row {
             grid-template-columns: 1fr;
         }
         
@@ -426,48 +350,45 @@ $age_groups = $age_groups_stmt->fetchAll();
 </div>
 
 <!-- Filter Bar -->
-<form method="GET" action="dashboard.php" class="filter-bar">
-    <input type="hidden" name="page" value="athletes">
-    
-    <div class="filter-group">
-        <label class="filter-label">Team</label>
-        <select name="filter_team" class="filter-control">
-            <option value="">All Teams</option>
-            <?php foreach ($teams as $team): ?>
-            <option value="<?= $team['id'] ?>" <?= $filter_team == $team['id'] ? 'selected' : '' ?>>
-                <?= htmlspecialchars($team['name']) ?>
-            </option>
-            <?php endforeach; ?>
-        </select>
+<div class="filter-box">
+    <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Athletes</div>
+    <div class="filter-box-content">
+        <form method="GET" action="dashboard.php" class="filter-row">
+            <input type="hidden" name="page" value="athletes">
+            <div class="filter-field">
+                <label>Team</label>
+                <select name="filter_team" class="form-select">
+                    <option value="">All Teams</option>
+                    <?php foreach ($teams as $team): ?>
+                    <option value="<?= $team['id'] ?>" <?= $filter_team == $team['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($team['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Age Group</label>
+                <select name="filter_age_group" class="form-select">
+                    <option value="">All Ages</option>
+                    <?php foreach ($age_groups as $age_group): ?>
+                    <option value="<?= $age_group['id'] ?>" <?= $filter_age_group == $age_group['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($age_group['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Name / Email</label>
+                <input type="text" name="filter_name" class="form-select" placeholder="Search by name or email"
+                       value="<?= htmlspecialchars($filter_name) ?>">
+            </div>
+            <div class="filter-field filter-actions">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                <a href="dashboard.php?page=athletes" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+            </div>
+        </form>
     </div>
-    
-    <div class="filter-group">
-        <label class="filter-label">Age Group</label>
-        <select name="filter_age_group" class="filter-control">
-            <option value="">All Ages</option>
-            <?php foreach ($age_groups as $age_group): ?>
-            <option value="<?= $age_group['id'] ?>" <?= $filter_age_group == $age_group['id'] ? 'selected' : '' ?>>
-                <?= htmlspecialchars($age_group['name']) ?>
-            </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    
-    <div class="filter-group">
-        <label class="filter-label">Name / Email</label>
-        <input type="text" name="filter_name" class="filter-control" placeholder="Search by name or email" 
-               value="<?= htmlspecialchars($filter_name) ?>">
-    </div>
-    
-    <div class="filter-group" style="display: flex; gap: 10px;">
-        <button type="submit" class="btn-filter">
-            <i class="fas fa-filter"></i> Filter
-        </button>
-        <a href="dashboard.php?page=athletes" class="btn-clear" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
-            <i class="fas fa-times"></i> Clear
-        </a>
-    </div>
-</form>
+</div>
 
 <div class="stats-summary">
     <div class="summary-card">
