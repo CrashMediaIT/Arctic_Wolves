@@ -4044,3 +4044,36 @@ CREATE TABLE IF NOT EXISTS `user_roles` (
     INDEX `idx_user` (`user_id`),
     INDEX `idx_role` (`role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Stopwatch sessions - records a timed session by a coach
+CREATE TABLE IF NOT EXISTS `stopwatch_sessions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `coach_id` INT NOT NULL,
+    `skill_id` INT DEFAULT NULL COMMENT 'Optional link to a skill being timed',
+    `session_name` VARCHAR(255) NOT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`skill_id`) REFERENCES `eval_skills`(`id`) ON DELETE SET NULL,
+    INDEX `idx_coach` (`coach_id`),
+    INDEX `idx_skill` (`skill_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Stopwatch times - individual lap/split times recorded during a session
+CREATE TABLE IF NOT EXISTS `stopwatch_times` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `session_id` INT NOT NULL,
+    `athlete_id` INT DEFAULT NULL COMMENT 'Athlete this time is assigned to',
+    `lap_number` INT NOT NULL DEFAULT 1,
+    `lap_time_ms` BIGINT NOT NULL COMMENT 'Lap time in milliseconds',
+    `total_time_ms` BIGINT NOT NULL COMMENT 'Total elapsed time in milliseconds',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_id`) REFERENCES `stopwatch_sessions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_session` (`session_id`),
+    INDEX `idx_athlete` (`athlete_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add stopwatch flag to eval_skills
+ALTER TABLE `eval_skills`
+ADD COLUMN IF NOT EXISTS `has_stopwatch` TINYINT(1) DEFAULT 0 COMMENT 'Whether this skill uses a stopwatch for timed evaluation';

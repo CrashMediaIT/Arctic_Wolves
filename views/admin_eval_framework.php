@@ -874,6 +874,16 @@ try {
                     <label class="form-label">New Skill Description</label>
                     <textarea name="new_skill_description" class="form-textarea" rows="2" placeholder="Describe what this skill measures..."></textarea>
                 </div>
+
+                <div class="form-group">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; color: var(--text-secondary); font-size: var(--font-size-sm);">
+                        <input type="checkbox" name="has_stopwatch" value="1" style="accent-color: var(--primary); width:18px; height:18px;">
+                        <i class="fas fa-stopwatch" style="color: var(--primary);"></i> Enable Stopwatch for this skill
+                    </label>
+                    <p class="form-help-text" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                        When enabled, coaches can use the stopwatch to record timed results for this skill
+                    </p>
+                </div>
             </div>
             
             <div class="modal-footer">

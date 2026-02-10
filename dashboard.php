@@ -156,6 +156,8 @@ $allowed_pages = [
     
     'roster'                  => 'views/coach_roster.php',
     
+    'coach_stopwatch'         => 'views/coach_stopwatch.php',
+    
     'travel'                  => 'views/travel.php',
     'mileage'                 => 'views/travel.php',
     'mileage_tracker'         => 'views/mileage_tracker.php',
@@ -759,6 +761,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=roster" class="nav-link <?= $page=='roster'?'active':'' ?>">
                 <i class="fa-solid fa-users-gear icon"></i> Roster
+            </a>
+            <a href="?page=coach_stopwatch" class="nav-link <?= $page=='coach_stopwatch'?'active':'' ?>">
+                <i class="fa-solid fa-stopwatch icon"></i> Stopwatch
             </a>
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>">
                 <i class="fa-solid fa-clipboard-check icon"></i> Session Evaluations
