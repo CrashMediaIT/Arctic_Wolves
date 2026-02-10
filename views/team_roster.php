@@ -125,10 +125,12 @@ if ($team) {
 
 <!-- Team Roster View -->
 <div class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-users"></i> Team Roster
-    </h1>
-    <p class="page-description">View and manage team members</p>
+    <div class="page-header-content">
+        <h1 class="page-title">
+            <i class="fas fa-users"></i> Team Roster
+        </h1>
+        <p class="page-description">View and manage team members</p>
+    </div>
 </div>
 
 <div class="roster-content">

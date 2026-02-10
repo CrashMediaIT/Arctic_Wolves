@@ -930,12 +930,13 @@ function closeModal(modalId) {
     overflow-x: auto;
     margin-bottom: 0;
     border-bottom: none;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     -webkit-overflow-scrolling: touch;
 }
 
 .modal .tabs.edit-user-tabs .tab {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1581,6 +1582,11 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
             var cb = document.getElementById('edit-role-' + r);
             if (cb) cb.checked = false;
         });
+        // Include primary role from users.role column
+        if (role) {
+            var primaryCb = document.getElementById('edit-role-' + role);
+            if (primaryCb) primaryCb.checked = true;
+        }
         var extraRoles = userRolesMap[id] || [];
         extraRoles.forEach(function(r) {
             var cb = document.getElementById('edit-role-' + r);

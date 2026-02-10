@@ -80,72 +80,30 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
 ?>
 
 <style>
-/* Business Cards Page Header - Financial Reports Hub Style */
-.business-cards-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.business-cards-page-header .page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.business-cards-page-header .page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), #5a0080);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-.business-cards-page-header .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-.business-cards-page-header .page-description {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
-}
+/* Marketing page uses standard .page-header, .page-tabs, .page-tab from style-guide.css */
 </style>
 
-<div class="business-cards-page-header">
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-bullhorn"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Marketing</h1>
-            <p class="page-description">Create business cards and email signatures for team members</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-bullhorn"></i> Marketing</h1>
+        <p class="page-description">Create business cards and email signatures for team members</p>
     </div>
 </div>
 
-<!-- Marketing Section Tabs -->
-<div class="marketing-tabs">
-    <button class="marketing-tab active" onclick="switchMarketingTab('business-cards')" id="tab-business-cards">
+<!-- Marketing Section Tabs - using standard .page-tabs/.page-tab classes matching security page -->
+<div class="page-tabs" style="flex-wrap: wrap;">
+    <button class="page-tab active" onclick="switchMarketingTab('business-cards')" id="tab-business-cards">
         <i class="fas fa-id-card"></i> Business Cards
     </button>
-    <button class="marketing-tab" onclick="switchMarketingTab('email-signatures')" id="tab-email-signatures">
+    <button class="page-tab" onclick="switchMarketingTab('email-signatures')" id="tab-email-signatures">
         <i class="fas fa-envelope"></i> Email Signatures
     </button>
-    <button class="marketing-tab" onclick="switchMarketingTab('business-partners')" id="tab-business-partners">
+    <button class="page-tab" onclick="switchMarketingTab('business-partners')" id="tab-business-partners">
         <i class="fas fa-handshake"></i> Business Partners
     </button>
 </div>
 
+<div class="page-tab-content">
 <!-- Business Cards Section -->
 <div class="business-cards-content marketing-section" id="section-business-cards">
     <!-- Step 1: User Selection -->
@@ -628,6 +586,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
 <div class="business-partners-content marketing-section" id="section-business-partners" style="display: none;">
 <?php include __DIR__ . '/admin_business_partners.php'; ?>
 </div>
+</div><!-- /.page-tab-content -->
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
@@ -1322,7 +1281,7 @@ function switchMarketingTab(tab) {
     });
     
     // Remove active class from all tabs
-    document.querySelectorAll('.marketing-tab').forEach(tabBtn => {
+    document.querySelectorAll('.page-tabs .page-tab').forEach(tabBtn => {
         tabBtn.classList.remove('active');
     });
     
