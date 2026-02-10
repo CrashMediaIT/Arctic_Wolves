@@ -3781,7 +3781,7 @@ CREATE TABLE IF NOT EXISTS `agreement_templates` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
-    INDEX `idx_type` (`agreement_type`),
+    UNIQUE INDEX `idx_type` (`agreement_type`),
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
