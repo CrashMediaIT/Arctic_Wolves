@@ -64,21 +64,38 @@ try {
 </div>
 
 <div class="practice-content">
-    <!-- Actions Bar -->
+    <!-- Filter Box -->
+    <div class="filter-box">
+        <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Practice Plans</div>
+        <div class="filter-box-content">
+            <form method="GET" action="" class="filter-row">
+                <input type="hidden" name="page" value="practice_library">
+                <div class="filter-field">
+                    <label>Search</label>
+                    <input type="text" name="search" class="form-select" placeholder="Search practice plans..." value="<?= htmlspecialchars($search) ?>">
+                </div>
+                <div class="filter-field">
+                    <label>Team</label>
+                    <select name="team" class="form-select">
+                        <option value="all">All Teams</option>
+                        <?php foreach ($teams as $team): ?>
+                            <option value="<?= $team['id'] ?>" <?= $filter_team == $team['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($team['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field filter-actions">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                    <a href="?page=practice_library" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="action-bar">
-        <form method="GET" action="" class="filter-group">
-            <input type="hidden" name="page" value="practice_library">
-            <input type="text" name="search" class="form-input-small" placeholder="Search practice plans..." value="<?= htmlspecialchars($search) ?>">
-            <select name="team" class="form-input-small">
-                <option value="all">All Teams</option>
-                <?php foreach ($teams as $team): ?>
-                    <option value="<?= $team['id'] ?>" <?= $filter_team == $team['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($team['name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </form>
-        <button class="btn-primary" data-action="view" data-page="create_practice"><i class="fas fa-plus"></i> Create Practice Plan</button>
+        <div></div>
+        <button class="btn btn-primary" data-action="view" data-page="create_practice"><i class="fas fa-plus"></i> Create Practice Plan</button>
     </div>
 
     <!-- Practice Plans List -->
@@ -143,6 +160,15 @@ try {
 </div>
 
 <style>
+.filter-box { background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F); border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
+.filter-box-header { background: var(--bg-main, #0A0A0F); padding: 14px 20px; font-weight: 700; color: var(--text-white, #fff); font-size: 14px; border-bottom: 1px solid var(--border, #2D2D3F); display: flex; align-items: center; gap: 10px; }
+.filter-box-header i { color: var(--primary, #6B46C1); }
+.filter-box-content { padding: 20px; }
+.filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+.filter-field { display: flex; flex-direction: column; gap: 8px; }
+.filter-field label { font-size: 12px; font-weight: 600; color: var(--text-dim, #9CA3AF); text-transform: uppercase; }
+.filter-actions { display: flex; flex-direction: row !important; gap: 8px !important; }
+
 .practice-list {
     display: flex;
     flex-direction: column;
