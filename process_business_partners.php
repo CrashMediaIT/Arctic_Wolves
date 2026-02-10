@@ -33,9 +33,10 @@ try {
             $contact_title = trim($_POST['contact_title'] ?? '');
             $contact_email = trim($_POST['contact_email'] ?? '');
             $contact_phone = trim($_POST['contact_phone'] ?? '');
+            $redirect_page = ($_POST['redirect_to'] ?? '') === 'marketing' ? 'marketing' : 'business_partners';
 
             if (empty($company_name)) {
-                header("Location: dashboard.php?page=business_partners&tab=add&status=error&message=" . urlencode('Company name is required'));
+                header("Location: dashboard.php?page=" . $redirect_page . "&tab=add&status=error&message=" . urlencode('Company name is required'));
                 exit();
             }
 
@@ -52,7 +53,7 @@ try {
                 $contact_email ?: null, $enc_contact_phone, $user_id
             ]);
 
-            header("Location: dashboard.php?page=business_partners&tab=partners&status=success&message=" . urlencode('Partner created successfully'));
+            header("Location: dashboard.php?page=" . $redirect_page . "&status=success&message=" . urlencode('Partner created successfully'));
             exit();
 
         case 'update_partner':
