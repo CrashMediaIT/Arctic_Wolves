@@ -696,22 +696,23 @@ function getAllTeamsData() {
     
     $teams = $stmt->fetchAll();
     
-    // Build coaches string per team with decryption
+    // Fetch all coach assignments in one query to avoid N+1
+    $coach_stmt = $pdo->query("
+        SELECT tca.team_id, u.first_name, u.last_name
+        FROM team_coach_assignments tca
+        JOIN users u ON tca.coach_id = u.id
+    ");
+    $allCoaches = $coach_stmt->fetchAll();
+    $allCoaches = decryptUserRows($allCoaches);
+    
+    // Group coaches by team_id
+    $coachesByTeam = [];
+    foreach ($allCoaches as $c) {
+        $coachesByTeam[$c['team_id']][] = trim(($c['first_name'] ?? '') . ' ' . ($c['last_name'] ?? ''));
+    }
+    
     foreach ($teams as &$team) {
-        $coach_stmt = $pdo->prepare("
-            SELECT u.first_name, u.last_name
-            FROM team_coach_assignments tca
-            JOIN users u ON tca.coach_id = u.id
-            WHERE tca.team_id = ?
-        ");
-        $coach_stmt->execute([$team['id']]);
-        $coaches = $coach_stmt->fetchAll();
-        $coaches = decryptUserRows($coaches);
-        $coachNames = [];
-        foreach ($coaches as $c) {
-            $coachNames[] = trim(($c['first_name'] ?? '') . ' ' . ($c['last_name'] ?? ''));
-        }
-        $team['coaches'] = implode(', ', $coachNames);
+        $team['coaches'] = implode(', ', $coachesByTeam[$team['id']] ?? []);
     }
     unset($team);
     
