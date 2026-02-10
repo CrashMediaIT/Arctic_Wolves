@@ -247,6 +247,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
         
+        // Handle parent invitation acceptance (if registering via invitation link)
+        $invitation_token = $_POST['invitation_token'] ?? $_SESSION['parent_invitation_token'] ?? null;
+        if ($invitation_token && $role === 'parent') {
+            try {
+                $inv_stmt = $pdo->prepare("SELECT * FROM parent_invitations WHERE token = ? AND status = 'pending' AND expires_at > NOW()");
+                $inv_stmt->execute([$invitation_token]);
+                $invitation = $inv_stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($invitation) {
+                    // Get athlete IDs from invitation
+                    $ath_stmt = $pdo->prepare("SELECT athlete_id FROM parent_invitation_athletes WHERE invitation_id = ?");
+                    $ath_stmt->execute([$invitation['id']]);
+                    $inv_athlete_ids = $ath_stmt->fetchAll(PDO::FETCH_COLUMN);
+                    
+                    // Create managed_athletes entries
+                    $ma_stmt = $pdo->prepare("INSERT IGNORE INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats, status) VALUES (?, ?, ?, 1, 1, 'active')");
+                    foreach ($inv_athlete_ids as $inv_ath_id) {
+                        $ma_stmt->execute([$parent_id, $inv_ath_id, $invitation['relationship']]);
+                    }
+                    
+                    // Also add to parent_athlete_relationships
+                    $par_stmt = $pdo->prepare("INSERT IGNORE INTO parent_athlete_relationships (parent_id, athlete_id, relationship_type) VALUES (?, ?, ?)");
+                    foreach ($inv_athlete_ids as $inv_ath_id) {
+                        $par_stmt->execute([$parent_id, $inv_ath_id, $invitation['relationship']]);
+                    }
+                    
+                    // Mark invitation as accepted
+                    $upd_stmt = $pdo->prepare("UPDATE parent_invitations SET status = 'accepted', accepted_by = ?, accepted_at = NOW() WHERE id = ?");
+                    $upd_stmt->execute([$parent_id, $invitation['id']]);
+                    
+                    // Clear session token
+                    unset($_SESSION['parent_invitation_token']);
+                }
+            } catch (PDOException $e) {
+                error_log("Invitation acceptance during registration error: " . $e->getMessage());
+            }
+        }
+        
         // Commit transaction
         $pdo->commit();
 

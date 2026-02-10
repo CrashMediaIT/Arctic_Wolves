@@ -3944,3 +3944,83 @@ CREATE TABLE IF NOT EXISTS `partner_contracts` (
     INDEX `idx_partner` (`partner_id`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- Parent-Athlete Multi-Parent Support
+-- =========================================================
+
+-- Extend managed_athletes for parent use (parent_id, relationship, permissions)
+ALTER TABLE `managed_athletes`
+ADD COLUMN IF NOT EXISTS `parent_id` INT DEFAULT NULL COMMENT 'Parent user who manages this athlete',
+ADD COLUMN IF NOT EXISTS `relationship` VARCHAR(50) DEFAULT 'parent' COMMENT 'Relationship type: parent, grandparent, guardian, other',
+ADD COLUMN IF NOT EXISTS `can_book` TINYINT(1) DEFAULT 1 COMMENT 'Whether this parent can book sessions for the athlete',
+ADD COLUMN IF NOT EXISTS `can_view_stats` TINYINT(1) DEFAULT 1 COMMENT 'Whether this parent can view athlete stats';
+
+-- Parent invitation system for inviting additional parents/grandparents
+CREATE TABLE IF NOT EXISTS `parent_invitations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `inviter_id` INT NOT NULL COMMENT 'Parent who sent the invitation',
+    `email` VARCHAR(255) NOT NULL COMMENT 'Email address of the invited parent',
+    `token` VARCHAR(64) NOT NULL COMMENT 'Unique invitation token',
+    `relationship` VARCHAR(50) DEFAULT 'parent' COMMENT 'Relationship: parent, grandparent, guardian, other',
+    `status` ENUM('pending', 'accepted', 'expired', 'revoked') DEFAULT 'pending',
+    `accepted_by` INT DEFAULT NULL COMMENT 'User ID of the person who accepted',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `expires_at` DATETIME NOT NULL,
+    `accepted_at` DATETIME DEFAULT NULL,
+    FOREIGN KEY (`inviter_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`accepted_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_token` (`token`),
+    INDEX `idx_email` (`email`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Athletes linked to each parent invitation (which children the invited parent can manage)
+CREATE TABLE IF NOT EXISTS `parent_invitation_athletes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `invitation_id` INT NOT NULL,
+    `athlete_id` INT NOT NULL,
+    FOREIGN KEY (`invitation_id`) REFERENCES `parent_invitations`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `unique_invitation_athlete` (`invitation_id`, `athlete_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- Child Check-In/Check-Out System
+-- =========================================================
+
+-- Add check-in/check-out toggle to sessions and packages
+ALTER TABLE `sessions`
+ADD COLUMN IF NOT EXISTS `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for this session/camp';
+
+ALTER TABLE `packages`
+ADD COLUMN IF NOT EXISTS `enable_child_checkin` TINYINT(1) DEFAULT 0 COMMENT 'Enable child check-in/check-out for sessions in this package';
+
+-- Camp check-in/check-out codes (QR codes for drop-off and pickup)
+CREATE TABLE IF NOT EXISTS `camp_checkin_codes` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `booking_id` INT NOT NULL COMMENT 'Booking this code is associated with',
+    `athlete_id` INT NOT NULL COMMENT 'Athlete being checked in/out',
+    `session_id` INT NOT NULL COMMENT 'Session/camp this code is for',
+    `parent_id` INT NOT NULL COMMENT 'Parent who generated the code',
+    `code_type` ENUM('checkin', 'checkout') NOT NULL COMMENT 'Whether this is a check-in or check-out code',
+    `code` VARCHAR(64) NOT NULL COMMENT 'Unique QR code value',
+    `items_description` TEXT DEFAULT NULL COMMENT 'Items the child is bringing (lunch box, equipment, etc.)',
+    `shared_email` VARCHAR(255) DEFAULT NULL COMMENT 'Email the code was shared with (for alternative pickup)',
+    `shared_name` VARCHAR(255) DEFAULT NULL COMMENT 'Name of the person the code was shared with',
+    `is_used` TINYINT(1) DEFAULT 0 COMMENT 'Whether this code has been scanned',
+    `used_at` DATETIME DEFAULT NULL COMMENT 'When the code was scanned',
+    `scanned_by` INT DEFAULT NULL COMMENT 'Staff member who scanned the code',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `expires_at` DATETIME NOT NULL COMMENT 'When this code expires',
+    FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`parent_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`scanned_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    UNIQUE KEY `unique_code` (`code`),
+    INDEX `idx_booking` (`booking_id`),
+    INDEX `idx_athlete_session` (`athlete_id`, `session_id`),
+    INDEX `idx_code_type` (`code_type`),
+    INDEX `idx_used` (`is_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

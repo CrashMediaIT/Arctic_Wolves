@@ -35,6 +35,32 @@ if (isset($_GET['session_intent'])) {
     $_SESSION['session_intent'] = $_GET['session_intent'];
 }
 
+// Handle parent invitation token
+$invitationToken = $_GET['invitation'] ?? $_SESSION['parent_invitation_token'] ?? null;
+if (isset($_GET['invitation'])) {
+    $_SESSION['parent_invitation_token'] = $_GET['invitation'];
+}
+
+// Look up invitation details for display
+$invitationInfo = null;
+if ($invitationToken && $db_connected) {
+    try {
+        $inv_stmt = $pdo->prepare("
+            SELECT pi.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name
+            FROM parent_invitations pi
+            INNER JOIN users u ON pi.inviter_id = u.id
+            WHERE pi.token = ? AND pi.status = 'pending' AND pi.expires_at > NOW()
+        ");
+        $inv_stmt->execute([$invitationToken]);
+        $invitationInfo = $inv_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($invitationInfo) {
+            $invitationInfo = decryptUserRow($invitationInfo);
+        }
+    } catch (PDOException $e) {
+        // Table may not exist yet
+    }
+}
+
 // If already logged in, redirect to dashboard or session intent
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     // Check if there's a session intent to complete
@@ -487,6 +513,21 @@ if (isset($_GET['error'])) {
 
             <form method="POST" action="process_register.php" id="registerForm">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                <?php if ($invitationToken): ?>
+                    <input type="hidden" name="invitation_token" value="<?php echo htmlspecialchars($invitationToken); ?>">
+                <?php endif; ?>
+                
+                <?php if ($invitationInfo): ?>
+                    <div style="padding: 16px; border-radius: 8px; margin-bottom: 20px; background: rgba(107, 70, 193, 0.1); border: 1px solid #6B46C1; color: #e2e8f0;">
+                        <i class="fas fa-envelope-open-text" style="color: #6B46C1;"></i>
+                        <strong>You've been invited!</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 13px; color: #94a3b8;">
+                            <?= htmlspecialchars(($invitationInfo['inviter_first_name'] ?? '') . ' ' . ($invitationInfo['inviter_last_name'] ?? '')) ?>
+                            has invited you as a <strong style="color: #e2e8f0;"><?= htmlspecialchars($invitationInfo['relationship'] ?? 'parent') ?></strong> to manage their athletes.
+                            Register as a Parent below to accept.
+                        </p>
+                    </div>
+                <?php endif; ?>
                 
                 <!-- Role Selection -->
                 <div class="role-selector">
