@@ -298,6 +298,25 @@ $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings"
             </div>
         </div>
         
+        <!-- Child Check-In/Check-Out Settings -->
+        <div class="form-section">
+            <h2 class="section-title">Child Check-In / Check-Out</h2>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #06080b; border: 1px solid #1e293b; border-radius: 8px;">
+                <div>
+                    <h4 style="color: #fff; margin: 0 0 5px 0; font-size: 14px;">Enable Child Check-In/Check-Out</h4>
+                    <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+                        Require QR code scan for child drop-off and pickup at this camp/session. 
+                        Parents will be able to generate QR codes a week before the session.
+                    </p>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="enable_child_checkin" value="1">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+        
         <button type="submit" class="btn-submit">
             <i class="fas fa-calendar-plus"></i> Create Session
         </button>

@@ -234,6 +234,17 @@ $sessions = $pdo->query("
                 </label>
             </div>
             
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #06080b; border: 1px solid #1e293b; border-radius: 8px; margin-bottom: 20px;">
+                <div>
+                    <label style="color: #fff; font-size: 14px; font-weight: 600; margin: 0; display: block;">Enable Child Check-In/Check-Out</label>
+                    <small style="color: #94a3b8; font-size: 12px;">Require QR code scan for child drop-off and pickup at sessions in this package</small>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="enable_child_checkin" id="packageChildCheckin" value="1">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            
             <div class="form-actions">
                 <button type="button" class="btn-secondary" onclick="closePackageModal()"><i class="fas fa-times"></i> Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Package</button>

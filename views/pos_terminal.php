@@ -83,16 +83,21 @@ try {
         <h1 class="page-title"><i class="fas fa-cash-register"></i> POS Terminal</h1>
         <p class="page-description">Point of Sale for merchandise transactions</p>
     </div>
-    <div class="page-header-stats">
-        <div class="header-stat">
-            <span class="stat-value"><?= count($products) ?></span>
-            <span class="stat-label">Products</span>
-        </div>
-        <div class="header-stat">
-            <span class="stat-value" style="color: <?= $stripeConfigured ? '#10b981' : '#ef4444' ?>;">
-                <i class="fas fa-<?= $stripeConfigured ? 'check-circle' : 'times-circle' ?>"></i>
-            </span>
-            <span class="stat-label">Stripe</span>
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <button type="button" onclick="openChildCheckinScanner()" style="padding: 12px 20px; background: #10b981; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-qrcode"></i> Child Check-In/Out
+        </button>
+        <div class="page-header-stats">
+            <div class="header-stat">
+                <span class="stat-value"><?= count($products) ?></span>
+                <span class="stat-label">Products</span>
+            </div>
+            <div class="header-stat">
+                <span class="stat-value" style="color: <?= $stripeConfigured ? '#10b981' : '#ef4444' ?>;">
+                    <i class="fas fa-<?= $stripeConfigured ? 'check-circle' : 'times-circle' ?>"></i>
+                </span>
+                <span class="stat-label">Stripe</span>
+            </div>
         </div>
     </div>
 </div>
@@ -1412,4 +1417,187 @@ function selectReader(readerId) {
         }
     });
 }
+
+// =========================================================
+// Child Check-In/Check-Out Scanner
+// =========================================================
+function openChildCheckinScanner() {
+    document.getElementById('checkin-scanner-modal').style.display = 'flex';
+    document.getElementById('checkin-scanner-input').value = '';
+    document.getElementById('checkin-scanner-input').focus();
+    document.getElementById('checkin-scanner-result').innerHTML = '';
+    document.getElementById('checkin-scanner-result').style.display = 'none';
+}
+
+function closeChildCheckinScanner() {
+    document.getElementById('checkin-scanner-modal').style.display = 'none';
+    // Stop camera if active
+    if (window._checkinVideoStream) {
+        window._checkinVideoStream.getTracks().forEach(function(t) { t.stop(); });
+        window._checkinVideoStream = null;
+    }
+    var cameraSection = document.getElementById('checkin-camera-section');
+    if (cameraSection) cameraSection.style.display = 'none';
+}
+
+function processCheckinScan() {
+    var code = document.getElementById('checkin-scanner-input').value.trim();
+    if (!code) return;
+
+    var resultDiv = document.getElementById('checkin-scanner-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Processing...</div>';
+
+    var csrfToken = document.querySelector('[name="csrf_token"]') ? document.querySelector('[name="csrf_token"]').value : '';
+    
+    fetch('process_camp_checkin.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=scan_code&code=' + encodeURIComponent(code) + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var itemsHtml = data.items ? '<div style="margin-top: 10px; padding: 10px; background: #06080b; border-radius: 6px;"><strong>Items:</strong> ' + escapeHtml(data.items) + '</div>' : '';
+            var sharedHtml = data.shared_with ? '<p style="margin-top: 8px; font-size: 13px; color: #f59e0b;"><i class="fas fa-user"></i> Presented by: ' + escapeHtml(data.shared_with) + '</p>' : '';
+            resultDiv.innerHTML =
+                '<div style="padding: 20px; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; text-align: center;">' +
+                '<i class="fas fa-check-circle" style="font-size: 48px; color: #10b981; margin-bottom: 12px; display: block;"></i>' +
+                '<h3 style="color: #10b981; margin: 0 0 8px 0;">' + escapeHtml(data.message) + '</h3>' +
+                '<p style="color: #94a3b8; margin: 0;">Session: ' + escapeHtml(data.session_title || '') + '</p>' +
+                '<p style="color: #94a3b8; margin: 4px 0 0 0;">Date: ' + escapeHtml(data.session_date || '') + (data.session_time ? ' at ' + escapeHtml(data.session_time) : '') + '</p>' +
+                '<p style="color: #94a3b8; margin: 4px 0 0 0;">Parent: ' + escapeHtml(data.parent_name || '') + '</p>' +
+                sharedHtml + itemsHtml +
+                '</div>';
+        } else {
+            var icon = data.status === 'already_used' ? 'fa-exclamation-triangle' : (data.status === 'expired' ? 'fa-clock' : 'fa-times-circle');
+            var color = data.status === 'already_used' ? '#f59e0b' : '#ef4444';
+            resultDiv.innerHTML =
+                '<div style="padding: 20px; background: rgba(239, 68, 68, 0.1); border: 1px solid ' + color + '; border-radius: 8px; text-align: center;">' +
+                '<i class="fas ' + icon + '" style="font-size: 48px; color: ' + color + '; margin-bottom: 12px; display: block;"></i>' +
+                '<h3 style="color: ' + color + '; margin: 0 0 8px 0;">' + escapeHtml(data.message) + '</h3>' +
+                (data.athlete_name ? '<p style="color: #94a3b8;">Athlete: ' + escapeHtml(data.athlete_name) + '</p>' : '') +
+                '</div>';
+        }
+        // Clear input for next scan
+        document.getElementById('checkin-scanner-input').value = '';
+        document.getElementById('checkin-scanner-input').focus();
+    })
+    .catch(function(err) {
+        resultDiv.innerHTML = '<div style="padding: 20px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; text-align: center; color: #ef4444;"><i class="fas fa-exclamation-circle"></i> Network error. Please try again.</div>';
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    var d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+}
+
+// Camera-based QR scanning
+function startCameraScanner() {
+    var cameraSection = document.getElementById('checkin-camera-section');
+    var video = document.getElementById('checkin-camera-video');
+    cameraSection.style.display = 'block';
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(function(stream) {
+        window._checkinVideoStream = stream;
+        video.srcObject = stream;
+        video.play();
+        scanFromCamera();
+    })
+    .catch(function(err) {
+        cameraSection.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;"><i class="fas fa-exclamation-circle"></i> Camera not available: ' + err.message + '</p>';
+    });
+}
+
+function scanFromCamera() {
+    var video = document.getElementById('checkin-camera-video');
+    var canvas = document.getElementById('checkin-camera-canvas');
+    if (!video || !canvas || !window._checkinVideoStream) return;
+
+    var ctx = canvas.getContext('2d');
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        try {
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            if (typeof jsQR !== 'undefined') {
+                var qrCode = jsQR(imageData.data, imageData.width, imageData.height);
+                if (qrCode) {
+                    document.getElementById('checkin-scanner-input').value = qrCode.data;
+                    // Stop camera
+                    window._checkinVideoStream.getTracks().forEach(function(t) { t.stop(); });
+                    window._checkinVideoStream = null;
+                    document.getElementById('checkin-camera-section').style.display = 'none';
+                    processCheckinScan();
+                    return;
+                }
+            }
+        } catch(e) { /* continue scanning */ }
+    }
+    requestAnimationFrame(scanFromCamera);
+}
 </script>
+
+<!-- jsQR library for camera-based QR code scanning -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+<!-- Child Check-In/Check-Out Scanner Modal -->
+<div id="checkin-scanner-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; align-items: center; justify-content: center;">
+    <div style="background: #0d1117; border: 1px solid #1e293b; border-radius: 12px; padding: 30px; max-width: 550px; width: 95%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 style="font-size: 22px; font-weight: 900; color: #fff; margin: 0;">
+                <i class="fas fa-qrcode" style="color: #10b981;"></i> Child Check-In / Check-Out
+            </h2>
+            <button onclick="closeChildCheckinScanner()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+            Scan a QR code using a barcode scanner or use the camera to check in or check out a child.
+        </p>
+
+        <!-- Barcode Scanner Input (works with hardware barcode scanners) -->
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase;">
+                Scan or Enter Code
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="checkin-scanner-input" placeholder="Scan QR code here or type code..." 
+                       style="flex: 1; padding: 14px; background: #06080b; border: 1px solid #1e293b; border-radius: 6px; color: #fff; font-size: 16px; font-family: monospace;"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();processCheckinScan();}">
+                <button onclick="processCheckinScan()" style="padding: 14px 20px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 14px;">
+                    <i class="fas fa-search"></i> Scan
+                </button>
+            </div>
+            <small style="color: #64748b; font-size: 12px; display: block; margin-top: 6px;">
+                <i class="fas fa-barcode"></i> Point your barcode scanner at the QR code, or type the code manually
+            </small>
+        </div>
+
+        <!-- Camera Scanner Option -->
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button onclick="startCameraScanner()" style="padding: 12px 20px; background: #1e293b; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">
+                <i class="fas fa-camera"></i> Use Camera to Scan
+            </button>
+        </div>
+
+        <div id="checkin-camera-section" style="display: none; margin-bottom: 20px;">
+            <div style="position: relative; border-radius: 8px; overflow: hidden; background: #000;">
+                <video id="checkin-camera-video" style="width: 100%; display: block;" playsinline></video>
+                <canvas id="checkin-camera-canvas" style="display: none;"></canvas>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; border: 2px solid #10b981; border-radius: 8px; pointer-events: none;"></div>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 8px;">
+                <i class="fas fa-crosshairs"></i> Point your camera at the QR code
+            </p>
+        </div>
+
+        <!-- Scan Result -->
+        <div id="checkin-scanner-result" style="display: none;"></div>
+    </div>
+</div>
