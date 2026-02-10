@@ -1571,6 +1571,12 @@ if ($action == 'update_user') {
     }
 
     try {
+        // Encrypt PII fields before storing (email kept as-is for login lookups)
+        $enc_first_name = FieldEncryption::encrypt($first_name);
+        $enc_last_name = FieldEncryption::encrypt($last_name);
+        $enc_phone = $phone ? FieldEncryption::encrypt($phone) : null;
+        $enc_birth_date = $birth_date ? FieldEncryption::encrypt($birth_date) : null;
+
         // Check if password is being updated
         if (!empty($password)) {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
@@ -1579,14 +1585,14 @@ if ($action == 'update_user') {
                 SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, password = ?, birth_date = ?, assigned_coach_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $hashed_password, $birth_date, $primary_coach_id, $user_id_to_update]);
+            $stmt->execute([$enc_first_name, $enc_last_name, $email, $enc_phone, $role, $hashed_password, $enc_birth_date, $primary_coach_id, $user_id_to_update]);
         } else {
             $stmt = $pdo->prepare("
                 UPDATE users 
                 SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, birth_date = ?, assigned_coach_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$first_name, $last_name, $email, $phone, $role, $birth_date, $primary_coach_id, $user_id_to_update]);
+            $stmt->execute([$enc_first_name, $enc_last_name, $email, $enc_phone, $role, $enc_birth_date, $primary_coach_id, $user_id_to_update]);
         }
         
         // Update multiple coach assignments in athlete_coaches table

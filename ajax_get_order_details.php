@@ -32,6 +32,7 @@ try {
     $stmt = $pdo->prepare("SELECT * FROM shop_orders WHERE id = ?");
     $stmt->execute([$orderId]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    $order = decryptUserRow($order);
     
     if (!$order) {
         echo '<p style="color: #ef4444;">Order not found</p>';

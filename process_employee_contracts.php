@@ -78,6 +78,7 @@ try {
                 $stmt = $pdo->prepare("SELECT * FROM employee_onboarding WHERE id = ?");
                 $stmt->execute([$onboardingId]);
                 $onboarding = $stmt->fetch(PDO::FETCH_ASSOC);
+                $onboarding = decryptUserRow($onboarding);
                 
                 if ($onboarding) {
                     // Only use onboarding data as fallback if user didn't provide values

@@ -14,6 +14,7 @@ $partners = [];
 $partner_contracts = [];
 try {
     $partners = $pdo->query("SELECT * FROM business_partners ORDER BY company_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $partners = decryptUserRows($partners);
 } catch (PDOException $e) {
     $partners = [];
 }
@@ -26,6 +27,7 @@ if ($selected_partner_id > 0) {
         $stmt = $pdo->prepare("SELECT * FROM business_partners WHERE id = ?");
         $stmt->execute([$selected_partner_id]);
         $selected_partner = $stmt->fetch(PDO::FETCH_ASSOC);
+        $selected_partner = decryptUserRow($selected_partner);
         
         $contracts_stmt = $pdo->prepare("SELECT * FROM partner_contracts WHERE partner_id = ? ORDER BY created_at DESC");
         $contracts_stmt->execute([$selected_partner_id]);

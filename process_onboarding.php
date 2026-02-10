@@ -312,7 +312,16 @@ if ($action === 'create') {
                 $newUserId = $pdo->lastInsertId();
             }
             
-            // Create onboarding record
+            // Create onboarding record with encrypted PII
+            $enc_onboard_first = FieldEncryption::encrypt($firstName);
+            $enc_onboard_last = FieldEncryption::encrypt($lastName);
+            $enc_onboard_phone = $phone ? FieldEncryption::encrypt($phone) : null;
+            $enc_onboard_dob = $dateOfBirth ? FieldEncryption::encrypt($dateOfBirth) : null;
+            $enc_onboard_street = $streetAddress ? FieldEncryption::encrypt($streetAddress) : null;
+            $enc_onboard_city = $city ? FieldEncryption::encrypt($city) : null;
+            $enc_onboard_emerg_name = $emergencyName ? FieldEncryption::encrypt($emergencyName) : null;
+            $enc_onboard_emerg_phone = $emergencyPhone ? FieldEncryption::encrypt($emergencyPhone) : null;
+
             $onboardStmt = $pdo->prepare("
                 INSERT INTO employee_onboarding 
                 (user_id, first_name, last_name, email, phone, role, start_date, employee_type,
@@ -323,10 +332,10 @@ if ($action === 'create') {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_progress', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
             $onboardStmt->execute([
-                $newUserId, $firstName, $lastName, $email, $phone, $role, $startDate, $employeeType,
-                !empty($sinLastFour) ? 1 : 0, $sinLastFour ?: null, $dateOfBirth ?: null,
-                $streetAddress, $unitNumber, $city, $province, $postalCode,
-                $emergencyName, $emergencyPhone, $emergencyRelationship,
+                $newUserId, $enc_onboard_first, $enc_onboard_last, $email, $enc_onboard_phone, $role, $startDate, $employeeType,
+                !empty($sinLastFour) ? 1 : 0, $sinLastFour ?: null, $enc_onboard_dob,
+                $enc_onboard_street, $unitNumber, $enc_onboard_city, $province, $postalCode,
+                $enc_onboard_emerg_name, $enc_onboard_emerg_phone, $emergencyRelationship,
                 $notes, $user_id
             ]);
             $onboardingId = $pdo->lastInsertId();

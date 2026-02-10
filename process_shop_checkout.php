@@ -6,6 +6,7 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -94,6 +95,17 @@ try {
     // Generate order number
     $orderNumber = 'AW-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
     
+    // Encrypt customer PII fields before storing
+    $enc_firstName = FieldEncryption::encrypt($firstName);
+    $enc_lastName = FieldEncryption::encrypt($lastName);
+    $enc_phone = $phone ? FieldEncryption::encrypt($phone) : null;
+    $enc_billingAddress1 = $billingAddress1 ? FieldEncryption::encrypt($billingAddress1) : null;
+    $enc_billingAddress2 = $billingAddress2 ? FieldEncryption::encrypt($billingAddress2) : null;
+    $enc_billingCity = $billingCity ? FieldEncryption::encrypt($billingCity) : null;
+    $enc_shippingAddress1 = $shippingAddress1 ? FieldEncryption::encrypt($shippingAddress1) : null;
+    $enc_shippingAddress2 = $shippingAddress2 ? FieldEncryption::encrypt($shippingAddress2) : null;
+    $enc_shippingCity = $shippingCity ? FieldEncryption::encrypt($shippingCity) : null;
+
     // Create order in database
     $stmt = $pdo->prepare("
         INSERT INTO shop_orders (
@@ -110,18 +122,18 @@ try {
         $orderNumber,
         $userId,
         $email,
-        $firstName,
-        $lastName,
-        $phone,
-        $billingAddress1,
-        $billingAddress2,
-        $billingCity,
+        $enc_firstName,
+        $enc_lastName,
+        $enc_phone,
+        $enc_billingAddress1,
+        $enc_billingAddress2,
+        $enc_billingCity,
         $billingState,
         $billingPostal,
         $billingCountry,
-        $shippingAddress1,
-        $shippingAddress2,
-        $shippingCity,
+        $enc_shippingAddress1,
+        $enc_shippingAddress2,
+        $enc_shippingCity,
         $shippingState,
         $shippingPostal,
         $shippingCountry,

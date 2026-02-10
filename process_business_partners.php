@@ -6,6 +6,7 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 setSecurityHeaders();
 
@@ -38,14 +39,17 @@ try {
                 exit();
             }
 
+            $enc_contact_name = $contact_name ? FieldEncryption::encrypt($contact_name) : null;
+            $enc_contact_phone = $contact_phone ? FieldEncryption::encrypt($contact_phone) : null;
+
             $stmt = $pdo->prepare("INSERT INTO business_partners 
                 (company_name, company_email, company_phone, company_website, company_address, description,
                  contact_name, contact_title, contact_email, contact_phone, status, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)");
             $stmt->execute([
                 $company_name, $company_email ?: null, $company_phone ?: null, $company_website ?: null,
-                $company_address ?: null, $description ?: null, $contact_name ?: null, $contact_title ?: null,
-                $contact_email ?: null, $contact_phone ?: null, $user_id
+                $company_address ?: null, $description ?: null, $enc_contact_name, $contact_title ?: null,
+                $contact_email ?: null, $enc_contact_phone, $user_id
             ]);
 
             header("Location: dashboard.php?page=business_partners&tab=partners&status=success&message=" . urlencode('Partner created successfully'));
@@ -74,14 +78,17 @@ try {
                 $status = 'active';
             }
 
+            $enc_contact_name = $contact_name ? FieldEncryption::encrypt($contact_name) : null;
+            $enc_contact_phone = $contact_phone ? FieldEncryption::encrypt($contact_phone) : null;
+
             $stmt = $pdo->prepare("UPDATE business_partners SET 
                 company_name = ?, company_email = ?, company_phone = ?, company_website = ?, company_address = ?,
                 description = ?, contact_name = ?, contact_title = ?, contact_email = ?, contact_phone = ?, status = ?
                 WHERE id = ?");
             $stmt->execute([
                 $company_name, $company_email ?: null, $company_phone ?: null, $company_website ?: null,
-                $company_address ?: null, $description ?: null, $contact_name ?: null, $contact_title ?: null,
-                $contact_email ?: null, $contact_phone ?: null, $status, $partner_id
+                $company_address ?: null, $description ?: null, $enc_contact_name, $contact_title ?: null,
+                $contact_email ?: null, $enc_contact_phone, $status, $partner_id
             ]);
 
             header("Location: dashboard.php?page=business_partners&tab=partners&status=success&message=" . urlencode('Partner updated successfully'));

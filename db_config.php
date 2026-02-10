@@ -170,7 +170,13 @@ if (!function_exists('decryptUserRow')) {
                        'street_address', 'city', 'emergency_contact_name', 'emergency_contact_phone',
                        'customer_first_name', 'customer_last_name', 'customer_phone',
                        'billing_address_line1', 'billing_address_line2', 'billing_city',
-                       'shipping_address_line1', 'shipping_address_line2', 'shipping_city'];
+                       'shipping_address_line1', 'shipping_address_line2', 'shipping_city',
+                       'complainant_name', 'complainant_contact', 'respondent_name',
+                       'contact_name', 'contact_phone',
+                       'complainant_first', 'complainant_last',
+                       'respondent_first', 'respondent_last',
+                       'assigned_first', 'assigned_last',
+                       'created_first', 'created_last'];
         foreach ($piiFields as $field) {
             if (isset($row[$field]) && $row[$field] !== '') {
                 $row[$field] = FieldEncryption::decrypt($row[$field]);

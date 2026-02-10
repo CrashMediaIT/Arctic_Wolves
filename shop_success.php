@@ -40,6 +40,7 @@ try {
             $stmt = $pdo->prepare("SELECT * FROM shop_orders WHERE stripe_session_id = ?");
             $stmt->execute([$stripeSessionId]);
             $order = $stmt->fetch(PDO::FETCH_ASSOC);
+            $order = decryptUserRow($order);
             
             if ($order && $order['payment_status'] === 'pending') {
                 // Update order status
@@ -76,6 +77,7 @@ try {
                 // Refresh order data
                 $stmt->execute([$stripeSessionId]);
                 $order = $stmt->fetch(PDO::FETCH_ASSOC);
+                $order = decryptUserRow($order);
             } elseif ($order) {
                 // Order already processed, just fetch items
                 $itemsStmt = $pdo->prepare("SELECT * FROM shop_order_items WHERE order_id = ?");

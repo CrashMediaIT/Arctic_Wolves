@@ -7,6 +7,7 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -56,6 +57,10 @@ if ($action === 'create') {
     }
     
     try {
+        $enc_complainant_name = $complainant_name ? FieldEncryption::encrypt($complainant_name) : null;
+        $enc_complainant_contact = $complainant_contact ? FieldEncryption::encrypt($complainant_contact) : null;
+        $enc_respondent_name = $respondent_name ? FieldEncryption::encrypt($respondent_name) : null;
+
         $stmt = $pdo->prepare("
             INSERT INTO hr_complaints (
                 complaint_number, complaint_type, category, severity, confidentiality_level,
@@ -78,10 +83,10 @@ if ($action === 'create') {
             'confidentiality_level' => $confidentiality_level,
             'priority' => $priority,
             'complainant_id' => $complainant_id,
-            'complainant_name' => $complainant_name ?: null,
-            'complainant_contact' => $complainant_contact ?: null,
+            'complainant_name' => $enc_complainant_name,
+            'complainant_contact' => $enc_complainant_contact,
             'respondent_id' => $respondent_id,
-            'respondent_name' => $respondent_name ?: null,
+            'respondent_name' => $enc_respondent_name,
             'complaint_date' => $complaint_date,
             'incident_date' => $incident_date,
             'incident_location' => $incident_location ?: null,
@@ -235,6 +240,9 @@ if ($action === 'get_details') {
             exit();
         }
         
+        // Decrypt PII fields from hr_complaints table and joined user records
+        $complaint = decryptUserRow($complaint);
+        
         // If JSON format requested, return raw data
         if ($format === 'json') {
             echo json_encode(['success' => true, 'complaint' => $complaint]);
@@ -251,6 +259,7 @@ if ($action === 'get_details') {
         ");
         $notes_stmt->execute(['id' => $complaint_id]);
         $notes = $notes_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $notes = decryptUserRows($notes);
         
         // Build HTML response
         $html = '<div class="complaint-details">';
