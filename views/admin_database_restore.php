@@ -121,6 +121,41 @@ try {
     .wizard-content {
         padding: 40px;
         min-height: 400px;
+        overflow: visible;
+    }
+    
+    /* Danger Warning Card */
+    .restore-warning-card {
+        border-color: var(--danger);
+        margin-bottom: 24px;
+    }
+    
+    .restore-warning-body {
+        display: flex;
+        align-items: start;
+        gap: 15px;
+        background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.05));
+    }
+    
+    .restore-warning-body i {
+        font-size: 28px;
+        color: var(--danger);
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    
+    .restore-warning-body h3 {
+        color: var(--danger);
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+    }
+    
+    .restore-warning-body p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0;
+        line-height: 1.6;
     }
     
     .step-content {
@@ -731,12 +766,12 @@ try {
     </div>
 </div>
 
-<div class="card" style="border-color: var(--danger); margin-bottom: 24px;">
-    <div class="card-body" style="display: flex; align-items: start; gap: 15px; background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.05));">
-        <i class="fas fa-exclamation-triangle" style="font-size: 28px; color: var(--danger); flex-shrink: 0; margin-top: 2px;"></i>
+<div class="card restore-warning-card">
+    <div class="card-body restore-warning-body">
+        <i class="fas fa-exclamation-triangle"></i>
         <div>
-            <h3 style="color: var(--danger); font-size: 16px; font-weight: 700; margin: 0 0 8px 0;">CRITICAL: This Operation Will Overwrite All Data</h3>
-            <p style="color: var(--text-secondary); font-size: 14px; margin: 0; line-height: 1.6;">Database restoration is a destructive operation that will replace ALL current data with the backup. This action cannot be undone. Please ensure you have a current backup before proceeding.</p>
+            <h3>CRITICAL: This Operation Will Overwrite All Data</h3>
+            <p>Database restoration is a destructive operation that will replace ALL current data with the backup. This action cannot be undone. Please ensure you have a current backup before proceeding.</p>
         </div>
     </div>
 </div>
@@ -764,7 +799,7 @@ try {
 </div>
 
 <!-- Wizard Content -->
-<div class="card wizard-content" style="overflow: visible;">
+<div class="card wizard-content">
     <!-- Step 1: Upload Backup -->
     <div class="step-content active" data-step="1">
         <h2 class="step-title">📤 Step 1: Upload Backup File</h2>
