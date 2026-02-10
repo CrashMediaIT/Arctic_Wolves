@@ -7,6 +7,7 @@ if ($actualRole !== 'admin') {
     exit;
 }
 
+$embeddedInMarketing = (($_GET['page'] ?? '') === 'marketing');
 $activeTab = $_GET['tab'] ?? 'partners';
 
 // Fetch business partners
@@ -39,15 +40,30 @@ if ($selected_partner_id > 0) {
 }
 ?>
 
+<?php if (!$embeddedInMarketing): ?>
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-handshake"></i> Business Partners</h1>
         <p class="page-description">Manage business partnerships, contracts, and contact information</p>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Tabs -->
 <div class="page-tabs" style="flex-wrap: wrap;">
+    <?php if ($embeddedInMarketing): ?>
+    <button class="page-tab active" onclick="switchPartnerTab('partners')" id="partner-tab-partners">
+        <i class="fas fa-handshake"></i> Partners
+    </button>
+    <button class="page-tab" onclick="switchPartnerTab('add')" id="partner-tab-add">
+        <i class="fas fa-plus-circle"></i> Add Partner
+    </button>
+    <?php if ($selected_partner): ?>
+    <button class="page-tab" onclick="switchPartnerTab('contracts')" id="partner-tab-contracts">
+        <i class="fas fa-file-contract"></i> <?= htmlspecialchars($selected_partner['company_name']) ?> Contracts
+    </button>
+    <?php endif; ?>
+    <?php else: ?>
     <a href="?page=business_partners&tab=partners" class="page-tab <?php echo $activeTab === 'partners' ? 'active' : ''; ?>">
         <i class="fas fa-handshake"></i> Partners
     </a>
@@ -58,6 +74,7 @@ if ($selected_partner_id > 0) {
     <a href="?page=business_partners&tab=contracts&partner_id=<?= $selected_partner_id ?>" class="page-tab <?php echo $activeTab === 'contracts' ? 'active' : ''; ?>">
         <i class="fas fa-file-contract"></i> <?= htmlspecialchars($selected_partner['company_name']) ?> Contracts
     </a>
+    <?php endif; ?>
     <?php endif; ?>
 </div>
 
@@ -80,7 +97,8 @@ if ($selected_partner_id > 0) {
     <?php endif; ?>
 
     <!-- Partners List Tab -->
-    <?php if ($activeTab === 'partners'): ?>
+    <?php if ($embeddedInMarketing || $activeTab === 'partners'): ?>
+    <div class="partner-section" id="partner-section-partners">
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-building"></i> All Business Partners</h3>
@@ -158,10 +176,12 @@ if ($selected_partner_id > 0) {
             <?php endif; ?>
         </div>
     </div>
+    </div>
     <?php endif; ?>
 
     <!-- Add Partner Tab -->
-    <?php if ($activeTab === 'add'): ?>
+    <?php if ($embeddedInMarketing || $activeTab === 'add'): ?>
+    <div class="partner-section" id="partner-section-add" <?php if ($embeddedInMarketing): ?>style="display: none;"<?php endif; ?>>
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-plus-circle"></i> Add New Business Partner</h3>
@@ -170,6 +190,9 @@ if ($selected_partner_id > 0) {
             <form method="POST" action="process_business_partners.php">
                 <?php echo csrfTokenInput(); ?>
                 <input type="hidden" name="action" value="create_partner">
+                <?php if ($embeddedInMarketing): ?>
+                <input type="hidden" name="redirect_to" value="marketing">
+                <?php endif; ?>
                 
                 <div class="card" style="margin-bottom: 20px;">
                     <div class="card-header"><h3><i class="fas fa-building"></i> Company Information</h3></div>
@@ -233,15 +256,21 @@ if ($selected_partner_id > 0) {
 
                 <div style="display: flex; gap: 12px;">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Partner</button>
+                    <?php if ($embeddedInMarketing): ?>
+                    <button type="button" class="btn btn-secondary" onclick="switchPartnerTab('partners')"><i class="fas fa-times"></i> Cancel</button>
+                    <?php else: ?>
                     <a href="?page=business_partners&tab=partners" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>
     </div>
+    </div>
     <?php endif; ?>
 
     <!-- Contracts Tab (for selected partner) -->
-    <?php if ($activeTab === 'contracts' && $selected_partner): ?>
+    <?php if (($embeddedInMarketing || $activeTab === 'contracts') && $selected_partner): ?>
+    <div class="partner-section" id="partner-section-contracts" <?php if ($embeddedInMarketing): ?>style="display: none;"<?php endif; ?>>
     <div class="card" style="margin-bottom: 20px;">
         <div class="card-header">
             <div>
@@ -393,6 +422,7 @@ if ($selected_partner_id > 0) {
             </form>
         </div>
     </div>
+    </div>
     <?php endif; ?>
 </div>
 
@@ -487,4 +517,19 @@ function editPartner(partner) {
     document.getElementById('edit-partner-status').value = partner.status || 'active';
     document.getElementById('editPartnerModal').classList.add('active');
 }
+
+<?php if ($embeddedInMarketing): ?>
+function switchPartnerTab(tab) {
+    document.querySelectorAll('.partner-section').forEach(function(section) {
+        section.style.display = 'none';
+    });
+    document.querySelectorAll('[id^="partner-tab-"]').forEach(function(tabBtn) {
+        tabBtn.classList.remove('active');
+    });
+    var section = document.getElementById('partner-section-' + tab);
+    var tabBtn = document.getElementById('partner-tab-' + tab);
+    if (section) section.style.display = 'block';
+    if (tabBtn) tabBtn.classList.add('active');
+}
+<?php endif; ?>
 </script>
