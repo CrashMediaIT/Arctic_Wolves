@@ -53,7 +53,16 @@ try {
     if ($agreeRow && intval($agreeRow['agreements_accepted'] ?? 0) === 0) {
         $showAgreementsModal = true;
         // Fetch active agreement templates (use latest id per type to avoid duplicates)
-        $tplStmt = $pdo->query("SELECT t.* FROM agreement_templates t INNER JOIN (SELECT MAX(id) AS max_id FROM agreement_templates WHERE is_active = 1 GROUP BY agreement_type) latest ON t.id = latest.max_id ORDER BY t.agreement_type");
+        $tplStmt = $pdo->query("
+            SELECT t.* FROM agreement_templates t
+            INNER JOIN (
+                SELECT MAX(id) AS max_id
+                FROM agreement_templates
+                WHERE is_active = 1
+                GROUP BY agreement_type
+            ) latest ON t.id = latest.max_id
+            ORDER BY t.agreement_type
+        ");
         $agreementTemplates = $tplStmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (PDOException $e) {
