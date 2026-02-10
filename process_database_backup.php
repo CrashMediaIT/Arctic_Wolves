@@ -248,8 +248,9 @@ try {
                 // Send file as download
                 $filepath = $result['file_path'];
                 $filename = basename($filepath);
+                $content_type = str_ends_with($filename, '.gz') ? 'application/gzip' : 'application/sql';
                 
-                header('Content-Type: application/gzip');
+                header('Content-Type: ' . $content_type);
                 header('Content-Disposition: attachment; filename="' . $filename . '"');
                 header('Content-Length: ' . filesize($filepath));
                 header('Cache-Control: no-cache, no-store, must-revalidate');
