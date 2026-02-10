@@ -16,6 +16,7 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$tomorrow]);
 $bookings = $stmt->fetchAll();
+$bookings = decryptUserRows($bookings);
 
 $count = 0;
 $skipped = 0;

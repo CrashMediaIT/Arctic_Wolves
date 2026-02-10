@@ -56,12 +56,16 @@ if ($action === 'create') {
         
         // Verify staff member exists and is eligible for termination (admin, coach, health_coach, team_coach)
         $staff_stmt = $pdo->prepare("
-            SELECT id, CONCAT(first_name, ' ', last_name) as name, first_name, last_name, role, email 
+            SELECT id, first_name, last_name, role, email 
             FROM users 
             WHERE id = ? AND role IN ('admin', 'coach', 'health_coach', 'team_coach') AND is_active = 1
         ");
         $staff_stmt->execute([$staff_user_id]);
         $staff_member = $staff_stmt->fetch(PDO::FETCH_ASSOC);
+        $staff_member = decryptUserRow($staff_member);
+        if ($staff_member) {
+            $staff_member['name'] = $staff_member['first_name'] . ' ' . $staff_member['last_name'];
+        }
         
         if (!$staff_member) {
             throw new Exception('Staff member not found or not eligible for termination');
@@ -256,12 +260,17 @@ try {
     
     // Verify both coaches exist
     $coach_stmt = $pdo->prepare("
-        SELECT id, CONCAT(first_name, ' ', last_name) as name, role 
+        SELECT id, first_name, last_name, role 
         FROM users 
         WHERE id IN (?, ?) AND role IN ('coach', 'coach_plus', 'team_coach')
     ");
     $coach_stmt->execute([$coach_to_terminate, $transfer_to_coach]);
     $coaches = $coach_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $coaches = decryptUserRows($coaches);
+    foreach ($coaches as &$c) {
+        $c['name'] = $c['first_name'] . ' ' . $c['last_name'];
+    }
+    unset($c);
     
     if (count($coaches) !== 2) {
         throw new Exception('One or both coaches not found');

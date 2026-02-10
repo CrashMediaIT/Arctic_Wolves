@@ -39,13 +39,17 @@ if ($transactionId <= 0) {
 try {
     // Fetch transaction
     $stmt = $pdo->prepare("
-        SELECT pt.*, CONCAT(u.first_name, ' ', u.last_name) as staff_name
+        SELECT pt.*, u.first_name as staff_first_name, u.last_name as staff_last_name
         FROM pos_transactions pt
         LEFT JOIN users u ON pt.staff_id = u.id
         WHERE pt.id = ?
     ");
     $stmt->execute([$transactionId]);
     $trans = $stmt->fetch(PDO::FETCH_ASSOC);
+    $trans = decryptUserRow($trans);
+    if ($trans) {
+        $trans['staff_name'] = (!empty($trans['staff_first_name'])) ? $trans['staff_first_name'] . ' ' . $trans['staff_last_name'] : null;
+    }
     
     if (!$trans) {
         echo '<p style="color: #ef4444;">Transaction not found</p>';

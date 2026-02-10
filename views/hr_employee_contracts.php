@@ -23,6 +23,7 @@ if ($prefill_onboarding_id > 0) {
         $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, role, start_date FROM employee_onboarding WHERE id = ?");
         $stmt->execute([$prefill_onboarding_id]);
         $prefill_employee = $stmt->fetch(PDO::FETCH_ASSOC);
+        $prefill_employee = decryptUserRow($prefill_employee);
     } catch (PDOException $e) {
         $prefill_employee = null;
     }

@@ -250,12 +250,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('First name and last name are required');
                 }
                 
+                $enc_upd_fn = FieldEncryption::encrypt($first_name);
+                $enc_upd_ln = FieldEncryption::encrypt($last_name);
+                $enc_upd_dob = $date_of_birth ? FieldEncryption::encrypt($date_of_birth) : null;
+
                 $stmt = $pdo->prepare("
                     UPDATE session_evaluation_athletes 
                     SET first_name = ?, last_name = ?, email = ?, date_of_birth = ?, notes = ?, updated_at = NOW()
                     WHERE id = ?
                 ");
-                $stmt->execute([$first_name, $last_name, $email ?: null, $date_of_birth ?: null, $notes ?: null, $athlete_id]);
+                $stmt->execute([$enc_upd_fn, $enc_upd_ln, $email ?: null, $enc_upd_dob, $notes ?: null, $athlete_id]);
                 
                 sendResponse(true, 'Athlete updated successfully');
                 break;
@@ -514,6 +518,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$evaluation_id]);
                 $athletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $athletes = decryptUserRows($athletes);
                 
                 // Get categories and skills
                 $stmt = $pdo->prepare("

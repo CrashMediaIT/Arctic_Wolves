@@ -845,6 +845,7 @@ try {
     $rec_stmt = $pdo->prepare($rec_query);
     $rec_stmt->execute($rec_params);
     $recurring_expenses = $rec_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $recurring_expenses = decryptUserRows($recurring_expenses);
 } catch (PDOException $e) {
     $recurring_expenses = [];
 }

@@ -126,13 +126,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 // Get goal with creator info
                 $stmt = $pdo->prepare("
                     SELECT g.*,
-                           CONCAT(u.first_name, ' ', u.last_name) as creator_name
+                           u.first_name as creator_first_name, u.last_name as creator_last_name
                     FROM goals g
                     LEFT JOIN users u ON g.created_by = u.id
                     WHERE g.id = ?
                 ");
                 $stmt->execute([$goal_id]);
                 $goal = $stmt->fetch();
+                $goal = decryptUserRow($goal);
+                if ($goal) {
+                    $goal['creator_name'] = trim(($goal['creator_first_name'] ?? '') . ' ' . ($goal['creator_last_name'] ?? ''));
+                }
                 
                 if (!$goal) {
                     throw new Exception('Goal not found');
@@ -141,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 // Get steps
                 $steps_stmt = $pdo->prepare("
                     SELECT gs.*,
-                           CONCAT(u.first_name, ' ', u.last_name) as completed_by_name
+                           u.first_name as completed_by_first_name, u.last_name as completed_by_last_name
                     FROM goal_steps gs
                     LEFT JOIN users u ON gs.completed_by = u.id
                     WHERE gs.goal_id = ?
@@ -149,11 +153,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ");
                 $steps_stmt->execute([$goal_id]);
                 $goal['steps'] = $steps_stmt->fetchAll();
+                $goal['steps'] = decryptUserRows($goal['steps']);
+                foreach ($goal['steps'] as &$s) {
+                    $s['completed_by_name'] = trim(($s['completed_by_first_name'] ?? '') . ' ' . ($s['completed_by_last_name'] ?? ''));
+                }
+                unset($s);
                 
                 // Get progress history
                 $progress_stmt = $pdo->prepare("
                     SELECT gp.*,
-                           CONCAT(u.first_name, ' ', u.last_name) as user_name
+                           u.first_name as user_first_name, u.last_name as user_last_name
                     FROM goal_progress gp
                     LEFT JOIN users u ON gp.user_id = u.id
                     WHERE gp.goal_id = ?
@@ -161,6 +170,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ");
                 $progress_stmt->execute([$goal_id]);
                 $goal['progress'] = $progress_stmt->fetchAll();
+                $goal['progress'] = decryptUserRows($goal['progress']);
+                foreach ($goal['progress'] as &$p) {
+                    $p['user_name'] = trim(($p['user_first_name'] ?? '') . ' ' . ($p['user_last_name'] ?? ''));
+                }
+                unset($p);
                 
                 header('Content-Type: application/json');
                 echo json_encode($goal);

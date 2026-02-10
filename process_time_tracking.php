@@ -544,7 +544,7 @@ try {
             $query = "
                 SELECT 
                     u.id as staff_id,
-                    CONCAT(u.first_name, ' ', u.last_name) as name,
+                    u.first_name, u.last_name,
                     COUNT(ss.id) as shifts,
                     COALESCE(SUM(ss.total_hours), 0) as hours
                 FROM users u
@@ -564,6 +564,12 @@ try {
             }
             $stmt->execute($params);
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $results = decryptUserRows($results);
+            // Build name from decrypted fields
+            foreach ($results as &$r) {
+                $r['name'] = $r['first_name'] . ' ' . $r['last_name'];
+            }
+            unset($r);
             
             $totalHours = 0;
             $staffBreakdown = [];

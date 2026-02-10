@@ -170,7 +170,24 @@ if (!function_exists('decryptUserRow')) {
                        'street_address', 'city', 'emergency_contact_name', 'emergency_contact_phone',
                        'customer_first_name', 'customer_last_name', 'customer_phone',
                        'billing_address_line1', 'billing_address_line2', 'billing_city',
-                       'shipping_address_line1', 'shipping_address_line2', 'shipping_city'];
+                       'shipping_address_line1', 'shipping_address_line2', 'shipping_city',
+                       'complainant_name', 'complainant_contact', 'respondent_name',
+                       'contact_name', 'contact_phone',
+                       'complainant_first', 'complainant_last',
+                       'respondent_first', 'respondent_last',
+                       'assigned_first', 'assigned_last',
+                       'created_first', 'created_last',
+                       'coach_first_name', 'coach_last_name',
+                       'asst_first_name', 'asst_last_name',
+                       'processor_first', 'processor_last',
+                       'creator_first_name', 'creator_last_name',
+                       'athlete_first_name', 'athlete_last_name',
+                       'admin_first_name', 'admin_last_name',
+                       'staff_first_name', 'staff_last_name',
+                       'requested_by_first_name', 'requested_by_last_name',
+                       'completed_by_first_name', 'completed_by_last_name',
+                       'approved_by_first_name', 'approved_by_last_name',
+                       'user_first_name', 'user_last_name'];
         foreach ($piiFields as $field) {
             if (isset($row[$field]) && $row[$field] !== '') {
                 $row[$field] = FieldEncryption::decrypt($row[$field]);

@@ -354,13 +354,14 @@ function handleDrillVideoUpload() {
     }
     $drill_name = $drill['title'];
     
-    $stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
     $stmt->execute([$athlete_id]);
     $athlete = $stmt->fetch();
+    $athlete = decryptUserRow($athlete);
     if (!$athlete) {
         throw new Exception('Athlete not found');
     }
-    $athlete_name = $athlete['name'];
+    $athlete_name = $athlete['first_name'] . ' ' . $athlete['last_name'];
     
     // Validate file upload
     if (!isset($_FILES['video_file']) || $_FILES['video_file']['error'] !== UPLOAD_ERR_OK) {
@@ -654,15 +655,17 @@ function sendVideoNotification($pdo, $athlete_id, $coach_id, $video_id, $type) {
 function sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video_id, $video_title) {
     try {
         // Get athlete name
-        $stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) as name, email FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT first_name, last_name, email FROM users WHERE id = ?");
         $stmt->execute([$athlete_id]);
         $athlete = $stmt->fetch();
-        $athlete_name = $athlete['name'] ?? 'An athlete';
+        $athlete = decryptUserRow($athlete);
+        $athlete_name = trim(($athlete['first_name'] ?? '') . ' ' . ($athlete['last_name'] ?? '')) ?: 'An athlete';
         
         // Get coach email
         $stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
         $stmt->execute([$coach_id]);
         $coach = $stmt->fetch();
+        $coach = decryptUserRow($coach);
         
         $title = 'New Video for Review';
         $message = $athlete_name . ' has uploaded a video for your review: "' . $video_title . '"';
@@ -717,15 +720,17 @@ function sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video
 function sendVideoReviewNotificationToAthlete($pdo, $athlete_id, $coach_id, $video_id, $video_title) {
     try {
         // Get coach name
-        $stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $stmt->execute([$coach_id]);
         $coach = $stmt->fetch();
-        $coach_name = $coach['name'] ?? 'Your coach';
+        $coach = decryptUserRow($coach);
+        $coach_name = trim(($coach['first_name'] ?? '') . ' ' . ($coach['last_name'] ?? '')) ?: 'Your coach';
         
         // Get athlete email
         $stmt = $pdo->prepare("SELECT email, first_name FROM users WHERE id = ?");
         $stmt->execute([$athlete_id]);
         $athlete = $stmt->fetch();
+        $athlete = decryptUserRow($athlete);
         
         $title = 'Video Reviewed';
         $message = $coach_name . ' has reviewed your video: "' . $video_title . '"';

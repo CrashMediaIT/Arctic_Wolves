@@ -2,6 +2,7 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/encryption.php';
 
 // 1. GATEKEEPER: Ensure user is logged in
 if (!isset($_SESSION['logged_in'])) { 
@@ -279,6 +280,12 @@ if ($action == 'update_profile') {
     $primary_arena = trim($_POST['primary_arena'] ?? '');
     
     try {
+        // Encrypt PII fields before storing (email kept as-is for login lookups)
+        $enc_first_name = FieldEncryption::encrypt($first_name);
+        $enc_last_name = FieldEncryption::encrypt($last_name);
+        $enc_phone = $phone ? FieldEncryption::encrypt($phone) : null;
+        $enc_birth_date = $birth_date ? FieldEncryption::encrypt($birth_date) : null;
+
         // Get current user email to check if it's being changed
         $stmt = $pdo->prepare("SELECT email, first_name, last_name FROM users WHERE id = ?");
         $stmt->execute([$current_user_id]);
@@ -329,8 +336,8 @@ if ($action == 'update_profile') {
                 WHERE id = ?
             ");
             $stmt->execute([
-                $first_name, $last_name, $phone, 
-                $birth_date, $position, $primary_arena, $current_user_id
+                $enc_first_name, $enc_last_name, $enc_phone, 
+                $enc_birth_date, $position, $primary_arena, $current_user_id
             ]);
             
             header("Location: dashboard.php?page=profile&msg=email_change_pending");
@@ -344,8 +351,8 @@ if ($action == 'update_profile') {
                 WHERE id = ?
             ");
             $stmt->execute([
-                $first_name, $last_name, $new_email, $phone, 
-                $birth_date, $position, $primary_arena, $current_user_id
+                $enc_first_name, $enc_last_name, $new_email, $enc_phone, 
+                $enc_birth_date, $position, $primary_arena, $current_user_id
             ]);
             header("Location: dashboard.php?page=profile&msg=profile_updated");
             exit();

@@ -106,6 +106,7 @@ function getConversations($pdo, $user_id) {
         ");
         $stmt->execute([$user_id, $user_id, $user_id, $user_id, $user_id]);
         $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $conversations = decryptUserRows($conversations);
         
         echo json_encode(['success' => true, 'conversations' => $conversations]);
     } catch (PDOException $e) {
@@ -138,6 +139,7 @@ function getMessages($pdo, $user_id, $conversation_id) {
         ");
         $stmt->execute([$conversation_id]);
         $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $messages = decryptUserRows($messages);
         
         // Mark messages as read
         $update = $pdo->prepare("
@@ -173,6 +175,7 @@ function getContacts($pdo, $user_id, $user_role) {
             ");
             $stmt->execute([$user_id]);
             $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $contacts = decryptUserRows($contacts);
         } elseif (in_array($user_role, ['coach', 'health_coach', 'team_coach'])) {
             // Coaches can message their assigned athletes and other coaches/admins
             $stmt = $pdo->prepare("
@@ -188,6 +191,7 @@ function getContacts($pdo, $user_id, $user_role) {
             ");
             $stmt->execute([$user_id, $user_id, $user_id, $user_id]);
             $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $contacts = decryptUserRows($contacts);
         } elseif ($user_role === 'athlete') {
             // Athletes can message their assigned coaches and their parents
             $stmt = $pdo->prepare("
@@ -203,6 +207,7 @@ function getContacts($pdo, $user_id, $user_role) {
             ");
             $stmt->execute([$user_id, $user_id, $user_id, $user_id, $user_id]);
             $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $contacts = decryptUserRows($contacts);
         } elseif ($user_role === 'parent') {
             // Parents can message their children and coaches assigned to their children
             $stmt = $pdo->prepare("
@@ -232,6 +237,7 @@ function getContacts($pdo, $user_id, $user_role) {
             ");
             $stmt->execute([$user_id, $user_id, $user_id, $user_id, $user_id]);
             $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $contacts = decryptUserRows($contacts);
         }
         
         echo json_encode(['success' => true, 'contacts' => $contacts]);
@@ -296,6 +302,7 @@ function sendMessage($pdo, $user_id) {
         $sender = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $sender->execute([$user_id]);
         $sender_info = $sender->fetch();
+        $sender_info = decryptUserRow($sender_info);
         
         echo json_encode([
             'success' => true, 

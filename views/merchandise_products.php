@@ -15,7 +15,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT mp.*, 
                mc.name as category_name,
-               CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+               u.first_name as creator_first_name, u.last_name as creator_last_name,
                (SELECT SUM(mps.quantity) FROM merchandise_product_sizes mps WHERE mps.product_id = mp.id) as total_quantity
         FROM merchandise_products mp
         LEFT JOIN merchandise_categories mc ON mp.category_id = mc.id
@@ -25,6 +25,11 @@ try {
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $products = decryptUserRows($products);
+    // Build created_by_name from decrypted fields
+    foreach ($products as &$p) {
+        $p['created_by_name'] = (!empty($p['creator_first_name'])) ? $p['creator_first_name'] . ' ' . $p['creator_last_name'] : null;
+    }
+    unset($p);
     
     // Fetch sizes for each product
     $sizesStmt = $pdo->prepare("SELECT * FROM merchandise_product_sizes WHERE product_id = ? ORDER BY id ASC");

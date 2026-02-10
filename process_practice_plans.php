@@ -117,13 +117,17 @@ if ($action === 'get_plan') {
             SELECT pp.*, 
                    COALESCE(pp.title, pp.name) as title,
                    COALESCE(pp.total_duration, pp.duration_minutes, 60) as total_duration,
-                   CONCAT(u.first_name, ' ', u.last_name) as creator_name
+                   u.first_name as creator_first_name, u.last_name as creator_last_name
             FROM practice_plans pp
             LEFT JOIN users u ON pp.created_by = u.id
             WHERE pp.id = ?
         ");
         $stmt->execute([$plan_id]);
         $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+        $plan = decryptUserRow($plan);
+        if ($plan) {
+            $plan['creator_name'] = trim(($plan['creator_first_name'] ?? '') . ' ' . ($plan['creator_last_name'] ?? ''));
+        }
         
         if (!$plan) {
             header('Content-Type: application/json');

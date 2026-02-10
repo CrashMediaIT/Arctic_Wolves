@@ -20,7 +20,7 @@ function fetchRefundsWithFilters($pdo, $start_date, $end_date, $user_search = ''
     $query = "
         SELECT r.*, u.email, u.first_name, u.last_name,
                s.title as session_name, s.session_date,
-               CONCAT(admin.first_name, ' ', admin.last_name) as processed_by_name
+               admin.first_name as admin_first_name, admin.last_name as admin_last_name
         FROM refunds r
         JOIN users u ON r.user_id = u.id
         LEFT JOIN bookings b ON r.booking_id = b.id
@@ -30,18 +30,24 @@ function fetchRefundsWithFilters($pdo, $start_date, $end_date, $user_search = ''
     ";
     $params = [$start_date, $end_date];
     
-    // Add user search filter if provided
+    // Add user search filter if provided (search by email only since names are encrypted)
     if (!empty($user_search)) {
-        $query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)";
+        $query .= " AND u.email LIKE ?";
         $search_param = "%$user_search%";
-        array_push($params, $search_param, $search_param, $search_param, $search_param);
+        array_push($params, $search_param);
     }
     
     $query .= " ORDER BY r.refund_date DESC";
     
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
-    return $stmt->fetchAll();
+    $results = decryptUserRows($stmt->fetchAll());
+    // Build processed_by_name from decrypted fields
+    foreach ($results as &$row) {
+        $row['processed_by_name'] = (!empty($row['admin_first_name'])) ? $row['admin_first_name'] . ' ' . $row['admin_last_name'] : null;
+    }
+    unset($row);
+    return $results;
 }
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
@@ -77,7 +83,7 @@ try {
             $query = "
                 SELECT b.*, u.email, u.first_name, u.last_name,
                        s.session_name, s.session_date, s.session_time,
-                       CONCAT(bf.first_name, ' ', bf.last_name) as athlete_name
+                       bf.first_name as athlete_first_name, bf.last_name as athlete_last_name
                 FROM bookings b
                 JOIN users u ON b.user_id = u.id
                 LEFT JOIN sessions s ON b.session_id = s.id
@@ -108,6 +114,12 @@ try {
             $stmt = $pdo->prepare($query);
             $stmt->execute($params);
             $bookings = $stmt->fetchAll();
+            $bookings = decryptUserRows($bookings);
+            // Build athlete_name from decrypted fields
+            foreach ($bookings as &$b) {
+                $b['athlete_name'] = (!empty($b['athlete_first_name'])) ? $b['athlete_first_name'] . ' ' . $b['athlete_last_name'] : null;
+            }
+            unset($b);
             
             echo json_encode(['success' => true, 'bookings' => $bookings]);
             break;
@@ -131,6 +143,7 @@ try {
             ");
             $booking_stmt->execute([$booking_id]);
             $booking = $booking_stmt->fetch();
+            $booking = decryptUserRow($booking);
             
             if (!$booking) {
                 throw new Exception('Booking not found or already refunded');
