@@ -95,7 +95,7 @@ $template_sessions_query = "
     WHERE tsd.session_date >= DATE_SUB(NOW(), INTERVAL 1 DAY)
       AND tsd.is_active = 1
       AND tst.is_active = 1
-      AND tsd.session_id IS NULL
+      AND tsd.session_id IS NULL /* Only include template dates not yet linked to an actual session record */
 ";
 $template_params = [];
 
