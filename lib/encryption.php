@@ -179,5 +179,12 @@ class FieldEncryption {
         'billing_address_line1', 'billing_address_line2', 'billing_city',
         'shipping_address_line1', 'shipping_address_line2', 'shipping_city'
     ];
+
+    /**
+     * Sensitive fields in the messages table that require end-to-end encryption.
+     */
+    const MESSAGE_ENCRYPTED_FIELDS = [
+        'message_body', 'subject', 'message'
+    ];
 }
 ?>
