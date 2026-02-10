@@ -241,6 +241,8 @@ try {
                 $updateImage = true;
             }
             
+            $pdo->beginTransaction();
+            
             if ($updateImage) {
                 $stmt = $pdo->prepare("
                     UPDATE merchandise_products 
@@ -256,6 +258,17 @@ try {
                 ");
                 $stmt->execute([$name, $sku ?: null, $categoryId, $description ?: null, $price, $costPrice, $isActive, $trackInventory, $id]);
             }
+            
+            // Handle sizes if provided
+            $sizes = $_POST['sizes'] ?? [];
+            $quantities = $_POST['quantities'] ?? [];
+            $sizeIds = $_POST['size_ids'] ?? [];
+            
+            if (!empty($sizes)) {
+                handleProductSizes($pdo, $id, $sizes, $quantities, $sizeIds);
+            }
+            
+            $pdo->commit();
             
             if ($isAjax) {
                 header('Content-Type: application/json');

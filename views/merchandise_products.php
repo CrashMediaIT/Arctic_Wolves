@@ -453,6 +453,20 @@ $filterCategory = $_GET['category'] ?? '';
                     <small style="color: var(--text-dim);">Leave empty to keep current image</small>
                 </div>
                 
+                <!-- Sizes and Quantities Section -->
+                <div class="form-group" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <label class="form-label" style="margin-bottom: 0;">Sizes & Inventory</label>
+                        <button type="button" class="btn btn-secondary" onclick="addSizeRow('edit')" style="padding: 6px 12px; font-size: 12px;">
+                            <i class="fas fa-plus"></i> Add Size
+                        </button>
+                    </div>
+                    <div id="edit-sizes-container">
+                        <!-- Size rows will be populated here -->
+                    </div>
+                    <p style="font-size: 12px; color: var(--text-dim);">Add sizes like XS, S, M, L, XL, XXL, or custom sizes like Youth S, Adult L</p>
+                </div>
+                
                 <div class="form-group">
                     <label class="form-checkbox" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <input type="checkbox" name="track_inventory" id="edit-product-track" value="1" style="width: 16px; height: 16px;">
@@ -711,13 +725,20 @@ function filterByCategory(categoryId) {
 }
 
 function addSizeRow(context) {
-    const containerId = context === 'inventory' ? 'inventory-sizes-container' : 'add-sizes-container';
+    let containerId;
+    if (context === 'inventory') {
+        containerId = 'inventory-sizes-container';
+    } else if (context === 'edit') {
+        containerId = 'edit-sizes-container';
+    } else {
+        containerId = 'add-sizes-container';
+    }
     const container = document.getElementById(containerId);
     const row = document.createElement('div');
     row.className = 'size-row';
     row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 40px; gap: 12px; margin-bottom: 12px;';
     
-    if (context === 'inventory') {
+    if (context === 'inventory' || context === 'edit') {
         row.innerHTML = `
             <input type="hidden" name="size_ids[]" value="">
             <input type="text" name="sizes[]" class="form-input" placeholder="Size (e.g., S, M, L)">
@@ -756,6 +777,30 @@ function editProduct(product) {
         previewDiv.innerHTML = '<img src="' + product.image_url + '" style="max-width: 150px; max-height: 100px; border-radius: 8px; object-fit: cover;">';
     } else {
         previewDiv.innerHTML = '';
+    }
+    
+    // Populate sizes container
+    const sizesContainer = document.getElementById('edit-sizes-container');
+    sizesContainer.innerHTML = '';
+    
+    if (product.sizes && product.sizes.length > 0) {
+        product.sizes.forEach(size => {
+            const row = document.createElement('div');
+            row.className = 'size-row';
+            row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 40px; gap: 12px; margin-bottom: 12px;';
+            row.innerHTML = `
+                <input type="hidden" name="size_ids[]" value="${size.id}">
+                <input type="text" name="sizes[]" class="form-input" value="${size.size}" placeholder="Size">
+                <input type="number" name="quantities[]" class="form-input" value="${size.quantity}" min="0">
+                <button type="button" class="btn-remove-size" onclick="this.parentElement.remove()" style="padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;" title="Remove">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            sizesContainer.appendChild(row);
+        });
+    } else {
+        // Add one empty row if no sizes
+        addSizeRow('edit');
     }
     
     openModal('edit-product-modal');
