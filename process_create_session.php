@@ -169,6 +169,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($action)) {
     $date      = $_POST['date'];
     $time      = $_POST['time'];
     $capacity  = $_POST['capacity'];
+    $enable_child_checkin = isset($_POST['enable_child_checkin']) ? 1 : 0;
     
     // FETCH LOCATION DETAILS from ID
     $loc_id = $_POST['location_id'];
@@ -185,11 +186,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($action)) {
 
     try {
         $sql = "INSERT INTO sessions 
-                (session_type, age_group, title, description, session_plan, session_date, session_time, max_capacity, coaches, arena, city, country) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                (session_type, age_group, title, description, session_plan, session_date, session_time, max_capacity, coaches, arena, city, country, enable_child_checkin) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$type, $age_group, $title, $desc, $plan, $date, $time, $capacity, $coaches, $arena, $city, $country]);
+        $stmt->execute([$type, $age_group, $title, $desc, $plan, $date, $time, $capacity, $coaches, $arena, $city, $country, $enable_child_checkin]);
 
         header("Location: dashboard.php?page=session_history&status=created");
         exit();

@@ -52,6 +52,7 @@ try {
             $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
             $package_type = trim($_POST['package_type'] ?? 'credits');
             $store_credit = floatval($_POST['store_credit'] ?? 0);
+            $enable_child_checkin = isset($_POST['enable_child_checkin']) ? 1 : 0;
             
             if (empty($name) || $price < 0) {
                 throw new Exception('Invalid package data: name is required and price must be positive');
@@ -62,12 +63,12 @@ try {
             // Insert package with package_type and store_credit
             $stmt = $pdo->prepare("
                 INSERT INTO packages (name, description, price, credits, valid_days, 
-                                     age_group, skill_level, is_active, package_type, store_credit)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     age_group, skill_level, is_active, package_type, store_credit, enable_child_checkin)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit
+                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $enable_child_checkin
             ]);
             
             $package_id = $pdo->lastInsertId();
@@ -97,6 +98,7 @@ try {
             $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
             $package_type = trim($_POST['package_type'] ?? 'credits');
             $store_credit = floatval($_POST['store_credit'] ?? 0);
+            $enable_child_checkin = isset($_POST['enable_child_checkin']) ? 1 : 0;
             
             if (empty($name) || $price < 0 || $package_id <= 0) {
                 throw new Exception('Invalid package data');
@@ -105,12 +107,12 @@ try {
             $stmt = $pdo->prepare("
                 UPDATE packages 
                 SET name = ?, description = ?, price = ?, credits = ?, 
-                    valid_days = ?, age_group = ?, skill_level = ?, is_active = ?, package_type = ?, store_credit = ?
+                    valid_days = ?, age_group = ?, skill_level = ?, is_active = ?, package_type = ?, store_credit = ?, enable_child_checkin = ?
                 WHERE id = ?
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $package_id
+                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $enable_child_checkin, $package_id
             ]);
             
             if ($isAjax) {

@@ -243,6 +243,7 @@ $allowed_pages = [
     'testing'                 => 'views/testing.php',
     'parent_home'             => 'views/parent_home.php',
     'athlete_detail'          => 'views/athlete_detail.php',
+    'camp_checkin'            => 'views/parent_camp_checkin.php',
     
     // Health Management (Health Coaches & Admins)
     'library_workouts'        => 'views/library_workouts.php',
