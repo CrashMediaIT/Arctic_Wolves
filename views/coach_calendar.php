@@ -213,9 +213,17 @@ $is_demo_data = false;
     <div id="sessionsData" style="display: none;">
         <?php foreach ($sessions as $session):
             $dt = strtotime($session['session_date']);
-            $timeStr = !empty($session['session_time']) ? date('g:i A', strtotime($session['session_time'])) : (!empty($session['start_time']) ? date('g:i A', strtotime($session['start_time'])) : '');
+            $sessionTimeVal = !empty($session['session_time']) ? $session['session_time'] : (!empty($session['start_time']) ? $session['start_time'] : null);
+            $timeStr = $sessionTimeVal ? date('g:i A', strtotime($sessionTimeVal)) : '';
+            if ($sessionTimeVal) {
+                $startTs = strtotime(date('Y-m-d', $dt) . ' ' . $sessionTimeVal);
+            } else {
+                $startTs = $dt;
+            }
+            $end = $startTs + ($session['duration_minutes'] ?? 60) * 60;
+            $is_mine_cal = ($session['coach_user_id'] == $user_id || ($session['is_assigned_coach'] ?? 0) > 0);
         ?>
-        <div class="session-data" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $dt) ?>" data-time="<?= $timeStr ?>" data-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: '') ?>" data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>"></div>
+        <div class="session-data" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $dt) ?>" data-time="<?= $timeStr ?>" data-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: '') ?>" data-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-datetime="<?= date('l, F j, Y \a\t g:i A', $startTs) ?>" data-end-time="<?= date('g:i A', $end) ?>" data-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>" data-is-mine="<?= $is_mine_cal ? '1' : '0' ?>"></div>
         <?php endforeach; ?>
     </div>
     <?php else: ?>
@@ -232,7 +240,7 @@ $is_demo_data = false;
                 $end = $startTs + ($session['duration_minutes'] ?? 60) * 60;
                 $is_mine = ($session['coach_user_id'] == $user_id || ($session['is_assigned_coach'] ?? 0) > 0);
             ?>
-            <div class="session-card <?= $is_mine ? 'my-session' : '' ?>" data-session-id="<?= $session['id'] ?>" data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $startTs) ?>" data-session-end-time="<?= date('g:i A', $end) ?>" data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-session-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?>" data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-session-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>">
+            <div class="session-card <?= $is_mine ? 'my-session' : '' ?>" data-session-id="<?= $session['id'] ?>" data-session-title="<?= htmlspecialchars($session['session_type_name'] ?? $session['title'] ?? 'Session') ?>" data-session-datetime="<?= date('l, F j, Y \a\t g:i A', $startTs) ?>" data-session-end-time="<?= date('g:i A', $end) ?>" data-session-duration="<?= $session['duration_minutes'] ?? 60 ?>" data-session-coach="<?= htmlspecialchars(trim(($session['coach_first_name'] ?? '') . ' ' . ($session['coach_last_name'] ?? '')) ?: 'TBD') ?>" data-session-location="<?= htmlspecialchars($session['location_name'] ?? '') ?>" data-session-description="<?= htmlspecialchars($session['description'] ?? '') ?>" data-session-practice-plan="<?= htmlspecialchars($session['practice_plan_name'] ?? '') ?>" data-session-practice-plan-id="<?= $session['practice_plan_id'] ?? '' ?>" data-is-mine="<?= $is_mine ? '1' : '0' ?>">
                 <div class="session-date">
                     <div class="date-box <?= $is_mine ? 'my-session-badge' : '' ?>">
                         <span class="date-day"><?= date('d', $dt) ?></span>
@@ -257,9 +265,12 @@ $is_demo_data = false;
                     </div>
                 </div>
                 <div class="session-actions">
-                    <button class="btn-secondary" onclick="openSessionDetailModal(this.closest('.session-card'))"><i class="fas fa-eye"></i> View</button>
-                    <button class="btn-secondary" onclick="openAssignPlanModal('<?= $session['id'] ?>', '<?= $session['practice_plan_id'] ?? '' ?>')"><i class="fas fa-clipboard-list"></i> <?= !empty($session['practice_plan_name']) ? 'Change' : 'Add' ?> Plan</button>
-                    <a href="?page=record_drill_video&session_id=<?= $session['id'] ?>" class="btn-primary"><i class="fas fa-video"></i> Record</a>
+                    <button class="btn btn-secondary" onclick="openSessionDetailModal(this.closest('.session-card'))"><i class="fas fa-eye"></i> View</button>
+                    <?php if ($is_mine || $user_role === 'admin'): ?>
+                    <button class="btn btn-secondary" onclick="openAssignPlanModal('<?= $session['id'] ?>', '<?= $session['practice_plan_id'] ?? '' ?>')"><i class="fas fa-clipboard-list"></i> <?= !empty($session['practice_plan_name']) ? 'Change' : 'Add' ?> Plan</button>
+                    <a href="?page=coach_session_evaluations&session_id=<?= $session['id'] ?>" class="btn btn-secondary"><i class="fas fa-clipboard-check"></i> Evaluation</a>
+                    <?php endif; ?>
+                    <a href="?page=record_drill_video&session_id=<?= $session['id'] ?>" class="btn btn-secondary"><i class="fas fa-video"></i> Record</a>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -282,7 +293,12 @@ $is_demo_data = false;
             <div class="session-modal-detail"><label>Description</label><span id="modalSessionDescription">-</span></div>
             <div class="practice-plan-section" id="modalPracticePlanSection" style="display: none;"><h4><i class="fas fa-clipboard-list"></i> Practice Plan</h4><p id="modalPracticePlanName">-</p></div>
         </div>
-        <div class="session-modal-footer"><button class="btn-secondary" onclick="closeSessionDetailModal()">Close</button><a href="#" id="modalRecordLink" class="btn-primary"><i class="fas fa-video"></i> Record Drill</a></div>
+        <div class="session-modal-footer">
+            <button class="btn btn-secondary" onclick="closeSessionDetailModal()">Close</button>
+            <button class="btn btn-secondary" id="modalAssignPlanBtn" style="display: none;" onclick="closeSessionDetailModal()"><i class="fas fa-clipboard-list"></i> <span id="modalAssignPlanLabel">Add Plan</span></button>
+            <a href="#" id="modalEvaluationLink" class="btn btn-secondary" style="display: none;"><i class="fas fa-clipboard-check"></i> Session Evaluation</a>
+            <a href="#" id="modalRecordLink" class="btn btn-secondary"><i class="fas fa-video"></i> Record Drill</a>
+        </div>
     </div>
 </div>
 
@@ -301,7 +317,7 @@ $is_demo_data = false;
                         <?php foreach ($practice_plans as $plan): ?><option value="<?= $plan['id'] ?>"><?= htmlspecialchars($plan['name']) ?></option><?php endforeach; ?>
                     </select>
                 </div>
-                <div class="form-actions"><button type="button" class="btn-secondary" onclick="closeAssignPlanModal()">Cancel</button><button type="submit" class="btn-primary">Assign Plan</button></div>
+                <div class="form-actions"><button type="button" class="btn btn-secondary" onclick="closeAssignPlanModal()">Cancel</button><button type="submit" class="btn btn-primary">Assign Plan</button></div>
             </form>
         </div>
     </div>
@@ -337,7 +353,7 @@ $is_demo_data = false;
                     </div>
                 </div>
                 <div class="form-group"><label>Description</label><textarea name="description" class="form-textarea" rows="2"></textarea></div>
-                <div class="form-actions"><button type="button" class="btn-secondary" onclick="closePrivateSessionModal()">Cancel</button><button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Create Session</button></div>
+                <div class="form-actions"><button type="button" class="btn btn-secondary" onclick="closePrivateSessionModal()">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Create Session</button></div>
             </form>
         </div>
     </div>
@@ -439,11 +455,26 @@ $is_demo_data = false;
 </style>
 
 <script>
+var isAdmin = <?= ($user_role === 'admin') ? 'true' : 'false' ?>;
 document.addEventListener('DOMContentLoaded', function() {
     let currentMonth = new Date().getMonth(), currentYear = new Date().getFullYear();
     const sessionsData = [];
     document.querySelectorAll('#sessionsData .session-data').forEach(el => {
-        sessionsData.push({ id: el.dataset.sessionId, date: el.dataset.date, time: el.dataset.time, title: el.dataset.title });
+        sessionsData.push({
+            id: el.dataset.sessionId,
+            date: el.dataset.date,
+            time: el.dataset.time,
+            title: el.dataset.title,
+            coach: el.dataset.coach || 'TBD',
+            location: el.dataset.location || '',
+            datetime: el.dataset.datetime || '',
+            endTime: el.dataset.endTime || '',
+            duration: el.dataset.duration || '60',
+            description: el.dataset.description || '',
+            practicePlan: el.dataset.practicePlan || '',
+            practicePlanId: el.dataset.practicePlanId || '',
+            isMine: el.dataset.isMine === '1'
+        });
     });
     
     function renderCalendar(month, year) {
@@ -470,7 +501,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const dayEl = document.createElement('div');
         dayEl.className = 'calendar-day' + (isOtherMonth ? ' other-month' : '') + (isToday ? ' today' : '') + (sessions.length > 0 ? ' has-sessions' : '');
         dayEl.innerHTML = '<div class="day-number">' + dayNum + '</div>';
-        sessions.slice(0, 3).forEach(s => { dayEl.innerHTML += '<div class="session-indicator">' + s.time + ' ' + s.title + '</div>'; });
+        sessions.slice(0, 3).forEach(s => {
+            const indicator = document.createElement('div');
+            indicator.className = 'session-indicator';
+            indicator.textContent = s.time + ' ' + s.title;
+            indicator.style.cursor = 'pointer';
+            indicator.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openCalendarSessionModal(s);
+            });
+            dayEl.appendChild(indicator);
+        });
         if (sessions.length > 3) dayEl.innerHTML += '<div class="session-indicator" style="background:var(--bg-card);color:var(--text-dim)">+' + (sessions.length - 3) + ' more</div>';
         return dayEl;
     }
@@ -481,16 +522,58 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function openSessionDetailModal(cardEl) {
+    var sessionId = cardEl.dataset.sessionId;
+    var isMine = cardEl.dataset.isMine === '1';
+    var canManage = isMine || isAdmin;
     document.getElementById('modalSessionTitle').textContent = cardEl.dataset.sessionTitle || 'Session';
     document.getElementById('modalSessionDateTime').textContent = (cardEl.dataset.sessionDatetime || '') + (cardEl.dataset.sessionEndTime ? ' - ' + cardEl.dataset.sessionEndTime : '');
     document.getElementById('modalSessionDuration').textContent = (cardEl.dataset.sessionDuration || '60') + ' minutes';
     document.getElementById('modalSessionCoach').textContent = cardEl.dataset.sessionCoach || 'TBD';
     document.getElementById('modalSessionLocation').textContent = cardEl.dataset.sessionLocation || 'Not specified';
     document.getElementById('modalSessionDescription').textContent = cardEl.dataset.sessionDescription || 'No description';
-    const planSection = document.getElementById('modalPracticePlanSection'), planName = cardEl.dataset.sessionPracticePlan;
+    var planSection = document.getElementById('modalPracticePlanSection'), planName = cardEl.dataset.sessionPracticePlan;
     planSection.style.display = planName ? 'block' : 'none';
     if (planName) document.getElementById('modalPracticePlanName').textContent = planName;
-    document.getElementById('modalRecordLink').href = '?page=record_drill_video&session_id=' + cardEl.dataset.sessionId;
+    document.getElementById('modalRecordLink').href = '?page=record_drill_video&session_id=' + sessionId;
+    var assignPlanBtn = document.getElementById('modalAssignPlanBtn');
+    var evalLink = document.getElementById('modalEvaluationLink');
+    if (canManage) {
+        assignPlanBtn.style.display = '';
+        assignPlanBtn.onclick = function() { closeSessionDetailModal(); openAssignPlanModal(sessionId, cardEl.dataset.sessionPracticePlanId || ''); };
+        document.getElementById('modalAssignPlanLabel').textContent = planName ? 'Change Plan' : 'Add Plan';
+        evalLink.style.display = '';
+        evalLink.href = '?page=coach_session_evaluations&session_id=' + sessionId;
+    } else {
+        assignPlanBtn.style.display = 'none';
+        evalLink.style.display = 'none';
+    }
+    document.getElementById('sessionDetailModal').classList.add('active');
+}
+
+function openCalendarSessionModal(s) {
+    var canManage = s.isMine || isAdmin;
+    document.getElementById('modalSessionTitle').textContent = s.title || 'Session';
+    document.getElementById('modalSessionDateTime').textContent = (s.datetime || '') + (s.endTime ? ' - ' + s.endTime : '');
+    document.getElementById('modalSessionDuration').textContent = (s.duration || '60') + ' minutes';
+    document.getElementById('modalSessionCoach').textContent = s.coach || 'TBD';
+    document.getElementById('modalSessionLocation').textContent = s.location || 'Not specified';
+    document.getElementById('modalSessionDescription').textContent = s.description || 'No description';
+    var planSection = document.getElementById('modalPracticePlanSection');
+    planSection.style.display = s.practicePlan ? 'block' : 'none';
+    if (s.practicePlan) document.getElementById('modalPracticePlanName').textContent = s.practicePlan;
+    document.getElementById('modalRecordLink').href = '?page=record_drill_video&session_id=' + s.id;
+    var assignPlanBtn = document.getElementById('modalAssignPlanBtn');
+    var evalLink = document.getElementById('modalEvaluationLink');
+    if (canManage) {
+        assignPlanBtn.style.display = '';
+        assignPlanBtn.onclick = function() { closeSessionDetailModal(); openAssignPlanModal(s.id, s.practicePlanId || ''); };
+        document.getElementById('modalAssignPlanLabel').textContent = s.practicePlan ? 'Change Plan' : 'Add Plan';
+        evalLink.style.display = '';
+        evalLink.href = '?page=coach_session_evaluations&session_id=' + s.id;
+    } else {
+        assignPlanBtn.style.display = 'none';
+        evalLink.style.display = 'none';
+    }
     document.getElementById('sessionDetailModal').classList.add('active');
 }
 function closeSessionDetailModal() { document.getElementById('sessionDetailModal').classList.remove('active'); }
