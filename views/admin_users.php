@@ -228,60 +228,62 @@ foreach ($users as $u) {
     <div class="filter-box">
         <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Users</div>
         <div class="filter-box-content">
-            <form method="GET" action="" class="filter-row">
+            <form method="GET" action="">
                 <input type="hidden" name="page" value="all_users">
-                <div class="filter-field" style="grid-column: span 2;">
-                    <label>Search</label>
-                    <div class="search-input-wrapper">
-                        <i class="fas fa-search"></i>
-                        <input type="text" name="search" class="form-input" placeholder="Search by name, email, or phone..." 
-                               value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
+                <div class="filter-row">
+                    <div class="filter-field" style="grid-column: span 2;">
+                        <label>Search</label>
+                        <div class="search-input-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" name="search" class="form-input" placeholder="Search by name, email, or phone..." 
+                                   value="<?php echo htmlspecialchars($search); ?>" id="userSearch">
+                        </div>
+                    </div>
+                    <div class="filter-field">
+                        <label>Role</label>
+                        <select name="role" class="form-select" id="roleFilter">
+                            <option value="">All Roles</option>
+                            <option value="admin" <?php echo $role_filter === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                            <option value="coach" <?php echo $role_filter === 'coach' ? 'selected' : ''; ?>>Coach</option>
+                            <option value="health_coach" <?php echo $role_filter === 'health_coach' ? 'selected' : ''; ?>>Health Coach</option>
+                            <option value="team_coach" <?php echo $role_filter === 'team_coach' ? 'selected' : ''; ?>>Team Coach</option>
+                            <option value="athlete" <?php echo $role_filter === 'athlete' ? 'selected' : ''; ?>>Athlete</option>
+                            <option value="parent" <?php echo $role_filter === 'parent' ? 'selected' : ''; ?>>Parent</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Status</label>
+                        <select name="status" class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="active" <?php echo $status_filter === 'active' ? 'selected' : ''; ?>>Active</option>
+                            <option value="inactive" <?php echo $status_filter === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Team</label>
+                        <select name="team" class="form-select" id="teamFilter">
+                            <option value="">All Teams</option>
+                            <?php foreach ($teams as $team): ?>
+                                <option value="<?php echo $team['id']; ?>" <?php echo $team_filter == $team['id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($team['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Age</label>
+                        <select name="age" class="form-select" id="ageFilter">
+                            <option value="">All Ages</option>
+                            <option value="u10" <?php echo $age_filter === 'u10' ? 'selected' : ''; ?>>Under 10</option>
+                            <option value="u12" <?php echo $age_filter === 'u12' ? 'selected' : ''; ?>>U12 (10-11)</option>
+                            <option value="u14" <?php echo $age_filter === 'u14' ? 'selected' : ''; ?>>U14 (12-13)</option>
+                            <option value="u16" <?php echo $age_filter === 'u16' ? 'selected' : ''; ?>>U16 (14-15)</option>
+                            <option value="u18" <?php echo $age_filter === 'u18' ? 'selected' : ''; ?>>U18 (16-17)</option>
+                            <option value="18plus" <?php echo $age_filter === '18plus' ? 'selected' : ''; ?>>18+</option>
+                        </select>
                     </div>
                 </div>
-                <div class="filter-field">
-                    <label>Role</label>
-                    <select name="role" class="form-select" id="roleFilter">
-                        <option value="">All Roles</option>
-                        <option value="admin" <?php echo $role_filter === 'admin' ? 'selected' : ''; ?>>Admin</option>
-                        <option value="coach" <?php echo $role_filter === 'coach' ? 'selected' : ''; ?>>Coach</option>
-                        <option value="health_coach" <?php echo $role_filter === 'health_coach' ? 'selected' : ''; ?>>Health Coach</option>
-                        <option value="team_coach" <?php echo $role_filter === 'team_coach' ? 'selected' : ''; ?>>Team Coach</option>
-                        <option value="athlete" <?php echo $role_filter === 'athlete' ? 'selected' : ''; ?>>Athlete</option>
-                        <option value="parent" <?php echo $role_filter === 'parent' ? 'selected' : ''; ?>>Parent</option>
-                    </select>
-                </div>
-                <div class="filter-field">
-                    <label>Status</label>
-                    <select name="status" class="form-select" id="statusFilter">
-                        <option value="">All Status</option>
-                        <option value="active" <?php echo $status_filter === 'active' ? 'selected' : ''; ?>>Active</option>
-                        <option value="inactive" <?php echo $status_filter === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
-                    </select>
-                </div>
-                <div class="filter-field">
-                    <label>Team</label>
-                    <select name="team" class="form-select" id="teamFilter">
-                        <option value="">All Teams</option>
-                        <?php foreach ($teams as $team): ?>
-                            <option value="<?php echo $team['id']; ?>" <?php echo $team_filter == $team['id'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($team['name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-field">
-                    <label>Age</label>
-                    <select name="age" class="form-select" id="ageFilter">
-                        <option value="">All Ages</option>
-                        <option value="u10" <?php echo $age_filter === 'u10' ? 'selected' : ''; ?>>Under 10</option>
-                        <option value="u12" <?php echo $age_filter === 'u12' ? 'selected' : ''; ?>>U12 (10-11)</option>
-                        <option value="u14" <?php echo $age_filter === 'u14' ? 'selected' : ''; ?>>U14 (12-13)</option>
-                        <option value="u16" <?php echo $age_filter === 'u16' ? 'selected' : ''; ?>>U16 (14-15)</option>
-                        <option value="u18" <?php echo $age_filter === 'u18' ? 'selected' : ''; ?>>U18 (16-17)</option>
-                        <option value="18plus" <?php echo $age_filter === '18plus' ? 'selected' : ''; ?>>18+</option>
-                    </select>
-                </div>
-                <div class="filter-field filter-actions">
+                <div class="filter-actions">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
                     <a href="?page=all_users" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
                 </div>
