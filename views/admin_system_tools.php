@@ -2451,7 +2451,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                             <button type="button" class="btn btn-sm btn-secondary" onclick="editNdiCamera(<?php echo (int)$camera['id']; ?>)" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteNdiCamera(<?php echo (int)$camera['id']; ?>, '<?php echo htmlspecialchars(addslashes($camera['name'])); ?>')" title="Delete">
+                                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteNdiCamera(<?php echo (int)$camera['id']; ?>, <?php echo htmlspecialchars(json_encode($camera['name']), ENT_QUOTES, 'UTF-8'); ?>)" title="Delete">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
