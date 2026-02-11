@@ -453,6 +453,20 @@ $filterCategory = $_GET['category'] ?? '';
                     <small style="color: var(--text-dim);">Leave empty to keep current image</small>
                 </div>
                 
+                <!-- Sizes and Quantities Section -->
+                <div class="form-group" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <label class="form-label" style="margin-bottom: 0;">Sizes & Inventory</label>
+                        <button type="button" class="btn btn-secondary" onclick="addSizeRow('edit')" style="padding: 6px 12px; font-size: 12px;">
+                            <i class="fas fa-plus"></i> Add Size
+                        </button>
+                    </div>
+                    <div id="edit-sizes-container">
+                        <!-- Size rows will be populated by JavaScript -->
+                    </div>
+                    <p style="font-size: 12px; color: var(--text-dim);">Add sizes like XS, S, M, L, XL, XXL, or custom sizes like Youth S, Adult L</p>
+                </div>
+                
                 <div class="form-group">
                     <label class="form-checkbox" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <input type="checkbox" name="track_inventory" id="edit-product-track" value="1" style="width: 16px; height: 16px;">
@@ -711,30 +725,53 @@ function filterByCategory(categoryId) {
 }
 
 function addSizeRow(context) {
-    const containerId = context === 'inventory' ? 'inventory-sizes-container' : 'add-sizes-container';
+    let containerId;
+    if (context === 'inventory') {
+        containerId = 'inventory-sizes-container';
+    } else if (context === 'edit') {
+        containerId = 'edit-sizes-container';
+    } else {
+        containerId = 'add-sizes-container';
+    }
+    
     const container = document.getElementById(containerId);
     const row = document.createElement('div');
     row.className = 'size-row';
     row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 40px; gap: 12px; margin-bottom: 12px;';
     
-    if (context === 'inventory') {
-        row.innerHTML = `
-            <input type="hidden" name="size_ids[]" value="">
-            <input type="text" name="sizes[]" class="form-input" placeholder="Size (e.g., S, M, L)">
-            <input type="number" name="quantities[]" class="form-input" placeholder="Quantity" min="0" value="0">
-            <button type="button" class="btn-remove-size" onclick="this.parentElement.remove()" style="padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;" title="Remove">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-    } else {
-        row.innerHTML = `
-            <input type="text" name="sizes[]" class="form-input" placeholder="Size (e.g., S, M, L)">
-            <input type="number" name="quantities[]" class="form-input" placeholder="Quantity" min="0" value="0">
-            <button type="button" class="btn-remove-size" onclick="this.parentElement.remove()" style="padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;" title="Remove">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
+    if (context === 'inventory' || context === 'edit') {
+        const sizeIdInput = document.createElement('input');
+        sizeIdInput.type = 'hidden';
+        sizeIdInput.name = 'size_ids[]';
+        sizeIdInput.value = '';
+        row.appendChild(sizeIdInput);
     }
+    
+    const sizeInput = document.createElement('input');
+    sizeInput.type = 'text';
+    sizeInput.name = 'sizes[]';
+    sizeInput.className = 'form-input';
+    sizeInput.placeholder = 'Size (e.g., S, M, L)';
+    
+    const quantityInput = document.createElement('input');
+    quantityInput.type = 'number';
+    quantityInput.name = 'quantities[]';
+    quantityInput.className = 'form-input';
+    quantityInput.placeholder = 'Quantity';
+    quantityInput.min = '0';
+    quantityInput.value = '0';
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-remove-size';
+    removeBtn.onclick = function() { this.parentElement.remove(); };
+    removeBtn.style.cssText = 'padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;';
+    removeBtn.title = 'Remove';
+    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    
+    row.appendChild(sizeInput);
+    row.appendChild(quantityInput);
+    row.appendChild(removeBtn);
     
     container.appendChild(row);
 }
@@ -757,6 +794,71 @@ function editProduct(product) {
     } else {
         previewDiv.innerHTML = '';
     }
+    
+    // Fetch and populate sizes
+    fetch('process_merchandise_products.php?action=get_sizes&product_id=' + encodeURIComponent(product.id))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch sizes');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const container = document.getElementById('edit-sizes-container');
+            container.innerHTML = '';
+            
+            if (data.sizes && data.sizes.length > 0) {
+                data.sizes.forEach(size => {
+                    const row = document.createElement('div');
+                    row.className = 'size-row';
+                    row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 40px; gap: 12px; margin-bottom: 12px;';
+                    
+                    const sizeIdInput = document.createElement('input');
+                    sizeIdInput.type = 'hidden';
+                    sizeIdInput.name = 'size_ids[]';
+                    sizeIdInput.value = size.id;
+                    
+                    const sizeInput = document.createElement('input');
+                    sizeInput.type = 'text';
+                    sizeInput.name = 'sizes[]';
+                    sizeInput.className = 'form-input';
+                    sizeInput.value = size.size;
+                    sizeInput.placeholder = 'Size';
+                    
+                    const quantityInput = document.createElement('input');
+                    quantityInput.type = 'number';
+                    quantityInput.name = 'quantities[]';
+                    quantityInput.className = 'form-input';
+                    quantityInput.value = size.quantity;
+                    quantityInput.min = '0';
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'btn-remove-size';
+                    removeBtn.onclick = function() { this.parentElement.remove(); };
+                    removeBtn.style.cssText = 'padding: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 6px; color: #ef4444; cursor: pointer;';
+                    removeBtn.title = 'Remove';
+                    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    
+                    row.appendChild(sizeIdInput);
+                    row.appendChild(sizeInput);
+                    row.appendChild(quantityInput);
+                    row.appendChild(removeBtn);
+                    
+                    container.appendChild(row);
+                });
+            } else {
+                // Add empty row if no sizes exist
+                addSizeRow('edit');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching sizes:', error);
+            // Add empty row on error
+            const container = document.getElementById('edit-sizes-container');
+            container.innerHTML = '';
+            addSizeRow('edit');
+        });
     
     openModal('edit-product-modal');
 }
