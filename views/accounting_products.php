@@ -2172,9 +2172,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
                 '<input type="hidden" name="action" value="update_training_session">' +
                 '<input type="hidden" name="id" value="' + itemId + '">' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Session Name *</label>' +
-                    '<input type="text" name="name" class="form-input" required value="' + escapeHtml(data.name || '') + '">' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Session Name *</label>' +
+                        '<input type="text" name="name" class="form-input" required value="' + escapeHtml(data.name || '') + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Session Type *</label>' +
+                        '<select name="session_type" class="form-input" required>' +
+                            '<option value="on_ice"' + (data.session_type === 'on_ice' ? ' selected' : '') + '>On Ice</option>' +
+                            '<option value="off_ice"' + (data.session_type === 'off_ice' ? ' selected' : '') + '>Off Ice / Workout</option>' +
+                            '<option value="nutrition"' + (data.session_type === 'nutrition' ? ' selected' : '') + '>Nutrition Meeting</option>' +
+                            '<option value="meeting"' + (data.session_type === 'meeting' ? ' selected' : '') + '>General Meeting</option>' +
+                            '<option value="other"' + (data.session_type === 'other' ? ' selected' : '') + '>Other</option>' +
+                        '</select>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="form-group">' +
                     '<label class="form-label">Description</label>' +
@@ -2189,18 +2201,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<label class="form-label">Duration (minutes)</label>' +
                         '<input type="number" name="duration" class="form-input" min="15" max="480" value="' + (data.duration_minutes || 60) + '">' +
                     '</div>' +
-                '</div>' +
-                '<div class="form-row">' +
                     '<div class="form-group">' +
                         '<label class="form-label">Max Participants</label>' +
                         '<input type="number" name="max_participants" class="form-input" min="1" value="' + (data.max_participants || '') + '">' +
-                    '</div>' +
-                    '<div class="form-group">' +
-                        '<label class="form-label">Status</label>' +
-                        '<select name="is_active" class="form-input">' +
-                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
-                            '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
-                        '</select>' +
                     '</div>' +
                 '</div>' +
                 '<div class="form-row">' +
@@ -2221,6 +2224,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<label class="form-label">Coaches</label>' +
                     '<p style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Select one or more coaches for this session</p>' +
                     '<div class="skill-selector" style="max-height: 150px; overflow-y: auto;">' + coachCheckboxes + '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Status</label>' +
+                        '<select name="is_active" class="form-input">' +
+                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
+                            '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">' +
+                            '<input type="checkbox" name="show_on_landing" value="1"' + (data.show_on_landing == 1 ? ' checked' : '') + '>' +
+                            '<span>Show on Landing Page</span>' +
+                        '</label>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">' +
+                            '<input type="checkbox" name="is_template" value="1"' + (data.is_template == 1 ? ' checked' : '') + '>' +
+                            '<span>Save as Template</span>' +
+                        '</label>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
                     '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-session-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
@@ -2332,6 +2356,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<div class="form-group">' +
                         '<label class="form-label">Discount Value</label>' +
                         '<input type="number" name="discount_value" class="form-input" step="0.01" min="0" value="' + (data.discount_value || 0) + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Start Date</label>' +
+                        '<input type="date" name="start_date" class="form-input" value="' + (data.start_date || '') + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">End Date</label>' +
+                        '<input type="date" name="end_date" class="form-input" value="' + (data.end_date || '') + '">' +
                     '</div>' +
                 '</div>' +
                 '<div class="form-row">' +

@@ -3446,6 +3446,16 @@ CREATE TABLE IF NOT EXISTS `shop_orders` (
     INDEX `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Add shipping/fulfillment tracking fields to shop_orders
+ALTER TABLE `shop_orders`
+ADD COLUMN IF NOT EXISTS `shipping_carrier` VARCHAR(100) DEFAULT NULL AFTER `notes`,
+ADD COLUMN IF NOT EXISTS `tracking_number` VARCHAR(255) DEFAULT NULL AFTER `shipping_carrier`,
+ADD COLUMN IF NOT EXISTS `tracking_url` VARCHAR(500) DEFAULT NULL AFTER `tracking_number`,
+ADD COLUMN IF NOT EXISTS `shipped_at` TIMESTAMP NULL DEFAULT NULL AFTER `tracking_url`,
+ADD COLUMN IF NOT EXISTS `delivered_at` TIMESTAMP NULL DEFAULT NULL AFTER `shipped_at`,
+ADD COLUMN IF NOT EXISTS `fulfillment_notes` TEXT DEFAULT NULL AFTER `delivered_at`,
+ADD INDEX IF NOT EXISTS `idx_tracking` (`tracking_number`);
+
 -- Shop Order Items
 CREATE TABLE IF NOT EXISTS `shop_order_items` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

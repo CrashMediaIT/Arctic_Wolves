@@ -1142,6 +1142,345 @@ function showNotification(message, type) {
     setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
 }
 
+// Record Shipment - loads sizes and opens the shipment modal
+function recordShipment(product) {
+    document.getElementById('shipment-product-id').value = product.id;
+    document.getElementById('shipment-product-name').textContent = product.name;
+    
+    fetch('process_merchandise_products.php?action=get_sizes&product_id=' + encodeURIComponent(product.id))
+        .then(response => response.json())
+        .then(data => {
+            var container = document.getElementById('shipment-sizes-container');
+            container.innerHTML = '';
+            
+            if (data.sizes && data.sizes.length > 0) {
+                data.sizes.forEach(function(size) {
+                    var row = document.createElement('div');
+                    row.style.cssText = 'display: grid; grid-template-columns: 1fr 100px 120px; gap: 12px; margin-bottom: 8px; align-items: center;';
+                    
+                    var sizeIdInput = document.createElement('input');
+                    sizeIdInput.type = 'hidden';
+                    sizeIdInput.name = 'size_ids[]';
+                    sizeIdInput.value = size.id;
+                    
+                    var sizeLabel = document.createElement('span');
+                    sizeLabel.style.cssText = 'font-weight: 600; padding: 8px 12px; background: var(--bg); border-radius: 6px;';
+                    sizeLabel.textContent = size.size;
+                    
+                    var currentQty = document.createElement('span');
+                    currentQty.style.cssText = 'text-align: center; padding: 8px; background: var(--bg); border-radius: 6px; color: var(--text-dim);';
+                    currentQty.textContent = size.quantity;
+                    
+                    var qtyInput = document.createElement('input');
+                    qtyInput.type = 'number';
+                    qtyInput.name = 'shipment_quantities[]';
+                    qtyInput.className = 'form-input';
+                    qtyInput.min = '0';
+                    qtyInput.value = '0';
+                    qtyInput.placeholder = '0';
+                    qtyInput.style.textAlign = 'center';
+                    
+                    row.appendChild(sizeIdInput);
+                    row.appendChild(sizeLabel);
+                    row.appendChild(currentQty);
+                    row.appendChild(qtyInput);
+                    container.appendChild(row);
+                });
+            } else {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">No sizes configured for this product. Add sizes first via Edit or Manage Inventory.</p>';
+            }
+            
+            openModal('shipment-modal');
+        })
+        .catch(function(error) {
+            console.error('Error fetching sizes:', error);
+            alert('Error loading product sizes. Please try again.');
+        });
+}
+
+// Stock Audit - loads sizes with system quantities and opens audit modal
+function stockAudit(product) {
+    document.getElementById('audit-product-id').value = product.id;
+    document.getElementById('audit-product-name').textContent = product.name;
+    document.getElementById('audit-summary').style.display = 'none';
+    
+    // Store product id for history button
+    document.getElementById('audit-modal').dataset.productId = product.id;
+    document.getElementById('audit-modal').dataset.productName = product.name;
+    document.getElementById('audit-history-btn').style.display = 'inline-flex';
+    
+    fetch('process_merchandise_products.php?action=get_sizes&product_id=' + encodeURIComponent(product.id))
+        .then(response => response.json())
+        .then(data => {
+            var container = document.getElementById('audit-sizes-container');
+            container.innerHTML = '';
+            
+            if (data.sizes && data.sizes.length > 0) {
+                data.sizes.forEach(function(size) {
+                    var row = document.createElement('div');
+                    row.style.cssText = 'display: grid; grid-template-columns: 1fr 100px 120px 100px; gap: 12px; margin-bottom: 8px; align-items: center;';
+                    
+                    var sizeIdInput = document.createElement('input');
+                    sizeIdInput.type = 'hidden';
+                    sizeIdInput.name = 'size_ids[]';
+                    sizeIdInput.value = size.id;
+                    
+                    var sizeLabel = document.createElement('span');
+                    sizeLabel.style.cssText = 'font-weight: 600; padding: 8px 12px; background: var(--bg); border-radius: 6px;';
+                    sizeLabel.textContent = size.size;
+                    
+                    var systemQty = document.createElement('span');
+                    systemQty.style.cssText = 'text-align: center; padding: 8px; background: var(--bg); border-radius: 6px; color: var(--text-dim);';
+                    systemQty.textContent = size.quantity;
+                    systemQty.dataset.systemQty = size.quantity;
+                    
+                    var actualInput = document.createElement('input');
+                    actualInput.type = 'number';
+                    actualInput.name = 'actual_quantities[]';
+                    actualInput.className = 'form-input';
+                    actualInput.min = '0';
+                    actualInput.value = size.quantity;
+                    actualInput.style.textAlign = 'center';
+                    
+                    var diffSpan = document.createElement('span');
+                    diffSpan.style.cssText = 'text-align: center; padding: 8px; border-radius: 6px; font-weight: 600;';
+                    diffSpan.textContent = '0';
+                    diffSpan.style.background = 'rgba(16, 185, 129, 0.1)';
+                    diffSpan.style.color = '#10b981';
+                    
+                    // Update difference on input change
+                    actualInput.addEventListener('input', function() {
+                        var sysQ = parseInt(systemQty.dataset.systemQty) || 0;
+                        var actQ = parseInt(this.value) || 0;
+                        var diff = actQ - sysQ;
+                        diffSpan.textContent = (diff > 0 ? '+' : '') + diff;
+                        
+                        if (diff < 0) {
+                            diffSpan.style.background = 'rgba(239, 68, 68, 0.1)';
+                            diffSpan.style.color = '#ef4444';
+                        } else if (diff > 0) {
+                            diffSpan.style.background = 'rgba(245, 158, 11, 0.1)';
+                            diffSpan.style.color = '#f59e0b';
+                        } else {
+                            diffSpan.style.background = 'rgba(16, 185, 129, 0.1)';
+                            diffSpan.style.color = '#10b981';
+                        }
+                        
+                        updateAuditSummary();
+                    });
+                    
+                    row.appendChild(sizeIdInput);
+                    row.appendChild(sizeLabel);
+                    row.appendChild(systemQty);
+                    row.appendChild(actualInput);
+                    row.appendChild(diffSpan);
+                    container.appendChild(row);
+                });
+            } else {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">No sizes configured for this product.</p>';
+            }
+            
+            openModal('audit-modal');
+        })
+        .catch(function(error) {
+            console.error('Error fetching sizes:', error);
+            alert('Error loading product sizes. Please try again.');
+        });
+}
+
+function updateAuditSummary() {
+    var container = document.getElementById('audit-sizes-container');
+    var inputs = container.querySelectorAll('input[name="actual_quantities[]"]');
+    var systemSpans = container.querySelectorAll('[data-system-qty]');
+    var totalDiscrepancy = 0;
+    var discrepancyCount = 0;
+    
+    inputs.forEach(function(input, idx) {
+        var sysQ = parseInt(systemSpans[idx].dataset.systemQty) || 0;
+        var actQ = parseInt(input.value) || 0;
+        var diff = actQ - sysQ;
+        if (diff !== 0) {
+            totalDiscrepancy += diff;
+            discrepancyCount++;
+        }
+    });
+    
+    var summary = document.getElementById('audit-summary');
+    var summaryText = document.getElementById('audit-summary-text');
+    
+    if (discrepancyCount > 0) {
+        summary.style.display = 'block';
+        summaryText.textContent = discrepancyCount + ' size(s) with discrepancies. Net change: ' + (totalDiscrepancy > 0 ? '+' : '') + totalDiscrepancy + ' units. Submitting will adjust stock levels to match actual counts.';
+    } else {
+        summary.style.display = 'none';
+    }
+}
+
+// View audit/movement history
+function viewAuditHistory() {
+    var auditModal = document.getElementById('audit-modal');
+    var productId = auditModal.dataset.productId;
+    var productName = auditModal.dataset.productName;
+    
+    closeModal('audit-modal');
+    openStockHistory(productId, productName);
+}
+
+function openStockHistory(productId, productName) {
+    document.getElementById('history-product-name').textContent = productName;
+    document.getElementById('stock-history-modal').dataset.productId = productId;
+    
+    switchHistoryTab('movements');
+    openModal('stock-history-modal');
+}
+
+function switchHistoryTab(tab) {
+    var productId = document.getElementById('stock-history-modal').dataset.productId;
+    
+    document.querySelectorAll('.history-tab').forEach(function(btn) { btn.classList.remove('active'); });
+    document.getElementById('tab-' + tab).classList.add('active');
+    
+    document.getElementById('movements-content').style.display = tab === 'movements' ? 'block' : 'none';
+    document.getElementById('audits-content').style.display = tab === 'audits' ? 'block' : 'none';
+    
+    if (tab === 'movements') {
+        loadMovements(productId);
+    } else {
+        loadAudits(productId);
+    }
+}
+
+function loadMovements(productId) {
+    document.getElementById('movements-loading').style.display = 'block';
+    document.getElementById('movements-table').style.display = 'none';
+    
+    fetch('process_merchandise_products.php?action=get_stock_movements&product_id=' + encodeURIComponent(productId))
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('movements-loading').style.display = 'none';
+            var tableDiv = document.getElementById('movements-table');
+            tableDiv.style.display = 'block';
+            
+            if (data.movements && data.movements.length > 0) {
+                var html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">' +
+                    '<thead><tr style="border-bottom: 2px solid var(--border);">' +
+                    '<th style="padding: 8px; text-align: left;">Date</th>' +
+                    '<th style="padding: 8px; text-align: left;">Type</th>' +
+                    '<th style="padding: 8px; text-align: left;">Size</th>' +
+                    '<th style="padding: 8px; text-align: center;">Before</th>' +
+                    '<th style="padding: 8px; text-align: center;">Change</th>' +
+                    '<th style="padding: 8px; text-align: center;">After</th>' +
+                    '<th style="padding: 8px; text-align: left;">Reference</th>' +
+                    '<th style="padding: 8px; text-align: left;">By</th>' +
+                    '</tr></thead><tbody>';
+                
+                data.movements.forEach(function(m) {
+                    var typeLabel = m.movement_type.replace('_', ' ');
+                    typeLabel = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
+                    var changeColor = m.quantity_change > 0 ? '#10b981' : (m.quantity_change < 0 ? '#ef4444' : 'var(--text-dim)');
+                    var changeSign = m.quantity_change > 0 ? '+' : '';
+                    
+                    html += '<tr style="border-bottom: 1px solid var(--border);">' +
+                        '<td style="padding: 8px;">' + new Date(m.created_at).toLocaleDateString() + '</td>' +
+                        '<td style="padding: 8px;"><span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light);">' + escapeHtml(typeLabel) + '</span></td>' +
+                        '<td style="padding: 8px;">' + escapeHtml(m.size || 'N/A') + '</td>' +
+                        '<td style="padding: 8px; text-align: center;">' + m.quantity_before + '</td>' +
+                        '<td style="padding: 8px; text-align: center; color: ' + changeColor + '; font-weight: 600;">' + changeSign + m.quantity_change + '</td>' +
+                        '<td style="padding: 8px; text-align: center;">' + m.quantity_after + '</td>' +
+                        '<td style="padding: 8px; color: var(--text-dim);">' + escapeHtml(m.reference || '-') + '</td>' +
+                        '<td style="padding: 8px; color: var(--text-dim);">' + escapeHtml((m.first_name || '') + ' ' + (m.last_name || '')) + '</td>' +
+                        '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                tableDiv.innerHTML = html;
+            } else {
+                tableDiv.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px;">No stock movements recorded yet.</p>';
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            document.getElementById('movements-loading').style.display = 'none';
+            document.getElementById('movements-table').innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading stock movements.</p>';
+            document.getElementById('movements-table').style.display = 'block';
+        });
+}
+
+function loadAudits(productId) {
+    document.getElementById('audits-loading').style.display = 'block';
+    document.getElementById('audits-table').style.display = 'none';
+    
+    fetch('process_merchandise_products.php?action=get_audit_history&product_id=' + encodeURIComponent(productId))
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('audits-loading').style.display = 'none';
+            var tableDiv = document.getElementById('audits-table');
+            tableDiv.style.display = 'block';
+            
+            if (data.audits && data.audits.length > 0) {
+                var html = '';
+                data.audits.forEach(function(audit) {
+                    var hasDiscrepancies = audit.items.some(function(item) { return item.discrepancy !== 0; });
+                    var borderColor = hasDiscrepancies ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)';
+                    
+                    html += '<div style="border: 1px solid ' + borderColor + '; border-radius: 8px; padding: 16px; margin-bottom: 12px;">' +
+                        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">' +
+                        '<div>' +
+                        '<strong>Audit #' + audit.id + '</strong>' +
+                        '<span style="margin-left: 12px; color: var(--text-dim);">' + new Date(audit.created_at).toLocaleString() + '</span>' +
+                        '</div>' +
+                        '<span style="padding: 3px 10px; border-radius: 4px; font-size: 11px; background: ' + (hasDiscrepancies ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)') + '; color: ' + (hasDiscrepancies ? '#ef4444' : '#10b981') + ';">' +
+                        (hasDiscrepancies ? 'Discrepancies Found' : 'All Matched') + '</span>' +
+                        '</div>';
+                    
+                    if (audit.notes) {
+                        html += '<p style="color: var(--text-dim); font-size: 12px; margin-bottom: 8px;"><i class="fas fa-sticky-note"></i> ' + escapeHtml(audit.notes) + '</p>';
+                    }
+                    
+                    html += '<table style="width: 100%; border-collapse: collapse; font-size: 12px;">' +
+                        '<tr style="border-bottom: 1px solid var(--border);">' +
+                        '<th style="padding: 4px 8px; text-align: left;">Size</th>' +
+                        '<th style="padding: 4px 8px; text-align: center;">System</th>' +
+                        '<th style="padding: 4px 8px; text-align: center;">Actual</th>' +
+                        '<th style="padding: 4px 8px; text-align: center;">Diff</th>' +
+                        '</tr>';
+                    
+                    audit.items.forEach(function(item) {
+                        var diffColor = item.discrepancy < 0 ? '#ef4444' : (item.discrepancy > 0 ? '#f59e0b' : '#10b981');
+                        html += '<tr><td style="padding: 4px 8px;">' + escapeHtml(item.size) + '</td>' +
+                            '<td style="padding: 4px 8px; text-align: center;">' + item.system_quantity + '</td>' +
+                            '<td style="padding: 4px 8px; text-align: center;">' + item.actual_quantity + '</td>' +
+                            '<td style="padding: 4px 8px; text-align: center; color: ' + diffColor + '; font-weight: 600;">' + (item.discrepancy > 0 ? '+' : '') + item.discrepancy + '</td></tr>';
+                    });
+                    
+                    html += '</table>';
+                    
+                    if (audit.first_name) {
+                        html += '<p style="font-size: 11px; color: var(--text-dim); margin-top: 8px;">By: ' + escapeHtml(audit.first_name + ' ' + (audit.last_name || '')) + '</p>';
+                    }
+                    
+                    html += '</div>';
+                });
+                tableDiv.innerHTML = html;
+            } else {
+                tableDiv.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px;">No audit history recorded yet.</p>';
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            document.getElementById('audits-loading').style.display = 'none';
+            document.getElementById('audits-table').innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading audit history.</p>';
+            document.getElementById('audits-table').style.display = 'block';
+        });
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 // Convert modal forms to AJAX submissions for better UX
 document.querySelectorAll('.modal form').forEach(function(form) {
     form.addEventListener('submit', function(e) {

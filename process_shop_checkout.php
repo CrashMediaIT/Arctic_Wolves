@@ -11,6 +11,103 @@ require_once __DIR__ . '/lib/encryption.php';
 // Set security headers
 setSecurityHeaders();
 
+// Handle ship_order action (from admin orders page)
+if (isset($_GET['action']) && $_GET['action'] === 'ship_order') {
+    header('Content-Type: application/json');
+    
+    // Check CSRF
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        echo json_encode(['success' => false, 'message' => 'Invalid security token']);
+        exit();
+    }
+    
+    // Check admin access
+    if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['admin', 'front_desk_staff'])) {
+        echo json_encode(['success' => false, 'message' => 'Access denied']);
+        exit();
+    }
+    
+    $orderId = intval($_POST['order_id'] ?? 0);
+    $carrier = trim($_POST['shipping_carrier'] ?? '');
+    $trackingNumber = trim($_POST['tracking_number'] ?? '');
+    $trackingUrl = trim($_POST['tracking_url'] ?? '');
+    $fulfillmentNotes = trim($_POST['fulfillment_notes'] ?? '');
+    
+    if ($orderId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid order ID']);
+        exit();
+    }
+    
+    if (empty($carrier)) {
+        echo json_encode(['success' => false, 'message' => 'Shipping carrier is required']);
+        exit();
+    }
+    
+    try {
+        $pdo->beginTransaction();
+        
+        // Update order with shipping info
+        $stmt = $pdo->prepare("
+            UPDATE shop_orders 
+            SET status = 'shipped', 
+                shipping_carrier = ?, 
+                tracking_number = ?, 
+                tracking_url = ?,
+                shipped_at = NOW(),
+                fulfillment_notes = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$carrier, $trackingNumber ?: null, $trackingUrl ?: null, $fulfillmentNotes ?: null, $orderId]);
+        
+        // Record stock movements for each order item
+        $itemsStmt = $pdo->prepare("SELECT * FROM shop_order_items WHERE order_id = ?");
+        $itemsStmt->execute([$orderId]);
+        $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $movementStmt = $pdo->prepare("
+            INSERT INTO merchandise_stock_movements (product_id, size_id, movement_type, quantity_before, quantity_change, quantity_after, reference, notes, created_by)
+            VALUES (?, ?, 'sale', ?, ?, ?, ?, ?, ?)
+        ");
+        
+        // Fetch the order number for reference
+        $orderStmt = $pdo->prepare("SELECT order_number FROM shop_orders WHERE id = ?");
+        $orderStmt->execute([$orderId]);
+        $orderNumber = $orderStmt->fetchColumn();
+        
+        foreach ($items as $item) {
+            if (!empty($item['size'])) {
+                // Get size_id and current quantity
+                $sizeStmt = $pdo->prepare("SELECT id, quantity FROM merchandise_product_sizes WHERE product_id = ? AND size = ?");
+                $sizeStmt->execute([$item['product_id'], $item['size']]);
+                $sizeData = $sizeStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($sizeData) {
+                    $movementStmt->execute([
+                        $item['product_id'],
+                        $sizeData['id'],
+                        $sizeData['quantity'] + $item['quantity'],
+                        -$item['quantity'],
+                        $sizeData['quantity'],
+                        'Order #' . $orderNumber,
+                        'Shipped via ' . $carrier,
+                        $_SESSION['user_id']
+                    ]);
+                }
+            }
+        }
+        
+        $pdo->commit();
+        echo json_encode(['success' => true, 'message' => 'Order marked as shipped successfully!']);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("Ship order error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Error shipping order: ' . $e->getMessage()]);
+    }
+    exit();
+}
+
 // Validate CSRF token
 if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
     die('Invalid security token. Please try again.');

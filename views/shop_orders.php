@@ -339,9 +339,16 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                                     </select>
                                 </td>
                                 <td>
-                                    <button class="btn-action" onclick="viewOrderDetails(<?= $order['id'] ?>)" title="View Details" style="padding: 6px 10px; border: none; border-radius: 6px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light); cursor: pointer;">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
+                                    <div style="display: flex; gap: 4px;">
+                                        <button class="btn-action" onclick="viewOrderDetails(<?= $order['id'] ?>)" title="View Details" style="padding: 6px 10px; border: none; border-radius: 6px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light); cursor: pointer;">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <?php if (in_array($order['status'], ['paid', 'processing'])): ?>
+                                        <button class="btn-action" onclick="openShipOrder(<?= $order['id'] ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Ship Order" style="padding: 6px 10px; border: none; border-radius: 6px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; cursor: pointer;">
+                                            <i class="fas fa-shipping-fast"></i>
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -386,6 +393,56 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                 <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: var(--primary);"></i>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Ship Order Modal -->
+<div id="ship-order-modal" class="modal">
+    <div class="modal-content" style="max-width: 550px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-shipping-fast"></i> Ship Order - <span id="ship-order-number"></span></h2>
+            <button class="modal-close" aria-label="Close modal" onclick="closeModal('ship-order-modal')">&times;</button>
+        </div>
+        <form id="ship-order-form" onsubmit="submitShipOrder(event)">
+            <input type="hidden" name="order_id" id="ship-order-id">
+            <div class="modal-body">
+                <p style="color: var(--text-dim); margin-bottom: 16px;">Enter shipping details to mark this order as shipped. The customer can use the tracking information to follow their package.</p>
+                
+                <div class="form-group">
+                    <label class="form-label">Shipping Carrier *</label>
+                    <select name="shipping_carrier" class="form-input" required>
+                        <option value="">-- Select Carrier --</option>
+                        <option value="Canada Post">Canada Post</option>
+                        <option value="UPS">UPS</option>
+                        <option value="FedEx">FedEx</option>
+                        <option value="Purolator">Purolator</option>
+                        <option value="DHL">DHL</option>
+                        <option value="Local Pickup">Local Pickup</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Tracking Number</label>
+                    <input type="text" name="tracking_number" class="form-input" placeholder="e.g., 1Z999AA10123456784">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Tracking URL</label>
+                    <input type="url" name="tracking_url" class="form-input" placeholder="https://...">
+                    <small style="color: var(--text-dim);">Direct link to track the package (optional)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Fulfillment Notes</label>
+                    <textarea name="fulfillment_notes" class="form-textarea" rows="2" placeholder="Optional notes about this shipment"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('ship-order-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-shipping-fast"></i> Mark as Shipped</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -469,6 +526,51 @@ function viewOrderDetails(orderId) {
         .catch(error => {
             content.innerHTML = '<p style="color: #ef4444; text-align: center;">Failed to load order details</p>';
         });
+}
+
+function openShipOrder(orderId, orderNumber) {
+    document.getElementById('ship-order-id').value = orderId;
+    document.getElementById('ship-order-number').textContent = '#' + orderNumber;
+    document.getElementById('ship-order-form').reset();
+    document.getElementById('ship-order-id').value = orderId;
+    document.getElementById('ship-order-modal').classList.add('active');
+}
+
+function submitShipOrder(e) {
+    e.preventDefault();
+    var form = e.target;
+    var formData = new FormData(form);
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+    
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    submitBtn.disabled = true;
+    
+    fetch('process_shop_checkout.php?action=ship_order', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            closeModal('ship-order-modal');
+            alert(data.message || 'Order shipped successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to ship order'));
+        }
+    })
+    .catch(error => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    });
 }
 
 function closeModal(modalId) {
