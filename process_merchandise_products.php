@@ -50,6 +50,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
     }
     
+    if ($action === 'get_stock_movements') {
+        $productId = intval($_GET['product_id'] ?? 0);
+        
+        if ($productId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Invalid product ID']);
+            exit();
+        }
+        
+        try {
+            $stmt = $pdo->prepare("
+                SELECT sm.*, mps.size, u.first_name, u.last_name
+                FROM merchandise_stock_movements sm
+                LEFT JOIN merchandise_product_sizes mps ON sm.size_id = mps.id
+                LEFT JOIN users u ON sm.created_by = u.id
+                WHERE sm.product_id = ?
+                ORDER BY sm.created_at DESC
+                LIMIT 100
+            ");
+            $stmt->execute([$productId]);
+            $movements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'movements' => $movements]);
+            exit();
+        } catch (PDOException $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Error fetching stock movements']);
+            exit();
+        }
+    }
+    
+    if ($action === 'get_audit_history') {
+        $productId = intval($_GET['product_id'] ?? 0);
+        
+        if ($productId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Invalid product ID']);
+            exit();
+        }
+        
+        try {
+            $stmt = $pdo->prepare("
+                SELECT sa.*, u.first_name, u.last_name,
+                    (SELECT GROUP_CONCAT(
+                        CONCAT(mps.size, ':', sai.system_quantity, ':', sai.actual_quantity, ':', sai.discrepancy)
+                        SEPARATOR '|'
+                    )
+                    FROM merchandise_stock_audit_items sai
+                    JOIN merchandise_product_sizes mps ON sai.size_id = mps.id
+                    WHERE sai.audit_id = sa.id
+                    ) as items_data
+                FROM merchandise_stock_audits sa
+                LEFT JOIN users u ON sa.created_by = u.id
+                WHERE sa.product_id = ?
+                ORDER BY sa.created_at DESC
+                LIMIT 50
+            ");
+            $stmt->execute([$productId]);
+            $audits = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Parse items_data into structured array
+            foreach ($audits as &$audit) {
+                $audit['items'] = [];
+                if (!empty($audit['items_data'])) {
+                    $items = explode('|', $audit['items_data']);
+                    foreach ($items as $item) {
+                        $parts = explode(':', $item);
+                        if (count($parts) === 4) {
+                            $audit['items'][] = [
+                                'size' => $parts[0],
+                                'system_quantity' => intval($parts[1]),
+                                'actual_quantity' => intval($parts[2]),
+                                'discrepancy' => intval($parts[3])
+                            ];
+                        }
+                    }
+                }
+                unset($audit['items_data']);
+            }
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'audits' => $audits]);
+            exit();
+        } catch (PDOException $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Error fetching audit history']);
+            exit();
+        }
+    }
+    
     // Invalid GET action
     http_response_code(400);
     die('Invalid request');
@@ -398,6 +489,161 @@ try {
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => true, 'message' => 'Product status updated!', 'new_status' => $newStatus]);
+                exit();
+            }
+            header("Location: dashboard.php?page=merchandise_products&status=success");
+            exit();
+            
+        case 'record_shipment':
+            $productId = intval($_POST['product_id'] ?? 0);
+            
+            if ($productId <= 0) {
+                throw new Exception('Invalid product ID');
+            }
+            
+            $sizeIds = $_POST['size_ids'] ?? [];
+            $shipmentQuantities = $_POST['shipment_quantities'] ?? [];
+            $reference = trim($_POST['reference'] ?? '');
+            $notes = trim($_POST['notes'] ?? '');
+            
+            if (empty($sizeIds)) {
+                throw new Exception('No sizes provided for shipment');
+            }
+            
+            $pdo->beginTransaction();
+            
+            $updateStmt = $pdo->prepare("UPDATE merchandise_product_sizes SET quantity = quantity + ? WHERE id = ? AND product_id = ?");
+            $getQtyStmt = $pdo->prepare("SELECT quantity FROM merchandise_product_sizes WHERE id = ? AND product_id = ?");
+            $movementStmt = $pdo->prepare("
+                INSERT INTO merchandise_stock_movements (product_id, size_id, movement_type, quantity_before, quantity_change, quantity_after, reference, notes, created_by)
+                VALUES (?, ?, 'shipment', ?, ?, ?, ?, ?, ?)
+            ");
+            
+            $totalAdded = 0;
+            for ($i = 0; $i < count($sizeIds); $i++) {
+                $sizeId = intval($sizeIds[$i]);
+                $qty = intval($shipmentQuantities[$i] ?? 0);
+                
+                if ($sizeId <= 0 || $qty <= 0) {
+                    continue;
+                }
+                
+                // Get current quantity before update
+                $getQtyStmt->execute([$sizeId, $productId]);
+                $currentQty = intval($getQtyStmt->fetchColumn());
+                
+                // Update the stock level
+                $updateStmt->execute([$qty, $sizeId, $productId]);
+                
+                // Record the movement
+                $movementStmt->execute([
+                    $productId,
+                    $sizeId,
+                    $currentQty,
+                    $qty,
+                    $currentQty + $qty,
+                    $reference ?: null,
+                    $notes ?: null,
+                    $_SESSION['user_id']
+                ]);
+                
+                $totalAdded += $qty;
+            }
+            
+            $pdo->commit();
+            
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => "Shipment recorded! $totalAdded items added to stock."]);
+                exit();
+            }
+            header("Location: dashboard.php?page=merchandise_products&status=success");
+            exit();
+            
+        case 'stock_audit':
+            $productId = intval($_POST['product_id'] ?? 0);
+            
+            if ($productId <= 0) {
+                throw new Exception('Invalid product ID');
+            }
+            
+            $sizeIds = $_POST['size_ids'] ?? [];
+            $actualQuantities = $_POST['actual_quantities'] ?? [];
+            $notes = trim($_POST['audit_notes'] ?? '');
+            
+            if (empty($sizeIds)) {
+                throw new Exception('No sizes provided for audit');
+            }
+            
+            $pdo->beginTransaction();
+            
+            // Create the audit record
+            $auditStmt = $pdo->prepare("
+                INSERT INTO merchandise_stock_audits (product_id, status, notes, created_by)
+                VALUES (?, 'completed', ?, ?)
+            ");
+            $auditStmt->execute([$productId, $notes ?: null, $_SESSION['user_id']]);
+            $auditId = $pdo->lastInsertId();
+            
+            $getQtyStmt = $pdo->prepare("SELECT quantity FROM merchandise_product_sizes WHERE id = ? AND product_id = ?");
+            $auditItemStmt = $pdo->prepare("
+                INSERT INTO merchandise_stock_audit_items (audit_id, size_id, system_quantity, actual_quantity, discrepancy)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $updateStmt = $pdo->prepare("UPDATE merchandise_product_sizes SET quantity = ? WHERE id = ? AND product_id = ?");
+            $movementStmt = $pdo->prepare("
+                INSERT INTO merchandise_stock_movements (product_id, size_id, movement_type, quantity_before, quantity_change, quantity_after, reference, notes, created_by)
+                VALUES (?, ?, 'audit_adjustment', ?, ?, ?, ?, ?, ?)
+            ");
+            
+            $discrepancies = 0;
+            for ($i = 0; $i < count($sizeIds); $i++) {
+                $sizeId = intval($sizeIds[$i]);
+                $actualQty = intval($actualQuantities[$i] ?? 0);
+                
+                if ($sizeId <= 0) {
+                    continue;
+                }
+                
+                // Get current system quantity
+                $getQtyStmt->execute([$sizeId, $productId]);
+                $systemQty = intval($getQtyStmt->fetchColumn());
+                
+                $discrepancy = $actualQty - $systemQty;
+                
+                // Record audit item
+                $auditItemStmt->execute([$auditId, $sizeId, $systemQty, $actualQty, $discrepancy]);
+                
+                // If there's a discrepancy, adjust the stock and record movement
+                if ($discrepancy !== 0) {
+                    $discrepancies++;
+                    $updateStmt->execute([$actualQty, $sizeId, $productId]);
+                    
+                    $movementStmt->execute([
+                        $productId,
+                        $sizeId,
+                        $systemQty,
+                        $discrepancy,
+                        $actualQty,
+                        'Audit #' . $auditId,
+                        $notes ?: null,
+                        $_SESSION['user_id']
+                    ]);
+                }
+            }
+            
+            $pdo->commit();
+            
+            $message = "Stock audit completed. ";
+            if ($discrepancies > 0) {
+                $message .= "$discrepancies size(s) had discrepancies and were adjusted.";
+            } else {
+                $message .= "All stock levels match - no discrepancies found.";
+            }
+            
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => $message, 'audit_id' => $auditId, 'discrepancies' => $discrepancies]);
                 exit();
             }
             header("Location: dashboard.php?page=merchandise_products&status=success");

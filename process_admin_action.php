@@ -154,6 +154,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 throw new Exception('Merchandise product not found');
             }
             
+            // Also fetch sizes for this product
+            $sizesStmt = $pdo->prepare("SELECT id, size, quantity FROM merchandise_product_sizes WHERE product_id = ? ORDER BY id ASC");
+            $sizesStmt->execute([$productId]);
+            $product['sizes'] = $sizesStmt->fetchAll(PDO::FETCH_ASSOC);
+            
             echo json_encode(['success' => true, 'data' => $product]);
         } catch (Exception $e) {
             http_response_code(400);

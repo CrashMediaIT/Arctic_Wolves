@@ -3340,6 +3340,58 @@ CREATE TABLE IF NOT EXISTS `merchandise_product_images` (
     INDEX `idx_primary` (`is_primary`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Merchandise Stock Movements (tracks shipments, audits, and adjustments)
+CREATE TABLE IF NOT EXISTS `merchandise_stock_movements` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `product_id` INT NOT NULL,
+    `size_id` INT DEFAULT NULL,
+    `movement_type` ENUM('shipment', 'audit_adjustment', 'manual_adjustment', 'sale', 'return') NOT NULL,
+    `quantity_before` INT NOT NULL DEFAULT 0,
+    `quantity_change` INT NOT NULL DEFAULT 0,
+    `quantity_after` INT NOT NULL DEFAULT 0,
+    `reference` VARCHAR(255) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`size_id`) REFERENCES `merchandise_product_sizes`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_product` (`product_id`),
+    INDEX `idx_size` (`size_id`),
+    INDEX `idx_movement_type` (`movement_type`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Merchandise Stock Audits (tracks audit sessions comparing system vs actual counts)
+CREATE TABLE IF NOT EXISTS `merchandise_stock_audits` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `product_id` INT NOT NULL,
+    `audit_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `status` ENUM('in_progress', 'completed') DEFAULT 'completed',
+    `notes` TEXT DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_product` (`product_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Merchandise Stock Audit Items (individual size counts within an audit)
+CREATE TABLE IF NOT EXISTS `merchandise_stock_audit_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `audit_id` INT NOT NULL,
+    `size_id` INT NOT NULL,
+    `system_quantity` INT NOT NULL DEFAULT 0,
+    `actual_quantity` INT NOT NULL DEFAULT 0,
+    `discrepancy` INT NOT NULL DEFAULT 0,
+    FOREIGN KEY (`audit_id`) REFERENCES `merchandise_stock_audits`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`size_id`) REFERENCES `merchandise_product_sizes`(`id`) ON DELETE CASCADE,
+    INDEX `idx_audit` (`audit_id`),
+    INDEX `idx_size` (`size_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- =====================================================
 -- ONLINE SHOP AND POS SYSTEM TABLES
 -- =====================================================
@@ -3393,6 +3445,16 @@ CREATE TABLE IF NOT EXISTS `shop_orders` (
     INDEX `idx_stripe_session` (`stripe_session_id`),
     INDEX `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add shipping/fulfillment tracking fields to shop_orders
+ALTER TABLE `shop_orders`
+ADD COLUMN IF NOT EXISTS `shipping_carrier` VARCHAR(100) DEFAULT NULL AFTER `notes`,
+ADD COLUMN IF NOT EXISTS `tracking_number` VARCHAR(255) DEFAULT NULL AFTER `shipping_carrier`,
+ADD COLUMN IF NOT EXISTS `tracking_url` VARCHAR(500) DEFAULT NULL AFTER `tracking_number`,
+ADD COLUMN IF NOT EXISTS `shipped_at` TIMESTAMP NULL DEFAULT NULL AFTER `tracking_url`,
+ADD COLUMN IF NOT EXISTS `delivered_at` TIMESTAMP NULL DEFAULT NULL AFTER `shipped_at`,
+ADD COLUMN IF NOT EXISTS `fulfillment_notes` TEXT DEFAULT NULL AFTER `delivered_at`,
+ADD INDEX IF NOT EXISTS `idx_tracking` (`tracking_number`);
 
 -- Shop Order Items
 CREATE TABLE IF NOT EXISTS `shop_order_items` (
@@ -4077,3 +4139,20 @@ CREATE TABLE IF NOT EXISTS `stopwatch_times` (
 -- Add stopwatch flag to eval_skills
 ALTER TABLE `eval_skills`
 ADD COLUMN IF NOT EXISTS `has_stopwatch` TINYINT(1) DEFAULT 0 COMMENT 'Whether this skill uses a stopwatch for timed evaluation';
+
+-- Stallion Express shipping labels
+CREATE TABLE IF NOT EXISTS `stallion_shipping_labels` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `order_id` INT NOT NULL,
+    `stallion_shipment_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stallion Express shipment ID',
+    `tracking_number` VARCHAR(255) DEFAULT NULL,
+    `label_url` VARCHAR(1000) DEFAULT NULL COMMENT 'URL to download shipping label PDF',
+    `shipment_data` JSON DEFAULT NULL COMMENT 'Full API response from Stallion Express',
+    `status` ENUM('created', 'printed', 'shipped', 'delivered', 'cancelled') DEFAULT 'created',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`order_id`) REFERENCES `shop_orders`(`id`) ON DELETE CASCADE,
+    INDEX `idx_order` (`order_id`),
+    INDEX `idx_tracking` (`tracking_number`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -90,7 +90,9 @@ $inactiveJobs = count($cronJobs) - $activeJobs;
                         <button class="btn-icon" title="Edit" data-action="edit" data-id="<?= $job['id'] ?>" data-modal="edit-cron-job-modal" 
                                 data-name="<?= htmlspecialchars($job['job_name'], ENT_QUOTES) ?>"
                                 data-description="<?= htmlspecialchars($job['job_description'] ?? '', ENT_QUOTES) ?>"
-                                data-schedule="<?= htmlspecialchars($job['schedule'], ENT_QUOTES) ?>"><i class="fas fa-edit"></i></button>
+                                data-command="<?= htmlspecialchars($job['command'] ?? '', ENT_QUOTES) ?>"
+                                data-schedule="<?= htmlspecialchars($job['schedule'], ENT_QUOTES) ?>"
+                                data-status="<?= $isActive ? '1' : '0' ?>"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon" title="<?= $isActive ? 'Disable' : 'Enable' ?>" data-action="toggle" data-id="<?= $job['id'] ?>"><i class="fas fa-<?= $isActive ? 'pause' : 'play' ?>"></i></button>
                         <button class="btn-icon danger" title="Delete" data-action="delete" data-id="<?= $job['id'] ?>"><i class="fas fa-trash"></i></button>
                     </div>
@@ -324,6 +326,11 @@ $inactiveJobs = count($cronJobs) - $activeJobs;
                 </div>
                 
                 <div class="form-group">
+                    <label class="form-label">Command/Script *</label>
+                    <input type="text" name="command" id="edit-cron-job-command" class="form-input" required placeholder="e.g., cron_notifications.php">
+                </div>
+                
+                <div class="form-group">
                     <label class="form-label">Schedule *</label>
                     <select name="schedule" id="edit-cron-job-schedule" class="form-input" required>
                         <option value="">Select Schedule</option>
@@ -335,14 +342,21 @@ $inactiveJobs = count($cronJobs) - $activeJobs;
                         <option value="0 8 * * *">Daily at 8:00 AM</option>
                         <option value="0 0 * * 0">Weekly on Sunday</option>
                         <option value="0 0 1 * *">Monthly on 1st</option>
+                        <option value="custom">Custom (cron syntax)</option>
                     </select>
+                </div>
+                
+                <div class="form-group" id="edit-custom-schedule-group" style="display: none;">
+                    <label class="form-label">Custom Cron Expression</label>
+                    <input type="text" name="custom_schedule" id="edit-cron-job-custom-schedule" class="form-input" placeholder="* * * * *">
+                    <small style="color: var(--text-dim);">Format: minute hour day month weekday</small>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Status</label>
-                    <select name="status" id="edit-cron-job-status" class="form-input">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                    <select name="is_active" id="edit-cron-job-status" class="form-input">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
                     </select>
                 </div>
             </div>
@@ -384,13 +398,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Custom schedule toggle
     var scheduleSelects = document.querySelectorAll('select[name="schedule"]');
     var customGroup = document.getElementById('custom-schedule-group');
+    var editCustomGroup = document.getElementById('edit-custom-schedule-group');
     
     scheduleSelects.forEach(function(select) {
         select.addEventListener('change', function() {
-            if (customGroup && this.value === 'custom') {
-                customGroup.style.display = 'block';
-            } else if (customGroup) {
-                customGroup.style.display = 'none';
+            var targetGroup = this.closest('#edit-cron-job-modal') ? editCustomGroup : customGroup;
+            if (targetGroup && this.value === 'custom') {
+                targetGroup.style.display = 'block';
+            } else if (targetGroup) {
+                targetGroup.style.display = 'none';
             }
         });
     });
@@ -415,13 +431,30 @@ document.addEventListener('DOMContentLoaded', function() {
             var modal = document.getElementById(modalId);
             
             if (modal) {
-                var idField = modal.querySelector('input[name="job_id"]');
-                var nameField = modal.querySelector('input[name="name"]');
-                var descField = modal.querySelector('textarea[name="description"]');
+                document.getElementById('edit-cron-job-id').value = this.getAttribute('data-id') || '';
+                document.getElementById('edit-cron-job-name').value = this.getAttribute('data-name') || '';
+                document.getElementById('edit-cron-job-description').value = this.getAttribute('data-description') || '';
+                document.getElementById('edit-cron-job-command').value = this.getAttribute('data-command') || '';
                 
-                if (idField) idField.value = this.getAttribute('data-id');
-                if (nameField) nameField.value = this.getAttribute('data-name') || '';
-                if (descField) descField.value = this.getAttribute('data-description') || '';
+                var schedule = this.getAttribute('data-schedule') || '';
+                var scheduleSelect = document.getElementById('edit-cron-job-schedule');
+                var foundOption = false;
+                for (var i = 0; i < scheduleSelect.options.length; i++) {
+                    if (scheduleSelect.options[i].value === schedule) {
+                        scheduleSelect.selectedIndex = i;
+                        foundOption = true;
+                        break;
+                    }
+                }
+                if (!foundOption && schedule) {
+                    scheduleSelect.value = 'custom';
+                    document.getElementById('edit-cron-job-custom-schedule').value = schedule;
+                    document.getElementById('edit-custom-schedule-group').style.display = 'block';
+                } else {
+                    document.getElementById('edit-custom-schedule-group').style.display = 'none';
+                }
+                
+                document.getElementById('edit-cron-job-status').value = this.getAttribute('data-status') || '1';
                 
                 modal.classList.add('active');
             }

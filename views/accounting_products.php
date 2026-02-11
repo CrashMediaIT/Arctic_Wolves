@@ -2172,9 +2172,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
                 '<input type="hidden" name="action" value="update_training_session">' +
                 '<input type="hidden" name="id" value="' + itemId + '">' +
-                '<div class="form-group">' +
-                    '<label class="form-label">Session Name *</label>' +
-                    '<input type="text" name="name" class="form-input" required value="' + escapeHtml(data.name || '') + '">' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Session Name *</label>' +
+                        '<input type="text" name="name" class="form-input" required value="' + escapeHtml(data.name || '') + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Session Type *</label>' +
+                        '<select name="session_type" class="form-input" required>' +
+                            '<option value="on_ice"' + (data.session_type === 'on_ice' ? ' selected' : '') + '>On Ice</option>' +
+                            '<option value="off_ice"' + (data.session_type === 'off_ice' ? ' selected' : '') + '>Off Ice / Workout</option>' +
+                            '<option value="nutrition"' + (data.session_type === 'nutrition' ? ' selected' : '') + '>Nutrition Meeting</option>' +
+                            '<option value="meeting"' + (data.session_type === 'meeting' ? ' selected' : '') + '>General Meeting</option>' +
+                            '<option value="other"' + (data.session_type === 'other' ? ' selected' : '') + '>Other</option>' +
+                        '</select>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="form-group">' +
                     '<label class="form-label">Description</label>' +
@@ -2189,18 +2201,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<label class="form-label">Duration (minutes)</label>' +
                         '<input type="number" name="duration" class="form-input" min="15" max="480" value="' + (data.duration_minutes || 60) + '">' +
                     '</div>' +
-                '</div>' +
-                '<div class="form-row">' +
                     '<div class="form-group">' +
                         '<label class="form-label">Max Participants</label>' +
                         '<input type="number" name="max_participants" class="form-input" min="1" value="' + (data.max_participants || '') + '">' +
-                    '</div>' +
-                    '<div class="form-group">' +
-                        '<label class="form-label">Status</label>' +
-                        '<select name="is_active" class="form-input">' +
-                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
-                            '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
-                        '</select>' +
                     '</div>' +
                 '</div>' +
                 '<div class="form-row">' +
@@ -2221,6 +2224,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<label class="form-label">Coaches</label>' +
                     '<p style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">Select one or more coaches for this session</p>' +
                     '<div class="skill-selector" style="max-height: 150px; overflow-y: auto;">' + coachCheckboxes + '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Status</label>' +
+                        '<select name="is_active" class="form-input">' +
+                            '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
+                            '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">' +
+                            '<input type="checkbox" name="show_on_landing" value="1"' + (data.show_on_landing == 1 ? ' checked' : '') + '>' +
+                            '<span>Show on Landing Page</span>' +
+                        '</label>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">' +
+                            '<input type="checkbox" name="is_template" value="1"' + (data.is_template == 1 ? ' checked' : '') + '>' +
+                            '<span>Save as Template</span>' +
+                        '</label>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
                     '<button type="button" class="btn btn-secondary" onclick="closeModal(&quot;edit-session-modal&quot;)"><i class="fas fa-times"></i> Cancel</button>' +
@@ -2336,6 +2360,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 '</div>' +
                 '<div class="form-row">' +
                     '<div class="form-group">' +
+                        '<label class="form-label">Start Date</label>' +
+                        '<input type="date" name="start_date" class="form-input" value="' + (data.start_date || '') + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">End Date</label>' +
+                        '<input type="date" name="end_date" class="form-input" value="' + (data.end_date || '') + '">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
                         '<label class="form-label">Max Uses (0 = unlimited)</label>' +
                         '<input type="number" name="max_uses" class="form-input" min="0" value="' + (data.max_uses || 0) + '">' +
                     '</div>' +
@@ -2360,6 +2394,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 var selected = data.category_id == cat.id ? ' selected' : '';
                 categoryOptions += '<option value="' + cat.id + '"' + selected + '>' + escapeHtml(cat.name) + '</option>';
             });
+            
+            // Build existing size rows
+            var sizeRowsHtml = '';
+            if (data.sizes && data.sizes.length > 0) {
+                data.sizes.forEach(function(size) {
+                    sizeRowsHtml += '<div class="size-stock-row">' +
+                        '<input type="hidden" name="size_ids[]" value="' + size.id + '">' +
+                        '<input type="text" name="sizes[]" class="form-input size-input" value="' + escapeHtml(size.size) + '" placeholder="Size" aria-label="Size name">' +
+                        '<input type="number" name="quantities[]" class="form-input qty-input" min="0" value="' + (size.quantity || 0) + '" placeholder="Qty" aria-label="Quantity">' +
+                        '<button type="button" class="btn-action danger remove-size-btn" onclick="removeSizeRow(this)" title="Remove size" aria-label="Remove this size"><i class="fas fa-trash"></i></button>' +
+                    '</div>';
+                });
+            } else {
+                sizeRowsHtml = '<div class="size-stock-row">' +
+                    '<input type="hidden" name="size_ids[]" value="">' +
+                    '<input type="text" name="sizes[]" class="form-input size-input" placeholder="Size (e.g., S, M, L, XL)" aria-label="Size name">' +
+                    '<input type="number" name="quantities[]" class="form-input qty-input" min="0" value="0" placeholder="Qty" aria-label="Quantity">' +
+                    '<button type="button" class="btn-action danger remove-size-btn" onclick="removeSizeRow(this)" title="Remove size" aria-label="Remove this size"><i class="fas fa-trash"></i></button>' +
+                '</div>';
+            }
             
             container.innerHTML = 
                 '<form method="POST" action="process_merchandise_products.php" id="edit-merchandise-product-form" enctype="multipart/form-data">' +
@@ -2401,19 +2455,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<input type="file" name="image" class="form-input" accept="image/*">' +
                     (data.image_url ? '<div style="margin-top: 8px;"><img src="' + escapeHtml(data.image_url) + '" style="max-width: 150px; max-height: 100px; border-radius: 8px; object-fit: cover;"></div>' : '') +
                 '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Size & Stock Options</label>' +
+                    '<div class="size-stock-container" id="edit-merch-sizes-container">' +
+                        sizeRowsHtml +
+                    '</div>' +
+                    '<button type="button" class="btn btn-secondary btn-sm add-size-btn" onclick="addEditMerchSizeRow()">' +
+                        '<i class="fas fa-plus"></i> Add Size' +
+                    '</button>' +
+                    '<small class="form-help">Add different sizes with their stock quantities. Leave empty for products without sizes.</small>' +
+                '</div>' +
                 '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Track Inventory</label>' +
+                        '<select name="track_inventory" class="form-input">' +
+                            '<option value="1"' + (data.track_inventory == 1 ? ' selected' : '') + '>Yes - Track stock levels</option>' +
+                            '<option value="0"' + (data.track_inventory == 0 ? ' selected' : '') + '>No - Unlimited stock</option>' +
+                        '</select>' +
+                    '</div>' +
                     '<div class="form-group">' +
                         '<label class="form-label">Status</label>' +
                         '<select name="is_active" class="form-input">' +
                             '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
                             '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
                         '</select>' +
-                    '</div>' +
-                    '<div class="form-group">' +
-                        '<label class="skill-checkbox" style="display: flex; align-items: center; margin-top: 32px;">' +
-                            '<input type="checkbox" name="track_inventory" value="1"' + (data.track_inventory == 1 ? ' checked' : '') + ' style="margin-right: 8px;">' +
-                            '<span>Track Inventory</span>' +
-                        '</label>' +
                     '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
@@ -2632,6 +2697,47 @@ function removeSizeRow(btn) {
     if (row) {
         row.remove();
     }
+}
+
+function addEditMerchSizeRow() {
+    var container = document.getElementById('edit-merch-sizes-container');
+    var newRow = document.createElement('div');
+    newRow.className = 'size-stock-row';
+    
+    var sizeIdInput = document.createElement('input');
+    sizeIdInput.type = 'hidden';
+    sizeIdInput.name = 'size_ids[]';
+    sizeIdInput.value = '';
+    
+    var sizeInput = document.createElement('input');
+    sizeInput.type = 'text';
+    sizeInput.name = 'sizes[]';
+    sizeInput.className = 'form-input size-input';
+    sizeInput.placeholder = 'Size (e.g., S, M, L, XL)';
+    sizeInput.setAttribute('aria-label', 'Size name');
+    
+    var qtyInput = document.createElement('input');
+    qtyInput.type = 'number';
+    qtyInput.name = 'quantities[]';
+    qtyInput.className = 'form-input qty-input';
+    qtyInput.min = '0';
+    qtyInput.value = '0';
+    qtyInput.placeholder = 'Qty';
+    qtyInput.setAttribute('aria-label', 'Quantity');
+    
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-action danger remove-size-btn';
+    removeBtn.title = 'Remove size';
+    removeBtn.setAttribute('aria-label', 'Remove this size');
+    removeBtn.onclick = function() { removeSizeRow(this); };
+    removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    
+    newRow.appendChild(sizeIdInput);
+    newRow.appendChild(sizeInput);
+    newRow.appendChild(qtyInput);
+    newRow.appendChild(removeBtn);
+    container.appendChild(newRow);
 }
 
 // Session date management

@@ -146,3 +146,32 @@ try {
     <p style="color: var(--text-dim);"><?= nl2br(htmlspecialchars($order['notes'])) ?></p>
 </div>
 <?php endif; ?>
+
+<?php if (!empty($order['shipping_carrier']) || !empty($order['tracking_number'])): ?>
+<div style="margin-top: 20px;">
+    <h4 style="font-size: 14px; color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase;">Shipping & Tracking</h4>
+    <div style="background: var(--bg); border-radius: 10px; padding: 15px;">
+        <?php if (!empty($order['shipping_carrier'])): ?>
+            <p style="margin-bottom: 8px;"><strong>Carrier:</strong> <?= htmlspecialchars($order['shipping_carrier']) ?></p>
+        <?php endif; ?>
+        <?php if (!empty($order['tracking_number'])): ?>
+            <p style="margin-bottom: 8px;"><strong>Tracking #:</strong> 
+                <?php if (!empty($order['tracking_url'])): ?>
+                    <a href="<?= htmlspecialchars($order['tracking_url']) ?>" target="_blank" rel="noopener" style="color: var(--primary-light);"><?= htmlspecialchars($order['tracking_number']) ?> <i class="fas fa-external-link-alt" style="font-size: 10px;"></i></a>
+                <?php else: ?>
+                    <?= htmlspecialchars($order['tracking_number']) ?>
+                <?php endif; ?>
+            </p>
+        <?php endif; ?>
+        <?php if (!empty($order['shipped_at'])): ?>
+            <p style="margin-bottom: 8px;"><strong>Shipped:</strong> <?= date('M j, Y g:i A', strtotime($order['shipped_at'])) ?></p>
+        <?php endif; ?>
+        <?php if (!empty($order['delivered_at'])): ?>
+            <p style="margin-bottom: 8px;"><strong>Delivered:</strong> <?= date('M j, Y g:i A', strtotime($order['delivered_at'])) ?></p>
+        <?php endif; ?>
+        <?php if (!empty($order['fulfillment_notes'])): ?>
+            <p style="color: var(--text-dim); font-size: 13px; margin-top: 8px;"><i class="fas fa-info-circle"></i> <?= nl2br(htmlspecialchars($order['fulfillment_notes'])) ?></p>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>

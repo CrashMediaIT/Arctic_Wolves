@@ -268,6 +268,12 @@ $filterCategory = $_GET['category'] ?? '';
                                     <button class="btn-action" onclick='manageInventory(<?= json_encode(["id" => $product["id"], "name" => $product["name"]]) ?>)' title="Manage Inventory" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(16, 185, 129, 0.1); color: #10b981; cursor: pointer;">
                                         <i class="fas fa-warehouse"></i>
                                     </button>
+                                    <button class="btn-action" onclick='recordShipment(<?= json_encode(["id" => $product["id"], "name" => $product["name"]]) ?>)' title="Record Shipment" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; cursor: pointer;">
+                                        <i class="fas fa-truck"></i>
+                                    </button>
+                                    <button class="btn-action" onclick='stockAudit(<?= json_encode(["id" => $product["id"], "name" => $product["name"]]) ?>)' title="Stock Audit" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(168, 85, 247, 0.1); color: #a855f7; cursor: pointer;">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </button>
                                     <button class="btn-action" onclick="toggleProductStatus(<?= intval($product['id']) ?>, <?= intval($product['is_active']) ?>)" title="<?= $product['is_active'] ? 'Deactivate' : 'Activate' ?>" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; cursor: pointer;">
                                         <i class="fas fa-toggle-<?= $product['is_active'] ? 'on' : 'off' ?>"></i>
                                     </button>
@@ -512,6 +518,132 @@ $filterCategory = $_GET['category'] ?? '';
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Inventory</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Record Shipment Modal -->
+<div id="shipment-modal" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-truck"></i> Record Shipment - <span id="shipment-product-name"></span></h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('shipment-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_merchandise_products.php" id="shipment-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="record_shipment">
+            <input type="hidden" name="product_id" id="shipment-product-id">
+            
+            <div class="modal-body">
+                <p style="color: var(--text-dim); margin-bottom: 16px;">Enter the quantities received in this shipment. Current stock will be increased by the amounts entered.</p>
+                
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Reference / PO Number</label>
+                        <input type="text" name="reference" class="form-input" placeholder="e.g., PO-2024-001">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <input type="text" name="notes" class="form-input" placeholder="Optional notes about this shipment">
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 100px 120px; gap: 12px; margin-bottom: 8px; padding: 0 4px;">
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Size</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Current Stock</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Qty Received</span>
+                    </div>
+                    <div id="shipment-sizes-container">
+                        <!-- Size rows will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('shipment-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-truck"></i> Record Shipment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Stock Audit Modal -->
+<div id="audit-modal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-clipboard-check"></i> Stock Audit - <span id="audit-product-name"></span></h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('audit-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_merchandise_products.php" id="audit-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="stock_audit">
+            <input type="hidden" name="product_id" id="audit-product-id">
+            
+            <div class="modal-body">
+                <p style="color: var(--text-dim); margin-bottom: 16px;">Count the actual physical stock for each size and enter the numbers below. The system will compare against recorded levels and highlight any discrepancies.</p>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Audit Notes</label>
+                    <input type="text" name="audit_notes" class="form-input" placeholder="e.g., Monthly inventory count - January 2025">
+                </div>
+                
+                <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 100px 120px 100px; gap: 12px; margin-bottom: 8px; padding: 0 4px;">
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Size</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">System Qty</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Actual Count</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Difference</span>
+                    </div>
+                    <div id="audit-sizes-container">
+                        <!-- Size rows will be populated here -->
+                    </div>
+                </div>
+                
+                <div id="audit-summary" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2);">
+                    <p style="font-weight: 600; color: #f59e0b; margin-bottom: 4px;"><i class="fas fa-exclamation-triangle"></i> Discrepancies Detected</p>
+                    <p id="audit-summary-text" style="font-size: 13px; color: var(--text);"></p>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('audit-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="viewAuditHistory()" id="audit-history-btn" style="display:none;"><i class="fas fa-history"></i> View History</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-clipboard-check"></i> Submit Audit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Stock History Modal -->
+<div id="stock-history-modal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-history"></i> Stock History - <span id="history-product-name"></span></h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('stock-history-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button type="button" class="btn btn-secondary history-tab active" onclick="switchHistoryTab('movements')" id="tab-movements"><i class="fas fa-exchange-alt"></i> Stock Movements</button>
+                <button type="button" class="btn btn-secondary history-tab" onclick="switchHistoryTab('audits')" id="tab-audits"><i class="fas fa-clipboard-check"></i> Audit History</button>
+            </div>
+            <div id="movements-content">
+                <div id="movements-loading" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    <p>Loading stock movements...</p>
+                </div>
+                <div id="movements-table" style="display: none;"></div>
+            </div>
+            <div id="audits-content" style="display: none;">
+                <div id="audits-loading" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    <p>Loading audit history...</p>
+                </div>
+                <div id="audits-table" style="display: none;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('stock-history-modal')"><i class="fas fa-times"></i> Close</button>
+        </div>
     </div>
 </div>
 
@@ -1008,6 +1140,345 @@ function showNotification(message, type) {
     
     document.body.appendChild(div);
     setTimeout(function() { if (div.parentElement) div.remove(); }, 5000);
+}
+
+// Record Shipment - loads sizes and opens the shipment modal
+function recordShipment(product) {
+    document.getElementById('shipment-product-id').value = product.id;
+    document.getElementById('shipment-product-name').textContent = product.name;
+    
+    fetch('process_merchandise_products.php?action=get_sizes&product_id=' + encodeURIComponent(product.id))
+        .then(response => response.json())
+        .then(data => {
+            var container = document.getElementById('shipment-sizes-container');
+            container.innerHTML = '';
+            
+            if (data.sizes && data.sizes.length > 0) {
+                data.sizes.forEach(function(size) {
+                    var row = document.createElement('div');
+                    row.style.cssText = 'display: grid; grid-template-columns: 1fr 100px 120px; gap: 12px; margin-bottom: 8px; align-items: center;';
+                    
+                    var sizeIdInput = document.createElement('input');
+                    sizeIdInput.type = 'hidden';
+                    sizeIdInput.name = 'size_ids[]';
+                    sizeIdInput.value = size.id;
+                    
+                    var sizeLabel = document.createElement('span');
+                    sizeLabel.style.cssText = 'font-weight: 600; padding: 8px 12px; background: var(--bg); border-radius: 6px;';
+                    sizeLabel.textContent = size.size;
+                    
+                    var currentQty = document.createElement('span');
+                    currentQty.style.cssText = 'text-align: center; padding: 8px; background: var(--bg); border-radius: 6px; color: var(--text-dim);';
+                    currentQty.textContent = size.quantity;
+                    
+                    var qtyInput = document.createElement('input');
+                    qtyInput.type = 'number';
+                    qtyInput.name = 'shipment_quantities[]';
+                    qtyInput.className = 'form-input';
+                    qtyInput.min = '0';
+                    qtyInput.value = '0';
+                    qtyInput.placeholder = '0';
+                    qtyInput.style.textAlign = 'center';
+                    
+                    row.appendChild(sizeIdInput);
+                    row.appendChild(sizeLabel);
+                    row.appendChild(currentQty);
+                    row.appendChild(qtyInput);
+                    container.appendChild(row);
+                });
+            } else {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">No sizes configured for this product. Add sizes first via Edit or Manage Inventory.</p>';
+            }
+            
+            openModal('shipment-modal');
+        })
+        .catch(function(error) {
+            console.error('Error fetching sizes:', error);
+            alert('Error loading product sizes. Please try again.');
+        });
+}
+
+// Stock Audit - loads sizes with system quantities and opens audit modal
+function stockAudit(product) {
+    document.getElementById('audit-product-id').value = product.id;
+    document.getElementById('audit-product-name').textContent = product.name;
+    document.getElementById('audit-summary').style.display = 'none';
+    
+    // Store product id for history button
+    document.getElementById('audit-modal').dataset.productId = product.id;
+    document.getElementById('audit-modal').dataset.productName = product.name;
+    document.getElementById('audit-history-btn').style.display = 'inline-flex';
+    
+    fetch('process_merchandise_products.php?action=get_sizes&product_id=' + encodeURIComponent(product.id))
+        .then(response => response.json())
+        .then(data => {
+            var container = document.getElementById('audit-sizes-container');
+            container.innerHTML = '';
+            
+            if (data.sizes && data.sizes.length > 0) {
+                data.sizes.forEach(function(size) {
+                    var row = document.createElement('div');
+                    row.style.cssText = 'display: grid; grid-template-columns: 1fr 100px 120px 100px; gap: 12px; margin-bottom: 8px; align-items: center;';
+                    
+                    var sizeIdInput = document.createElement('input');
+                    sizeIdInput.type = 'hidden';
+                    sizeIdInput.name = 'size_ids[]';
+                    sizeIdInput.value = size.id;
+                    
+                    var sizeLabel = document.createElement('span');
+                    sizeLabel.style.cssText = 'font-weight: 600; padding: 8px 12px; background: var(--bg); border-radius: 6px;';
+                    sizeLabel.textContent = size.size;
+                    
+                    var systemQty = document.createElement('span');
+                    systemQty.style.cssText = 'text-align: center; padding: 8px; background: var(--bg); border-radius: 6px; color: var(--text-dim);';
+                    systemQty.textContent = size.quantity;
+                    systemQty.dataset.systemQty = size.quantity;
+                    
+                    var actualInput = document.createElement('input');
+                    actualInput.type = 'number';
+                    actualInput.name = 'actual_quantities[]';
+                    actualInput.className = 'form-input';
+                    actualInput.min = '0';
+                    actualInput.value = size.quantity;
+                    actualInput.style.textAlign = 'center';
+                    
+                    var diffSpan = document.createElement('span');
+                    diffSpan.style.cssText = 'text-align: center; padding: 8px; border-radius: 6px; font-weight: 600;';
+                    diffSpan.textContent = '0';
+                    diffSpan.style.background = 'rgba(16, 185, 129, 0.1)';
+                    diffSpan.style.color = '#10b981';
+                    
+                    // Update difference on input change
+                    actualInput.addEventListener('input', function() {
+                        var sysQ = parseInt(systemQty.dataset.systemQty) || 0;
+                        var actQ = parseInt(this.value) || 0;
+                        var diff = actQ - sysQ;
+                        diffSpan.textContent = (diff > 0 ? '+' : '') + diff;
+                        
+                        if (diff < 0) {
+                            diffSpan.style.background = 'rgba(239, 68, 68, 0.1)';
+                            diffSpan.style.color = '#ef4444';
+                        } else if (diff > 0) {
+                            diffSpan.style.background = 'rgba(245, 158, 11, 0.1)';
+                            diffSpan.style.color = '#f59e0b';
+                        } else {
+                            diffSpan.style.background = 'rgba(16, 185, 129, 0.1)';
+                            diffSpan.style.color = '#10b981';
+                        }
+                        
+                        updateAuditSummary();
+                    });
+                    
+                    row.appendChild(sizeIdInput);
+                    row.appendChild(sizeLabel);
+                    row.appendChild(systemQty);
+                    row.appendChild(actualInput);
+                    row.appendChild(diffSpan);
+                    container.appendChild(row);
+                });
+            } else {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">No sizes configured for this product.</p>';
+            }
+            
+            openModal('audit-modal');
+        })
+        .catch(function(error) {
+            console.error('Error fetching sizes:', error);
+            alert('Error loading product sizes. Please try again.');
+        });
+}
+
+function updateAuditSummary() {
+    var container = document.getElementById('audit-sizes-container');
+    var inputs = container.querySelectorAll('input[name="actual_quantities[]"]');
+    var systemSpans = container.querySelectorAll('[data-system-qty]');
+    var totalDiscrepancy = 0;
+    var discrepancyCount = 0;
+    
+    inputs.forEach(function(input, idx) {
+        var sysQ = parseInt(systemSpans[idx].dataset.systemQty) || 0;
+        var actQ = parseInt(input.value) || 0;
+        var diff = actQ - sysQ;
+        if (diff !== 0) {
+            totalDiscrepancy += diff;
+            discrepancyCount++;
+        }
+    });
+    
+    var summary = document.getElementById('audit-summary');
+    var summaryText = document.getElementById('audit-summary-text');
+    
+    if (discrepancyCount > 0) {
+        summary.style.display = 'block';
+        summaryText.textContent = discrepancyCount + ' size(s) with discrepancies. Net change: ' + (totalDiscrepancy > 0 ? '+' : '') + totalDiscrepancy + ' units. Submitting will adjust stock levels to match actual counts.';
+    } else {
+        summary.style.display = 'none';
+    }
+}
+
+// View audit/movement history
+function viewAuditHistory() {
+    var auditModal = document.getElementById('audit-modal');
+    var productId = auditModal.dataset.productId;
+    var productName = auditModal.dataset.productName;
+    
+    closeModal('audit-modal');
+    openStockHistory(productId, productName);
+}
+
+function openStockHistory(productId, productName) {
+    document.getElementById('history-product-name').textContent = productName;
+    document.getElementById('stock-history-modal').dataset.productId = productId;
+    
+    switchHistoryTab('movements');
+    openModal('stock-history-modal');
+}
+
+function switchHistoryTab(tab) {
+    var productId = document.getElementById('stock-history-modal').dataset.productId;
+    
+    document.querySelectorAll('.history-tab').forEach(function(btn) { btn.classList.remove('active'); });
+    document.getElementById('tab-' + tab).classList.add('active');
+    
+    document.getElementById('movements-content').style.display = tab === 'movements' ? 'block' : 'none';
+    document.getElementById('audits-content').style.display = tab === 'audits' ? 'block' : 'none';
+    
+    if (tab === 'movements') {
+        loadMovements(productId);
+    } else {
+        loadAudits(productId);
+    }
+}
+
+function loadMovements(productId) {
+    document.getElementById('movements-loading').style.display = 'block';
+    document.getElementById('movements-table').style.display = 'none';
+    
+    fetch('process_merchandise_products.php?action=get_stock_movements&product_id=' + encodeURIComponent(productId))
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('movements-loading').style.display = 'none';
+            var tableDiv = document.getElementById('movements-table');
+            tableDiv.style.display = 'block';
+            
+            if (data.movements && data.movements.length > 0) {
+                var html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">' +
+                    '<thead><tr style="border-bottom: 2px solid var(--border);">' +
+                    '<th style="padding: 8px; text-align: left;">Date</th>' +
+                    '<th style="padding: 8px; text-align: left;">Type</th>' +
+                    '<th style="padding: 8px; text-align: left;">Size</th>' +
+                    '<th style="padding: 8px; text-align: center;">Before</th>' +
+                    '<th style="padding: 8px; text-align: center;">Change</th>' +
+                    '<th style="padding: 8px; text-align: center;">After</th>' +
+                    '<th style="padding: 8px; text-align: left;">Reference</th>' +
+                    '<th style="padding: 8px; text-align: left;">By</th>' +
+                    '</tr></thead><tbody>';
+                
+                data.movements.forEach(function(m) {
+                    var typeLabel = m.movement_type.replace('_', ' ');
+                    typeLabel = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
+                    var changeColor = m.quantity_change > 0 ? '#10b981' : (m.quantity_change < 0 ? '#ef4444' : 'var(--text-dim)');
+                    var changeSign = m.quantity_change > 0 ? '+' : '';
+                    
+                    html += '<tr style="border-bottom: 1px solid var(--border);">' +
+                        '<td style="padding: 8px;">' + new Date(m.created_at).toLocaleDateString() + '</td>' +
+                        '<td style="padding: 8px;"><span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light);">' + escapeHtml(typeLabel) + '</span></td>' +
+                        '<td style="padding: 8px;">' + escapeHtml(m.size || 'N/A') + '</td>' +
+                        '<td style="padding: 8px; text-align: center;">' + m.quantity_before + '</td>' +
+                        '<td style="padding: 8px; text-align: center; color: ' + changeColor + '; font-weight: 600;">' + changeSign + m.quantity_change + '</td>' +
+                        '<td style="padding: 8px; text-align: center;">' + m.quantity_after + '</td>' +
+                        '<td style="padding: 8px; color: var(--text-dim);">' + escapeHtml(m.reference || '-') + '</td>' +
+                        '<td style="padding: 8px; color: var(--text-dim);">' + escapeHtml((m.first_name || '') + ' ' + (m.last_name || '')) + '</td>' +
+                        '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                tableDiv.innerHTML = html;
+            } else {
+                tableDiv.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px;">No stock movements recorded yet.</p>';
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            document.getElementById('movements-loading').style.display = 'none';
+            document.getElementById('movements-table').innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading stock movements.</p>';
+            document.getElementById('movements-table').style.display = 'block';
+        });
+}
+
+function loadAudits(productId) {
+    document.getElementById('audits-loading').style.display = 'block';
+    document.getElementById('audits-table').style.display = 'none';
+    
+    fetch('process_merchandise_products.php?action=get_audit_history&product_id=' + encodeURIComponent(productId))
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('audits-loading').style.display = 'none';
+            var tableDiv = document.getElementById('audits-table');
+            tableDiv.style.display = 'block';
+            
+            if (data.audits && data.audits.length > 0) {
+                var html = '';
+                data.audits.forEach(function(audit) {
+                    var hasDiscrepancies = audit.items.some(function(item) { return item.discrepancy !== 0; });
+                    var borderColor = hasDiscrepancies ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)';
+                    
+                    html += '<div style="border: 1px solid ' + borderColor + '; border-radius: 8px; padding: 16px; margin-bottom: 12px;">' +
+                        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">' +
+                        '<div>' +
+                        '<strong>Audit #' + audit.id + '</strong>' +
+                        '<span style="margin-left: 12px; color: var(--text-dim);">' + new Date(audit.created_at).toLocaleString() + '</span>' +
+                        '</div>' +
+                        '<span style="padding: 3px 10px; border-radius: 4px; font-size: 11px; background: ' + (hasDiscrepancies ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)') + '; color: ' + (hasDiscrepancies ? '#ef4444' : '#10b981') + ';">' +
+                        (hasDiscrepancies ? 'Discrepancies Found' : 'All Matched') + '</span>' +
+                        '</div>';
+                    
+                    if (audit.notes) {
+                        html += '<p style="color: var(--text-dim); font-size: 12px; margin-bottom: 8px;"><i class="fas fa-sticky-note"></i> ' + escapeHtml(audit.notes) + '</p>';
+                    }
+                    
+                    html += '<table style="width: 100%; border-collapse: collapse; font-size: 12px;">' +
+                        '<tr style="border-bottom: 1px solid var(--border);">' +
+                        '<th style="padding: 4px 8px; text-align: left;">Size</th>' +
+                        '<th style="padding: 4px 8px; text-align: center;">System</th>' +
+                        '<th style="padding: 4px 8px; text-align: center;">Actual</th>' +
+                        '<th style="padding: 4px 8px; text-align: center;">Diff</th>' +
+                        '</tr>';
+                    
+                    audit.items.forEach(function(item) {
+                        var diffColor = item.discrepancy < 0 ? '#ef4444' : (item.discrepancy > 0 ? '#f59e0b' : '#10b981');
+                        html += '<tr><td style="padding: 4px 8px;">' + escapeHtml(item.size) + '</td>' +
+                            '<td style="padding: 4px 8px; text-align: center;">' + item.system_quantity + '</td>' +
+                            '<td style="padding: 4px 8px; text-align: center;">' + item.actual_quantity + '</td>' +
+                            '<td style="padding: 4px 8px; text-align: center; color: ' + diffColor + '; font-weight: 600;">' + (item.discrepancy > 0 ? '+' : '') + item.discrepancy + '</td></tr>';
+                    });
+                    
+                    html += '</table>';
+                    
+                    if (audit.first_name) {
+                        html += '<p style="font-size: 11px; color: var(--text-dim); margin-top: 8px;">By: ' + escapeHtml(audit.first_name + ' ' + (audit.last_name || '')) + '</p>';
+                    }
+                    
+                    html += '</div>';
+                });
+                tableDiv.innerHTML = html;
+            } else {
+                tableDiv.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px;">No audit history recorded yet.</p>';
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            document.getElementById('audits-loading').style.display = 'none';
+            document.getElementById('audits-table').innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading audit history.</p>';
+            document.getElementById('audits-table').style.display = 'block';
+        });
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 }
 
 // Convert modal forms to AJAX submissions for better UX
