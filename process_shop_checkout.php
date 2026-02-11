@@ -82,10 +82,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'ship_order') {
                 $sizeData = $sizeStmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($sizeData) {
+                    // Stock was already deducted at payment time (shop_success.php).
+                    // Reconstruct pre-deduction quantity for the movement record.
+                    $qtyBeforeSale = $sizeData['quantity'] + $item['quantity'];
                     $movementStmt->execute([
                         $item['product_id'],
                         $sizeData['id'],
-                        $sizeData['quantity'] + $item['quantity'],
+                        $qtyBeforeSale,
                         -$item['quantity'],
                         $sizeData['quantity'],
                         'Order #' . $orderNumber,

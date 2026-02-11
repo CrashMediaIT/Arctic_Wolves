@@ -529,10 +529,9 @@ function viewOrderDetails(orderId) {
 }
 
 function openShipOrder(orderId, orderNumber) {
-    document.getElementById('ship-order-id').value = orderId;
-    document.getElementById('ship-order-number').textContent = '#' + orderNumber;
     document.getElementById('ship-order-form').reset();
     document.getElementById('ship-order-id').value = orderId;
+    document.getElementById('ship-order-number').textContent = '#' + orderNumber;
     document.getElementById('ship-order-modal').classList.add('active');
 }
 
