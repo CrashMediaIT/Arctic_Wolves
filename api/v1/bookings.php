@@ -140,7 +140,7 @@ function handleCreateBooking($auth) {
 
     try {
         // Check session exists and has capacity
-        $stmt = $pdo->prepare("SELECT * FROM sessions WHERE id = ? AND status = 'scheduled'");
+        $stmt = $pdo->prepare("SELECT id, max_participants, status FROM sessions WHERE id = ? AND status = 'scheduled'");
         $stmt->execute([$session_id]);
         $session = $stmt->fetch(PDO::FETCH_ASSOC);
 

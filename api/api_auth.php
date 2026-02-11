@@ -30,6 +30,11 @@ function authenticateApiRequest() {
         return ['authenticated' => false, 'user_id' => null, 'permissions' => [], 'error' => 'API key required. Provide via Authorization header (Bearer <key>) or X-API-Key header.'];
     }
 
+    // Validate key format: must be 32-128 hex characters
+    if (!preg_match('/^[a-fA-F0-9]{32,128}$/', $api_key)) {
+        return ['authenticated' => false, 'user_id' => null, 'permissions' => [], 'error' => 'Invalid API key format'];
+    }
+
     try {
         $stmt = $pdo->prepare("
             SELECT ak.id, ak.user_id, ak.permissions, ak.is_active, ak.expires_at,

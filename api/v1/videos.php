@@ -255,12 +255,19 @@ function handleUpdateVideo($auth, $video_id) {
         }
 
         $coach_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+        $updated = false;
         if (in_array($auth['user_role'], $coach_roles) && isset($body['coach_notes'])) {
             $stmt = $pdo->prepare("UPDATE videos SET coach_notes = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([trim($body['coach_notes']), $video_id]);
+            $updated = true;
         } elseif (isset($body['athlete_notes'])) {
             $stmt = $pdo->prepare("UPDATE videos SET athlete_notes = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([trim($body['athlete_notes']), $video_id]);
+            $updated = true;
+        }
+
+        if (!$updated) {
+            apiResponse(400, ['success' => false, 'error' => 'No updatable fields provided. Send coach_notes or athlete_notes.']);
         }
 
         logApiAccess('update_video', "Updated video ID: $video_id", $auth['user_id']);
