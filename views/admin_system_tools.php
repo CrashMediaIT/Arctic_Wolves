@@ -122,6 +122,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=updates" class="page-tab <?php echo $activeTab === 'updates' ? 'active' : ''; ?>">
         <i class="fas fa-download"></i> Updates
     </a>
+    <a href="?page=system_tools&tab=api_keys" class="page-tab <?php echo $activeTab === 'api_keys' ? 'active' : ''; ?>">
+        <i class="fas fa-key"></i> API Keys
+    </a>
 </div>
 
 <div class="page-tab-content">
@@ -1850,6 +1853,242 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     </div>
 </div>
 
+<!-- API Keys Tab -->
+<div class="tab-content <?php echo $activeTab === 'api_keys' ? 'active' : ''; ?>" id="api_keys-tab">
+    <?php
+    // Fetch existing API keys for the current admin
+    $api_keys_list = [];
+    try {
+        $ak_stmt = $pdo->prepare("
+            SELECT ak.id, ak.key_name, ak.permissions, ak.is_active, ak.created_at, ak.expires_at, ak.last_used,
+                   LEFT(ak.api_key, 8) AS key_prefix
+            FROM api_keys ak
+            WHERE ak.user_id = ?
+            ORDER BY ak.created_at DESC
+        ");
+        $ak_stmt->execute([$user_id]);
+        $api_keys_list = $ak_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("API keys fetch error: " . $e->getMessage());
+    }
+    ?>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-key"></i> API Key Management</h3>
+        </div>
+        <div class="card-body">
+            <p style="color: var(--text-dim); margin-bottom: 20px;">
+                Generate and manage API keys for secure programmatic access to the system. API keys are tied to your admin account and inherit your permissions.
+                Use server-side keys so end users never need to handle API credentials directly.
+            </p>
+
+            <!-- Generate New Key -->
+            <div class="card" style="margin-bottom: 24px; border: 1px solid var(--border);">
+                <div class="card-header" style="padding: 12px 20px; background: var(--bg-main);">
+                    <h4 style="font-size: 14px; margin: 0; color: var(--primary);"><i class="fas fa-plus-circle"></i> Generate New API Key</h4>
+                </div>
+                <div class="card-body" style="padding: 20px;">
+                    <form method="POST" action="process_settings.php" id="generate-api-key-form">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="generate_api_key">
+                        <div class="settings-list">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Key Name</h4>
+                                    <p>A descriptive label for this key (e.g. "Mobile App", "Kiosk")</p>
+                                </div>
+                                <input type="text" name="api_key_name" class="form-input" placeholder="My API Key" required maxlength="100">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Expiration</h4>
+                                    <p>How long the key remains valid</p>
+                                </div>
+                                <select name="api_key_expiry" class="form-input">
+                                    <option value="30">30 Days</option>
+                                    <option value="90">90 Days</option>
+                                    <option value="180">180 Days</option>
+                                    <option value="365">1 Year</option>
+                                    <option value="0">No Expiration</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Permissions</h4>
+                                    <p>Select the access level for this key</p>
+                                </div>
+                                <select name="api_key_permissions" class="form-input">
+                                    <option value="full">Full Access (Admin)</option>
+                                    <option value="read_only">Read Only</option>
+                                    <option value="bookings">Bookings Only</option>
+                                    <option value="sessions">Sessions &amp; Drills</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Generate API Key</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Newly Generated Key Display (shown after generation) -->
+            <?php
+            $new_api_key = null;
+            if (isset($_GET['key_generated']) && isset($_SESSION['new_api_key'])) {
+                $new_api_key = $_SESSION['new_api_key'];
+                unset($_SESSION['new_api_key']);
+            }
+            ?>
+            <?php if ($new_api_key): ?>
+            <div class="alert alert-success" style="margin-bottom: 24px; padding: 20px;">
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="fas fa-check-circle" style="font-size: 20px; margin-top: 2px;"></i>
+                    <div style="flex: 1;">
+                        <strong style="display: block; margin-bottom: 8px;">API Key Generated Successfully</strong>
+                        <p style="margin-bottom: 12px; font-size: 13px;">Copy this key now — it will not be shown again.</p>
+                        <div style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.2); padding: 10px 14px; border-radius: 6px; font-family: monospace; font-size: 13px; word-break: break-all;">
+                            <span id="new-api-key-value"><?php echo htmlspecialchars($new_api_key); ?></span>
+                            <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px; white-space: nowrap;" onclick="copyApiKey()">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Existing Keys -->
+            <div class="card" style="border: 1px solid var(--border);">
+                <div class="card-header" style="padding: 12px 20px; background: var(--bg-main);">
+                    <h4 style="font-size: 14px; margin: 0; color: var(--primary);"><i class="fas fa-list"></i> Your API Keys</h4>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <?php if (empty($api_keys_list)): ?>
+                    <div style="padding: 40px 20px; text-align: center; color: var(--text-dim);">
+                        <i class="fas fa-key" style="font-size: 32px; opacity: 0.3; display: block; margin-bottom: 12px;"></i>
+                        <p>No API keys generated yet. Create one above to get started.</p>
+                    </div>
+                    <?php else: ?>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border); background: var(--bg-main);">
+                                    <th style="padding: 10px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Name</th>
+                                    <th style="padding: 10px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Key Prefix</th>
+                                    <th style="padding: 10px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Status</th>
+                                    <th style="padding: 10px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Created</th>
+                                    <th style="padding: 10px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Expires</th>
+                                    <th style="padding: 10px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Last Used</th>
+                                    <th style="padding: 10px 16px; text-align: right; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($api_keys_list as $ak): 
+                                    $is_expired = $ak['expires_at'] && strtotime($ak['expires_at']) < time();
+                                    $status_class = $ak['is_active'] && !$is_expired ? 'badge-success' : 'badge-error';
+                                    $status_text = !$ak['is_active'] ? 'Revoked' : ($is_expired ? 'Expired' : 'Active');
+                                ?>
+                                <tr style="border-bottom: 1px solid var(--border);">
+                                    <td style="padding: 12px 16px; font-size: 13px; color: var(--text-white); font-weight: 600;">
+                                        <?php echo htmlspecialchars($ak['key_name'] ?? 'Unnamed'); ?>
+                                    </td>
+                                    <td style="padding: 12px 16px; font-size: 13px; font-family: monospace; color: var(--text-dim);">
+                                        <?php echo htmlspecialchars($ak['key_prefix']); ?>...
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        <span class="badge <?php echo $status_class; ?>" style="font-size: 11px;"><?php echo $status_text; ?></span>
+                                    </td>
+                                    <td style="padding: 12px 16px; font-size: 12px; color: var(--text-dim);">
+                                        <?php echo date('M j, Y', strtotime($ak['created_at'])); ?>
+                                    </td>
+                                    <td style="padding: 12px 16px; font-size: 12px; color: var(--text-dim);">
+                                        <?php echo $ak['expires_at'] ? date('M j, Y', strtotime($ak['expires_at'])) : 'Never'; ?>
+                                    </td>
+                                    <td style="padding: 12px 16px; font-size: 12px; color: var(--text-dim);">
+                                        <?php echo $ak['last_used'] ? date('M j, Y g:i A', strtotime($ak['last_used'])) : 'Never'; ?>
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: right;">
+                                        <?php if ($ak['is_active'] && !$is_expired): ?>
+                                        <form method="POST" action="process_settings.php" style="display: inline;" onsubmit="return confirm('Are you sure you want to revoke this API key? Any applications using it will lose access.');">
+                                            <?php echo csrfTokenInput(); ?>
+                                            <input type="hidden" name="action" value="revoke_api_key">
+                                            <input type="hidden" name="api_key_id" value="<?php echo (int)$ak['id']; ?>">
+                                            <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">
+                                                <i class="fas fa-ban"></i> Revoke
+                                            </button>
+                                        </form>
+                                        <?php endif; ?>
+                                        <form method="POST" action="process_settings.php" style="display: inline;" onsubmit="return confirm('Permanently delete this API key?');">
+                                            <?php echo csrfTokenInput(); ?>
+                                            <input type="hidden" name="action" value="delete_api_key">
+                                            <input type="hidden" name="api_key_id" value="<?php echo (int)$ak['id']; ?>">
+                                            <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px; color: #ef4444;">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Usage Instructions -->
+            <div class="card" style="margin-top: 24px; border: 1px solid var(--border);">
+                <div class="card-header" style="padding: 12px 20px; background: var(--bg-main);">
+                    <h4 style="font-size: 14px; margin: 0; color: var(--primary);"><i class="fas fa-book"></i> Usage Guide</h4>
+                </div>
+                <div class="card-body" style="padding: 20px;">
+                    <p style="color: var(--text-dim); margin-bottom: 16px; font-size: 13px;">
+                        Use these API keys on the server side to authenticate requests. This keeps keys secure and means end users never handle credentials directly.
+                    </p>
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                        <p style="font-size: 12px; font-weight: 600; color: var(--text-white); margin-bottom: 8px;">Authorization Header (Recommended)</p>
+                        <code style="display: block; font-size: 12px; color: var(--primary); word-break: break-all;">Authorization: Bearer YOUR_API_KEY</code>
+                    </div>
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                        <p style="font-size: 12px; font-weight: 600; color: var(--text-white); margin-bottom: 8px;">X-API-Key Header</p>
+                        <code style="display: block; font-size: 12px; color: var(--primary); word-break: break-all;">X-API-Key: YOUR_API_KEY</code>
+                    </div>
+
+                    <!-- Public App Security Pattern -->
+                    <div class="card" style="margin-top: 16px; border: 1px solid var(--border);">
+                        <div class="card-header" style="padding: 10px 16px; background: var(--bg-main);">
+                            <h4 style="font-size: 13px; margin: 0; color: var(--text-white);"><i class="fas fa-mobile-alt" style="color: var(--primary); margin-right: 6px;"></i> Public App Access (ACWolvesApp)</h4>
+                        </div>
+                        <div class="card-body" style="padding: 16px;">
+                            <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 12px;">
+                                For public applications such as the ACWolvesApp mobile app, do <strong>not</strong> embed API keys in the app source code. Instead, use the built-in per-user authentication flow:
+                            </p>
+                            <ol style="color: var(--text-dim); font-size: 13px; padding-left: 20px; margin-bottom: 12px;">
+                                <li style="margin-bottom: 6px;">The user logs in with their email &amp; password via <code style="color: var(--primary);">POST /v1/auth/login</code>.</li>
+                                <li style="margin-bottom: 6px;">The API returns a per-user Bearer token (no shared key required).</li>
+                                <li style="margin-bottom: 6px;">The app stores the token securely on the device (e.g. Expo SecureStore).</li>
+                                <li style="margin-bottom: 6px;">All subsequent requests include the token as <code style="color: var(--primary);">Authorization: Bearer &lt;token&gt;</code>.</li>
+                            </ol>
+                            <p style="color: var(--text-dim); font-size: 13px;">
+                                This way, no secrets are stored in the public repository. Each user's token is unique, time-limited, and revocable from this panel.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="info-box" style="margin-top: 16px;">
+                        <i class="fas fa-shield-alt"></i>
+                        <p style="font-size: 13px;">
+                            <strong>Security Best Practice:</strong> Store API keys in server-side environment variables or config files — never embed them in client-side code.
+                            For server-to-server integrations, use the admin-generated keys above. For public-facing apps, rely on per-user authentication.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Encryption Tab -->
 <div class="tab-content <?php echo $activeTab === 'encryption' ? 'active' : ''; ?>" id="encryption-tab">
     <?php
@@ -2117,6 +2356,29 @@ function switchToolTab(tabName) {
     
     document.getElementById(tabName + '-tab').classList.add('active');
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+}
+
+// Copy API key to clipboard
+function copyApiKey() {
+    const keyEl = document.getElementById('new-api-key-value');
+    if (!keyEl) return;
+    const key = keyEl.textContent.trim();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(key).then(function() {
+            alert('API key copied to clipboard!');
+        });
+    } else {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = key;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('API key copied to clipboard!');
+    }
 }
 
 // SMTP Test Modal Functions

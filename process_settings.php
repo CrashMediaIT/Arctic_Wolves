@@ -1041,6 +1041,107 @@ try {
             }
             exit;
 
+        case 'generate_api_key':
+            $key_name = trim($_POST['api_key_name'] ?? '');
+            $expiry_days = intval($_POST['api_key_expiry'] ?? 30);
+            $perm_preset = trim($_POST['api_key_permissions'] ?? 'read_only');
+
+            if (empty($key_name) || strlen($key_name) > 100) {
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Key name is required (max 100 characters).'));
+                exit;
+            }
+
+            // Map preset to permissions array
+            $permissions_map = [
+                'full'      => ['*'],
+                'read_only' => ['read_profile', 'read_notifications', 'read_videos', 'read_sessions', 'read_teams', 'read_athletes', 'read_drills', 'read_bookings'],
+                'bookings'  => ['read_profile', 'read_bookings', 'write_bookings', 'read_sessions'],
+                'sessions'  => ['read_profile', 'read_sessions', 'write_sessions', 'read_drills', 'write_drills'],
+            ];
+            $permissions = $permissions_map[$perm_preset] ?? $permissions_map['read_only'];
+
+            $api_key = bin2hex(random_bytes(32));
+            $expires_at = $expiry_days > 0
+                ? date('Y-m-d H:i:s', strtotime("+{$expiry_days} days"))
+                : null;
+
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO api_keys (user_id, api_key, key_name, permissions, is_active, created_at, expires_at)
+                    VALUES (?, ?, ?, ?, 1, NOW(), ?)
+                ");
+                $stmt->execute([
+                    $user_id,
+                    $api_key,
+                    $key_name,
+                    json_encode($permissions),
+                    $expires_at,
+                ]);
+
+                Auditor::log($pdo, $user_id, 'create', 'api_keys', $pdo->lastInsertId(), [
+                    'action' => 'generate_api_key',
+                    'key_name' => $key_name,
+                    'permissions' => $perm_preset,
+                    'expires_at' => $expires_at ?? 'never',
+                ]);
+
+                // Store key in session so it's not exposed in the URL
+                $_SESSION['new_api_key'] = $api_key;
+
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&success=1&key_generated=1');
+                exit;
+            } catch (PDOException $e) {
+                error_log("API key generation error: " . $e->getMessage());
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Failed to generate API key.'));
+                exit;
+            }
+
+        case 'revoke_api_key':
+            $api_key_id = intval($_POST['api_key_id'] ?? 0);
+            if ($api_key_id <= 0) {
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Invalid API key ID.'));
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare("UPDATE api_keys SET is_active = 0 WHERE id = ? AND user_id = ?");
+                $stmt->execute([$api_key_id, $user_id]);
+
+                Auditor::log($pdo, $user_id, 'update', 'api_keys', $api_key_id, [
+                    'action' => 'revoke_api_key',
+                ]);
+
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&success=1');
+                exit;
+            } catch (PDOException $e) {
+                error_log("API key revoke error: " . $e->getMessage());
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Failed to revoke API key.'));
+                exit;
+            }
+
+        case 'delete_api_key':
+            $api_key_id = intval($_POST['api_key_id'] ?? 0);
+            if ($api_key_id <= 0) {
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Invalid API key ID.'));
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare("DELETE FROM api_keys WHERE id = ? AND user_id = ?");
+                $stmt->execute([$api_key_id, $user_id]);
+
+                Auditor::log($pdo, $user_id, 'delete', 'api_keys', $api_key_id, [
+                    'action' => 'delete_api_key',
+                ]);
+
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&success=1');
+                exit;
+            } catch (PDOException $e) {
+                error_log("API key delete error: " . $e->getMessage());
+                header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Failed to delete API key.'));
+                exit;
+            }
+
         default:
             throw new Exception('Invalid action');
     }
