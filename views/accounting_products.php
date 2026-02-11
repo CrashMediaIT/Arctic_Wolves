@@ -2258,11 +2258,47 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<input type="number" name="valid_days" class="form-input" min="1" value="' + (data.valid_days || '') + '">' +
                     '</div>' +
                     '<div class="form-group">' +
+                        '<label class="form-label">Package Type</label>' +
+                        '<select name="package_type" class="form-input">' +
+                            '<option value="credits"' + (data.package_type == 'credits' ? ' selected' : '') + '>Credits</option>' +
+                            '<option value="bundle"' + (data.package_type == 'bundle' ? ' selected' : '') + '>Bundle</option>' +
+                            '<option value="subscription"' + (data.package_type == 'subscription' ? ' selected' : '') + '>Subscription</option>' +
+                        '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Age Group</label>' +
+                        '<input type="text" name="age_group" class="form-input" value="' + escapeHtml(data.age_group || '') + '" placeholder="e.g. U10, U12, Adult">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Skill Level</label>' +
+                        '<input type="text" name="skill_level" class="form-input" value="' + escapeHtml(data.skill_level || '') + '" placeholder="e.g. Beginner, Advanced">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Store Credit ($)</label>' +
+                        '<input type="number" name="store_credit" class="form-input" step="0.01" min="0" value="' + (data.store_credit || 0) + '">' +
+                    '</div>' +
+                    '<div class="form-group">' +
                         '<label class="form-label">Status</label>' +
                         '<select name="is_active" class="form-input">' +
                             '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
                             '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
                         '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="form-group">' +
+                    '<div class="checklist-grid">' +
+                        '<label class="checkbox-option">' +
+                            '<input type="checkbox" name="show_on_landing" value="1"' + (data.show_on_landing == 1 ? ' checked' : '') + '>' +
+                            '<span>Show on Landing Page</span>' +
+                        '</label>' +
+                        '<label class="checkbox-option">' +
+                            '<input type="checkbox" name="enable_child_checkin" value="1"' + (data.enable_child_checkin == 1 ? ' checked' : '') + '>' +
+                            '<span>Enable Child Check-in</span>' +
+                        '</label>' +
                     '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +

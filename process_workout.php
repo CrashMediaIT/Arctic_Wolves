@@ -174,6 +174,8 @@ try {
             $id = intval($_POST['id'] ?? 0);
             $name = trim($_POST['name'] ?? '');
             $description = trim($_POST['description'] ?? '');
+            $duration_weeks = !empty($_POST['duration_weeks']) ? intval($_POST['duration_weeks']) : null;
+            $difficulty_level = trim($_POST['difficulty_level'] ?? '');
             $exercises = $_POST['exercises'] ?? [];
             
             if (empty($id) || empty($name)) {
@@ -182,8 +184,8 @@ try {
             
             $pdo->beginTransaction();
             
-            $stmt = $pdo->prepare("UPDATE workout_plans SET name = ?, description = ? WHERE id = ?");
-            $stmt->execute([$name, $description ?: null, $id]);
+            $stmt = $pdo->prepare("UPDATE workout_plans SET name = ?, description = ?, duration_weeks = ?, difficulty_level = ? WHERE id = ?");
+            $stmt->execute([$name, $description ?: null, $duration_weeks, $difficulty_level ?: null, $id]);
             
             // Remove existing exercises and re-add
             $pdo->prepare("DELETE FROM workout_plan_exercises WHERE workout_plan_id = ?")->execute([$id]);

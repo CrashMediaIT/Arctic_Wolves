@@ -274,6 +274,9 @@ try {
             $category = trim($_POST['category'] ?? '');
             $tags = trim($_POST['tags'] ?? '');
             $target_date = !empty($_POST['target_date']) ? $_POST['target_date'] : null;
+            $target_value = isset($_POST['target_value']) && $_POST['target_value'] !== '' ? floatval($_POST['target_value']) : null;
+            $current_value = isset($_POST['current_value']) && $_POST['current_value'] !== '' ? floatval($_POST['current_value']) : null;
+            $status = trim($_POST['status'] ?? '');
             
             if (empty($title)) {
                 throw new Exception('Title is required');
@@ -284,14 +287,35 @@ try {
             $current->execute([$goal_id]);
             $old_goal = $current->fetch();
             
+            // Build dynamic update query
+            $updateFields = 'title = ?, description = ?, category = ?, tags = ?, target_date = ?';
+            $updateParams = [$title, $description, $category, $tags, $target_date];
+            
+            if ($target_value !== null) {
+                $updateFields .= ', target_value = ?';
+                $updateParams[] = $target_value;
+            }
+            if ($current_value !== null) {
+                $updateFields .= ', current_value = ?';
+                $updateParams[] = $current_value;
+            }
+            if (!empty($status)) {
+                $updateFields .= ', status = ?';
+                $updateParams[] = $status;
+                if ($status === 'completed') {
+                    $updateFields .= ', completed_at = NOW(), completion_percentage = 100';
+                }
+            }
+            $updateFields .= ', updated_at = NOW()';
+            $updateParams[] = $goal_id;
+            
             // Update goal
             $stmt = $pdo->prepare("
                 UPDATE goals 
-                SET title = ?, description = ?, category = ?, tags = ?, 
-                    target_date = ?, updated_at = NOW()
+                SET $updateFields
                 WHERE id = ?
             ");
-            $stmt->execute([$title, $description, $category, $tags, $target_date, $goal_id]);
+            $stmt->execute($updateParams);
             
             // Update steps
             if (isset($_POST['steps']) && is_array($_POST['steps'])) {

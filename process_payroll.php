@@ -332,6 +332,13 @@ if ($action === 'update_employee') {
         $cppEnabled = isset($_POST['cpp_enabled']) ? 1 : 0;
         $eiEnabled = isset($_POST['ei_enabled']) ? 1 : 0;
         $pensionEnrolled = isset($_POST['pension_enrolled']) ? 1 : 0;
+        $pensionRate = floatval($_POST['pension_contribution_rate'] ?? 0);
+        $employerMatch = floatval($_POST['employer_pension_match'] ?? 0);
+        $startDate = !empty($_POST['start_date']) ? trim($_POST['start_date']) : null;
+        $federalTd1 = !empty($_POST['federal_td1_claim']) ? floatval($_POST['federal_td1_claim']) : null;
+        $provincialTd1 = !empty($_POST['provincial_td1_claim']) ? floatval($_POST['provincial_td1_claim']) : null;
+        $additionalTax = !empty($_POST['additional_tax_deduction']) ? floatval($_POST['additional_tax_deduction']) : null;
+        $notes = trim($_POST['notes'] ?? '');
         
         $updateStmt = $pdo->prepare("
             UPDATE employee_payroll SET
@@ -342,12 +349,21 @@ if ($action === 'update_employee') {
                 cpp_exempt = ?,
                 ei_exempt = ?,
                 pension_enrolled = ?,
+                pension_contribution_rate = ?,
+                employer_pension_match = ?,
+                start_date = ?,
+                federal_td1_claim = ?,
+                provincial_td1_claim = ?,
+                additional_tax_deduction = ?,
+                notes = ?,
                 updated_at = NOW()
             WHERE id = ?
         ");
         $updateStmt->execute([
             $employeeType, $payRate, $payFrequency, $taxProvince,
             $cppEnabled ? 0 : 1, $eiEnabled ? 0 : 1, $pensionEnrolled,
+            $pensionRate, $employerMatch, $startDate,
+            $federalTd1, $provincialTd1, $additionalTax, $notes,
             $payrollId
         ]);
         
