@@ -125,6 +125,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=api_keys" class="page-tab <?php echo $activeTab === 'api_keys' ? 'active' : ''; ?>">
         <i class="fas fa-key"></i> API Keys
     </a>
+    <a href="?page=system_tools&tab=ndi_cameras" class="page-tab <?php echo $activeTab === 'ndi_cameras' ? 'active' : ''; ?>">
+        <i class="fas fa-video"></i> NDI Cameras
+    </a>
 </div>
 
 <div class="page-tab-content">
@@ -2319,7 +2322,191 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     </div>
 </div>
 
-<!-- SMTP Test Modal -->
+<!-- NDI Cameras Tab -->
+<div class="tab-content <?php echo $activeTab === 'ndi_cameras' ? 'active' : ''; ?>" id="ndi_cameras-tab">
+    <?php
+    // Fetch NDI cameras from database
+    $ndi_cameras = [];
+    try {
+        $ndi_stmt = $pdo->query("SELECT * FROM ndi_cameras ORDER BY name ASC");
+        $ndi_cameras = $ndi_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Table may not exist yet
+        error_log("NDI cameras fetch error: " . $e->getMessage());
+    }
+    ?>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-video"></i> NDI Camera Management</h3>
+        </div>
+        <div class="card-body">
+            <p style="color: var(--text-dim); margin-bottom: 20px;">
+                Add and manage NDI (Network Device Interface) cameras for video capture across your facility. NDI cameras are network-connected video sources that can be used for recording sessions, evaluations, and live streaming.
+            </p>
+
+            <!-- Add New NDI Camera -->
+            <div class="card" style="margin-bottom: 24px; border: 1px solid var(--border);">
+                <div class="card-header" style="padding: 12px 20px; background: var(--bg-main);">
+                    <h4 style="font-size: 14px; margin: 0; color: var(--primary);"><i class="fas fa-plus-circle"></i> Add New NDI Camera</h4>
+                </div>
+                <div class="card-body" style="padding: 20px;">
+                    <form method="POST" action="process_settings.php" id="add-ndi-camera-form">
+                        <?php echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="add_ndi_camera">
+                        <div class="settings-list">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Camera Name</h4>
+                                    <p>A descriptive label (e.g. "Rink 1 - Center Ice", "Goal Camera")</p>
+                                </div>
+                                <input type="text" name="ndi_camera_name" class="form-input" placeholder="Main Rink Camera" required maxlength="255">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>IP Address / Hostname</h4>
+                                    <p>The network address of the NDI source</p>
+                                </div>
+                                <input type="text" name="ndi_camera_ip" class="form-input" placeholder="192.168.1.100" required maxlength="255">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Port</h4>
+                                    <p>NDI port number (default: 5960)</p>
+                                </div>
+                                <input type="number" name="ndi_camera_port" class="form-input" value="5960" min="1" max="65535">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>NDI Source Name</h4>
+                                    <p>Optional NDI source identifier for discovery</p>
+                                </div>
+                                <input type="text" name="ndi_camera_ndi_name" class="form-input" placeholder="MYCAMERA (Source 1)" maxlength="255">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Location</h4>
+                                    <p>Physical location description</p>
+                                </div>
+                                <input type="text" name="ndi_camera_location" class="form-input" placeholder="Main Rink - South End" maxlength="255">
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; text-align: right;">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Add Camera
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Existing NDI Cameras -->
+            <div class="card" style="border: 1px solid var(--border);">
+                <div class="card-header" style="padding: 12px 20px; background: var(--bg-main);">
+                    <h4 style="font-size: 14px; margin: 0; color: var(--primary);"><i class="fas fa-list"></i> Configured Cameras (<?php echo count($ndi_cameras); ?>)</h4>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <?php if (empty($ndi_cameras)): ?>
+                        <div style="padding: 40px; text-align: center; color: var(--text-dim);">
+                            <i class="fas fa-video-slash" style="font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.3;"></i>
+                            <p>No NDI cameras configured yet. Add your first camera above.</p>
+                        </div>
+                    <?php else: ?>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: var(--bg-main); border-bottom: 1px solid var(--border);">
+                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Name</th>
+                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">IP Address</th>
+                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Port</th>
+                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">NDI Name</th>
+                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Location</th>
+                                        <th style="padding: 12px 16px; text-align: center; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Status</th>
+                                        <th style="padding: 12px 16px; text-align: center; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($ndi_cameras as $camera): ?>
+                                    <tr id="ndi-camera-row-<?php echo (int)$camera['id']; ?>" style="border-bottom: 1px solid var(--border);">
+                                        <td style="padding: 12px 16px; color: var(--text-white); font-weight: 600;">
+                                            <i class="fas fa-video" style="color: var(--primary-light); margin-right: 8px;"></i>
+                                            <?php echo htmlspecialchars($camera['name']); ?>
+                                        </td>
+                                        <td style="padding: 12px 16px; color: var(--text-secondary);">
+                                            <code style="background: var(--bg-main); padding: 2px 8px; border-radius: 4px; font-size: 13px;"><?php echo htmlspecialchars($camera['ip_address']); ?></code>
+                                        </td>
+                                        <td style="padding: 12px 16px; color: var(--text-secondary);"><?php echo (int)$camera['port']; ?></td>
+                                        <td style="padding: 12px 16px; color: var(--text-secondary);"><?php echo htmlspecialchars($camera['ndi_name'] ?? '—'); ?></td>
+                                        <td style="padding: 12px 16px; color: var(--text-secondary);"><?php echo htmlspecialchars($camera['location'] ?? '—'); ?></td>
+                                        <td style="padding: 12px 16px; text-align: center;">
+                                            <?php if ($camera['is_active']): ?>
+                                                <span class="badge badge-success" style="font-size: 11px;"><i class="fas fa-check-circle"></i> Active</span>
+                                            <?php else: ?>
+                                                <span class="badge badge-error" style="font-size: 11px;"><i class="fas fa-times-circle"></i> Disabled</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="padding: 12px 16px; text-align: center;">
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleNdiCamera(<?php echo (int)$camera['id']; ?>, <?php echo $camera['is_active'] ? 0 : 1; ?>)" title="<?php echo $camera['is_active'] ? 'Disable' : 'Enable'; ?>">
+                                                <i class="fas fa-<?php echo $camera['is_active'] ? 'toggle-on' : 'toggle-off'; ?>"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="editNdiCamera(<?php echo (int)$camera['id']; ?>)" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteNdiCamera(<?php echo (int)$camera['id']; ?>, '<?php echo htmlspecialchars(addslashes($camera['name'])); ?>')" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NDI Camera Edit Modal -->
+<div id="ndi-camera-edit-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-video"></i> Edit NDI Camera</h3>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeNdiEditModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="edit-ndi-camera-form">
+                <input type="hidden" name="ndi_camera_id" id="edit-ndi-camera-id">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-white);">Camera Name</label>
+                    <input type="text" id="edit-ndi-camera-name" class="form-input" style="width: 100%;" required maxlength="255">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-white);">IP Address / Hostname</label>
+                    <input type="text" id="edit-ndi-camera-ip" class="form-input" style="width: 100%;" required maxlength="255">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-white);">Port</label>
+                    <input type="number" id="edit-ndi-camera-port" class="form-input" style="width: 100%;" min="1" max="65535">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-white);">NDI Source Name</label>
+                    <input type="text" id="edit-ndi-camera-ndi-name" class="form-input" style="width: 100%;" maxlength="255">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-white);">Location</label>
+                    <input type="text" id="edit-ndi-camera-location" class="form-input" style="width: 100%;" maxlength="255">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeNdiEditModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveNdiCamera()">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
 <div id="smtp-test-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -4320,5 +4507,135 @@ function validateEncryptionKeyUpdate() {
     }
     
     return true;
+}
+
+// NDI Camera Management Functions
+function toggleNdiCamera(cameraId, newState) {
+    const formData = new FormData();
+    formData.append('action', 'toggle_ndi_camera');
+    formData.append('ndi_camera_id', cameraId);
+    formData.append('is_active', newState);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to update camera status'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating camera status.');
+    });
+}
+
+function editNdiCamera(cameraId) {
+    const formData = new FormData();
+    formData.append('action', 'get_ndi_camera');
+    formData.append('ndi_camera_id', cameraId);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.camera) {
+            document.getElementById('edit-ndi-camera-id').value = data.camera.id;
+            document.getElementById('edit-ndi-camera-name').value = data.camera.name;
+            document.getElementById('edit-ndi-camera-ip').value = data.camera.ip_address;
+            document.getElementById('edit-ndi-camera-port').value = data.camera.port || 5960;
+            document.getElementById('edit-ndi-camera-ndi-name').value = data.camera.ndi_name || '';
+            document.getElementById('edit-ndi-camera-location').value = data.camera.location || '';
+            document.getElementById('ndi-camera-edit-modal').style.display = 'flex';
+        } else {
+            alert('Error: ' + (data.message || 'Failed to load camera details'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while loading camera details.');
+    });
+}
+
+function closeNdiEditModal() {
+    document.getElementById('ndi-camera-edit-modal').style.display = 'none';
+}
+
+function saveNdiCamera() {
+    const cameraId = document.getElementById('edit-ndi-camera-id').value;
+    const name = document.getElementById('edit-ndi-camera-name').value.trim();
+    const ip = document.getElementById('edit-ndi-camera-ip').value.trim();
+    const port = document.getElementById('edit-ndi-camera-port').value;
+    const ndiName = document.getElementById('edit-ndi-camera-ndi-name').value.trim();
+    const location = document.getElementById('edit-ndi-camera-location').value.trim();
+
+    if (!name || !ip) {
+        alert('Camera name and IP address are required.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'update_ndi_camera');
+    formData.append('ndi_camera_id', cameraId);
+    formData.append('ndi_camera_name', name);
+    formData.append('ndi_camera_ip', ip);
+    formData.append('ndi_camera_port', port);
+    formData.append('ndi_camera_ndi_name', ndiName);
+    formData.append('ndi_camera_location', location);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeNdiEditModal();
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to update camera'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while saving camera changes.');
+    });
+}
+
+function deleteNdiCamera(cameraId, cameraName) {
+    if (!confirm('Are you sure you want to delete the camera "' + cameraName + '"? This action cannot be undone.')) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'delete_ndi_camera');
+    formData.append('ndi_camera_id', cameraId);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Failed to delete camera'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while deleting the camera.');
+    });
 }
 </script>
