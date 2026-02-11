@@ -497,6 +497,11 @@ try {
                                     data-type="location" 
                                     data-name="<?= htmlspecialchars($location['name']) ?>"
                                     data-city="<?= htmlspecialchars($location['city'] ?? '') ?>"
+                                    data-address="<?= htmlspecialchars($location['address'] ?? '') ?>"
+                                    data-province="<?= htmlspecialchars($location['province'] ?? '') ?>"
+                                    data-postal-code="<?= htmlspecialchars($location['postal_code'] ?? '') ?>"
+                                    data-phone="<?= htmlspecialchars($location['phone'] ?? '') ?>"
+                                    data-is-active="<?= $location['is_active'] ?? 1 ?>"
                                     data-google-place-id="<?= htmlspecialchars($location['google_place_id'] ?? '') ?>"
                                     data-image-url="<?= htmlspecialchars($location['image_url'] ?? '') ?>">
                                 <i class="fas fa-edit"></i>
@@ -1488,8 +1493,38 @@ try {
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">City *</label>
-                    <input type="text" name="city" id="edit-location-city" class="form-input" required>
+                    <label class="form-label">Address</label>
+                    <input type="text" name="address" id="edit-location-address" class="form-input" placeholder="Street address">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">City *</label>
+                        <input type="text" name="city" id="edit-location-city" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Province</label>
+                        <input type="text" name="province" id="edit-location-province" class="form-input" placeholder="Province/State">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Postal Code</label>
+                        <input type="text" name="postal_code" id="edit-location-postal" class="form-input" placeholder="Postal/ZIP code">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" name="phone" id="edit-location-phone" class="form-input" placeholder="Phone number">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="is_active" id="edit-location-active" class="form-input">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
                 </div>
                 
                 <div id="edit-location-preview" style="display: none; margin-bottom: 12px;">
@@ -1713,6 +1748,11 @@ try {
                 document.getElementById('edit-location-id').value = id;
                 document.getElementById('edit-location-name').value = name;
                 document.getElementById('edit-location-city').value = this.getAttribute('data-city') || '';
+                document.getElementById('edit-location-address').value = this.getAttribute('data-address') || '';
+                document.getElementById('edit-location-province').value = this.getAttribute('data-province') || '';
+                document.getElementById('edit-location-postal').value = this.getAttribute('data-postal-code') || '';
+                document.getElementById('edit-location-phone').value = this.getAttribute('data-phone') || '';
+                document.getElementById('edit-location-active').value = this.getAttribute('data-is-active') || '1';
                 document.getElementById('edit-google-place-id').value = this.getAttribute('data-google-place-id') || '';
                 const imageUrl = this.getAttribute('data-image-url') || '';
                 document.getElementById('edit-location-image-url').value = imageUrl;

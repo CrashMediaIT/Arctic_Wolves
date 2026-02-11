@@ -226,7 +226,14 @@ $provinces = [
                                                 data-province="<?= $emp['tax_province'] ?>"
                                                 data-cpp-exempt="<?= $emp['cpp_exempt'] ?>"
                                                 data-ei-exempt="<?= $emp['ei_exempt'] ?>"
-                                                data-pension="<?= $emp['pension_enrolled'] ?>">
+                                                data-pension="<?= $emp['pension_enrolled'] ?>"
+                                                data-pension-rate="<?= $emp['pension_contribution_rate'] ?? '' ?>"
+                                                data-employer-match="<?= $emp['employer_pension_match'] ?? '' ?>"
+                                                data-start-date="<?= $emp['start_date'] ?? '' ?>"
+                                                data-federal-td1="<?= $emp['federal_td1_claim'] ?? '' ?>"
+                                                data-provincial-td1="<?= $emp['provincial_td1_claim'] ?? '' ?>"
+                                                data-additional-tax="<?= $emp['additional_tax_deduction'] ?? '' ?>"
+                                                data-notes="<?= htmlspecialchars($emp['notes'] ?? '') ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <button class="btn-icon edit-banking" title="Banking Info" data-user-id="<?= $emp['user_id'] ?>">
@@ -958,6 +965,10 @@ $provinces = [
                     </div>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" id="editStartDate" class="form-input">
+                </div>
+                <div class="form-group">
                     <label class="form-label">Deductions</label>
                     <div class="checklist-grid">
                         <label class="checkbox-option">
@@ -973,6 +984,34 @@ $provinces = [
                             <span>Company Pension</span>
                         </label>
                     </div>
+                </div>
+                <div class="form-row" id="editPensionDetails" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Pension Contribution Rate (%)</label>
+                        <input type="number" name="pension_contribution_rate" id="editPensionRate" class="form-input" step="0.01" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Employer Pension Match (%)</label>
+                        <input type="number" name="employer_pension_match" id="editEmployerMatch" class="form-input" step="0.01" min="0" max="100">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Federal TD1 Claim ($)</label>
+                        <input type="number" name="federal_td1_claim" id="editFederalTd1" class="form-input" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Provincial TD1 Claim ($)</label>
+                        <input type="number" name="provincial_td1_claim" id="editProvincialTd1" class="form-input" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Additional Tax Deduction ($)</label>
+                    <input type="number" name="additional_tax_deduction" id="editAdditionalTax" class="form-input" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" id="editPayrollNotes" class="form-input" rows="3" placeholder="Additional notes..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1059,6 +1098,11 @@ document.querySelector('input[name="pension_enrolled"]')?.addEventListener('chan
     document.getElementById('pensionDetails').style.display = this.checked ? 'flex' : 'none';
 });
 
+// Edit pension checkbox toggle
+document.getElementById('editPensionEnrolled')?.addEventListener('change', function() {
+    document.getElementById('editPensionDetails').style.display = this.checked ? 'flex' : 'none';
+});
+
 // Edit payroll modal
 document.querySelectorAll('.edit-payroll').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -1071,6 +1115,14 @@ document.querySelectorAll('.edit-payroll').forEach(btn => {
         document.getElementById('editCppEnabled').checked = this.dataset.cppExempt === '0';
         document.getElementById('editEiEnabled').checked = this.dataset.eiExempt === '0';
         document.getElementById('editPensionEnrolled').checked = this.dataset.pension === '1';
+        document.getElementById('editPensionRate').value = this.dataset.pensionRate || '';
+        document.getElementById('editEmployerMatch').value = this.dataset.employerMatch || '';
+        document.getElementById('editStartDate').value = this.dataset.startDate || '';
+        document.getElementById('editFederalTd1').value = this.dataset.federalTd1 || '';
+        document.getElementById('editProvincialTd1').value = this.dataset.provincialTd1 || '';
+        document.getElementById('editAdditionalTax').value = this.dataset.additionalTax || '';
+        document.getElementById('editPayrollNotes').value = this.dataset.notes || '';
+        document.getElementById('editPensionDetails').style.display = this.dataset.pension === '1' ? 'flex' : 'none';
         document.getElementById('editPayrollModal').style.display = 'flex';
     });
 });

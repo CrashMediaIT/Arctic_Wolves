@@ -772,6 +772,12 @@ if ($action == 'update_package') {
         $credits = intval($_POST['credits'] ?? 0);
         $validDays = !empty($_POST['valid_days']) ? intval($_POST['valid_days']) : null;
         $isActive = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
+        $ageGroup = trim($_POST['age_group'] ?? '');
+        $skillLevel = trim($_POST['skill_level'] ?? '');
+        $packageType = trim($_POST['package_type'] ?? 'credits');
+        $storeCredit = floatval($_POST['store_credit'] ?? 0);
+        $showOnLanding = isset($_POST['show_on_landing']) ? 1 : 0;
+        $enableChildCheckin = isset($_POST['enable_child_checkin']) ? 1 : 0;
         
         if ($packageId <= 0) {
             throw new Exception('Invalid package ID');
@@ -782,10 +788,12 @@ if ($action == 'update_package') {
         
         $stmt = $pdo->prepare("
             UPDATE packages 
-            SET name = ?, description = ?, price = ?, credits = ?, valid_days = ?, is_active = ?
+            SET name = ?, description = ?, price = ?, credits = ?, valid_days = ?, is_active = ?,
+                age_group = ?, skill_level = ?, package_type = ?, store_credit = ?, show_on_landing = ?, enable_child_checkin = ?
             WHERE id = ?
         ");
-        $stmt->execute([$name, $description, $price, $credits, $validDays, $isActive, $packageId]);
+        $stmt->execute([$name, $description, $price, $credits, $validDays, $isActive,
+                        $ageGroup ?: null, $skillLevel ?: null, $packageType, $storeCredit, $showOnLanding, $enableChildCheckin, $packageId]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2992,6 +3000,11 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'location') 
         $id = intval($_POST['id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
         $city = trim($_POST['city'] ?? '');
+        $address = trim($_POST['address'] ?? '');
+        $province = trim($_POST['province'] ?? '');
+        $postal_code = trim($_POST['postal_code'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
         $google_place_id = trim($_POST['google_place_id'] ?? '');
         $image_url = trim($_POST['image_url'] ?? '');
         
@@ -2999,8 +3012,8 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'location') 
             throw new Exception('Location ID, name, and city are required');
         }
         
-        $stmt = $pdo->prepare("UPDATE locations SET name = ?, city = ?, google_place_id = ?, image_url = ? WHERE id = ?");
-        $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null, $id]);
+        $stmt = $pdo->prepare("UPDATE locations SET name = ?, address = ?, city = ?, province = ?, postal_code = ?, phone = ?, is_active = ?, google_place_id = ?, image_url = ? WHERE id = ?");
+        $stmt->execute([$name, $address ?: null, $city, $province ?: null, $postal_code ?: null, $phone ?: null, $is_active, $google_place_id ?: null, $image_url ?: null, $id]);
         
         if ($isAjax) {
             header('Content-Type: application/json');

@@ -222,6 +222,8 @@ $allAthletes = decryptUserRows($allAthletes);
                                         data-id="<?= $plan['id'] ?>"
                                         data-name="<?= htmlspecialchars($plan['name']) ?>"
                                         data-description="<?= htmlspecialchars($plan['description'] ?? '') ?>"
+                                        data-duration-weeks="<?= $plan['duration_weeks'] ?? '' ?>"
+                                        data-difficulty-level="<?= htmlspecialchars($plan['difficulty_level'] ?? '') ?>"
                                         data-exercises='<?= json_encode($planExercises[$plan['id']] ?? []) ?>'>
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
@@ -782,6 +784,22 @@ $allAthletes = decryptUserRows($allAthletes);
                     <textarea name="description" id="edit-plan-description" class="form-textarea" rows="3"></textarea>
                 </div>
                 
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Duration (Weeks)</label>
+                        <input type="number" name="duration_weeks" id="edit-plan-duration" class="form-input" min="1" placeholder="Number of weeks">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Difficulty Level</label>
+                        <select name="difficulty_level" id="edit-plan-difficulty" class="form-input">
+                            <option value="">Select Level</option>
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <div class="form-section">
                     <h4 class="section-title"><i class="fas fa-list"></i> Plan Exercises</h4>
                     <div id="edit-plan-exercises">
@@ -914,6 +932,8 @@ document.querySelectorAll('[data-action="edit-plan"]').forEach(button => {
         document.getElementById('edit-plan-id').value = this.dataset.id;
         document.getElementById('edit-plan-name').value = this.dataset.name;
         document.getElementById('edit-plan-description').value = this.dataset.description;
+        document.getElementById('edit-plan-duration').value = this.dataset.durationWeeks || '';
+        document.getElementById('edit-plan-difficulty').value = this.dataset.difficultyLevel || '';
         
         // Populate exercises
         const exercises = JSON.parse(this.dataset.exercises || '[]');

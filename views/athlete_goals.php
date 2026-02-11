@@ -273,56 +273,67 @@ try {
         
         <form id="edit-goal-form" method="POST" action="process_goals.php">
             <?= csrfTokenInput() ?>
-            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="action" value="update_goal">
             <input type="hidden" name="goal_id" id="edit-goal-id">
             
             <div class="modal-body">
                 <div class="form-group">
                     <label for="edit_goal_title">Goal Title *</label>
-                    <input type="text" id="edit_goal_title" name="goal_title" class="form-input" required>
+                    <input type="text" id="edit_goal_title" name="title" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="edit_goal_description">Description</label>
-                    <textarea id="edit_goal_description" name="goal_description" class="form-input" rows="4"></textarea>
+                    <textarea id="edit_goal_description" name="description" class="form-input" rows="4"></textarea>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="edit_goal_type">Goal Type</label>
-                        <select id="edit_goal_type" name="goal_type" class="form-input">
-                            <option value="general">General</option>
-                            <option value="skill">Skill Development</option>
+                        <label for="edit_goal_category">Category</label>
+                        <select id="edit_goal_category" name="category" class="form-input">
+                            <option value="">Select Category</option>
+                            <option value="skating">Skating</option>
+                            <option value="shooting">Shooting</option>
+                            <option value="passing">Passing</option>
+                            <option value="stickhandling">Stickhandling</option>
                             <option value="fitness">Fitness</option>
-                            <option value="performance">Performance</option>
+                            <option value="mental">Mental</option>
+                            <option value="general">General</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label for="edit_target_value">Target Value *</label>
-                        <input type="number" id="edit_target_value" name="target_value" class="form-input" required>
+                        <label for="edit_goal_tags">Tags</label>
+                        <input type="text" id="edit_goal_tags" name="tags" class="form-input" placeholder="Comma-separated tags">
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="edit_target_value">Target Value</label>
+                        <input type="number" id="edit_target_value" name="target_value" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
                         <label for="edit_current_value">Current Value</label>
                         <input type="number" id="edit_current_value" name="current_value" class="form-input">
                     </div>
-                    
+                </div>
+                
+                <div class="form-row">
                     <div class="form-group">
                         <label for="edit_target_date">Target Date</label>
                         <input type="date" id="edit_target_date" name="target_date" class="form-input">
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="edit_goal_status">Status</label>
-                    <select id="edit_goal_status" name="status" class="form-input">
-                        <option value="active">Active</option>
-                        <option value="completed">Completed</option>
-                        <option value="paused">Paused</option>
-                    </select>
+                    
+                    <div class="form-group">
+                        <label for="edit_goal_status">Status</label>
+                        <select id="edit_goal_status" name="status" class="form-input">
+                            <option value="active">Active</option>
+                            <option value="completed">Completed</option>
+                            <option value="paused">Paused</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
@@ -400,7 +411,24 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-goal-modal"]').
         e.preventDefault();
         var goalId = this.getAttribute('data-id');
         document.getElementById('edit-goal-id').value = goalId;
-        // TODO: Fetch goal data via AJAX and populate form
+        
+        // Fetch goal data via AJAX and populate form
+        fetch('process_goals.php?action=get_goal&goal_id=' + goalId)
+            .then(function(response) { return response.json(); })
+            .then(function(goal) {
+                document.getElementById('edit_goal_title').value = goal.title || '';
+                document.getElementById('edit_goal_description').value = goal.description || '';
+                document.getElementById('edit_goal_category').value = goal.category || '';
+                document.getElementById('edit_goal_tags').value = goal.tags || '';
+                document.getElementById('edit_target_value').value = goal.target_value || '';
+                document.getElementById('edit_current_value').value = goal.current_value || '';
+                document.getElementById('edit_target_date').value = goal.target_date || '';
+                document.getElementById('edit_goal_status').value = goal.status || 'active';
+            })
+            .catch(function(err) {
+                console.error('Error fetching goal data:', err);
+            });
+        
         openModal('edit-goal-modal');
     });
 });
