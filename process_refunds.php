@@ -257,8 +257,13 @@ try {
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', NOW())
                     ");
                     
-                    $session_date = date('Y-m-d', strtotime($template_data['session_date']));
-                    $session_time = date('H:i:s', strtotime($template_data['session_date']));
+                    // Parse session_date and validate
+                    $timestamp = strtotime($template_data['session_date']);
+                    if ($timestamp === false) {
+                        throw new Exception('Invalid session date format');
+                    }
+                    $session_date = date('Y-m-d', $timestamp);
+                    $session_time = date('H:i:s', $timestamp);
                     
                     $stmt->execute([
                         $template_data['session_type_id'],
