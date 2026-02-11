@@ -1525,11 +1525,6 @@ function closeTemplateModal() {
 function editTemplate(templateId, templateName) {
     document.getElementById('edit-template-id').value = templateId;
     document.getElementById('edit-template-name').value = templateName;
-    document.getElementById('edit-template-description').value = '';
-    document.getElementById('edit-template-type').value = '';
-    document.getElementById('edit-external-id').value = '';
-    document.getElementById('edit-folder-name').value = '';
-    document.getElementById('edit-template-active').value = '1';
     
     // Fetch template details to populate all fields
     const csrfTokenEl = document.querySelector('[name="csrf_token"]');
@@ -1544,11 +1539,22 @@ function editTemplate(templateId, templateName) {
     .then(data => {
         if (data.success && data.template) {
             const t = data.template;
-            if (t.external_id) document.getElementById('edit-external-id').value = t.external_id;
-            if (t.folder_name) document.getElementById('edit-folder-name').value = t.folder_name;
+            document.getElementById('edit-external-id').value = t.external_id || '';
+            document.getElementById('edit-folder-name').value = t.folder_name || '';
+        } else {
+            document.getElementById('edit-external-id').value = '';
+            document.getElementById('edit-folder-name').value = '';
         }
     })
-    .catch(() => {});
+    .catch(() => {
+        document.getElementById('edit-external-id').value = '';
+        document.getElementById('edit-folder-name').value = '';
+    });
+    
+    // Reset fields that are local-only (not from DocuSeal API)
+    document.getElementById('edit-template-description').value = '';
+    document.getElementById('edit-template-type').value = '';
+    document.getElementById('edit-template-active').value = '1';
     
     document.getElementById('edit-template-modal').style.display = 'flex';
 }

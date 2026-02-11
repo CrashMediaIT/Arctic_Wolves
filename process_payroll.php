@@ -351,7 +351,7 @@ if ($action === 'update_employee') {
                 pension_enrolled = ?,
                 pension_contribution_rate = ?,
                 employer_pension_match = ?,
-                start_date = COALESCE(?, start_date),
+                start_date = ?,
                 federal_td1_claim = ?,
                 provincial_td1_claim = ?,
                 additional_tax_deduction = ?,
