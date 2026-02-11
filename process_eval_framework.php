@@ -467,7 +467,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (count($parts) !== 3) {
                         throw new Exception('Invalid template session format');
                     }
-                    $session_template_id = intval($parts[1]);
+                    $extracted_template_id = intval($parts[1]);
                     $date_id = intval($parts[2]);
                     
                     // Get template and date information
@@ -478,7 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id
                         WHERE tst.id = ? AND tsd.id = ? AND tst.is_active = 1 AND tsd.is_active = 1
                     ");
-                    $stmt->execute([$session_template_id, $date_id]);
+                    $stmt->execute([$extracted_template_id, $date_id]);
                     $template_data = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if (!$template_data) {

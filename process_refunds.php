@@ -224,7 +224,7 @@ try {
                 $actual_session_id = $exchange_session_id;
                 
                 // Check if this is a template-based session (format: template_{template_id}_{date_id})
-                if (is_string($exchange_session_id) && strpos($exchange_session_id, 'template_') === 0) {
+                if (strpos($exchange_session_id, 'template_') === 0) {
                     // Extract template_id and date_id
                     $parts = explode('_', $exchange_session_id);
                     if (count($parts) !== 3) {
