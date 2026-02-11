@@ -63,10 +63,26 @@ $user_id = $_SESSION['user_id'];
 try {
     switch ($action) {
         case 'get_upcoming_sessions':
+            // Include both regular sessions and template-based sessions from products catalog
             $stmt = $pdo->query("
-                SELECT id, title, session_date, session_time
+                SELECT id, title, session_date, session_time,
+                       'session' as source_type, NULL as template_id, NULL as date_id
                 FROM sessions
                 WHERE session_date >= CURDATE()
+                
+                UNION ALL
+                
+                SELECT CONCAT('template_', tst.id, '_', tsd.id) as id,
+                       tst.name as title,
+                       DATE(tsd.session_date) as session_date,
+                       TIME(tsd.session_date) as session_time,
+                       'template' as source_type, tst.id as template_id, tsd.id as date_id
+                FROM training_session_templates tst
+                INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+                WHERE tst.is_active = 1
+                AND tsd.session_date >= CURDATE()
+                AND tsd.session_id IS NULL
+                
                 ORDER BY session_date ASC, session_time ASC
                 LIMIT 100
             ");
@@ -205,13 +221,83 @@ try {
                     throw new Exception('Exchange session not specified');
                 }
                 
-                // Validate exchange session exists
-                $session_check = $pdo->prepare("SELECT title, price FROM sessions WHERE id = ?");
-                $session_check->execute([$exchange_session_id]);
-                $exchange_session = $session_check->fetch();
+                $actual_session_id = $exchange_session_id;
                 
-                if (!$exchange_session) {
-                    throw new Exception('Exchange session not found');
+                // Check if this is a template-based session (format: template_{template_id}_{date_id})
+                if (strpos($exchange_session_id, 'template_') === 0) {
+                    // Extract template_id and date_id
+                    $parts = explode('_', $exchange_session_id);
+                    if (count($parts) !== 3) {
+                        throw new Exception('Invalid template session format');
+                    }
+                    $template_id = intval($parts[1]);
+                    $date_id = intval($parts[2]);
+                    
+                    // Get template and date information
+                    $stmt = $pdo->prepare("
+                        SELECT tst.*, tsd.session_date, tsd.team_id,
+                               COALESCE(tsd.max_participants, tst.max_participants) as max_participants
+                        FROM training_session_templates tst
+                        INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id
+                        WHERE tst.id = ? AND tsd.id = ? AND tst.is_active = 1 AND tsd.is_active = 1
+                    ");
+                    $stmt->execute([$template_id, $date_id]);
+                    $template_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$template_data) {
+                        throw new Exception('Template session not found or inactive');
+                    }
+                    
+                    // Create a session record from the template
+                    $stmt = $pdo->prepare("
+                        INSERT INTO sessions (
+                            session_type_id, coach_id, location_id, title, description,
+                            session_date, session_time, duration_minutes, price, max_participants,
+                            team_id, status, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', NOW())
+                    ");
+                    
+                    // Parse session_date and validate
+                    $timestamp = strtotime($template_data['session_date']);
+                    if ($timestamp === false) {
+                        throw new Exception('Invalid session date format');
+                    }
+                    $session_date = date('Y-m-d', $timestamp);
+                    $session_time = date('H:i:s', $timestamp);
+                    
+                    $stmt->execute([
+                        $template_data['session_type_id'],
+                        $template_data['coach_id'],
+                        $template_data['location_id'],
+                        $template_data['name'],
+                        $template_data['description'],
+                        $session_date,
+                        $session_time,
+                        $template_data['duration_minutes'],
+                        $template_data['price'],
+                        $template_data['max_participants'],
+                        $template_data['team_id']
+                    ]);
+                    
+                    $actual_session_id = $pdo->lastInsertId();
+                    
+                    // Link the training_session_date to this new session
+                    $stmt = $pdo->prepare("UPDATE training_session_dates SET session_id = ? WHERE id = ?");
+                    $stmt->execute([$actual_session_id, $date_id]);
+                    
+                    $exchange_session = [
+                        'title' => $template_data['name'],
+                        'price' => $template_data['price']
+                    ];
+                } else {
+                    // Regular session - validate it exists
+                    $session_check = $pdo->prepare("SELECT title, price FROM sessions WHERE id = ?");
+                    $session_check->execute([$actual_session_id]);
+                    $exchange_session = $session_check->fetch();
+                    
+                    if (!$exchange_session) {
+                        throw new Exception('Exchange session not found');
+                    }
                 }
                 
                 // Create new booking for exchange session
@@ -221,7 +307,7 @@ try {
                 ");
                 $exchange_booking->execute([
                     $booking['user_id'],
-                    $exchange_session_id,
+                    $actual_session_id,
                     0, // No new payment
                     $exchange_session['price'],
                     0,
@@ -242,7 +328,7 @@ try {
                 $booking['amount_paid'],
                 $method === 'refund' ? $refund_amount : 0,
                 $credit_amount,
-                $exchange_session_id,
+                $method === 'exchange' ? $actual_session_id : null,
                 $reason,
                 $stripe_refund_id
             ]);

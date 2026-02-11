@@ -446,9 +446,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'assign_to_session':
                 $template_id = intval($_POST['template_id'] ?? 0);
-                $session_id = intval($_POST['session_id'] ?? 0);
+                $session_id_input = $_POST['session_id'] ?? '';
                 
-                if ($template_id <= 0 || $session_id <= 0) {
+                if ($template_id <= 0 || empty($session_id_input)) {
                     throw new Exception('Please select both an evaluation and a session');
                 }
                 
@@ -460,11 +460,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Evaluation not found');
                 }
                 
-                // Verify session exists
-                $check = $pdo->prepare("SELECT id FROM sessions WHERE id = ?");
-                $check->execute([$session_id]);
-                if (!$check->fetch()) {
-                    throw new Exception('Session not found');
+                // Check if this is a template-based session (format: template_{template_id}_{date_id})
+                if (strpos($session_id_input, 'template_') === 0) {
+                    // Extract template_id and date_id from the session_id
+                    $parts = explode('_', $session_id_input);
+                    if (count($parts) !== 3) {
+                        throw new Exception('Invalid template session format');
+                    }
+                    $extracted_template_id = intval($parts[1]);
+                    $date_id = intval($parts[2]);
+                    
+                    // Get template and date information
+                    $stmt = $pdo->prepare("
+                        SELECT tst.*, tsd.session_date, tsd.team_id,
+                               COALESCE(tsd.max_participants, tst.max_participants) as max_participants
+                        FROM training_session_templates tst
+                        INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id
+                        WHERE tst.id = ? AND tsd.id = ? AND tst.is_active = 1 AND tsd.is_active = 1
+                    ");
+                    $stmt->execute([$extracted_template_id, $date_id]);
+                    $template_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$template_data) {
+                        throw new Exception('Template session not found or inactive');
+                    }
+                    
+                    // Create a session record from the template
+                    $stmt = $pdo->prepare("
+                        INSERT INTO sessions (
+                            session_type_id, coach_id, location_id, title, description,
+                            session_date, session_time, duration_minutes, price, max_participants,
+                            team_id, status, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', NOW())
+                    ");
+                    
+                    // Parse session_date and validate
+                    $timestamp = strtotime($template_data['session_date']);
+                    if ($timestamp === false) {
+                        throw new Exception('Invalid session date format');
+                    }
+                    $session_date = date('Y-m-d', $timestamp);
+                    $session_time = date('H:i:s', $timestamp);
+                    
+                    $stmt->execute([
+                        $template_data['session_type_id'],
+                        $template_data['coach_id'],
+                        $template_data['location_id'],
+                        $template_data['name'],
+                        $template_data['description'],
+                        $session_date,
+                        $session_time,
+                        $template_data['duration_minutes'],
+                        $template_data['price'],
+                        $template_data['max_participants'],
+                        $template_data['team_id']
+                    ]);
+                    
+                    $session_id = $pdo->lastInsertId();
+                    
+                    // Link the training_session_date to this new session
+                    $stmt = $pdo->prepare("UPDATE training_session_dates SET session_id = ? WHERE id = ?");
+                    $stmt->execute([$session_id, $date_id]);
+                } else {
+                    // Regular session
+                    $session_id = intval($session_id_input);
+                    
+                    if ($session_id <= 0) {
+                        throw new Exception('Invalid session ID');
+                    }
+                    
+                    // Verify session exists
+                    $check = $pdo->prepare("SELECT id FROM sessions WHERE id = ?");
+                    $check->execute([$session_id]);
+                    if (!$check->fetch()) {
+                        throw new Exception('Session not found');
+                    }
                 }
                 
                 // Check if session already has this evaluation assigned
@@ -549,17 +619,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'get_available_sessions':
                 header('Content-Type: application/json');
+                // Include both regular sessions and template-based sessions from products catalog
                 $stmt = $pdo->prepare("
                     SELECT s.id, s.title, s.session_date, s.session_time,
                            COALESCE(l.name, 'TBD') as location_name,
-                           GROUP_CONCAT(DISTINCT pkg.name ORDER BY pkg.name SEPARATOR ', ') as package_names
+                           GROUP_CONCAT(DISTINCT pkg.name ORDER BY pkg.name SEPARATOR ', ') as package_names,
+                           'session' as source_type, NULL as template_id, NULL as date_id
                     FROM sessions s
                     LEFT JOIN locations l ON s.location_id = l.id
                     LEFT JOIN package_sessions ps ON ps.session_id = s.id
                     LEFT JOIN packages pkg ON ps.package_id = pkg.id
                     WHERE s.session_date >= CURDATE()
                     GROUP BY s.id, s.title, s.session_date, s.session_time, l.name
-                    ORDER BY s.session_date ASC
+                    
+                    UNION ALL
+                    
+                    SELECT CONCAT('template_', tst.id, '_', tsd.id) as id,
+                           tst.name as title,
+                           DATE(tsd.session_date) as session_date,
+                           TIME(tsd.session_date) as session_time,
+                           COALESCE(l.name, 'TBD') as location_name,
+                           GROUP_CONCAT(DISTINCT pkg.name ORDER BY pkg.name SEPARATOR ', ') as package_names,
+                           'template' as source_type, tst.id as template_id, tsd.id as date_id
+                    FROM training_session_templates tst
+                    INNER JOIN training_session_dates tsd ON tsd.template_id = tst.id AND tsd.is_active = 1
+                    LEFT JOIN locations l ON tst.location_id = l.id
+                    LEFT JOIN package_sessions ps ON ps.template_id = tst.id
+                    LEFT JOIN packages pkg ON ps.package_id = pkg.id
+                    WHERE tst.is_active = 1
+                    AND tsd.session_date >= CURDATE()
+                    AND tsd.session_id IS NULL
+                    GROUP BY tst.id, tsd.id, tst.name, tsd.session_date, l.name
+                    
+                    ORDER BY session_date ASC
                     LIMIT 100
                 ");
                 $stmt->execute();
