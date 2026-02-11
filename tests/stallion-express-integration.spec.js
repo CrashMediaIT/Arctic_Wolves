@@ -225,11 +225,11 @@ test.describe('Stallion Express - POS Online Orders View', () => {
     expect(content).toContain('Access Denied');
   });
 
-  test('POS Online Orders should display order cards with actions', async () => {
+  test('POS Online Orders should display order table with actions', async () => {
     const viewPath = path.join(__dirname, '..', 'views', 'pos_online_orders.php');
     const content = fs.readFileSync(viewPath, 'utf-8');
     
-    expect(content).toContain('order-card');
+    expect(content).toContain('data-table');
     expect(content).toContain('order_number');
     expect(content).toContain('viewOrderDetails');
     expect(content).toContain('openShipOrder');

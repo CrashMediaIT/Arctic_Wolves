@@ -119,350 +119,192 @@ try {
 ?>
 
 <style>
-.pos-orders-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 16px;
-}
-.pos-orders-header .header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-.pos-orders-header .header-icon {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, var(--primary), #5a0080);
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    color: #fff;
-}
-.pos-orders-header h1 {
-    font-size: 24px;
-    font-weight: 800;
-    margin: 0;
-}
-.pos-orders-header .header-subtitle {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin: 4px 0 0 0;
-}
-.pos-stats {
-    display: flex;
-    gap: 20px;
-}
-.pos-stat {
-    text-align: center;
-}
-.pos-stat .stat-value {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--text-white);
-}
-.pos-stat .stat-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.pos-filters {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-    align-items: center;
-}
-.pos-filter-btn {
-    padding: 8px 16px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    color: var(--text-dim);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: 0.2s;
-    cursor: pointer;
-}
-.pos-filter-btn:hover,
-.pos-filter-btn.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-}
-.order-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 12px;
-    transition: 0.2s;
-}
-.order-card:hover {
-    border-color: var(--primary);
-}
-.order-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-.order-number {
-    font-weight: 700;
-    font-size: 16px;
-    color: var(--text-white);
-}
-.order-date {
-    font-size: 12px;
-    color: var(--text-dim);
-}
-.order-card-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-.order-detail-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-bottom: 4px;
-}
-.order-detail-value {
-    font-size: 14px;
-    color: var(--text-white);
-}
-.order-card-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-}
-.order-action-btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: 0.2s;
-}
-.order-action-btn.primary {
-    background: var(--primary);
-    color: #fff;
-}
-.order-action-btn.primary:hover {
-    opacity: 0.85;
-}
-.order-action-btn.secondary {
-    background: rgba(107, 70, 193, 0.1);
-    color: var(--primary-light);
-}
-.order-action-btn.secondary:hover {
-    background: rgba(107, 70, 193, 0.2);
-}
-.order-action-btn.success {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-}
-.order-action-btn.success:hover {
-    background: rgba(16, 185, 129, 0.2);
-}
-.order-action-btn.info {
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6;
-}
-.order-action-btn.info:hover {
-    background: rgba(59, 130, 246, 0.2);
-}
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-block;
-}
-.status-pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.status-paid { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-.status-processing { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
-.status-shipped { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
-.status-delivered { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-.status-cancelled { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-.status-refunded { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table thead { background: var(--bg-main); }
+.data-table th { padding: 16px 20px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid var(--border); }
+.data-table td { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-white); }
+.data-table tbody tr { transition: all 0.3s; }
+.data-table tbody tr:hover { background: rgba(107, 70, 193, 0.05); }
+.select-compact { padding: 6px 10px; font-size: 12px; width: auto; max-width: 120px; height: auto; }
 </style>
 
 <!-- Page Header -->
-<div class="pos-orders-header">
-    <div class="header-left">
-        <div class="header-icon">
-            <i class="fas fa-shipping-fast"></i>
-        </div>
-        <div>
-            <h1>Online Orders</h1>
-            <p class="header-subtitle">Fulfill orders and print shipping labels</p>
-        </div>
+<div class="page-header">
+    <div class="page-header-content">
+        <h1 class="page-title"><i class="fas fa-shipping-fast"></i> Online Orders</h1>
+        <p class="page-description">Fulfill orders and print shipping labels</p>
     </div>
-    <div class="pos-stats">
-        <div class="pos-stat">
-            <div class="stat-value" style="color: #10b981;"><?= intval($stats['ready_to_ship']) ?></div>
-            <div class="stat-label">Ready to Ship</div>
+    <div class="page-header-stats">
+        <div class="header-stat stat-success">
+            <span class="stat-value"><?= intval($stats['ready_to_ship']) ?></span>
+            <span class="stat-label">Ready to Ship</span>
         </div>
-        <div class="pos-stat">
-            <div class="stat-value" style="color: #3b82f6;"><?= intval($stats['processing_count']) ?></div>
-            <div class="stat-label">Processing</div>
+        <div class="header-stat stat-info">
+            <span class="stat-value"><?= intval($stats['processing_count']) ?></span>
+            <span class="stat-label">Processing</span>
         </div>
-        <div class="pos-stat">
-            <div class="stat-value" style="color: #8b5cf6;"><?= intval($stats['shipped_count']) ?></div>
-            <div class="stat-label">Shipped</div>
+        <div class="header-stat stat-primary">
+            <span class="stat-value"><?= intval($stats['shipped_count']) ?></span>
+            <span class="stat-label">Shipped</span>
         </div>
-        <div class="pos-stat">
-            <div class="stat-value"><?= intval($stats['total_orders']) ?></div>
-            <div class="stat-label">Total</div>
+        <div class="header-stat">
+            <span class="stat-value"><?= intval($stats['total_orders']) ?></span>
+            <span class="stat-label">Total</span>
         </div>
     </div>
 </div>
 
 <!-- Filters -->
-<div class="pos-filters">
-    <a href="?page=pos_online_orders" class="pos-filter-btn <?= empty($statusFilter) ? 'active' : '' ?>">All Orders</a>
-    <a href="?page=pos_online_orders&status=paid" class="pos-filter-btn <?= $statusFilter === 'paid' ? 'active' : '' ?>">
-        <i class="fas fa-check-circle"></i> Ready to Ship
-    </a>
-    <a href="?page=pos_online_orders&status=processing" class="pos-filter-btn <?= $statusFilter === 'processing' ? 'active' : '' ?>">
-        <i class="fas fa-spinner"></i> Processing
-    </a>
-    <a href="?page=pos_online_orders&status=shipped" class="pos-filter-btn <?= $statusFilter === 'shipped' ? 'active' : '' ?>">
-        <i class="fas fa-truck"></i> Shipped
-    </a>
-    <a href="?page=pos_online_orders&status=delivered" class="pos-filter-btn <?= $statusFilter === 'delivered' ? 'active' : '' ?>">
-        <i class="fas fa-box-open"></i> Delivered
-    </a>
-    
-    <div style="flex-grow: 1;"></div>
-    
-    <form method="GET" style="display: flex; gap: 8px;">
-        <input type="hidden" name="page" value="pos_online_orders">
-        <?php if ($statusFilter): ?><input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>"><?php endif; ?>
-        <input type="text" name="search" placeholder="Search orders..." value="<?= htmlspecialchars($searchQuery) ?>" class="form-input" style="width: 200px; padding: 8px 14px; font-size: 13px;">
-        <button type="submit" class="order-action-btn primary"><i class="fas fa-search"></i></button>
-    </form>
+<div class="filter-box">
+    <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Orders</div>
+    <div class="filter-box-content">
+        <form method="GET" action="" class="filter-row">
+            <input type="hidden" name="page" value="pos_online_orders">
+            <div class="filter-field">
+                <label>Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="pending" <?= $statusFilter === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="paid" <?= $statusFilter === 'paid' ? 'selected' : '' ?>>Ready to Ship</option>
+                    <option value="processing" <?= $statusFilter === 'processing' ? 'selected' : '' ?>>Processing</option>
+                    <option value="shipped" <?= $statusFilter === 'shipped' ? 'selected' : '' ?>>Shipped</option>
+                    <option value="delivered" <?= $statusFilter === 'delivered' ? 'selected' : '' ?>>Delivered</option>
+                    <option value="cancelled" <?= $statusFilter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                    <option value="refunded" <?= $statusFilter === 'refunded' ? 'selected' : '' ?>>Refunded</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Search</label>
+                <input type="text" name="search" placeholder="Order # or email..." value="<?= htmlspecialchars($searchQuery) ?>" class="form-input">
+            </div>
+            <div class="filter-field filter-actions">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                <a href="?page=pos_online_orders" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Orders List -->
-<?php if (empty($orders)): ?>
-    <div style="text-align: center; padding: 60px 20px;">
-        <i class="fas fa-box" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
-        <p style="color: var(--text-dim); font-size: 16px;">No orders found.</p>
-        <?php if (!empty($statusFilter) || !empty($searchQuery)): ?>
-            <a href="?page=pos_online_orders" style="color: var(--primary-light); margin-top: 8px; display: inline-block;">Clear filters</a>
-        <?php endif; ?>
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-shopping-bag"></i> Orders<?php if (!empty($statusFilter)): ?> — <?= ucfirst(htmlspecialchars($statusFilter)) ?><?php endif; ?></h3>
     </div>
-<?php else: ?>
-    <?php foreach ($orders as $order): ?>
-        <div class="order-card">
-            <div class="order-card-header">
-                <div>
-                    <span class="order-number">#<?= htmlspecialchars($order['order_number']) ?></span>
-                    <span class="order-date" style="margin-left: 12px;"><?= date('M j, Y g:i A', strtotime($order['created_at'])) ?></span>
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <span class="status-badge status-<?= htmlspecialchars($order['status']) ?>"><?= ucfirst(htmlspecialchars($order['status'])) ?></span>
-                    <?php if (!empty($order['stallion_tracking'])): ?>
-                        <span class="status-badge" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
-                            <i class="fas fa-tag"></i> <?= htmlspecialchars($order['stallion_tracking']) ?>
-                        </span>
-                    <?php endif; ?>
-                </div>
-            </div>
-            
-            <div class="order-card-body">
-                <div>
-                    <div class="order-detail-label">Customer</div>
-                    <div class="order-detail-value">
-                        <?= htmlspecialchars(implode(' ', array_filter([$order['customer_first_name'] ?? '', $order['customer_last_name'] ?? '']))) ?>
-                        <div style="font-size: 12px; color: var(--text-dim);"><?= htmlspecialchars($order['customer_email'] ?? '') ?></div>
-                    </div>
-                </div>
-                <div>
-                    <div class="order-detail-label">Items</div>
-                    <div class="order-detail-value" style="font-size: 13px;">
-                        <?= htmlspecialchars($order['items_summary'] ?? $order['item_count'] . ' item(s)') ?>
-                    </div>
-                </div>
-                <div>
-                    <div class="order-detail-label">Total</div>
-                    <div class="order-detail-value" style="font-weight: 700; color: var(--primary-light);">$<?= number_format($order['total'] ?? 0, 2) ?></div>
-                </div>
-                <div>
-                    <div class="order-detail-label">Shipping Address</div>
-                    <div class="order-detail-value" style="font-size: 13px;">
-                        <?php
-                        $addr = $order['shipping_address_line1'] ?? $order['billing_address_line1'] ?? '';
-                        $city = $order['shipping_city'] ?? $order['billing_city'] ?? '';
-                        $prov = $order['shipping_state'] ?? $order['billing_state'] ?? '';
-                        $postal = $order['shipping_postal_code'] ?? $order['billing_postal_code'] ?? '';
-                        echo htmlspecialchars(implode(', ', array_filter([$addr, $city, $prov, $postal])));
-                        ?>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="order-card-actions">
-                <button class="order-action-btn secondary" onclick="viewOrderDetails(<?= intval($order['id']) ?>)">
-                    <i class="fas fa-eye"></i> Details
-                </button>
-                
-                <?php if (in_array($order['status'], ['paid', 'processing'])): ?>
-                    <?php if ($stallionEnabled): ?>
-                        <?php if (empty($order['label_id'])): ?>
-                            <button class="order-action-btn primary" onclick="openCreateLabel(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')">
-                                <i class="fas fa-tag"></i> Create Shipping Label
-                            </button>
-                        <?php else: ?>
-                            <button class="order-action-btn info" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)">
-                                <i class="fas fa-print"></i> Print Label
-                            </button>
-                        <?php endif; ?>
-                    <?php endif; ?>
-                    
-                    <button class="order-action-btn success" onclick="openShipOrder(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')">
-                        <i class="fas fa-shipping-fast"></i> Ship Order
-                    </button>
-                <?php endif; ?>
-                
-                <?php if (!empty($order['stallion_label_url']) && $order['status'] === 'shipped'): ?>
-                    <button class="order-action-btn info" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)">
-                        <i class="fas fa-print"></i> Reprint Label
-                    </button>
-                <?php endif; ?>
-                
-                <select class="form-input" style="padding: 6px 10px; font-size: 12px; max-width: 140px;" onchange="updateOrderStatus(<?= intval($order['id']) ?>, this.value)">
-                    <?php 
-                    $statuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
-                    foreach ($statuses as $status): 
-                    ?>
-                        <option value="<?= $status ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= ucfirst($status) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+    <div class="card-body">
+<?php if (empty($orders)): ?>
+        <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+            <i class="fas fa-box" style="font-size: 48px; color: var(--text-dim); margin-bottom: 16px;"></i>
+            <p style="color: var(--text-dim);">No orders found.</p>
+            <?php if (!empty($statusFilter) || !empty($searchQuery)): ?>
+                <a href="?page=pos_online_orders" class="btn btn-secondary" style="margin-top: 12px;"><i class="fas fa-times"></i> Clear Filters</a>
+            <?php endif; ?>
         </div>
-    <?php endforeach; ?>
+<?php else: ?>
+        <div class="table-responsive">
+            <table class="data-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Shipping</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($orders as $order): ?>
+                        <?php
+                        $statusBadgeMap = [
+                            'pending' => 'badge-warning',
+                            'paid' => 'badge-success',
+                            'processing' => 'badge-info',
+                            'shipped' => 'badge-primary',
+                            'delivered' => 'badge-success',
+                            'cancelled' => 'badge-danger',
+                            'refunded' => 'badge-secondary',
+                        ];
+                        $badgeClass = $statusBadgeMap[$order['status']] ?? 'badge-secondary';
+                        ?>
+                        <tr>
+                            <td><span style="font-weight: 600;">#<?= htmlspecialchars($order['order_number']) ?></span></td>
+                            <td>
+                                <div style="font-size: 13px;">
+                                    <?= date('M j, Y', strtotime($order['created_at'])) ?>
+                                    <div style="color: var(--text-dim); font-size: 11px;"><?= date('g:i A', strtotime($order['created_at'])) ?></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 500;"><?= htmlspecialchars(implode(' ', array_filter([$order['customer_first_name'] ?? '', $order['customer_last_name'] ?? '']))) ?></div>
+                                <div style="color: var(--text-dim); font-size: 12px;"><?= htmlspecialchars($order['customer_email'] ?? '') ?></div>
+                            </td>
+                            <td style="font-size: 13px;"><?= htmlspecialchars($order['items_summary'] ?? $order['item_count'] . ' item(s)') ?></td>
+                            <td style="font-weight: 600; color: var(--primary-light);">$<?= number_format($order['total'] ?? 0, 2) ?></td>
+                            <td style="font-size: 13px;">
+                                <?php
+                                $addr = $order['shipping_address_line1'] ?? $order['billing_address_line1'] ?? '';
+                                $city = $order['shipping_city'] ?? $order['billing_city'] ?? '';
+                                $prov = $order['shipping_state'] ?? $order['billing_state'] ?? '';
+                                $postal = $order['shipping_postal_code'] ?? $order['billing_postal_code'] ?? '';
+                                echo htmlspecialchars(implode(', ', array_filter([$addr, $city, $prov, $postal])));
+                                ?>
+                                <?php if (!empty($order['stallion_tracking'])): ?>
+                                    <div><span class="badge badge-primary"><i class="fas fa-tag"></i> <?= htmlspecialchars($order['stallion_tracking']) ?></span></div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <span class="badge <?= $badgeClass ?>"><?= ucfirst(htmlspecialchars($order['status'])) ?></span>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
+                                    <button class="btn btn-sm btn-secondary" onclick="viewOrderDetails(<?= intval($order['id']) ?>)" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    
+                                    <?php if (in_array($order['status'], ['paid', 'processing'])): ?>
+                                        <?php if ($stallionEnabled): ?>
+                                            <?php if (empty($order['label_id'])): ?>
+                                                <button class="btn btn-sm btn-primary" onclick="openCreateLabel(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Create Shipping Label">
+                                                    <i class="fas fa-tag"></i>
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn-sm btn-secondary" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)" title="Print Label">
+                                                    <i class="fas fa-print"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                        
+                                        <button class="btn btn-sm btn-success" onclick="openShipOrder(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Ship Order">
+                                            <i class="fas fa-shipping-fast"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($order['stallion_label_url']) && $order['status'] === 'shipped'): ?>
+                                        <button class="btn btn-sm btn-secondary" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)" title="Reprint Label">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                    
+                                    <select class="form-select select-compact" onchange="updateOrderStatus(<?= intval($order['id']) ?>, this.value)">
+                                        <?php 
+                                        $statuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+                                        foreach ($statuses as $status): 
+                                        ?>
+                                            <option value="<?= $status ?>" <?= $order['status'] === $status ? 'selected' : '' ?>><?= ucfirst($status) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
 <?php endif; ?>
+    </div>
+</div>
 
 <!-- Order Details Modal -->
 <div id="order-details-modal" class="modal">
@@ -537,7 +379,7 @@ try {
                 
                 <div class="form-group">
                     <label class="form-label">Shipping Carrier / Fulfillment *</label>
-                    <select name="shipping_carrier" class="form-input" required>
+                    <select name="shipping_carrier" class="form-select" required>
                         <option value="">-- Select Option --</option>
                         <option value="Stallion Express">Stallion Express (Multi-Carrier)</option>
                         <option value="Canada Post">Canada Post</option>
@@ -608,7 +450,7 @@ function viewOrderDetails(orderId) {
         .then(response => response.text())
         .then(html => { content.innerHTML = html; })
         .catch(error => {
-            content.innerHTML = '<p style="color: #ef4444; text-align: center;">Failed to load order details</p>';
+            content.innerHTML = '<p style="color: var(--error); text-align: center;">Failed to load order details</p>';
         });
 }
 

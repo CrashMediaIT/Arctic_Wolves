@@ -108,91 +108,33 @@ try {
 $in_finance_dashboard = (isset($tab) && in_array($tab, ['pos_transactions', 'shop_orders']));
 ?>
 
-<?php if (!$in_finance_dashboard): ?>
 <style>
-/* Shop Orders Page Header - Financial Reports Hub Style */
-.shop-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.shop-page-header .page-header-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-.shop-page-header .page-header-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), #5a0080);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(107, 70, 193, 0.3);
-}
-.shop-page-header .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0 0 4px 0;
-    letter-spacing: -0.5px;
-}
-.shop-page-header .page-description {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
-}
-.shop-page-header .page-header-stats {
-    display: flex;
-    gap: 24px;
-}
-.shop-page-header .header-stat {
-    text-align: center;
-}
-.shop-page-header .stat-value {
-    display: block;
-    font-size: 24px;
-    font-weight: 800;
-    color: var(--text-white);
-}
-.shop-page-header .stat-label {
-    display: block;
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 4px;
-}
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table thead { background: var(--bg-main); }
+.data-table th { padding: 16px 20px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid var(--border); }
+.data-table td { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-white); }
+.data-table tbody tr { transition: all 0.3s; }
+.data-table tbody tr:hover { background: rgba(107, 70, 193, 0.05); }
+.select-compact { padding: 6px 10px; font-size: 12px; width: auto; height: auto; }
 </style>
 
-<div class="shop-page-header">
+<?php if (!$in_finance_dashboard): ?>
+<div class="page-header">
     <div class="page-header-content">
-        <div class="page-header-icon">
-            <i class="fas fa-shopping-bag"></i>
-        </div>
-        <div class="page-header-text">
-            <h1 class="page-title">Shop Orders</h1>
-            <p class="page-description">Manage online merchandise orders</p>
-        </div>
+        <h1 class="page-title"><i class="fas fa-shopping-bag"></i> Shop Orders</h1>
+        <p class="page-description">Manage online merchandise orders</p>
     </div>
     <div class="page-header-stats">
         <div class="header-stat">
             <span class="stat-value"><?= $stats['total_orders'] ?? 0 ?></span>
             <span class="stat-label">Total Orders</span>
         </div>
-        <div class="header-stat">
-            <span class="stat-value" style="color: #f59e0b;"><?= $stats['pending_count'] ?? 0 ?></span>
+        <div class="header-stat stat-warning">
+            <span class="stat-value"><?= $stats['pending_count'] ?? 0 ?></span>
             <span class="stat-label">Pending</span>
         </div>
-        <div class="header-stat">
-            <span class="stat-value" style="color: #10b981;"><?= $stats['processing_count'] ?? 0 ?></span>
+        <div class="header-stat stat-success">
+            <span class="stat-value"><?= $stats['processing_count'] ?? 0 ?></span>
             <span class="stat-label">Processing</span>
         </div>
         <div class="header-stat">
@@ -205,42 +147,22 @@ $in_finance_dashboard = (isset($tab) && in_array($tab, ['pos_transactions', 'sho
 
 <!-- Stats Row for tab view -->
 <?php if ($in_finance_dashboard): ?>
-<div class="stats-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
-    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
-        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(107, 70, 193, 0.15); color: var(--primary);">
-            <i class="fas fa-shopping-bag"></i>
-        </div>
-        <div>
-            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;"><?= $stats['total_orders'] ?? 0 ?></h4>
-            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Orders</p>
-        </div>
+<div class="page-header-stats" style="margin-bottom: 24px;">
+    <div class="header-stat">
+        <span class="stat-value"><?= $stats['total_orders'] ?? 0 ?></span>
+        <span class="stat-label">Total Orders</span>
     </div>
-    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
-        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-            <i class="fas fa-clock"></i>
-        </div>
-        <div>
-            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;"><?= $stats['pending_count'] ?? 0 ?></h4>
-            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Pending</p>
-        </div>
+    <div class="header-stat stat-warning">
+        <span class="stat-value"><?= $stats['pending_count'] ?? 0 ?></span>
+        <span class="stat-label">Pending</span>
     </div>
-    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
-        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(16, 185, 129, 0.15); color: #10b981;">
-            <i class="fas fa-spinner"></i>
-        </div>
-        <div>
-            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;"><?= $stats['processing_count'] ?? 0 ?></h4>
-            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Processing</p>
-        </div>
+    <div class="header-stat stat-success">
+        <span class="stat-value"><?= $stats['processing_count'] ?? 0 ?></span>
+        <span class="stat-label">Processing</span>
     </div>
-    <div class="stat-card" style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
-        <div class="stat-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(16, 185, 129, 0.15); color: #10b981;">
-            <i class="fas fa-dollar-sign"></i>
-        </div>
-        <div>
-            <h4 style="font-size: 24px; font-weight: 800; color: var(--text-white); margin: 0;">$<?= number_format($stats['total_revenue'] ?? 0, 0) ?></h4>
-            <p style="font-size: 12px; color: var(--text-dim); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">Revenue</p>
-        </div>
+    <div class="header-stat stat-success">
+        <span class="stat-value">$<?= number_format($stats['total_revenue'] ?? 0, 0) ?></span>
+        <span class="stat-label">Revenue</span>
     </div>
 </div>
 <?php endif; ?>
@@ -250,28 +172,44 @@ $in_finance_dashboard = (isset($tab) && in_array($tab, ['pos_transactions', 'sho
 $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '?page=shop_orders';
 ?>
 
-<div class="content-card">
-    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <a href="<?= $baseUrl ?>" class="filter-btn <?= empty($statusFilter) ? 'active' : '' ?>">All</a>
-            <a href="<?= $baseUrl ?>&status=pending" class="filter-btn <?= $statusFilter === 'pending' ? 'active' : '' ?>">Pending</a>
-            <a href="<?= $baseUrl ?>&status=paid" class="filter-btn <?= $statusFilter === 'paid' ? 'active' : '' ?>">Paid</a>
-            <a href="<?= $baseUrl ?>&status=processing" class="filter-btn <?= $statusFilter === 'processing' ? 'active' : '' ?>">Processing</a>
-            <a href="<?= $baseUrl ?>&status=shipped" class="filter-btn <?= $statusFilter === 'shipped' ? 'active' : '' ?>">Shipped</a>
-            <a href="<?= $baseUrl ?>&status=delivered" class="filter-btn <?= $statusFilter === 'delivered' ? 'active' : '' ?>">Delivered</a>
-        </div>
-        
-        <form method="GET" action="" style="display: flex; gap: 10px;">
+<div class="filter-box">
+    <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Orders</div>
+    <div class="filter-box-content">
+        <form method="GET" action="" class="filter-row">
             <?php if ($in_finance_dashboard): ?>
             <input type="hidden" name="page" value="finance_dashboard">
             <input type="hidden" name="tab" value="shop_orders">
             <?php else: ?>
             <input type="hidden" name="page" value="shop_orders">
             <?php endif; ?>
-            <?php if ($statusFilter): ?><input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>"><?php endif; ?>
-            <input type="text" name="search" placeholder="Search orders..." value="<?= htmlspecialchars($searchQuery) ?>" class="form-input" style="width: 200px;">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+            <div class="filter-field">
+                <label>Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="pending" <?= $statusFilter === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="paid" <?= $statusFilter === 'paid' ? 'selected' : '' ?>>Paid</option>
+                    <option value="processing" <?= $statusFilter === 'processing' ? 'selected' : '' ?>>Processing</option>
+                    <option value="shipped" <?= $statusFilter === 'shipped' ? 'selected' : '' ?>>Shipped</option>
+                    <option value="delivered" <?= $statusFilter === 'delivered' ? 'selected' : '' ?>>Delivered</option>
+                    <option value="cancelled" <?= $statusFilter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                    <option value="refunded" <?= $statusFilter === 'refunded' ? 'selected' : '' ?>>Refunded</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Search</label>
+                <input type="text" name="search" placeholder="Order #, email, or name..." value="<?= htmlspecialchars($searchQuery) ?>" class="form-input">
+            </div>
+            <div class="filter-field filter-actions">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                <a href="<?= $baseUrl ?>" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+            </div>
         </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-shopping-bag"></i> Orders<?php if (!empty($statusFilter)): ?> — <?= ucfirst(htmlspecialchars($statusFilter)) ?><?php endif; ?></h3>
     </div>
     
     <div class="card-body">
@@ -315,21 +253,21 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                                 <td style="font-weight: 600; color: var(--primary);">$<?= number_format($order['total'], 2) ?></td>
                                 <td>
                                     <?php
-                                    $paymentColors = [
-                                        'pending' => '#f59e0b',
-                                        'paid' => '#10b981',
-                                        'failed' => '#ef4444',
-                                        'refunded' => '#8b5cf6',
-                                        'partially_refunded' => '#3b82f6'
+                                    $paymentBadgeMap = [
+                                        'pending' => 'badge-warning',
+                                        'paid' => 'badge-success',
+                                        'failed' => 'badge-danger',
+                                        'refunded' => 'badge-primary',
+                                        'partially_refunded' => 'badge-info'
                                     ];
-                                    $paymentColor = $paymentColors[$order['payment_status']] ?? '#6b7280';
+                                    $paymentBadge = $paymentBadgeMap[$order['payment_status']] ?? 'badge-secondary';
                                     ?>
-                                    <span style="padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: <?= $paymentColor ?>20; color: <?= $paymentColor ?>;">
+                                    <span class="badge <?= $paymentBadge ?>">
                                         <?= ucfirst($order['payment_status']) ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <select class="form-input" style="padding: 6px 10px; font-size: 12px;" onchange="updateOrderStatus(<?= $order['id'] ?>, this.value)">
+                                    <select class="form-select select-compact" onchange="updateOrderStatus(<?= $order['id'] ?>, this.value)">
                                         <?php 
                                         $statuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
                                         foreach ($statuses as $status): 
@@ -340,11 +278,11 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                                 </td>
                                 <td>
                                     <div style="display: flex; gap: 4px;">
-                                        <button class="btn-action" onclick="viewOrderDetails(<?= $order['id'] ?>)" title="View Details" style="padding: 6px 10px; border: none; border-radius: 6px; background: rgba(107, 70, 193, 0.1); color: var(--primary-light); cursor: pointer;">
+                                        <button class="btn btn-sm btn-secondary" onclick="viewOrderDetails(<?= $order['id'] ?>)" title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <?php if (in_array($order['status'], ['paid', 'processing'])): ?>
-                                        <button class="btn-action" onclick="openShipOrder(<?= $order['id'] ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Ship Order" style="padding: 6px 10px; border: none; border-radius: 6px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; cursor: pointer;">
+                                        <button class="btn btn-sm btn-primary" onclick="openShipOrder(<?= $order['id'] ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Ship Order">
                                             <i class="fas fa-shipping-fast"></i>
                                         </button>
                                         <?php endif; ?>
@@ -410,7 +348,7 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                 
                 <div class="form-group">
                     <label class="form-label">Shipping Carrier / Fulfillment *</label>
-                    <select name="shipping_carrier" class="form-input" required>
+                    <select name="shipping_carrier" class="form-select" required>
                         <option value="">-- Select Option --</option>
                         <option value="Stallion Express">Stallion Express (Multi-Carrier)</option>
                         <option value="Canada Post">Canada Post</option>
@@ -448,48 +386,6 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
     </div>
 </div>
 
-<style>
-.filter-btn {
-    padding: 8px 16px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    color: var(--text-dim);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: 0.2s;
-}
-
-.filter-btn:hover,
-.filter-btn.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-}
-
-.data-table {
-    border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-    padding: 14px 12px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-}
-
-.data-table th {
-    font-size: 12px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    font-weight: 600;
-}
-
-.data-table tr:hover {
-    background: rgba(107, 70, 193, 0.05);
-}
-</style>
 
 <script>
 function updateOrderStatus(orderId, newStatus) {
@@ -526,7 +422,7 @@ function viewOrderDetails(orderId) {
             content.innerHTML = html;
         })
         .catch(error => {
-            content.innerHTML = '<p style="color: #ef4444; text-align: center;">Failed to load order details</p>';
+            content.innerHTML = '<p style="color: var(--error); text-align: center;">Failed to load order details</p>';
         });
 }
 
