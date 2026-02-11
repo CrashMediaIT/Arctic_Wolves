@@ -268,6 +268,12 @@ $filterCategory = $_GET['category'] ?? '';
                                     <button class="btn-action" onclick='manageInventory(<?= json_encode(["id" => $product["id"], "name" => $product["name"]]) ?>)' title="Manage Inventory" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(16, 185, 129, 0.1); color: #10b981; cursor: pointer;">
                                         <i class="fas fa-warehouse"></i>
                                     </button>
+                                    <button class="btn-action" onclick='recordShipment(<?= json_encode(["id" => $product["id"], "name" => $product["name"]]) ?>)' title="Record Shipment" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; cursor: pointer;">
+                                        <i class="fas fa-truck"></i>
+                                    </button>
+                                    <button class="btn-action" onclick='stockAudit(<?= json_encode(["id" => $product["id"], "name" => $product["name"]]) ?>)' title="Stock Audit" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(168, 85, 247, 0.1); color: #a855f7; cursor: pointer;">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </button>
                                     <button class="btn-action" onclick="toggleProductStatus(<?= intval($product['id']) ?>, <?= intval($product['is_active']) ?>)" title="<?= $product['is_active'] ? 'Deactivate' : 'Activate' ?>" style="padding: 8px 12px; border: none; border-radius: 6px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; cursor: pointer;">
                                         <i class="fas fa-toggle-<?= $product['is_active'] ? 'on' : 'off' ?>"></i>
                                     </button>
@@ -512,6 +518,132 @@ $filterCategory = $_GET['category'] ?? '';
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Inventory</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Record Shipment Modal -->
+<div id="shipment-modal" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-truck"></i> Record Shipment - <span id="shipment-product-name"></span></h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('shipment-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_merchandise_products.php" id="shipment-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="record_shipment">
+            <input type="hidden" name="product_id" id="shipment-product-id">
+            
+            <div class="modal-body">
+                <p style="color: var(--text-dim); margin-bottom: 16px;">Enter the quantities received in this shipment. Current stock will be increased by the amounts entered.</p>
+                
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Reference / PO Number</label>
+                        <input type="text" name="reference" class="form-input" placeholder="e.g., PO-2024-001">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <input type="text" name="notes" class="form-input" placeholder="Optional notes about this shipment">
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 100px 120px; gap: 12px; margin-bottom: 8px; padding: 0 4px;">
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Size</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Current Stock</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Qty Received</span>
+                    </div>
+                    <div id="shipment-sizes-container">
+                        <!-- Size rows will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('shipment-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-truck"></i> Record Shipment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Stock Audit Modal -->
+<div id="audit-modal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-clipboard-check"></i> Stock Audit - <span id="audit-product-name"></span></h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('audit-modal')">&times;</button>
+        </div>
+        <form method="POST" action="process_merchandise_products.php" id="audit-form">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="stock_audit">
+            <input type="hidden" name="product_id" id="audit-product-id">
+            
+            <div class="modal-body">
+                <p style="color: var(--text-dim); margin-bottom: 16px;">Count the actual physical stock for each size and enter the numbers below. The system will compare against recorded levels and highlight any discrepancies.</p>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Audit Notes</label>
+                    <input type="text" name="audit_notes" class="form-input" placeholder="e.g., Monthly inventory count - January 2025">
+                </div>
+                
+                <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 100px 120px 100px; gap: 12px; margin-bottom: 8px; padding: 0 4px;">
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Size</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">System Qty</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Actual Count</span>
+                        <span style="font-weight: 600; font-size: 12px; text-transform: uppercase; color: var(--text-dim);">Difference</span>
+                    </div>
+                    <div id="audit-sizes-container">
+                        <!-- Size rows will be populated here -->
+                    </div>
+                </div>
+                
+                <div id="audit-summary" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2);">
+                    <p style="font-weight: 600; color: #f59e0b; margin-bottom: 4px;"><i class="fas fa-exclamation-triangle"></i> Discrepancies Detected</p>
+                    <p id="audit-summary-text" style="font-size: 13px; color: var(--text);"></p>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('audit-modal')"><i class="fas fa-times"></i> Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="viewAuditHistory()" id="audit-history-btn" style="display:none;"><i class="fas fa-history"></i> View History</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-clipboard-check"></i> Submit Audit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Stock History Modal -->
+<div id="stock-history-modal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 class="modal-title"><i class="fas fa-history"></i> Stock History - <span id="history-product-name"></span></h2>
+            <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('stock-history-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button type="button" class="btn btn-secondary history-tab active" onclick="switchHistoryTab('movements')" id="tab-movements"><i class="fas fa-exchange-alt"></i> Stock Movements</button>
+                <button type="button" class="btn btn-secondary history-tab" onclick="switchHistoryTab('audits')" id="tab-audits"><i class="fas fa-clipboard-check"></i> Audit History</button>
+            </div>
+            <div id="movements-content">
+                <div id="movements-loading" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    <p>Loading stock movements...</p>
+                </div>
+                <div id="movements-table" style="display: none;"></div>
+            </div>
+            <div id="audits-content" style="display: none;">
+                <div id="audits-loading" style="text-align: center; padding: 40px; color: var(--text-dim);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    <p>Loading audit history...</p>
+                </div>
+                <div id="audits-table" style="display: none;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('stock-history-modal')"><i class="fas fa-times"></i> Close</button>
+        </div>
     </div>
 </div>
 

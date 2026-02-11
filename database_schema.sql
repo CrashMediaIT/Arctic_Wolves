@@ -3340,6 +3340,58 @@ CREATE TABLE IF NOT EXISTS `merchandise_product_images` (
     INDEX `idx_primary` (`is_primary`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Merchandise Stock Movements (tracks shipments, audits, and adjustments)
+CREATE TABLE IF NOT EXISTS `merchandise_stock_movements` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `product_id` INT NOT NULL,
+    `size_id` INT DEFAULT NULL,
+    `movement_type` ENUM('shipment', 'audit_adjustment', 'manual_adjustment', 'sale', 'return') NOT NULL,
+    `quantity_before` INT NOT NULL DEFAULT 0,
+    `quantity_change` INT NOT NULL DEFAULT 0,
+    `quantity_after` INT NOT NULL DEFAULT 0,
+    `reference` VARCHAR(255) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`size_id`) REFERENCES `merchandise_product_sizes`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_product` (`product_id`),
+    INDEX `idx_size` (`size_id`),
+    INDEX `idx_movement_type` (`movement_type`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Merchandise Stock Audits (tracks audit sessions comparing system vs actual counts)
+CREATE TABLE IF NOT EXISTS `merchandise_stock_audits` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `product_id` INT NOT NULL,
+    `audit_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `status` ENUM('in_progress', 'completed') DEFAULT 'completed',
+    `notes` TEXT DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`product_id`) REFERENCES `merchandise_products`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_product` (`product_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Merchandise Stock Audit Items (individual size counts within an audit)
+CREATE TABLE IF NOT EXISTS `merchandise_stock_audit_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `audit_id` INT NOT NULL,
+    `size_id` INT NOT NULL,
+    `system_quantity` INT NOT NULL DEFAULT 0,
+    `actual_quantity` INT NOT NULL DEFAULT 0,
+    `discrepancy` INT NOT NULL DEFAULT 0,
+    FOREIGN KEY (`audit_id`) REFERENCES `merchandise_stock_audits`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`size_id`) REFERENCES `merchandise_product_sizes`(`id`) ON DELETE CASCADE,
+    INDEX `idx_audit` (`audit_id`),
+    INDEX `idx_size` (`size_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- =====================================================
 -- ONLINE SHOP AND POS SYSTEM TABLES
 -- =====================================================

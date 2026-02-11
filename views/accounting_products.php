@@ -2361,6 +2361,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 categoryOptions += '<option value="' + cat.id + '"' + selected + '>' + escapeHtml(cat.name) + '</option>';
             });
             
+            // Build existing size rows
+            var sizeRowsHtml = '';
+            if (data.sizes && data.sizes.length > 0) {
+                data.sizes.forEach(function(size) {
+                    sizeRowsHtml += '<div class="size-stock-row">' +
+                        '<input type="hidden" name="size_ids[]" value="' + size.id + '">' +
+                        '<input type="text" name="sizes[]" class="form-input size-input" value="' + escapeHtml(size.size) + '" placeholder="Size" aria-label="Size name">' +
+                        '<input type="number" name="quantities[]" class="form-input qty-input" min="0" value="' + (size.quantity || 0) + '" placeholder="Qty" aria-label="Quantity">' +
+                        '<button type="button" class="btn-action danger remove-size-btn" onclick="removeSizeRow(this)" title="Remove size" aria-label="Remove this size"><i class="fas fa-trash"></i></button>' +
+                    '</div>';
+                });
+            } else {
+                sizeRowsHtml = '<div class="size-stock-row">' +
+                    '<input type="hidden" name="size_ids[]" value="">' +
+                    '<input type="text" name="sizes[]" class="form-input size-input" placeholder="Size (e.g., S, M, L, XL)" aria-label="Size name">' +
+                    '<input type="number" name="quantities[]" class="form-input qty-input" min="0" value="0" placeholder="Qty" aria-label="Quantity">' +
+                    '<button type="button" class="btn-action danger remove-size-btn" onclick="removeSizeRow(this)" title="Remove size" aria-label="Remove this size"><i class="fas fa-trash"></i></button>' +
+                '</div>';
+            }
+            
             container.innerHTML = 
                 '<form method="POST" action="process_merchandise_products.php" id="edit-merchandise-product-form" enctype="multipart/form-data">' +
                 '<input type="hidden" name="csrf_token" value="' + csrfToken + '">' +
@@ -2401,19 +2421,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<input type="file" name="image" class="form-input" accept="image/*">' +
                     (data.image_url ? '<div style="margin-top: 8px;"><img src="' + escapeHtml(data.image_url) + '" style="max-width: 150px; max-height: 100px; border-radius: 8px; object-fit: cover;"></div>' : '') +
                 '</div>' +
+                '<div class="form-group">' +
+                    '<label class="form-label">Size & Stock Options</label>' +
+                    '<div class="size-stock-container" id="edit-merch-sizes-container">' +
+                        sizeRowsHtml +
+                    '</div>' +
+                    '<button type="button" class="btn btn-secondary btn-sm add-size-btn" onclick="addEditMerchSizeRow()">' +
+                        '<i class="fas fa-plus"></i> Add Size' +
+                    '</button>' +
+                    '<small class="form-help">Add different sizes with their stock quantities. Leave empty for products without sizes.</small>' +
+                '</div>' +
                 '<div class="form-row">' +
+                    '<div class="form-group">' +
+                        '<label class="form-label">Track Inventory</label>' +
+                        '<select name="track_inventory" class="form-input">' +
+                            '<option value="1"' + (data.track_inventory == 1 ? ' selected' : '') + '>Yes - Track stock levels</option>' +
+                            '<option value="0"' + (data.track_inventory == 0 ? ' selected' : '') + '>No - Unlimited stock</option>' +
+                        '</select>' +
+                    '</div>' +
                     '<div class="form-group">' +
                         '<label class="form-label">Status</label>' +
                         '<select name="is_active" class="form-input">' +
                             '<option value="1"' + (data.is_active == 1 ? ' selected' : '') + '>Active</option>' +
                             '<option value="0"' + (data.is_active == 0 ? ' selected' : '') + '>Inactive</option>' +
                         '</select>' +
-                    '</div>' +
-                    '<div class="form-group">' +
-                        '<label class="skill-checkbox" style="display: flex; align-items: center; margin-top: 32px;">' +
-                            '<input type="checkbox" name="track_inventory" value="1"' + (data.track_inventory == 1 ? ' checked' : '') + ' style="margin-right: 8px;">' +
-                            '<span>Track Inventory</span>' +
-                        '</label>' +
                     '</div>' +
                 '</div>' +
                 '<div class="modal-footer" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">' +
@@ -2632,6 +2663,47 @@ function removeSizeRow(btn) {
     if (row) {
         row.remove();
     }
+}
+
+function addEditMerchSizeRow() {
+    var container = document.getElementById('edit-merch-sizes-container');
+    var newRow = document.createElement('div');
+    newRow.className = 'size-stock-row';
+    
+    var sizeIdInput = document.createElement('input');
+    sizeIdInput.type = 'hidden';
+    sizeIdInput.name = 'size_ids[]';
+    sizeIdInput.value = '';
+    
+    var sizeInput = document.createElement('input');
+    sizeInput.type = 'text';
+    sizeInput.name = 'sizes[]';
+    sizeInput.className = 'form-input size-input';
+    sizeInput.placeholder = 'Size (e.g., S, M, L, XL)';
+    sizeInput.setAttribute('aria-label', 'Size name');
+    
+    var qtyInput = document.createElement('input');
+    qtyInput.type = 'number';
+    qtyInput.name = 'quantities[]';
+    qtyInput.className = 'form-input qty-input';
+    qtyInput.min = '0';
+    qtyInput.value = '0';
+    qtyInput.placeholder = 'Qty';
+    qtyInput.setAttribute('aria-label', 'Quantity');
+    
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-action danger remove-size-btn';
+    removeBtn.title = 'Remove size';
+    removeBtn.setAttribute('aria-label', 'Remove this size');
+    removeBtn.onclick = function() { removeSizeRow(this); };
+    removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    
+    newRow.appendChild(sizeIdInput);
+    newRow.appendChild(sizeInput);
+    newRow.appendChild(qtyInput);
+    newRow.appendChild(removeBtn);
+    container.appendChild(newRow);
 }
 
 // Session date management
