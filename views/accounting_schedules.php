@@ -661,7 +661,7 @@ exit;
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Frequency *</label>
-                        <select name="frequency" id="editFrequency" class="form-input" required>
+                        <select name="frequency" id="editFrequency" class="form-input" required onchange="toggleEditScheduleDay()">
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
                             <option value="monthly">Monthly</option>
@@ -669,10 +669,31 @@ exit;
                             <option value="annually">Annually</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Time</label>
-                        <input type="time" name="time" id="editTime" class="form-input" value="09:00">
+                    <div class="form-group" id="editScheduleDayGroup" style="display: none;">
+                        <label class="form-label">Schedule Day</label>
+                        <select name="schedule_day" id="editScheduleDay" class="form-input">
+                            <option value="">Select Day</option>
+                            <option value="1">Monday / 1st</option>
+                            <option value="2">Tuesday / 2nd</option>
+                            <option value="3">Wednesday / 3rd</option>
+                            <option value="4">Thursday / 4th</option>
+                            <option value="5">Friday / 5th</option>
+                            <option value="6">Saturday / 6th</option>
+                            <option value="7">Sunday / 7th</option>
+                            <option value="8">8th</option>
+                            <option value="9">9th</option>
+                            <option value="10">10th</option>
+                            <option value="15">15th</option>
+                            <option value="20">20th</option>
+                            <option value="25">25th</option>
+                            <option value="28">28th</option>
+                        </select>
                     </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Time</label>
+                    <input type="time" name="time" id="editTime" class="form-input" value="09:00">
                 </div>
                 
                 <div class="form-group">
@@ -812,8 +833,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('editScheduleName').value = schedule.report_name || '';
                 document.getElementById('editReportType').value = schedule.report_type || '';
                 document.getElementById('editFrequency').value = schedule.schedule_frequency || 'weekly';
+                document.getElementById('editScheduleDay').value = schedule.schedule_day || '';
                 document.getElementById('editTime').value = schedule.schedule_time || '09:00';
                 document.getElementById('editRecipients').value = schedule.recipients || '';
+                
+                // Toggle schedule day visibility
+                toggleEditScheduleDay();
                 
                 // Set format
                 if (schedule.format === 'excel') {
@@ -872,6 +897,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function closeEditModal() {
     document.getElementById('edit-schedule-modal').classList.remove('active');
+}
+
+function toggleEditScheduleDay() {
+    var freq = document.getElementById('editFrequency').value;
+    var dayGroup = document.getElementById('editScheduleDayGroup');
+    if (freq === 'weekly' || freq === 'monthly') {
+        dayGroup.style.display = '';
+    } else {
+        dayGroup.style.display = 'none';
+    }
 }
 
 

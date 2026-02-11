@@ -132,6 +132,13 @@ if ($action === 'update') {
     $resolution_date = !empty($_POST['resolution_date']) ? $_POST['resolution_date'] : null;
     $corrective_actions = trim($_POST['corrective_actions'] ?? '');
     $new_note = trim($_POST['new_note'] ?? '');
+    $complaint_type = trim($_POST['complaint_type'] ?? '');
+    $category = trim($_POST['category'] ?? '');
+    $priority = trim($_POST['priority'] ?? '');
+    $confidentiality_level = trim($_POST['confidentiality_level'] ?? '');
+    $incident_date = !empty($_POST['incident_date']) ? $_POST['incident_date'] : null;
+    $incident_location = trim($_POST['incident_location'] ?? '');
+    $description = trim($_POST['description'] ?? '');
     
     if (!$complaint_id) {
         header("Location: dashboard.php?page=complaints&tab=list&error=invalid_complaint");
@@ -148,6 +155,13 @@ if ($action === 'update') {
                 resolution = :resolution,
                 resolution_date = :resolution_date,
                 corrective_actions = :corrective_actions,
+                complaint_type = COALESCE(NULLIF(:complaint_type, ''), complaint_type),
+                category = COALESCE(NULLIF(:category, ''), category),
+                priority = COALESCE(NULLIF(:priority, ''), priority),
+                confidentiality_level = COALESCE(NULLIF(:confidentiality_level, ''), confidentiality_level),
+                incident_date = COALESCE(:incident_date, incident_date),
+                incident_location = COALESCE(NULLIF(:incident_location, ''), incident_location),
+                description = COALESCE(NULLIF(:description, ''), description),
                 updated_at = NOW()
             WHERE id = :id
         ");
@@ -159,6 +173,13 @@ if ($action === 'update') {
             'resolution' => $resolution ?: null,
             'resolution_date' => $resolution_date,
             'corrective_actions' => $corrective_actions ?: null,
+            'complaint_type' => $complaint_type,
+            'category' => $category,
+            'priority' => $priority,
+            'confidentiality_level' => $confidentiality_level,
+            'incident_date' => $incident_date,
+            'incident_location' => $incident_location,
+            'description' => $description,
             'id' => $complaint_id
         ]);
         

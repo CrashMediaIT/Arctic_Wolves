@@ -585,6 +585,23 @@ $statusColors = [
                 </div>
                 
                 <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" id="edit-template-description" class="form-input" rows="3" placeholder="Template description"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Template Type</label>
+                    <select name="template_type" id="edit-template-type" class="form-input">
+                        <option value="">Select Type</option>
+                        <option value="employment">Employment Contract</option>
+                        <option value="nda">Non-Disclosure Agreement</option>
+                        <option value="contractor">Contractor Agreement</option>
+                        <option value="onboarding">Onboarding Document</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
                     <label>External ID (Optional)</label>
                     <input type="text" name="external_id" id="edit-external-id" class="form-input" placeholder="Your reference ID">
                 </div>
@@ -592,6 +609,14 @@ $statusColors = [
                 <div class="form-group">
                     <label>Folder Name (Optional)</label>
                     <input type="text" name="folder_name" id="edit-folder-name" class="form-input" placeholder="Organization folder">
+                </div>
+                
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="is_active" id="edit-template-active" class="form-input">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
                 </div>
                 
                 <div class="form-actions">
@@ -1500,8 +1525,31 @@ function closeTemplateModal() {
 function editTemplate(templateId, templateName) {
     document.getElementById('edit-template-id').value = templateId;
     document.getElementById('edit-template-name').value = templateName;
+    document.getElementById('edit-template-description').value = '';
+    document.getElementById('edit-template-type').value = '';
     document.getElementById('edit-external-id').value = '';
     document.getElementById('edit-folder-name').value = '';
+    document.getElementById('edit-template-active').value = '1';
+    
+    // Fetch template details to populate all fields
+    const csrfTokenEl = document.querySelector('[name="csrf_token"]');
+    const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
+    
+    fetch('process_employee_contracts.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=docuseal_get_template&template_id=' + templateId + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.template) {
+            const t = data.template;
+            if (t.external_id) document.getElementById('edit-external-id').value = t.external_id;
+            if (t.folder_name) document.getElementById('edit-folder-name').value = t.folder_name;
+        }
+    })
+    .catch(() => {});
+    
     document.getElementById('edit-template-modal').style.display = 'flex';
 }
 

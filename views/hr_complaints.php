@@ -758,6 +758,28 @@ $next_complaint_number = generateComplaintNumber($pdo);
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-group">
+                        <label class="form-label">Complaint Type</label>
+                        <select name="complaint_type" id="editComplaintType" class="form-input">
+                            <option value="internal">Internal</option>
+                            <option value="external">External</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select name="category" id="editCategory" class="form-input">
+                            <option value="">Select Category</option>
+                            <option value="harassment">Harassment</option>
+                            <option value="discrimination">Discrimination</option>
+                            <option value="safety">Safety</option>
+                            <option value="conduct">Conduct</option>
+                            <option value="policy_violation">Policy Violation</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
                         <label class="form-label">Status</label>
                         <select name="status" id="editStatus" class="form-input">
                             <?php foreach ($status_options as $key => $label): ?>
@@ -775,6 +797,27 @@ $next_complaint_number = generateComplaintNumber($pdo);
                     </div>
                 </div>
                 
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <select name="priority" id="editPriority" class="form-input">
+                            <option value="">Select Priority</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confidentiality Level</label>
+                        <select name="confidentiality_level" id="editConfidentiality" class="form-input">
+                            <option value="standard">Standard</option>
+                            <option value="confidential">Confidential</option>
+                            <option value="highly_confidential">Highly Confidential</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <label class="form-label">Assigned To</label>
                     <select name="assigned_to" id="editAssignedTo" class="form-input">
@@ -785,6 +828,22 @@ $next_complaint_number = generateComplaintNumber($pdo);
                             </option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Incident Date</label>
+                        <input type="date" name="incident_date" id="editIncidentDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Incident Location</label>
+                        <input type="text" name="incident_location" id="editIncidentLocation" class="form-input" placeholder="Where the incident occurred">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="editDescription" class="form-input" rows="4" placeholder="Complaint description..."></textarea>
                 </div>
                 
                 <div class="form-group">
@@ -905,9 +964,16 @@ function editComplaint(id) {
     .then(data => {
         if (data.success && data.complaint) {
             const c = data.complaint;
+            document.getElementById('editComplaintType').value = c.complaint_type || '';
+            document.getElementById('editCategory').value = c.category || '';
             document.getElementById('editStatus').value = c.status || '';
             document.getElementById('editSeverity').value = c.severity || '';
+            document.getElementById('editPriority').value = c.priority || '';
+            document.getElementById('editConfidentiality').value = c.confidentiality_level || 'standard';
             document.getElementById('editAssignedTo').value = c.assigned_to || '';
+            document.getElementById('editIncidentDate').value = c.incident_date || '';
+            document.getElementById('editIncidentLocation').value = c.incident_location || '';
+            document.getElementById('editDescription').value = c.description || '';
             document.getElementById('editResolution').value = c.resolution || '';
             document.getElementById('editResolutionDate').value = c.resolution_date || '';
             document.getElementById('editCorrectiveActions').value = c.corrective_actions || '';
