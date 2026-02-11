@@ -115,6 +115,7 @@ $in_finance_dashboard = (isset($tab) && in_array($tab, ['pos_transactions', 'sho
 .data-table td { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-white); }
 .data-table tbody tr { transition: all 0.3s; }
 .data-table tbody tr:hover { background: rgba(107, 70, 193, 0.05); }
+.select-compact { padding: 6px 10px; font-size: 12px; width: auto; height: auto; }
 </style>
 
 <?php if (!$in_finance_dashboard): ?>
@@ -266,7 +267,7 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                                     </span>
                                 </td>
                                 <td>
-                                    <select class="form-select" style="padding: 6px 10px; font-size: 12px; width: auto; height: auto;" onchange="updateOrderStatus(<?= $order['id'] ?>, this.value)">
+                                    <select class="form-select select-compact" onchange="updateOrderStatus(<?= $order['id'] ?>, this.value)">
                                         <?php 
                                         $statuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
                                         foreach ($statuses as $status): 
@@ -277,11 +278,11 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                                 </td>
                                 <td>
                                     <div style="display: flex; gap: 4px;">
-                                        <button class="btn btn-secondary" style="padding: 6px 10px; height: auto; font-size: 12px;" onclick="viewOrderDetails(<?= $order['id'] ?>)" title="View Details">
+                                        <button class="btn btn-sm btn-secondary" onclick="viewOrderDetails(<?= $order['id'] ?>)" title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <?php if (in_array($order['status'], ['paid', 'processing'])): ?>
-                                        <button class="btn btn-primary" style="padding: 6px 10px; height: auto; font-size: 12px;" onclick="openShipOrder(<?= $order['id'] ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Ship Order">
+                                        <button class="btn btn-sm btn-primary" onclick="openShipOrder(<?= $order['id'] ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Ship Order">
                                             <i class="fas fa-shipping-fast"></i>
                                         </button>
                                         <?php endif; ?>

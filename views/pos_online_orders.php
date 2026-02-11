@@ -125,6 +125,7 @@ try {
 .data-table td { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-white); }
 .data-table tbody tr { transition: all 0.3s; }
 .data-table tbody tr:hover { background: rgba(107, 70, 193, 0.05); }
+.select-compact { padding: 6px 10px; font-size: 12px; width: auto; max-width: 120px; height: auto; }
 </style>
 
 <!-- Page Header -->
@@ -258,35 +259,35 @@ try {
                             </td>
                             <td>
                                 <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
-                                    <button class="btn btn-secondary" style="padding: 6px 10px; height: auto; font-size: 12px;" onclick="viewOrderDetails(<?= intval($order['id']) ?>)" title="View Details">
+                                    <button class="btn btn-sm btn-secondary" onclick="viewOrderDetails(<?= intval($order['id']) ?>)" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                     
                                     <?php if (in_array($order['status'], ['paid', 'processing'])): ?>
                                         <?php if ($stallionEnabled): ?>
                                             <?php if (empty($order['label_id'])): ?>
-                                                <button class="btn btn-primary" style="padding: 6px 10px; height: auto; font-size: 12px;" onclick="openCreateLabel(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Create Shipping Label">
+                                                <button class="btn btn-sm btn-primary" onclick="openCreateLabel(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Create Shipping Label">
                                                     <i class="fas fa-tag"></i>
                                                 </button>
                                             <?php else: ?>
-                                                <button class="btn btn-secondary" style="padding: 6px 10px; height: auto; font-size: 12px;" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)" title="Print Label">
+                                                <button class="btn btn-sm btn-secondary" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)" title="Print Label">
                                                     <i class="fas fa-print"></i>
                                                 </button>
                                             <?php endif; ?>
                                         <?php endif; ?>
                                         
-                                        <button class="btn btn-success" style="padding: 6px 10px; height: auto; font-size: 12px;" onclick="openShipOrder(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Ship Order">
+                                        <button class="btn btn-sm btn-success" onclick="openShipOrder(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')" title="Ship Order">
                                             <i class="fas fa-shipping-fast"></i>
                                         </button>
                                     <?php endif; ?>
                                     
                                     <?php if (!empty($order['stallion_label_url']) && $order['status'] === 'shipped'): ?>
-                                        <button class="btn btn-secondary" style="padding: 6px 10px; height: auto; font-size: 12px;" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)" title="Reprint Label">
+                                        <button class="btn btn-sm btn-secondary" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)" title="Reprint Label">
                                             <i class="fas fa-print"></i>
                                         </button>
                                     <?php endif; ?>
                                     
-                                    <select class="form-select" style="padding: 6px 10px; font-size: 12px; width: auto; max-width: 120px; height: auto;" onchange="updateOrderStatus(<?= intval($order['id']) ?>, this.value)">
+                                    <select class="form-select select-compact" onchange="updateOrderStatus(<?= intval($order['id']) ?>, this.value)">
                                         <?php 
                                         $statuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
                                         foreach ($statuses as $status): 
