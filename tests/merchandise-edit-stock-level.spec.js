@@ -9,6 +9,8 @@
  */
 
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 test.describe('Merchandise Product Edit - Stock Level Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -20,9 +22,6 @@ test.describe('Merchandise Product Edit - Stock Level Management', () => {
   test('edit modal should contain sizes and inventory section', async ({ page }) => {
     // This is a structural test that verifies the HTML contains the necessary elements
     // We can verify the existence of the elements even without a running server
-    
-    const fs = require('fs');
-    const path = require('path');
     
     // Read the view file
     const viewPath = path.join(__dirname, '..', 'views', 'merchandise_products.php');
@@ -40,9 +39,6 @@ test.describe('Merchandise Product Edit - Stock Level Management', () => {
   });
 
   test('editProduct function should fetch and populate sizes', async ({ page }) => {
-    const fs = require('fs');
-    const path = require('path');
-    
     // Read the view file
     const viewPath = path.join(__dirname, '..', 'views', 'merchandise_products.php');
     const content = fs.readFileSync(viewPath, 'utf-8');
@@ -57,9 +53,6 @@ test.describe('Merchandise Product Edit - Stock Level Management', () => {
   });
 
   test('addSizeRow function should support edit context', async ({ page }) => {
-    const fs = require('fs');
-    const path = require('path');
-    
     // Read the view file
     const viewPath = path.join(__dirname, '..', 'views', 'merchandise_products.php');
     const content = fs.readFileSync(viewPath, 'utf-8');
@@ -78,9 +71,6 @@ test.describe('Merchandise Product Edit - Stock Level Management', () => {
   });
 
   test('backend update action should handle sizes', async ({ page }) => {
-    const fs = require('fs');
-    const path = require('path');
-    
     // Read the processor file
     const processorPath = path.join(__dirname, '..', 'process_merchandise_products.php');
     const content = fs.readFileSync(processorPath, 'utf-8');
@@ -115,9 +105,6 @@ test.describe('Merchandise Product Edit - Stock Level Management', () => {
   });
 
   test('edit and create modals should have consistent size management', async ({ page }) => {
-    const fs = require('fs');
-    const path = require('path');
-    
     // Read the view file
     const viewPath = path.join(__dirname, '..', 'views', 'merchandise_products.php');
     const content = fs.readFileSync(viewPath, 'utf-8');
