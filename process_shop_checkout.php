@@ -111,6 +111,117 @@ if (isset($_GET['action']) && $_GET['action'] === 'ship_order') {
     exit();
 }
 
+// Handle create_stallion_label action (create shipping label via Stallion Express)
+if (isset($_GET['action']) && $_GET['action'] === 'create_stallion_label') {
+    header('Content-Type: application/json');
+    
+    // Check CSRF
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        echo json_encode(['success' => false, 'message' => 'Invalid security token']);
+        exit();
+    }
+    
+    // Check access
+    if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['admin', 'front_desk_staff'])) {
+        echo json_encode(['success' => false, 'message' => 'Access denied']);
+        exit();
+    }
+    
+    $orderId = intval($_POST['order_id'] ?? 0);
+    
+    if ($orderId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid order ID']);
+        exit();
+    }
+    
+    try {
+        require_once __DIR__ . '/lib/stallion_express.php';
+        
+        // Get Stallion settings
+        $stallionSettings = getStallionSettings($pdo);
+        
+        if (!isStallionConfigured($stallionSettings)) {
+            echo json_encode(['success' => false, 'message' => 'Stallion Express is not configured. Please set up the integration in System Tools.']);
+            exit();
+        }
+        
+        // Get order data
+        $orderStmt = $pdo->prepare("SELECT * FROM shop_orders WHERE id = ?");
+        $orderStmt->execute([$orderId]);
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$order) {
+            echo json_encode(['success' => false, 'message' => 'Order not found']);
+            exit();
+        }
+        
+        // Decrypt customer data if encryption is available
+        if (function_exists('decryptUserRows')) {
+            $orderArr = decryptUserRows([$order]);
+            $order = $orderArr[0];
+        }
+        
+        // Get order items
+        $itemsStmt = $pdo->prepare("SELECT * FROM shop_order_items WHERE order_id = ?");
+        $itemsStmt->execute([$orderId]);
+        $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Build overrides from form
+        $overrides = [];
+        if (!empty($_POST['weight'])) $overrides['weight'] = floatval($_POST['weight']);
+        if (!empty($_POST['length'])) $overrides['length'] = floatval($_POST['length']);
+        if (!empty($_POST['width'])) $overrides['width'] = floatval($_POST['width']);
+        if (!empty($_POST['height'])) $overrides['height'] = floatval($_POST['height']);
+        
+        // Create shipment
+        $result = createStallionShipment($pdo, $stallionSettings, $order, $items, $overrides);
+        
+        if ($result['success']) {
+            // Update order status to processing
+            $updateStmt = $pdo->prepare("UPDATE shop_orders SET status = 'processing' WHERE id = ? AND status IN ('paid', 'pending')");
+            $updateStmt->execute([$orderId]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Shipping label created successfully!',
+                'tracking_number' => $result['tracking_number'] ?? '',
+                'label_url' => $result['label_url'] ?? ''
+            ]);
+        } else {
+            echo json_encode($result);
+        }
+    } catch (Exception $e) {
+        error_log("Create Stallion label error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Error creating label: ' . $e->getMessage()]);
+    }
+    exit();
+}
+
+// Handle mark_label_printed action
+if (isset($_GET['action']) && $_GET['action'] === 'mark_label_printed') {
+    header('Content-Type: application/json');
+    
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        echo json_encode(['success' => false, 'message' => 'Invalid security token']);
+        exit();
+    }
+    
+    $labelId = intval($_POST['label_id'] ?? 0);
+    
+    if ($labelId > 0) {
+        try {
+            $stmt = $pdo->prepare("UPDATE stallion_shipping_labels SET status = 'printed' WHERE id = ? AND status = 'created'");
+            $stmt->execute([$labelId]);
+            echo json_encode(['success' => true]);
+        } catch (PDOException $e) {
+            echo json_encode(['success' => false, 'message' => 'Database error']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Invalid label ID']);
+    }
+    exit();
+}
+
 // Validate CSRF token
 if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
     die('Invalid security token. Please try again.');

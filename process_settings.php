@@ -18,7 +18,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -802,6 +802,74 @@ try {
             ];
             
             $result = testDocuSealConnection($settings);
+            echo json_encode($result);
+            exit;
+            
+        case 'update_stallion':
+            $stallion_enabled = isset($_POST['stallion_enabled']) ? '1' : '0';
+            $stallion_api_url = trim($_POST['stallion_api_url'] ?? '');
+            $stallion_api_key = trim($_POST['stallion_api_key'] ?? '');
+            $stallion_api_secret = trim($_POST['stallion_api_secret'] ?? '');
+            $stallion_sender_name = trim($_POST['stallion_sender_name'] ?? '');
+            $stallion_sender_company = trim($_POST['stallion_sender_company'] ?? '');
+            $stallion_sender_address = trim($_POST['stallion_sender_address'] ?? '');
+            $stallion_sender_city = trim($_POST['stallion_sender_city'] ?? '');
+            $stallion_sender_province = trim($_POST['stallion_sender_province'] ?? '');
+            $stallion_sender_postal_code = trim($_POST['stallion_sender_postal_code'] ?? '');
+            $stallion_sender_phone = trim($_POST['stallion_sender_phone'] ?? '');
+            $stallion_default_weight = trim($_POST['stallion_default_weight'] ?? '0.5');
+            $stallion_default_length = trim($_POST['stallion_default_length'] ?? '25');
+            $stallion_default_width = trim($_POST['stallion_default_width'] ?? '20');
+            $stallion_default_height = trim($_POST['stallion_default_height'] ?? '10');
+            
+            // Validate URL if provided
+            if (!empty($stallion_api_url) && !filter_var($stallion_api_url, FILTER_VALIDATE_URL)) {
+                throw new Exception('Invalid Stallion Express API URL format');
+            }
+            
+            updateSetting($pdo, 'stallion_enabled', $stallion_enabled);
+            updateSetting($pdo, 'stallion_api_url', $stallion_api_url);
+            if (!empty($stallion_api_key)) {
+                updateSetting($pdo, 'stallion_api_key', $stallion_api_key);
+            }
+            if (!empty($stallion_api_secret)) {
+                updateSetting($pdo, 'stallion_api_secret', $stallion_api_secret);
+            }
+            updateSetting($pdo, 'stallion_sender_name', $stallion_sender_name);
+            updateSetting($pdo, 'stallion_sender_company', $stallion_sender_company);
+            updateSetting($pdo, 'stallion_sender_address', $stallion_sender_address);
+            updateSetting($pdo, 'stallion_sender_city', $stallion_sender_city);
+            updateSetting($pdo, 'stallion_sender_province', $stallion_sender_province);
+            updateSetting($pdo, 'stallion_sender_postal_code', $stallion_sender_postal_code);
+            updateSetting($pdo, 'stallion_sender_phone', $stallion_sender_phone);
+            updateSetting($pdo, 'stallion_default_weight', $stallion_default_weight);
+            updateSetting($pdo, 'stallion_default_length', $stallion_default_length);
+            updateSetting($pdo, 'stallion_default_width', $stallion_default_width);
+            updateSetting($pdo, 'stallion_default_height', $stallion_default_height);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_stallion',
+                'settings' => ['stallion_enabled' => $stallion_enabled, 'stallion_api_url' => $stallion_api_url, 'stallion_api_key' => '***updated***']
+            ]);
+            
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=stallion&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
+            exit;
+            
+        case 'test_stallion':
+            require_once __DIR__ . '/lib/stallion_express.php';
+            
+            $settings = [
+                'stallion_api_url' => trim($_POST['stallion_api_url'] ?? ''),
+                'stallion_api_key' => trim($_POST['stallion_api_key'] ?? ''),
+                'stallion_api_secret' => trim($_POST['stallion_api_secret'] ?? '')
+            ];
+            
+            $result = testStallionConnection($settings);
             echo json_encode($result);
             exit;
             

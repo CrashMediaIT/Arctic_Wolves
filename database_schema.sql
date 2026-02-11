@@ -4139,3 +4139,20 @@ CREATE TABLE IF NOT EXISTS `stopwatch_times` (
 -- Add stopwatch flag to eval_skills
 ALTER TABLE `eval_skills`
 ADD COLUMN IF NOT EXISTS `has_stopwatch` TINYINT(1) DEFAULT 0 COMMENT 'Whether this skill uses a stopwatch for timed evaluation';
+
+-- Stallion Express shipping labels
+CREATE TABLE IF NOT EXISTS `stallion_shipping_labels` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `order_id` INT NOT NULL,
+    `stallion_shipment_id` VARCHAR(255) DEFAULT NULL COMMENT 'Stallion Express shipment ID',
+    `tracking_number` VARCHAR(255) DEFAULT NULL,
+    `label_url` VARCHAR(1000) DEFAULT NULL COMMENT 'URL to download shipping label PDF',
+    `shipment_data` JSON DEFAULT NULL COMMENT 'Full API response from Stallion Express',
+    `status` ENUM('created', 'printed', 'shipped', 'delivered', 'cancelled') DEFAULT 'created',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`order_id`) REFERENCES `shop_orders`(`id`) ON DELETE CASCADE,
+    INDEX `idx_order` (`order_id`),
+    INDEX `idx_tracking` (`tracking_number`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

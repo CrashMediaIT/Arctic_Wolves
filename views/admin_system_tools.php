@@ -100,6 +100,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=theme" class="page-tab <?php echo $activeTab === 'theme' ? 'active' : ''; ?>">
         <i class="fas fa-palette"></i> Theme
     </a>
+    <a href="?page=system_tools&tab=stallion" class="page-tab <?php echo $activeTab === 'stallion' ? 'active' : ''; ?>">
+        <i class="fas fa-shipping-fast"></i> Stallion Express
+    </a>
     <a href="?page=system_tools&tab=database" class="page-tab <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
         <i class="fas fa-database"></i> Database
     </a>
@@ -898,6 +901,258 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
             
             <div class="form-actions">
                 <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save DocuSeal Settings</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Stallion Express Shipping Tab -->
+    <div class="tab-content <?php echo $activeTab === 'stallion' ? 'active' : ''; ?>" id="stallion-tab">
+        <form id="stallion-form" method="POST" action="process_settings.php" data-form-type="stallion">
+            <?php echo csrfTokenInput(); ?>
+            <input type="hidden" name="action" value="update_stallion">
+            <input type="hidden" name="redirect_page" value="system_tools">
+            
+            <!-- Stallion Express Setup Guide -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-book"></i> Stallion Express Setup Guide</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Stallion Express provides discounted shipping rates for Canadian e-commerce businesses. Integrate with Stallion to automatically create shipping labels for online orders.</span>
+                    </div>
+                    
+                    <div class="setup-instructions" style="background: var(--bg-main); border-radius: 8px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border);">
+                        <h4 style="color: var(--text-primary); margin-bottom: 15px;"><i class="fas fa-rocket" style="color: var(--primary-light); margin-right: 8px;"></i> Getting Started</h4>
+                        <ol style="color: var(--text-secondary); line-height: 1.8; padding-left: 20px;">
+                            <li><strong>Create an account</strong> at <a href="https://www.stallionexpress.ca" target="_blank" style="color: var(--primary-light);">stallionexpress.ca</a></li>
+                            <li><strong>Navigate to API Settings</strong> in your Stallion Express dashboard</li>
+                            <li><strong>Generate an API Key</strong> and copy it below</li>
+                            <li><strong>Configure your sender address</strong> — this will be the return address on all shipping labels</li>
+                            <li><strong>Set default package dimensions</strong> — these will be used if no overrides are provided per-order</li>
+                        </ol>
+                        
+                        <div class="alert alert-warning" style="margin-top: 15px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span><strong>Note:</strong> You can create shipping labels and print them from the POS Online Orders page or the Shop Orders management page.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- API Configuration -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-key"></i> API Configuration</h3>
+                </div>
+                <div class="card-body">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Enable Stallion Express</h4>
+                                <p>Enable Stallion Express shipping integration for online orders</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="stallion_enabled" 
+                                       <?php echo !empty($settings['stallion_enabled']) ? 'checked' : ''; ?>>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>API URL</h4>
+                                <p>Stallion Express API base URL</p>
+                            </div>
+                            <input type="url" name="stallion_api_url" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_api_url'] ?? 'https://api.stallionexpress.ca'); ?>"
+                                   placeholder="https://api.stallionexpress.ca">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>API Key</h4>
+                                <p>Your Stallion Express API authentication key</p>
+                            </div>
+                            <input type="password" name="stallion_api_key" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_api_key'] ?? ''); ?>"
+                                   placeholder="Enter your Stallion Express API key">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>API Secret (Optional)</h4>
+                                <p>API secret key if required by your Stallion Express plan</p>
+                            </div>
+                            <input type="password" name="stallion_api_secret" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_api_secret'] ?? ''); ?>"
+                                   placeholder="Enter API secret (if applicable)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sender Address -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-map-marker-alt"></i> Sender Address (Return Address)</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>This address will appear as the return/sender address on all shipping labels created through Stallion Express.</span>
+                    </div>
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Contact Name</h4>
+                                <p>Name of the sender contact person</p>
+                            </div>
+                            <input type="text" name="stallion_sender_name" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_sender_name'] ?? ''); ?>"
+                                   placeholder="e.g., Arctic Wolves Shipping">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Company Name</h4>
+                                <p>Business or organization name</p>
+                            </div>
+                            <input type="text" name="stallion_sender_company" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_sender_company'] ?? ''); ?>"
+                                   placeholder="e.g., Arctic Wolves Hockey">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Street Address</h4>
+                                <p>Sender street address</p>
+                            </div>
+                            <input type="text" name="stallion_sender_address" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_sender_address'] ?? ''); ?>"
+                                   placeholder="e.g., 123 Arena Drive">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>City</h4>
+                                <p>Sender city</p>
+                            </div>
+                            <input type="text" name="stallion_sender_city" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_sender_city'] ?? ''); ?>"
+                                   placeholder="e.g., Toronto">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Province</h4>
+                                <p>Sender province code</p>
+                            </div>
+                            <select name="stallion_sender_province" class="form-input">
+                                <option value="">-- Select Province --</option>
+                                <?php
+                                $provinces = ['AB' => 'Alberta', 'BC' => 'British Columbia', 'MB' => 'Manitoba', 'NB' => 'New Brunswick', 'NL' => 'Newfoundland and Labrador', 'NS' => 'Nova Scotia', 'NT' => 'Northwest Territories', 'NU' => 'Nunavut', 'ON' => 'Ontario', 'PE' => 'Prince Edward Island', 'QC' => 'Quebec', 'SK' => 'Saskatchewan', 'YT' => 'Yukon'];
+                                foreach ($provinces as $code => $name): ?>
+                                    <option value="<?php echo $code; ?>" <?php echo ($settings['stallion_sender_province'] ?? '') === $code ? 'selected' : ''; ?>><?php echo $name; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Postal Code</h4>
+                                <p>Sender postal code (e.g., M5V 2T6)</p>
+                            </div>
+                            <input type="text" name="stallion_sender_postal_code" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_sender_postal_code'] ?? ''); ?>"
+                                   placeholder="e.g., M5V 2T6">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Phone Number</h4>
+                                <p>Sender contact phone number</p>
+                            </div>
+                            <input type="tel" name="stallion_sender_phone" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['stallion_sender_phone'] ?? ''); ?>"
+                                   placeholder="e.g., 416-555-1234">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Default Package Dimensions -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-box"></i> Default Package Dimensions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Set default package dimensions used when creating shipping labels. These can be overridden per-order when fulfilling.</span>
+                    </div>
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Weight (kg)</h4>
+                                <p>Default package weight in kilograms</p>
+                            </div>
+                            <input type="number" name="stallion_default_weight" class="form-input" step="0.01" min="0.01"
+                                   value="<?php echo htmlspecialchars($settings['stallion_default_weight'] ?? '0.5'); ?>"
+                                   placeholder="0.5">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Length (cm)</h4>
+                                <p>Default package length in centimeters</p>
+                            </div>
+                            <input type="number" name="stallion_default_length" class="form-input" step="0.1" min="1"
+                                   value="<?php echo htmlspecialchars($settings['stallion_default_length'] ?? '25'); ?>"
+                                   placeholder="25">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Width (cm)</h4>
+                                <p>Default package width in centimeters</p>
+                            </div>
+                            <input type="number" name="stallion_default_width" class="form-input" step="0.1" min="1"
+                                   value="<?php echo htmlspecialchars($settings['stallion_default_width'] ?? '20'); ?>"
+                                   placeholder="20">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Height (cm)</h4>
+                                <p>Default package height in centimeters</p>
+                            </div>
+                            <input type="number" name="stallion_default_height" class="form-input" step="0.1" min="1"
+                                   value="<?php echo htmlspecialchars($settings['stallion_default_height'] ?? '10'); ?>"
+                                   placeholder="10">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Connection Test & Save -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-plug"></i> Connection Test</h3>
+                </div>
+                <div class="card-body">
+                    <div class="flex-row" style="display: flex; gap: 12px; align-items: center;">
+                        <button type="button" id="test-stallion" class="btn-secondary">
+                            <i class="fas fa-plug"></i> Test Connection
+                        </button>
+                        <span id="stallion-status"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Stallion Express Settings</button>
             </div>
         </form>
     </div>
@@ -2539,6 +2794,53 @@ document.getElementById('test-docuseal')?.addEventListener('click', function() {
     formData.append('action', 'test_docuseal');
     formData.append('docuseal_url', url);
     formData.append('docuseal_api_key', apiKey);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.success) {
+            statusSpan.innerHTML = '<span style="color: #00ff88;"><i class="fas fa-check-circle"></i> ' + (data.message || 'Connection successful!') + '</span>';
+        } else {
+            statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> ' + (data.message || 'Connection failed') + '</span>';
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Error testing connection</span>';
+        console.error('Error:', error);
+    });
+});
+
+// Test Stallion Express Connection
+document.getElementById('test-stallion')?.addEventListener('click', function() {
+    const btn = this;
+    const statusSpan = document.getElementById('stallion-status');
+    const url = document.querySelector('input[name="stallion_api_url"]').value;
+    const apiKey = document.querySelector('input[name="stallion_api_key"]').value;
+    
+    if (!url) {
+        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Please enter a Stallion Express API URL first</span>';
+        return;
+    }
+    
+    if (!apiKey) {
+        statusSpan.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> Please enter your Stallion Express API key</span>';
+        return;
+    }
+    
+    btn.disabled = true;
+    statusSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing connection...';
+    
+    const formData = new FormData();
+    formData.append('action', 'test_stallion');
+    formData.append('stallion_api_url', url);
+    formData.append('stallion_api_key', apiKey);
+    formData.append('stallion_api_secret', document.querySelector('input[name="stallion_api_secret"]')?.value || '');
     formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
     
     fetch('process_settings.php', {

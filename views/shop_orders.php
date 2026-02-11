@@ -412,6 +412,7 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                     <label class="form-label">Shipping Carrier *</label>
                     <select name="shipping_carrier" class="form-input" required>
                         <option value="">-- Select Carrier --</option>
+                        <option value="Stallion Express">Stallion Express</option>
                         <option value="Canada Post">Canada Post</option>
                         <option value="UPS">UPS</option>
                         <option value="FedEx">FedEx</option>
