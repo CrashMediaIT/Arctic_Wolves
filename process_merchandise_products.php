@@ -233,6 +233,8 @@ try {
                 throw new Exception('Price must be a positive number');
             }
             
+            $pdo->beginTransaction();
+            
             // Handle image upload
             $imageUrl = null;
             $updateImage = false;
@@ -256,6 +258,17 @@ try {
                 ");
                 $stmt->execute([$name, $sku ?: null, $categoryId, $description ?: null, $price, $costPrice, $isActive, $trackInventory, $id]);
             }
+            
+            // Handle sizes if provided
+            $sizes = $_POST['sizes'] ?? [];
+            $quantities = $_POST['quantities'] ?? [];
+            $sizeIds = $_POST['size_ids'] ?? [];
+            
+            if (!empty($sizes)) {
+                handleProductSizes($pdo, $id, $sizes, $quantities, $sizeIds);
+            }
+            
+            $pdo->commit();
             
             if ($isAjax) {
                 header('Content-Type: application/json');
