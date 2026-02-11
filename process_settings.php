@@ -18,7 +18,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -1141,6 +1141,150 @@ try {
                 header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Failed to delete API key.'));
                 exit;
             }
+
+        case 'add_ndi_camera':
+            $cam_name = trim($_POST['ndi_camera_name'] ?? '');
+            $cam_ip = trim($_POST['ndi_camera_ip'] ?? '');
+            $cam_port = intval($_POST['ndi_camera_port'] ?? 5960);
+            $cam_ndi_name = trim($_POST['ndi_camera_ndi_name'] ?? '');
+            $cam_location = trim($_POST['ndi_camera_location'] ?? '');
+
+            if (empty($cam_name) || empty($cam_ip)) {
+                header('Location: dashboard.php?page=system_tools&tab=ndi_cameras&error=' . urlencode('Camera name and IP address are required.'));
+                exit;
+            }
+
+            if ($cam_port < 1 || $cam_port > 65535) {
+                $cam_port = 5960;
+            }
+
+            try {
+                $stmt = $pdo->prepare("INSERT INTO ndi_cameras (name, ip_address, port, ndi_name, location, is_active, created_by) VALUES (?, ?, ?, ?, ?, 1, ?)");
+                $stmt->execute([$cam_name, $cam_ip, $cam_port, $cam_ndi_name ?: null, $cam_location ?: null, $user_id]);
+
+                Auditor::log($pdo, $user_id, 'create', 'ndi_cameras', $pdo->lastInsertId(), [
+                    'action' => 'add_ndi_camera',
+                    'name' => $cam_name,
+                    'ip_address' => $cam_ip,
+                    'port' => $cam_port
+                ]);
+
+                header('Location: dashboard.php?page=system_tools&tab=ndi_cameras&success=1');
+                exit;
+            } catch (PDOException $e) {
+                error_log("NDI camera add error: " . $e->getMessage());
+                header('Location: dashboard.php?page=system_tools&tab=ndi_cameras&error=' . urlencode('Failed to add NDI camera.'));
+                exit;
+            }
+
+        case 'get_ndi_camera':
+            $cam_id = intval($_POST['ndi_camera_id'] ?? 0);
+            if ($cam_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid camera ID']);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare("SELECT * FROM ndi_cameras WHERE id = ?");
+                $stmt->execute([$cam_id]);
+                $camera = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($camera) {
+                    echo json_encode(['success' => true, 'camera' => $camera]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Camera not found']);
+                }
+            } catch (PDOException $e) {
+                echo json_encode(['success' => false, 'message' => 'Database error']);
+            }
+            exit;
+
+        case 'update_ndi_camera':
+            $cam_id = intval($_POST['ndi_camera_id'] ?? 0);
+            $cam_name = trim($_POST['ndi_camera_name'] ?? '');
+            $cam_ip = trim($_POST['ndi_camera_ip'] ?? '');
+            $cam_port = intval($_POST['ndi_camera_port'] ?? 5960);
+            $cam_ndi_name = trim($_POST['ndi_camera_ndi_name'] ?? '');
+            $cam_location = trim($_POST['ndi_camera_location'] ?? '');
+
+            if ($cam_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid camera ID']);
+                exit;
+            }
+            if (empty($cam_name) || empty($cam_ip)) {
+                echo json_encode(['success' => false, 'message' => 'Camera name and IP address are required']);
+                exit;
+            }
+            if ($cam_port < 1 || $cam_port > 65535) {
+                $cam_port = 5960;
+            }
+
+            try {
+                $stmt = $pdo->prepare("UPDATE ndi_cameras SET name = ?, ip_address = ?, port = ?, ndi_name = ?, location = ? WHERE id = ?");
+                $stmt->execute([$cam_name, $cam_ip, $cam_port, $cam_ndi_name ?: null, $cam_location ?: null, $cam_id]);
+
+                Auditor::log($pdo, $user_id, 'update', 'ndi_cameras', $cam_id, [
+                    'action' => 'update_ndi_camera',
+                    'name' => $cam_name,
+                    'ip_address' => $cam_ip,
+                    'port' => $cam_port
+                ]);
+
+                echo json_encode(['success' => true, 'message' => 'Camera updated successfully']);
+            } catch (PDOException $e) {
+                error_log("NDI camera update error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to update camera']);
+            }
+            exit;
+
+        case 'delete_ndi_camera':
+            $cam_id = intval($_POST['ndi_camera_id'] ?? 0);
+            if ($cam_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid camera ID']);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare("DELETE FROM ndi_cameras WHERE id = ?");
+                $stmt->execute([$cam_id]);
+
+                Auditor::log($pdo, $user_id, 'delete', 'ndi_cameras', $cam_id, [
+                    'action' => 'delete_ndi_camera'
+                ]);
+
+                echo json_encode(['success' => true, 'message' => 'Camera deleted successfully']);
+            } catch (PDOException $e) {
+                error_log("NDI camera delete error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to delete camera']);
+            }
+            exit;
+
+        case 'toggle_ndi_camera':
+            $cam_id = intval($_POST['ndi_camera_id'] ?? 0);
+            $is_active = intval($_POST['is_active'] ?? 0);
+
+            if ($cam_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid camera ID']);
+                exit;
+            }
+
+            $is_active = $is_active ? 1 : 0;
+
+            try {
+                $stmt = $pdo->prepare("UPDATE ndi_cameras SET is_active = ? WHERE id = ?");
+                $stmt->execute([$is_active, $cam_id]);
+
+                Auditor::log($pdo, $user_id, 'update', 'ndi_cameras', $cam_id, [
+                    'action' => 'toggle_ndi_camera',
+                    'is_active' => $is_active
+                ]);
+
+                echo json_encode(['success' => true, 'message' => 'Camera status updated']);
+            } catch (PDOException $e) {
+                error_log("NDI camera toggle error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to update camera status']);
+            }
+            exit;
 
         default:
             throw new Exception('Invalid action');

@@ -4156,3 +4156,19 @@ CREATE TABLE IF NOT EXISTS `stallion_shipping_labels` (
     INDEX `idx_tracking` (`tracking_number`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- NDI Cameras for network video input
+CREATE TABLE IF NOT EXISTS `ndi_cameras` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL COMMENT 'Display name for the camera',
+    `ip_address` VARCHAR(255) NOT NULL COMMENT 'IP address or hostname of the NDI source',
+    `port` INT DEFAULT 5960 COMMENT 'NDI port (default 5960)',
+    `ndi_name` VARCHAR(255) DEFAULT NULL COMMENT 'NDI source name for discovery',
+    `location` VARCHAR(255) DEFAULT NULL COMMENT 'Physical location description',
+    `is_active` TINYINT(1) DEFAULT 1 COMMENT 'Whether the camera is enabled',
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
