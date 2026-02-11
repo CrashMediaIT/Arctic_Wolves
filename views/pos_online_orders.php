@@ -82,9 +82,11 @@ try {
     }
     
     if (!empty($searchQuery)) {
-        $sql .= " AND (o.order_number LIKE ? OR o.customer_email LIKE ? OR o.customer_first_name LIKE ? OR o.customer_last_name LIKE ?)";
+        // Search on order_number and customer_email (non-encrypted fields)
+        // Customer name fields may be encrypted and cannot be searched via LIKE
+        $sql .= " AND (o.order_number LIKE ? OR o.customer_email LIKE ?)";
         $search = '%' . $searchQuery . '%';
-        $params = array_merge($params, [$search, $search, $search, $search]);
+        $params = array_merge($params, [$search, $search]);
     }
     
     $sql .= " ORDER BY o.created_at DESC LIMIT 50";

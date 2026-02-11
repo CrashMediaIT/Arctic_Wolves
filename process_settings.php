@@ -829,12 +829,8 @@ try {
             
             updateSetting($pdo, 'stallion_enabled', $stallion_enabled);
             updateSetting($pdo, 'stallion_api_url', $stallion_api_url);
-            if (!empty($stallion_api_key)) {
-                updateSetting($pdo, 'stallion_api_key', $stallion_api_key);
-            }
-            if (!empty($stallion_api_secret)) {
-                updateSetting($pdo, 'stallion_api_secret', $stallion_api_secret);
-            }
+            updateSetting($pdo, 'stallion_api_key', $stallion_api_key);
+            updateSetting($pdo, 'stallion_api_secret', $stallion_api_secret);
             updateSetting($pdo, 'stallion_sender_name', $stallion_sender_name);
             updateSetting($pdo, 'stallion_sender_company', $stallion_sender_company);
             updateSetting($pdo, 'stallion_sender_address', $stallion_sender_address);

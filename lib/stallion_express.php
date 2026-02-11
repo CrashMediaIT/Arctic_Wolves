@@ -259,6 +259,7 @@ function createStallionShipment($pdo, $settings, $order, $items, $overrides = []
         $labelUrl = $shipment['label_url'] ?? $shipment['label'] ?? '';
         $stallionShipmentId = $shipment['id'] ?? $shipment['shipment_id'] ?? '';
         
+        $dbSaveWarning = '';
         try {
             $stmt = $pdo->prepare("
                 INSERT INTO stallion_shipping_labels 
@@ -274,11 +275,12 @@ function createStallionShipment($pdo, $settings, $order, $items, $overrides = []
             ]);
         } catch (PDOException $e) {
             error_log("Failed to save Stallion shipment record: " . $e->getMessage());
+            $dbSaveWarning = ' (Warning: label created but failed to save locally)';
         }
         
         return [
             'success' => true,
-            'message' => 'Shipment created successfully!',
+            'message' => 'Shipment created successfully!' . $dbSaveWarning,
             'tracking_number' => $trackingNumber,
             'label_url' => $labelUrl,
             'shipment_id' => $stallionShipmentId,
