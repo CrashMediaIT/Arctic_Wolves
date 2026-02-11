@@ -2,7 +2,7 @@
 /**
  * POS Online Orders View
  * Allows front desk staff and admins to view, fulfill, and ship online orders
- * Includes integration with Stallion Express for creating and printing shipping labels
+ * Includes integration with Stallion Express shipping fulfillment service for creating and printing shipping labels
  */
 
 // Check access - require authentication in dashboard context
@@ -392,7 +392,7 @@ try {
                 <div>
                     <div class="order-detail-label">Customer</div>
                     <div class="order-detail-value">
-                        <?= htmlspecialchars(($order['customer_first_name'] ?? '') . ' ' . ($order['customer_last_name'] ?? '')) ?>
+                        <?= htmlspecialchars(implode(' ', array_filter([$order['customer_first_name'] ?? '', $order['customer_last_name'] ?? '']))) ?>
                         <div style="font-size: 12px; color: var(--text-dim);"><?= htmlspecialchars($order['customer_email'] ?? '') ?></div>
                     </div>
                 </div>
@@ -421,35 +421,35 @@ try {
             </div>
             
             <div class="order-card-actions">
-                <button class="order-action-btn secondary" onclick="viewOrderDetails(<?= $order['id'] ?>)">
+                <button class="order-action-btn secondary" onclick="viewOrderDetails(<?= intval($order['id']) ?>)">
                     <i class="fas fa-eye"></i> Details
                 </button>
                 
                 <?php if (in_array($order['status'], ['paid', 'processing'])): ?>
                     <?php if ($stallionEnabled): ?>
                         <?php if (empty($order['label_id'])): ?>
-                            <button class="order-action-btn primary" onclick="openCreateLabel(<?= $order['id'] ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')">
+                            <button class="order-action-btn primary" onclick="openCreateLabel(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')">
                                 <i class="fas fa-tag"></i> Create Shipping Label
                             </button>
                         <?php else: ?>
-                            <button class="order-action-btn info" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= $order['label_id'] ?>)">
+                            <button class="order-action-btn info" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)">
                                 <i class="fas fa-print"></i> Print Label
                             </button>
                         <?php endif; ?>
                     <?php endif; ?>
                     
-                    <button class="order-action-btn success" onclick="openShipOrder(<?= $order['id'] ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')">
+                    <button class="order-action-btn success" onclick="openShipOrder(<?= intval($order['id']) ?>, '<?= htmlspecialchars($order['order_number'], ENT_QUOTES) ?>')">
                         <i class="fas fa-shipping-fast"></i> Ship Order
                     </button>
                 <?php endif; ?>
                 
                 <?php if (!empty($order['stallion_label_url']) && $order['status'] === 'shipped'): ?>
-                    <button class="order-action-btn info" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= $order['label_id'] ?>)">
+                    <button class="order-action-btn info" onclick="printLabel('<?= htmlspecialchars($order['stallion_label_url'] ?? '', ENT_QUOTES) ?>', <?= intval($order['label_id']) ?>)">
                         <i class="fas fa-print"></i> Reprint Label
                     </button>
                 <?php endif; ?>
                 
-                <select class="form-input" style="padding: 6px 10px; font-size: 12px; max-width: 140px;" onchange="updateOrderStatus(<?= $order['id'] ?>, this.value)">
+                <select class="form-input" style="padding: 6px 10px; font-size: 12px; max-width: 140px;" onchange="updateOrderStatus(<?= intval($order['id']) ?>, this.value)">
                     <?php 
                     $statuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
                     foreach ($statuses as $status): 
@@ -489,7 +489,7 @@ try {
             <div class="modal-body">
                 <div style="background: rgba(107, 70, 193, 0.1); border: 1px solid rgba(107, 70, 193, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
                     <i class="fas fa-info-circle" style="color: var(--primary-light);"></i>
-                    <span style="color: var(--text-dim); font-size: 13px;">A shipping label will be created through Stallion Express using the order's shipping address and default package dimensions. You can override the package details below.</span>
+                    <span style="color: var(--text-dim); font-size: 13px;">A shipping label will be created through Stallion Express, which will automatically find the best carrier and rate for this shipment. You can override the package details below.</span>
                 </div>
                 
                 <h4 style="color: var(--text-white); margin-bottom: 12px; font-size: 14px;"><i class="fas fa-box"></i> Package Details (Override Defaults)</h4>
@@ -534,15 +534,16 @@ try {
                 <p style="color: var(--text-dim); margin-bottom: 16px;">Enter shipping details to mark this order as shipped.</p>
                 
                 <div class="form-group">
-                    <label class="form-label">Shipping Carrier *</label>
+                    <label class="form-label">Shipping Carrier / Fulfillment *</label>
                     <select name="shipping_carrier" class="form-input" required>
-                        <option value="">-- Select Carrier --</option>
-                        <option value="Stallion Express">Stallion Express</option>
+                        <option value="">-- Select Option --</option>
+                        <option value="Stallion Express">Stallion Express (Multi-Carrier)</option>
                         <option value="Canada Post">Canada Post</option>
                         <option value="UPS">UPS</option>
                         <option value="FedEx">FedEx</option>
                         <option value="Purolator">Purolator</option>
                         <option value="DHL">DHL</option>
+                        <option value="Pickup at Session">Pickup at Session</option>
                         <option value="Local Pickup">Local Pickup</option>
                         <option value="Other">Other</option>
                     </select>

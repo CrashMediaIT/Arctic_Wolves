@@ -920,7 +920,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                 <div class="card-body">
                     <div class="alert alert-info" style="margin-bottom: 20px;">
                         <i class="fas fa-info-circle"></i>
-                        <span>Stallion Express provides discounted shipping rates for Canadian e-commerce businesses. Integrate with Stallion to automatically create shipping labels for online orders.</span>
+                        <span>Stallion Express is a shipping fulfillment service that aggregates rates from multiple carriers (Canada Post, UPS, FedEx, DHL, etc.) to find the best shipping rates. Integrate with Stallion to automatically create shipping labels for online orders.</span>
                     </div>
                     
                     <div class="setup-instructions" style="background: var(--bg-main); border-radius: 8px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border);">
@@ -928,14 +928,19 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         <ol style="color: var(--text-secondary); line-height: 1.8; padding-left: 20px;">
                             <li><strong>Create an account</strong> at <a href="https://www.stallionexpress.ca" target="_blank" style="color: var(--primary-light);">stallionexpress.ca</a></li>
                             <li><strong>Navigate to API Settings</strong> in your Stallion Express dashboard</li>
-                            <li><strong>Generate an API Key</strong> and copy it below</li>
+                            <li><strong>Generate an API Key</strong> and copy it below. Refer to <a href="https://stallionexpress.redocly.app/stallionexpress-v4" target="_blank" style="color: var(--primary-light);">API v4 Documentation</a> for details</li>
                             <li><strong>Configure your sender address</strong> — this will be the return address on all shipping labels</li>
                             <li><strong>Set default package dimensions</strong> — these will be used if no overrides are provided per-order</li>
                         </ol>
                         
+                        <div class="alert alert-info" style="margin-top: 15px;">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Stallion Express will automatically compare rates across multiple carriers (Canada Post, UPS, FedEx, DHL, etc.) and select the best option for each shipment.</span>
+                        </div>
+                        
                         <div class="alert alert-warning" style="margin-top: 15px;">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <span><strong>Note:</strong> You can create shipping labels and print them from the POS Online Orders page or the Shop Orders management page.</span>
+                            <span><strong>Note:</strong> You can create shipping labels and print them from the POS Online Orders page or the Shop Orders management page. Athletes can also pick up orders at sessions — use the "Pickup at Session" fulfillment option.</span>
                         </div>
                     </div>
                 </div>
@@ -966,8 +971,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                 <p>Stallion Express API base URL</p>
                             </div>
                             <input type="url" name="stallion_api_url" class="form-input" 
-                                   value="<?php echo htmlspecialchars($settings['stallion_api_url'] ?? 'https://api.stallionexpress.ca'); ?>"
-                                   placeholder="https://api.stallionexpress.ca">
+                                   value="<?php echo htmlspecialchars($settings['stallion_api_url'] ?? 'https://ship.stallionexpress.ca/api/v4'); ?>"
+                                   placeholder="https://ship.stallionexpress.ca/api/v4">
                         </div>
                         
                         <div class="setting-item">

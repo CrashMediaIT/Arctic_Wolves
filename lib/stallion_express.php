@@ -5,13 +5,14 @@
  * Provides functions for connecting to the Stallion Express API
  * for automated shipping label generation and tracking.
  * 
- * Stallion Express is a Canadian shipping provider offering 
- * discounted shipping rates for e-commerce businesses.
- * API Documentation: https://api.stallionexpress.ca/docs
+ * Stallion Express is a Canadian shipping fulfillment service that
+ * aggregates rates from multiple carriers (Canada Post, UPS, FedEx, 
+ * DHL, etc.) to provide the best shipping rates for e-commerce businesses.
+ * API Documentation: https://stallionexpress.redocly.app/stallionexpress-v4
  * 
  * Features:
- * - Shipment creation with label generation
- * - Rate shopping across carriers
+ * - Shipment creation with label generation via best-rate carrier selection
+ * - Rate shopping across multiple carriers
  * - Tracking status retrieval
  * - Label PDF download
  * - Connection testing
@@ -176,7 +177,10 @@ function testStallionConnection($settings) {
 }
 
 /**
- * Create a shipment in Stallion Express and generate a shipping label
+ * Create a shipment through Stallion Express fulfillment service
+ * 
+ * Stallion Express will automatically select the best carrier and rate
+ * from their network of carriers (Canada Post, UPS, FedEx, DHL, etc.)
  * 
  * @param PDO $pdo Database connection
  * @param array $settings Stallion settings
@@ -223,7 +227,7 @@ function createStallionShipment($pdo, $settings, $order, $items, $overrides = []
             'phone' => $settings['stallion_sender_phone'] ?? ''
         ],
         'recipient' => [
-            'name' => trim(($order['customer_first_name'] ?? '') . ' ' . ($order['customer_last_name'] ?? '')),
+            'name' => implode(' ', array_filter([$order['customer_first_name'] ?? '', $order['customer_last_name'] ?? ''])),
             'address1' => $recipientAddress1,
             'address2' => $recipientAddress2,
             'city' => $recipientCity,
@@ -313,4 +317,22 @@ function getStallionLabel($settings, $shipmentId) {
     }
     
     return stallionApiRequest($settings, '/shipments/' . urlencode($shipmentId) . '/label', 'GET');
+}
+
+/**
+ * Get shipping rates from Stallion Express for a given package
+ * 
+ * Returns available carrier rates so the user can compare options.
+ * Stallion Express aggregates rates from multiple carriers.
+ * 
+ * @param array $settings Stallion settings
+ * @param array $packageData Package details (weight, dimensions, origin, destination)
+ * @return array Result with available rates from multiple carriers
+ */
+function getStallionRates($settings, $packageData) {
+    if (!isStallionConfigured($settings)) {
+        return ['success' => false, 'message' => 'Stallion Express is not properly configured'];
+    }
+    
+    return stallionApiRequest($settings, '/rates', 'POST', $packageData);
 }

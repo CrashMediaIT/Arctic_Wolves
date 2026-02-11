@@ -409,15 +409,16 @@ $baseUrl = $in_finance_dashboard ? '?page=finance_dashboard&tab=shop_orders' : '
                 <p style="color: var(--text-dim); margin-bottom: 16px;">Enter shipping details to mark this order as shipped. The customer can use the tracking information to follow their package.</p>
                 
                 <div class="form-group">
-                    <label class="form-label">Shipping Carrier *</label>
+                    <label class="form-label">Shipping Carrier / Fulfillment *</label>
                     <select name="shipping_carrier" class="form-input" required>
-                        <option value="">-- Select Carrier --</option>
-                        <option value="Stallion Express">Stallion Express</option>
+                        <option value="">-- Select Option --</option>
+                        <option value="Stallion Express">Stallion Express (Multi-Carrier)</option>
                         <option value="Canada Post">Canada Post</option>
                         <option value="UPS">UPS</option>
                         <option value="FedEx">FedEx</option>
                         <option value="Purolator">Purolator</option>
                         <option value="DHL">DHL</option>
+                        <option value="Pickup at Session">Pickup at Session</option>
                         <option value="Local Pickup">Local Pickup</option>
                         <option value="Other">Other</option>
                     </select>
