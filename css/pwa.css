@@ -310,7 +310,11 @@ body.pwa-body {
   background: linear-gradient(135deg, rgba(107,70,193,0.2), rgba(139,92,246,0.1));
   border: 1px solid rgba(107,70,193,0.3);
   border-radius: 12px;
-  margin-bottom: 12px;
+  position: fixed;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px);
+  left: 16px;
+  right: 16px;
+  z-index: 101;
 }
 .pwa-install-banner.show { display: flex; align-items: center; gap: 12px; }
 .pwa-install-banner p { flex: 1; font-size: 13px; font-weight: 600; }
@@ -655,4 +659,1328 @@ body.pwa-body .pwa-content:before {
   content: '';
   display: block;
   height: 0;
+}
+
+/* ── Notifications Page Mobile Overrides ───────────────── */
+body.pwa-body .notification-item {
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+body.pwa-body .notification-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+}
+body.pwa-body .notification-title {
+  font-size: 14px;
+}
+body.pwa-body .notification-message {
+  font-size: 13px;
+}
+body.pwa-body .notification-meta {
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+}
+body.pwa-body .system-alert {
+  padding: 12px 14px;
+  gap: 12px;
+}
+body.pwa-body .system-alert-content strong {
+  font-size: 13px;
+}
+body.pwa-body .system-alert-content p {
+  font-size: 13px;
+}
+body.pwa-body .empty-state {
+  padding: 40px 16px;
+}
+body.pwa-body .empty-state i {
+  font-size: 48px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   COMPREHENSIVE PWA MOBILE REDESIGN
+   All rules scoped to body.pwa-body – desktop is unaffected.
+   Uses Font Awesome icons & the Arctic Wolves color scheme.
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 1. Dashboard Grid & Cards ─────────────────────────── */
+body.pwa-body .dashboard-grid {
+  grid-template-columns: 1fr !important;
+  gap: 12px;
+  margin-top: 12px;
+}
+body.pwa-body .dashboard-card {
+  border-radius: 12px;
+  margin-bottom: 0;
+}
+body.pwa-body .dashboard-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── 2. Stat Cards / KPI Cards ─────────────────────────── */
+body.pwa-body .stats-overview,
+body.pwa-body .stats-grid,
+body.pwa-body .stat-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+body.pwa-body .stat-card,
+body.pwa-body .kpi-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+body.pwa-body .stat-card .stat-value,
+body.pwa-body .kpi-card .stat-value,
+body.pwa-body .stat-value {
+  font-size: 20px;
+}
+body.pwa-body .stat-card .stat-label,
+body.pwa-body .kpi-card .stat-label,
+body.pwa-body .stat-label {
+  font-size: 10px;
+}
+body.pwa-body .stat-icon {
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+}
+
+/* ── 3. Session Cards & Lists ──────────────────────────── */
+body.pwa-body .session-card {
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  text-align: left;
+  align-items: flex-start;
+}
+body.pwa-body .session-card:hover {
+  transform: none;
+}
+body.pwa-body .session-list {
+  gap: 8px;
+}
+body.pwa-body .session-item {
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  align-items: flex-start;
+}
+body.pwa-body .session-actions {
+  width: 100%;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+body.pwa-body .session-actions .btn {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  padding: 8px 10px;
+  min-height: 36px;
+}
+body.pwa-body .session-info strong {
+  font-size: 13px;
+}
+body.pwa-body .session-date,
+body.pwa-body .session-meta {
+  font-size: 12px;
+}
+
+/* ── 4. Athlete / Roster Cards & Grids ─────────────────── */
+body.pwa-body .roster-grid,
+body.pwa-body .athletes-grid {
+  grid-template-columns: 1fr !important;
+  gap: 8px;
+}
+body.pwa-body .athlete-card,
+body.pwa-body .roster-card,
+body.pwa-body .athlete-grid-card {
+  padding: 12px;
+  border-radius: 10px;
+  gap: 10px;
+}
+body.pwa-body .athlete-card:hover {
+  transform: none;
+}
+body.pwa-body .athlete-avatar,
+body.pwa-body .athlete-avatar-small {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  font-size: 16px;
+}
+body.pwa-body .athlete-info .athlete-name,
+body.pwa-body .athlete-cell .athlete-name {
+  font-size: 14px;
+}
+body.pwa-body .athlete-info .athlete-meta,
+body.pwa-body .athlete-cell .athlete-meta {
+  font-size: 11px;
+}
+body.pwa-body .athletes-table {
+  font-size: 12px;
+}
+body.pwa-body .progress-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+/* ── 5. Messages View (Messenger-style) ────────────────── */
+body.pwa-body .messages-container {
+  flex-direction: column;
+  height: calc(100dvh - 140px);
+  border-radius: 10px;
+  border: none;
+}
+body.pwa-body .msg-sidebar {
+  width: 100%;
+  min-width: 100%;
+  border-right: none;
+  border-bottom: 1px solid var(--border, #2D2D3F);
+  max-height: none;
+}
+body.pwa-body .msg-sidebar.hidden {
+  display: none;
+}
+body.pwa-body .msg-sidebar-header {
+  padding: 12px;
+}
+body.pwa-body .msg-sidebar-header h2 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+body.pwa-body .msg-search {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+body.pwa-body .msg-new-btn {
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-top: 8px;
+  border-radius: 8px;
+  min-height: 44px;
+}
+body.pwa-body .conversation-list {
+  max-height: 260px;
+}
+body.pwa-body .conversation-item {
+  padding: 10px 12px;
+  gap: 10px;
+}
+body.pwa-body .conv-avatar {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  font-size: 14px;
+}
+body.pwa-body .conv-name {
+  font-size: 13px;
+}
+body.pwa-body .conv-preview {
+  font-size: 12px;
+}
+body.pwa-body .msg-main {
+  flex: 1;
+  min-height: 0;
+}
+body.pwa-body .msg-main.hidden {
+  display: none;
+}
+body.pwa-body .msg-main-header {
+  padding: 10px 14px;
+  gap: 10px;
+}
+body.pwa-body .msg-main-header .conv-avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  font-size: 12px;
+}
+body.pwa-body .msg-main-header .header-info h3 {
+  font-size: 14px;
+}
+body.pwa-body .msg-main-header .header-info p {
+  font-size: 11px;
+}
+body.pwa-body .msg-body {
+  padding: 12px 14px;
+  gap: 6px;
+}
+body.pwa-body .msg-bubble {
+  padding: 8px 14px;
+  font-size: 14px;
+  border-radius: 16px;
+}
+body.pwa-body .msg-bubble-row {
+  max-width: 85%;
+}
+body.pwa-body .msg-bubble-time {
+  font-size: 10px;
+}
+body.pwa-body .msg-input-area {
+  padding: 10px 12px;
+  gap: 8px;
+}
+body.pwa-body .msg-input {
+  padding: 10px 14px;
+  font-size: 14px;
+  border-radius: 20px;
+  min-height: 44px;
+}
+body.pwa-body .msg-send-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  font-size: 16px;
+}
+body.pwa-body .msg-modal {
+  width: calc(100% - 32px);
+  max-width: 100%;
+  max-height: 80vh;
+  margin: 16px;
+}
+body.pwa-body .msg-modal-header {
+  padding: 14px 16px;
+}
+body.pwa-body .msg-modal-header h3 {
+  font-size: 16px;
+}
+body.pwa-body .msg-empty-state {
+  padding: 24px;
+}
+body.pwa-body .msg-empty-state i {
+  font-size: 36px;
+}
+body.pwa-body .msg-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--primary-light, #8B5CF6);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+/* ── 6. Progress Bars & Charts ─────────────────────────── */
+body.pwa-body .progress-bar {
+  height: 8px;
+  border-radius: 4px;
+}
+body.pwa-body .progress-fill {
+  border-radius: 4px;
+}
+body.pwa-body .progress-text {
+  font-size: 11px;
+}
+body.pwa-body .chart-container,
+body.pwa-body .chart-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+body.pwa-body canvas {
+  max-width: 100%;
+  height: auto !important;
+}
+
+/* ── 7. Goals View ─────────────────────────────────────── */
+body.pwa-body .goals-container {
+  padding: 0;
+}
+body.pwa-body .goals-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .goal-card {
+  padding: 14px;
+  border-radius: 10px;
+}
+body.pwa-body .goal-card .goal-header {
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+body.pwa-body .goal-title {
+  font-size: 14px;
+}
+body.pwa-body .goal-description {
+  font-size: 12px;
+}
+body.pwa-body .goal-tags {
+  gap: 4px;
+  flex-wrap: wrap;
+}
+body.pwa-body .goal-tags .badge,
+body.pwa-body .goal-tags .tag {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+body.pwa-body .goal-progress {
+  margin-top: 8px;
+}
+body.pwa-body .goal-meta {
+  font-size: 11px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body.pwa-body .goal-category {
+  font-size: 10px;
+}
+body.pwa-body .athlete-goals-banner {
+  padding: 14px;
+  border-radius: 10px;
+}
+body.pwa-body .category-group {
+  margin-bottom: 16px;
+}
+
+/* ── 8. Steps / Drill Detail Sections ──────────────────── */
+body.pwa-body .steps-section {
+  margin-top: 12px;
+}
+body.pwa-body .step-item {
+  padding: 10px 12px;
+  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+}
+body.pwa-body .step-content {
+  width: 100%;
+}
+body.pwa-body .step-detail-item {
+  font-size: 12px;
+  flex-direction: column;
+  gap: 4px;
+}
+body.pwa-body .step-handle {
+  display: none;
+}
+
+/* ── 9. Detail Views (Drill, Practice, Session Detail) ── */
+body.pwa-body .detail-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .detail-section {
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+body.pwa-body .detail-row {
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+body.pwa-body .detail-row label,
+body.pwa-body .detail-row .detail-label {
+  font-size: 11px;
+}
+body.pwa-body .detail-row .detail-value {
+  font-size: 13px;
+}
+
+/* ── 10. Workout / Drill / Plan Cards ──────────────────── */
+body.pwa-body .workout-card,
+body.pwa-body .drill-card,
+body.pwa-body .plan-card {
+  padding: 12px;
+  border-radius: 10px;
+  gap: 8px;
+}
+body.pwa-body .workout-card:hover,
+body.pwa-body .drill-card:hover,
+body.pwa-body .plan-card:hover {
+  transform: none;
+}
+body.pwa-body .workout-card .card-title,
+body.pwa-body .drill-card .card-title,
+body.pwa-body .plan-card .card-title {
+  font-size: 14px;
+}
+body.pwa-body .workout-card .card-meta,
+body.pwa-body .drill-card .card-meta,
+body.pwa-body .plan-card .card-meta {
+  font-size: 11px;
+}
+
+/* ── 11. Search Bars & Filter Rows ─────────────────────── */
+body.pwa-body .search-bar,
+body.pwa-body .search-input,
+body.pwa-body .filter-box,
+body.pwa-body .filters-bar {
+  width: 100%;
+}
+body.pwa-body .search-bar input,
+body.pwa-body .search-input,
+body.pwa-body .filter-box input {
+  width: 100%;
+  font-size: 14px;
+  padding: 10px 12px;
+  min-height: 44px;
+  border-radius: 8px;
+}
+body.pwa-body .filter-row {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+body.pwa-body .filter-group {
+  width: 100%;
+}
+body.pwa-body .filter-group select,
+body.pwa-body .filter-group input {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+}
+body.pwa-body .filters-bar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* ── 12. Calendar Views ────────────────────────────────── */
+body.pwa-body .calendar-header {
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+body.pwa-body .calendar-nav {
+  width: 100%;
+  justify-content: space-between;
+}
+body.pwa-body .calendar-grid {
+  font-size: 11px;
+}
+body.pwa-body .calendar-grid td {
+  padding: 4px;
+  min-height: 40px;
+}
+body.pwa-body .calendar-day-number {
+  font-size: 12px;
+}
+body.pwa-body .calendar-event {
+  font-size: 9px;
+  padding: 1px 3px;
+}
+
+/* ── 13. Profile View ──────────────────────────────────── */
+body.pwa-body .profile-content {
+  padding: 0;
+}
+body.pwa-body .profile-page-header {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 16px;
+}
+body.pwa-body .profile-header-avatar {
+  width: 64px;
+  height: 64px;
+  font-size: 24px;
+}
+body.pwa-body .profile-name {
+  font-size: 18px;
+}
+body.pwa-body .profile-role {
+  font-size: 12px;
+}
+body.pwa-body .profile-tabs {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 4px;
+  padding: 4px 0;
+}
+body.pwa-body .profile-tabs::-webkit-scrollbar {
+  display: none;
+}
+body.pwa-body .profile-tab-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  min-height: 36px;
+}
+body.pwa-body .preference-item {
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px;
+}
+body.pwa-body .stat-box {
+  padding: 12px;
+}
+
+/* ── 14. Settings View ─────────────────────────────────── */
+body.pwa-body .settings-form {
+  max-width: 100%;
+}
+body.pwa-body .settings-form .form-row {
+  grid-template-columns: 1fr;
+}
+
+/* ── 15. POS Terminal View ─────────────────────────────── */
+body.pwa-body .pos-container {
+  flex-direction: column;
+  height: auto;
+  gap: 0;
+}
+body.pwa-body .pos-products {
+  width: 100%;
+  max-height: 50vh;
+  overflow-y: auto;
+  border-right: none;
+  border-bottom: 1px solid var(--border, #2D2D3F);
+}
+body.pwa-body .pos-categories {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 6px;
+  padding: 8px;
+  flex-wrap: nowrap;
+}
+body.pwa-body .pos-categories::-webkit-scrollbar {
+  display: none;
+}
+body.pwa-body .pos-categories button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 6px 12px;
+  min-height: 36px;
+}
+body.pwa-body .pos-product-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 8px;
+}
+body.pwa-body .pos-product-card {
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+body.pwa-body .pos-product-card img {
+  height: 60px;
+  border-radius: 6px;
+}
+body.pwa-body .pos-cart {
+  width: 100%;
+  max-height: 40vh;
+  border-top: 1px solid var(--border, #2D2D3F);
+}
+body.pwa-body .pos-cart-items {
+  max-height: 200px;
+  overflow-y: auto;
+}
+body.pwa-body .pos-cart-item {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+body.pwa-body .qty-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+body.pwa-body .pos-total-row {
+  font-size: 14px;
+  padding: 10px;
+}
+body.pwa-body .pos-payment-btns {
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+body.pwa-body .pos-payment-btns .btn {
+  width: 100%;
+  min-height: 44px;
+}
+body.pwa-body .pos-size-modal,
+body.pwa-body .pos-cash-modal {
+  width: calc(100% - 32px);
+  max-width: 100%;
+}
+body.pwa-body .pos-size-options {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+body.pwa-body .reader-status {
+  font-size: 11px;
+  padding: 6px 10px;
+}
+
+/* ── 16. Finance / Accounting Views ────────────────────── */
+body.pwa-body .finance-grid,
+body.pwa-body .accounting-grid,
+body.pwa-body .billing-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .finance-card,
+body.pwa-body .accounting-card {
+  padding: 14px;
+  border-radius: 10px;
+}
+body.pwa-body .finance-card .amount,
+body.pwa-body .accounting-card .amount {
+  font-size: 20px;
+}
+body.pwa-body .payment-summary {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+body.pwa-body .payment-summary .summary-card {
+  padding: 12px;
+  border-radius: 8px;
+}
+body.pwa-body .payment-summary .summary-card .value {
+  font-size: 18px;
+}
+body.pwa-body .payment-summary .summary-card .label {
+  font-size: 10px;
+}
+
+/* ── 17. HR Views (Onboarding, Payroll, Contracts) ─────── */
+body.pwa-body .onboarding-grid,
+body.pwa-body .payroll-grid,
+body.pwa-body .contract-grid,
+body.pwa-body .complaints-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .employee-card,
+body.pwa-body .complaint-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+body.pwa-body .onboarding-steps {
+  flex-direction: column;
+  gap: 8px;
+}
+body.pwa-body .onboarding-step {
+  font-size: 12px;
+  padding: 10px;
+}
+
+/* ── 18. Admin Views ───────────────────────────────────── */
+body.pwa-body .admin-grid,
+body.pwa-body .users-grid,
+body.pwa-body .permissions-grid,
+body.pwa-body .system-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .user-card,
+body.pwa-body .permission-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* ── 19. Video Recording & Review ──────────────────────── */
+body.pwa-body .video-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .video-card {
+  border-radius: 10px;
+  overflow: hidden;
+}
+body.pwa-body .video-card .video-thumbnail {
+  aspect-ratio: 16/9;
+}
+body.pwa-body .video-card .video-info {
+  padding: 10px;
+}
+body.pwa-body .video-card .video-title {
+  font-size: 13px;
+}
+body.pwa-body .video-card .video-meta {
+  font-size: 11px;
+}
+
+/* ── 20. Badges & Status Indicators ────────────────────── */
+body.pwa-body .badge,
+body.pwa-body .status-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+body.pwa-body .score-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+body.pwa-body .conv-role-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+}
+body.pwa-body .league-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+/* ── 21. Toasts & Alerts ───────────────────────────────── */
+body.pwa-body .toast {
+  max-width: calc(100vw - 32px);
+  font-size: 13px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  right: 16px;
+  left: 16px;
+}
+body.pwa-body .success-alert,
+body.pwa-body .error-alert {
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+/* ── 22. Typography Scaling ────────────────────────────── */
+body.pwa-body h1 {
+  font-size: 20px;
+}
+body.pwa-body h2 {
+  font-size: 17px;
+}
+body.pwa-body h3 {
+  font-size: 15px;
+}
+body.pwa-body h4 {
+  font-size: 14px;
+}
+
+/* ── 23. Container & Spacing Resets ────────────────────── */
+body.pwa-body .container,
+body.pwa-body .page-container,
+body.pwa-body .content-container {
+  padding-left: 0;
+  padding-right: 0;
+  overflow: visible;
+}
+
+/* ── 24. Team Roster / Team Stats ──────────────────────── */
+body.pwa-body .teams-stats-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .team-stats-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* ── 25. Evaluation Cards ──────────────────────────────── */
+body.pwa-body .eval-card,
+body.pwa-body .evaluation-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+body.pwa-body .eval-grid,
+body.pwa-body .evaluation-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+
+/* ── 26. Packages / Booking Cards ──────────────────────── */
+body.pwa-body .package-card,
+body.pwa-body .booking-card {
+  padding: 14px;
+  border-radius: 10px;
+}
+body.pwa-body .package-grid,
+body.pwa-body .booking-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .package-card .price {
+  font-size: 22px;
+}
+body.pwa-body .package-card .package-features {
+  font-size: 12px;
+}
+
+/* ── 27. Payment History & Refund Views ────────────────── */
+body.pwa-body .payment-table-wrapper,
+body.pwa-body .refund-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+}
+
+/* ── 28. Athlete Detail View ───────────────────────────── */
+body.pwa-body .athlete-detail-header {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+body.pwa-body .athlete-detail-stats {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+body.pwa-body .athlete-detail-tabs {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-wrap: nowrap;
+}
+body.pwa-body .athlete-detail-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── 29. Metric Lists & Review Lists ───────────────────── */
+body.pwa-body .metric-list,
+body.pwa-body .review-list,
+body.pwa-body .notes-list,
+body.pwa-body .notification-list {
+  gap: 8px;
+}
+body.pwa-body .metric-list .metric-item,
+body.pwa-body .review-item,
+body.pwa-body .note-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+/* ── 30. Stats Tabs ────────────────────────────────────── */
+body.pwa-body .stats-tabs-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+body.pwa-body .stats-tabs-wrapper::-webkit-scrollbar {
+  display: none;
+}
+body.pwa-body .stats-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+body.pwa-body .stats-tab-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  min-height: 36px;
+}
+
+/* ── 31. Athlete Selector ──────────────────────────────── */
+body.pwa-body .athlete-selector {
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+body.pwa-body .athlete-selector select {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+/* ── 32. Tab Content Areas ─────────────────────────────── */
+body.pwa-body .tab-content {
+  padding: 0;
+}
+body.pwa-body .tab-content .content-card {
+  margin-bottom: 10px;
+}
+
+/* ── 33. Progress History ──────────────────────────────── */
+body.pwa-body .progress-history {
+  gap: 8px;
+}
+body.pwa-body .progress-entry {
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* ── 34. Travel & Mileage ──────────────────────────────── */
+body.pwa-body .travel-grid,
+body.pwa-body .mileage-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .travel-card,
+body.pwa-body .mileage-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* ── 35. Shop / Merchandise Views ──────────────────────── */
+body.pwa-body .shop-grid,
+body.pwa-body .merchandise-grid,
+body.pwa-body .product-grid {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px;
+}
+body.pwa-body .product-card,
+body.pwa-body .shop-card {
+  padding: 10px;
+  border-radius: 10px;
+}
+body.pwa-body .product-card img,
+body.pwa-body .shop-card img {
+  border-radius: 8px;
+  height: 100px;
+  object-fit: cover;
+}
+body.pwa-body .product-card .product-name,
+body.pwa-body .shop-card .product-name {
+  font-size: 13px;
+}
+body.pwa-body .product-card .product-price,
+body.pwa-body .shop-card .product-price {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ── 36. Report Views ──────────────────────────────────── */
+body.pwa-body .report-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .report-card {
+  padding: 14px;
+  border-radius: 10px;
+}
+
+/* ── 37. Spinner & Loading States ──────────────────────── */
+body.pwa-body .spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+body.pwa-body .loading {
+  padding: 24px;
+  font-size: 13px;
+}
+
+/* ── 38. Dropdowns ─────────────────────────────────────── */
+body.pwa-body .dropdown-menu,
+body.pwa-body .dropdown-content {
+  position: fixed;
+  left: 16px !important;
+  right: 16px !important;
+  width: auto !important;
+  max-height: 60vh;
+  overflow-y: auto;
+  border-radius: 10px;
+  z-index: 200;
+}
+body.pwa-body .dropdown-menu a,
+body.pwa-body .dropdown-content a,
+body.pwa-body .dropdown-menu button,
+body.pwa-body .dropdown-content button {
+  min-height: 44px;
+  font-size: 14px;
+  padding: 10px 14px;
+}
+
+/* ── 39. Toggle Switches ───────────────────────────────── */
+body.pwa-body .toggle-switch,
+body.pwa-body .switch {
+  min-width: 44px;
+  min-height: 24px;
+}
+
+/* ── 40. Inline Style Overrides for View-specific Classes ─ */
+
+/* Parent Home athlete cards */
+body.pwa-body .athlete-cards-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+
+/* Coach session evaluations */
+body.pwa-body .evaluation-session-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* Front desk home */
+body.pwa-body .front-desk-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .checkin-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* Stopwatch view */
+body.pwa-body .stopwatch-display {
+  font-size: 36px;
+}
+body.pwa-body .stopwatch-controls {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+body.pwa-body .stopwatch-controls .btn {
+  flex: 1;
+  min-width: calc(50% - 4px);
+}
+body.pwa-body .lap-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Shot speed view */
+body.pwa-body .speed-display {
+  font-size: 48px;
+}
+body.pwa-body .speed-history {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* IHS Import view */
+body.pwa-body .import-section {
+  padding: 12px;
+}
+body.pwa-body .import-preview {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Drill designer / Practice builder */
+body.pwa-body .drill-form-container,
+body.pwa-body .practice-form-container {
+  max-width: 100%;
+}
+body.pwa-body .ice-canvas-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Time tracking */
+body.pwa-body .time-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .time-entry {
+  padding: 12px;
+  border-radius: 10px;
+}
+body.pwa-body .clock-display {
+  font-size: 32px;
+}
+
+/* Scheduling */
+body.pwa-body .schedule-grid {
+  grid-template-columns: 1fr !important;
+}
+body.pwa-body .schedule-slot {
+  padding: 10px;
+  font-size: 12px;
+}
+
+/* Email logs */
+body.pwa-body .email-log-grid {
+  grid-template-columns: 1fr !important;
+}
+
+/* ── 41. Anchor & Link Touch Targets ───────────────────── */
+body.pwa-body a.action-link,
+body.pwa-body .table-actions a,
+body.pwa-body .card-actions a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+}
+
+/* ── 42. Image & Media Responsiveness ──────────────────── */
+body.pwa-body img {
+  max-width: 100%;
+  height: auto;
+}
+body.pwa-body iframe,
+body.pwa-body video {
+  max-width: 100%;
+  border-radius: 10px;
+}
+
+/* ── 43. Horizontal Scroll Hints ───────────────────────── */
+body.pwa-body .table-wrapper::after,
+body.pwa-body .table-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(to left, var(--bg-card, #16161F), transparent);
+  pointer-events: none;
+  opacity: 0.6;
+  border-radius: 0 10px 10px 0;
+}
+body.pwa-body .table-wrapper,
+body.pwa-body .table-container {
+  position: relative;
+}
+
+/* ── 44. Pagination ────────────────────────────────────── */
+body.pwa-body .pagination {
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+body.pwa-body .pagination a,
+body.pwa-body .pagination button,
+body.pwa-body .pagination span {
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+/* ── 45. Coach Calendar Session Cards ──────────────────── */
+body.pwa-body .session-card.my-session {
+  border-left-width: 3px;
+}
+
+/* ── 46. Parent Home ───────────────────────────────────── */
+body.pwa-body .parent-actions {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+body.pwa-body .parent-action-card {
+  padding: 12px;
+  border-radius: 10px;
+  gap: 6px;
+}
+body.pwa-body .parent-action-card i {
+  font-size: 20px;
+}
+
+/* ── 47. Library Views ─────────────────────────────────── */
+body.pwa-body .library-grid {
+  grid-template-columns: 1fr !important;
+  gap: 10px;
+}
+body.pwa-body .library-card {
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* ── 48. Tabs Secondary Cleanup ────────────────────────── */
+body.pwa-body .page-tabs + .page-tabs-secondary {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* ── 49. Ensure All Multi-Column Grids Go Single ───────── */
+body.pwa-body [style*="grid-template-columns: repeat(2"],
+body.pwa-body [style*="grid-template-columns: repeat(3"],
+body.pwa-body [style*="grid-template-columns: repeat(4"],
+body.pwa-body [style*="grid-template-columns: repeat(auto-fit"] {
+  grid-template-columns: 1fr !important;
+}
+@media (min-width: 400px) {
+  body.pwa-body [style*="grid-template-columns: repeat(2"],
+  body.pwa-body [style*="grid-template-columns: repeat(auto-fit"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── 50. Inline Grid Style Overrides ───────────────────── */
+body.pwa-body [style*="display: grid"][style*="gap: 24px"],
+body.pwa-body [style*="display:grid"][style*="gap:24px"] {
+  gap: 10px !important;
+}
+body.pwa-body [style*="display: grid"][style*="gap: 20px"],
+body.pwa-body [style*="display:grid"][style*="gap:20px"] {
+  gap: 10px !important;
+}
+
+/* ── 51. Safe Area Insets ──────────────────────────────── */
+@supports (padding: env(safe-area-inset-top)) {
+  body.pwa-body .pwa-header {
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+  body.pwa-body .pwa-content {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── 52. Landscape Orientation Tweaks ──────────────────── */
+@media (orientation: landscape) and (max-height: 500px) {
+  body.pwa-body .pwa-header {
+    padding: 6px 16px;
+  }
+  body.pwa-body .pwa-header-logo {
+    font-size: 14px;
+  }
+  body.pwa-body .pwa-header-logo img {
+    height: 22px;
+  }
+  body.pwa-body .pwa-tab-bar {
+    height: 48px;
+  }
+  body.pwa-body .pwa-tab {
+    font-size: 9px;
+  }
+  body.pwa-body .pwa-tab i {
+    font-size: 14px;
+  }
+  body.pwa-body .pwa-content {
+    padding-bottom: 56px;
+  }
+  body.pwa-body .pwa-install-banner {
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px) + 8px);
+  }
+}
+
+/* ── 53. Small Phone Overrides (< 380px) ───────────────── */
+@media (max-width: 380px) {
+  body.pwa-body .pwa-quick-actions {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  body.pwa-body .pwa-stat-grid {
+    grid-template-columns: 1fr;
+  }
+  body.pwa-body .page-header-actions .btn {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  body.pwa-body .pwa-header-logo {
+    font-size: 14px;
+  }
+  body.pwa-body .pwa-header-logo img {
+    height: 24px;
+  }
+  body.pwa-body .pos-product-grid {
+    grid-template-columns: 1fr;
+  }
+  body.pwa-body .shop-grid,
+  body.pwa-body .merchandise-grid,
+  body.pwa-body .product-grid {
+    grid-template-columns: 1fr !important;
+  }
+  body.pwa-body .parent-actions {
+    grid-template-columns: 1fr;
+  }
 }

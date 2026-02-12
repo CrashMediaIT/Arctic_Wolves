@@ -317,6 +317,14 @@ try {
     <?php endif; ?>
 </div>
 
+<!-- ── PWA Install Banner ──────────────────────────────── -->
+<div class="pwa-install-banner" id="installBanner">
+    <i class="fas fa-download" style="font-size:20px;color:var(--primary-light);"></i>
+    <p>Install Arctic Wolves for a better experience</p>
+    <button class="pwa-install-btn" id="installBtn">Install</button>
+    <button onclick="document.getElementById('installBanner').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;padding:4px;">&times;</button>
+</div>
+
 <!-- ── Bottom Tab Bar ──────────────────────────────────── -->
 <nav class="pwa-tab-bar">
     <a href="?page=home" class="pwa-tab <?= $tab_home ? 'active' : '' ?>">
@@ -338,14 +346,6 @@ try {
         <span>More</span>
     </a>
 </nav>
-
-<!-- ── PWA Install Banner ──────────────────────────────── -->
-<div class="pwa-install-banner" id="installBanner">
-    <i class="fas fa-download" style="font-size:20px;color:var(--primary-light);"></i>
-    <p>Install Arctic Wolves for a better experience</p>
-    <button class="pwa-install-btn" id="installBtn">Install</button>
-    <button onclick="document.getElementById('installBanner').style.display='none'" style="background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;padding:4px;">&times;</button>
-</div>
 
 <script>
 // Parent athlete switcher

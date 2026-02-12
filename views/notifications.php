@@ -60,9 +60,6 @@ try {
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
     .page-header {
         display: flex;
         justify-content: space-between;
@@ -76,7 +73,7 @@ try {
     }
     .btn {
         padding: 10px 20px;
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
         border: none;
         border-radius: 6px;
@@ -87,11 +84,11 @@ try {
         font-size: 13px;
     }
     .btn-secondary {
-        background: #1e293b;
+        background: var(--bg-card, #16161F);
     }
     .notification-item {
-        background: #0d1117;
-        border: 1px solid #1e293b;
+        background: var(--bg-card, #16161F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 12px;
@@ -101,21 +98,21 @@ try {
         transition: 0.2s;
     }
     .notification-item:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
     }
     .notification-item.unread {
-        border-color: var(--primary);
-        background: rgba(255, 77, 0, 0.05);
+        border-color: var(--primary, #6B46C1);
+        background: rgba(107, 70, 193, 0.05);
     }
     .notification-icon {
         width: 50px;
         height: 50px;
-        background: rgba(255, 77, 0, 0.1);
+        background: rgba(107, 70, 193, 0.1);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--primary);
+        color: var(--accent, #8B5CF6);
         flex-shrink: 0;
         font-size: 20px;
     }
@@ -130,7 +127,7 @@ try {
     }
     .notification-message {
         font-size: 14px;
-        color: #94a3b8;
+        color: var(--text-dim, #A8A8B8);
         line-height: 1.6;
         margin-bottom: 10px;
     }
@@ -139,17 +136,17 @@ try {
         gap: 15px;
         align-items: center;
         font-size: 13px;
-        color: #64748b;
+        color: var(--text-dim, #A8A8B8);
     }
     .notification-link {
-        color: var(--primary);
+        color: var(--accent, #8B5CF6);
         text-decoration: none;
         font-weight: 600;
     }
     .empty-state {
         text-align: center;
         padding: 60px 20px;
-        color: #64748b;
+        color: var(--text-dim, #A8A8B8);
     }
     .empty-state i {
         font-size: 64px;
@@ -171,7 +168,7 @@ try {
         align-items: center;
         margin-bottom: 16px;
         padding-bottom: 12px;
-        border-bottom: 1px solid #1e293b;
+        border-bottom: 1px solid var(--border, #2D2D3F);
     }
     
     .system-notifications-header h2 {
@@ -185,7 +182,7 @@ try {
     }
     
     .system-notifications-header h2 i {
-        color: var(--primary);
+        color: var(--accent, #8B5CF6);
     }
     
     .system-alert {
@@ -256,20 +253,20 @@ try {
     
     .system-alert-content p {
         font-size: 14px;
-        color: #94a3b8;
+        color: var(--text-dim, #A8A8B8);
         margin: 0 0 4px 0;
         line-height: 1.5;
     }
     
     .system-alert-content small {
         font-size: 12px;
-        color: #64748b;
+        color: var(--text-dim, #A8A8B8);
     }
     
     .system-alert-dismiss {
         background: transparent;
         border: none;
-        color: #64748b;
+        color: var(--text-dim, #A8A8B8);
         cursor: pointer;
         padding: 4px;
         font-size: 16px;
@@ -295,7 +292,7 @@ try {
     .section-divider {
         margin: 24px 0;
         padding-bottom: 12px;
-        border-bottom: 1px solid #1e293b;
+        border-bottom: 1px solid var(--border, #2D2D3F);
     }
     
     .section-divider h2 {
@@ -309,7 +306,7 @@ try {
     }
     
     .section-divider h2 i {
-        color: var(--primary);
+        color: var(--accent, #8B5CF6);
     }
 </style>
 
@@ -397,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <h1 class="page-title">
         <i class="fas fa-bell"></i> Notifications
         <?php if ($unread_count > 0): ?>
-            <span style="background: var(--primary); color: #fff; border-radius: 12px; padding: 2px 10px; font-size: 14px; margin-left: 10px;">
+            <span style="background: var(--primary, #6B46C1); color: #fff; border-radius: 12px; padding: 2px 10px; font-size: 14px; margin-left: 10px;">
                 <?= $unread_count ?> New
             </span>
         <?php endif; ?>
