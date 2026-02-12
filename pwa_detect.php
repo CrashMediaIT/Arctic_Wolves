@@ -4,25 +4,25 @@
  *
  * Detects whether the user-agent is a mobile phone, tablet, or desktop
  * to route them to the appropriate view:
- *   - Phone  → PWA (mobile-optimized)
- *   - Tablet → Desktop (full dashboard)
+ *   - Phone   → PWA mobile (bottom-tab navigation)
+ *   - Tablet  → PWA tablet (collapsible sidebar + touch-friendly)
  *   - Desktop → Desktop (full dashboard)
  *
- * Also provides an opt-out: if the user explicitly sets ?view=desktop or
- * ?view=pwa, that preference is stored in the session and honored until
- * the session ends or is reset with ?view=auto.
+ * Also provides an opt-out: if the user explicitly sets ?view=desktop,
+ * ?view=pwa, or ?view=pwa_tablet, that preference is stored in the
+ * session and honored until the session ends or is reset with ?view=auto.
  */
 
 /**
  * Determine the preferred view for the current request.
  *
- * @return string 'pwa' | 'desktop'
+ * @return string 'pwa' | 'pwa_tablet' | 'desktop'
  */
 function getPwaViewPreference(): string {
-    // 1. Honour explicit override in the query string
+    // 1. Honor explicit override in the query string
     if (isset($_GET['view'])) {
         $v = strtolower(trim($_GET['view']));
-        if ($v === 'pwa' || $v === 'desktop') {
+        if (in_array($v, ['pwa', 'pwa_tablet', 'desktop'], true)) {
             $_SESSION['pwa_view_override'] = $v;
             return $v;
         }
@@ -31,13 +31,19 @@ function getPwaViewPreference(): string {
         }
     }
 
-    // 2. Honour a session-stored override
+    // 2. Honor a session-stored override
     if (!empty($_SESSION['pwa_view_override'])) {
         return $_SESSION['pwa_view_override'];
     }
 
     // 3. Auto-detect from User-Agent
-    return isMobilePhone() ? 'pwa' : 'desktop';
+    if (isMobilePhone()) {
+        return 'pwa';
+    }
+    if (isTablet()) {
+        return 'pwa_tablet';
+    }
+    return 'desktop';
 }
 
 /**
@@ -49,7 +55,7 @@ function isMobilePhone(): bool {
         return false;
     }
 
-    // iPad and Android tablets: treat as desktop
+    // iPad and Android tablets: treat as tablet, not phone
     if (preg_match('/iPad|Android(?!.*Mobile)/i', $ua)) {
         return false;
     }
@@ -63,12 +69,52 @@ function isMobilePhone(): bool {
 }
 
 /**
- * Redirect to the PWA if the current view preference is 'pwa'
+ * Returns true for tablets (iPad, Android tablets, Windows tablets).
+ */
+function isTablet(): bool {
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    if (empty($ua)) {
+        return false;
+    }
+
+    // iPad (including iPadOS 13+ which reports as Mac)
+    if (preg_match('/iPad/i', $ua)) {
+        return true;
+    }
+
+    // iPadOS 13+ uses Mac user-agent but has touch support
+    // Detected via Macintosh + touch hint (not reliable via UA alone,
+    // but we include the common pattern)
+    if (preg_match('/Macintosh.*Safari/i', $ua) && preg_match('/Mobile/i', $ua)) {
+        return true;
+    }
+
+    // Android tablets: "Android" without "Mobile"
+    if (preg_match('/Android/i', $ua) && !preg_match('/Mobile/i', $ua)) {
+        return true;
+    }
+
+    // Windows tablets with touch
+    if (preg_match('/Windows.*Touch/i', $ua) || preg_match('/Tablet PC/i', $ua)) {
+        return true;
+    }
+
+    // Amazon Kindle/Fire tablets
+    if (preg_match('/Kindle|Silk|KFAPWI|KFOT|KFJWI|KFJWA|KFSOWI|KFTHWI/i', $ua)) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Redirect to the PWA if the current view preference is not 'desktop'
  * and we are not already on a PWA page. Call from index.php/login.php/dashboard.php.
  *
- * @param string $pwaTarget The PWA URL to redirect to (default: pwa.php)
+ * @param string $phonePwaTarget  URL for phone users (default: pwa.php)
+ * @param string $tabletPwaTarget URL for tablet users (default: pwa_tablet.php)
  */
-function redirectToPwaIfMobile(string $pwaTarget = 'pwa.php'): void {
+function redirectToPwaIfMobile(string $phonePwaTarget = 'pwa.php', string $tabletPwaTarget = 'pwa_tablet.php'): void {
     // Don't redirect API, AJAX, or process_ requests
     $uri = $_SERVER['REQUEST_URI'] ?? '';
     if (
@@ -85,8 +131,13 @@ function redirectToPwaIfMobile(string $pwaTarget = 'pwa.php'): void {
         return;
     }
 
-    if (getPwaViewPreference() === 'pwa') {
-        header("Location: $pwaTarget");
+    $pref = getPwaViewPreference();
+    if ($pref === 'pwa') {
+        header("Location: $phonePwaTarget");
+        exit();
+    }
+    if ($pref === 'pwa_tablet') {
+        header("Location: $tabletPwaTarget");
         exit();
     }
 }

@@ -37,13 +37,13 @@ session_start();
 require_once __DIR__ . '/pwa_detect.php';
 
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    // Logged-in: redirect mobile phones to PWA, others to desktop dashboard
-    redirectToPwaIfMobile('pwa.php');
+    // Logged-in: redirect phones to PWA, tablets to tablet PWA, desktops to dashboard
+    redirectToPwaIfMobile('pwa.php', 'pwa_tablet.php');
     header("Location: dashboard.php");
     exit();
 } else {
-    // Not logged in: redirect mobile phones to PWA login
-    redirectToPwaIfMobile('pwa_login.php');
+    // Not logged in: redirect phones/tablets to PWA login
+    redirectToPwaIfMobile('pwa_login.php', 'pwa_login.php');
     // Show the marketing page for non-logged-in users
     include __DIR__ . '/index_default.php';
     exit();

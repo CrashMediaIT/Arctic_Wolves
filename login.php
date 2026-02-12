@@ -18,7 +18,7 @@ if ($isPosSubdomain) {
 }
 
 // PWA: redirect mobile phones to PWA login
-redirectToPwaIfMobile('pwa_login.php');
+redirectToPwaIfMobile('pwa_login.php', 'pwa_login.php');
 
 /**
  * Record login attempt in login_history table

@@ -131,7 +131,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
 
                 // Redirect to dashboard (PWA-aware)
-                $loginTarget = (!empty($_POST['pwa_login'])) ? 'pwa.php' : 'dashboard.php';
+                if (!empty($_POST['pwa_login'])) {
+                    require_once __DIR__ . '/pwa_detect.php';
+                    $pref = getPwaViewPreference();
+                    $loginTarget = ($pref === 'pwa_tablet') ? 'pwa_tablet.php' : 'pwa.php';
+                } else {
+                    $loginTarget = 'dashboard.php';
+                }
                 header("Location: $loginTarget");
                 exit();
             } else {

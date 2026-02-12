@@ -9,9 +9,14 @@ require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/pwa_detect.php';
 
-// If already logged in, go to PWA dashboard
+// If already logged in, go to appropriate PWA dashboard
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    header("Location: pwa.php");
+    $pref = getPwaViewPreference();
+    if ($pref === 'pwa_tablet') {
+        header("Location: pwa_tablet.php");
+    } else {
+        header("Location: pwa.php");
+    }
     exit();
 }
 

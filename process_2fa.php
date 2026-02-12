@@ -295,7 +295,14 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
                     
                     // PWA-aware redirect after 2FA
                     require_once __DIR__ . '/pwa_detect.php';
-                    $redirectTarget = (getPwaViewPreference() === 'pwa') ? 'pwa.php' : 'dashboard.php';
+                    $pref = getPwaViewPreference();
+                    if ($pref === 'pwa') {
+                        $redirectTarget = 'pwa.php';
+                    } elseif ($pref === 'pwa_tablet') {
+                        $redirectTarget = 'pwa_tablet.php';
+                    } else {
+                        $redirectTarget = 'dashboard.php';
+                    }
                     echo json_encode(['success' => true, 'redirect' => $redirectTarget]);
                 } else {
                     ErrorLogger::security("2FA verification failed", ['user_id' => $verify_user_id]);

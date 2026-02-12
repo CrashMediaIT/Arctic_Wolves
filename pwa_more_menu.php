@@ -85,6 +85,10 @@
             <i class="fas fa-file-lines"></i> Practice Plans
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=roster" class="pwa-menu-item">
+            <i class="fas fa-users-gear"></i> Roster
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
         <a href="?page=coach_session_evaluations" class="pwa-menu-item">
             <i class="fas fa-clipboard-check"></i> Session Evaluations
             <i class="fas fa-chevron-right menu-chevron"></i>
@@ -122,6 +126,10 @@
             <i class="fas fa-utensils"></i> Nutrition
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=roster" class="pwa-menu-item">
+            <i class="fas fa-users-gear"></i> Roster
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
     </ul>
 </div>
 <?php endif; ?>
@@ -129,18 +137,26 @@
 <!-- Finance (Admin) -->
 <?php if ($isAdmin): ?>
 <div class="pwa-menu-group">
-    <div class="pwa-section-label">Finance & Reports</div>
+    <div class="pwa-section-label">Accounting & Reports</div>
     <ul class="pwa-menu-list">
         <a href="?page=finance_dashboard" class="pwa-menu-item">
             <i class="fas fa-chart-pie"></i> Finance Dashboard
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=financial_reports" class="pwa-menu-item">
-            <i class="fas fa-chart-bar"></i> Reports
+            <i class="fas fa-chart-bar"></i> Financial Reports
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=credits_refunds" class="pwa-menu-item">
+            <i class="fas fa-money-bill-transfer"></i> Credits & Refunds
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=expenses" class="pwa-menu-item">
             <i class="fas fa-receipt"></i> Expenses
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=products" class="pwa-menu-item">
+            <i class="fas fa-box-open"></i> Products
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
     </ul>
@@ -164,6 +180,10 @@
             <i class="fas fa-clock"></i> Time Tracking
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=pos_schedule" class="pwa-menu-item">
+            <i class="fas fa-calendar-alt"></i> My Schedule
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
     </ul>
 </div>
 <?php endif; ?>
@@ -173,6 +193,14 @@
 <div class="pwa-menu-group">
     <div class="pwa-section-label">HR</div>
     <ul class="pwa-menu-list">
+        <a href="?page=admin_staff_scheduling" class="pwa-menu-item">
+            <i class="fas fa-calendar-check"></i> Staff Scheduling
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=hr_time_tracking" class="pwa-menu-item">
+            <i class="fas fa-clock"></i> Time Tracking
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
         <a href="?page=payroll" class="pwa-menu-item">
             <i class="fas fa-money-check-dollar"></i> Payroll
             <i class="fas fa-chevron-right menu-chevron"></i>
@@ -185,8 +213,12 @@
             <i class="fas fa-file-signature"></i> Contracts
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="?page=hr_time_tracking" class="pwa-menu-item">
-            <i class="fas fa-clock"></i> Time Tracking
+        <a href="?page=complaints" class="pwa-menu-item">
+            <i class="fas fa-exclamation-triangle"></i> Complaints
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=termination" class="pwa-menu-item">
+            <i class="fas fa-user-slash"></i> Termination
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
     </ul>
@@ -200,6 +232,10 @@
     <ul class="pwa-menu-list">
         <a href="?page=all_users" class="pwa-menu-item">
             <i class="fas fa-users"></i> All Users
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=categories" class="pwa-menu-item">
+            <i class="fas fa-layer-group"></i> Resource Management
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
         <a href="?page=eval_framework" class="pwa-menu-item">
@@ -220,6 +256,10 @@
         </a>
         <a href="?page=audit_log" class="pwa-menu-item">
             <i class="fas fa-clipboard-list"></i> Audit Log
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
+        <a href="?page=marketing" class="pwa-menu-item">
+            <i class="fas fa-bullhorn"></i> Marketing
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
     </ul>

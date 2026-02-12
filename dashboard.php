@@ -15,7 +15,7 @@ require_once __DIR__ . '/pwa_detect.php';
 setSecurityHeaders();
 
 // PWA: redirect mobile phones to PWA dashboard
-redirectToPwaIfMobile('pwa.php');
+redirectToPwaIfMobile('pwa.php', 'pwa_tablet.php');
 
 // Generate CSRF token for this session
 CSRFProtection::generateToken();
