@@ -1,0 +1,24 @@
+# Arctic Wolves Video Companion Server
+# CPU-only configuration
+
+services:
+  companion:
+    build: .
+    container_name: aw-video-companion
+    restart: unless-stopped
+    ports:
+      - "5100:5100"
+    volumes:
+      - /videos:/videos          # Mount your NFS/SMB video share here
+    environment:
+      - API_KEY=${API_KEY:-changeme}
+      - VIDEO_BASE_PATH=/videos
+      - HW_ACCEL=auto
+      - MAX_CONCURRENT_JOBS=2
+      - COMPANION_PORT=5100
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5100/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

@@ -287,7 +287,8 @@ $allowed_pages = [
     
     // Profile and Settings
     'profile'                 => 'views/profile.php',
-    'settings'                => 'views/settings.php'
+    'settings'                => 'views/settings.php',
+    'gameplan_settings'       => 'views/gameplan_settings.php'
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
@@ -786,7 +787,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video Recording
             </a>
-            <a href="https://review.arcticwolves.ca" class="nav-link" rel="noopener noreferrer">
+            <a href="https://gameplan.arcticwolves.ca" class="nav-link" rel="noopener noreferrer">
                 <i class="fa-solid fa-chess-board icon"></i> Game Plan
             </a>
         </nav>
@@ -908,6 +909,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>">
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools
+            </a>
+            <a href="?page=gameplan_settings" class="nav-link <?= $page=='gameplan_settings'?'active':'' ?>">
+                <i class="fa-solid fa-chess-board icon"></i> Game Plan Settings
             </a>
             <a href="?page=marketing" class="nav-link <?= $page=='marketing'?'active':'' ?>">
                 <i class="fa-solid fa-bullhorn icon"></i> Marketing
