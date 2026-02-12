@@ -9,9 +9,13 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/pwa_detect.php';
 
 // Set security headers including CSP
 setSecurityHeaders();
+
+// PWA: redirect mobile phones to PWA dashboard
+redirectToPwaIfMobile('pwa.php', 'pwa_tablet.php');
 
 // Generate CSRF token for this session
 CSRFProtection::generateToken();
@@ -293,6 +297,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arctic Wolves Dashboard</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6B46C1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <!-- Unified Style Guide - Authoritative stylesheet based on Upcoming Sessions and Bookings -->

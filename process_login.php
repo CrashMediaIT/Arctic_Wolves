@@ -32,15 +32,20 @@ function recordLoginHistory($pdo, $user_id, $status, $failure_reason = null) {
 if (!$db_connected || $pdo === null) {
     ErrorLogger::error("Database connection failed during login", ['error' => $db_error ?? 'Unknown']);
     $_SESSION['login_error'] = "Database connection error. Please contact support.";
-    header("Location: login.php");
+    $loginPage = (!empty($_POST['pwa_login'])) ? 'pwa_login.php' : 'login.php';
+    header("Location: $loginPage");
     exit();
 }
+
+// Determine login page for error redirects (PWA vs desktop)
+$_loginRedirect = (!empty($_POST['pwa_login'])) ? 'pwa_login.php?error=' : 'login.php?error=';
+$_loginPage = (!empty($_POST['pwa_login'])) ? 'pwa_login.php' : 'login.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Validate CSRF token for POST requests
     if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
         $_SESSION['login_error'] = "Invalid request. Please refresh and try again.";
-        header("Location: login.php");
+        header("Location: " . $_loginPage);
         exit();
     }
     
@@ -50,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Validation
     if (empty($email) || empty($password)) {
         $_SESSION['login_error'] = "Please enter both email and password.";
-        header("Location: login.php");
+        header("Location: " . $_loginPage);
         exit();
     }
 
@@ -70,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['login_error'] = "Your account has been disabled. Please contact an administrator for assistance.";
                 ErrorLogger::security("Login attempt for disabled account", ['email' => $email]);
                 recordLoginHistory($pdo, $user['id'], 'blocked', 'Account disabled');
-                header("Location: login.php");
+                header("Location: " . $_loginPage);
                 exit();
             }
 
@@ -125,22 +130,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     exit();
                 }
 
-                // Redirect to dashboard
-                header("Location: dashboard.php");
+                // Redirect to dashboard (PWA-aware)
+                if (!empty($_POST['pwa_login'])) {
+                    require_once __DIR__ . '/pwa_detect.php';
+                    $pref = getPwaViewPreference();
+                    $loginTarget = ($pref === 'pwa_tablet') ? 'pwa_tablet.php' : 'pwa.php';
+                } else {
+                    $loginTarget = 'dashboard.php';
+                }
+                header("Location: $loginTarget");
                 exit();
             } else {
                 // Invalid password
                 $_SESSION['login_error'] = "Invalid email or password.";
                 ErrorLogger::security("Failed login attempt - invalid password", ['email' => $email]);
                 recordLoginHistory($pdo, $user['id'], 'failed', 'Invalid password');
-                header("Location: login.php");
+                header("Location: " . $_loginPage);
                 exit();
             }
         } else {
             // User not found
             $_SESSION['login_error'] = "Invalid email or password.";
             ErrorLogger::security("Failed login attempt - user not found", ['email' => $email]);
-            header("Location: login.php");
+            header("Location: " . $_loginPage);
             exit();
         }
 
@@ -150,12 +162,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             'email' => $email
         ]);
         $_SESSION['login_error'] = "An error occurred. Please try again later.";
-        header("Location: login.php");
+        header("Location: " . $_loginPage);
         exit();
     }
 } else {
     // Not a POST request
-    header("Location: login.php");
+    header("Location: " . $_loginPage);
     exit();
 }
 ?>

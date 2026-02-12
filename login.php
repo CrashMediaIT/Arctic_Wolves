@@ -3,6 +3,7 @@ session_start();
 require 'db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/pwa_detect.php';
 
 // Detect POS subdomain (pos.arcticwolves.ca) - redirect to kiosk login
 // Strict validation: must end with arcticwolves.ca
@@ -15,6 +16,9 @@ if ($isPosSubdomain) {
     header("Location: pos_kiosk.php");
     exit();
 }
+
+// PWA: redirect mobile phones to PWA login
+redirectToPwaIfMobile('pwa_login.php', 'pwa_login.php');
 
 /**
  * Record login attempt in login_history table

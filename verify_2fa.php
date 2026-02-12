@@ -6,12 +6,15 @@
 session_start();
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/csrf_protection.php';
+require_once __DIR__ . '/pwa_detect.php';
 
 // If no 2FA pending, redirect
 if (empty($_SESSION['2fa_pending'])) {
     if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']) {
+        redirectToPwaIfMobile('pwa.php', 'pwa_tablet.php');
         header("Location: dashboard.php");
     } else {
+        redirectToPwaIfMobile('pwa_login.php', 'pwa_login.php');
         header("Location: login.php");
     }
     exit();

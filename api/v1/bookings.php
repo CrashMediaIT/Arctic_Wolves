@@ -62,13 +62,13 @@ function handleListBookings($auth) {
 
         $stmt = $pdo->prepare("
             SELECT b.id, b.user_id, b.session_id, b.status, b.payment_status,
-                   b.amount_paid, b.booking_date, b.created_at,
+                   b.amount_paid, b.booking_date,
                    s.title AS session_title, s.session_date, s.session_time,
                    s.arena, s.city
             FROM bookings b
             LEFT JOIN sessions s ON b.session_id = s.id
             $where_sql
-            ORDER BY b.created_at DESC
+            ORDER BY b.booking_date DESC
             LIMIT ? OFFSET ?
         ");
         $all_params = array_merge($params, [$per_page, $offset]);
@@ -167,8 +167,8 @@ function handleCreateBooking($auth) {
 
         // Create booking
         $stmt = $pdo->prepare("
-            INSERT INTO bookings (user_id, session_id, status, booking_date, created_at)
-            VALUES (?, ?, 'confirmed', NOW(), NOW())
+            INSERT INTO bookings (user_id, session_id, status, booking_date)
+            VALUES (?, ?, 'confirmed', NOW())
         ");
         $stmt->execute([$auth['user_id'], $session_id]);
         $booking_id = $pdo->lastInsertId();

@@ -32,10 +32,18 @@ if (!isset($db_connected) || !$db_connected) {
 
 // If database is connected, check if system is set up
 session_start();
+
+// PWA: detect mobile phones and redirect to PWA view
+require_once __DIR__ . '/pwa_detect.php';
+
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
+    // Logged-in: redirect phones to PWA, tablets to tablet PWA, desktops to dashboard
+    redirectToPwaIfMobile('pwa.php', 'pwa_tablet.php');
     header("Location: dashboard.php");
     exit();
 } else {
+    // Not logged in: redirect phones/tablets to PWA login
+    redirectToPwaIfMobile('pwa_login.php', 'pwa_login.php');
     // Show the marketing page for non-logged-in users
     include __DIR__ . '/index_default.php';
     exit();
