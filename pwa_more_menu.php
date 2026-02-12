@@ -287,10 +287,6 @@
             <i class="fas fa-user-gear"></i> Profile Settings
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="?page=settings" class="pwa-menu-item">
-            <i class="fas fa-cog"></i> Settings
-            <i class="fas fa-chevron-right menu-chevron"></i>
-        </a>
         <a href="?view=desktop" class="pwa-menu-item">
             <i class="fas fa-desktop"></i> Desktop View
             <i class="fas fa-chevron-right menu-chevron"></i>

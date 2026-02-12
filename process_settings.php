@@ -376,10 +376,18 @@ try {
             // Handle general settings from system tools page
             $site_title = trim($_POST['site_title'] ?? 'Arctic Wolves');
             $site_email = trim($_POST['site_email'] ?? '');
+            $contact_phone = trim($_POST['contact_phone'] ?? '');
+            $org_address = trim($_POST['org_address'] ?? '');
+            $timezone = trim($_POST['timezone'] ?? 'America/New_York');
+            $date_format = trim($_POST['date_format'] ?? 'MM/DD/YYYY');
             $session_duration = intval($_POST['session_duration'] ?? 60);
             $notifications_enabled = isset($_POST['notifications_enabled']) ? '1' : '0';
             $maintenance_mode = isset($_POST['maintenance_mode']) ? '1' : '0';
             $province = trim($_POST['province'] ?? 'ON');
+            $booking_window_days = intval($_POST['booking_window_days'] ?? 30);
+            $cancellation_window_hours = intval($_POST['cancellation_window_hours'] ?? 24);
+            $auto_confirm_bookings = isset($_POST['auto_confirm_bookings']) ? '1' : '0';
+            $send_booking_confirmations = isset($_POST['send_booking_confirmations']) ? '1' : '0';
             
             // Validate province code
             $valid_provinces = ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'];
@@ -387,16 +395,51 @@ try {
                 $province = 'ON';
             }
             
+            // Validate timezone
+            $valid_timezones = ['America/St_Johns','America/Halifax','America/New_York','America/Chicago','America/Denver','America/Los_Angeles'];
+            if (!in_array($timezone, $valid_timezones)) {
+                $timezone = 'America/New_York';
+            }
+            
+            // Validate date format
+            $valid_formats = ['MM/DD/YYYY','DD/MM/YYYY','YYYY-MM-DD'];
+            if (!in_array($date_format, $valid_formats)) {
+                $date_format = 'MM/DD/YYYY';
+            }
+            
             updateSetting($pdo, 'site_title', $site_title);
             updateSetting($pdo, 'site_email', $site_email);
+            updateSetting($pdo, 'contact_phone', $contact_phone);
+            updateSetting($pdo, 'org_address', $org_address);
+            updateSetting($pdo, 'timezone', $timezone);
+            updateSetting($pdo, 'date_format', $date_format);
             updateSetting($pdo, 'session_duration', $session_duration);
             updateSetting($pdo, 'notifications_enabled', $notifications_enabled);
             updateSetting($pdo, 'maintenance_mode', $maintenance_mode);
             updateSetting($pdo, 'province', $province);
+            updateSetting($pdo, 'booking_window_days', $booking_window_days);
+            updateSetting($pdo, 'cancellation_window_hours', $cancellation_window_hours);
+            updateSetting($pdo, 'auto_confirm_bookings', $auto_confirm_bookings);
+            updateSetting($pdo, 'send_booking_confirmations', $send_booking_confirmations);
             
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
                 'action' => 'update_settings',
-                'settings' => ['site_title' => $site_title, 'site_email' => $site_email, 'session_duration' => $session_duration, 'notifications_enabled' => $notifications_enabled, 'maintenance_mode' => $maintenance_mode, 'province' => $province]
+                'settings' => [
+                    'site_title' => $site_title,
+                    'site_email' => $site_email,
+                    'contact_phone' => $contact_phone,
+                    'org_address' => $org_address,
+                    'timezone' => $timezone,
+                    'date_format' => $date_format,
+                    'session_duration' => $session_duration,
+                    'notifications_enabled' => $notifications_enabled,
+                    'maintenance_mode' => $maintenance_mode,
+                    'province' => $province,
+                    'booking_window_days' => $booking_window_days,
+                    'cancellation_window_hours' => $cancellation_window_hours,
+                    'auto_confirm_bookings' => $auto_confirm_bookings,
+                    'send_booking_confirmations' => $send_booking_confirmations
+                ]
             ]);
             
             header('Location: dashboard.php?page=system_tools&success=1');

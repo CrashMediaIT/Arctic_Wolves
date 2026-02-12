@@ -14,10 +14,18 @@ try {
     $defaults = [
         'site_title' => 'Arctic Wolves',
         'site_email' => 'info@arcticwolves.ca',
+        'contact_phone' => '',
+        'org_address' => '',
+        'timezone' => 'America/New_York',
+        'date_format' => 'MM/DD/YYYY',
         'session_duration' => 60,
         'notifications_enabled' => '1',
         'maintenance_mode' => '0',
         'province' => 'ON',
+        'booking_window_days' => '30',
+        'cancellation_window_hours' => '24',
+        'auto_confirm_bookings' => '1',
+        'send_booking_confirmations' => '1',
         'mileage_rate_per_km' => '0.70',
         'mileage_rate_after_5000_per_km' => '0.64',
         'mileage_rate_per_mile' => '1.10',
@@ -235,6 +243,101 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                                 <option value="<?php echo $code; ?>" <?php echo $selected_province === $code ? 'selected' : ''; ?>><?php echo $name; ?></option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Contact Phone</h4>
+                                <p>Organization phone number</p>
+                            </div>
+                            <input type="tel" name="contact_phone" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['contact_phone'] ?? ''); ?>"
+                                   placeholder="(555) 123-4567">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Organization Address</h4>
+                                <p>Full mailing address</p>
+                            </div>
+                            <input type="text" name="org_address" class="form-input" 
+                                   value="<?php echo htmlspecialchars($settings['org_address'] ?? ''); ?>"
+                                   placeholder="123 Main St, City, Province">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Timezone</h4>
+                                <p>Default timezone for scheduling</p>
+                            </div>
+                            <select name="timezone" class="form-input" style="width: auto; min-width: 200px;">
+                                <?php
+                                $timezones = [
+                                    'America/St_Johns' => 'Newfoundland (NST)',
+                                    'America/Halifax' => 'Atlantic (AST)',
+                                    'America/New_York' => 'Eastern (EST)',
+                                    'America/Chicago' => 'Central (CST)',
+                                    'America/Denver' => 'Mountain (MST)',
+                                    'America/Los_Angeles' => 'Pacific (PST)'
+                                ];
+                                $selected_tz = $settings['timezone'] ?? 'America/New_York';
+                                foreach ($timezones as $tz_val => $tz_label):
+                                ?>
+                                <option value="<?php echo $tz_val; ?>" <?php echo $selected_tz === $tz_val ? 'selected' : ''; ?>><?php echo $tz_label; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Date Format</h4>
+                                <p>How dates are displayed throughout the system</p>
+                            </div>
+                            <select name="date_format" class="form-input" style="width: auto; min-width: 200px;">
+                                <?php
+                                $formats = ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'];
+                                $selected_fmt = $settings['date_format'] ?? 'MM/DD/YYYY';
+                                foreach ($formats as $fmt):
+                                ?>
+                                <option value="<?php echo $fmt; ?>" <?php echo $selected_fmt === $fmt ? 'selected' : ''; ?>><?php echo $fmt; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Booking Window (days)</h4>
+                                <p>How far in advance clients can book sessions</p>
+                            </div>
+                            <input type="number" name="booking_window_days" class="form-input" min="1"
+                                   value="<?php echo htmlspecialchars($settings['booking_window_days'] ?? '30'); ?>">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Cancellation Window (hours)</h4>
+                                <p>Minimum notice required for cancellation</p>
+                            </div>
+                            <input type="number" name="cancellation_window_hours" class="form-input" min="1"
+                                   value="<?php echo htmlspecialchars($settings['cancellation_window_hours'] ?? '24'); ?>">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Auto-Confirm Bookings</h4>
+                                <p>Automatically confirm session bookings without manual approval</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="auto_confirm_bookings" 
+                                       <?php echo !empty($settings['auto_confirm_bookings']) ? 'checked' : ''; ?>
+                                       data-action="toggle-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Send Booking Confirmations</h4>
+                                <p>Send email confirmations when sessions are booked</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="send_booking_confirmations" 
+                                       <?php echo !empty($settings['send_booking_confirmations']) ? 'checked' : ''; ?>
+                                       data-action="toggle-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
                     </div>
                     <div class="form-actions">
