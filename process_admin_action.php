@@ -2866,17 +2866,18 @@ if ($action == 'create_team') {
     $logo_url = null;
     if (!empty($_FILES['team_logo']) && $_FILES['team_logo']['error'] === UPLOAD_ERR_OK) {
         $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+        $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
         $max_size = 5 * 1024 * 1024;
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime = finfo_file($finfo, $_FILES['team_logo']['tmp_name']);
         finfo_close($finfo);
         
-        if (in_array($mime, $allowed_types) && $_FILES['team_logo']['size'] <= $max_size) {
+        $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
+        if (in_array($mime, $allowed_types) && in_array($ext, $allowed_extensions) && $_FILES['team_logo']['size'] <= $max_size) {
             $upload_dir = __DIR__ . '/uploads/team_logos/';
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
-            $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
             $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
             if (move_uploaded_file($_FILES['team_logo']['tmp_name'], $upload_dir . $filename)) {
                 $logo_url = 'uploads/team_logos/' . $filename;
@@ -2948,17 +2949,18 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
         $logo_url = trim($_POST['existing_logo_url'] ?? '');
         if (!empty($_FILES['team_logo']) && $_FILES['team_logo']['error'] === UPLOAD_ERR_OK) {
             $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+            $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
             $max_size = 5 * 1024 * 1024;
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime = finfo_file($finfo, $_FILES['team_logo']['tmp_name']);
             finfo_close($finfo);
             
-            if (in_array($mime, $allowed_types) && $_FILES['team_logo']['size'] <= $max_size) {
+            $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
+            if (in_array($mime, $allowed_types) && in_array($ext, $allowed_extensions) && $_FILES['team_logo']['size'] <= $max_size) {
                 $upload_dir = __DIR__ . '/uploads/team_logos/';
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
-                $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
                 $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
                 if (move_uploaded_file($_FILES['team_logo']['tmp_name'], $upload_dir . $filename)) {
                     $logo_url = 'uploads/team_logos/' . $filename;

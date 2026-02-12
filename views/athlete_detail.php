@@ -197,6 +197,19 @@ $teams = $teams_stmt->fetchAll();
 <div class="detail-card">
     <h2>Team Assignments</h2>
     <?php if (count($teams) > 0): ?>
+        <?php
+        // Pre-fetch all team logos to avoid N+1 queries
+        $team_ids = array_filter(array_unique(array_column($teams, 'team_id')));
+        $team_logos = [];
+        if (!empty($team_ids)) {
+            $placeholders = implode(',', array_fill(0, count($team_ids), '?'));
+            $logo_stmt = $pdo->prepare("SELECT id, logo_url FROM teams WHERE id IN ($placeholders)");
+            $logo_stmt->execute(array_values($team_ids));
+            foreach ($logo_stmt->fetchAll() as $lr) {
+                $team_logos[$lr['id']] = $lr['logo_url'];
+            }
+        }
+        ?>
         <table style="width: 100%; margin-top: 12px;">
             <thead>
                 <tr>
@@ -218,14 +231,9 @@ $teams = $teams_stmt->fetchAll();
                 ?>
                     <tr>
                         <td>
-                            <?php if (!empty($team['team_id'])):
-                                $logo_stmt = $pdo->prepare("SELECT logo_url FROM teams WHERE id = ?");
-                                $logo_stmt->execute([$team['team_id']]);
-                                $logo_row = $logo_stmt->fetch();
-                                if (!empty($logo_row['logo_url'])): ?>
-                                <img src="<?= htmlspecialchars($logo_row['logo_url']) ?>" alt="" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain; vertical-align: middle; margin-right: 8px;">
-                                <?php endif;
-                            endif; ?>
+                            <?php if (!empty($team['team_id']) && !empty($team_logos[$team['team_id']])): ?>
+                                <img src="<?= htmlspecialchars($team_logos[$team['team_id']]) ?>" alt="" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain; vertical-align: middle; margin-right: 8px;">
+                            <?php endif; ?>
                             <?= htmlspecialchars($team['team_name']) ?>
                         </td>
                         <td><?= htmlspecialchars($team['season'] ?? 'N/A') ?></td>
