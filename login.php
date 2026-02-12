@@ -16,6 +16,28 @@ if ($isPosSubdomain) {
     exit();
 }
 
+/**
+ * Record login attempt in login_history table
+ */
+function recordLoginHistory($pdo, $user_id, $status, $failure_reason = null) {
+    try {
+        $set_activity = $status === 'success' ? 'NOW()' : 'NULL';
+        $stmt = $pdo->prepare("
+            INSERT INTO login_history (user_id, login_time, ip_address, user_agent, login_status, failure_reason, last_activity)
+            VALUES (?, NOW(), ?, ?, ?, ?, $set_activity)
+        ");
+        $stmt->execute([
+            $user_id,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            $_SERVER['HTTP_USER_AGENT'] ?? null,
+            $status,
+            $failure_reason
+        ]);
+    } catch (PDOException $e) {
+        error_log("Failed to record login history: " . $e->getMessage());
+    }
+}
+
 // Generate CSRF token for this session
 CSRFProtection::generateToken();
 generateCSRFToken();
@@ -101,6 +123,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             // 1. CHECK VERIFICATION STATUS
             if ($user['is_verified'] === 0) {
+                recordLoginHistory($pdo, $user['id'], 'blocked', 'Account not verified');
                 $error = "Account pending verification.";
                 $show_verify_link = true; // Trigger the verification button
             } else {
@@ -110,6 +133,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['user_role'] = $user['role'];
                 $_SESSION['user_name'] = $user['first_name'];
                 $_SESSION['user_email'] = $user['email']; // Useful for test emails
+                
+                recordLoginHistory($pdo, $user['id'], 'success');
                 
                 // 3. CHECK FORCE PASSWORD CHANGE (Coach-created accounts)
                 if (isset($user['force_pass_change']) && $user['force_pass_change'] === 1) {
@@ -154,6 +179,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 exit();
             }
         } else {
+            if ($user) {
+                recordLoginHistory($pdo, $user['id'], 'failed', 'Invalid password');
+            }
             $error = "Invalid email address or password.";
         }
     }
