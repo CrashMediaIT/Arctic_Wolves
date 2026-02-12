@@ -364,7 +364,7 @@ try {
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>"><i class="fa-solid fa-clipboard-check"></i> Session Evaluations</a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>"><i class="fa-solid fa-plane"></i> Travel</a>
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Recording</a>
-            <a href="https://review.arcticwolves.ca" class="nav-link" rel="noopener noreferrer"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
+            <a href="https://gameplan.arcticwolves.ca" class="nav-link" rel="noopener noreferrer"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
         </nav>
     </div>
     <?php endif; ?>

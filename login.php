@@ -92,7 +92,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         }
     }
 
-    // Honor redirect parameter from trusted subdomains (e.g. review.arcticwolves.ca)
+    // Honor redirect parameter from trusted subdomains (e.g. gameplan.arcticwolves.ca)
     $redirect = $_GET['redirect'] ?? '';
     if ($redirect !== '') {
         $parsed = parse_url($redirect);

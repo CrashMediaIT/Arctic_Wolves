@@ -3,7 +3,7 @@
  * Session Configuration - Cross-Subdomain Cookie Sharing
  *
  * Configures the PHP session cookie domain so that the session is accessible
- * across subdomains (e.g. arcticwolves.ca ↔ review.arcticwolves.ca).
+ * across subdomains (e.g. arcticwolves.ca ↔ gameplan.arcticwolves.ca).
  *
  * Include this file BEFORE calling session_start().
  */
