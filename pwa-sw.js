@@ -5,6 +5,7 @@
 
 const CACHE_VERSION = 'aw-pwa-v2';
 const STATIC_ASSETS = [
+  '/index.php',
   '/pwa.php',
   '/pwa_tablet.php',
   '/pwa_login.php',

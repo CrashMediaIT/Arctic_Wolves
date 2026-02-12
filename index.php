@@ -42,9 +42,8 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     header("Location: dashboard.php");
     exit();
 } else {
-    // Not logged in: redirect phones/tablets to PWA login
-    redirectToPwaIfMobile('pwa_login.php', 'pwa_login.php');
-    // Show the marketing page for non-logged-in users
+    // Not logged in: show the marketing/landing page for all devices
+    // Users must click "Athlete Login" to access the PWA login
     include __DIR__ . '/index_default.php';
     exit();
 }

@@ -10,12 +10,13 @@ body.pwa-body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg-main, #0A0A0F);
   color: #fff;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+  overflow: hidden;
 }
 
 /* ── Top Header Bar ────────────────────────────────────── */
@@ -56,6 +57,7 @@ body.pwa-body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: 16px;
   padding-bottom: 80px; /* Space for bottom nav */
 }

@@ -29,7 +29,7 @@ if (!$db_connected || $pdo === null) {
 
 // Auth check
 if (!isset($_SESSION['logged_in'])) {
-    header("Location: pwa_login.php");
+    header("Location: index.php");
     exit();
 }
 
@@ -253,7 +253,6 @@ try {
     <style>
       /* Override desktop sidebar layout - PWA uses stacked layout */
       .sidebar { display: none !important; }
-      body { display: flex; flex-direction: column !important; overflow: hidden; }
       .main-content { height: auto !important; overflow: visible !important; }
       .content-area { padding: 0 !important; overflow: visible !important; }
       /* Ensure the top-bar (parent athlete selector) is mobile-friendly */

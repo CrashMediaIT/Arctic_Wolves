@@ -30,7 +30,7 @@ if (!$db_connected || $pdo === null) {
 
 // Auth check
 if (!isset($_SESSION['logged_in'])) {
-    header("Location: pwa_login.php");
+    header("Location: index.php");
     exit();
 }
 
