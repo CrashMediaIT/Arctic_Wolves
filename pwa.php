@@ -9,6 +9,7 @@
 
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
+require_once __DIR__ . '/config/session.php';
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';

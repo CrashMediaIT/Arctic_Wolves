@@ -31,6 +31,7 @@ if (!isset($db_connected) || !$db_connected) {
 }
 
 // If database is connected, check if system is set up
+require_once __DIR__ . '/config/session.php';
 session_start();
 
 // PWA: detect mobile phones and redirect to PWA view

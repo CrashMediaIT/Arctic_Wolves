@@ -3,6 +3,7 @@
  * PWA Login - Mobile-optimized login page
  * Falls through to the same session/auth logic as login.php
  */
+require_once __DIR__ . '/config/session.php';
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
