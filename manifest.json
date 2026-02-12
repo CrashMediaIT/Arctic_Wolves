@@ -2,7 +2,7 @@
   "name": "Arctic Wolves",
   "short_name": "AC Wolves",
   "description": "Arctic Wolves Hockey Coaching Management",
-  "start_url": "/pwa.php",
+  "start_url": "/index.php",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
