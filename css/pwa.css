@@ -310,7 +310,11 @@ body.pwa-body {
   background: linear-gradient(135deg, rgba(107,70,193,0.2), rgba(139,92,246,0.1));
   border: 1px solid rgba(107,70,193,0.3);
   border-radius: 12px;
-  margin-bottom: 12px;
+  position: fixed;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px);
+  left: 16px;
+  right: 16px;
+  z-index: 101;
 }
 .pwa-install-banner.show { display: flex; align-items: center; gap: 12px; }
 .pwa-install-banner p { flex: 1; font-size: 13px; font-weight: 600; }
@@ -655,4 +659,43 @@ body.pwa-body .pwa-content:before {
   content: '';
   display: block;
   height: 0;
+}
+
+/* ── Notifications Page Mobile Overrides ───────────────── */
+body.pwa-body .notification-item {
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+body.pwa-body .notification-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+}
+body.pwa-body .notification-title {
+  font-size: 14px;
+}
+body.pwa-body .notification-message {
+  font-size: 13px;
+}
+body.pwa-body .notification-meta {
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+}
+body.pwa-body .system-alert {
+  padding: 12px 14px;
+  gap: 12px;
+}
+body.pwa-body .system-alert-content strong {
+  font-size: 13px;
+}
+body.pwa-body .system-alert-content p {
+  font-size: 13px;
+}
+body.pwa-body .empty-state {
+  padding: 40px 16px;
+}
+body.pwa-body .empty-state i {
+  font-size: 48px;
 }
