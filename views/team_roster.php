@@ -4,7 +4,7 @@ $team_id = isset($_GET['team_id']) ? intval($_GET['team_id']) : 0;
 
 // Get all available teams for dropdown selection
 try {
-    $all_teams_query = "SELECT id, name, division, season FROM teams WHERE is_active = 1 ORDER BY name";
+    $all_teams_query = "SELECT id, name, division, season, logo_url FROM teams WHERE is_active = 1 ORDER BY name";
     $all_teams_stmt = $pdo->query($all_teams_query);
     $all_teams = $all_teams_stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -68,13 +68,15 @@ try {
 
 // Get team roster only if team was found
 $players = [];
+$available_athletes = [];
+$team_season_combos = [];
 if ($team) {
     try {
         // Build base query for roster with season condition in JOIN
         $season_join_condition = $current_season_id ? " AND s.season_id = ?" : "";
         $roster_query = "
             SELECT u.id, u.first_name, u.last_name, u.email,
-                   tr.jersey_number, tr.position,
+                   tr.id as roster_id, tr.jersey_number, tr.position,
                    COALESCE(s.goals, 0) as goals,
                    COALESCE(s.assists, 0) as assists,
                    COALESCE(s.points, 0) as points,
@@ -120,6 +122,29 @@ if ($team) {
         error_log("Team roster fetch error: " . $e->getMessage());
         $players = [];
     }
+    
+    // Fetch data for roster management (admin/coach only)
+    if (in_array($user_role, ['admin', 'superadmin', 'coach', 'team_coach'])) {
+        try {
+            // Get available athletes
+            $athletes_stmt = $pdo->query("SELECT id, first_name, last_name, email FROM users WHERE role = 'athlete' ORDER BY last_name, first_name");
+            $available_athletes = $athletes_stmt->fetchAll();
+            $available_athletes = decryptUserRows($available_athletes);
+            
+            // Get team-season combos for this team
+            $ts_stmt = $pdo->prepare("
+                SELECT ts.team_id, ts.season_id, s.name as season_name
+                FROM team_seasons ts
+                INNER JOIN seasons s ON ts.season_id = s.id
+                WHERE ts.team_id = ?
+                ORDER BY s.is_active DESC, s.start_date DESC
+            ");
+            $ts_stmt->execute([$team['id']]);
+            $team_season_combos = $ts_stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Roster management data fetch error: " . $e->getMessage());
+        }
+    }
 }
 ?>
 
@@ -147,7 +172,11 @@ if ($team) {
             <?php foreach ($all_teams as $t): ?>
             <a href="?page=team_roster&team_id=<?= $t['id'] ?>" class="team-select-card">
                 <div class="team-card-icon">
-                    <i class="fas fa-users"></i>
+                    <?php if (!empty($t['logo_url'])): ?>
+                        <img src="<?= htmlspecialchars($t['logo_url']) ?>" alt="<?= htmlspecialchars($t['name']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+                    <?php else: ?>
+                        <i class="fas fa-users"></i>
+                    <?php endif; ?>
                 </div>
                 <div class="team-card-content">
                     <h3><?= htmlspecialchars($t['name']) ?></h3>
@@ -183,6 +212,9 @@ if ($team) {
                 <a href="?page=team_roster" class="back-link" title="Back to team selection">
                     <i class="fas fa-arrow-left"></i>
                 </a>
+                <?php if (!empty($team['logo_url'])): ?>
+                <img src="<?= htmlspecialchars($team['logo_url']) ?>" alt="<?= htmlspecialchars($team['name']) ?>" class="team-header-logo">
+                <?php endif; ?>
                 <h3><?= htmlspecialchars($team['name']) ?></h3>
             </div>
             <div class="team-stats">
@@ -193,7 +225,9 @@ if ($team) {
                 <?php endif; ?>
             </div>
         </div>
-        <button class="btn-primary" data-action="add-player" data-team-id="<?= $team['id'] ?>"><i class="fas fa-user-plus"></i> Add Player</button>
+        <?php if (in_array($user_role, ['admin', 'superadmin', 'coach', 'team_coach'])): ?>
+        <button class="btn-primary" onclick="document.getElementById('add-player-modal').style.display='flex'" data-team-id="<?= $team['id'] ?>"><i class="fas fa-user-plus"></i> Add Player</button>
+        <?php endif; ?>
     </div>
 
     <!-- Filter and Search -->
@@ -274,7 +308,16 @@ if ($team) {
             <?php endif; ?>
             
             <div class="player-actions">
-                <button class="btn-secondary btn-small" data-action="view-profile" data-player-id="<?= $player['id'] ?>"><i class="fas fa-eye"></i> View Profile</button>
+                <a href="?page=athlete_detail&id=<?= $player['id'] ?>" class="btn-secondary btn-small"><i class="fas fa-eye"></i> Profile</a>
+                <?php if (in_array($user_role, ['admin', 'superadmin', 'coach', 'team_coach'])): ?>
+                <form method="POST" action="process_admin_team_coaches.php" style="display: inline;" onsubmit="return confirm('Remove this player from the roster?');">
+                    <?= csrfTokenInput() ?>
+                    <input type="hidden" name="action" value="remove_roster_athlete">
+                    <input type="hidden" name="roster_id" value="<?= $player['roster_id'] ?>">
+                    <input type="hidden" name="redirect_page" value="team_roster">
+                    <button type="submit" class="btn-danger btn-small"><i class="fas fa-user-minus"></i> Remove</button>
+                </form>
+                <?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>
@@ -283,6 +326,83 @@ if ($team) {
     <div class="placeholder-container">
         <i class="fas fa-users placeholder-icon"></i>
         <p class="placeholder-text">No players found. Add players to your team.</p>
+    </div>
+    <?php endif; ?>
+    
+    <?php // Add Player Modal for roster management (admin/coach only)
+    if ($team && in_array($user_role, ['admin', 'superadmin', 'coach', 'team_coach'])): ?>
+    <div id="add-player-modal" class="roster-modal" style="display: none;">
+        <div class="roster-modal-overlay" onclick="document.getElementById('add-player-modal').style.display='none'"></div>
+        <div class="roster-modal-content">
+            <div class="roster-modal-header">
+                <h2><i class="fas fa-user-plus"></i> Add Player to <?= htmlspecialchars($team['name']) ?></h2>
+                <button type="button" class="roster-modal-close" onclick="document.getElementById('add-player-modal').style.display='none'">&times;</button>
+            </div>
+            <form method="POST" action="process_admin_team_coaches.php">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="add_roster_athlete">
+                <input type="hidden" name="team_id" value="<?= $team['id'] ?>">
+                <input type="hidden" name="redirect_page" value="team_roster">
+                
+                <div class="roster-modal-body">
+                    <div class="roster-form-group">
+                        <label class="roster-form-label">Season *</label>
+                        <select name="season_id" class="roster-form-input" required>
+                            <option value="">Select Season</option>
+                            <?php foreach ($team_season_combos as $ts): ?>
+                                <option value="<?= $ts['season_id'] ?>"><?= htmlspecialchars($ts['season_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if (empty($team_season_combos)): ?>
+                            <small style="color: #f59e0b;">No seasons assigned to this team. Add seasons in Team Coach Management first.</small>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div class="roster-form-group">
+                        <label class="roster-form-label">Athlete *</label>
+                        <select name="athlete_id" class="roster-form-input" required id="roster-athlete-select">
+                            <option value="">Select Athlete</option>
+                            <?php foreach ($available_athletes as $athlete): ?>
+                                <option value="<?= $athlete['id'] ?>">
+                                    <?= htmlspecialchars($athlete['first_name'] . ' ' . $athlete['last_name']) ?>
+                                    (<?= htmlspecialchars($athlete['email']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="roster-form-group">
+                            <label class="roster-form-label">Jersey #</label>
+                            <input type="number" name="jersey_number" class="roster-form-input" placeholder="Optional" min="0" max="99">
+                        </div>
+                        <div class="roster-form-group">
+                            <label class="roster-form-label">Position</label>
+                            <select name="position" class="roster-form-input">
+                                <option value="">Select Position</option>
+                                <option value="Forward">Forward</option>
+                                <option value="Defense">Defense</option>
+                                <option value="Goalie">Goalie</option>
+                                <option value="Left Wing">Left Wing</option>
+                                <option value="Center">Center</option>
+                                <option value="Right Wing">Right Wing</option>
+                                <option value="Left Defense">Left Defense</option>
+                                <option value="Right Defense">Right Defense</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="roster-modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('add-player-modal').style.display='none'">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn-primary" <?= empty($team_season_combos) ? 'disabled' : '' ?>>
+                        <i class="fas fa-user-plus"></i> Add to Roster
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
     <?php endif; ?>
     
@@ -644,5 +764,153 @@ if ($team) {
 .btn-sm {
     padding: 10px 16px;
     font-size: 13px;
+}
+
+.team-header-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: contain;
+    border: 2px solid var(--border);
+    background: var(--bg-card);
+}
+
+/* Roster Modal Styles */
+.roster-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.roster-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.roster-modal-content {
+    position: relative;
+    background: var(--bg-card, #0d1117);
+    border: 1px solid var(--border, #1e293b);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.roster-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border, #1e293b);
+}
+
+.roster-modal-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-white, #fff);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.roster-modal-header h2 i {
+    color: var(--primary, #7000a4);
+}
+
+.roster-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-dim, #64748b);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.roster-modal-close:hover {
+    color: #fff;
+}
+
+.roster-modal-body {
+    padding: 24px;
+}
+
+.roster-form-group {
+    margin-bottom: 16px;
+}
+
+.roster-form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim, #94a3b8);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.roster-form-input {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-main, #06080b);
+    border: 1px solid var(--border, #1e293b);
+    border-radius: 6px;
+    color: var(--text-white, #fff);
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.roster-form-input:focus {
+    outline: none;
+    border-color: var(--primary, #7000a4);
+}
+
+.roster-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border, #1e293b);
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: background 0.2s;
+    text-decoration: none;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.player-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 </style>
