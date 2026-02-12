@@ -54,14 +54,20 @@ $eval_stmt->execute([$athlete_id]);
 $evaluations = $eval_stmt->fetchAll();
 $evaluations = decryptUserRows($evaluations);
 
-// Get assigned teams
+// Get assigned teams (combine athlete_teams and team_roster for complete view)
 $teams_stmt = $pdo->prepare("
-    SELECT at.* 
+    SELECT at.team_name, at.season, at.position, at.jersey_number, at.is_current, at.status, at.team_id
     FROM athlete_teams at 
-    WHERE at.athlete_id = ?
-    ORDER BY at.created_at DESC
+    WHERE at.athlete_id = ? OR at.user_id = ?
+    UNION
+    SELECT t.name as team_name, s.name as season, tr.position, tr.jersey_number, 1 as is_current, 'active' as status, tr.team_id
+    FROM team_roster tr
+    INNER JOIN teams t ON tr.team_id = t.id
+    LEFT JOIN seasons s ON tr.season_id = s.id
+    WHERE tr.athlete_id = ?
+    ORDER BY is_current DESC, season DESC
 ");
-$teams_stmt->execute([$athlete_id]);
+$teams_stmt->execute([$athlete_id, $athlete_id, $athlete_id]);
 $teams = $teams_stmt->fetchAll();
 ?>
 
@@ -191,6 +197,19 @@ $teams = $teams_stmt->fetchAll();
 <div class="detail-card">
     <h2>Team Assignments</h2>
     <?php if (count($teams) > 0): ?>
+        <?php
+        // Pre-fetch all team logos to avoid N+1 queries
+        $team_ids = array_filter(array_unique(array_column($teams, 'team_id')));
+        $team_logos = [];
+        if (!empty($team_ids)) {
+            $placeholders = implode(',', array_fill(0, count($team_ids), '?'));
+            $logo_stmt = $pdo->prepare("SELECT id, logo_url FROM teams WHERE id IN ($placeholders)");
+            $logo_stmt->execute(array_values($team_ids));
+            foreach ($logo_stmt->fetchAll() as $lr) {
+                $team_logos[$lr['id']] = $lr['logo_url'];
+            }
+        }
+        ?>
         <table style="width: 100%; margin-top: 12px;">
             <thead>
                 <tr>
@@ -198,15 +217,35 @@ $teams = $teams_stmt->fetchAll();
                     <th>Season</th>
                     <th>Position</th>
                     <th>Jersey #</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($teams as $team): ?>
+                <?php 
+                $displayed_teams = [];
+                foreach ($teams as $team): 
+                    // Deduplicate by team_name + season
+                    $key = ($team['team_name'] ?? '') . '|' . ($team['season'] ?? '');
+                    if (isset($displayed_teams[$key])) continue;
+                    $displayed_teams[$key] = true;
+                ?>
                     <tr>
-                        <td><?= htmlspecialchars($team['team_name']) ?></td>
+                        <td>
+                            <?php if (!empty($team['team_id']) && !empty($team_logos[$team['team_id']])): ?>
+                                <img src="<?= htmlspecialchars($team_logos[$team['team_id']]) ?>" alt="" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain; vertical-align: middle; margin-right: 8px;">
+                            <?php endif; ?>
+                            <?= htmlspecialchars($team['team_name']) ?>
+                        </td>
                         <td><?= htmlspecialchars($team['season'] ?? 'N/A') ?></td>
                         <td><?= htmlspecialchars($team['position'] ?? 'N/A') ?></td>
                         <td><?= htmlspecialchars($team['jersey_number'] ?? 'N/A') ?></td>
+                        <td>
+                            <?php if (!empty($team['is_current'])): ?>
+                                <span style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">Active</span>
+                            <?php else: ?>
+                                <span style="background: rgba(100, 116, 139, 0.2); color: #64748b; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">Inactive</span>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

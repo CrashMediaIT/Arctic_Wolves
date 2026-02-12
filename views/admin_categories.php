@@ -363,9 +363,15 @@ try {
                     <?php if (count($teams) > 0): ?>
                         <?php foreach ($teams as $team): ?>
                     <div class="category-card <?= !$team['is_active'] ? 'inactive' : '' ?>">
+                        <?php if (!empty($team['logo_url'])): ?>
+                        <div class="category-card-icon team" style="padding: 0; overflow: hidden;">
+                            <img src="<?= htmlspecialchars($team['logo_url']) ?>" alt="<?= htmlspecialchars($team['name']) ?> logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+                        </div>
+                        <?php else: ?>
                         <div class="category-card-icon team">
                             <i class="fas fa-users"></i>
                         </div>
+                        <?php endif; ?>
                         <div class="category-card-content">
                             <h4>
                                 <?= htmlspecialchars($team['name']) ?>
@@ -413,7 +419,8 @@ try {
                                     data-season-ids="<?= htmlspecialchars(implode(',', array_column($team_season_map[$team['id']] ?? [], 'season_id'))) ?>"
                                     data-coach-id="<?= $team['coach_id'] ?? '' ?>"
                                     data-assistant-coach-id="<?= $team['assistant_coach_id'] ?? '' ?>"
-                                    data-is-active="<?= $team['is_active'] ?>">
+                                    data-is-active="<?= $team['is_active'] ?>"
+                                    data-logo-url="<?= htmlspecialchars($team['logo_url'] ?? '') ?>">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <?php if ($team['session_count'] == 0): ?>
@@ -968,6 +975,83 @@ try {
         margin-top: var(--space-3);
     }
 }
+
+/* Team Logo Upload Styles */
+.logo-upload-area {
+    border: 2px dashed var(--border, #1e293b);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--bg-main, #06080b);
+}
+
+.logo-upload-area:hover {
+    border-color: var(--primary, #7000a4);
+    background: rgba(112, 0, 164, 0.05);
+}
+
+.logo-upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim, #64748b);
+}
+
+.logo-upload-placeholder i {
+    font-size: 32px;
+    color: var(--primary, #7000a4);
+    opacity: 0.6;
+}
+
+.logo-upload-placeholder span {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.logo-upload-placeholder small {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.logo-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.logo-preview img {
+    max-width: 120px;
+    max-height: 120px;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.logo-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: calc(50% - 68px);
+    width: 24px;
+    height: 24px;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background 0.2s;
+}
+
+.logo-remove-btn:hover {
+    background: #dc2626;
+}
 </style>
 
 <!-- Add Skill Modal -->
@@ -1213,11 +1297,27 @@ try {
             <h2 class="modal-title"><i class="fas fa-users"></i> Add Team</h2>
             <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('add-team-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <form method="POST" action="process_admin_action.php" enctype="multipart/form-data">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="create_team">
             
             <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Team Logo</label>
+                    <div class="logo-upload-area" id="add-team-logo-area">
+                        <div class="logo-preview" id="add-team-logo-preview" style="display: none;">
+                            <img id="add-team-logo-img" src="" alt="Team Logo">
+                            <button type="button" class="logo-remove-btn" onclick="removeLogoPreview('add-team')">&times;</button>
+                        </div>
+                        <div class="logo-upload-placeholder" id="add-team-logo-placeholder">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Click to upload team logo</span>
+                            <small>JPG, PNG, GIF, WEBP, SVG • Max 5MB</small>
+                        </div>
+                        <input type="file" name="team_logo" id="add-team-logo-input" accept="image/*" style="display: none;" onchange="previewLogo(this, 'add-team')">
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <label class="form-label">Team Name *</label>
                     <input type="text" name="name" class="form-input" required placeholder="e.g., Arctic Wolves U14">
@@ -1312,13 +1412,30 @@ try {
             <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Team</h2>
             <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal('edit-team-modal')">&times;</button>
         </div>
-        <form method="POST" action="process_admin_action.php">
+        <form method="POST" action="process_admin_action.php" enctype="multipart/form-data">
             <?php echo csrfTokenInput(); ?>
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="type" value="team">
             <input type="hidden" name="id" id="edit-team-id">
+            <input type="hidden" name="existing_logo_url" id="edit-team-existing-logo">
             
             <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Team Logo</label>
+                    <div class="logo-upload-area" id="edit-team-logo-area">
+                        <div class="logo-preview" id="edit-team-logo-preview" style="display: none;">
+                            <img id="edit-team-logo-img" src="" alt="Team Logo">
+                            <button type="button" class="logo-remove-btn" onclick="removeLogoPreview('edit-team')">&times;</button>
+                        </div>
+                        <div class="logo-upload-placeholder" id="edit-team-logo-placeholder">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Click to upload team logo</span>
+                            <small>JPG, PNG, GIF, WEBP, SVG • Max 5MB</small>
+                        </div>
+                        <input type="file" name="team_logo" id="edit-team-logo-input" accept="image/*" style="display: none;" onchange="previewLogo(this, 'edit-team')">
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <label class="form-label">Team Name *</label>
                     <input type="text" name="name" id="edit-team-name" class="form-input" required>
@@ -1743,6 +1860,18 @@ try {
                 document.getElementById('edit-team-coach-id').value = this.getAttribute('data-coach-id') || '';
                 document.getElementById('edit-team-assistant-coach-id').value = this.getAttribute('data-assistant-coach-id') || '';
                 document.getElementById('edit-team-is-active').value = this.getAttribute('data-is-active') || '1';
+                // Populate logo preview
+                var logoUrl = this.getAttribute('data-logo-url') || '';
+                document.getElementById('edit-team-existing-logo').value = logoUrl;
+                if (logoUrl) {
+                    document.getElementById('edit-team-logo-img').src = logoUrl;
+                    document.getElementById('edit-team-logo-preview').style.display = 'flex';
+                    document.getElementById('edit-team-logo-placeholder').style.display = 'none';
+                } else {
+                    document.getElementById('edit-team-logo-preview').style.display = 'none';
+                    document.getElementById('edit-team-logo-placeholder').style.display = 'flex';
+                }
+                document.getElementById('edit-team-logo-input').value = '';
                 document.getElementById('edit-team-modal').classList.add('active');
             } else if (type === 'location') {
                 document.getElementById('edit-location-id').value = id;
@@ -2131,5 +2260,53 @@ function testGoogleAPI() {
 // Initialize places search on page load
 document.addEventListener('DOMContentLoaded', function() {
     initPlacesSearch();
+});
+
+// Team Logo Upload Functions
+function previewLogo(input, prefix) {
+    var file = input.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (allowedTypes.indexOf(file.type) === -1) {
+        showNotification('Invalid file type. Allowed: JPG, PNG, GIF, WEBP, SVG', 'error');
+        input.value = '';
+        return;
+    }
+    
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('File too large. Maximum size is 5MB.', 'error');
+        input.value = '';
+        return;
+    }
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById(prefix + '-logo-img').src = e.target.result;
+        document.getElementById(prefix + '-logo-preview').style.display = 'flex';
+        document.getElementById(prefix + '-logo-placeholder').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeLogoPreview(prefix) {
+    document.getElementById(prefix + '-logo-img').src = '';
+    document.getElementById(prefix + '-logo-preview').style.display = 'none';
+    document.getElementById(prefix + '-logo-placeholder').style.display = 'flex';
+    document.getElementById(prefix + '-logo-input').value = '';
+    // For edit form, clear existing logo reference
+    var existingInput = document.getElementById(prefix + '-existing-logo');
+    if (existingInput) existingInput.value = '';
+}
+
+// Make logo upload areas clickable
+document.querySelectorAll('.logo-upload-area').forEach(function(area) {
+    area.addEventListener('click', function(e) {
+        if (e.target.closest('.logo-remove-btn')) return;
+        var input = area.querySelector('input[type="file"]');
+        if (input) input.click();
+    });
 });
 </script>

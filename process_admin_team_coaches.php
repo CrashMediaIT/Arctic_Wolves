@@ -176,16 +176,74 @@ try {
             ");
             $stmt->execute([$team_id, $athlete_id, $season_id, $jersey_number, $position]);
             
-            header("Location: dashboard.php?page=admin_team_coaches&msg=athlete_added");
+            // Auto-sync to athlete_teams so assignment appears on profile/stats
+            $team_info = $pdo->prepare("SELECT name FROM teams WHERE id = ?");
+            $team_info->execute([$team_id]);
+            $team_row = $team_info->fetch();
+            $team_name = $team_row ? $team_row['name'] : '';
+            
+            $season_info = $pdo->prepare("SELECT name FROM seasons WHERE id = ?");
+            $season_info->execute([$season_id]);
+            $season_row = $season_info->fetch();
+            $season_name = $season_row ? $season_row['name'] : '';
+            
+            // Check if athlete_teams entry already exists for this team/season
+            $existing = $pdo->prepare("SELECT id FROM athlete_teams WHERE (athlete_id = ? OR user_id = ?) AND team_id = ? AND season = ?");
+            $existing->execute([$athlete_id, $athlete_id, $team_id, $season_name]);
+            if (!$existing->fetch()) {
+                $at_stmt = $pdo->prepare("
+                    INSERT INTO athlete_teams (athlete_id, user_id, team_id, team_name, season, jersey_number, position, status, is_current, start_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 1, CURDATE())
+                ");
+                $at_stmt->execute([$athlete_id, $athlete_id, $team_id, $team_name, $season_name, $jersey_number, $position]);
+            }
+            
+            // Determine redirect - check if we came from team roster page
+            $redirect = "dashboard.php?page=admin_team_coaches&msg=athlete_added";
+            if (!empty($_POST['redirect_page']) && $_POST['redirect_page'] === 'team_roster') {
+                $redirect = "dashboard.php?page=team_roster&team_id=" . $team_id . "&msg=athlete_added";
+            }
+            header("Location: " . $redirect);
             break;
 
         case 'remove_roster_athlete':
             $roster_id = intval($_POST['roster_id']);
             
+            // Get roster details before deleting for athlete_teams cleanup
+            $roster_info = $pdo->prepare("
+                SELECT tr.athlete_id, tr.team_id, t.name as team_name, s.name as season_name
+                FROM team_roster tr
+                INNER JOIN teams t ON tr.team_id = t.id
+                LEFT JOIN seasons s ON tr.season_id = s.id
+                WHERE tr.id = ?
+            ");
+            $roster_info->execute([$roster_id]);
+            $roster_row = $roster_info->fetch();
+            
             $stmt = $pdo->prepare("DELETE FROM team_roster WHERE id = ?");
             $stmt->execute([$roster_id]);
             
-            header("Location: dashboard.php?page=admin_team_coaches&msg=athlete_removed");
+            // Remove corresponding athlete_teams entry
+            if ($roster_row) {
+                $pdo->prepare("
+                    DELETE FROM athlete_teams 
+                    WHERE (athlete_id = ? OR user_id = ?) 
+                    AND team_id = ? 
+                    AND season = ?
+                ")->execute([
+                    $roster_row['athlete_id'], 
+                    $roster_row['athlete_id'], 
+                    $roster_row['team_id'], 
+                    $roster_row['season_name']
+                ]);
+            }
+            
+            // Determine redirect
+            $redirect = "dashboard.php?page=admin_team_coaches&msg=athlete_removed";
+            if (!empty($_POST['redirect_page']) && $_POST['redirect_page'] === 'team_roster' && $roster_row) {
+                $redirect = "dashboard.php?page=team_roster&team_id=" . $roster_row['team_id'] . "&msg=athlete_removed";
+            }
+            header("Location: " . $redirect);
             break;
             
         default:

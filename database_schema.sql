@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS `teams` (
     `season` VARCHAR(50) DEFAULT NULL,
     `coach_id` INT DEFAULT NULL,
     `assistant_coach_id` INT DEFAULT NULL,
+    `logo_url` VARCHAR(500) DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
     `is_demo` TINYINT(1) DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -4172,3 +4173,6 @@ CREATE TABLE IF NOT EXISTS `ndi_cameras` (
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add logo_url column to teams table (migration for existing databases)
+ALTER TABLE `teams` ADD COLUMN IF NOT EXISTS `logo_url` VARCHAR(500) DEFAULT NULL AFTER `assistant_coach_id`;

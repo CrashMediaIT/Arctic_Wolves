@@ -312,6 +312,34 @@ try {
     }
 }
 
+// Also include teams from team_roster that may not be in athlete_teams yet
+try {
+    $rosterTeamsStmt = $pdo->prepare("
+        SELECT NULL as id, t.name as team_name, '' as league, tr.position, '' as season_year, '' as season_type, 
+               s.name as season, 1 as is_current, tr.joined_date as created_at
+        FROM team_roster tr
+        INNER JOIN teams t ON tr.team_id = t.id
+        LEFT JOIN seasons s ON tr.season_id = s.id
+        WHERE tr.athlete_id = ?
+    ");
+    $rosterTeamsStmt->execute([$viewing_athlete_id]);
+    $rosterAssigned = $rosterTeamsStmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $existingKeys = [];
+    foreach ($userTeams as $ut) {
+        $existingKeys[($ut['team_name'] ?? '') . '|' . ($ut['season'] ?? '')] = true;
+    }
+    foreach ($rosterAssigned as $rt) {
+        $key = ($rt['team_name'] ?? '') . '|' . ($rt['season'] ?? '');
+        if (!isset($existingKeys[$key])) {
+            $userTeams[] = $rt;
+            $existingKeys[$key] = true;
+        }
+    }
+} catch (PDOException $e) {
+    // team_roster query may fail if table doesn't exist
+}
+
 // Get athlete stats based on teams
 $athleteStats = [];
 try {
