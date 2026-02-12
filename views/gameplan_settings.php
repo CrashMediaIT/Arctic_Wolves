@@ -412,6 +412,19 @@ function toggleStorageOptions(type) {
     document.getElementById('smbOptions').style.display = (type === 'smb') ? '' : 'none';
 }
 
+function showTestAlert(type, message) {
+    var container = document.getElementById('testAlertContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'testAlertContainer';
+        var cardBody = document.getElementById('testCompanionBtn').closest('.card-body');
+        cardBody.insertBefore(container, cardBody.querySelector('.form-actions'));
+    }
+    var cls = (type === 'success') ? 'alert-success' : 'alert-danger';
+    var icon = (type === 'success') ? 'fa-check-circle' : 'fa-exclamation-circle';
+    container.innerHTML = '<div class="alert ' + cls + '" style="margin-bottom:16px;"><i class="fa-solid ' + icon + '"></i> ' + message + '</div>';
+}
+
 function testCompanion() {
     var urlInput = document.querySelector('input[name="companion_url"]');
     var keyInput = document.querySelector('input[name="companion_api_key"]');
@@ -419,7 +432,7 @@ function testCompanion() {
     var statusBadge = document.getElementById('companionStatus');
 
     if (!urlInput.value) {
-        alert('Please enter the companion server URL first.');
+        showTestAlert('error', 'Please enter the companion server URL first.');
         return;
     }
 
@@ -447,17 +460,17 @@ function testCompanion() {
                     html += 'Decoders: ' + (data.hw_accel.decoders.join(', ') || 'none');
                     cap.innerHTML = html;
                 }
-                alert('Connection successful! Companion server is online.');
+                showTestAlert('success', 'Connection successful! Companion server is online.');
             } else {
                 statusBadge.className = 'badge badge-danger';
                 statusBadge.textContent = 'Error';
-                alert('Connection failed: ' + (data.error || 'Unknown error'));
+                showTestAlert('error', 'Connection failed: ' + (data.error || 'Unknown error'));
             }
         })
         .catch(function(err) {
             statusBadge.className = 'badge badge-danger';
             statusBadge.textContent = 'Error';
-            alert('Connection failed: ' + err.message);
+            showTestAlert('error', 'Connection failed: ' + err.message);
         })
         .finally(function() {
             btn.disabled = false;
