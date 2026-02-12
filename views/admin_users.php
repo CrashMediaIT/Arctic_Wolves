@@ -139,7 +139,8 @@ try {
                coach.first_name as coach_first_name,
                coach.last_name as coach_last_name,
                t.name as team_name,
-               (SELECT lh.login_time FROM login_history lh WHERE lh.user_id = u.id AND lh.login_status = 'success' ORDER BY lh.login_time DESC LIMIT 1) as last_login
+               (SELECT lh.login_time FROM login_history lh WHERE lh.user_id = u.id AND lh.login_status = 'success' ORDER BY lh.login_time DESC LIMIT 1) as last_login,
+               (SELECT COUNT(*) FROM login_history lh2 WHERE lh2.user_id = u.id AND lh2.login_status = 'success' AND lh2.logout_time IS NULL AND COALESCE(lh2.last_activity, lh2.login_time) >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)) as is_online
         FROM users u
         LEFT JOIN sessions s ON u.id = s.coach_id
         LEFT JOIN users coach ON u.assigned_coach_id = coach.id
@@ -346,17 +347,23 @@ foreach ($users as $u) {
                                                               strpos($profile_img, 'uploads/profiles/') === 0 && 
                                                               preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $profile_img) && 
                                                               file_exists($profile_img);
+                                            $user_is_online = !empty($user['is_online']) && $user['is_online'] > 0;
                                             ?>
-                                            <?php if ($is_valid_image): ?>
-                                                <img src="<?php echo htmlspecialchars($profile_img); ?>" alt="Profile" class="user-avatar-img">
-                                            <?php else: ?>
-                                                <div class="user-avatar">
-                                                    <?php 
-                                                        $initials = strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1));
-                                                        echo htmlspecialchars($initials);
-                                                    ?>
-                                                </div>
-                                            <?php endif; ?>
+                                            <div class="avatar-wrapper">
+                                                <?php if ($is_valid_image): ?>
+                                                    <img src="<?php echo htmlspecialchars($profile_img); ?>" alt="Profile" class="user-avatar-img">
+                                                <?php else: ?>
+                                                    <div class="user-avatar">
+                                                        <?php 
+                                                            $initials = strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1));
+                                                            echo htmlspecialchars($initials);
+                                                        ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($user_is_online): ?>
+                                                    <span class="online-dot" title="Online now"></span>
+                                                <?php endif; ?>
+                                            </div>
                                             <div class="user-info-cell">
                                                 <span class="user-name"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></span>
                                                 <span class="user-id">#<?php echo $user['id']; ?></span>
@@ -391,7 +398,9 @@ foreach ($users as $u) {
                                     </td>
                                     <td class="date-cell"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
                                     <td class="date-cell">
-                                        <?php if (!empty($user['last_login'])): ?>
+                                        <?php if ($user_is_online): ?>
+                                            <span class="online-badge"><i class="fas fa-circle"></i> Online</span>
+                                        <?php elseif (!empty($user['last_login'])): ?>
                                             <?php echo date('M d, Y g:ia', strtotime($user['last_login'])); ?>
                                         <?php else: ?>
                                             <span style="color: var(--text-dim);">Never</span>
@@ -649,6 +658,43 @@ function closeModal(modalId) {
     color: #fff;
     flex-shrink: 0;
     box-shadow: 0 4px 12px rgba(107, 70, 193, 0.25);
+}
+
+.avatar-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.online-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background: #10b981;
+    border-radius: 50%;
+    border: 2px solid var(--card-bg, #16161F);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+    animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 6px rgba(16, 185, 129, 0.3); }
+    50% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.6); }
+}
+
+.online-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #10b981;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.online-badge i {
+    font-size: 8px;
+    animation: pulse-green 2s infinite;
 }
 
 .user-info-cell {
