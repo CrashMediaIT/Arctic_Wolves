@@ -839,7 +839,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Flip Camera
     flipCameraBtn.addEventListener('click', async function() {
-        if (mediaRecorder && mediaRecorder.state === 'recording') return; // Don't flip while recording
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            flipCameraBtn.style.opacity = '0.5';
+            setTimeout(function() { flipCameraBtn.style.opacity = '1'; }, 300);
+            return;
+        }
         currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
         try {
             // Stop existing tracks

@@ -424,7 +424,22 @@ try {
             
             Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
                 'action' => 'update_settings',
-                'settings' => ['site_title' => $site_title, 'site_email' => $site_email, 'contact_phone' => $contact_phone, 'org_address' => $org_address, 'timezone' => $timezone, 'date_format' => $date_format, 'session_duration' => $session_duration, 'notifications_enabled' => $notifications_enabled, 'maintenance_mode' => $maintenance_mode, 'province' => $province, 'booking_window_days' => $booking_window_days, 'cancellation_window_hours' => $cancellation_window_hours, 'auto_confirm_bookings' => $auto_confirm_bookings, 'send_booking_confirmations' => $send_booking_confirmations]
+                'settings' => [
+                    'site_title' => $site_title,
+                    'site_email' => $site_email,
+                    'contact_phone' => $contact_phone,
+                    'org_address' => $org_address,
+                    'timezone' => $timezone,
+                    'date_format' => $date_format,
+                    'session_duration' => $session_duration,
+                    'notifications_enabled' => $notifications_enabled,
+                    'maintenance_mode' => $maintenance_mode,
+                    'province' => $province,
+                    'booking_window_days' => $booking_window_days,
+                    'cancellation_window_hours' => $cancellation_window_hours,
+                    'auto_confirm_bookings' => $auto_confirm_bookings,
+                    'send_booking_confirmations' => $send_booking_confirmations
+                ]
             ]);
             
             header('Location: dashboard.php?page=system_tools&success=1');
