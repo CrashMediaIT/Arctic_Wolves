@@ -44,7 +44,7 @@ function handleListNotifications($auth) {
     $params = [$auth['user_id']];
 
     if ($unread_only) {
-        $where[] = 'n.is_read = 0';
+        $where[] = 'n.read_status = 0';
     }
 
     $where_sql = 'WHERE ' . implode(' AND ', $where);
@@ -55,8 +55,8 @@ function handleListNotifications($auth) {
         $total = (int) $count_stmt->fetchColumn();
 
         $stmt = $pdo->prepare("
-            SELECT n.id, n.notification_type, n.title, n.message, n.link_url,
-                   n.is_read, n.created_at
+            SELECT n.id, n.type AS notification_type, n.title, n.message, n.link_url,
+                   n.read_status AS is_read, n.created_at
             FROM notifications n
             $where_sql
             ORDER BY n.created_at DESC
@@ -67,7 +67,7 @@ function handleListNotifications($auth) {
         $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Get unread count
-        $unread_stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0");
+        $unread_stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_status = 0");
         $unread_stmt->execute([$auth['user_id']]);
         $unread_count = (int) $unread_stmt->fetchColumn();
 
@@ -96,7 +96,7 @@ function handleMarkRead($auth, $notification_id) {
     global $pdo;
 
     try {
-        $stmt = $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
+        $stmt = $pdo->prepare("UPDATE notifications SET read_status = 1 WHERE id = ? AND user_id = ?");
         $stmt->execute([$notification_id, $auth['user_id']]);
 
         if ($stmt->rowCount() === 0) {
@@ -117,7 +117,7 @@ function handleMarkAllRead($auth) {
     global $pdo;
 
     try {
-        $stmt = $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");
+        $stmt = $pdo->prepare("UPDATE notifications SET read_status = 1 WHERE user_id = ? AND read_status = 0");
         $stmt->execute([$auth['user_id']]);
         $count = $stmt->rowCount();
 
