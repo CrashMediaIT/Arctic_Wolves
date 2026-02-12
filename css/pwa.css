@@ -2096,8 +2096,12 @@ body.pwa-body .meal-selector-grid {
 }
 
 /* ── 55. Global Mobile Polish ──────────────────────────── */
-/* Ensure all content respects mobile width */
-body.pwa-body * {
+/* Ensure content elements respect mobile width */
+body.pwa-body .pwa-content > *,
+body.pwa-body .pwa-content img,
+body.pwa-body .pwa-content div,
+body.pwa-body .pwa-content section,
+body.pwa-body .pwa-content article {
   max-width: 100%;
 }
 body.pwa-body table,
