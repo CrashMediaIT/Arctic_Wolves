@@ -153,12 +153,11 @@ function handleSystemHealth($auth) {
     ];
 
     try {
-        // Table counts
-        $tables = ['users', 'sessions', 'teams', 'bookings', 'videos', 'notifications'];
+        // Table counts (whitelist to prevent SQL injection)
+        $allowed_tables = ['users', 'sessions', 'teams', 'bookings', 'videos', 'notifications'];
         $counts = [];
-        foreach ($tables as $table) {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM `$table`");
-            $stmt->execute();
+        foreach ($allowed_tables as $table) {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM `" . $table . "`");
             $counts[$table] = (int) $stmt->fetchColumn();
         }
         $health['record_counts'] = $counts;
