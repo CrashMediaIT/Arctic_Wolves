@@ -503,16 +503,23 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                 var modal = document.getElementById('edit-age-group-modal');
                 modal.style.display = 'block';
                 modal.setAttribute('aria-hidden', 'false');
+                
+                // Set focus to first input for accessibility
+                setTimeout(function() {
+                    document.getElementById('edit-age-group-name').focus();
+                }, 100);
             });
         });
 
         // Close Age Group Modal
+        function closeAgeGroupModal() {
+            var modal = document.getElementById('edit-age-group-modal');
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        
         document.querySelectorAll('.close-edit-age-group').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var modal = document.getElementById('edit-age-group-modal');
-                modal.style.display = 'none';
-                modal.setAttribute('aria-hidden', 'true');
-            });
+            btn.addEventListener('click', closeAgeGroupModal);
         });
 
         // Edit Skill Level - Event Listeners
@@ -531,16 +538,23 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                 var modal = document.getElementById('edit-skill-level-modal');
                 modal.style.display = 'block';
                 modal.setAttribute('aria-hidden', 'false');
+                
+                // Set focus to first input for accessibility
+                setTimeout(function() {
+                    document.getElementById('edit-skill-level-name').focus();
+                }, 100);
             });
         });
 
         // Close Skill Level Modal
+        function closeSkillLevelModal() {
+            var modal = document.getElementById('edit-skill-level-modal');
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        
         document.querySelectorAll('.close-edit-skill-level').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var modal = document.getElementById('edit-skill-level-modal');
-                modal.style.display = 'none';
-                modal.setAttribute('aria-hidden', 'true');
-            });
+            btn.addEventListener('click', closeSkillLevelModal);
         });
 
         // Close modals when clicking outside
@@ -549,12 +563,25 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
             var skillLevelModal = document.getElementById('edit-skill-level-modal');
             
             if (event.target === ageGroupModal) {
-                ageGroupModal.style.display = 'none';
-                ageGroupModal.setAttribute('aria-hidden', 'true');
+                closeAgeGroupModal();
             }
             if (event.target === skillLevelModal) {
-                skillLevelModal.style.display = 'none';
-                skillLevelModal.setAttribute('aria-hidden', 'true');
+                closeSkillLevelModal();
+            }
+        });
+        
+        // Close modals with Escape key for keyboard accessibility
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' || event.keyCode === 27) {
+                var ageGroupModal = document.getElementById('edit-age-group-modal');
+                var skillLevelModal = document.getElementById('edit-skill-level-modal');
+                
+                if (ageGroupModal.style.display === 'block') {
+                    closeAgeGroupModal();
+                }
+                if (skillLevelModal.style.display === 'block') {
+                    closeSkillLevelModal();
+                }
             }
         });
     })();
