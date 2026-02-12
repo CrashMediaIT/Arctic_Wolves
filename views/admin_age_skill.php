@@ -295,7 +295,13 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                         <p style="font-size: 0.8rem;">Order: <?= $ag['display_order'] ?></p>
                     </div>
                     <div class="item-actions">
-                        <button type="button" class="btn-icon" onclick="editAgeGroup(<?= $ag['id'] ?>, <?= htmlspecialchars(json_encode($ag['name']), ENT_QUOTES) ?>, <?= $ag['min_age'] ?? 'null' ?>, <?= $ag['max_age'] ?? 'null' ?>, <?= htmlspecialchars(json_encode($ag['description'] ?? ''), ENT_QUOTES) ?>, <?= $ag['display_order'] ?>)">
+                        <button type="button" class="btn-icon edit-age-group-btn" 
+                                data-id="<?= $ag['id'] ?>" 
+                                data-name="<?= htmlspecialchars($ag['name']) ?>" 
+                                data-min-age="<?= $ag['min_age'] ?? '' ?>" 
+                                data-max-age="<?= $ag['max_age'] ?? '' ?>" 
+                                data-description="<?= htmlspecialchars($ag['description'] ?? '') ?>" 
+                                data-display-order="<?= $ag['display_order'] ?>">
                             <i class="fas fa-edit"></i>
                         </button>
                         <form action="process_admin_age_skill.php" method="POST" style="display: inline;">
@@ -359,7 +365,11 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                         <p style="font-size: 0.8rem;">Order: <?= $sl['display_order'] ?></p>
                     </div>
                     <div class="item-actions">
-                        <button type="button" class="btn-icon" onclick="editSkillLevel(<?= $sl['id'] ?>, <?= htmlspecialchars(json_encode($sl['name']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($sl['description'] ?? ''), ENT_QUOTES) ?>, <?= $sl['display_order'] ?>)">
+                        <button type="button" class="btn-icon edit-skill-level-btn" 
+                                data-id="<?= $sl['id'] ?>" 
+                                data-name="<?= htmlspecialchars($sl['name']) ?>" 
+                                data-description="<?= htmlspecialchars($sl['description'] ?? '') ?>" 
+                                data-display-order="<?= $sl['display_order'] ?>">
                             <i class="fas fa-edit"></i>
                         </button>
                         <form action="process_admin_age_skill.php" method="POST" style="display: inline;">
@@ -379,13 +389,13 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
     </div>
 
     <!-- Edit Age Group Modal -->
-    <div id="edit-age-group-modal" class="modal" style="display: none;">
+    <div id="edit-age-group-modal" class="modal" style="display: none;" role="dialog" aria-hidden="true" aria-labelledby="edit-age-group-title">
         <div class="modal-content" style="background: rgba(20, 20, 30, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; max-width: 500px; margin: 100px auto; padding: 0;">
             <div style="padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
-                <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <h3 id="edit-age-group-title" style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-birthday-cake"></i> Edit Age Group
                 </h3>
-                <button onclick="closeEditAgeGroupModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: rgba(255, 255, 255, 0.6); font-size: 24px; cursor: pointer;">&times;</button>
+                <button type="button" class="close-edit-age-group" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: rgba(255, 255, 255, 0.6); font-size: 24px; cursor: pointer;" aria-label="Close modal">&times;</button>
             </div>
             <form action="process_admin_age_skill.php" method="POST" style="padding: 24px;">
                 <?= csrfTokenInput() ?>
@@ -419,7 +429,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                 </div>
                 
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                    <button type="button" class="btn-icon" onclick="closeEditAgeGroupModal()" style="padding: 10px 20px;">
+                    <button type="button" class="btn-icon close-edit-age-group" style="padding: 10px 20px;">
                         Cancel
                     </button>
                     <button type="submit" class="btn-add">
@@ -431,13 +441,13 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
     </div>
 
     <!-- Edit Skill Level Modal -->
-    <div id="edit-skill-level-modal" class="modal" style="display: none;">
+    <div id="edit-skill-level-modal" class="modal" style="display: none;" role="dialog" aria-hidden="true" aria-labelledby="edit-skill-level-title">
         <div class="modal-content" style="background: rgba(20, 20, 30, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; max-width: 500px; margin: 100px auto; padding: 0;">
             <div style="padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
-                <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <h3 id="edit-skill-level-title" style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-chart-line"></i> Edit Skill Level
                 </h3>
-                <button onclick="closeEditSkillLevelModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: rgba(255, 255, 255, 0.6); font-size: 24px; cursor: pointer;">&times;</button>
+                <button type="button" class="close-edit-skill-level" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: rgba(255, 255, 255, 0.6); font-size: 24px; cursor: pointer;" aria-label="Close modal">&times;</button>
             </div>
             <form action="process_admin_age_skill.php" method="POST" style="padding: 24px;">
                 <?= csrfTokenInput() ?>
@@ -460,7 +470,7 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                 </div>
                 
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                    <button type="button" class="btn-icon" onclick="closeEditSkillLevelModal()" style="padding: 10px 20px;">
+                    <button type="button" class="btn-icon close-edit-skill-level" style="padding: 10px 20px;">
                         Cancel
                     </button>
                     <button type="submit" class="btn-add">
@@ -472,42 +482,81 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
     </div>
 
     <script>
-    // Edit Age Group
-    function editAgeGroup(id, name, minAge, maxAge, description, displayOrder) {
-        document.getElementById('edit-age-group-id').value = id;
-        document.getElementById('edit-age-group-name').value = name;
-        document.getElementById('edit-age-group-min-age').value = minAge || '';
-        document.getElementById('edit-age-group-max-age').value = maxAge || '';
-        document.getElementById('edit-age-group-description').value = description || '';
-        document.getElementById('edit-age-group-display-order').value = displayOrder;
-        document.getElementById('edit-age-group-modal').style.display = 'block';
-    }
+    (function() {
+        // Edit Age Group - Event Listeners
+        document.querySelectorAll('.edit-age-group-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                var name = this.getAttribute('data-name');
+                var minAge = this.getAttribute('data-min-age');
+                var maxAge = this.getAttribute('data-max-age');
+                var description = this.getAttribute('data-description');
+                var displayOrder = this.getAttribute('data-display-order');
+                
+                document.getElementById('edit-age-group-id').value = id;
+                document.getElementById('edit-age-group-name').value = name;
+                document.getElementById('edit-age-group-min-age').value = minAge || '';
+                document.getElementById('edit-age-group-max-age').value = maxAge || '';
+                document.getElementById('edit-age-group-description').value = description || '';
+                document.getElementById('edit-age-group-display-order').value = displayOrder;
+                
+                var modal = document.getElementById('edit-age-group-modal');
+                modal.style.display = 'block';
+                modal.setAttribute('aria-hidden', 'false');
+            });
+        });
 
-    function closeEditAgeGroupModal() {
-        document.getElementById('edit-age-group-modal').style.display = 'none';
-    }
+        // Close Age Group Modal
+        document.querySelectorAll('.close-edit-age-group').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var modal = document.getElementById('edit-age-group-modal');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            });
+        });
 
-    // Edit Skill Level
-    function editSkillLevel(id, name, description, displayOrder) {
-        document.getElementById('edit-skill-level-id').value = id;
-        document.getElementById('edit-skill-level-name').value = name;
-        document.getElementById('edit-skill-level-description').value = description || '';
-        document.getElementById('edit-skill-level-display-order').value = displayOrder;
-        document.getElementById('edit-skill-level-modal').style.display = 'block';
-    }
+        // Edit Skill Level - Event Listeners
+        document.querySelectorAll('.edit-skill-level-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                var name = this.getAttribute('data-name');
+                var description = this.getAttribute('data-description');
+                var displayOrder = this.getAttribute('data-display-order');
+                
+                document.getElementById('edit-skill-level-id').value = id;
+                document.getElementById('edit-skill-level-name').value = name;
+                document.getElementById('edit-skill-level-description').value = description || '';
+                document.getElementById('edit-skill-level-display-order').value = displayOrder;
+                
+                var modal = document.getElementById('edit-skill-level-modal');
+                modal.style.display = 'block';
+                modal.setAttribute('aria-hidden', 'false');
+            });
+        });
 
-    function closeEditSkillLevelModal() {
-        document.getElementById('edit-skill-level-modal').style.display = 'none';
-    }
+        // Close Skill Level Modal
+        document.querySelectorAll('.close-edit-skill-level').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var modal = document.getElementById('edit-skill-level-modal');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            });
+        });
 
-    // Close modals when clicking outside
-    window.onclick = function(event) {
-        if (event.target.id === 'edit-age-group-modal') {
-            closeEditAgeGroupModal();
-        }
-        if (event.target.id === 'edit-skill-level-modal') {
-            closeEditSkillLevelModal();
-        }
-    }
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            var ageGroupModal = document.getElementById('edit-age-group-modal');
+            var skillLevelModal = document.getElementById('edit-skill-level-modal');
+            
+            if (event.target === ageGroupModal) {
+                ageGroupModal.style.display = 'none';
+                ageGroupModal.setAttribute('aria-hidden', 'true');
+            }
+            if (event.target === skillLevelModal) {
+                skillLevelModal.style.display = 'none';
+                skillLevelModal.setAttribute('aria-hidden', 'true');
+            }
+        });
+    })();
     </script>
 </div>
