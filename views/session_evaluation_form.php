@@ -12,7 +12,7 @@ if ($evaluation_id <= 0) {
 try {
     // Get evaluation with session info
     $stmt = $pdo->prepare("
-        SELECT se.*, s.title as session_title, s.session_date, s.duration_minutes,
+        SELECT se.*, se.name as evaluation_name, s.title as session_title, s.session_date, s.duration_minutes,
                COALESCE(l.name, 'TBD') as location_name
         FROM session_evaluations se
         INNER JOIN sessions s ON se.session_id = s.id
