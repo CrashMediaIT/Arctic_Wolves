@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/config/session.php';
 session_start();
 require 'db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
@@ -90,6 +91,30 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             error_log("Session intent processing error: " . $e->getMessage());
         }
     }
+
+    // Honor redirect parameter from trusted subdomains (e.g. review.arcticwolves.ca)
+    $redirect = $_GET['redirect'] ?? '';
+    if ($redirect !== '') {
+        $parsed = parse_url($redirect);
+        $currentHost = $_SERVER['HTTP_HOST'] ?? '';
+        $currentParts = explode('.', explode(':', $currentHost)[0]);
+        $parentDomain = (count($currentParts) >= 2)
+            ? implode('.', array_slice($currentParts, -2))
+            : $currentHost;
+
+        if (
+            isset($parsed['host']) && isset($parsed['scheme'])
+            && in_array($parsed['scheme'], ['https', 'http'], true)
+            && (
+                $parsed['host'] === $parentDomain
+                || str_ends_with($parsed['host'], '.' . $parentDomain)
+            )
+        ) {
+            header("Location: " . $redirect);
+            exit();
+        }
+    }
+
     header("Location: dashboard.php");
     exit();
 }
