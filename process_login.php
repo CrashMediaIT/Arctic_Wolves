@@ -11,17 +11,17 @@ require_once __DIR__ . '/lib/encryption.php';
  */
 function recordLoginHistory($pdo, $user_id, $status, $failure_reason = null) {
     try {
+        $set_activity = $status === 'success' ? 'NOW()' : 'NULL';
         $stmt = $pdo->prepare("
             INSERT INTO login_history (user_id, login_time, ip_address, user_agent, login_status, failure_reason, last_activity)
-            VALUES (?, NOW(), ?, ?, ?, ?, ?)
+            VALUES (?, NOW(), ?, ?, ?, ?, $set_activity)
         ");
         $stmt->execute([
             $user_id,
             $_SERVER['REMOTE_ADDR'] ?? null,
             $_SERVER['HTTP_USER_AGENT'] ?? null,
             $status,
-            $failure_reason,
-            $status === 'success' ? date('Y-m-d H:i:s') : null
+            $failure_reason
         ]);
     } catch (PDOException $e) {
         error_log("Failed to record login history: " . $e->getMessage());
