@@ -2862,6 +2862,28 @@ if ($action == 'create_team') {
     $coach_id = !empty($_POST['coach_id']) ? intval($_POST['coach_id']) : null;
     $assistant_coach_id = !empty($_POST['assistant_coach_id']) ? intval($_POST['assistant_coach_id']) : null;
     
+    // Handle team logo upload
+    $logo_url = null;
+    if (!empty($_FILES['team_logo']) && $_FILES['team_logo']['error'] === UPLOAD_ERR_OK) {
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+        $max_size = 5 * 1024 * 1024;
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $_FILES['team_logo']['tmp_name']);
+        finfo_close($finfo);
+        
+        if (in_array($mime, $allowed_types) && $_FILES['team_logo']['size'] <= $max_size) {
+            $upload_dir = __DIR__ . '/uploads/team_logos/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
+            $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
+            if (move_uploaded_file($_FILES['team_logo']['tmp_name'], $upload_dir . $filename)) {
+                $logo_url = 'uploads/team_logos/' . $filename;
+            }
+        }
+    }
+    
     if (empty($name)) {
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2873,8 +2895,8 @@ if ($action == 'create_team') {
     }
     
     try {
-        $stmt = $pdo->prepare("INSERT INTO teams (name, age_group, skill_level, division, season, coach_id, assistant_coach_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
-        $stmt->execute([$name, $age_group ?: null, $skill_level ?: null, $division ?: null, $season ?: null, $coach_id, $assistant_coach_id]);
+        $stmt = $pdo->prepare("INSERT INTO teams (name, age_group, skill_level, division, season, coach_id, assistant_coach_id, logo_url, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)");
+        $stmt->execute([$name, $age_group ?: null, $skill_level ?: null, $division ?: null, $season ?: null, $coach_id, $assistant_coach_id, $logo_url]);
         
         $new_team_id = $pdo->lastInsertId();
         
@@ -2922,12 +2944,34 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
         $assistant_coach_id = !empty($_POST['assistant_coach_id']) ? intval($_POST['assistant_coach_id']) : null;
         $is_active = isset($_POST['is_active']) ? intval($_POST['is_active']) : 1;
         
+        // Handle team logo upload
+        $logo_url = trim($_POST['existing_logo_url'] ?? '');
+        if (!empty($_FILES['team_logo']) && $_FILES['team_logo']['error'] === UPLOAD_ERR_OK) {
+            $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+            $max_size = 5 * 1024 * 1024;
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $_FILES['team_logo']['tmp_name']);
+            finfo_close($finfo);
+            
+            if (in_array($mime, $allowed_types) && $_FILES['team_logo']['size'] <= $max_size) {
+                $upload_dir = __DIR__ . '/uploads/team_logos/';
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
+                $ext = strtolower(pathinfo($_FILES['team_logo']['name'], PATHINFO_EXTENSION));
+                $filename = 'team_' . time() . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
+                if (move_uploaded_file($_FILES['team_logo']['tmp_name'], $upload_dir . $filename)) {
+                    $logo_url = 'uploads/team_logos/' . $filename;
+                }
+            }
+        }
+        
         if ($id <= 0 || empty($name)) {
             throw new Exception('Team ID and name are required');
         }
         
-        $stmt = $pdo->prepare("UPDATE teams SET name = ?, age_group = ?, skill_level = ?, division = ?, season = ?, coach_id = ?, assistant_coach_id = ?, is_active = ? WHERE id = ?");
-        $stmt->execute([$name, $age_group ?: null, $skill_level ?: null, $division ?: null, $season ?: null, $coach_id, $assistant_coach_id, $is_active, $id]);
+        $stmt = $pdo->prepare("UPDATE teams SET name = ?, age_group = ?, skill_level = ?, division = ?, season = ?, coach_id = ?, assistant_coach_id = ?, logo_url = ?, is_active = ? WHERE id = ?");
+        $stmt->execute([$name, $age_group ?: null, $skill_level ?: null, $division ?: null, $season ?: null, $coach_id, $assistant_coach_id, $logo_url ?: null, $is_active, $id]);
         
         // Sync team_seasons: remove old, add new
         $pdo->prepare("DELETE FROM team_seasons WHERE team_id = ?")->execute([$id]);
