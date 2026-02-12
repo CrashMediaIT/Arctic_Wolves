@@ -110,7 +110,9 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                 || str_ends_with($parsed['host'], '.' . $parentDomain)
             )
         ) {
-            header("Location: " . $redirect);
+            // Sanitize to prevent header injection (strip newlines/carriage returns)
+            $safeRedirect = str_replace(["\r", "\n", "\0"], '', $redirect);
+            header("Location: " . $safeRedirect);
             exit();
         }
     }
