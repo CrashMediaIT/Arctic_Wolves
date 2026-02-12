@@ -213,6 +213,9 @@ try {
         <button type="button" class="btn btn-secondary" id="startCameraBtn">
             <i class="fas fa-camera"></i> Start Camera
         </button>
+        <button type="button" class="btn btn-secondary" id="flipCameraBtn" style="display: none;" title="Flip Camera">
+            <i class="fas fa-camera-rotate"></i> Flip
+        </button>
         <button type="button" class="btn btn-danger" id="startRecordBtn" disabled>
             <i class="fas fa-circle"></i> Start Recording
         </button>
@@ -783,6 +786,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let mediaRecorder = null;
     let recordedChunks = [];
     let stream = null;
+    let currentFacingMode = 'environment'; // Start on back camera
     
     const videoPreview = document.getElementById('videoPreview');
     const recordedVideo = document.getElementById('recordedVideo');
@@ -791,6 +795,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const recordedVideoContainer = document.getElementById('recordedVideoContainer');
     
     const startCameraBtn = document.getElementById('startCameraBtn');
+    const flipCameraBtn = document.getElementById('flipCameraBtn');
     const startRecordBtn = document.getElementById('startRecordBtn');
     const stopRecordBtn = document.getElementById('stopRecordBtn');
     const saveVideoBtn = document.getElementById('saveVideoBtn');
@@ -809,11 +814,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Start Camera
+    // Start Camera (defaults to back camera)
     startCameraBtn.addEventListener('click', async function() {
         try {
             stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
+                    facingMode: { ideal: currentFacingMode },
                     width: { ideal: 1920 },
                     height: { ideal: 1080 }
                 }, 
@@ -824,9 +830,43 @@ document.addEventListener('DOMContentLoaded', function() {
             startRecordBtn.disabled = false;
             startCameraBtn.textContent = 'Camera Active';
             startCameraBtn.disabled = true;
+            flipCameraBtn.style.display = 'inline-flex';
         } catch (err) {
             alert('Error accessing camera: ' + err.message);
             console.error('Camera error:', err);
+        }
+    });
+
+    // Flip Camera
+    flipCameraBtn.addEventListener('click', async function() {
+        if (mediaRecorder && mediaRecorder.state === 'recording') return; // Don't flip while recording
+        currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+        try {
+            // Stop existing tracks
+            if (stream) {
+                stream.getTracks().forEach(function(track) { track.stop(); });
+            }
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: currentFacingMode },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: true
+            });
+            videoPreview.srcObject = stream;
+        } catch (err) {
+            // If ideal facingMode fails, try without constraint
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+                    audio: true
+                });
+                videoPreview.srcObject = stream;
+            } catch (err2) {
+                alert('Error switching camera: ' + err2.message);
+                console.error('Camera flip error:', err2);
+            }
         }
     });
     
