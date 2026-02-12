@@ -24,6 +24,9 @@ function setSecurityHeaders() {
            "img-src 'self' data: https:; " .
            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
            "connect-src 'self' https://maps.googleapis.com https://places.googleapis.com; " .
+           "worker-src 'self'; " .
+           "manifest-src 'self'; " .
+           "media-src 'self' blob: mediastream:; " .
            "frame-ancestors 'self';";
     header("Content-Security-Policy: $csp");
 }
