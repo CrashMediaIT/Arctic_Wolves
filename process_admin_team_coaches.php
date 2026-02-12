@@ -3,6 +3,10 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 
+// Check if this is an AJAX request
+$isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+          strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
 // CSRF protection - validate token for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();
@@ -10,6 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Only admins can manage team coaches
 if (!isset($_SESSION['logged_in']) || $_SESSION['user_role'] !== 'admin') {
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Not authorized']);
+        exit();
+    }
     header("Location: dashboard.php");
     exit();
 }
@@ -20,6 +29,26 @@ $action = $_POST['action'] ?? '';
 $redirect_page = 'admin_team_coaches';
 if (!empty($_POST['redirect_page']) && $_POST['redirect_page'] === 'categories') {
     $redirect_page = 'categories&tab=seasons';
+}
+
+// Helper function to respond with JSON or redirect
+function respond($success, $message, $redirectPage = 'admin_team_coaches') {
+    global $isAjax;
+    
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => $success, 'message' => $message]);
+        exit();
+    } else {
+        $url = "dashboard.php?page=" . urlencode($redirectPage);
+        if ($success) {
+            $url .= "&msg=" . urlencode(str_replace(' ', '_', strtolower($message)));
+        } else {
+            $url .= "&error=" . urlencode($message);
+        }
+        header("Location: " . $url);
+        exit();
+    }
 }
 
 try {
@@ -41,7 +70,7 @@ try {
             ");
             $stmt->execute([$name, $start_date, $end_date, $is_active]);
             
-            header("Location: dashboard.php?page=$redirect_page&msg=season_created");
+            respond(true, "Season '$name' created successfully!", $redirect_page);
             break;
             
         case 'activate_season':
@@ -54,7 +83,7 @@ try {
             $stmt = $pdo->prepare("UPDATE seasons SET is_active = 1 WHERE id = ?");
             $stmt->execute([$season_id]);
             
-            header("Location: dashboard.php?page=$redirect_page&msg=season_activated");
+            respond(true, 'Season activated successfully!', $redirect_page);
             break;
             
         case 'delete_season':
@@ -66,14 +95,13 @@ try {
             $count = $check_stmt->fetchColumn();
             
             if ($count > 0) {
-                header("Location: dashboard.php?page=$redirect_page&error=season_has_assignments");
-                exit();
+                respond(false, 'Cannot delete season with existing assignments', $redirect_page);
             }
             
             $stmt = $pdo->prepare("DELETE FROM seasons WHERE id = ?");
             $stmt->execute([$season_id]);
             
-            header("Location: dashboard.php?page=$redirect_page&msg=season_deleted");
+            respond(true, 'Season deleted successfully!', $redirect_page);
             break;
             
         case 'create_assignment':
