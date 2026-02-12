@@ -52,14 +52,25 @@ if (empty($segments) || (count($segments) === 1 && $segments[0] === '')) {
         'domain'  => 'api.arcticwolves.ca',
         'documentation' => 'https://api.arcticwolves.ca/v1',
         'endpoints' => [
-            'auth'          => '/v1/auth',
-            'users'         => '/v1/users',
-            'videos'        => '/v1/videos',
-            'sessions'      => '/v1/sessions',
-            'teams'         => '/v1/teams',
-            'bookings'      => '/v1/bookings',
-            'drills'        => '/v1/drills',
-            'notifications' => '/v1/notifications',
+            'auth'           => '/v1/auth',
+            'users'          => '/v1/users',
+            'athletes'       => '/v1/athletes',
+            'sessions'       => '/v1/sessions',
+            'teams'          => '/v1/teams',
+            'bookings'       => '/v1/bookings',
+            'drills'         => '/v1/drills',
+            'practice-plans' => '/v1/practice-plans',
+            'evaluations'    => '/v1/evaluations',
+            'videos'         => '/v1/videos',
+            'messages'       => '/v1/messages',
+            'notifications'  => '/v1/notifications',
+            'dashboard'      => '/v1/dashboard',
+            'reports'        => '/v1/reports',
+            'finance'        => '/v1/finance',
+            'hr'             => '/v1/hr',
+            'health'         => '/v1/health',
+            'shop'           => '/v1/shop',
+            'admin'          => '/v1/admin',
         ],
     ]);
     exit;
@@ -89,7 +100,7 @@ if (empty($resource)) {
     echo json_encode([
         'success'   => true,
         'version'   => 'v1',
-        'resources' => ['auth', 'users', 'videos', 'sessions', 'teams', 'bookings', 'drills', 'notifications'],
+        'resources' => ['auth', 'users', 'athletes', 'sessions', 'teams', 'bookings', 'drills', 'practice-plans', 'evaluations', 'videos', 'messages', 'notifications', 'dashboard', 'reports', 'finance', 'hr', 'health', 'shop', 'admin'],
     ]);
     exit;
 }
