@@ -659,3 +659,86 @@ For issues during deployment, check:
 ---
 
 **Deployment complete!** Your Crash Hockey Training Platform should now be fully operational.
+
+---
+
+## Game Plan & Video Companion Server
+
+The Arctic Wolves Game Plan (Video Review) system runs on `gameplan.arcticwolves.ca` as a separate subdomain application. An optional companion server provides hardware-accelerated video processing.
+
+### Deploy ACVideoReview (Game Plan App)
+
+```bash
+# 1. Clone into web root
+cd /portainer/nginx/www/
+git clone https://github.com/CrashMediaIT/ACVideoReview.git
+
+# 2. Set permissions
+bash ACVideoReview/deployment/setup_permissions.sh
+
+# 3. Install NGINX config (uses gameplan.arcticwolves.ca)
+docker cp Arctic_Wolves/deployment/gameplan.conf nginx:/config/nginx/site-confs/gameplan.conf
+
+# 4. Install PHP config
+docker cp ACVideoReview/deployment/php-config.ini nginx:/config/php/php-config.ini
+
+# 5. Restart NGINX
+docker restart nginx
+
+# 6. Run setup wizard at: http://gameplan.arcticwolves.ca/setup.php
+```
+
+### Deploy Video Companion Server
+
+The companion server handles hardware-accelerated video encoding, decoding, and clip extraction.
+
+```bash
+# 1. Navigate to companion directory
+cd /portainer/nginx/www/Arctic_Wolves/companion
+
+# 2. Copy and configure environment
+cp .env.example .env
+nano .env  # Set API_KEY and VIDEO_BASE_PATH
+
+# 3a. CPU-only deployment
+docker compose up -d
+
+# 3b. With NVIDIA GPU support (requires nvidia-container-toolkit)
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+### Configure Video Storage (NFS/SMB)
+
+Both the Game Plan app and the companion server need access to the same video files. Mount the network share on both servers:
+
+```bash
+# NFS Mount (on both Game Plan and Companion hosts)
+mkdir -p /videos
+mount -t nfs nas.local:/volume1/videos /videos
+
+# Or add to /etc/fstab for persistent mount:
+# nas.local:/volume1/videos /videos nfs rw,sync,no_subtree_check 0 0
+```
+
+```bash
+# SMB/CIFS Mount (alternative)
+mkdir -p /videos
+mount -t cifs //nas.local/videos /videos -o username=user,password=pass,uid=911,gid=911
+
+# Or add to /etc/fstab for persistent mount:
+# //nas.local/videos /videos cifs username=user,password=pass,uid=911,gid=911 0 0
+```
+
+For Docker, mount the same path in `docker-compose.yml`:
+```yaml
+volumes:
+  - /videos:/videos
+```
+
+### Configure in Admin Dashboard
+
+1. Go to **Administration → Game Plan Settings** in the main Arctic Wolves dashboard
+2. Enter the companion server URL (e.g. `http://companion:5100`)
+3. Set the shared API key
+4. Enable hardware acceleration and select the method
+5. Configure the video storage type (Local, NFS, or SMB) and mount path
