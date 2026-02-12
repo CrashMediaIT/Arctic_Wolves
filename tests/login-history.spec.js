@@ -78,7 +78,7 @@ test.describe('Login History Recording', () => {
     await page.click('button[type="submit"]');
 
     // Should stay on login page with an error
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
     const currentUrl = page.url();
     expect(currentUrl).toContain('login.php');
 
