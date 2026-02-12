@@ -779,6 +779,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video Recording
             </a>
+            <a href="https://review.arcticwolves.ca" class="nav-link" target="_blank" rel="noopener noreferrer">
+                <i class="fa-solid fa-chess-board icon"></i> Game Plan
+            </a>
         </nav>
     </div>
     <?php endif; ?>
