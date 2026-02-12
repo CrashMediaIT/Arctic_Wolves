@@ -11,9 +11,10 @@ require_once __DIR__ . '/lib/encryption.php';
  */
 function recordLoginHistory($pdo, $user_id, $status, $failure_reason = null) {
     try {
+        $set_activity = $status === 'success' ? 'NOW()' : 'NULL';
         $stmt = $pdo->prepare("
-            INSERT INTO login_history (user_id, login_time, ip_address, user_agent, login_status, failure_reason)
-            VALUES (?, NOW(), ?, ?, ?, ?)
+            INSERT INTO login_history (user_id, login_time, ip_address, user_agent, login_status, failure_reason, last_activity)
+            VALUES (?, NOW(), ?, ?, ?, ?, $set_activity)
         ");
         $stmt->execute([
             $user_id,
