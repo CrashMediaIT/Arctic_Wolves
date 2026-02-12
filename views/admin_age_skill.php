@@ -218,6 +218,20 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                 grid-template-columns: 1fr;
             }
         }
+
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        .modal-content {
+            position: relative;
+        }
     </style>
 
     <div class="age-skill-grid">
@@ -281,6 +295,9 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                         <p style="font-size: 0.8rem;">Order: <?= $ag['display_order'] ?></p>
                     </div>
                     <div class="item-actions">
+                        <button type="button" class="btn-icon" onclick="editAgeGroup(<?= $ag['id'] ?>, <?= htmlspecialchars(json_encode($ag['name']), ENT_QUOTES) ?>, <?= $ag['min_age'] ?? 'null' ?>, <?= $ag['max_age'] ?? 'null' ?>, <?= htmlspecialchars(json_encode($ag['description'] ?? ''), ENT_QUOTES) ?>, <?= $ag['display_order'] ?>)">
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <form action="process_admin_age_skill.php" method="POST" style="display: inline;">
                             <?= csrfTokenInput() ?>
                             <input type="hidden" name="action" value="delete_age_group">
@@ -342,6 +359,9 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
                         <p style="font-size: 0.8rem;">Order: <?= $sl['display_order'] ?></p>
                     </div>
                     <div class="item-actions">
+                        <button type="button" class="btn-icon" onclick="editSkillLevel(<?= $sl['id'] ?>, <?= htmlspecialchars(json_encode($sl['name']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($sl['description'] ?? ''), ENT_QUOTES) ?>, <?= $sl['display_order'] ?>)">
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <form action="process_admin_age_skill.php" method="POST" style="display: inline;">
                             <?= csrfTokenInput() ?>
                             <input type="hidden" name="action" value="delete_skill_level">
@@ -357,4 +377,137 @@ requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'manage_se
             </ul>
         </div>
     </div>
+
+    <!-- Edit Age Group Modal -->
+    <div id="edit-age-group-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="background: rgba(20, 20, 30, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; max-width: 500px; margin: 100px auto; padding: 0;">
+            <div style="padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-birthday-cake"></i> Edit Age Group
+                </h3>
+                <button onclick="closeEditAgeGroupModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: rgba(255, 255, 255, 0.6); font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <form action="process_admin_age_skill.php" method="POST" style="padding: 24px;">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="update_age_group">
+                <input type="hidden" name="id" id="edit-age-group-id">
+                
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" name="name" id="edit-age-group-name" required placeholder="e.g., Bantam (U14)">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Min Age</label>
+                        <input type="number" name="min_age" id="edit-age-group-min-age" placeholder="e.g., 13">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Age</label>
+                        <input type="number" name="max_age" id="edit-age-group-max-age" placeholder="e.g., 14">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" id="edit-age-group-description" placeholder="Brief description..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Display Order</label>
+                    <input type="number" name="display_order" id="edit-age-group-display-order" value="0" placeholder="0">
+                </div>
+                
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn-icon" onclick="closeEditAgeGroupModal()" style="padding: 10px 20px;">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-add">
+                        <i class="fas fa-save"></i> Update Age Group
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Skill Level Modal -->
+    <div id="edit-skill-level-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="background: rgba(20, 20, 30, 0.98); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; max-width: 500px; margin: 100px auto; padding: 0;">
+            <div style="padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-chart-line"></i> Edit Skill Level
+                </h3>
+                <button onclick="closeEditSkillLevelModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: rgba(255, 255, 255, 0.6); font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <form action="process_admin_age_skill.php" method="POST" style="padding: 24px;">
+                <?= csrfTokenInput() ?>
+                <input type="hidden" name="action" value="update_skill_level">
+                <input type="hidden" name="id" id="edit-skill-level-id">
+                
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" name="name" id="edit-skill-level-name" required placeholder="e.g., Advanced">
+                </div>
+                
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" id="edit-skill-level-description" placeholder="Brief description..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Display Order</label>
+                    <input type="number" name="display_order" id="edit-skill-level-display-order" value="0" placeholder="0">
+                </div>
+                
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn-icon" onclick="closeEditSkillLevelModal()" style="padding: 10px 20px;">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-add">
+                        <i class="fas fa-save"></i> Update Skill Level
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    // Edit Age Group
+    function editAgeGroup(id, name, minAge, maxAge, description, displayOrder) {
+        document.getElementById('edit-age-group-id').value = id;
+        document.getElementById('edit-age-group-name').value = name;
+        document.getElementById('edit-age-group-min-age').value = minAge || '';
+        document.getElementById('edit-age-group-max-age').value = maxAge || '';
+        document.getElementById('edit-age-group-description').value = description || '';
+        document.getElementById('edit-age-group-display-order').value = displayOrder;
+        document.getElementById('edit-age-group-modal').style.display = 'block';
+    }
+
+    function closeEditAgeGroupModal() {
+        document.getElementById('edit-age-group-modal').style.display = 'none';
+    }
+
+    // Edit Skill Level
+    function editSkillLevel(id, name, description, displayOrder) {
+        document.getElementById('edit-skill-level-id').value = id;
+        document.getElementById('edit-skill-level-name').value = name;
+        document.getElementById('edit-skill-level-description').value = description || '';
+        document.getElementById('edit-skill-level-display-order').value = displayOrder;
+        document.getElementById('edit-skill-level-modal').style.display = 'block';
+    }
+
+    function closeEditSkillLevelModal() {
+        document.getElementById('edit-skill-level-modal').style.display = 'none';
+    }
+
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        if (event.target.id === 'edit-age-group-modal') {
+            closeEditAgeGroupModal();
+        }
+        if (event.target.id === 'edit-skill-level-modal') {
+            closeEditSkillLevelModal();
+        }
+    }
+    </script>
 </div>

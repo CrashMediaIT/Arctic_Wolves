@@ -84,6 +84,22 @@ try {
             
             respond(true, "Age group '$name' created successfully!", $age_group_redirect, 'age_group_created', $age_group_redirect_params);
             break;
+
+        case 'update_age_group':
+            $id = intval($_POST['id']);
+            $name = trim($_POST['name']);
+            $min_age = !empty($_POST['min_age']) ? intval($_POST['min_age']) : null;
+            $max_age = !empty($_POST['max_age']) ? intval($_POST['max_age']) : null;
+            $description = trim($_POST['description'] ?? '');
+            $display_order = intval($_POST['display_order'] ?? 0);
+            
+            $stmt = $pdo->prepare("UPDATE age_groups SET name = ?, min_age = ?, max_age = ?, description = ?, display_order = ? WHERE id = ?");
+            $stmt->execute([$name, $min_age, $max_age, $description, $display_order, $id]);
+            
+            logSecurityEvent($pdo, 'age_group_updated', "Updated age group: $name", $_SESSION['user_id']);
+            
+            respond(true, "Age group '$name' updated successfully!", $age_group_redirect, 'age_group_updated', $age_group_redirect_params);
+            break;
             
         case 'delete_age_group':
             $id = intval($_POST['id']);
@@ -113,6 +129,20 @@ try {
             logSecurityEvent($pdo, 'skill_level_created', "Created skill level: $name", $_SESSION['user_id']);
             
             respond(true, "Skill level '$name' created successfully!", 'categories', 'skill_level_created', 'tab=skill_levels');
+            break;
+
+        case 'update_skill_level':
+            $id = intval($_POST['id']);
+            $name = trim($_POST['name']);
+            $description = trim($_POST['description'] ?? '');
+            $display_order = intval($_POST['display_order'] ?? 0);
+            
+            $stmt = $pdo->prepare("UPDATE skill_levels SET name = ?, description = ?, display_order = ? WHERE id = ?");
+            $stmt->execute([$name, $description, $display_order, $id]);
+            
+            logSecurityEvent($pdo, 'skill_level_updated', "Updated skill level: $name", $_SESSION['user_id']);
+            
+            respond(true, "Skill level '$name' updated successfully!", 'admin_age_skill', 'skill_level_updated');
             break;
             
         case 'delete_skill_level':
