@@ -226,10 +226,11 @@ $allowed_pages = [
     'shop'                    => 'views/shop.php',
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
+    'gameplan'                => 'views/gameplan.php',
+    'gameplan_settings'       => 'views/gameplan_settings.php',
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
-
 // Unread notification count
 $unreadNotifCount = 0;
 try {
@@ -364,7 +365,7 @@ try {
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>"><i class="fa-solid fa-clipboard-check"></i> Session Evaluations</a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>"><i class="fa-solid fa-plane"></i> Travel</a>
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Recording</a>
-            <a href="//gameplan.arcticwolves.ca" class="nav-link" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
+            <a href="?page=gameplan" class="nav-link <?= $page=='gameplan'?'active':'' ?>"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
         </nav>
     </div>
     <?php endif; ?>

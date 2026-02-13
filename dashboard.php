@@ -288,7 +288,8 @@ $allowed_pages = [
     // Profile and Settings
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
-    'gameplan_settings'       => 'views/gameplan_settings.php'
+    'gameplan_settings'       => 'views/gameplan_settings.php',
+    'gameplan'                => 'views/gameplan.php'
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
@@ -787,7 +788,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video Recording
             </a>
-            <a href="//gameplan.arcticwolves.ca" class="nav-link" target="_blank" rel="noopener noreferrer">
+            <a href="?page=gameplan" class="nav-link <?= $page=='gameplan'?'active':'' ?>">
                 <i class="fa-solid fa-chess-board icon"></i> Game Plan
             </a>
         </nav>

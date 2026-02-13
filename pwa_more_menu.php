@@ -109,7 +109,7 @@
             <i class="fas fa-plane"></i> Travel
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="/gameplan.php" class="pwa-menu-item">
+        <a href="?page=gameplan" class="pwa-menu-item">
             <i class="fas fa-chess-board"></i> Game Plan
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
