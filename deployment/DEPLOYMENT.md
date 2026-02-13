@@ -664,23 +664,27 @@ For issues during deployment, check:
 
 ## Game Plan & Video Companion Server
 
-The Arctic Wolves Game Plan (Video Review) system runs on `gameplan.arcticwolves.ca` as a subdomain. The Game Plan code has been merged into the Arctic_Wolves repository, so both the main site and Game Plan share the same web root. An optional companion server provides hardware-accelerated video processing.
+The Arctic Wolves Game Plan (Video Review) system runs on `gameplan.arcticwolves.ca` as a subdomain. It reverse-proxies to the **Video Companion Server**, a Python/Flask service that handles hardware-accelerated video encoding, decoding, and clip extraction. The companion server runs on port 5100.
+
+The gameplan server block is included in `arctic_wolves.conf` (like the POS kiosk and API subdomains) — there is no separate nginx config file needed.
 
 ### Deploy Game Plan Subdomain
 
-The Game Plan server block is included in `arctic_wolves.conf`. If you already deployed the main site config, the Game Plan subdomain is automatically configured.
+The Game Plan server block is already in `arctic_wolves.conf`. When you deploy the main site config, the Game Plan subdomain is automatically configured to proxy to the companion server.
 
 ```bash
 # 1. Ensure DNS for gameplan.arcticwolves.ca points to the same server
 
 # 2. The gameplan server block is already in arctic_wolves.conf
-#    If you need to deploy it separately instead:
-docker cp Arctic_Wolves/deployment/gameplan.conf nginx:/config/nginx/site-confs/gameplan.conf
+#    No separate config file needed (same pattern as POS and API subdomains)
 
-# 3. Restart NGINX to pick up the config
+# 3. Deploy the companion server (see below)
+
+# 4. Restart NGINX to pick up the config
 docker restart nginx
 
-# 4. Verify: https://gameplan.arcticwolves.ca should now load
+# 5. Verify: gameplan.arcticwolves.ca should proxy to the companion server
+curl -I http://gameplan.arcticwolves.ca/api/health
 ```
 
 ### Deploy Video Companion Server
