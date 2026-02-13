@@ -529,8 +529,13 @@ try {
 function toggleSidebar() {
     var sidebar = document.getElementById('tabletSidebar');
     var overlay = document.getElementById('sidebarOverlay');
+    var toggleIcon = document.querySelector('#sidebarToggle i');
     sidebar.classList.toggle('collapsed');
     overlay.classList.toggle('show');
+    // Swap icon
+    if (toggleIcon) {
+        toggleIcon.className = sidebar.classList.contains('collapsed') ? 'fas fa-bars' : 'fas fa-times';
+    }
     // Save preference
     sessionStorage.setItem('tabletSidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
 }
@@ -539,9 +544,16 @@ function toggleSidebar() {
 document.addEventListener('DOMContentLoaded', function() {
     var collapsed = sessionStorage.getItem('tabletSidebarCollapsed');
     var sidebar = document.getElementById('tabletSidebar');
+    var toggleIcon = document.querySelector('#sidebarToggle i');
     // On narrow tablets, default to collapsed
     if (collapsed === '1' || (collapsed === null && window.innerWidth < 900)) {
         sidebar.classList.add('collapsed');
+    }
+    // Set initial icon state
+    if (toggleIcon && sidebar.classList.contains('collapsed')) {
+        toggleIcon.className = 'fas fa-bars';
+    } else if (toggleIcon) {
+        toggleIcon.className = 'fas fa-times';
     }
 
     // Persist sidebar scroll position
@@ -558,14 +570,18 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionStorage.setItem('tabletSidebarScroll', sidebar.scrollTop);
     });
     
-    // Close sidebar on nav click (narrow tablets)
-    if (window.innerWidth < 900) {
-        sidebar.querySelectorAll('.nav-link').forEach(function(link) {
-            link.addEventListener('click', function() {
-                sessionStorage.setItem('tabletSidebarScroll', sidebar.scrollTop);
-            });
+    // Auto-close sidebar on nav click for narrow tablets
+    sidebar.querySelectorAll('.nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            sessionStorage.setItem('tabletSidebarScroll', sidebar.scrollTop);
+            if (window.innerWidth < 900) {
+                sidebar.classList.add('collapsed');
+                document.getElementById('sidebarOverlay').classList.remove('show');
+                if (toggleIcon) toggleIcon.className = 'fas fa-bars';
+                sessionStorage.setItem('tabletSidebarCollapsed', '1');
+            }
         });
-    }
+    });
 });
 
 // ── Persona Switcher ──────────────────────────────────────

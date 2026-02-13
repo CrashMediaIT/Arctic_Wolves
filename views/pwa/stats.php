@@ -1,13 +1,35 @@
 <?php
 /**
  * PWA Stats - Mobile-native performance stats for athletes
- * Purpose-built for mobile phones.
+ * Purpose-built for mobile phones with coach athlete selector and goal management.
  */
+
+// Coach athlete selector
+$coachAthletes = [];
+if ($isAnyCoach) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT u.id, CONCAT(u.first_name, ' ', u.last_name) as name
+            FROM users u
+            WHERE u.role = 'athlete' AND u.status = 'active'
+            ORDER BY u.first_name, u.last_name
+        ");
+        $stmt->execute();
+        $coachAthletes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) { $coachAthletes = []; }
+}
 
 // Determine which athlete to show stats for
 $statsUserId = $user_id;
 $statsUserName = $user_name;
-if ($isParent && !empty($_SESSION['viewing_athlete_id'])) {
+if ($isAnyCoach && !empty($_GET['athlete_id'])) {
+    $statsUserId = (int)$_GET['athlete_id'];
+    try {
+        $stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE id = ?");
+        $stmt->execute([$statsUserId]);
+        $statsUserName = $stmt->fetchColumn() ?: $user_name;
+    } catch (PDOException $e) { /* keep default */ }
+} elseif ($isParent && !empty($_SESSION['viewing_athlete_id'])) {
     $statsUserId = (int)$_SESSION['viewing_athlete_id'];
     try {
         $stmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE id = ?");
@@ -145,6 +167,17 @@ try {
 </style>
 
 <div class="m-stats">
+    <?php if ($isAnyCoach && !empty($coachAthletes)): ?>
+    <div style="margin-bottom:14px;">
+        <select onchange="if(this.value)window.location='?page=stats&athlete_id='+this.value" style="width:100%;padding:12px;background:#16161F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;font-size:14px;font-family:Inter,sans-serif;min-height:44px;">
+            <option value="">Select Athlete</option>
+            <?php foreach ($coachAthletes as $a): ?>
+            <option value="<?= (int)$a['id'] ?>" <?= $statsUserId == $a['id'] ? 'selected' : '' ?>><?= htmlspecialchars($a['name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <?php endif; ?>
+
     <div class="m-stats-header">
         <h2 class="m-stats-title">Performance</h2>
         <p class="m-stats-sub"><?= htmlspecialchars($statsUserName) ?></p>
@@ -211,10 +244,13 @@ try {
                     <div style="font-size:11px;color:#A8A8B8;">Active</div>
                 </div>
             </div>
+            <div style="margin-top:12px;text-align:center;">
+                <a href="?page=goals<?= $isAnyCoach && $statsUserId != $user_id ? '&athlete_id=' . (int)$statsUserId : '' ?>" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:linear-gradient(135deg,#6B46C1,#8B5CF6);color:#fff;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;min-height:44px;">
+                    <i class="fas fa-bullseye"></i> Manage Goals
+                </a>
+            </div>
         <?php endif; ?>
     </div>
-
-    <!-- Recent Evaluations -->
     <div class="m-section">
         <h3 class="m-section-title">Recent Evaluations</h3>
         <?php if (empty($recentEvals)): ?>

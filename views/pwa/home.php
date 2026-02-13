@@ -102,7 +102,7 @@ try {
 .m-stat-value { font-size: 28px; font-weight: 700; color: #fff; }
 .m-stat-label { font-size: 11px; color: #A8A8B8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 .m-stat-icon { font-size: 16px; margin-bottom: 6px; }
-.m-quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+.m-quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
 .m-quick-btn {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
@@ -232,11 +232,23 @@ try {
             <i class="fas fa-comment-dots"></i><span>Messages</span>
         </a>
         <?php if ($isAnyCoach): ?>
+            <a href="?page=create_session" class="m-quick-btn">
+                <i class="fas fa-calendar-plus" style="color:#10B981;"></i><span>New Session</span>
+            </a>
             <a href="?page=roster" class="m-quick-btn">
                 <i class="fas fa-users"></i><span>Roster</span>
             </a>
             <a href="?page=drills" class="m-quick-btn">
                 <i class="fas fa-hockey-puck"></i><span>Drills</span>
+            </a>
+            <a href="?page=practice" class="m-quick-btn">
+                <i class="fas fa-clipboard-list"></i><span>Plans</span>
+            </a>
+            <a href="?page=coach_calendar" class="m-quick-btn">
+                <i class="fas fa-calendar"></i><span>Calendar</span>
+            </a>
+            <a href="?page=video" class="m-quick-btn">
+                <i class="fas fa-video"></i><span>Video</span>
             </a>
         <?php else: ?>
             <a href="?page=stats" class="m-quick-btn">
@@ -244,6 +256,18 @@ try {
             </a>
             <a href="?page=goals" class="m-quick-btn">
                 <i class="fas fa-bullseye"></i><span>Goals</span>
+            </a>
+            <a href="?page=health" class="m-quick-btn">
+                <i class="fas fa-heartbeat"></i><span>Health</span>
+            </a>
+            <a href="?page=video" class="m-quick-btn">
+                <i class="fas fa-video"></i><span>Video</span>
+            </a>
+            <a href="?page=shop" class="m-quick-btn">
+                <i class="fas fa-store"></i><span>Shop</span>
+            </a>
+            <a href="?page=notifications" class="m-quick-btn">
+                <i class="fas fa-bell"></i><span>Alerts</span>
             </a>
         <?php endif; ?>
     </div>
