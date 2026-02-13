@@ -108,6 +108,17 @@ function isTablet(): bool {
 }
 
 /**
+ * Check if the current request is rendered inside the PWA shell (pwa.php or pwa_tablet.php).
+ * Views can call this to render mobile-optimised content instead of their desktop layout.
+ *
+ * @return bool
+ */
+function isPwaMode(): bool {
+    $script = basename($_SERVER['SCRIPT_NAME'] ?? '');
+    return in_array($script, ['pwa.php', 'pwa_tablet.php'], true);
+}
+
+/**
  * Redirect to the PWA if the current view preference is not 'desktop'
  * and we are not already on a PWA page. Call from index.php/login.php/dashboard.php.
  *

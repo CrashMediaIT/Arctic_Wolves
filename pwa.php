@@ -217,6 +217,12 @@ $allowed_pages = [
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
+// Prefer mobile-native PWA views when available
+$pwa_view_file = 'views/pwa/' . $page . '.php';
+if (file_exists(__DIR__ . '/' . $pwa_view_file)) {
+    $view_file = $pwa_view_file;
+}
+
 // Determine active tab
 $tab_home     = in_array($page, ['home', 'front_desk_home', 'parent_home']);
 $tab_sessions = in_array($page, ['sessions', 'upcoming_sessions', 'booking', 'session_detail', 'create_session', 'session_history', 'session_payment', 'coach_calendar']);
@@ -261,7 +267,7 @@ try {
     <style>
       /* Override desktop sidebar layout - PWA uses stacked layout */
       .sidebar { display: none !important; }
-      .main-content { height: auto !important; overflow: visible !important; margin-left: 0 !important; width: 100% !important; max-width: 100vw !important; }
+      .main-content { height: auto !important; overflow: visible !important; margin-left: 0 !important; width: 100% !important; max-width: 100vw !important; padding: 0 !important; }
       .content-area { padding: 0 !important; overflow: visible !important; max-width: 100% !important; }
       /* Ensure the top-bar (parent athlete selector) is mobile-friendly */
       .top-bar { padding: 10px 16px; }
@@ -270,6 +276,19 @@ try {
       .dashboard-layout, .app-layout, .page-wrapper { max-width: 100vw !important; overflow-x: hidden !important; }
       /* Override any desktop nav that might leak through */
       .desktop-nav, .sidebar-nav, .nav-group { display: none !important; }
+      /* Force all view content to respect mobile bounds */
+      .pwa-content > div, .pwa-content > section, .pwa-content > form { max-width: 100% !important; overflow-x: hidden; box-sizing: border-box; }
+      /* Prevent absolute/fixed positioned desktop elements from overlapping the tab bar */
+      .pwa-content .floating-btn, .pwa-content .fab, .pwa-content [style*="position: fixed"] { position: absolute !important; bottom: auto !important; }
+      /* Force inline flex rows to wrap on mobile to prevent collisions */
+      .pwa-content [style*="display: flex"], .pwa-content [style*="display:flex"] { flex-wrap: wrap !important; gap: 8px !important; }
+      /* Tame inline width declarations that cause horizontal overflow */
+      .pwa-content [style*="min-width: 3"], .pwa-content [style*="min-width: 4"],
+      .pwa-content [style*="min-width: 5"], .pwa-content [style*="min-width: 6"],
+      .pwa-content [style*="min-width: 7"], .pwa-content [style*="min-width: 8"],
+      .pwa-content [style*="min-width:3"], .pwa-content [style*="min-width:4"],
+      .pwa-content [style*="min-width:5"], .pwa-content [style*="min-width:6"],
+      .pwa-content [style*="min-width:7"], .pwa-content [style*="min-width:8"] { min-width: 0 !important; width: 100% !important; }
     </style>
 </head>
 <body class="pwa-body">
