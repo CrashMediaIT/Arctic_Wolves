@@ -109,7 +109,7 @@
             <i class="fas fa-plane"></i> Travel
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
-        <a href="https://gameplan.arcticwolves.ca" class="pwa-menu-item" target="_blank" rel="noopener noreferrer">
+        <a href="//gameplan.arcticwolves.ca" class="pwa-menu-item" target="_blank" rel="noopener noreferrer">
             <i class="fas fa-chess-board"></i> Game Plan
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>

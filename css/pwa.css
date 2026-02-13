@@ -1907,13 +1907,20 @@ body.pwa-body .card-actions a {
 }
 
 /* ── 42. Image & Media Responsiveness ──────────────────── */
-body.pwa-body img:not(.pwa-header-logo img) {
+body.pwa-body img {
   max-width: 100%;
   height: auto;
 }
+/* Re-enforce header logo sizing (overrides generic img rule above) */
 body.pwa-body .pwa-header-logo img {
   max-width: 30px !important;
   height: 30px !important;
+  width: auto !important;
+}
+body.pwa-body .pwa-login-brand img {
+  max-width: 80px !important;
+  height: 56px !important;
+  width: auto !important;
 }
 body.pwa-body iframe,
 body.pwa-body video {
