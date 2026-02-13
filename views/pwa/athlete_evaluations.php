@@ -7,15 +7,28 @@
 $evaluations = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT es.score, es.max_score, es.evaluation_date, ek.name as skill_name, ek.category
+        SELECT es.score, es.max_score, es.evaluation_date, es.notes,
+               ek.name as skill_name, ek.category,
+               u.first_name as evaluator_first, u.last_name as evaluator_last
         FROM evaluation_scores es
         LEFT JOIN eval_skills ek ON ek.id = es.skill_id
+        LEFT JOIN users u ON u.id = es.evaluator_id
         WHERE es.athlete_id = ?
         ORDER BY es.evaluation_date DESC
         LIMIT 20
     ");
     $stmt->execute([$user_id]);
     $evaluations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($evaluations as &$ev) {
+        if (!empty($ev['evaluator_first']) && function_exists('FieldEncryption') === false) {
+            // Try decryption if available
+            if (class_exists('FieldEncryption')) {
+                $ev['evaluator_first'] = FieldEncryption::decrypt($ev['evaluator_first']);
+                $ev['evaluator_last'] = FieldEncryption::decrypt($ev['evaluator_last']);
+            }
+        }
+    }
+    unset($ev);
 } catch (PDOException $e) { $evaluations = []; }
 
 $totalEvals = count($evaluations);
@@ -45,6 +58,13 @@ $totalEvals = count($evaluations);
 .m-empty-state { text-align: center; padding: 40px 20px; color: #6B6B7B; }
 .m-empty-state i { font-size: 32px; display: block; margin-bottom: 12px; }
 .m-empty-state p { font-size: 14px; margin: 0; }
+.m-eval-actions { margin-top: 10px; }
+.m-eval-toggle { background: rgba(107,70,193,0.15); color: #8B5CF6; border: none; border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: Inter, sans-serif; min-height: 44px; display: flex; align-items: center; gap: 4px; width: 100%; justify-content: center; }
+.m-eval-detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #2D2D3F; }
+.m-eval-detail.m-visible { display: block; }
+.m-eval-detail-row { margin-bottom: 8px; }
+.m-eval-detail-label { font-size: 11px; color: #6B6B7B; margin-bottom: 2px; }
+.m-eval-detail-text { font-size: 13px; color: #A8A8B8; line-height: 1.5; }
 </style>
 
 <div class="m-ath-evals">
@@ -86,6 +106,29 @@ $totalEvals = count($evaluations);
                 <i class="fas fa-calendar"></i> <?= date('M j, Y', strtotime($ev['evaluation_date'])) ?>
             </div>
             <?php endif; ?>
+            <div class="m-eval-actions">
+                <button class="m-eval-toggle" onclick="this.parentElement.nextElementSibling.classList.toggle('m-visible');this.querySelector('i').classList.toggle('fa-eye');this.querySelector('i').classList.toggle('fa-eye-slash');">
+                    <i class="fas fa-eye"></i> View Details
+                </button>
+            </div>
+            <div class="m-eval-detail">
+                <?php if (!empty($ev['evaluator_first']) || !empty($ev['evaluator_last'])): ?>
+                <div class="m-eval-detail-row">
+                    <div class="m-eval-detail-label">Evaluator</div>
+                    <div class="m-eval-detail-text"><i class="fas fa-user-tie" style="color:#8B5CF6;margin-right:4px;font-size:11px;"></i> <?= htmlspecialchars(($ev['evaluator_first'] ?? '') . ' ' . ($ev['evaluator_last'] ?? '')) ?></div>
+                </div>
+                <?php endif; ?>
+                <div class="m-eval-detail-row">
+                    <div class="m-eval-detail-label">Score Breakdown</div>
+                    <div class="m-eval-detail-text"><?= $score ?> out of <?= $maxScore ?> (<?= $pct ?>%)</div>
+                </div>
+                <?php if (!empty($ev['notes'])): ?>
+                <div class="m-eval-detail-row">
+                    <div class="m-eval-detail-label">Notes</div>
+                    <div class="m-eval-detail-text"><?= nl2br(htmlspecialchars($ev['notes'])) ?></div>
+                </div>
+                <?php endif; ?>
+            </div>
         </div>
         <?php endforeach; ?>
     <?php endif; ?>
