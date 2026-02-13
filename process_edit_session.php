@@ -62,6 +62,46 @@ if ($action == 'assign_practice_plan') {
     }
 }
 
+// CANCEL SESSION (set status to cancelled)
+if ($action == 'cancel_session') {
+    $session_id = intval($id);
+    if ($session_id <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid session ID']);
+        exit();
+    }
+    try {
+        $stmt = $pdo->prepare("UPDATE sessions SET status = 'cancelled' WHERE id = ?");
+        $stmt->execute([$session_id]);
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error']);
+    }
+    exit();
+}
+
+// UPDATE STATUS (e.g. mark as completed)
+if ($action == 'update_status') {
+    $session_id = intval($id);
+    $newStatus = $_POST['status'] ?? '';
+    $allowedStatuses = ['scheduled', 'completed', 'cancelled'];
+    if ($session_id <= 0 || !in_array($newStatus, $allowedStatuses)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
+        exit();
+    }
+    try {
+        $stmt = $pdo->prepare("UPDATE sessions SET status = ? WHERE id = ?");
+        $stmt->execute([$newStatus, $session_id]);
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error']);
+    }
+    exit();
+}
+
 // DELETE
 if ($action == 'delete') {
     // Note: Foreign keys in 'bookings' should be set to ON DELETE CASCADE

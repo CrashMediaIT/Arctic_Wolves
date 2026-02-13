@@ -226,10 +226,11 @@ $allowed_pages = [
     'shop'                    => 'views/shop.php',
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
+    'gameplan'                => 'views/gameplan.php',
+    'gameplan_settings'       => 'views/gameplan_settings.php',
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
-
 // Unread notification count
 $unreadNotifCount = 0;
 try {
@@ -364,7 +365,7 @@ try {
             <a href="?page=coach_session_evaluations" class="nav-link <?= in_array($page, ['coach_session_evaluations','session_evaluation_form'])?'active':'' ?>"><i class="fa-solid fa-clipboard-check"></i> Session Evaluations</a>
             <a href="?page=travel" class="nav-link <?= in_array($page, ['travel','mileage'])?'active':'' ?>"><i class="fa-solid fa-plane"></i> Travel</a>
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>"><i class="fa-solid fa-video"></i> Video Recording</a>
-            <a href="//gameplan.arcticwolves.ca" class="nav-link" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
+            <a href="?page=gameplan" class="nav-link <?= $page=='gameplan'?'active':'' ?>"><i class="fa-solid fa-chess-board"></i> Game Plan</a>
         </nav>
     </div>
     <?php endif; ?>
@@ -435,6 +436,8 @@ try {
             <a href="?page=system_notification" class="nav-link <?= $page=='system_notification'?'active':'' ?>"><i class="fa-solid fa-bell"></i> System Notification</a>
             <a href="?page=admin_security" class="nav-link <?= $page=='admin_security'?'active':'' ?>"><i class="fa-solid fa-shield-halved"></i> Security</a>
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>"><i class="fa-solid fa-screwdriver-wrench"></i> System Tools</a>
+            <a href="?page=audit_log" class="nav-link <?= $page=='audit_log'?'active':'' ?>"><i class="fa-solid fa-clipboard-list"></i> Audit Log</a>
+            <a href="?page=gameplan_settings" class="nav-link <?= $page=='gameplan_settings'?'active':'' ?>"><i class="fa-solid fa-chess-board"></i> Game Plan Settings</a>
             <a href="?page=marketing" class="nav-link <?= $page=='marketing'?'active':'' ?>"><i class="fa-solid fa-bullhorn"></i> Marketing</a>
         </nav>
     </div>
@@ -528,8 +531,13 @@ try {
 function toggleSidebar() {
     var sidebar = document.getElementById('tabletSidebar');
     var overlay = document.getElementById('sidebarOverlay');
+    var toggleIcon = document.querySelector('#sidebarToggle i');
     sidebar.classList.toggle('collapsed');
     overlay.classList.toggle('show');
+    // Swap icon
+    if (toggleIcon) {
+        toggleIcon.className = sidebar.classList.contains('collapsed') ? 'fas fa-bars' : 'fas fa-times';
+    }
     // Save preference
     sessionStorage.setItem('tabletSidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
 }
@@ -538,9 +546,16 @@ function toggleSidebar() {
 document.addEventListener('DOMContentLoaded', function() {
     var collapsed = sessionStorage.getItem('tabletSidebarCollapsed');
     var sidebar = document.getElementById('tabletSidebar');
+    var toggleIcon = document.querySelector('#sidebarToggle i');
     // On narrow tablets, default to collapsed
     if (collapsed === '1' || (collapsed === null && window.innerWidth < 900)) {
         sidebar.classList.add('collapsed');
+    }
+    // Set initial icon state
+    if (toggleIcon && sidebar.classList.contains('collapsed')) {
+        toggleIcon.className = 'fas fa-bars';
+    } else if (toggleIcon) {
+        toggleIcon.className = 'fas fa-times';
     }
 
     // Persist sidebar scroll position
@@ -557,14 +572,18 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionStorage.setItem('tabletSidebarScroll', sidebar.scrollTop);
     });
     
-    // Close sidebar on nav click (narrow tablets)
-    if (window.innerWidth < 900) {
-        sidebar.querySelectorAll('.nav-link').forEach(function(link) {
-            link.addEventListener('click', function() {
-                sessionStorage.setItem('tabletSidebarScroll', sidebar.scrollTop);
-            });
+    // Auto-close sidebar on nav click for narrow tablets
+    sidebar.querySelectorAll('.nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            sessionStorage.setItem('tabletSidebarScroll', sidebar.scrollTop);
+            if (window.innerWidth < 900) {
+                sidebar.classList.add('collapsed');
+                document.getElementById('sidebarOverlay').classList.remove('show');
+                if (toggleIcon) toggleIcon.className = 'fas fa-bars';
+                sessionStorage.setItem('tabletSidebarCollapsed', '1');
+            }
         });
-    }
+    });
 });
 
 // ── Persona Switcher ──────────────────────────────────────

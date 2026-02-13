@@ -19,29 +19,61 @@ if (!$isAnyCoach):
     return;
 endif;
 
+// Fetch categories for filter dropdowns
+$drillCategories = [];
+try {
+    $drillCategories = $pdo->query("SELECT id, name FROM drill_categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $drillCategories = []; }
+
+// Read filter GET params
+$filterCategory = trim($_GET['filter_category'] ?? '');
+$filterDifficulty = trim($_GET['filter_difficulty'] ?? '');
+
+// Build My Drills query with optional filters
 $myDrills = [];
 try {
+    $myWhere = "WHERE created_by = ?";
+    $myParams = [$user_id];
+    if ($filterCategory !== '') {
+        $myWhere .= " AND category = ?";
+        $myParams[] = $filterCategory;
+    }
+    if ($filterDifficulty !== '') {
+        $myWhere .= " AND LOWER(difficulty) = ?";
+        $myParams[] = strtolower($filterDifficulty);
+    }
     $stmt = $pdo->prepare("
-        SELECT id, title, description, difficulty, duration_minutes, category, created_at
+        SELECT id, title, description, difficulty, duration_minutes, category, coaching_points, video_url, created_by, created_at
         FROM drills
-        WHERE created_by = ?
+        $myWhere
         ORDER BY created_at DESC
         LIMIT 30
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute($myParams);
     $myDrills = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $myDrills = []; }
 
+// Build Library query with optional filters
 $libraryDrills = [];
 try {
+    $libWhere = "WHERE is_public = 1";
+    $libParams = [];
+    if ($filterCategory !== '') {
+        $libWhere .= " AND category = ?";
+        $libParams[] = $filterCategory;
+    }
+    if ($filterDifficulty !== '') {
+        $libWhere .= " AND LOWER(difficulty) = ?";
+        $libParams[] = strtolower($filterDifficulty);
+    }
     $stmt = $pdo->prepare("
-        SELECT id, title, description, difficulty, duration_minutes, category
+        SELECT id, title, description, difficulty, duration_minutes, category, coaching_points, video_url, created_by
         FROM drills
-        WHERE is_public = 1
+        $libWhere
         ORDER BY title ASC
         LIMIT 30
     ");
-    $stmt->execute();
+    $stmt->execute($libParams);
     $libraryDrills = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $libraryDrills = []; }
 ?>
@@ -64,7 +96,7 @@ try {
 .m-drill-card {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
     padding: 14px; margin-bottom: 10px;
-    text-decoration: none; display: block; min-height: 44px;
+    text-decoration: none; display: block; min-height: 44px; position: relative;
 }
 .m-drill-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
 .m-drill-title { font-size: 14px; font-weight: 600; color: #fff; flex: 1; margin-right: 8px; }
@@ -98,6 +130,102 @@ try {
 .m-empty-state { text-align: center; padding: 40px 20px; color: #6B6B7B; }
 .m-empty-state i { font-size: 32px; display: block; margin-bottom: 12px; }
 .m-empty-state p { font-size: 14px; margin: 0; }
+
+/* Search bar */
+.m-drill-search {
+    display: flex; align-items: center; gap: 8px;
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 10px;
+    padding: 0 12px; margin-bottom: 12px; min-height: 44px;
+}
+.m-drill-search i { color: #6B6B7B; font-size: 14px; flex-shrink: 0; }
+.m-drill-search input {
+    flex: 1; background: none; border: none; outline: none;
+    color: #fff; font-size: 14px; font-family: Inter, sans-serif;
+    padding: 10px 0; min-height: 44px;
+}
+.m-drill-search input::placeholder { color: #6B6B7B; }
+
+/* Filter row */
+.m-drill-filters {
+    display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.m-drill-filters select {
+    flex: 1; min-width: 0; background: #16161F; border: 1px solid #2D2D3F;
+    border-radius: 8px; color: #A8A8B8; font-size: 12px; font-family: Inter, sans-serif;
+    padding: 8px 10px; min-height: 38px; appearance: auto; cursor: pointer;
+}
+.m-drill-filters select:focus { border-color: #8B5CF6; outline: none; }
+
+/* Toolbar row */
+.m-drill-toolbar {
+    display: flex; gap: 12px; padding: 10px 16px;
+    background: #0A0A0F; border-bottom: 1px solid #2D2D3F;
+}
+.m-drill-toolbar a {
+    font-size: 12px; color: #8B5CF6; text-decoration: none;
+    display: flex; align-items: center; gap: 4px; min-height: 32px;
+}
+.m-drill-toolbar a:active { opacity: 0.7; }
+
+/* Card action buttons */
+.m-drill-actions {
+    display: flex; gap: 6px; flex-shrink: 0; margin-left: 8px;
+}
+.m-drill-actions button {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid #2D2D3F;
+    background: #0A0A0F; color: #A8A8B8; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.m-drill-actions button:active { opacity: 0.7; }
+.m-drill-actions .m-btn-edit:hover { color: #8B5CF6; border-color: #8B5CF6; }
+.m-drill-actions .m-btn-delete:hover { color: #EF4444; border-color: #EF4444; }
+
+/* Edit modal overlay */
+.m-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center;
+}
+.m-modal-overlay.m-modal-open { display: flex; }
+.m-modal {
+    background: #16161F; border-radius: 16px 16px 0 0; width: 100%; max-width: 480px;
+    max-height: 85vh; overflow-y: auto; padding: 20px 16px 32px;
+    animation: mSlideUp 0.25s ease-out;
+}
+@keyframes mSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.m-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+}
+.m-modal-header h3 { font-size: 16px; font-weight: 700; color: #fff; margin: 0; }
+.m-modal-close {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: #0A0A0F; color: #A8A8B8; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.m-modal label {
+    display: block; font-size: 12px; font-weight: 600; color: #A8A8B8;
+    margin-bottom: 4px; margin-top: 12px;
+}
+.m-modal input, .m-modal select, .m-modal textarea {
+    width: 100%; background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 8px;
+    color: #fff; font-size: 14px; font-family: Inter, sans-serif;
+    padding: 10px 12px; box-sizing: border-box; min-height: 44px;
+}
+.m-modal input:focus, .m-modal select:focus, .m-modal textarea:focus {
+    border-color: #8B5CF6; outline: none;
+}
+.m-modal textarea { resize: vertical; min-height: 70px; }
+.m-modal-submit {
+    margin-top: 20px; width: 100%; padding: 14px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #6B46C1, #8B5CF6); color: #fff;
+    font-size: 15px; font-weight: 600; font-family: Inter, sans-serif;
+    cursor: pointer; min-height: 48px;
+}
+.m-modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.m-modal-msg { font-size: 13px; margin-top: 8px; text-align: center; }
+.m-modal-msg.m-msg-ok { color: #10B981; }
+.m-modal-msg.m-msg-err { color: #EF4444; }
 </style>
 
 <div class="m-drills">
@@ -106,8 +234,32 @@ try {
         <button class="m-tab" onclick="mDrillTab('library', this)" type="button">Library</button>
     </div>
 
+    <!-- Import/Export toolbar -->
+    <div class="m-drill-toolbar">
+        <a href="?page=import_drill"><i class="fas fa-file-import"></i> Import</a>
+        <a href="?page=export_import_drills"><i class="fas fa-file-export"></i> Export</a>
+    </div>
+
     <!-- My Drills Tab -->
     <div class="m-tab-panel m-tab-visible" id="m-panel-mine">
+        <div class="m-drill-search">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search my drills…" oninput="mFilterDrills('mine', this.value)">
+        </div>
+        <div class="m-drill-filters">
+            <select onchange="mApplyFilters()" id="m-filter-category">
+                <option value="">All Categories</option>
+                <?php foreach ($drillCategories as $cat): ?>
+                <option value="<?= htmlspecialchars($cat['name']) ?>" <?= $filterCategory === $cat['name'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select onchange="mApplyFilters()" id="m-filter-difficulty">
+                <option value="">All Levels</option>
+                <option value="easy" <?= $filterDifficulty === 'easy' ? 'selected' : '' ?>>Easy</option>
+                <option value="medium" <?= $filterDifficulty === 'medium' ? 'selected' : '' ?>>Medium</option>
+                <option value="hard" <?= $filterDifficulty === 'hard' ? 'selected' : '' ?>>Hard</option>
+            </select>
+        </div>
         <?php if (empty($myDrills)): ?>
             <div class="m-empty-state">
                 <i class="fas fa-hockey-puck"></i>
@@ -122,12 +274,21 @@ try {
                     'hard', 'advanced' => 'hard',
                     default => 'default',
                 };
+                $canEdit = ($isAdmin || (int)$d['created_by'] === (int)$user_id);
             ?>
-            <a href="?page=view_drill&id=<?= (int)$d['id'] ?>" class="m-drill-card">
+            <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>">
                 <div class="m-drill-top">
-                    <span class="m-drill-title"><?= htmlspecialchars($d['title']) ?></span>
-                    <?php if ($diff): ?>
-                    <span class="m-drill-badge m-drill-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($diff)) ?></span>
+                    <a href="?page=view_drill&id=<?= (int)$d['id'] ?>" style="flex:1;text-decoration:none;display:flex;align-items:flex-start;gap:8px;">
+                        <span class="m-drill-title"><?= htmlspecialchars($d['title']) ?></span>
+                        <?php if ($diff): ?>
+                        <span class="m-drill-badge m-drill-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($diff)) ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <?php if ($canEdit): ?>
+                    <div class="m-drill-actions">
+                        <button type="button" class="m-btn-edit" title="Edit" onclick="mOpenEditModal(<?= htmlspecialchars(json_encode($d, JSON_HEX_APOS|JSON_HEX_TAG)) ?>)"><i class="fas fa-pen"></i></button>
+                        <button type="button" class="m-btn-delete" title="Delete" onclick="mDeleteDrill(<?= (int)$d['id'] ?>)"><i class="fas fa-trash"></i></button>
+                    </div>
                     <?php endif; ?>
                 </div>
                 <?php if (!empty($d['description'])): ?>
@@ -141,13 +302,17 @@ try {
                     <span class="m-drill-tag"><?= htmlspecialchars($d['category']) ?></span>
                     <?php endif; ?>
                 </div>
-            </a>
+            </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
 
     <!-- Library Tab -->
     <div class="m-tab-panel" id="m-panel-library">
+        <div class="m-drill-search">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search library…" oninput="mFilterDrills('library', this.value)">
+        </div>
         <?php if (empty($libraryDrills)): ?>
             <div class="m-empty-state">
                 <i class="fas fa-book-open"></i>
@@ -162,12 +327,21 @@ try {
                     'hard', 'advanced' => 'hard',
                     default => 'default',
                 };
+                $canEdit = ($isAdmin || (int)$d['created_by'] === (int)$user_id);
             ?>
-            <a href="?page=view_drill&id=<?= (int)$d['id'] ?>" class="m-drill-card">
+            <div class="m-drill-card" data-drill-title="<?= htmlspecialchars(strtolower($d['title'])) ?>">
                 <div class="m-drill-top">
-                    <span class="m-drill-title"><?= htmlspecialchars($d['title']) ?></span>
-                    <?php if ($diff): ?>
-                    <span class="m-drill-badge m-drill-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($diff)) ?></span>
+                    <a href="?page=view_drill&id=<?= (int)$d['id'] ?>" style="flex:1;text-decoration:none;display:flex;align-items:flex-start;gap:8px;">
+                        <span class="m-drill-title"><?= htmlspecialchars($d['title']) ?></span>
+                        <?php if ($diff): ?>
+                        <span class="m-drill-badge m-drill-badge-<?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($diff)) ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <?php if ($canEdit): ?>
+                    <div class="m-drill-actions">
+                        <button type="button" class="m-btn-edit" title="Edit" onclick="mOpenEditModal(<?= htmlspecialchars(json_encode($d, JSON_HEX_APOS|JSON_HEX_TAG)) ?>)"><i class="fas fa-pen"></i></button>
+                        <button type="button" class="m-btn-delete" title="Delete" onclick="mDeleteDrill(<?= (int)$d['id'] ?>)"><i class="fas fa-trash"></i></button>
+                    </div>
                     <?php endif; ?>
                 </div>
                 <?php if (!empty($d['description'])): ?>
@@ -181,12 +355,47 @@ try {
                     <span class="m-drill-tag"><?= htmlspecialchars($d['category']) ?></span>
                     <?php endif; ?>
                 </div>
-            </a>
+            </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
 
     <a href="?page=create_drill" class="m-fab" title="Create Drill"><i class="fas fa-plus"></i></a>
+</div>
+
+<!-- Edit Drill Modal -->
+<div class="m-modal-overlay" id="m-edit-overlay" onclick="if(event.target===this)mCloseEditModal()">
+    <div class="m-modal">
+        <div class="m-modal-header">
+            <h3>Edit Drill</h3>
+            <button type="button" class="m-modal-close" onclick="mCloseEditModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="m-edit-form" onsubmit="return mSubmitEdit(event)">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="drill_id" id="m-edit-id">
+            <label for="m-edit-title">Title</label>
+            <input type="text" id="m-edit-title" name="title" required>
+            <label for="m-edit-category">Category</label>
+            <input type="text" id="m-edit-category" name="category" placeholder="e.g. Skating, Shooting">
+            <label for="m-edit-difficulty">Difficulty</label>
+            <select id="m-edit-difficulty" name="difficulty">
+                <option value="">— Select —</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+            <label for="m-edit-duration">Duration (minutes)</label>
+            <input type="number" id="m-edit-duration" name="duration_minutes" min="0" max="999">
+            <label for="m-edit-desc">Description</label>
+            <textarea id="m-edit-desc" name="description" rows="3"></textarea>
+            <label for="m-edit-coaching">Coaching Points</label>
+            <textarea id="m-edit-coaching" name="coaching_points" rows="2"></textarea>
+            <label for="m-edit-video">Video URL</label>
+            <input type="url" id="m-edit-video" name="video_url" placeholder="https://…">
+            <div class="m-modal-msg" id="m-edit-msg"></div>
+            <button type="submit" class="m-modal-submit" id="m-edit-submit">Save Changes</button>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -196,5 +405,97 @@ function mDrillTab(tabId, btn) {
     var panel = document.getElementById('m-panel-' + tabId);
     if (panel) panel.classList.add('m-tab-visible');
     if (btn) btn.classList.add('m-tab-active');
+}
+
+/* Client-side search filter */
+function mFilterDrills(panelKey, query) {
+    var q = query.toLowerCase().trim();
+    var cards = document.querySelectorAll('#m-panel-' + panelKey + ' .m-drill-card');
+    cards.forEach(function(card) {
+        var title = card.getAttribute('data-drill-title') || '';
+        card.style.display = (!q || title.indexOf(q) !== -1) ? '' : 'none';
+    });
+}
+
+/* Category / difficulty filter (server-side via GET) */
+function mApplyFilters() {
+    var cat = document.getElementById('m-filter-category').value;
+    var diff = document.getElementById('m-filter-difficulty').value;
+    var params = new URLSearchParams(window.location.search);
+    params.set('page', 'drills');
+    if (cat) { params.set('filter_category', cat); } else { params.delete('filter_category'); }
+    if (diff) { params.set('filter_difficulty', diff); } else { params.delete('filter_difficulty'); }
+    window.location.search = params.toString();
+}
+
+function mGetCsrf() {
+    var el = document.querySelector('[name="csrf_token"]');
+    return el ? el.value : '';
+}
+
+/* Edit modal */
+function mOpenEditModal(drill) {
+    document.getElementById('m-edit-id').value = drill.id || '';
+    document.getElementById('m-edit-title').value = drill.title || '';
+    document.getElementById('m-edit-category').value = drill.category || '';
+    document.getElementById('m-edit-difficulty').value = (drill.difficulty || '').toLowerCase();
+    document.getElementById('m-edit-duration').value = drill.duration_minutes || '';
+    document.getElementById('m-edit-desc').value = drill.description || '';
+    document.getElementById('m-edit-coaching').value = drill.coaching_points || '';
+    document.getElementById('m-edit-video').value = drill.video_url || '';
+    document.getElementById('m-edit-msg').textContent = '';
+    document.getElementById('m-edit-overlay').classList.add('m-modal-open');
+}
+
+function mCloseEditModal() {
+    document.getElementById('m-edit-overlay').classList.remove('m-modal-open');
+}
+
+function mSubmitEdit(e) {
+    e.preventDefault();
+    var btn = document.getElementById('m-edit-submit');
+    var msg = document.getElementById('m-edit-msg');
+    btn.disabled = true;
+    msg.textContent = '';
+    msg.className = 'm-modal-msg';
+    var form = document.getElementById('m-edit-form');
+    var body = new URLSearchParams(new FormData(form));
+    body.set('action', 'save_drill');
+    body.set('drill_id', document.getElementById('m-edit-id').value);
+    body.set('csrf_token', mGetCsrf());
+    fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin' })
+        .then(function(r) {
+            if (r.ok || r.redirected) {
+                msg.textContent = 'Saved!';
+                msg.className = 'm-modal-msg m-msg-ok';
+                setTimeout(function() { window.location.reload(); }, 600);
+            } else {
+                throw new Error('Server returned ' + r.status);
+            }
+        })
+        .catch(function(err) {
+            msg.textContent = 'Error: ' + err.message;
+            msg.className = 'm-modal-msg m-msg-err';
+            btn.disabled = false;
+        });
+    return false;
+}
+
+/* Delete drill */
+function mDeleteDrill(drillId) {
+    if (!confirm('Delete this drill? This cannot be undone.')) return;
+    var body = new URLSearchParams();
+    body.set('action', 'delete_drill');
+    body.set('drill_id', drillId);
+    body.set('csrf_token', mGetCsrf());
+    fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin' })
+        .then(function(r) {
+            if (r.ok || r.redirected) {
+                window.location.reload();
+            } else {
+                throw new Error('Server returned ' + r.status);
+            }
+        })
+        .catch(function(err) { alert('Delete failed: ' + err.message); });
 }
 </script>

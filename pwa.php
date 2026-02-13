@@ -213,6 +213,8 @@ $allowed_pages = [
     'shop'                    => 'views/shop.php',
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
+    'gameplan'                => 'views/gameplan.php',
+    'gameplan_settings'       => 'views/gameplan_settings.php',
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
