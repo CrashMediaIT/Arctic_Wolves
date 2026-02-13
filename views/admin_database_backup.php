@@ -600,23 +600,23 @@ $csrf_token = $_SESSION['csrf_token'];
     </div>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
         <button class="btn-create" onclick="backupToFile()" title="Download a backup file to your computer">
-            <span>💾</span> Backup to File
+            <span><i class="fas fa-save"></i></span> Backup to File
         </button>
         <button class="btn-create" onclick="forceNextcloudBackup()" title="Force an immediate backup to Nextcloud" style="background: #3b82f6;">
-            <span>☁️</span> Force to Nextcloud
+            <span><i class="fas fa-cloud-upload-alt"></i></span> Force to Nextcloud
         </button>
         <button class="btn-create" onclick="showJobModal()">
-            <span>➕</span> Create Backup Job
+            <span><i class="fas fa-plus"></i></span> Create Backup Job
         </button>
     </div>
 </div>
 
 <div class="alert alert-success" id="success-alert">
-    <span>✓</span> <span id="success-message"></span>
+    <span><i class="fas fa-check"></i></span> <span id="success-message"></span>
 </div>
 
 <div class="alert alert-error" id="error-alert">
-    <span>✗</span> <span id="error-message"></span>
+    <span><i class="fas fa-times"></i></span> <span id="error-message"></span>
 </div>
 
 <div class="tabs">
@@ -628,7 +628,7 @@ $csrf_token = $_SESSION['csrf_token'];
 <div class="tab-content active" id="jobs-tab">
     <div class="info-box">
         <div class="info-box-title">
-            <span>ℹ️</span> Backup Configuration
+            <span><i class="fas fa-info-circle"></i></span> Backup Configuration
         </div>
         <div class="info-box-content">
             <strong>Backup Format:</strong> All backups are compressed and named <code>arctic_wolves_backup_YYYYMMDD_HHMMSS.sql.gz</code>
@@ -643,7 +643,7 @@ $csrf_token = $_SESSION['csrf_token'];
     <?php if (empty($jobs)): ?>
         <div class="table-container">
             <div class="empty-state">
-                <div class="empty-state-icon">📦</div>
+                <div class="empty-state-icon"><i class="fas fa-box"></i></div>
                 <div class="empty-state-title">No Backup Jobs</div>
                 <div class="empty-state-text">Create your first backup job to get started</div>
             </div>
@@ -705,16 +705,16 @@ $csrf_token = $_SESSION['csrf_token'];
                             <td>
                                 <div class="action-buttons">
                                     <button class="btn-icon success" onclick="runBackupNow(<?= $job['id'] ?>)" title="Backup Now">
-                                        ▶️ Run
+                                        <i class="fas fa-play"></i> Run
                                     </button>
                                     <button class="btn-icon" onclick="editJob(<?= $job['id'] ?>)" title="Edit">
-                                        ✏️ Edit
+                                        <i class="fas fa-edit"></i> Edit
                                     </button>
                                     <button class="btn-icon" onclick="toggleJobStatus(<?= $job['id'] ?>, '<?= $job['status'] ?>')" title="Toggle Status">
-                                        <?= $job['status'] === 'active' ? '⏸️ Pause' : '▶️ Activate' ?>
+                                        <?= $job['status'] === 'active' ? '<i class="fas fa-pause"></i> Pause' : '<i class="fas fa-play"></i> Activate' ?>
                                     </button>
                                     <button class="btn-icon danger" onclick="deleteJob(<?= $job['id'] ?>)" title="Delete">
-                                        🗑️ Delete
+                                        <i class="fas fa-trash"></i> Delete
                                     </button>
                                 </div>
                             </td>
@@ -741,7 +741,7 @@ $csrf_token = $_SESSION['csrf_token'];
     <?php if (empty($history)): ?>
         <div class="table-container">
             <div class="empty-state">
-                <div class="empty-state-icon">📋</div>
+                <div class="empty-state-icon"><i class="fas fa-clipboard-list"></i></div>
                 <div class="empty-state-title">No Backup History</div>
                 <div class="empty-state-text">Backup history will appear here once backups are run</div>
             </div>
@@ -809,7 +809,7 @@ $csrf_token = $_SESSION['csrf_token'];
                             <td>
                                 <?php if ($item['status'] === 'success' && $item['file_path']): ?>
                                     <button class="btn-icon" onclick="downloadBackup('<?= htmlspecialchars($item['filename']) ?>')" title="Download">
-                                        ⬇️ Download
+                                        <i class="fas fa-download"></i> Download
                                     </button>
                                 <?php else: ?>
                                     <span style="color: #94a3b8; font-size: 12px;">N/A</span>
@@ -901,7 +901,7 @@ $csrf_token = $_SESSION['csrf_token'];
                     </div>
                     
                     <button type="button" class="btn-test-connection" onclick="testSmbConnection()">
-                        🔌 Test SMB Connection
+                        <i class="fas fa-plug"></i> Test SMB Connection
                     </button>
                     <span id="smb-test-result" style="margin-left: 10px; font-size: 13px;"></span>
                 </div>
@@ -1140,14 +1140,14 @@ function runBackupNow(jobId) {
         } else {
             showAlert('error', data.message);
             btn.disabled = false;
-            btn.innerHTML = '▶️ Run';
+            btn.innerHTML = '<i class="fas fa-play"></i> Run';
         }
     })
     .catch(error => {
         showAlert('error', 'Failed to run backup');
         console.error(error);
         btn.disabled = false;
-        btn.innerHTML = '▶️ Run';
+        btn.innerHTML = '<i class="fas fa-play"></i> Run';
     });
 }
 
@@ -1163,7 +1163,8 @@ function testSmbConnection() {
     
     if (!smbPath) {
         resultSpan.style.color = '#ef4444';
-        resultSpan.textContent = '⚠️ Please enter SMB path';
+        resultSpan.textContent = '';
+        resultSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Please enter SMB path';
         return;
     }
     
@@ -1180,20 +1181,20 @@ function testSmbConnection() {
     .then(data => {
         if (data.success) {
             resultSpan.style.color = '#00ff88';
-            resultSpan.textContent = '✓ Connection successful';
+            resultSpan.innerHTML = '<i class="fas fa-check"></i> Connection successful';
         } else {
             resultSpan.style.color = '#ef4444';
-            resultSpan.textContent = '✗ ' + data.message;
+            resultSpan.innerHTML = '<i class="fas fa-times"></i> ' + data.message;
         }
     })
     .catch(error => {
         resultSpan.style.color = '#ef4444';
-        resultSpan.textContent = '✗ Connection failed';
+        resultSpan.innerHTML = '<i class="fas fa-times"></i> Connection failed';
         console.error(error);
     })
     .finally(() => {
         btn.disabled = false;
-        btn.innerHTML = '🔌 Test SMB Connection';
+        btn.innerHTML = '<i class="fas fa-plug"></i> Test SMB Connection';
     });
 }
 

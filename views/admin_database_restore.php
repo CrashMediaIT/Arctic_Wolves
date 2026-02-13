@@ -802,7 +802,7 @@ try {
 <div class="card wizard-content">
     <!-- Step 1: Upload Backup -->
     <div class="step-content active" data-step="1">
-        <h2 class="step-title">📤 Step 1: Upload Backup File</h2>
+        <h2 class="step-title"><i class="fas fa-upload"></i> Step 1: Upload Backup File</h2>
         <p class="step-description">Choose a backup file to restore. You can upload a new file or select from available backups.</p>
         
         <div class="upload-tabs">
@@ -817,7 +817,7 @@ try {
         <!-- Upload Tab -->
         <div class="upload-tab-content active" id="upload-tab">
             <div class="dropzone" id="dropzone">
-                <div class="dropzone-icon">📁</div>
+                <div class="dropzone-icon"><i class="fas fa-folder-open"></i></div>
                 <div class="dropzone-text">Drag & Drop Your Backup File</div>
                 <div class="dropzone-subtext">Supported formats: .sql, .sql.gz (Max 500MB)</div>
                 <label class="dropzone-browse" for="backupFile">
@@ -877,7 +877,7 @@ try {
     
     <!-- Step 2: Verify Contents -->
     <div class="step-content" data-step="2">
-        <h2 class="step-title">🔍 Step 2: Verify Backup Contents</h2>
+        <h2 class="step-title"><i class="fas fa-search"></i> Step 2: Verify Backup Contents</h2>
         <p class="step-description">Review the backup file statistics before proceeding with the restore.</p>
         
         <div class="verification-stats" id="verificationStats">
@@ -923,12 +923,12 @@ try {
     
     <!-- Step 3: Confirm & Restore -->
     <div class="step-content" data-step="3">
-        <h2 class="step-title">⚠️ Step 3: Confirm & Restore Database</h2>
+        <h2 class="step-title"><i class="fas fa-exclamation-triangle"></i> Step 3: Confirm & Restore Database</h2>
         <p class="step-description">Final step: Confirm that you understand the risks and initiate the restore.</p>
         
         <div class="confirmation-box">
-            <div class="confirmation-box-icon">🚨</div>
-            <h3>⚠️ WARNING: DESTRUCTIVE OPERATION ⚠️</h3>
+            <div class="confirmation-box-icon"><i class="fas fa-exclamation-circle"></i></div>
+            <h3><i class="fas fa-exclamation-triangle"></i> WARNING: DESTRUCTIVE OPERATION <i class="fas fa-exclamation-triangle"></i></h3>
             
             <div class="confirmation-box-warnings">
                 <ul>
@@ -965,14 +965,14 @@ try {
             <!-- Success Result -->
             <div class="result-success" id="resultSuccess" style="display: none;">
                 <div class="result-success-icon"><i class="fas fa-check-circle"></i></div>
-                <h3>✅ Database Restored Successfully!</h3>
+                <h3><i class="fas fa-check-circle"></i> Database Restored Successfully!</h3>
                 <p>Your database has been restored from the backup file.</p>
             </div>
             
             <!-- Error Result -->
             <div class="result-error" id="resultError" style="display: none;">
                 <div class="result-error-icon"><i class="fas fa-times-circle"></i></div>
-                <h3>❌ Restore Failed</h3>
+                <h3><i class="fas fa-times-circle"></i> Restore Failed</h3>
                 <p id="resultErrorMessage">An error occurred during the restore process.</p>
             </div>
             

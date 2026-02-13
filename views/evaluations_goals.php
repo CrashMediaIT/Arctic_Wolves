@@ -571,7 +571,7 @@ $evaluations = decryptUserRows($evaluations);
     
     <?php if (count($evaluations) === 0): ?>
         <div class="empty-state">
-            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-icon"><i class="fas fa-clipboard-list"></i></div>
             <h3>No Evaluations Yet</h3>
             <p>Get started by creating your first goal-based evaluation.</p>
         </div>
@@ -770,8 +770,8 @@ function renderEvaluationDetail(evaluation, steps) {
             </div>
             <div class="eval-actions">
                 ${isCoach ? `
-                    <button class="btn-icon" onclick="editEvaluation(${evaluation.id})">✏️ Edit</button>
-                    <button class="btn-icon" onclick="deleteEvaluation(${evaluation.id})">🗑️ Delete</button>
+                    <button class="btn-icon" onclick="editEvaluation(${evaluation.id})"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="btn-icon" onclick="deleteEvaluation(${evaluation.id})"><i class="fas fa-trash"></i> Delete</button>
                 ` : ''}
             </div>
         </div>
@@ -854,9 +854,9 @@ function renderStep(step) {
             
             <div class="step-footer">
                 <div class="step-status">
-                    ${isPending ? '<span class="status-needs-approval">⏳ Pending Approval</span>' : ''}
-                    ${isApproved ? '<span class="status-approved">✓ Approved</span>' : ''}
-                    ${isRejected ? '<span class="status-rejected">✗ Rejected</span>' : ''}
+                    ${isPending ? '<span class="status-needs-approval"><i class="fas fa-hourglass-half"></i> Pending Approval</span>' : ''}
+                    ${isApproved ? '<span class="status-approved"><i class="fas fa-check"></i> Approved</span>' : ''}
+                    ${isRejected ? '<span class="status-rejected"><i class="fas fa-times"></i> Rejected</span>' : ''}
                 </div>
                 
                 <div>
@@ -864,7 +864,7 @@ function renderStep(step) {
                         <button class="btn-success btn-sm" onclick="approveStep(${step.id})">Approve</button>
                         <button class="btn-danger btn-sm" onclick="rejectStep(${step.id})">Reject</button>
                     ` : ''}
-                    <button class="btn-secondary btn-sm" onclick="viewStepMedia(${step.id})">📎 Media</button>
+                    <button class="btn-secondary btn-sm" onclick="viewStepMedia(${step.id})"><i class="fas fa-paperclip"></i> Media</button>
                 </div>
             </div>
         </div>
