@@ -441,6 +441,21 @@ try {
             header("Location: dashboard.php?page=expenses&status=success");
             exit();
             
+        case 'mark_paid':
+            $expense_id = intval($_POST['expense_id'] ?? 0);
+            if ($expense_id <= 0) {
+                throw new Exception('Invalid expense ID');
+            }
+            $stmt = $pdo->prepare("UPDATE expenses SET status = 'approved' WHERE id = ?");
+            $stmt->execute([$expense_id]);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Expense marked as paid']);
+                exit();
+            }
+            header("Location: dashboard.php?page=accounts_payable&status=success");
+            exit();
+
         case 'create_category':
             $name = trim($_POST['name']);
             $description = trim($_POST['description'] ?? '');
