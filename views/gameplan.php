@@ -28,7 +28,7 @@ $companion_api_key = $gp_settings['gameplan_companion_api_key'] ?? '';
 
 // Check companion server status
 $companionOnline = false;
-if ($companion_url) {
+if ($companion_url && $companion_api_key && !preg_match('/[\r\n]/', $companion_api_key)) {
     $ch = curl_init(rtrim($companion_url, '/') . '/api/health');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -71,7 +71,7 @@ try {
 // Build the app link helper — appends ?page= to the configured app URL
 $appLink = function($gpPage) use ($gameplan_app_url) {
     if (!$gameplan_app_url) return '#';
-    return htmlspecialchars(rtrim($gameplan_app_url, '/') . '/dashboard.php?page=' . $gpPage);
+    return htmlspecialchars(rtrim($gameplan_app_url, '/') . '/dashboard.php?page=' . urlencode($gpPage));
 };
 $appBase = $gameplan_app_url ? htmlspecialchars(rtrim($gameplan_app_url, '/') . '/dashboard.php') : '#';
 ?>
