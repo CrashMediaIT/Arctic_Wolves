@@ -248,6 +248,11 @@ try {
 var mCurrentHealthTab = 'workouts';
 var mCsrf = document.querySelector('[name="csrf_token"]') ? document.querySelector('[name="csrf_token"]').value : '';
 
+function mCheckCsrf() {
+    if (!mCsrf) { alert('Session expired. Please refresh the page.'); return false; }
+    return true;
+}
+
 function mHealthTab(tabId, btn) {
     document.querySelectorAll('.m-tab-panel').forEach(function(p) { p.classList.remove('m-tab-visible'); });
     document.querySelectorAll('.m-tab').forEach(function(t) { t.classList.remove('m-tab-active'); });
@@ -289,9 +294,10 @@ function mEditWorkout(id, title, desc, diff, dur) {
 }
 
 function mSaveWorkout() {
+    if (!mCheckCsrf()) return;
     var id = document.getElementById('mWorkoutId').value;
     var title = document.getElementById('mWorkoutTitle').value.trim();
-    if (!title) { alert('Title is required'); return; }
+    if (!title) { alert('Workout title is required'); return; }
     var body = new URLSearchParams({
         action: id ? 'update_plan' : 'create_plan',
         csrf_token: mCsrf,
@@ -310,6 +316,7 @@ function mSaveWorkout() {
 }
 
 function mDeleteWorkout(id) {
+    if (!mCheckCsrf()) return;
     if (!confirm('Delete this workout?')) return;
     fetch('process_workout.php', {
         method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
@@ -330,9 +337,10 @@ function mEditMeal(id, name, desc, cal) {
 }
 
 function mSaveMeal() {
+    if (!mCheckCsrf()) return;
     var id = document.getElementById('mMealId').value;
     var name = document.getElementById('mMealName').value.trim();
-    if (!name) { alert('Name is required'); return; }
+    if (!name) { alert('Meal plan name is required'); return; }
     var body = new URLSearchParams({
         action: id ? 'update_plan' : 'create_plan',
         csrf_token: mCsrf,
@@ -350,6 +358,7 @@ function mSaveMeal() {
 }
 
 function mDeleteMeal(id) {
+    if (!mCheckCsrf()) return;
     if (!confirm('Delete this meal plan?')) return;
     fetch('process_nutrition.php', {
         method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
