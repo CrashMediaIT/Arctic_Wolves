@@ -454,7 +454,7 @@ function testCompanion() {
                 statusBadge.textContent = 'Connected';
                 var cap = document.getElementById('hwCapText');
                 if (data.hw_accel) {
-                    var html = '<strong style="color:var(--success);">✓ Server Online</strong><br>';
+                    var html = '<strong style="color:var(--success);"><i class="fas fa-check"></i> Server Online</strong><br>';
                     html += 'Available methods: ' + (data.hw_accel.available.join(', ') || 'none') + '<br>';
                     html += 'Encoders: ' + (data.hw_accel.encoders.join(', ') || 'none') + '<br>';
                     html += 'Decoders: ' + (data.hw_accel.decoders.join(', ') || 'none');

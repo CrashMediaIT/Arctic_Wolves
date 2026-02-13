@@ -1363,7 +1363,7 @@ function processCashPayment() {
             const changeDisplay = document.getElementById('change-display');
             const changeAmount = document.getElementById('change-amount');
             changeDisplay.innerHTML = `
-                <div class="pos-change-label" style="color: #10b981;">✓ Payment Successful</div>
+                <div class="pos-change-label" style="color: #10b981;"><i class="fas fa-check"></i> Payment Successful</div>
                 <div class="pos-change-value">Transaction #${data.transaction_number}</div>
                 <div style="font-size: 18px; margin-top: 10px;">Change: $${change.toFixed(2)}</div>
             `;

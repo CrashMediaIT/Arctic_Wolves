@@ -559,13 +559,13 @@ function testGoogleAPI() {
             const message = document.createElement('div');
             message.innerHTML = data.message;
             const text = message.innerText || message.textContent;
-            alert('✓ ' + text);
+            alert('Success: ' + text);
         } else {
-            alert('✗ Test failed:\n\n' + data.message);
+            alert('Failed: Test failed:\n\n' + data.message);
         }
     })
     .catch(err => {
-        alert('✗ Error testing API:\n\n' + err.message);
+        alert('Error: Error testing API:\n\n' + err.message);
     });
 }
 

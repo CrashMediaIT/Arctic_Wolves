@@ -844,7 +844,7 @@
                 `;
                 
                 zone.innerHTML = `
-                    <div class="upload-icon" style="font-size: 48px; color: #6B46C1; margin-bottom: 16px;">📁</div>
+                    <div class="upload-icon" style="font-size: 48px; color: #6B46C1; margin-bottom: 16px;"><i class="fas fa-folder-open"></i></div>
                     <div class="upload-text" style="color: #E0E0E0; margin-bottom: 8px;">Click to upload or drag and drop</div>
                     <div class="upload-hint" style="color: #9CA3AF; font-size: 12px;">Supported formats vary by field</div>
                 `;

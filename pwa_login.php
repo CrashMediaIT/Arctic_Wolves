@@ -104,9 +104,9 @@ $errorText = $errorMessages[$error] ?? '';
 </div>
 
 <script>
-// Register service worker
+// Register service worker (relative path for subdirectory deployments)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/pwa-sw.js').catch(() => {});
+  navigator.serviceWorker.register('pwa-sw.js').catch(() => {});
 }
 </script>
 </body>

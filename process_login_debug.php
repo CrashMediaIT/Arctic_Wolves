@@ -15,7 +15,7 @@ echo "<h2>Login Debugger</h2>";
 
 // Warning message
 echo "<div style='background: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin: 10px 0;'>";
-echo "<strong>⚠️ Warning:</strong> This is a debug tool. Disable in production.";
+echo "<strong><i class='fas fa-exclamation-triangle'></i> Warning:</strong> This is a debug tool. Disable in production.";
 echo "</div>";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {

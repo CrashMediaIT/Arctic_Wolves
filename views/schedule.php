@@ -607,7 +607,7 @@ const CreditSystem = {
             const total = afterCredit + tax;
             
             if (total <= 0.01) {
-                priceInfo.innerHTML = '<strong style="color: #10b981;">✓ Free with credits!</strong>';
+                priceInfo.innerHTML = '<strong style="color: #10b981;"><i class="fas fa-check"></i> Free with credits!</strong>';
             } else {
                 priceInfo.innerHTML = 'New total: <strong style="color: #fff;">$' + total.toFixed(2) + '</strong>';
             }

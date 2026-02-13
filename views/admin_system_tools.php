@@ -2717,9 +2717,9 @@ function sendSmtpTestEmail() {
         closeSmtpTestModal();
         
         if (data.success) {
-            alert('✓ Test email sent successfully!\n\nCheck your inbox for the test email.');
+            alert('Success: Test email sent successfully!\n\nCheck your inbox for the test email.');
         } else {
-            alert('✗ Failed to send test email:\n\n' + (data.message || 'Unknown error'));
+            alert('Error: Failed to send test email:\n\n' + (data.message || 'Unknown error'));
         }
     })
     .catch(error => {
@@ -2762,15 +2762,15 @@ function testGoogleMapsAPI() {
         btn.innerHTML = originalText;
         
         if (data.success) {
-            alert('✓ ' + data.message);
+            alert('Success: ' + data.message);
         } else {
-            alert('✗ ' + data.message);
+            alert('Error: ' + data.message);
         }
     })
     .catch(error => {
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert('✗ Failed to test Google Maps API. Please try again.');
+        alert('Error: Failed to test Google Maps API. Please try again.');
         console.error('Error:', error);
     });
 }
@@ -3014,9 +3014,9 @@ function testNextcloudConnection(serverType = 'primary') {
         btn.innerHTML = originalText;
         
         if (data.success) {
-            alert('✓ Nextcloud Connection Successful!\n\n' + (data.message || 'Connected successfully.'));
+            alert('Success: Nextcloud Connection Successful!\n\n' + (data.message || 'Connected successfully.'));
         } else {
-            alert('✗ Nextcloud Connection Failed\n\n' + (data.message || 'Could not connect to server'));
+            alert('Error: Nextcloud Connection Failed\n\n' + (data.message || 'Could not connect to server'));
         }
     })
     .catch(error => {
@@ -3048,9 +3048,9 @@ function syncToBackup() {
         btn.innerHTML = originalText;
         
         if (data.success) {
-            alert('✓ Sync Completed!\n\n' + (data.message || 'Files synced to backup server.'));
+            alert('Success: Sync Completed!\n\n' + (data.message || 'Files synced to backup server.'));
         } else {
-            alert('✗ Sync Failed\n\n' + (data.message || 'Could not sync files'));
+            alert('Error: Sync Failed\n\n' + (data.message || 'Could not sync files'));
         }
     })
     .catch(error => {
@@ -3313,10 +3313,10 @@ function updateStripeLibrary() {
         btn.innerHTML = originalText;
         
         if (data.success) {
-            alert('✓ Stripe Library Updated!\n\n' + (data.message || 'Update completed successfully.'));
+            alert('Success: Stripe Library Updated!\n\n' + (data.message || 'Update completed successfully.'));
             location.reload();
         } else {
-            alert('✗ Update Failed\n\n' + (data.message || 'Unknown error'));
+            alert('Error: Update Failed\n\n' + (data.message || 'Unknown error'));
         }
     })
     .catch(error => {
@@ -4486,9 +4486,9 @@ function testSmtpConnection() {
         btn.disabled = false;
         
         if (data.success) {
-            alert('✓ SMTP Connection Successful!\n\nTest email sent successfully.');
+            alert('Success: SMTP Connection Successful!\n\nTest email sent successfully.');
         } else {
-            alert('✗ SMTP Connection Failed\n\n' + (data.message || 'Could not connect to SMTP server'));
+            alert('Error: SMTP Connection Failed\n\n' + (data.message || 'Could not connect to SMTP server'));
         }
     })
     .catch(error => {
@@ -4519,9 +4519,9 @@ function testNextcloudConnection() {
         btn.disabled = false;
         
         if (data.success) {
-            alert('✓ Nextcloud Connection Successful!\n\nConnected to: ' + data.server_name);
+            alert('Success: Nextcloud Connection Successful!\n\nConnected to: ' + data.server_name);
         } else {
-            alert('✗ Nextcloud Connection Failed\n\n' + (data.message || 'Could not connect to Nextcloud server'));
+            alert('Error: Nextcloud Connection Failed\n\n' + (data.message || 'Could not connect to Nextcloud server'));
         }
     })
     .catch(error => {
@@ -4552,9 +4552,9 @@ function syncNow() {
         btn.disabled = false;
         
         if (data.success) {
-            alert('✓ Sync Completed!\n\n' + (data.message || 'Files synced successfully'));
+            alert('Success: Sync Completed!\n\n' + (data.message || 'Files synced successfully'));
         } else {
-            alert('✗ Sync Failed\n\n' + (data.message || 'Could not sync files'));
+            alert('Error: Sync Failed\n\n' + (data.message || 'Could not sync files'));
         }
     })
     .catch(error => {

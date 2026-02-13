@@ -820,13 +820,13 @@ function onCountdownComplete() {
         
         // Try to use existing notification system
         if (typeof showNotification === 'function') {
-            showNotification('⏰ Time\'s up!', 'info');
+            showNotification('Time\'s up!', 'info');
         } else if (typeof swShowAlert === 'function') {
-            swShowAlert('info', '⏰ Time\'s up!');
+            swShowAlert('info', 'Time\'s up!');
         } else {
             // Fallback: Show visual notification in display
             const originalText = display.textContent;
-            display.textContent = '⏰ TIME UP!';
+            display.textContent = 'TIME UP!';
             display.style.color = 'var(--success)';
             setTimeout(() => {
                 display.textContent = originalText;

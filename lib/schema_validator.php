@@ -55,7 +55,7 @@ class SchemaValidator {
             while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
                 $this->tables_in_schema[] = $row[0];
             }
-            echo "<p>✓ Found " . count($this->tables_in_schema) . " tables in database</p>";
+            echo "<p><i class='fas fa-check' style='color:var(--success,#10B981)'></i> Found " . count($this->tables_in_schema) . " tables in database</p>";
         } catch (PDOException $e) {
             $this->errors[] = "Failed to load database tables: " . $e->getMessage();
         }
@@ -82,8 +82,8 @@ class SchemaValidator {
             }
         }
         
-        echo "<p>✓ Scanned $phpFiles PHP files</p>";
-        echo "<p>✓ Found " . count($this->tables_referenced) . " unique table references</p>";
+        echo "<p><i class='fas fa-check' style='color:var(--success,#10B981)'></i> Scanned $phpFiles PHP files</p>";
+        echo "<p><i class='fas fa-check' style='color:var(--success,#10B981)'></i> Found " . count($this->tables_referenced) . " unique table references</p>";
     }
     
     private function scanFileForTables($filepath) {
@@ -116,7 +116,7 @@ class SchemaValidator {
         
         if (count($missing) > 0) {
             echo "<div style='background: #fff3cd; padding: 15px; margin: 10px 0; border-left: 4px solid #ffc107;'>";
-            echo "<h3>⚠ Missing Tables: " . count($missing) . "</h3>";
+            echo "<h3><i class='fas fa-exclamation-triangle' style='color:var(--warning,#F59E0B)'></i> Missing Tables: " . count($missing) . "</h3>";
             echo "<ul>";
             foreach ($missing as $table) {
                 $count = $this->tables_referenced[$table];
@@ -127,7 +127,7 @@ class SchemaValidator {
             echo "</div>";
         } else {
             echo "<div style='background: #d4edda; padding: 15px; margin: 10px 0; border-left: 4px solid #28a745;'>";
-            echo "<p>✓ All referenced tables exist in schema</p>";
+            echo "<p><i class='fas fa-check' style='color:var(--success,#10B981)'></i> All referenced tables exist in schema</p>";
             echo "</div>";
         }
     }
@@ -139,7 +139,7 @@ class SchemaValidator {
             try {
                 $stmt = $this->pdo->query("DESCRIBE `$table`");
                 $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
-                echo "<p>✓ Table '$table' has " . count($columns) . " columns</p>";
+                echo "<p><i class='fas fa-check' style='color:var(--success,#10B981)'></i> Table '$table' has " . count($columns) . " columns</p>";
             } catch (PDOException $e) {
                 $this->errors[] = "Failed to describe table '$table': " . $e->getMessage();
             }
@@ -152,7 +152,7 @@ class SchemaValidator {
         
         if (count($this->errors) > 0) {
             echo "<div style='background: #f8d7da; padding: 15px; margin: 10px 0; border-left: 4px solid #dc3545;'>";
-            echo "<h3>❌ Errors: " . count($this->errors) . "</h3>";
+            echo "<h3><i class='fas fa-times-circle' style='color:var(--error,#EF4444)'></i> Errors: " . count($this->errors) . "</h3>";
             echo "<ul>";
             foreach ($this->errors as $error) {
                 echo "<li>$error</li>";
@@ -161,14 +161,14 @@ class SchemaValidator {
             echo "</div>";
         } else {
             echo "<div style='background: #d4edda; padding: 15px; margin: 10px 0; border-left: 4px solid #28a745;'>";
-            echo "<h3>✓ Schema Validation Passed</h3>";
+            echo "<h3><i class='fas fa-check-circle' style='color:var(--success,#10B981)'></i> Schema Validation Passed</h3>";
             echo "<p>All tables and references are valid.</p>";
             echo "</div>";
         }
         
         if (count($this->warnings) > 0) {
             echo "<div style='background: #fff3cd; padding: 15px; margin: 10px 0; border-left: 4px solid #ffc107;'>";
-            echo "<h3>⚠ Warnings: " . count($this->warnings) . "</h3>";
+            echo "<h3><i class='fas fa-exclamation-triangle' style='color:var(--warning,#F59E0B)'></i> Warnings: " . count($this->warnings) . "</h3>";
             echo "<ul>";
             foreach ($this->warnings as $warning) {
                 echo "<li>$warning</li>";
