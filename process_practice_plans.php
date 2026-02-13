@@ -34,6 +34,8 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update' || $
     $plan_id = !empty($_POST['plan_id']) ? intval($_POST['plan_id']) : null;
     $name = trim($_POST['title'] ?? $_POST['practice_title'] ?? $_POST['name'] ?? '');
     $description = trim($_POST['description'] ?? $_POST['practice_goals'] ?? '');
+    $total_duration = !empty($_POST['duration']) ? intval($_POST['duration']) : null;
+    $focus_area = trim($_POST['focus_area'] ?? '');
     $drills = isset($_POST['drills']) ? json_decode($_POST['drills'], true) : [];
     
     if (empty($name)) {
@@ -45,26 +47,26 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update' || $
         $pdo->beginTransaction();
         
         if ($plan_id) {
-            // Update existing plan - use columns from schema (name, description, version)
+            // Update existing plan
             $stmt = $pdo->prepare("
                 UPDATE practice_plans SET 
-                    name = ?, description = ?, version = version + 1,
-                    updated_at = NOW()
+                    name = ?, title = ?, description = ?, total_duration = ?, focus_area = NULLIF(?, ''),
+                    version = version + 1, updated_at = NOW()
                 WHERE id = ? AND created_by = ?
             ");
             $stmt->execute([
-                $name, $description, $plan_id, $user_id
+                $name, $name, $description, $total_duration, $focus_area, $plan_id, $user_id
             ]);
             
             // Delete old drills
             $pdo->prepare("DELETE FROM practice_plan_drills WHERE practice_plan_id = ?")->execute([$plan_id]);
         } else {
-            // Insert new plan - use columns from schema (name, description, created_by)
+            // Insert new plan
             $stmt = $pdo->prepare("
-                INSERT INTO practice_plans (name, description, created_by)
-                VALUES (?, ?, ?)
+                INSERT INTO practice_plans (name, title, description, total_duration, focus_area, created_by)
+                VALUES (?, ?, ?, ?, NULLIF(?, ''), ?)
             ");
-            $stmt->execute([$name, $description, $user_id]);
+            $stmt->execute([$name, $name, $description, $total_duration, $focus_area, $user_id]);
             $plan_id = $pdo->lastInsertId();
         }
         
@@ -90,10 +92,10 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update' || $
         
         $pdo->commit();
         
-        // AJAX response for update_plan
-        if ($action === 'update_plan' && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        // AJAX response
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'message' => 'Practice plan updated successfully', 'plan_id' => $plan_id]);
+            echo json_encode(['success' => true, 'message' => 'Practice plan saved successfully', 'plan_id' => $plan_id]);
             exit();
         }
         
@@ -108,9 +110,9 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update' || $
     } catch (PDOException $e) {
         $pdo->rollBack();
         
-        if ($action === 'update_plan' && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Failed to update practice plan']);
+            echo json_encode(['success' => false, 'message' => 'Failed to save practice plan']);
             exit();
         }
         
