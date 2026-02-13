@@ -273,9 +273,9 @@ try {
 <!-- ── Top Header ──────────────────────────────────────── -->
 <header class="pwa-header">
     <?php if ($showBackBtn): ?>
-    <a href="javascript:history.back()" class="pwa-header-back" title="Go back">
+    <button onclick="history.back()" class="pwa-header-back" title="Go back">
         <i class="fas fa-arrow-left"></i>
-    </a>
+    </button>
     <?php endif; ?>
     <a href="?page=home" class="pwa-header-logo">
         <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo">

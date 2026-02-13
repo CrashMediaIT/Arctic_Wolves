@@ -41,11 +41,16 @@ body.pwa-body {
   color: #fff; text-decoration: none;
   font-size: 14px;
   flex-shrink: 0;
+  cursor: pointer;
   transition: background .2s, transform .15s;
 }
 .pwa-header-back:active {
   transform: scale(0.92);
   background: rgba(107,70,193,0.25);
+}
+.pwa-header-back:focus-visible {
+  outline: 2px solid var(--primary-light, #8B5CF6);
+  outline-offset: 2px;
 }
 .pwa-header-actions { display: flex; align-items: center; gap: 10px; }
 .pwa-header-btn {
