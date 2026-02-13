@@ -217,6 +217,12 @@ $allowed_pages = [
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
+// Prefer mobile-native PWA views when available
+$pwa_view_file = 'views/pwa/' . $page . '.php';
+if (file_exists(__DIR__ . '/' . $pwa_view_file)) {
+    $view_file = $pwa_view_file;
+}
+
 // Determine active tab
 $tab_home     = in_array($page, ['home', 'front_desk_home', 'parent_home']);
 $tab_sessions = in_array($page, ['sessions', 'upcoming_sessions', 'booking', 'session_detail', 'create_session', 'session_history', 'session_payment', 'coach_calendar']);
