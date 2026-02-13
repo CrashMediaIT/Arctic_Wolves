@@ -664,28 +664,27 @@ For issues during deployment, check:
 
 ## Game Plan & Video Companion Server
 
-The Arctic Wolves Game Plan (Video Review) system runs on `gameplan.arcticwolves.ca` as a separate subdomain application. An optional companion server provides hardware-accelerated video processing.
+The Arctic Wolves Game Plan (Video Review) system runs on `gameplan.arcticwolves.ca` as a subdomain. It reverse-proxies to the **Video Companion Server**, a Python/Flask service that handles hardware-accelerated video encoding, decoding, and clip extraction. The companion server runs on port 5100.
 
-### Deploy ACVideoReview (Game Plan App)
+The gameplan server block is included in `arctic_wolves.conf` (like the POS kiosk and API subdomains) — there is no separate nginx config file needed.
+
+### Deploy Game Plan Subdomain
+
+The Game Plan server block is already in `arctic_wolves.conf`. When you deploy the main site config, the Game Plan subdomain is automatically configured to proxy to the companion server.
 
 ```bash
-# 1. Clone into web root
-cd /portainer/nginx/www/
-git clone https://github.com/CrashMediaIT/ACVideoReview.git
+# 1. Ensure DNS for gameplan.arcticwolves.ca points to the same server
 
-# 2. Set permissions
-bash ACVideoReview/deployment/setup_permissions.sh
+# 2. The gameplan server block is already in arctic_wolves.conf
+#    No separate config file needed (same pattern as POS and API subdomains)
 
-# 3. Install NGINX config (uses gameplan.arcticwolves.ca)
-docker cp Arctic_Wolves/deployment/gameplan.conf nginx:/config/nginx/site-confs/gameplan.conf
+# 3. Deploy the companion server (see below)
 
-# 4. Install PHP config
-docker cp ACVideoReview/deployment/php-config.ini nginx:/config/php/php-config.ini
-
-# 5. Restart NGINX
+# 4. Restart NGINX to pick up the config
 docker restart nginx
 
-# 6. Run setup wizard at: http://gameplan.arcticwolves.ca/setup.php
+# 5. Verify: gameplan.arcticwolves.ca should proxy to the companion server
+curl -I http://gameplan.arcticwolves.ca/api/health
 ```
 
 ### Deploy Video Companion Server

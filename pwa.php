@@ -261,11 +261,15 @@ try {
     <style>
       /* Override desktop sidebar layout - PWA uses stacked layout */
       .sidebar { display: none !important; }
-      .main-content { height: auto !important; overflow: visible !important; }
-      .content-area { padding: 0 !important; overflow: visible !important; }
+      .main-content { height: auto !important; overflow: visible !important; margin-left: 0 !important; width: 100% !important; max-width: 100vw !important; }
+      .content-area { padding: 0 !important; overflow: visible !important; max-width: 100% !important; }
       /* Ensure the top-bar (parent athlete selector) is mobile-friendly */
       .top-bar { padding: 10px 16px; }
       .athlete-selector { flex-wrap: wrap; }
+      /* Prevent desktop layout from causing overflow */
+      .dashboard-layout, .app-layout, .page-wrapper { max-width: 100vw !important; overflow-x: hidden !important; }
+      /* Override any desktop nav that might leak through */
+      .desktop-nav, .sidebar-nav, .nav-group { display: none !important; }
     </style>
 </head>
 <body class="pwa-body">
