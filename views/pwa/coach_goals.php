@@ -300,6 +300,7 @@ function mOpenEditGoal(goalId) {
         .catch(function() {
             document.getElementById('mEditGoalId').value = goalId;
             mOpenSheet('mEditOverlay', 'mEditSheet');
+            document.getElementById('mEditTitle').placeholder = 'Could not load — enter manually';
         });
 }
 function mOpenProgressGoal(goalId) {
