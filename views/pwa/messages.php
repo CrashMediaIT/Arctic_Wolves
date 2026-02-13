@@ -212,6 +212,105 @@ if (!function_exists('mMsgTimeAgo')) {
 }
 .m-new-msg-feedback.m-msg-ok { color: #10B981; }
 .m-new-msg-feedback.m-msg-err { color: #EF4444; }
+
+/* ---- Chat View ---- */
+.m-messages.m-chat-active .m-messages-header,
+.m-messages.m-chat-active .m-msg-search-wrap,
+.m-messages.m-chat-active .m-msg-filters,
+.m-messages.m-chat-active .m-conv-list,
+.m-messages.m-chat-active .m-fab { display: none !important; }
+.m-messages.m-chat-active .m-chat-view { display: flex !important; }
+
+.m-chat-view {
+    display: none; flex-direction: column;
+    height: calc(100vh - 64px);
+}
+.m-chat-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: #16161F;
+    border-bottom: 1px solid #2D2D3F; flex-shrink: 0;
+}
+.m-chat-back {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: transparent; border: 1px solid #2D2D3F;
+    color: #fff; font-size: 14px; display: flex;
+    align-items: center; justify-content: center; cursor: pointer;
+    flex-shrink: 0;
+}
+.m-chat-back:active { background: rgba(107,70,193,0.2); }
+.m-chat-header-info { flex: 1; min-width: 0; }
+.m-chat-header-name { font-size: 15px; font-weight: 700; color: #fff; display: block; }
+.m-chat-header-role { font-size: 11px; color: #A8A8B8; text-transform: capitalize; }
+
+.m-chat-body {
+    flex: 1; overflow-y: auto; padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+.m-chat-bubble-row { display: flex; max-width: 82%; margin-bottom: 2px; }
+.m-chat-bubble-row.m-sent { align-self: flex-end; }
+.m-chat-bubble-row.m-received { align-self: flex-start; }
+.m-chat-bubble {
+    padding: 9px 14px; border-radius: 18px;
+    font-size: 14px; line-height: 1.45; word-wrap: break-word;
+}
+.m-chat-bubble-row.m-sent .m-chat-bubble {
+    background: #6B46C1; color: #fff; border-bottom-right-radius: 4px;
+}
+.m-chat-bubble-row.m-received .m-chat-bubble {
+    background: #1E1E2A; color: #E2E8F0; border-bottom-left-radius: 4px;
+}
+.m-chat-bubble-meta {
+    font-size: 10px; color: #6B6B7B; margin-top: 2px;
+    display: flex; align-items: center; gap: 4px;
+}
+.m-chat-bubble-row.m-sent .m-chat-bubble-meta { justify-content: flex-end; }
+.m-chat-read-icon { font-size: 10px; }
+.m-chat-read-icon.m-read { color: #60a5fa; }
+.m-chat-read-icon.m-unread { color: #6B6B7B; }
+
+.m-chat-date-divider {
+    text-align: center; margin: 12px 0; position: relative;
+}
+.m-chat-date-divider span {
+    background: #0A0A0F; padding: 0 10px;
+    font-size: 11px; color: #6B6B7B; position: relative; z-index: 1;
+}
+.m-chat-date-divider::before {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; background: #2D2D3F;
+}
+
+.m-chat-input-area {
+    display: flex; gap: 10px; align-items: flex-end;
+    padding: 10px 16px; background: #16161F;
+    border-top: 1px solid #2D2D3F; flex-shrink: 0;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+.m-chat-input {
+    flex: 1; padding: 10px 14px;
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 20px;
+    color: #fff; font-size: 14px; resize: none; outline: none;
+    max-height: 100px; line-height: 1.4; font-family: Inter, sans-serif;
+}
+.m-chat-input:focus { border-color: #6B46C1; }
+.m-chat-input::placeholder { color: #6B6B7B; }
+.m-chat-send-btn {
+    width: 40px; height: 40px; min-width: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, #6B46C1, #8B5CF6);
+    border: none; color: #fff; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.m-chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.m-chat-send-btn:active:not(:disabled) { transform: scale(0.95); }
+
+.m-chat-empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: #6B6B7B; text-align: center; padding: 20px;
+}
+.m-chat-empty i { font-size: 28px; margin-bottom: 10px; color: #8B5CF6; opacity: 0.5; }
+.m-chat-empty p { font-size: 13px; margin: 4px 0; }
 </style>
 
 <div class="m-messages">
@@ -244,8 +343,8 @@ if (!function_exists('mMsgTimeAgo')) {
                 $preview = $conv['last_message'] ? mb_substr(strip_tags($conv['last_message']), 0, 80) : 'No messages yet';
                 $name = htmlspecialchars(trim(($conv['first_name'] ?? '') . ' ' . ($conv['last_name'] ?? '')) ?: 'Unknown');
             ?>
-            <div class="m-conv-card" data-name="<?= strtolower($name) ?>" data-unread="<?= $unread ?>" data-id="<?= (int)$conv['id'] ?>">
-                <a href="?page=messages&conversation_id=<?= (int)$conv['id'] ?>" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
+            <div class="m-conv-card" data-name="<?= strtolower($name) ?>" data-unread="<?= $unread ?>" data-id="<?= (int)$conv['id'] ?>" data-other-uid="<?= (int)$conv['other_user_id'] ?>" data-display-name="<?= $name ?>" data-role="<?= htmlspecialchars($conv['role'] ?? '') ?>">
+                <a href="javascript:void(0)" onclick="mOpenChat(<?= (int)$conv['id'] ?>)" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
                     <div class="m-conv-icon"><i class="fas fa-comment-dots"></i></div>
                     <div class="m-conv-body">
                         <div class="m-conv-top">
@@ -270,6 +369,23 @@ if (!function_exists('mMsgTimeAgo')) {
     <button class="m-fab" id="mNewMsgFab" type="button" aria-label="New message">
         <i class="fas fa-pen"></i>
     </button>
+
+    <!-- Chat view (shown when a conversation is opened) -->
+    <div class="m-chat-view" id="mChatView">
+        <div class="m-chat-header">
+            <button class="m-chat-back" type="button" id="mChatBack" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+            <div class="m-conv-icon"><i class="fas fa-comment-dots"></i></div>
+            <div class="m-chat-header-info">
+                <span class="m-chat-header-name" id="mChatName"></span>
+                <span class="m-chat-header-role" id="mChatRole"></span>
+            </div>
+        </div>
+        <div class="m-chat-body" id="mChatBody"></div>
+        <div class="m-chat-input-area">
+            <textarea class="m-chat-input" id="mChatInput" rows="1" placeholder="Type a message…" maxlength="5000"></textarea>
+            <button class="m-chat-send-btn" type="button" id="mChatSendBtn" disabled aria-label="Send"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
 </div>
 
 <!-- New conversation modal -->
@@ -301,12 +417,16 @@ if (!function_exists('mMsgTimeAgo')) {
 <script>
 (function() {
     var csrfToken = (document.querySelector('.m-new-msg-panel input[name="csrf_token"]') || {}).value || '';
+    var currentUserId = <?php echo json_encode($user_id); ?>;
     var currentFilter = 'all';
     var contacts = null;
     var selectedRecipientId = '';
     var pollTimer = null;
+    var activeConvId = null;
+    var activeOtherUserId = null;
+    var chatPollTimer = null;
+    var lastMessageCount = 0;
 
-    /* ---- CSRF helper ---- */
     function getCsrf() { return csrfToken; }
 
     /* ---- Search filter ---- */
@@ -368,6 +488,164 @@ if (!function_exists('mMsgTimeAgo')) {
         var count = document.querySelectorAll('.m-conv-card').length;
         var el = document.getElementById('mMsgCount');
         if (el) el.textContent = count + ' conversation' + (count !== 1 ? 's' : '');
+    }
+
+    /* ---- Open Chat View ---- */
+    window.mOpenChat = function(convId) {
+        var card = document.querySelector('.m-conv-card[data-id="' + convId + '"]');
+        if (!card) return;
+        activeConvId = convId;
+        activeOtherUserId = card.getAttribute('data-other-uid');
+        var displayName = card.getAttribute('data-display-name') || 'Unknown';
+        var role = (card.getAttribute('data-role') || '').replace(/_/g, ' ');
+
+        document.getElementById('mChatName').textContent = displayName;
+        document.getElementById('mChatRole').textContent = role;
+        document.getElementById('mChatBody').innerHTML = '<div class="m-chat-empty"><i class="fas fa-spinner fa-spin"></i><p>Loading…</p></div>';
+        document.getElementById('mChatInput').value = '';
+        document.getElementById('mChatSendBtn').disabled = true;
+        lastMessageCount = 0;
+
+        document.querySelector('.m-messages').classList.add('m-chat-active');
+        loadChatMessages(convId, false);
+        startChatPoll();
+    };
+
+    /* ---- Close Chat (back to list) ---- */
+    window.mCloseChat = function() {
+        activeConvId = null;
+        activeOtherUserId = null;
+        document.querySelector('.m-messages').classList.remove('m-chat-active');
+        stopChatPoll();
+        pollConversations();
+    };
+
+    document.getElementById('mChatBack').addEventListener('click', function() { mCloseChat(); });
+
+    /* ---- Load & Render Messages ---- */
+    function loadChatMessages(convId, silent) {
+        fetch('process_messages.php?action=get_messages&conversation_id=' + convId, { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && convId === activeConvId) {
+                    var msgs = data.messages || [];
+                    if (!silent || msgs.length !== lastMessageCount) {
+                        renderChatMessages(msgs);
+                        lastMessageCount = msgs.length;
+                    }
+                    if (!silent) pollConversations();
+                }
+            })
+            .catch(function() {
+                if (!silent) {
+                    document.getElementById('mChatBody').innerHTML = '<div class="m-chat-empty"><i class="fas fa-exclamation-triangle"></i><p>Failed to load messages</p></div>';
+                }
+            });
+    }
+
+    function renderChatMessages(messages) {
+        var body = document.getElementById('mChatBody');
+        if (!messages || messages.length === 0) {
+            body.innerHTML = '<div class="m-chat-empty"><i class="fas fa-paper-plane"></i><p>No messages yet</p><p>Send a message to start the conversation.</p></div>';
+            return;
+        }
+        var html = '';
+        var lastDate = '';
+        messages.forEach(function(msg) {
+            var msgDate = new Date(msg.created_at.replace(/-/g, '/')).toLocaleDateString();
+            if (msgDate !== lastDate) {
+                html += '<div class="m-chat-date-divider"><span>' + formatDateDivider(msg.created_at) + '</span></div>';
+                lastDate = msgDate;
+            }
+            var isSent = (msg.from_user_id == currentUserId);
+            var readIcon = '';
+            if (isSent) {
+                readIcon = msg.is_read == 1
+                    ? '<span class="m-chat-read-icon m-read" title="Read"><i class="fas fa-check-double"></i></span>'
+                    : '<span class="m-chat-read-icon m-unread" title="Sent"><i class="fas fa-check"></i></span>';
+            }
+            html += '<div class="m-chat-bubble-row ' + (isSent ? 'm-sent' : 'm-received') + '">'
+                + '<div><div class="m-chat-bubble">' + escHtml(msg.message_body) + '</div>'
+                + '<div class="m-chat-bubble-meta">' + formatMsgTime(msg.created_at) + ' ' + readIcon + '</div></div></div>';
+        });
+        body.innerHTML = html;
+        body.scrollTop = body.scrollHeight;
+    }
+
+    function formatDateDivider(dateStr) {
+        var date = new Date(dateStr.replace(/-/g, '/'));
+        var now = new Date();
+        var diff = Math.floor((now - date) / 86400000);
+        if (diff === 0) return 'Today';
+        if (diff === 1) return 'Yesterday';
+        return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    function formatMsgTime(dateStr) {
+        var date = new Date(dateStr.replace(/-/g, '/'));
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    /* ---- Send Message from Chat View ---- */
+    var chatInput = document.getElementById('mChatInput');
+    var chatSendBtn = document.getElementById('mChatSendBtn');
+
+    if (chatInput) {
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            chatSendBtn.disabled = !this.value.trim();
+        });
+        chatInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (this.value.trim()) sendChatMessage();
+            }
+        });
+    }
+    if (chatSendBtn) {
+        chatSendBtn.addEventListener('click', function() { sendChatMessage(); });
+    }
+
+    function sendChatMessage() {
+        var text = (chatInput.value || '').trim();
+        if (!text || !activeOtherUserId) return;
+        chatSendBtn.disabled = true;
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
+        var body = new URLSearchParams();
+        body.set('action', 'send_message');
+        body.set('to_user_id', activeOtherUserId);
+        body.set('message_body', text);
+        body.set('csrf_token', getCsrf());
+        fetch('process_messages.php', { method: 'POST', body: body, credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    if (data.conversation_id) activeConvId = data.conversation_id;
+                    loadChatMessages(activeConvId, false);
+                } else {
+                    alert(data.message || 'Failed to send');
+                    chatInput.value = text;
+                    chatSendBtn.disabled = false;
+                }
+            })
+            .catch(function() {
+                alert('Network error');
+                chatInput.value = text;
+                chatSendBtn.disabled = false;
+            });
+    }
+
+    /* ---- Chat polling (10s) ---- */
+    function startChatPoll() {
+        stopChatPoll();
+        chatPollTimer = setInterval(function() {
+            if (activeConvId) loadChatMessages(activeConvId, true);
+        }, 10000);
+    }
+    function stopChatPoll() {
+        if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
     }
 
     /* ---- New message modal ---- */
@@ -479,7 +757,15 @@ if (!function_exists('mMsgTimeAgo')) {
                         setTimeout(function() {
                             closeNewMsgModal();
                             if (data.conversation_id) {
-                                window.location.href = '?page=messages&conversation_id=' + data.conversation_id;
+                                activeConvId = data.conversation_id;
+                                activeOtherUserId = toId;
+                                document.getElementById('mChatName').textContent = recipientSearch.value;
+                                document.getElementById('mChatRole').textContent = '';
+                                document.getElementById('mChatBody').innerHTML = '';
+                                document.querySelector('.m-messages').classList.add('m-chat-active');
+                                loadChatMessages(data.conversation_id, false);
+                                startChatPoll();
+                                pollConversations();
                             } else {
                                 window.location.reload();
                             }
@@ -498,7 +784,7 @@ if (!function_exists('mMsgTimeAgo')) {
         });
     }
 
-    /* ---- Auto-refresh polling (15s) ---- */
+    /* ---- Auto-refresh polling (15s) for conversation list ---- */
     function pollConversations() {
         fetch('process_messages.php?action=get_conversations', { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
@@ -525,8 +811,10 @@ if (!function_exists('mMsgTimeAgo')) {
             var preview = c.last_message ? escHtml(c.last_message.substring(0, 80)) : 'No messages yet';
             var time = timeAgo(c.last_message_time || c.last_message_at || '');
             var cid = c.conversation_id || c.id;
-            html += '<div class="m-conv-card" data-name="' + safeName.toLowerCase() + '" data-unread="' + unread + '" data-id="' + cid + '">'
-                + '<a href="?page=messages&conversation_id=' + cid + '" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">'
+            var otherUid = c.other_user_id || '';
+            var role = c.role || '';
+            html += '<div class="m-conv-card" data-name="' + safeName.toLowerCase() + '" data-unread="' + unread + '" data-id="' + cid + '" data-other-uid="' + otherUid + '" data-display-name="' + safeName + '" data-role="' + escHtml(role) + '">'
+                + '<a href="javascript:void(0)" onclick="mOpenChat(' + cid + ')" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">'
                 + '<div class="m-conv-icon"><i class="fas fa-comment-dots"></i></div>'
                 + '<div class="m-conv-body"><div class="m-conv-top"><span class="m-conv-subject">' + safeName + '</span>'
                 + '<span class="m-conv-time">' + time + '</span></div>'
@@ -562,14 +850,29 @@ if (!function_exists('mMsgTimeAgo')) {
 
     pollTimer = setInterval(pollConversations, 15000);
 
-    /* Stop polling when page is hidden */
+    /* Stop/resume polling on visibility change */
     document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
             clearInterval(pollTimer);
+            stopChatPoll();
         } else {
             pollConversations();
             pollTimer = setInterval(pollConversations, 15000);
+            if (activeConvId) {
+                loadChatMessages(activeConvId, true);
+                startChatPoll();
+            }
         }
     });
+
+    /* Auto-open conversation from URL parameter */
+    var urlParams = new URLSearchParams(window.location.search);
+    var urlConvId = urlParams.get('conversation_id');
+    if (urlConvId) {
+        setTimeout(function() {
+            var card = document.querySelector('.m-conv-card[data-id="' + urlConvId + '"]');
+            if (card) mOpenChat(parseInt(urlConvId, 10));
+        }, 100);
+    }
 })();
 </script>
