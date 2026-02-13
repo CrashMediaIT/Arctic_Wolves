@@ -2291,12 +2291,11 @@ body.pwa-body .button-row .btn {
   width: 100% !important;
 }
 
-/* Prevent inline-style width/min-width from causing overflow */
-body.pwa-body [style*="min-width"] {
+/* Prevent inline-style min-width from causing overflow in content area */
+body.pwa-body .pwa-content .btn[style*="min-width"],
+body.pwa-body .pwa-content .widget-icon[style*="min-width"],
+body.pwa-body .pwa-content .metric-icon[style*="min-width"] {
   min-width: 0 !important;
-}
-body.pwa-body [style*="width:"][style*="px"] {
-  max-width: 100% !important;
 }
 
 /* Fix pending payments widget for mobile */

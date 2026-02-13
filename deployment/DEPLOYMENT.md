@@ -680,7 +680,7 @@ docker cp Arctic_Wolves/deployment/gameplan.conf nginx:/config/nginx/site-confs/
 # 3. Restart NGINX to pick up the config
 docker restart nginx
 
-# 4. Verify: http://gameplan.arcticwolves.ca should now load
+# 4. Verify: https://gameplan.arcticwolves.ca should now load
 ```
 
 ### Deploy Video Companion Server
