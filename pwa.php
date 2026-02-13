@@ -223,6 +223,13 @@ $tab_sessions = in_array($page, ['sessions', 'upcoming_sessions', 'booking', 'se
 $tab_athletes = in_array($page, ['roster', 'athletes', 'athlete_detail', 'manage_athletes', 'team_roster', 'coach_roster', 'health_coach_roster']);
 $tab_more     = (!$tab_home && !$tab_sessions && !$tab_athletes);
 
+// Show back button on detail/sub pages (not main menu pages)
+$subPages = ['session_detail', 'create_session', 'session_history', 'session_payment',
+             'athlete_detail', 'view_drill', 'view_practice_plan',
+             'session_evaluation_form', 'report_view', 'record_drill_video',
+             'mileage_tracker', 'staff_time_history'];
+$showBackBtn = in_array($page, $subPages);
+
 // Unread notification count
 $unreadNotifCount = 0;
 try {
@@ -265,6 +272,11 @@ try {
 
 <!-- ── Top Header ──────────────────────────────────────── -->
 <header class="pwa-header">
+    <?php if ($showBackBtn): ?>
+    <a href="javascript:history.back()" class="pwa-header-back" title="Go back">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+    <?php endif; ?>
     <a href="?page=home" class="pwa-header-logo">
         <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo">
         ARCTIC <span class="brand-highlight">WOLVES</span>
@@ -361,9 +373,9 @@ function switchAthlete(athleteId) {
     }
 }
 
-// Service worker registration
+// Service worker registration (relative path for subdirectory deployments)
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/pwa-sw.js').catch(() => {});
+    navigator.serviceWorker.register('pwa-sw.js').catch(() => {});
 }
 
 // PWA install prompt

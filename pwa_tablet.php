@@ -614,7 +614,7 @@ function switchAthlete(athleteId) {
 
 // ── Service Worker Registration ───────────────────────────
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/pwa-sw.js').catch(function() {});
+    navigator.serviceWorker.register('pwa-sw.js').catch(function() {});
 }
 
 // ── PWA Install Prompt ────────────────────────────────────

@@ -32,6 +32,21 @@ body.pwa-body {
 .pwa-header-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #fff; font-weight: 900; font-size: 17px; letter-spacing: 0.5px; }
 .pwa-header-logo img { height: 30px; width: auto; filter: drop-shadow(0 0 6px rgba(107, 70, 193, 0.3)); }
 .pwa-header-logo .brand-highlight { color: var(--primary-light, #8B5CF6); }
+.pwa-header-back {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: rgba(107,70,193,0.12);
+  border: 1px solid rgba(107,70,193,0.2);
+  border-radius: 50%;
+  color: #fff; text-decoration: none;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: background .2s, transform .15s;
+}
+.pwa-header-back:active {
+  transform: scale(0.92);
+  background: rgba(107,70,193,0.25);
+}
 .pwa-header-actions { display: flex; align-items: center; gap: 10px; }
 .pwa-header-btn {
   position: relative;
@@ -605,6 +620,9 @@ body.pwa-body .modal-footer {
 }
 body.pwa-body .modal-footer .btn {
   width: 100%;
+}
+body.pwa-body .modal-lg {
+  max-width: calc(100% - 16px);
 }
 
 /* ── Action Bars / Filter Rows ─────────────────────────── */
@@ -1630,11 +1648,13 @@ body.pwa-body .stats-tab-btn {
 /* ── 31. Athlete Selector ──────────────────────────────── */
 body.pwa-body .athlete-selector {
   width: 100%;
+  min-width: 0;
   flex-wrap: wrap;
   gap: 8px;
 }
 body.pwa-body .athlete-selector select {
   width: 100%;
+  min-width: 0;
   min-height: 44px;
   font-size: 14px;
 }
@@ -1695,6 +1715,27 @@ body.pwa-body .product-card .product-price,
 body.pwa-body .shop-card .product-price {
   font-size: 14px;
   font-weight: 700;
+}
+body.pwa-body .shop-dashboard-container {
+  flex-direction: column;
+  gap: 12px;
+  min-height: auto;
+}
+body.pwa-body .shop-sidebar {
+  width: 100%;
+  flex-shrink: 1;
+}
+body.pwa-body .shop-category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+}
+body.pwa-body .shop-category-list h3 {
+  width: 100%;
+}
+body.pwa-body .shop-search-box input {
+  width: 100%;
 }
 
 /* ── 36. Report Views ──────────────────────────────────── */
