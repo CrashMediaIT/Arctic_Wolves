@@ -28,7 +28,7 @@ $action = $_POST['action'] ?? '';
 // =========================================================
 // CREATE/UPDATE PRACTICE PLAN
 // =========================================================
-if ($action === 'save_plan' || $action === 'create' || $action === 'update') {
+if ($action === 'save_plan' || $action === 'create' || $action === 'update' || $action === 'update_plan') {
     requirePermission($pdo, $user_id, $user_role, 'create_practice_plans');
     
     $plan_id = !empty($_POST['plan_id']) ? intval($_POST['plan_id']) : null;
@@ -90,6 +90,13 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update') {
         
         $pdo->commit();
         
+        // AJAX response for update_plan
+        if ($action === 'update_plan' && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Practice plan updated successfully', 'plan_id' => $plan_id]);
+            exit();
+        }
+        
         // Redirect based on action - create goes back to practice_create, update/save_plan goes to practice_library
         if ($action === 'create') {
             header("Location: dashboard.php?page=practice_create&status=plan_created&plan_id=$plan_id");
@@ -100,6 +107,13 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update') {
         
     } catch (PDOException $e) {
         $pdo->rollBack();
+        
+        if ($action === 'update_plan' && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to update practice plan']);
+            exit();
+        }
+        
         header("Location: dashboard.php?page=practice_library&error=save_failed");
         exit();
     }
