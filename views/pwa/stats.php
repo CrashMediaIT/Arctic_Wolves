@@ -34,7 +34,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM bookings b
         JOIN sessions s ON s.id = b.session_id
-        WHERE b.user_id = ? AND b.status = 'confirmed'
+        WHERE b.user_id = ? AND b.status = 'confirmed' AND s.status = 'completed'
           AND s.session_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
     ");
     $stmt->execute([$statsUserId]);

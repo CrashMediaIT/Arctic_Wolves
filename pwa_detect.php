@@ -115,7 +115,7 @@ function isTablet(): bool {
  */
 function isPwaMode(): bool {
     $script = basename($_SERVER['SCRIPT_NAME'] ?? '');
-    return strpos($script, 'pwa') === 0;
+    return in_array($script, ['pwa.php', 'pwa_tablet.php'], true);
 }
 
 /**
