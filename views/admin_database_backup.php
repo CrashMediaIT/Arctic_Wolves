@@ -1163,7 +1163,6 @@ function testSmbConnection() {
     
     if (!smbPath) {
         resultSpan.style.color = '#ef4444';
-        resultSpan.textContent = '';
         resultSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Please enter SMB path';
         return;
     }
