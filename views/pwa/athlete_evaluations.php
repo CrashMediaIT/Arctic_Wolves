@@ -20,12 +20,9 @@ try {
     $stmt->execute([$user_id]);
     $evaluations = $stmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($evaluations as &$ev) {
-        if (!empty($ev['evaluator_first']) && function_exists('FieldEncryption') === false) {
-            // Try decryption if available
-            if (class_exists('FieldEncryption')) {
-                $ev['evaluator_first'] = FieldEncryption::decrypt($ev['evaluator_first']);
-                $ev['evaluator_last'] = FieldEncryption::decrypt($ev['evaluator_last']);
-            }
+        if (!empty($ev['evaluator_first']) && class_exists('FieldEncryption')) {
+            $ev['evaluator_first'] = FieldEncryption::decrypt($ev['evaluator_first']);
+            $ev['evaluator_last'] = FieldEncryption::decrypt($ev['evaluator_last']);
         }
     }
     unset($ev);
@@ -66,6 +63,14 @@ $totalEvals = count($evaluations);
 .m-eval-detail-label { font-size: 11px; color: #6B6B7B; margin-bottom: 2px; }
 .m-eval-detail-text { font-size: 13px; color: #A8A8B8; line-height: 1.5; }
 </style>
+<script>
+function mToggleEvalDetail(btn) {
+    btn.parentElement.nextElementSibling.classList.toggle('m-visible');
+    var icon = btn.querySelector('i');
+    icon.classList.toggle('fa-eye');
+    icon.classList.toggle('fa-eye-slash');
+}
+</script>
 
 <div class="m-ath-evals">
     <div class="m-ath-evals-header">
@@ -107,7 +112,7 @@ $totalEvals = count($evaluations);
             </div>
             <?php endif; ?>
             <div class="m-eval-actions">
-                <button class="m-eval-toggle" onclick="this.parentElement.nextElementSibling.classList.toggle('m-visible');this.querySelector('i').classList.toggle('fa-eye');this.querySelector('i').classList.toggle('fa-eye-slash');">
+                <button class="m-eval-toggle" onclick="mToggleEvalDetail(this)">
                     <i class="fas fa-eye"></i> View Details
                 </button>
             </div>
