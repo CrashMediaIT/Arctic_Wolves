@@ -262,6 +262,10 @@
             <i class="fas fa-clipboard-list"></i> Audit Log
             <i class="fas fa-chevron-right menu-chevron"></i>
         </a>
+        <a href="?page=gameplan_settings" class="pwa-menu-item">
+            <i class="fas fa-chess-board"></i> Game Plan Settings
+            <i class="fas fa-chevron-right menu-chevron"></i>
+        </a>
         <a href="?page=marketing" class="pwa-menu-item">
             <i class="fas fa-bullhorn"></i> Marketing
             <i class="fas fa-chevron-right menu-chevron"></i>

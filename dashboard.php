@@ -911,6 +911,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>">
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools
             </a>
+            <a href="?page=audit_log" class="nav-link <?= $page=='audit_log'?'active':'' ?>">
+                <i class="fa-solid fa-clipboard-list icon"></i> Audit Log
+            </a>
             <a href="?page=gameplan_settings" class="nav-link <?= $page=='gameplan_settings'?'active':'' ?>">
                 <i class="fa-solid fa-chess-board icon"></i> Game Plan Settings
             </a>
