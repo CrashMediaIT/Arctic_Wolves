@@ -133,11 +133,11 @@ $totalEvals = count($evaluations);
             </div>
             <?php endif; ?>
             <div class="m-ceval-actions">
-                <button class="m-ceval-btn" onclick="this.parentElement.parentElement.querySelector('.m-ceval-detail').classList.toggle('m-visible')">
+                <button class="m-ceval-btn" onclick="mToggleDetail(<?= (int)$ev['id'] ?>)">
                     <i class="fas fa-eye"></i> Details
                 </button>
             </div>
-            <div class="m-ceval-detail">
+            <div class="m-ceval-detail" id="mCevalDetail-<?= (int)$ev['id'] ?>">
                 <div class="m-ceval-detail-label">Athlete</div>
                 <div class="m-ceval-detail-text"><?= $athName ?></div>
                 <div class="m-ceval-detail-label">Score</div>
@@ -148,7 +148,7 @@ $totalEvals = count($evaluations);
     <?php endif; ?>
 </div>
 
-<button class="m-fab" onclick="document.getElementById('mCevalOverlay').classList.add('m-visible');document.getElementById('mCevalSheet').classList.add('m-visible');" aria-label="New evaluation">
+<button class="m-fab" onclick="mOpenCevalSheet()" aria-label="New evaluation">
     <i class="fas fa-plus"></i>
 </button>
 
@@ -163,7 +163,7 @@ $totalEvals = count($evaluations);
             <select name="athlete_id" class="m-form-select" required>
                 <option value="">Select athlete…</option>
                 <?php foreach ($athletes as $a): ?>
-                <option value="<?= (int)$a['id'] ?>"><?= htmlspecialchars(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? '')) ?></option>
+                <option value="<?= (int)$a['id'] ?>"><?= htmlspecialchars(trim(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? ''))) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -180,9 +180,17 @@ $totalEvals = count($evaluations);
 </div>
 
 <script>
+function mOpenCevalSheet() {
+    document.getElementById('mCevalOverlay').classList.add('m-visible');
+    document.getElementById('mCevalSheet').classList.add('m-visible');
+}
 function mCloseCevalSheet() {
     document.getElementById('mCevalOverlay').classList.remove('m-visible');
     document.getElementById('mCevalSheet').classList.remove('m-visible');
+}
+function mToggleDetail(id) {
+    var el = document.getElementById('mCevalDetail-' + id);
+    if (el) el.classList.toggle('m-visible');
 }
 function mSubmitCeval(e) {
     e.preventDefault();
