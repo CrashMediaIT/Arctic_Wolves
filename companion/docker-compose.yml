@@ -1,5 +1,15 @@
 # Arctic Wolves Video Companion Server
 # CPU-only configuration
+#
+# NETWORKING NOTE:
+# If the nginx container runs on a Docker network (e.g. from a separate
+# docker-compose), connect the companion to the same network so nginx can
+# reach it by container name instead of 127.0.0.1:
+#
+#   docker network connect <nginx_network> aw-video-companion
+#
+# Alternatively, uncomment the "networks" section below and set the
+# external network name to match your nginx stack.
 
 services:
   companion:
@@ -22,3 +32,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    # Uncomment to join the same Docker network as nginx:
+    # networks:
+    #   - nginx_network
+
+# Uncomment to use an existing external Docker network shared with nginx:
+# networks:
+#   nginx_network:
+#     external: true
+#     name: <your_nginx_network_name>  # e.g. nginx_default
