@@ -204,12 +204,12 @@ try {
         .gp-placeholder-card h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
         .gp-placeholder-card p { font-size: 13px; color: var(--gp-text-muted); margin: 0; line-height: 1.6; }
 
-        /* Mobile sidebar toggle */
-        .gp-mobile-toggle { display: none; }
+        /* Mobile sidebar toggle – use high specificity to beat global button styles */
+        button.gp-mobile-toggle { display: none !important; }
         @media (max-width: 768px) {
             .gp-sidebar { position: fixed; left: -280px; top: 0; height: 100vh; z-index: 100; transition: left .25s; }
             .gp-sidebar.open { left: 0; }
-            .gp-mobile-toggle { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: none; border: 1px solid var(--gp-border); border-radius: 8px; color: var(--gp-text); font-size: 16px; cursor: pointer; }
+            button.gp-mobile-toggle { display: flex !important; align-items: center; justify-content: center; width: 36px; height: 36px; background: none; border: 1px solid var(--gp-border); border-radius: 8px; color: var(--gp-text); font-size: 16px; cursor: pointer; padding: 0; height: auto; }
             .gp-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 99; }
             .gp-sidebar.open ~ .gp-main-area .gp-overlay { display: block; }
             .gp-content { padding: 16px; }
