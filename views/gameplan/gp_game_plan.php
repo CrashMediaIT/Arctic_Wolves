@@ -87,7 +87,7 @@ try {
 
 <!-- Create button -->
 <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
-    <button type="button" class="btn-primary" id="gpCreatePlan"><i class="fas fa-plus"></i> New Plan</button>
+    <button type="button" class="btn btn-primary" id="gpCreatePlan"><i class="fas fa-plus"></i> New Plan</button>
 </div>
 
 <!-- Plan Cards -->
@@ -145,8 +145,8 @@ try {
 <?php endif; ?>
 
 <!-- Create Plan Modal -->
-<div class="modal" id="gpPlanModal" style="display: none;">
-    <div class="modal-content" style="max-width: 580px;">
+<div class="modal-overlay" id="gpPlanModal" style="display: none;">
+    <div class="modal" style="max-width: 580px;">
         <div class="modal-header">
             <h2 class="modal-title">Create Game Plan</h2>
             <button type="button" class="modal-close" id="gpClosePlan">&times;</button>
@@ -158,13 +158,13 @@ try {
             <input type="hidden" name="plan_type" value="<?= htmlspecialchars($gp_tab) ?>">
 
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Plan Title <span style="color: #EF4444;">*</span></label>
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Plan Title <span style="color: #EF4444;">*</span></label>
                     <input type="text" name="title" class="form-input" placeholder="e.g., Game Strategy vs Thunder Bay" required>
                 </div>
                 <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div class="form-group">
-                        <label class="form-label">Assign to Game</label>
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Assign to Game</label>
                         <select name="game_id" class="form-input">
                             <option value="">— No Game —</option>
                             <?php foreach ($gp_games as $g): ?>
@@ -172,8 +172,8 @@ try {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Team</label>
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Team</label>
                         <select name="team_id" class="form-input">
                             <option value="">— Select Team —</option>
                             <?php foreach ($gp_teams as $tm): ?>
@@ -182,12 +182,12 @@ try {
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Description</label>
                     <textarea name="description" class="form-input" rows="4" style="height: auto; min-height: 100px; resize: vertical;" placeholder="Key strategies, formations, notes…"></textarea>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Status</label>
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Status</label>
                     <select name="status" class="form-input">
                         <option value="draft">Draft</option>
                         <option value="active">Active</option>
@@ -197,7 +197,7 @@ try {
             </div>
 
             <div class="modal-footer">
-                <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Create Plan</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Create Plan</button>
             </div>
         </form>
     </div>
