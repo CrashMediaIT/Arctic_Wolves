@@ -60,11 +60,51 @@ try {
 .m-empty-state p { font-size: 14px; margin: 0; }
 </style>
 
+<?php
+$allAthletes = [];
+if ($isAnyCoach || $isAdmin) {
+    try {
+        $aSt = $pdo->prepare("SELECT id, first_name, last_name FROM users WHERE role = 'athlete' ORDER BY last_name, first_name LIMIT 200");
+        $aSt->execute();
+        $allAthletes = $aSt->fetchAll(PDO::FETCH_ASSOC);
+        if (function_exists('decryptUserRows')) { $allAthletes = decryptUserRows($allAthletes); }
+    } catch (PDOException $e) { $allAthletes = []; }
+}
+$selectedYear = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+?>
 <div class="m-rptath">
     <div class="m-rptath-header">
         <h2 class="m-rptath-title">Athlete Report</h2>
         <p class="m-rptath-sub">Performance metrics</p>
     </div>
+
+    <?php if ($isAnyCoach || $isAdmin): ?>
+    <!-- Athlete selector & filters -->
+    <div style="margin-bottom:16px;">
+        <label style="font-size:12px;color:#A8A8B8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Select Athlete</label>
+        <select id="mRptAthSelect" style="width:100%;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;min-height:44px;font-size:14px;-webkit-appearance:none;" onchange="mRptAthGo()">
+            <option value="">-- Choose athlete --</option>
+            <?php foreach ($allAthletes as $a): ?>
+            <option value="<?= $a['id'] ?>" <?= $athleteId == $a['id'] ? 'selected' : '' ?>><?= htmlspecialchars(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? '')) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div>
+            <label style="font-size:11px;color:#A8A8B8;display:block;margin-bottom:4px;">Year</label>
+            <select id="mRptAthYear" style="width:100%;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;min-height:44px;font-size:14px;-webkit-appearance:none;" onchange="mRptAthGo()">
+                <?php for ($y = (int)date('Y'); $y >= 2020; $y--): ?>
+                <option value="<?= $y ?>" <?= $selectedYear === $y ? 'selected' : '' ?>><?= $y ?></option>
+                <?php endfor; ?>
+            </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+            <button onclick="mRptAthExport()" style="width:100%;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <i class="fas fa-file-pdf" style="color:#EF4444;"></i> Export
+            </button>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="m-rptath-section">
         <h3 class="m-rptath-section-title">Recent Evaluations</h3>
@@ -121,3 +161,15 @@ try {
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+function mRptAthGo() {
+    var aid = document.getElementById('mRptAthSelect') ? document.getElementById('mRptAthSelect').value : '';
+    var yr = document.getElementById('mRptAthYear') ? document.getElementById('mRptAthYear').value : '';
+    var url = '?page=reports_athlete';
+    if (aid) url += '&athlete_id=' + aid;
+    if (yr) url += '&year=' + yr;
+    window.location.href = url;
+}
+function mRptAthExport() { window.print(); }
+</script>

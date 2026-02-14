@@ -40,8 +40,13 @@ foreach ($payments as $p) {
     display: flex; align-items: center; gap: 12px;
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
     padding: 14px; margin-bottom: 8px;
-    min-height: 44px;
+    min-height: 44px; cursor: pointer; transition: border-color 0.2s;
 }
+.m-payment-card:active { border-color: #6B46C1; }
+.m-payment-detail { display:none; background:#0A0A0F; border:1px solid #2D2D3F; border-radius:10px; padding:12px; margin:-4px 0 8px; font-size:13px; }
+.m-payment-detail-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #1A1A2F; color:#A8A8B8; }
+.m-payment-detail-row:last-child { border-bottom:none; }
+.m-payment-detail-row span:last-child { color:#fff; font-weight:600; }
 .m-payment-icon {
     width: 40px; height: 40px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
@@ -77,6 +82,21 @@ foreach ($payments as $p) {
         <p class="m-payments-sub"><?= count($payments) ?> transaction<?= count($payments) !== 1 ? 's' : '' ?></p>
     </div>
 
+    <!-- Date Filter -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div>
+            <label style="font-size:11px;color:#A8A8B8;display:block;margin-bottom:4px;">From</label>
+            <input type="date" id="mPayDateFrom" style="width:100%;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;min-height:44px;font-size:14px;">
+        </div>
+        <div>
+            <label style="font-size:11px;color:#A8A8B8;display:block;margin-bottom:4px;">To</label>
+            <input type="date" id="mPayDateTo" style="width:100%;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;min-height:44px;font-size:14px;" value="<?= date('Y-m-d') ?>">
+        </div>
+    </div>
+    <button onclick="mPayFilter()" style="width:100%;background:#6B46C1;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;min-height:44px;cursor:pointer;margin-bottom:16px;">
+        <i class="fas fa-filter"></i> Filter Payments
+    </button>
+
     <div class="m-payment-summary">
         <div class="m-payment-summary-label">Total Paid</div>
         <div class="m-payment-summary-value">$<?= number_format($totalPaid, 2) ?></div>
@@ -105,7 +125,7 @@ foreach ($payments as $p) {
                 default => 'fa-receipt',
             };
         ?>
-        <div class="m-payment-card">
+        <div class="m-payment-card" onclick="mPayToggle(this)" data-date="<?= date('Y-m-d', strtotime($p['created_at'])) ?>">
             <div class="m-payment-icon m-payment-icon-<?= $statusClass ?>">
                 <i class="fas <?= $methodIcon ?>"></i>
             </div>
@@ -121,6 +141,46 @@ foreach ($payments as $p) {
                 <span class="m-payment-status m-payment-status-<?= $statusClass ?>"><?= htmlspecialchars(ucfirst($status)) ?></span>
             </div>
         </div>
+        <div class="m-payment-detail" id="mPayDetail<?= $p['id'] ?>">
+            <div class="m-payment-detail-row"><span>Transaction ID</span><span>#<?= htmlspecialchars($p['id']) ?></span></div>
+            <div class="m-payment-detail-row"><span>Date</span><span><?= date('M j, Y g:i A', strtotime($p['created_at'])) ?></span></div>
+            <div class="m-payment-detail-row"><span>Method</span><span><?= htmlspecialchars(ucwords(str_replace('_', ' ', $p['payment_method'] ?? 'N/A'))) ?></span></div>
+            <div class="m-payment-detail-row"><span>Amount</span><span>$<?= number_format((float)$p['amount'], 2) ?></span></div>
+            <div class="m-payment-detail-row"><span>Status</span><span><?= htmlspecialchars(ucfirst($status)) ?></span></div>
+            <?php if ($statusClass === 'completed'): ?>
+            <button onclick="event.stopPropagation();mPayReceipt(<?= (int)$p['id'] ?>)" style="width:100%;margin-top:10px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:10px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <i class="fas fa-download" style="color:#8B5CF6;"></i> Download Receipt
+            </button>
+            <?php endif; ?>
+        </div>
         <?php endforeach; ?>
     <?php endif; ?>
 </div>
+
+<script>
+function mPayToggle(card) {
+    var detail = card.nextElementSibling;
+    if (detail && detail.classList.contains('m-payment-detail')) {
+        detail.style.display = detail.style.display === 'block' ? 'none' : 'block';
+    }
+}
+function mPayFilter() {
+    var from = document.getElementById('mPayDateFrom').value;
+    var to = document.getElementById('mPayDateTo').value;
+    var cards = document.querySelectorAll('.m-payment-card');
+    cards.forEach(function(c) {
+        var d = c.getAttribute('data-date');
+        var detail = c.nextElementSibling;
+        var show = true;
+        if (from && d < from) show = false;
+        if (to && d > to) show = false;
+        c.style.display = show ? 'flex' : 'none';
+        if (detail && detail.classList.contains('m-payment-detail')) {
+            detail.style.display = 'none';
+        }
+    });
+}
+function mPayReceipt(id) {
+    window.open('payment_success.php?payment_id=' + id + '&receipt=1', '_blank');
+}
+</script>
