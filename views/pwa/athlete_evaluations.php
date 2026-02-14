@@ -230,7 +230,7 @@ var mPublishedEvals = <?= json_encode(array_map(function($ae) {
         'evaluator' => ($ae['evaluator_first_name'] ?? '') . ' ' . ($ae['evaluator_last_name'] ?? ''),
         'notes' => $ae['coach_notes'] ?? ''
     ];
-}, $publishedEvals)) ?>;
+}, $publishedEvals), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
 function mToggleEvalCard(card) {
     var detail = card.querySelector('.m-eval-detail');
