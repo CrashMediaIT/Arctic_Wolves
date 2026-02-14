@@ -20,6 +20,18 @@ try {
     $stmt->execute();
     $newUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $newUsers = []; }
+
+$onboardingRecords = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT eo.id, eo.first_name, eo.last_name, eo.email, eo.role, eo.onboarding_status, eo.created_at
+        FROM employee_onboarding eo
+        WHERE eo.onboarding_status IN ('pending', 'in_progress')
+        ORDER BY eo.created_at DESC LIMIT 20
+    ");
+    $stmt->execute();
+    $onboardingRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $onboardingRecords = []; }
 ?>
 <style>
 .m-onboard { padding: 16px; font-family: Inter, sans-serif; }
@@ -69,6 +81,21 @@ try {
 .m-onboard-check-item i { font-size: 14px; }
 .m-empty-state { text-align: center; padding: 32px 20px; color: #6B6B7B; font-size: 13px; }
 .m-empty-state i { font-size: 28px; display: block; margin-bottom: 10px; }
+.m-fab { position: fixed; bottom: 60px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: #6B46C1; color: #fff; border: none; box-shadow: 0 4px 12px rgba(107,70,193,0.4); display: flex; align-items: center; justify-content: center; z-index: 999; cursor: pointer; }
+.m-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: none; }
+.m-overlay.active { display: block; }
+.m-bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #16161F; border-radius: 16px 16px 0 0; max-height: 85vh; overflow-y: auto; z-index: 1001; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; }
+.m-bottom-sheet.active { transform: translateY(0); }
+.m-sheet-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 16px; display: flex; justify-content: space-between; align-items: center; }
+.m-form-group { margin-bottom: 14px; }
+.m-form-label { font-size: 12px; color: #A8A8B8; margin-bottom: 4px; display: block; }
+.m-form-input, .m-form-select, .m-form-textarea { background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 10px; color: #fff; padding: 12px; min-height: 44px; width: 100%; box-sizing: border-box; font-size: 14px; font-family: Inter, sans-serif; }
+.m-form-textarea { min-height: 80px; resize: vertical; }
+.m-btn-submit { background: #6B46C1; color: #fff; border: none; border-radius: 10px; min-height: 44px; font-weight: 600; width: 100%; font-size: 14px; cursor: pointer; margin-top: 8px; }
+.m-btn-danger { background: #EF4444; }
+.m-card-actions { display: flex; gap: 8px; margin-top: 8px; }
+.m-btn-sm { font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; min-height: 28px; font-weight: 500; }
+.m-onboard-card { flex-wrap: wrap; }
 </style>
 
 <div class="m-onboard">
@@ -90,6 +117,33 @@ try {
         <div class="m-onboard-check-item"><i class="fas fa-circle" style="color:#F59E0B;"></i> Equipment issued</div>
         <div class="m-onboard-check-item"><i class="fas fa-circle" style="color:#6B6B7B;"></i> First session scheduled</div>
     </div>
+
+    <?php if (!empty($onboardingRecords)): ?>
+        <h3 class="m-section-title">Active Onboarding</h3>
+        <?php foreach ($onboardingRecords as $rec): ?>
+        <div class="m-onboard-card">
+            <div class="m-onboard-avatar"><?= strtoupper(mb_substr($rec['first_name'] ?? '?', 0, 1)) ?></div>
+            <div class="m-onboard-body">
+                <div class="m-onboard-name"><?= htmlspecialchars(($rec['first_name'] ?? '') . ' ' . ($rec['last_name'] ?? '')) ?></div>
+                <div class="m-onboard-meta"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $rec['onboarding_status'] ?? ''))) ?> · <?= htmlspecialchars(ucwords(str_replace('_', ' ', $rec['role'] ?? ''))) ?></div>
+            </div>
+            <div class="m-card-actions" style="width:100%;">
+                <form method="POST" action="process_onboarding.php" style="display:inline;" onsubmit="return confirm('Mark as completed?');">
+                    <?= csrfTokenInput() ?>
+                    <input type="hidden" name="action" value="complete">
+                    <input type="hidden" name="onboarding_id" value="<?= $rec['id'] ?>">
+                    <button type="submit" class="m-btn-sm" style="background:rgba(16,185,129,0.15);color:#10B981;"><i class="fas fa-check"></i> Complete</button>
+                </form>
+                <form method="POST" action="process_onboarding.php" style="display:inline;" onsubmit="return confirm('Cancel this onboarding?');">
+                    <?= csrfTokenInput() ?>
+                    <input type="hidden" name="action" value="cancel">
+                    <input type="hidden" name="onboarding_id" value="<?= $rec['id'] ?>">
+                    <button type="submit" class="m-btn-sm" style="background:rgba(239,68,68,0.15);color:#EF4444;"><i class="fas fa-times"></i> Cancel</button>
+                </form>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
     <h3 class="m-section-title">Recent New Members</h3>
     <?php if (empty($newUsers)): ?>
@@ -123,3 +177,100 @@ try {
         <?php endforeach; ?>
     <?php endif; ?>
 </div>
+
+<button class="m-fab" onclick="openSheet()"><i class="fas fa-plus" style="font-size:20px;"></i></button>
+
+<div class="m-overlay" id="mOverlay" onclick="closeSheet()"></div>
+
+<div class="m-bottom-sheet" id="mCreateSheet">
+    <div class="m-sheet-title">Start Onboarding <span onclick="closeSheet()" style="cursor:pointer;font-size:20px;">&times;</span></div>
+    <form method="POST" action="process_onboarding.php">
+        <?= csrfTokenInput() ?>
+        <input type="hidden" name="action" value="create">
+        <div class="m-form-group">
+            <label class="m-form-label">First Name *</label>
+            <input type="text" name="first_name" class="m-form-input" required placeholder="John">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Last Name *</label>
+            <input type="text" name="last_name" class="m-form-input" required placeholder="Smith">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Email *</label>
+            <input type="email" name="email" class="m-form-input" required placeholder="john@example.com">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Phone</label>
+            <input type="tel" name="phone" class="m-form-input" placeholder="(604) 555-0123">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Role *</label>
+            <select name="role" class="m-form-select" required>
+                <option value="">Select role</option>
+                <option value="coach">Coach</option>
+                <option value="head_coach">Head Coach</option>
+                <option value="team_coach">Team Coach</option>
+                <option value="health_coach">Health Coach</option>
+                <option value="front_desk_staff">Front Desk Staff</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Employee Type *</label>
+            <select name="employee_type" class="m-form-select" required>
+                <option value="full_time">Full Time</option>
+                <option value="part_time">Part Time</option>
+                <option value="contract">Contract</option>
+                <option value="seasonal">Seasonal</option>
+                <option value="volunteer">Volunteer</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Start Date *</label>
+            <input type="date" name="start_date" class="m-form-input" required value="<?= date('Y-m-d') ?>">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Street Address *</label>
+            <input type="text" name="street_address" class="m-form-input" required placeholder="123 Main St">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">City *</label>
+            <input type="text" name="city" class="m-form-input" required placeholder="Vancouver">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Province *</label>
+            <select name="province" class="m-form-select" required>
+                <option value="BC">British Columbia</option>
+                <option value="AB">Alberta</option>
+                <option value="SK">Saskatchewan</option>
+                <option value="MB">Manitoba</option>
+                <option value="ON">Ontario</option>
+                <option value="QC">Quebec</option>
+                <option value="NS">Nova Scotia</option>
+                <option value="NB">New Brunswick</option>
+                <option value="PE">Prince Edward Island</option>
+                <option value="NL">Newfoundland</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Postal Code *</label>
+            <input type="text" name="postal_code" class="m-form-input" required placeholder="V6B 1A1">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Notes</label>
+            <textarea name="notes" class="m-form-textarea" placeholder="Additional notes..."></textarea>
+        </div>
+        <button type="submit" class="m-btn-submit">Start Onboarding</button>
+    </form>
+</div>
+
+<script>
+function openSheet() {
+    document.getElementById('mOverlay').classList.add('active');
+    document.getElementById('mCreateSheet').classList.add('active');
+}
+function closeSheet() {
+    document.getElementById('mOverlay').classList.remove('active');
+    document.getElementById('mCreateSheet').classList.remove('active');
+}
+</script>
