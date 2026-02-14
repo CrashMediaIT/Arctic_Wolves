@@ -207,7 +207,7 @@ try {
     <h3 class="m-sheet-title">Create Goal</h3>
     <form method="POST" action="process_goals.php">
         <input type="hidden" name="action" value="create">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+        <?= csrfTokenInput() ?>
         <div class="m-form-group">
             <label class="m-form-label">Title *</label>
             <input type="text" name="goal_title" class="m-form-input" required>
@@ -247,7 +247,7 @@ try {
     <form method="POST" action="process_evaluations.php">
         <input type="hidden" name="action" value="create_evaluation">
         <input type="hidden" name="athlete_id" value="<?= (int)$goalsUserId ?>">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+        <?= csrfTokenInput() ?>
         <div class="m-form-group">
             <label class="m-form-label">Title *</label>
             <input type="text" name="title" class="m-form-input" required>
@@ -280,7 +280,7 @@ try {
     <form method="POST" action="process_goals.php">
         <input type="hidden" name="action" value="update_goal">
         <input type="hidden" name="goal_id" id="mEgEditGoalId">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+        <?= csrfTokenInput() ?>
         <div class="m-form-group">
             <label class="m-form-label">Title</label>
             <input type="text" name="title" id="mEgEditTitle" class="m-form-input">
