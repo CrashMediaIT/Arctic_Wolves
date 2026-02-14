@@ -1,140 +1,171 @@
 <?php
 /**
  * Game Plan - Video Review View
- * Full video review interface with drill review, coach review and upload tabs.
- * Merges ACVideoReview functionality into the Game Plan module.
+ * Three tabs: Clips / By Game / Opponent Scouting
+ * Athletes see clips they're tagged in; coaches see all clips.
  */
 
-// ── Data loading ──────────────────────────────────────────────
+// ── Tab & Filter parameters ───────────────────────────────────
+$vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'clips';
+if (!in_array($vr_tab, ['clips', 'by_game', 'scouting'])) $vr_tab = 'clips';
 
-// Assigned coach (for athletes)
-$assigned_coach_id = null;
-$assigned_coach_name = '';
-if ($user_role === 'athlete' || $user_role === 'parent') {
+$vr_tag_cat   = isset($_GET['tag_cat']) ? preg_replace('/[^a-z0-9_-]/', '', $_GET['tag_cat']) : '';
+$vr_tag_id    = isset($_GET['tag_id']) ? (int)$_GET['tag_id'] : 0;
+$vr_date_from = isset($_GET['date_from']) ? preg_replace('/[^0-9-]/', '', $_GET['date_from']) : '';
+$vr_date_to   = isset($_GET['date_to']) ? preg_replace('/[^0-9-]/', '', $_GET['date_to']) : '';
+$vr_search    = $_GET['search'] ?? '';
+$vr_view_mode = isset($_GET['view']) && $_GET['view'] === 'list' ? 'list' : 'grid';
+$vr_game_id   = isset($_GET['game_id']) ? (int)$_GET['game_id'] : 0;
+$vr_opponent  = isset($_GET['opponent']) ? preg_replace('/[^a-zA-Z0-9 _-]/', '', $_GET['opponent']) : '';
+
+// ── Load tag categories & tags ────────────────────────────────
+$vr_tag_categories = [];
+$vr_all_tags = [];
+try {
+    $stmt = $pdo->prepare("SELECT DISTINCT category FROM vr_tags ORDER BY category");
+    $stmt->execute();
+    $vr_tag_categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    $stmt2 = $pdo->prepare("SELECT id, name, category, color FROM vr_tags ORDER BY category, name");
+    $stmt2->execute();
+    $vr_all_tags = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { error_log('VR tags: ' . $e->getMessage()); }
+
+// ── Clips Tab Data ────────────────────────────────────────────
+$vr_clips = [];
+if ($vr_tab === 'clips') {
     try {
-        $coach_stmt = $pdo->prepare("SELECT assigned_coach_id FROM users WHERE id = ?");
-        $coach_stmt->execute([$user_id]);
-        $coach_row = $coach_stmt->fetch();
-        $assigned_coach_id = $coach_row['assigned_coach_id'] ?? null;
-        if ($assigned_coach_id) {
-            $coach_name_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
-            $coach_name_stmt->execute([$assigned_coach_id]);
-            $coach_name_row = $coach_name_stmt->fetch(PDO::FETCH_ASSOC);
-            if ($coach_name_row) {
-                $coach_name_row = decryptUserRow($coach_name_row);
-                $assigned_coach_name = trim(($coach_name_row['first_name'] ?? '') . ' ' . ($coach_name_row['last_name'] ?? ''));
-            }
+        $q = "
+            SELECT c.id, c.title, c.description, c.start_time, c.end_time,
+                   c.thumbnail_path, c.created_at,
+                   vs.filename AS source_filename, vs.camera_angle, vs.duration AS source_duration,
+                   GROUP_CONCAT(DISTINCT t.name ORDER BY t.category, t.name SEPARATOR ', ') AS tag_names,
+                   GROUP_CONCAT(DISTINCT t.category ORDER BY t.category SEPARATOR ', ') AS tag_categories,
+                   GROUP_CONCAT(DISTINCT t.color ORDER BY t.category, t.name SEPARATOR ',') AS tag_colors,
+                   gs.opponent_team, gs.game_date
+            FROM vr_video_clips c
+            LEFT JOIN vr_video_sources vs ON c.source_id = vs.id
+            LEFT JOIN vr_clip_tags ct ON ct.clip_id = c.id
+            LEFT JOIN vr_tags t ON ct.tag_id = t.id
+            LEFT JOIN game_schedules gs ON c.game_id = gs.id
+        ";
+
+        $where = [];
+        $params = [];
+
+        if (!$isAnyCoach) {
+            $where[] = "c.id IN (SELECT clip_id FROM vr_clip_athletes WHERE athlete_id = ?)";
+            $params[] = $user_id;
         }
-    } catch (PDOException $e) { /* ignore */ }
+        if ($vr_tag_cat !== '') {
+            $where[] = "t.category = ?";
+            $params[] = $vr_tag_cat;
+        }
+        if ($vr_tag_id > 0) {
+            $where[] = "ct.tag_id = ?";
+            $params[] = $vr_tag_id;
+        }
+        if ($vr_date_from !== '') {
+            $where[] = "c.created_at >= ?";
+            $params[] = $vr_date_from . ' 00:00:00';
+        }
+        if ($vr_date_to !== '') {
+            $where[] = "c.created_at <= ?";
+            $params[] = $vr_date_to . ' 23:59:59';
+        }
+        if ($vr_search !== '') {
+            $where[] = "(c.title LIKE ? OR c.description LIKE ? OR t.name LIKE ?)";
+            $search_param = '%' . $vr_search . '%';
+            $params[] = $search_param;
+            $params[] = $search_param;
+            $params[] = $search_param;
+        }
+
+        if (!empty($where)) $q .= " WHERE " . implode(" AND ", $where);
+        $q .= " GROUP BY c.id ORDER BY c.created_at DESC LIMIT 100";
+
+        $stmt = $pdo->prepare($q);
+        $stmt->execute($params);
+        $vr_clips = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) { error_log('VR clips: ' . $e->getMessage()); }
 }
 
-// User teams
-$user_teams = [];
-try {
-    $teams_stmt = $pdo->prepare("
-        SELECT id, team_name, league, is_current
-        FROM athlete_teams
-        WHERE (user_id = ? OR athlete_id = ?) AND is_current = 1
-        ORDER BY team_name
-    ");
-    $teams_stmt->execute([$user_id, $user_id]);
-    $user_teams = $teams_stmt->fetchAll();
-} catch (PDOException $e) { /* ignore */ }
-
-// Athletes list for coaches
-$vr_athletes = [];
-if ($isAnyCoach) {
+// ── By Game Tab Data ──────────────────────────────────────────
+$vr_games = [];
+$vr_game_clips = [];
+if ($vr_tab === 'by_game') {
     try {
-        $aq = $pdo->prepare("
-            SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
-            FROM users u WHERE u.assigned_coach_id = ? AND u.is_active = 1 AND u.role = 'athlete'
-            ORDER BY u.last_name, u.first_name
+        $stmt = $pdo->prepare("
+            SELECT gs.id, gs.opponent_team, gs.game_date, gs.game_type, gs.status,
+                   gs.home_score, gs.away_score, gs.is_home_game,
+                   t.name AS team_name,
+                   (SELECT COUNT(*) FROM vr_video_clips vc WHERE vc.game_id = gs.id) AS clip_count
+            FROM game_schedules gs
+            LEFT JOIN teams t ON gs.team_id = t.id
+            ORDER BY gs.game_date DESC
+            LIMIT 50
         ");
-        $aq->execute([$user_id]);
-        $vr_athletes = $aq->fetchAll();
-        $vr_athletes = decryptUserRows($vr_athletes);
-        if (empty($vr_athletes)) {
-            $aq2 = $pdo->query("SELECT u.id, u.first_name, u.last_name, u.email FROM users u WHERE u.is_active = 1 AND u.role = 'athlete' ORDER BY u.last_name, u.first_name");
-            $vr_athletes = $aq2->fetchAll();
-            $vr_athletes = decryptUserRows($vr_athletes);
-        }
-    } catch (PDOException $e) { /* ignore */ }
-}
+        $stmt->execute();
+        $vr_games = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) { error_log('VR games: ' . $e->getMessage()); }
 
-// Filter parameters
-$vr_filter_athlete  = $_GET['filter_athlete'] ?? 'all';
-$vr_filter_period   = $_GET['filter_period'] ?? 'all';
-$vr_filter_category = $_GET['filter_category'] ?? 'all';
-$vr_search          = $_GET['search'] ?? '';
-
-// Build video query (coach review videos)
-if ($isAnyCoach) {
-    $vr_query = "
-        SELECT v.*, 
-               a.first_name as athlete_first_name, a.last_name as athlete_last_name,
-               c.first_name as coach_first_name, c.last_name as coach_last_name,
-               d.title as drill_title, s.title as session_title, s.session_date
-        FROM videos v
-        LEFT JOIN users a ON v.athlete_id = a.id
-        LEFT JOIN users c ON v.coach_id = c.id
-        LEFT JOIN drills d ON v.drill_id = d.id
-        LEFT JOIN sessions s ON v.session_id = s.id
-        WHERE (v.coach_id = ? OR a.assigned_coach_id = ?)
-    ";
-    $vr_params = [$user_id, $user_id];
-} else {
-    $vr_query = "
-        SELECT v.*, 
-               a.first_name as athlete_first_name, a.last_name as athlete_last_name,
-               c.first_name as coach_first_name, c.last_name as coach_last_name,
-               d.title as drill_title, s.title as session_title, s.session_date
-        FROM videos v
-        LEFT JOIN users a ON v.athlete_id = a.id
-        LEFT JOIN users c ON v.coach_id = c.id
-        LEFT JOIN drills d ON v.drill_id = d.id
-        LEFT JOIN sessions s ON v.session_id = s.id
-        WHERE v.athlete_id = ?
-    ";
-    $vr_params = [$user_id];
-}
-
-if ($vr_filter_athlete !== 'all' && $isAnyCoach) {
-    $vr_query .= " AND v.athlete_id = ?";
-    $vr_params[] = $vr_filter_athlete;
-}
-if ($vr_filter_category !== 'all') {
-    $vr_query .= " AND v.video_category = ?";
-    $vr_params[] = $vr_filter_category;
-}
-if ($vr_filter_period === 'today') {
-    $vr_query .= " AND DATE(v.created_at) = CURDATE()";
-} elseif ($vr_filter_period === 'week') {
-    $vr_query .= " AND v.created_at >= DATE_SUB(NOW(), INTERVAL 1 WEEK)";
-} elseif ($vr_filter_period === 'month') {
-    $vr_query .= " AND v.created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)";
-}
-if (!empty($vr_search)) {
-    $vr_query .= " AND (v.title LIKE ? OR v.description LIKE ?)";
-    $vr_params[] = "%$vr_search%";
-    $vr_params[] = "%$vr_search%";
-}
-$vr_query .= " ORDER BY v.created_at DESC LIMIT 50";
-
-$vr_videos = [];
-try {
-    $vr_stmt = $pdo->prepare($vr_query);
-    $vr_stmt->execute($vr_params);
-    $vr_videos = $vr_stmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($vr_videos as &$_v) {
-        foreach (['athlete_first_name','athlete_last_name','coach_first_name','coach_last_name'] as $_f) {
-            if (!empty($_v[$_f])) $_v[$_f] = FieldEncryption::decrypt($_v[$_f]);
-        }
+    if ($vr_game_id > 0) {
+        try {
+            $stmt = $pdo->prepare("
+                SELECT c.id, c.title, c.start_time, c.end_time, c.thumbnail_path, c.created_at,
+                       vs.camera_angle,
+                       GROUP_CONCAT(DISTINCT t.name SEPARATOR ', ') AS tag_names
+                FROM vr_video_clips c
+                LEFT JOIN vr_video_sources vs ON c.source_id = vs.id
+                LEFT JOIN vr_clip_tags ct ON ct.clip_id = c.id
+                LEFT JOIN vr_tags t ON ct.tag_id = t.id
+                WHERE c.game_id = ?
+                GROUP BY c.id ORDER BY c.start_time
+            ");
+            $stmt->execute([$vr_game_id]);
+            $vr_game_clips = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) { error_log('VR game clips: ' . $e->getMessage()); }
     }
-    unset($_v);
-} catch (PDOException $e) { /* ignore */ }
+}
 
-$vr_pending  = array_filter($vr_videos, function($v) { return ($v['status'] ?? '') === 'pending_review' || ($v['status'] ?? '') === 'pending'; });
-$vr_reviewed = array_filter($vr_videos, function($v) { return ($v['status'] ?? '') === 'reviewed'; });
+// ── Opponent Scouting Tab Data ────────────────────────────────
+$vr_opponents = [];
+$vr_scout_clips = [];
+if ($vr_tab === 'scouting') {
+    try {
+        $stmt = $pdo->prepare("SELECT DISTINCT opponent_team FROM game_schedules WHERE opponent_team IS NOT NULL ORDER BY opponent_team");
+        $stmt->execute();
+        $vr_opponents = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) { error_log('VR opponents: ' . $e->getMessage()); }
+
+    if ($vr_opponent !== '') {
+        try {
+            $stmt = $pdo->prepare("
+                SELECT c.id, c.title, c.start_time, c.end_time, c.thumbnail_path, c.created_at,
+                       vs.camera_angle, gs.game_date, gs.opponent_team,
+                       GROUP_CONCAT(DISTINCT t.name SEPARATOR ', ') AS tag_names
+                FROM vr_video_clips c
+                JOIN game_schedules gs ON c.game_id = gs.id
+                LEFT JOIN vr_video_sources vs ON c.source_id = vs.id
+                LEFT JOIN vr_clip_tags ct ON ct.clip_id = c.id
+                LEFT JOIN vr_tags t ON ct.tag_id = t.id
+                WHERE gs.opponent_team = ?
+                GROUP BY c.id ORDER BY gs.game_date DESC, c.start_time
+            ");
+            $stmt->execute([$vr_opponent]);
+            $vr_scout_clips = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) { error_log('VR scout: ' . $e->getMessage()); }
+    }
+}
+
+if (!function_exists('vr_format_duration')) {
+    function vr_format_duration($start, $end) {
+        $dur = abs((float)$end - (float)$start);
+        $m = floor($dur / 60);
+        $s = floor($dur % 60);
+        return sprintf('%d:%02d', $m, $s);
+    }
+}
 ?>
 
 <!-- Page header -->
@@ -142,9 +173,9 @@ $vr_reviewed = array_filter($vr_videos, function($v) { return ($v['status'] ?? '
     <h1 class="gp-page-title"><i class="fas fa-film"></i> Video Review</h1>
     <p class="gp-page-desc">
         <?php if ($isAnyCoach): ?>
-            Review athlete videos, provide feedback, and manage uploads
+            Browse clips, review game footage, and scout opponents
         <?php else: ?>
-            Upload videos for coach review and track feedback
+            View your tagged clips and game highlights
         <?php endif; ?>
     </p>
 </div>
@@ -152,368 +183,308 @@ $vr_reviewed = array_filter($vr_videos, function($v) { return ($v['status'] ?? '
 <!-- Tabs -->
 <div class="vr-tabs-bar">
     <div class="vr-tabs">
-        <button class="vr-tab vr-tab-active" data-vr-tab="pending" type="button">
-            <i class="fas fa-clock"></i> Pending (<?= count($vr_pending) ?>)
-        </button>
-        <button class="vr-tab" data-vr-tab="reviewed" type="button">
-            <i class="fas fa-check-circle"></i> Reviewed (<?= count($vr_reviewed) ?>)
-        </button>
-        <button class="vr-tab" data-vr-tab="upload" type="button">
-            <i class="fas fa-upload"></i> Upload
-        </button>
+        <a class="vr-tab <?= $vr_tab === 'clips' ? 'vr-tab-active' : '' ?>" href="/gameplan.php?page=video_review&tab=clips">
+            <i class="fas fa-scissors"></i> Clips
+        </a>
+        <a class="vr-tab <?= $vr_tab === 'by_game' ? 'vr-tab-active' : '' ?>" href="/gameplan.php?page=video_review&tab=by_game">
+            <i class="fas fa-hockey-puck"></i> By Game
+        </a>
+        <?php if ($isAnyCoach): ?>
+        <a class="vr-tab <?= $vr_tab === 'scouting' ? 'vr-tab-active' : '' ?>" href="/gameplan.php?page=video_review&tab=scouting">
+            <i class="fas fa-binoculars"></i> Opponent Scouting
+        </a>
+        <?php endif; ?>
     </div>
+</div>
 
-    <!-- Filters -->
+<?php if ($vr_tab === 'clips'): ?>
+<!-- ── Clips Tab ── -->
+<div class="vr-filter-bar">
     <form method="GET" action="" class="vr-filters">
         <input type="hidden" name="page" value="video_review">
+        <input type="hidden" name="tab" value="clips">
         <div class="vr-search-wrap">
-            <input type="text" name="search" class="vr-input" placeholder="Search videos…" value="<?= htmlspecialchars($vr_search) ?>">
+            <input type="text" name="search" class="vr-input" placeholder="Search clips…" value="<?= htmlspecialchars($vr_search) ?>">
             <button type="submit" class="vr-search-btn"><i class="fas fa-search"></i></button>
         </div>
-        <?php if ($isAnyCoach && !empty($vr_athletes)): ?>
-        <select name="filter_athlete" class="vr-input vr-select" onchange="this.form.submit()">
-            <option value="all">All Athletes</option>
-            <?php foreach ($vr_athletes as $a): ?>
-            <option value="<?= $a['id'] ?>" <?= $vr_filter_athlete == $a['id'] ? 'selected' : '' ?>>
-                <?= htmlspecialchars(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? '')) ?>
-            </option>
+        <select name="tag_cat" class="vr-input vr-select" onchange="this.form.submit()">
+            <option value="">All Categories</option>
+            <?php foreach ($vr_tag_categories as $cat): ?>
+            <option value="<?= htmlspecialchars($cat) ?>" <?= $vr_tag_cat === $cat ? 'selected' : '' ?>><?= htmlspecialchars(ucfirst($cat)) ?></option>
             <?php endforeach; ?>
         </select>
-        <?php endif; ?>
-        <select name="filter_category" class="vr-input vr-select" onchange="this.form.submit()">
-            <option value="all" <?= $vr_filter_category === 'all' ? 'selected' : '' ?>>All Types</option>
-            <option value="drill" <?= $vr_filter_category === 'drill' ? 'selected' : '' ?>>Drill</option>
-            <option value="game" <?= $vr_filter_category === 'game' ? 'selected' : '' ?>>Game</option>
+        <select name="tag_id" class="vr-input vr-select" onchange="this.form.submit()">
+            <option value="0">All Tags</option>
+            <?php foreach ($vr_all_tags as $tag): ?>
+            <option value="<?= (int)$tag['id'] ?>" <?= $vr_tag_id === (int)$tag['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tag['name']) ?> (<?= htmlspecialchars($tag['category']) ?>)</option>
+            <?php endforeach; ?>
         </select>
-        <select name="filter_period" class="vr-input vr-select" onchange="this.form.submit()">
-            <option value="all" <?= $vr_filter_period === 'all' ? 'selected' : '' ?>>All Time</option>
-            <option value="today" <?= $vr_filter_period === 'today' ? 'selected' : '' ?>>Today</option>
-            <option value="week" <?= $vr_filter_period === 'week' ? 'selected' : '' ?>>This Week</option>
-            <option value="month" <?= $vr_filter_period === 'month' ? 'selected' : '' ?>>This Month</option>
+        <input type="date" name="date_from" class="vr-input" value="<?= htmlspecialchars($vr_date_from) ?>" title="From date" onchange="this.form.submit()">
+        <input type="date" name="date_to" class="vr-input" value="<?= htmlspecialchars($vr_date_to) ?>" title="To date" onchange="this.form.submit()">
+        <a href="/gameplan.php?page=video_review&tab=clips&view=<?= $vr_view_mode === 'grid' ? 'list' : 'grid' ?>" class="vr-view-toggle" title="Toggle view">
+            <i class="fas <?= $vr_view_mode === 'grid' ? 'fa-list' : 'fa-grip' ?>"></i>
+        </a>
+    </form>
+</div>
+
+<?php if (empty($vr_clips)): ?>
+<div class="gp-empty">
+    <i class="fas fa-film"></i>
+    <p>No clips found. <?= $isAnyCoach ? 'Create clips in the Film Room.' : 'Ask your coach to tag you in clips.' ?></p>
+</div>
+<?php elseif ($vr_view_mode === 'grid'): ?>
+<div class="gp-grid">
+    <?php foreach ($vr_clips as $clip): ?>
+    <div class="gp-card" data-clip-id="<?= (int)$clip['id'] ?>">
+        <div class="gp-card-thumb">
+            <?php if (!empty($clip['thumbnail_path'])): ?>
+            <img src="<?= htmlspecialchars($clip['thumbnail_path']) ?>" alt="Clip thumbnail" loading="lazy">
+            <?php else: ?>
+            <i class="fas fa-play-circle"></i>
+            <?php endif; ?>
+            <span class="gp-card-badge"><?= vr_format_duration($clip['start_time'] ?? 0, $clip['end_time'] ?? 0) ?></span>
+        </div>
+        <div class="gp-card-body">
+            <div class="gp-card-title"><?= htmlspecialchars($clip['title'] ?? 'Untitled Clip') ?></div>
+            <div class="gp-card-meta">
+                <?php if (!empty($clip['camera_angle'])): ?>
+                <span><i class="fas fa-video"></i> <?= htmlspecialchars(ucfirst($clip['camera_angle'])) ?></span>
+                <?php endif; ?>
+                <span><i class="fas fa-calendar"></i> <?= date('M j, Y', strtotime($clip['created_at'])) ?></span>
+            </div>
+            <?php if (!empty($clip['tag_names'])): ?>
+            <div class="vr-clip-tags-row">
+                <?php foreach (explode(', ', $clip['tag_names']) as $i => $tname): ?>
+                <?php $colors = explode(',', $clip['tag_colors'] ?? ''); $color = trim($colors[$i] ?? '#6B46C1'); ?>
+                <span class="vr-tag-pill" style="background:<?= htmlspecialchars($color) ?>20;color:<?= htmlspecialchars($color) ?>;border:1px solid <?= htmlspecialchars($color) ?>40"><?= htmlspecialchars($tname) ?></span>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php else: ?>
+<!-- List View grouped by tag category -->
+<?php
+$grouped = [];
+foreach ($vr_clips as $clip) {
+    $cats = $clip['tag_categories'] ?? 'Uncategorized';
+    $first_cat = explode(', ', $cats)[0] ?: 'Uncategorized';
+    $grouped[$first_cat][] = $clip;
+}
+ksort($grouped);
+?>
+<?php foreach ($grouped as $group_name => $group_clips): ?>
+<div class="vr-list-group">
+    <h3 class="vr-section-title"><?= htmlspecialchars(ucfirst($group_name)) ?> (<?= count($group_clips) ?>)</h3>
+    <?php foreach ($group_clips as $clip): ?>
+    <div class="vr-video-row" data-clip-id="<?= (int)$clip['id'] ?>">
+        <div class="vr-thumb">
+            <?php if (!empty($clip['thumbnail_path'])): ?>
+            <img src="<?= htmlspecialchars($clip['thumbnail_path']) ?>" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+            <?php else: ?>
+            <i class="fas fa-play-circle"></i>
+            <?php endif; ?>
+        </div>
+        <div class="vr-details">
+            <h4><?= htmlspecialchars($clip['title'] ?? 'Untitled Clip') ?></h4>
+            <div class="vr-meta">
+                <span><i class="fas fa-clock"></i> <?= vr_format_duration($clip['start_time'] ?? 0, $clip['end_time'] ?? 0) ?></span>
+                <?php if (!empty($clip['camera_angle'])): ?>
+                <span><i class="fas fa-video"></i> <?= htmlspecialchars(ucfirst($clip['camera_angle'])) ?></span>
+                <?php endif; ?>
+                <span><i class="fas fa-calendar"></i> <?= date('M j, Y', strtotime($clip['created_at'])) ?></span>
+                <?php if (!empty($clip['opponent_team'])): ?>
+                <span><i class="fas fa-hockey-puck"></i> vs <?= htmlspecialchars($clip['opponent_team']) ?></span>
+                <?php endif; ?>
+            </div>
+            <?php if (!empty($clip['tag_names'])): ?>
+            <div class="vr-clip-tags-row" style="margin-top:6px">
+                <?php foreach (explode(', ', $clip['tag_names']) as $tname): ?>
+                <span class="vr-tag-pill"><?= htmlspecialchars($tname) ?></span>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endforeach; ?>
+<?php endif; ?>
+
+<?php elseif ($vr_tab === 'by_game'): ?>
+<!-- ── By Game Tab ── -->
+<?php if (empty($vr_games)): ?>
+<div class="gp-empty">
+    <i class="fas fa-calendar-xmark"></i>
+    <p>No games found in the schedule.</p>
+</div>
+<?php else: ?>
+<div class="vr-game-list">
+    <?php foreach ($vr_games as $game): ?>
+    <div class="vr-game-card <?= $vr_game_id === (int)$game['id'] ? 'vr-game-expanded' : '' ?>">
+        <a href="/gameplan.php?page=video_review&tab=by_game&game_id=<?= (int)$game['id'] ?>" class="vr-game-header">
+            <div class="vr-game-info">
+                <span class="vr-game-date"><i class="fas fa-calendar"></i> <?= date('M j, Y – g:ia', strtotime($game['game_date'])) ?></span>
+                <span class="vr-game-matchup">
+                    <?= htmlspecialchars($game['team_name'] ?? 'Team') ?>
+                    <?php if ($game['status'] === 'completed' && $game['home_score'] !== null): ?>
+                        <strong><?= (int)$game['home_score'] ?> – <?= (int)$game['away_score'] ?></strong>
+                    <?php else: ?>
+                        vs
+                    <?php endif; ?>
+                    <?= htmlspecialchars($game['opponent_team']) ?>
+                </span>
+            </div>
+            <div class="vr-game-meta">
+                <span class="vr-status-badge vr-badge-<?= htmlspecialchars($game['status']) ?>"><?= htmlspecialchars(ucfirst($game['status'])) ?></span>
+                <span class="vr-clip-count"><i class="fas fa-scissors"></i> <?= (int)$game['clip_count'] ?> clips</span>
+            </div>
+        </a>
+        <?php if ($vr_game_id === (int)$game['id']): ?>
+        <div class="vr-game-clips">
+            <?php if (!empty($vr_game_clips)): ?>
+            <?php foreach ($vr_game_clips as $gc): ?>
+            <div class="vr-video-row">
+                <div class="vr-thumb"><i class="fas fa-play-circle"></i></div>
+                <div class="vr-details">
+                    <h4><?= htmlspecialchars($gc['title'] ?? 'Clip') ?></h4>
+                    <div class="vr-meta">
+                        <span><i class="fas fa-clock"></i> <?= vr_format_duration($gc['start_time'] ?? 0, $gc['end_time'] ?? 0) ?></span>
+                        <?php if (!empty($gc['camera_angle'])): ?>
+                        <span><i class="fas fa-video"></i> <?= htmlspecialchars(ucfirst($gc['camera_angle'])) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($gc['tag_names'])): ?>
+                        <span><i class="fas fa-tags"></i> <?= htmlspecialchars($gc['tag_names']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+            <?php else: ?>
+            <div class="gp-empty" style="padding:20px"><i class="fas fa-film"></i><p>No clips for this game yet.</p></div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php elseif ($vr_tab === 'scouting'): ?>
+<!-- ── Opponent Scouting Tab ── -->
+<div class="vr-filter-bar">
+    <form method="GET" class="vr-filters">
+        <input type="hidden" name="page" value="video_review">
+        <input type="hidden" name="tab" value="scouting">
+        <select name="opponent" class="vr-input vr-select" onchange="this.form.submit()">
+            <option value="">— Select Opponent —</option>
+            <?php foreach ($vr_opponents as $opp): ?>
+            <option value="<?= htmlspecialchars($opp) ?>" <?= $vr_opponent === $opp ? 'selected' : '' ?>><?= htmlspecialchars($opp) ?></option>
+            <?php endforeach; ?>
         </select>
     </form>
 </div>
 
-<!-- ── Pending Tab ── -->
-<div class="vr-panel vr-panel-visible" id="vr-panel-pending">
-    <h3 class="vr-section-title">Pending Reviews (<?= count($vr_pending) ?>)</h3>
-    <?php if (!empty($vr_pending)): ?>
-        <?php foreach ($vr_pending as $video): ?>
-        <div class="vr-video-row" data-video-id="<?= (int)$video['id'] ?>">
-            <div class="vr-thumb"><i class="fas fa-play-circle"></i></div>
-            <div class="vr-details">
-                <h4><?= htmlspecialchars($video['title'] ?? 'Untitled Video') ?></h4>
-                <div class="vr-meta">
-                    <span><i class="fas fa-user"></i> <?= htmlspecialchars(trim(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? ''))) ?></span>
-                    <span><i class="fas fa-calendar"></i> <?= date('M j, Y', strtotime($video['created_at'])) ?></span>
-                    <?php $cat = $video['video_category'] ?? 'drill'; ?>
-                    <span class="vr-cat-badge vr-cat-<?= $cat ?>">
-                        <i class="fas <?= $cat === 'game' ? 'fa-hockey-puck' : 'fa-dumbbell' ?>"></i> <?= ucfirst($cat) ?>
-                    </span>
-                </div>
-            </div>
-            <span class="vr-status-badge vr-badge-pending"><i class="fas fa-clock"></i> Pending</span>
-            <div class="vr-actions">
-                <?php if ($isAnyCoach): ?>
-                <button type="button" class="vr-btn-icon vr-btn-review" title="Review"
-                        data-vr-review="<?= (int)$video['id'] ?>"
-                        data-vr-title="<?= htmlspecialchars($video['title'] ?? 'Untitled', ENT_QUOTES) ?>"
-                        data-vr-athlete="<?= htmlspecialchars(trim(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? '')), ENT_QUOTES) ?>">
-                    <i class="fas fa-clipboard-check"></i>
-                </button>
-                <?php endif; ?>
-                <button type="button" class="vr-btn-icon vr-btn-delete" title="Delete" data-vr-delete="<?= (int)$video['id'] ?>">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <div class="gp-empty">
-            <i class="fas fa-clock"></i>
-            <p><?= $isAnyCoach ? 'No videos pending review.' : 'No pending reviews. Upload a video for your coach!' ?></p>
-        </div>
-    <?php endif; ?>
+<?php if ($vr_opponent === ''): ?>
+<div class="gp-empty">
+    <i class="fas fa-binoculars"></i>
+    <p>Select an opponent team above to view scouting clips.</p>
 </div>
-
-<!-- ── Reviewed Tab ── -->
-<div class="vr-panel" id="vr-panel-reviewed">
-    <h3 class="vr-section-title">Reviewed Videos (<?= count($vr_reviewed) ?>)</h3>
-    <?php if (!empty($vr_reviewed)): ?>
-        <?php foreach ($vr_reviewed as $video): ?>
-        <div class="vr-video-row" data-video-id="<?= (int)$video['id'] ?>">
-            <div class="vr-thumb"><i class="fas fa-play-circle"></i></div>
-            <div class="vr-details">
-                <h4><?= htmlspecialchars($video['title'] ?? 'Untitled Video') ?></h4>
-                <div class="vr-meta">
-                    <span><i class="fas fa-user"></i> <?= htmlspecialchars(trim(($video['athlete_first_name'] ?? '') . ' ' . ($video['athlete_last_name'] ?? ''))) ?></span>
-                    <span><i class="fas fa-calendar"></i> <?= date('M j, Y', strtotime($video['created_at'])) ?></span>
-                    <?php $cat = $video['video_category'] ?? 'drill'; ?>
-                    <span class="vr-cat-badge vr-cat-<?= $cat ?>">
-                        <i class="fas <?= $cat === 'game' ? 'fa-hockey-puck' : 'fa-dumbbell' ?>"></i> <?= ucfirst($cat) ?>
-                    </span>
-                </div>
-                <?php if (!empty($video['coach_notes'])): ?>
-                <div class="vr-coach-notes">
-                    <i class="fas fa-comment"></i> <?= htmlspecialchars(substr($video['coach_notes'], 0, 120)) ?><?= strlen($video['coach_notes'] ?? '') > 120 ? '…' : '' ?>
-                </div>
-                <?php endif; ?>
-            </div>
-            <span class="vr-status-badge vr-badge-reviewed"><i class="fas fa-check-circle"></i> Reviewed</span>
-            <div class="vr-actions">
-                <button type="button" class="vr-btn-icon vr-btn-delete" title="Delete" data-vr-delete="<?= (int)$video['id'] ?>">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <div class="gp-empty">
-            <i class="fas fa-check-circle"></i>
-            <p>No reviewed videos yet.</p>
-        </div>
-    <?php endif; ?>
+<?php elseif (empty($vr_scout_clips)): ?>
+<div class="gp-empty">
+    <i class="fas fa-film"></i>
+    <p>No clips found for games against <?= htmlspecialchars($vr_opponent) ?>.</p>
 </div>
-
-<!-- ── Upload Tab ── -->
-<div class="vr-panel" id="vr-panel-upload">
-    <div class="vr-upload-card">
-        <h3><i class="fas fa-cloud-upload-alt"></i> Upload Video for Review</h3>
-
-        <?php if (!$isAnyCoach && !$assigned_coach_id): ?>
-        <div class="vr-alert vr-alert-warning">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>You don't have an assigned coach yet. Please contact an administrator.</span>
-        </div>
-        <?php else: ?>
-        <?php if (!$isAnyCoach && $assigned_coach_name): ?>
-        <div class="vr-alert vr-alert-info">
-            <i class="fas fa-user-tie"></i>
-            <span>Your coach: <strong><?= htmlspecialchars($assigned_coach_name) ?></strong></span>
-        </div>
-        <?php endif; ?>
-
-        <form class="vr-upload-form" method="POST" action="/process_video.php" enctype="multipart/form-data" id="vrUploadForm">
-            <?= csrfTokenInput() ?>
-            <input type="hidden" name="action" value="athlete_upload_video">
-            <?php if (!$isAnyCoach && $assigned_coach_id): ?>
-            <input type="hidden" name="coach_id" value="<?= (int)$assigned_coach_id ?>">
+<?php else: ?>
+<h3 class="vr-section-title">Clips vs <?= htmlspecialchars($vr_opponent) ?> (<?= count($vr_scout_clips) ?>)</h3>
+<div class="gp-grid">
+    <?php foreach ($vr_scout_clips as $sc): ?>
+    <div class="gp-card">
+        <div class="gp-card-thumb">
+            <?php if (!empty($sc['thumbnail_path'])): ?>
+            <img src="<?= htmlspecialchars($sc['thumbnail_path']) ?>" alt="" loading="lazy">
+            <?php else: ?>
+            <i class="fas fa-play-circle"></i>
             <?php endif; ?>
-            <input type="hidden" name="athlete_id" value="<?= (int)$user_id ?>">
-
-            <div class="vr-form-row">
-                <div class="vr-form-group">
-                    <label>Video Title <span class="vr-req">*</span></label>
-                    <input type="text" name="title" class="vr-input" placeholder="e.g., Power Play Practice" required>
-                </div>
-                <div class="vr-form-group">
-                    <label>Video Type <span class="vr-req">*</span></label>
-                    <select name="video_category" class="vr-input" id="vrCategorySelect" required>
-                        <option value="">-- Select Type --</option>
-                        <option value="drill">Drill / Practice</option>
-                        <option value="game">Game Footage</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="vrGameFields" style="display:none;">
-                <div class="vr-form-row">
-                    <div class="vr-form-group">
-                        <label>Game Date <span class="vr-req">*</span></label>
-                        <input type="date" name="game_date" class="vr-input" max="<?= date('Y-m-d') ?>">
-                    </div>
-                    <div class="vr-form-group">
-                        <label>Your Team <span class="vr-req">*</span></label>
-                        <select name="team_played_on" class="vr-input">
-                            <option value="">-- Select Team --</option>
-                            <?php foreach ($user_teams as $team): ?>
-                            <option value="<?= htmlspecialchars($team['team_name']) ?>">
-                                <?= htmlspecialchars($team['team_name']) ?>
-                                <?= !empty($team['league']) ? ' (' . htmlspecialchars($team['league']) . ')' : '' ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="vr-form-group">
-                    <label>Opponent Team <span class="vr-req">*</span></label>
-                    <input type="text" name="opponent_team" class="vr-input" placeholder="e.g., Thunder Bay Kings">
-                </div>
-            </div>
-
-            <div id="vrDrillFields">
-                <div class="vr-form-row">
-                    <div class="vr-form-group">
-                        <label>Drill Type</label>
-                        <select name="drill_type" class="vr-input">
-                            <option value="">-- Select Drill Type --</option>
-                            <option value="skating">Skating</option>
-                            <option value="shooting">Shooting</option>
-                            <option value="passing">Passing</option>
-                            <option value="stickhandling">Stickhandling</option>
-                            <option value="defensive">Defensive</option>
-                            <option value="conditioning">Conditioning</option>
-                            <option value="goaltending">Goaltending</option>
-                            <option value="team_play">Team Play</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div class="vr-form-group">
-                        <label>Practice Date</label>
-                        <input type="date" name="session_date" class="vr-input" max="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d') ?>">
-                    </div>
-                </div>
-            </div>
-
-            <div class="vr-form-group">
-                <label>Video File <span class="vr-req">*</span></label>
-                <div class="vr-file-area" id="vrFileArea">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <p>Drag &amp; drop video file here or click to browse</p>
-                    <span class="vr-file-hint">Supported: MP4, MOV, AVI, WebM (max 500 MB)</span>
-                    <input type="file" name="video_file" accept="video/*" id="vrFileInput" style="display:none;" required>
-                </div>
-                <div class="vr-selected-file" id="vrSelectedFile" style="display:none;">
-                    <i class="fas fa-file-video"></i>
-                    <span id="vrFileName"></span>
-                    <button type="button" class="vr-btn-remove" id="vrRemoveFile"><i class="fas fa-times"></i></button>
-                </div>
-            </div>
-
-            <div class="vr-form-group">
-                <label>Notes for Coach</label>
-                <textarea name="description" class="vr-input vr-textarea" rows="4" placeholder="Describe what you'd like feedback on…"></textarea>
-            </div>
-
-            <div class="vr-form-actions">
-                <button type="submit" class="vr-btn-primary"><i class="fas fa-upload"></i> Upload for Review</button>
-            </div>
-        </form>
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- Review Modal -->
-<?php if ($isAnyCoach): ?>
-<div class="vr-modal-overlay" id="vrReviewModal">
-    <div class="vr-modal-sheet">
-        <div class="vr-modal-header">
-            <span class="vr-modal-title">Review Video</span>
-            <button type="button" class="vr-modal-close" id="vrCloseModal" aria-label="Close">&times;</button>
+            <span class="gp-card-badge"><?= vr_format_duration($sc['start_time'] ?? 0, $sc['end_time'] ?? 0) ?></span>
         </div>
-        <div class="vr-modal-athlete" id="vrReviewInfo"></div>
-        <form id="vrReviewForm" method="POST" action="/process_video.php">
-            <?= csrfTokenInput() ?>
-            <input type="hidden" name="action" value="review_video">
-            <input type="hidden" name="video_id" id="vrReviewVideoId" value="">
-            <textarea class="vr-input vr-textarea" name="coach_notes" id="vrReviewNotes" rows="6" placeholder="Enter your coaching notes…" required></textarea>
-            <button type="submit" class="vr-btn-primary vr-btn-full" id="vrReviewSubmit">
-                <i class="fas fa-check"></i> Submit Review
-            </button>
-        </form>
+        <div class="gp-card-body">
+            <div class="gp-card-title"><?= htmlspecialchars($sc['title'] ?? 'Clip') ?></div>
+            <div class="gp-card-meta">
+                <span><i class="fas fa-calendar"></i> <?= date('M j, Y', strtotime($sc['game_date'])) ?></span>
+                <?php if (!empty($sc['camera_angle'])): ?>
+                <span><i class="fas fa-video"></i> <?= htmlspecialchars(ucfirst($sc['camera_angle'])) ?></span>
+                <?php endif; ?>
+            </div>
+            <?php if (!empty($sc['tag_names'])): ?>
+            <div class="vr-clip-tags-row">
+                <?php foreach (explode(', ', $sc['tag_names']) as $tname): ?>
+                <span class="vr-tag-pill"><?= htmlspecialchars($tname) ?></span>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
     </div>
+    <?php endforeach; ?>
 </div>
 <?php endif; ?>
-
-<div class="vr-toast" id="vrToast"></div>
+<?php endif; ?>
 
 <style>
-/* ── Video Review styles (scoped with vr- prefix) ── */
 .vr-tabs-bar { background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 14px; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
 .vr-tabs { display: flex; gap: 4px; background: rgba(10,10,15,.6); padding: 5px; border-radius: 10px; border: 1px solid rgba(45,45,63,.5); }
-.vr-tab { padding: 10px 18px; background: transparent; border: none; color: var(--gp-text-dim); border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 7px; font-family: 'Inter', sans-serif; height: auto; }
+.vr-tab { padding: 10px 18px; background: transparent; border: none; color: var(--gp-text-dim); border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 7px; font-family: 'Inter', sans-serif; text-decoration: none; }
 .vr-tab:hover { color: var(--gp-text); background: rgba(107,70,193,.12); }
 .vr-tab.vr-tab-active { color: #fff; background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-light)); }
 
+.vr-filter-bar { background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
 .vr-filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .vr-search-wrap { display: flex; }
 .vr-search-wrap .vr-input { border-radius: 8px 0 0 8px; min-width: 180px; }
 .vr-search-btn { padding: 0 14px; height: 40px; background: var(--gp-primary); border: none; border-radius: 0 8px 8px 0; color: #fff; cursor: pointer; font-family: 'Inter', sans-serif; }
 .vr-select { min-width: 130px; }
-
 .vr-input { background: var(--gp-bg); border: 1px solid var(--gp-border); border-radius: 8px; color: var(--gp-text); font-size: 13px; padding: 9px 14px; font-family: 'Inter', sans-serif; height: 40px; box-sizing: border-box; }
 .vr-input:focus { border-color: var(--gp-primary-light); outline: none; }
-.vr-textarea { height: auto; min-height: 100px; resize: vertical; }
-
-.vr-panel { display: none; }
-.vr-panel.vr-panel-visible { display: block; animation: vrFadeIn .35s ease-out; }
-@keyframes vrFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.vr-view-toggle { width: 40px; height: 40px; background: var(--gp-bg); border: 1px solid var(--gp-border); color: var(--gp-text-muted); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: all .2s; }
+.vr-view-toggle:hover { border-color: var(--gp-primary-light); color: var(--gp-primary-light); }
 
 .vr-section-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--gp-border); display: flex; align-items: center; gap: 10px; color: var(--gp-text); }
 .vr-section-title::before { content: ''; width: 4px; height: 20px; background: linear-gradient(180deg, var(--gp-primary), var(--gp-primary-light)); border-radius: 2px; }
 
-.vr-video-row { display: grid; grid-template-columns: 80px 1fr auto auto; align-items: center; gap: 16px; padding: 14px 18px; background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 12px; margin-bottom: 10px; transition: border-color .2s, transform .15s; }
-.vr-video-row:hover { border-color: rgba(107,70,193,.4); transform: translateY(-2px); }
+.vr-clip-tags-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.vr-tag-pill { padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; background: rgba(107,70,193,.12); color: var(--gp-primary-light); border: 1px solid rgba(107,70,193,.25); }
 
-.vr-thumb { width: 80px; height: 56px; background: rgba(107,70,193,.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--gp-primary-light); border: 1px solid rgba(107,70,193,.2); }
+.vr-video-row { display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 18px; background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 12px; margin-bottom: 10px; transition: border-color .2s, transform .15s; }
+.vr-video-row:hover { border-color: rgba(107,70,193,.4); transform: translateY(-2px); }
+.vr-thumb { width: 80px; height: 56px; background: rgba(107,70,193,.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--gp-primary-light); border: 1px solid rgba(107,70,193,.2); overflow: hidden; }
 .vr-details { min-width: 0; }
 .vr-details h4 { font-size: 14px; font-weight: 700; color: var(--gp-text); margin: 0 0 6px; }
 .vr-meta { display: flex; flex-wrap: wrap; gap: 14px; }
 .vr-meta span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--gp-text-muted); }
 .vr-meta i { color: var(--gp-primary-light); font-size: 11px; }
-.vr-cat-badge { padding: 3px 9px; border-radius: 16px; font-size: 10px; font-weight: 600; }
-.vr-cat-drill { background: rgba(107,70,193,.12); color: var(--gp-primary-light); }
-.vr-cat-game { background: rgba(16,185,129,.12); color: #10B981; }
-.vr-coach-notes { margin-top: 8px; padding: 7px 10px; background: rgba(107,70,193,.08); border-radius: 7px; font-size: 12px; color: var(--gp-text-muted); display: flex; align-items: flex-start; gap: 7px; }
-.vr-coach-notes i { color: var(--gp-primary-light); margin-top: 2px; }
+.vr-list-group { margin-bottom: 28px; }
 
-.vr-status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
-.vr-badge-pending { background: rgba(245,158,11,.1); color: #F59E0B; border: 1px solid rgba(245,158,11,.2); }
-.vr-badge-reviewed { background: rgba(16,185,129,.1); color: #10B981; border: 1px solid rgba(16,185,129,.2); }
+.vr-game-list { display: flex; flex-direction: column; gap: 10px; }
+.vr-game-card { background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 12px; overflow: hidden; transition: border-color .2s; }
+.vr-game-card:hover, .vr-game-expanded { border-color: rgba(107,70,193,.4); }
+.vr-game-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; text-decoration: none; color: var(--gp-text); gap: 16px; }
+.vr-game-info { display: flex; flex-direction: column; gap: 4px; }
+.vr-game-date { font-size: 12px; color: var(--gp-text-muted); display: inline-flex; align-items: center; gap: 6px; }
+.vr-game-date i { color: var(--gp-primary-light); }
+.vr-game-matchup { font-size: 15px; font-weight: 700; }
+.vr-game-meta { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.vr-clip-count { font-size: 12px; color: var(--gp-text-muted); display: inline-flex; align-items: center; gap: 5px; }
+.vr-clip-count i { color: var(--gp-primary-light); }
+.vr-game-clips { padding: 0 20px 16px; border-top: 1px solid var(--gp-border); }
 
-.vr-actions { display: flex; gap: 6px; }
-.vr-btn-icon { width: 36px; height: 36px; background: var(--gp-bg); border: 1px solid var(--gp-border); color: var(--gp-text-muted); border-radius: 8px; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; padding: 0; font-family: 'Inter', sans-serif; }
-.vr-btn-icon:hover { transform: translateY(-1px); }
-.vr-btn-review:hover { background: #10B981; border-color: #10B981; color: #fff; }
-.vr-btn-delete:hover { background: #EF4444; border-color: #EF4444; color: #fff; }
-
-/* Upload card */
-.vr-upload-card { background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 14px; padding: 28px; }
-.vr-upload-card h3 { font-size: 18px; font-weight: 700; margin: 0 0 24px; display: flex; align-items: center; gap: 10px; color: var(--gp-text); }
-.vr-upload-card h3 i { color: var(--gp-primary-light); }
-
-.vr-alert { padding: 14px 18px; border-radius: 10px; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 13px; }
-.vr-alert-warning { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); color: #F59E0B; }
-.vr-alert-info { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.25); color: #3B82F6; }
-
-.vr-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.vr-form-group { margin-bottom: 18px; }
-.vr-form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--gp-text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
-.vr-req { color: #EF4444; }
-
-.vr-file-area { border: 2px dashed var(--gp-border); border-radius: 12px; padding: 40px 24px; text-align: center; cursor: pointer; transition: border-color .2s; }
-.vr-file-area:hover { border-color: var(--gp-primary-light); }
-.vr-file-area i { font-size: 40px; color: var(--gp-primary-light); opacity: .4; display: block; margin-bottom: 12px; }
-.vr-file-area p { color: var(--gp-text-muted); font-size: 13px; margin: 0 0 6px; }
-.vr-file-hint { font-size: 11px; color: var(--gp-text-dim); }
-
-.vr-selected-file { display: flex; align-items: center; gap: 10px; padding: 14px; background: rgba(107,70,193,.08); border: 1px solid var(--gp-primary); border-radius: 10px; }
-.vr-selected-file i { font-size: 20px; color: var(--gp-primary-light); }
-.vr-selected-file span { flex: 1; color: var(--gp-text); font-weight: 500; font-size: 13px; }
-.vr-btn-remove { background: transparent; border: none; color: var(--gp-text-dim); cursor: pointer; padding: 4px 6px; font-family: 'Inter', sans-serif; height: auto; }
-.vr-btn-remove:hover { color: #EF4444; }
-
-.vr-form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid var(--gp-border); margin-top: 24px; }
-.vr-btn-primary { padding: 10px 22px; border-radius: 8px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-light)); border: none; color: #fff; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-family: 'Inter', sans-serif; transition: opacity .2s; height: auto; }
-.vr-btn-primary:hover { opacity: .9; }
-.vr-btn-full { width: 100%; justify-content: center; margin-top: 12px; }
-
-/* Review Modal */
-.vr-modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.65); align-items: center; justify-content: center; }
-.vr-modal-overlay.vr-modal-open { display: flex; }
-.vr-modal-sheet { background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 16px; width: 90%; max-width: 520px; padding: 24px; animation: vrSlideIn .25s ease-out; }
-@keyframes vrSlideIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-.vr-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.vr-modal-title { font-size: 16px; font-weight: 700; color: var(--gp-text); }
-.vr-modal-close { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--gp-border); background: transparent; color: var(--gp-text-muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-family: 'Inter', sans-serif; }
-.vr-modal-close:hover { background: var(--gp-primary); border-color: var(--gp-primary); color: #fff; }
-.vr-modal-athlete { font-size: 13px; color: var(--gp-text-muted); margin-bottom: 12px; }
-
-/* Toast */
-.vr-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 300; opacity: 0; transition: opacity .3s; font-family: 'Inter', sans-serif; pointer-events: none; }
-.vr-toast.vr-toast-show { opacity: 1; }
-.vr-toast-success { background: rgba(16,185,129,.92); color: #fff; }
-.vr-toast-error { background: rgba(239,68,68,.92); color: #fff; }
+.vr-status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+.vr-badge-scheduled { background: rgba(59,130,246,.1); color: #3B82F6; border: 1px solid rgba(59,130,246,.2); }
+.vr-badge-completed { background: rgba(16,185,129,.1); color: #10B981; border: 1px solid rgba(16,185,129,.2); }
+.vr-badge-in_progress { background: rgba(245,158,11,.1); color: #F59E0B; border: 1px solid rgba(245,158,11,.2); }
+.vr-badge-cancelled { background: rgba(239,68,68,.1); color: #EF4444; border: 1px solid rgba(239,68,68,.2); }
+.vr-badge-postponed { background: rgba(168,168,184,.1); color: var(--gp-text-muted); border: 1px solid rgba(168,168,184,.2); }
 
 @media (max-width: 768px) {
     .vr-tabs-bar { flex-direction: column; align-items: stretch; padding: 14px; }
@@ -523,137 +494,6 @@ $vr_reviewed = array_filter($vr_videos, function($v) { return ($v['status'] ?? '
     .vr-select { width: 100%; }
     .vr-video-row { grid-template-columns: 1fr; }
     .vr-thumb { display: none; }
-    .vr-form-row { grid-template-columns: 1fr; }
+    .vr-game-header { flex-direction: column; align-items: flex-start; }
 }
 </style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    /* Tab switching */
-    document.querySelectorAll('[data-vr-tab]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.vr-tab').forEach(function(t) { t.classList.remove('vr-tab-active'); });
-            document.querySelectorAll('.vr-panel').forEach(function(p) { p.classList.remove('vr-panel-visible'); });
-            btn.classList.add('vr-tab-active');
-            var panel = document.getElementById('vr-panel-' + btn.dataset.vrTab);
-            if (panel) panel.classList.add('vr-panel-visible');
-        });
-    });
-
-    /* Toast helper */
-    function vrToast(msg, type) {
-        var t = document.getElementById('vrToast');
-        t.textContent = msg;
-        t.className = 'vr-toast vr-toast-show ' + (type === 'error' ? 'vr-toast-error' : 'vr-toast-success');
-        setTimeout(function() { t.classList.remove('vr-toast-show'); }, 3000);
-    }
-
-    /* Category toggle */
-    var catSelect = document.getElementById('vrCategorySelect');
-    if (catSelect) {
-        catSelect.addEventListener('change', function() {
-            var gf = document.getElementById('vrGameFields');
-            var df = document.getElementById('vrDrillFields');
-            if (this.value === 'game') {
-                gf.style.display = 'block';
-                df.style.display = 'none';
-            } else {
-                gf.style.display = 'none';
-                df.style.display = 'block';
-            }
-        });
-    }
-
-    /* File upload area */
-    var fileArea = document.getElementById('vrFileArea');
-    var fileInput = document.getElementById('vrFileInput');
-    var selectedFile = document.getElementById('vrSelectedFile');
-    var fileName = document.getElementById('vrFileName');
-    var removeBtn = document.getElementById('vrRemoveFile');
-    var MAX_FILE_SIZE = 500 * 1024 * 1024;
-
-    if (fileArea && fileInput) {
-        fileArea.addEventListener('click', function() { fileInput.click(); });
-        fileArea.addEventListener('dragover', function(e) { e.preventDefault(); fileArea.style.borderColor = 'var(--gp-primary-light)'; });
-        fileArea.addEventListener('dragleave', function(e) { e.preventDefault(); fileArea.style.borderColor = ''; });
-        fileArea.addEventListener('drop', function(e) {
-            e.preventDefault();
-            fileArea.style.borderColor = '';
-            if (e.dataTransfer.files.length > 0 && e.dataTransfer.files[0].type.startsWith('video/')) {
-                if (e.dataTransfer.files[0].size <= MAX_FILE_SIZE) {
-                    fileInput.files = e.dataTransfer.files;
-                    showFile(e.dataTransfer.files[0]);
-                } else {
-                    vrToast('File exceeds 500 MB limit', 'error');
-                }
-            }
-        });
-        fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                if (this.files[0].size <= MAX_FILE_SIZE) {
-                    showFile(this.files[0]);
-                } else {
-                    vrToast('File exceeds 500 MB limit', 'error');
-                    this.value = '';
-                }
-            }
-        });
-    }
-    if (removeBtn) {
-        removeBtn.addEventListener('click', function() {
-            fileInput.value = '';
-            selectedFile.style.display = 'none';
-            fileArea.style.display = 'block';
-        });
-    }
-    function showFile(file) {
-        var mb = (file.size / (1024 * 1024)).toFixed(1);
-        fileName.textContent = file.name + ' (' + mb + ' MB)';
-        selectedFile.style.display = 'flex';
-        fileArea.style.display = 'none';
-    }
-
-    /* Delete video */
-    document.querySelectorAll('[data-vr-delete]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            if (!confirm('Delete this video? This cannot be undone.')) return;
-            var body = new FormData();
-            body.append('action', 'delete_video');
-            body.append('video_id', btn.dataset.vrDelete);
-            body.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
-            fetch('/process_video.php', { method: 'POST', body: body })
-                .then(function(r) { return r.json(); })
-                .then(function(d) {
-                    if (d.success) { vrToast('Video deleted', 'success'); setTimeout(function() { location.reload(); }, 800); }
-                    else { vrToast(d.error || 'Delete failed', 'error'); }
-                })
-                .catch(function() { vrToast('Network error', 'error'); });
-        });
-    });
-
-    /* Review modal */
-    var reviewModal = document.getElementById('vrReviewModal');
-    if (reviewModal) {
-        document.querySelectorAll('[data-vr-review]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.getElementById('vrReviewVideoId').value = btn.dataset.vrReview;
-                document.getElementById('vrReviewInfo').textContent =
-                    (btn.dataset.vrAthlete ? btn.dataset.vrAthlete + ' — ' : '') + btn.dataset.vrTitle;
-                document.getElementById('vrReviewNotes').value = '';
-                reviewModal.classList.add('vr-modal-open');
-            });
-        });
-        document.getElementById('vrCloseModal').addEventListener('click', function() {
-            reviewModal.classList.remove('vr-modal-open');
-        });
-        reviewModal.addEventListener('click', function(e) {
-            if (e.target === reviewModal) reviewModal.classList.remove('vr-modal-open');
-        });
-    }
-
-    /* Keyboard close */
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && reviewModal) reviewModal.classList.remove('vr-modal-open');
-    });
-});
-</script>
