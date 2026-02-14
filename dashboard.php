@@ -294,7 +294,15 @@ $allowed_pages = [
     // Profile and Settings
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
-    'gameplan'                => 'views/gameplan.php'
+    'gameplan'                => 'views/gameplan_dashboard.php',
+    'gameplan_video'          => 'views/gameplan_dashboard.php',
+    'gameplan_calendar'       => 'views/gameplan_dashboard.php',
+    'gameplan_plans'          => 'views/gameplan_dashboard.php',
+    'gameplan_film_room'      => 'views/gameplan_dashboard.php',
+    'gameplan_review_sessions'=> 'views/gameplan_dashboard.php',
+    'gameplan_my_clips'       => 'views/gameplan_dashboard.php',
+    'gameplan_permissions'    => 'views/gameplan_dashboard.php',
+    'gameplan_lines'          => 'views/gameplan_dashboard.php'
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
@@ -793,7 +801,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video Recording
             </a>
-            <a href="/gameplan.php" class="nav-link">
+            <a href="?page=gameplan" class="nav-link <?= strpos($page, 'gameplan') === 0 ? 'active' : '' ?>">
                 <i class="fa-solid fa-chess-board icon"></i> Game Plan
             </a>
         </nav>
