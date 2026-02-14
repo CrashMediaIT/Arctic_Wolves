@@ -788,7 +788,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=record_drill_video" class="nav-link <?= $page=='record_drill_video'?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video Recording
             </a>
-            <a href="?page=gameplan" class="nav-link <?= $page=='gameplan'?'active':'' ?>">
+            <a href="/gameplan.php" class="nav-link">
                 <i class="fa-solid fa-chess-board icon"></i> Game Plan
             </a>
         </nav>
