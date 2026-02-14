@@ -156,7 +156,7 @@ $allowed_pages = [
     'admin_age_skill'         => 'views/admin_age_skill.php',
     'eval_framework'          => 'views/admin_eval_framework.php',
     'system_notification'     => 'views/admin_notifications.php',
-    'audit_log'               => 'views/admin_audit_logs.php',
+    // audit_log removed - functionality is in admin_security.php (Audit Log tab)
     'cron_jobs'               => 'views/admin_cron_jobs.php',
     'system_tools'            => 'views/admin_system_tools.php',
     'admin_database_tools'    => 'views/admin_database_tools.php',

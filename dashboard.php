@@ -209,7 +209,7 @@ $allowed_pages = [
     'admin_age_skill'         => 'views/admin_age_skill.php',
     'eval_framework'          => 'views/admin_eval_framework.php',
     'system_notification'     => 'views/admin_notifications.php',
-    'audit_log'               => 'views/admin_audit_logs.php',
+    // audit_log removed - functionality is in admin_security.php (Audit Log tab)
     'cron_jobs'               => 'views/admin_cron_jobs.php',
     'system_tools'            => 'views/admin_system_tools.php',
     'admin_database_tools'    => 'views/admin_database_tools.php',
@@ -911,9 +911,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>">
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools
             </a>
-            <a href="?page=audit_log" class="nav-link <?= $page=='audit_log'?'active':'' ?>">
-                <i class="fa-solid fa-clipboard-list icon"></i> Audit Log
-            </a>
+            <!-- Audit Log removed - available in Security Center -->
             <a href="?page=gameplan_settings" class="nav-link <?= $page=='gameplan_settings'?'active':'' ?>">
                 <i class="fa-solid fa-chess-board icon"></i> Game Plan Settings
             </a>

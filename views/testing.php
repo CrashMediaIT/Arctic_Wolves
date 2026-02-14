@@ -231,7 +231,7 @@ $server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
         <a href="?page=admin_database_tools" class="btn-secondary">
             <i class="fa-solid fa-database"></i> Database Tools
         </a>
-        <a href="?page=audit_log" class="btn-secondary">
+        <a href="?page=admin_security&tab=audit_logs" class="btn-secondary">
             <i class="fa-solid fa-list"></i> Audit Logs
         </a>
         <a href="?page=admin_cron_jobs" class="btn-secondary">
