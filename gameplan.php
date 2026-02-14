@@ -292,8 +292,7 @@ try {
             if (file_exists($view_file)) {
                 include $view_file;
             } else {
-                // Default home view rendered inline
-                include $allowed_pages['home'] ?? __DIR__ . '/views/gameplan/home.php';
+                include 'views/gameplan/home.php';
             }
             ?>
         </div>
