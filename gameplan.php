@@ -1,12 +1,12 @@
 <?php
 /**
- * Game Plan - Video Review Interface
+ * Game Plan - Standalone Dashboard Module
  *
- * Entry point for the gameplan.arcticwolves.ca subdomain.
- * Provides a video review dashboard that communicates with the
- * Video Companion Server via PHP backend (curl).
+ * Standalone video review & game planning dashboard.
+ * Structured as its own dashboard module (like ACVideoReview) with
+ * its own navigation sidebar and page routing.
  *
- * Follows the same authentication & routing pattern as the main dashboard.
+ * The companion server is optional – the dashboard works without it.
  */
 
 ini_set('display_errors', 0);
@@ -35,7 +35,7 @@ if (!isset($_SESSION['logged_in'])) {
     exit();
 }
 
-// Only coaches and admins can access Game Plan
+// User info
 $user_id   = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? 'athlete';
 $user_name = $_SESSION['user_name'] ?? 'Guest';
@@ -55,57 +55,49 @@ $isCoach  = in_array('coach', $user_roles_list);
 $isTeamCoach = in_array('team_coach', $user_roles_list);
 $isAnyCoach = ($isCoach || $isAdmin || $isTeamCoach);
 
-if (!$isAnyCoach) {
-    header("Location: /dashboard.php");
-    exit();
+// Page routing
+$page = isset($_GET['page']) ? preg_replace('/[^a-z0-9_]/', '', $_GET['page']) : 'home';
+
+$allowed_pages = [
+    'home'             => 'views/gameplan/home.php',
+    'video_review'     => 'views/gameplan/video_review.php',
+    'calendar'         => 'views/gameplan/calendar.php',
+    'game_plan'        => 'views/gameplan/game_plan.php',
+    'film_room'        => 'views/gameplan/film_room.php',
+    'review_sessions'  => 'views/gameplan/review_sessions.php',
+    'my_clips'         => 'views/gameplan/my_clips.php',
+];
+
+// Admin-only pages
+if ($isAdmin) {
+    $allowed_pages['permissions'] = 'views/gameplan/permissions.php';
+    $allowed_pages['settings']    = 'views/gameplan_settings.php';
 }
 
-// Load companion server settings
-$companion_url = '';
-$companion_api_key = '';
-try {
-    $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('gameplan_companion_url', 'gameplan_companion_api_key')");
-    $stmt->execute();
-    while ($row = $stmt->fetch()) {
-        if ($row['setting_key'] === 'gameplan_companion_url') $companion_url = $row['setting_value'];
-        if ($row['setting_key'] === 'gameplan_companion_api_key') $companion_api_key = $row['setting_value'];
-    }
-} catch (PDOException $e) { /* ignore */ }
+$view_file = $allowed_pages[$page] ?? $allowed_pages['home'];
 
-// Load recent videos for the review interface
+// Load recent videos for the home page
 $recentVideos = [];
 try {
+    $videoWhere = '';
+    $videoParams = [];
+    if (!$isAnyCoach) {
+        $videoWhere = 'WHERE v.athlete_id = ?';
+        $videoParams[] = $user_id;
+    }
     $stmt = $pdo->prepare("
         SELECT v.id, v.title, v.filename, v.file_path, v.duration, v.status,
                v.created_at, v.athlete_id,
                u.first_name as athlete_first_name, u.last_name as athlete_last_name
         FROM videos v
         LEFT JOIN users u ON v.athlete_id = u.id
+        $videoWhere
         ORDER BY v.created_at DESC
         LIMIT 20
     ");
-    $stmt->execute();
+    $stmt->execute($videoParams);
     $recentVideos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { /* ignore */ }
-
-// Check companion server status
-$companionOnline = false;
-if ($companion_url) {
-    $ch = curl_init(rtrim($companion_url, '/') . '/api/health');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 5,
-        CURLOPT_CONNECTTIMEOUT => 3,
-        CURLOPT_HTTPHEADER => ['X-API-Key: ' . $companion_api_key, 'Accept: application/json'],
-    ]);
-    $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($code === 200) {
-        $data = json_decode($resp, true);
-        $companionOnline = (($data['status'] ?? '') === 'ok');
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -120,139 +112,193 @@ if ($companion_url) {
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="views/shared_styles.css">
     <style>
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0A0A0F; color: #fff; margin: 0; }
-        .gp-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: rgba(19,19,26,.95); border-bottom: 1px solid rgba(107,70,193,.15); }
-        .gp-header-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; font-weight: 900; font-size: 18px; }
-        .gp-header-logo img { height: 32px; }
-        .gp-header-logo .hl { color: #8B5CF6; }
-        .gp-header-actions { display: flex; align-items: center; gap: 12px; }
-        .gp-header-actions a { color: #A8A8B8; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 8px; transition: background .2s; }
-        .gp-header-actions a:hover { background: rgba(107,70,193,.12); color: #fff; }
-        .gp-main { max-width: 1200px; margin: 0 auto; padding: 24px; }
-        .gp-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; }
-        .gp-status.online { background: rgba(16,185,129,.12); color: #10B981; }
-        .gp-status.offline { background: rgba(239,68,68,.12); color: #EF4444; }
-        .gp-status .dot { width: 8px; height: 8px; border-radius: 50%; }
-        .gp-status.online .dot { background: #10B981; }
-        .gp-status.offline .dot { background: #EF4444; }
-        .gp-section { margin-bottom: 32px; }
-        .gp-section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
-        .gp-section-title i { color: #8B5CF6; }
+        :root {
+            --gp-bg: #0A0A0F;
+            --gp-sidebar: #13131A;
+            --gp-card: #16161F;
+            --gp-border: #2D2D3F;
+            --gp-primary: #6B46C1;
+            --gp-primary-light: #8B5CF6;
+            --gp-text: #ffffff;
+            --gp-text-muted: #A8A8B8;
+            --gp-text-dim: #6B6B7B;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--gp-bg); color: var(--gp-text); margin: 0; }
+        .gp-layout { display: flex; height: 100vh; overflow: hidden; }
+        .gp-sidebar {
+            width: 260px; background: var(--gp-sidebar); border-right: 1px solid var(--gp-border);
+            display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+        }
+        .gp-sidebar-logo {
+            display: flex; align-items: center; gap: 12px; padding: 20px 20px 16px;
+            text-decoration: none; color: var(--gp-text); font-weight: 900; font-size: 18px;
+            border-bottom: 1px solid var(--gp-border);
+        }
+        .gp-sidebar-logo img { height: 32px; }
+        .gp-sidebar-logo .hl { color: var(--gp-primary-light); }
+        .gp-sidebar-nav { padding: 12px 10px; flex: 1; }
+        .gp-nav-label {
+            font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--gp-text-dim); padding: 12px 10px 6px; margin-top: 4px;
+        }
+        .gp-nav-link {
+            display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+            border-radius: 8px; text-decoration: none; color: var(--gp-text-muted);
+            font-size: 13px; font-weight: 600; transition: all .15s; margin-bottom: 2px;
+        }
+        .gp-nav-link:hover { background: rgba(107,70,193,.08); color: var(--gp-text); }
+        .gp-nav-link.active { background: rgba(107,70,193,.15); color: var(--gp-primary-light); }
+        .gp-nav-link i { width: 18px; text-align: center; font-size: 14px; }
+        .gp-sidebar-footer {
+            padding: 12px 10px; border-top: 1px solid var(--gp-border);
+        }
+        .gp-main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .gp-topbar {
+            display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+            padding: 12px 24px; background: var(--gp-sidebar); border-bottom: 1px solid var(--gp-border);
+        }
+        .gp-topbar-link {
+            color: var(--gp-text-muted); text-decoration: none; font-size: 13px; font-weight: 600;
+            padding: 6px 12px; border-radius: 6px; transition: background .15s;
+        }
+        .gp-topbar-link:hover { background: rgba(107,70,193,.1); color: var(--gp-text); }
+        .gp-topbar-user {
+            display: flex; align-items: center; gap: 8px; color: var(--gp-text); font-size: 13px; font-weight: 600;
+        }
+        .gp-topbar-user .avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-light));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; color: #fff;
+        }
+        .gp-content { flex: 1; padding: 32px; overflow-y: auto; }
+
+        /* Shared view styles */
+        .gp-page-header { margin-bottom: 28px; }
+        .gp-page-title { font-size: 22px; font-weight: 800; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+        .gp-page-title i { color: var(--gp-primary-light); }
+        .gp-page-desc { font-size: 13px; color: var(--gp-text-muted); margin: 0; }
         .gp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-        .gp-card { background: #16161F; border: 1px solid #2D2D3F; border-radius: 14px; overflow: hidden; transition: border-color .2s, transform .15s; }
+        .gp-card { background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 14px; overflow: hidden; transition: border-color .2s, transform .15s; }
         .gp-card:hover { border-color: rgba(107,70,193,.4); transform: translateY(-2px); }
-        .gp-card-thumb { width: 100%; aspect-ratio: 16/9; background: #1a1a24; display: flex; align-items: center; justify-content: center; color: #6B6B7B; font-size: 32px; position: relative; }
-        .gp-card-thumb video, .gp-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .gp-card-thumb { width: 100%; aspect-ratio: 16/9; background: #1a1a24; display: flex; align-items: center; justify-content: center; color: var(--gp-text-dim); font-size: 32px; position: relative; }
         .gp-card-badge { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
         .gp-card-badge.pending { background: rgba(59,130,246,.15); color: #3B82F6; }
         .gp-card-badge.reviewed { background: rgba(16,185,129,.15); color: #10B981; }
         .gp-card-body { padding: 14px 16px; }
         .gp-card-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-        .gp-card-meta { font-size: 12px; color: #A8A8B8; display: flex; align-items: center; gap: 12px; }
-        .gp-empty { text-align: center; padding: 60px 24px; color: #6B6B7B; }
-        .gp-empty i { font-size: 48px; margin-bottom: 16px; display: block; color: #8B5CF6; opacity: .5; }
+        .gp-card-meta { font-size: 12px; color: var(--gp-text-muted); display: flex; align-items: center; gap: 12px; }
+        .gp-empty { text-align: center; padding: 60px 24px; color: var(--gp-text-dim); }
+        .gp-empty i { font-size: 48px; margin-bottom: 16px; display: block; color: var(--gp-primary-light); opacity: .5; }
         .gp-empty p { font-size: 15px; margin-bottom: 20px; }
-        .gp-empty a { color: #8B5CF6; text-decoration: none; font-weight: 600; }
-        .gp-setup-card { background: linear-gradient(135deg, rgba(107,70,193,.08), rgba(139,92,246,.04)); border: 1px solid rgba(107,70,193,.2); border-radius: 14px; padding: 24px; text-align: center; }
-        .gp-setup-card i { font-size: 36px; color: #8B5CF6; margin-bottom: 12px; }
-        .gp-setup-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-        .gp-setup-card p { font-size: 13px; color: #A8A8B8; margin-bottom: 16px; line-height: 1.5; }
-        .gp-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; transition: opacity .2s; }
-        .gp-btn-primary { background: linear-gradient(135deg, #6B46C1, #8B5CF6); color: #fff; }
-        .gp-btn-secondary { background: rgba(107,70,193,.12); border: 1px solid rgba(107,70,193,.2); color: #fff; }
-        @media (max-width: 640px) {
-            .gp-main { padding: 16px; }
-            .gp-header { padding: 12px 16px; }
-            .gp-grid { grid-template-columns: 1fr; }
-            .gp-header-logo { font-size: 15px; }
-            .gp-header-logo img { height: 26px; }
+        .gp-empty a { color: var(--gp-primary-light); text-decoration: none; font-weight: 600; }
+        .gp-section { margin-bottom: 32px; }
+        .gp-section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .gp-section-title i { color: var(--gp-primary-light); }
+        .gp-placeholder-card {
+            background: var(--gp-card); border: 1px solid var(--gp-border); border-radius: 14px;
+            padding: 48px 24px; text-align: center;
+        }
+        .gp-placeholder-card i { font-size: 48px; color: var(--gp-primary-light); opacity: .4; margin-bottom: 16px; }
+        .gp-placeholder-card h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+        .gp-placeholder-card p { font-size: 13px; color: var(--gp-text-muted); margin: 0; line-height: 1.6; }
+
+        /* Mobile sidebar toggle */
+        .gp-mobile-toggle { display: none; }
+        @media (max-width: 768px) {
+            .gp-sidebar { position: fixed; left: -280px; top: 0; height: 100vh; z-index: 100; transition: left .25s; }
+            .gp-sidebar.open { left: 0; }
+            .gp-mobile-toggle { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: none; border: 1px solid var(--gp-border); border-radius: 8px; color: var(--gp-text); font-size: 16px; cursor: pointer; }
+            .gp-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 99; }
+            .gp-sidebar.open ~ .gp-main-area .gp-overlay { display: block; }
+            .gp-content { padding: 16px; }
         }
     </style>
 </head>
 <body>
 
-<header class="gp-header">
-    <a href="/gameplan.php" class="gp-header-logo">
-        <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo">
-        GAME <span class="hl">PLAN</span>
-    </a>
-    <div class="gp-header-actions">
-        <span class="gp-status <?= $companionOnline ? 'online' : 'offline' ?>">
-            <span class="dot"></span>
-            <?= $companionOnline ? 'Companion Online' : 'Companion Offline' ?>
-        </span>
-        <a href="/dashboard.php"><i class="fas fa-arrow-left"></i> Dashboard</a>
-        <a href="/logout.php"><i class="fas fa-power-off"></i> Sign Out</a>
-    </div>
-</header>
+<div class="gp-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="gp-sidebar" id="gpSidebar">
+        <a href="/gameplan.php" class="gp-sidebar-logo">
+            <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo">
+            GAME <span class="hl">PLAN</span>
+        </a>
 
-<main class="gp-main">
-
-    <?php if (!$companion_url): ?>
-    <!-- No companion configured -->
-    <div class="gp-section">
-        <div class="gp-setup-card">
-            <i class="fas fa-server"></i>
-            <h3>Companion Server Not Configured</h3>
-            <p>The Video Companion Server handles video encoding and clip extraction.<br>
-               Configure it in the admin settings to enable video processing.</p>
-            <?php if ($isAdmin): ?>
-            <a href="/dashboard.php?page=gameplan_settings" class="gp-btn gp-btn-primary">
-                <i class="fas fa-cog"></i> Configure Companion
+        <div class="gp-sidebar-nav">
+            <div class="gp-nav-label">Navigation</div>
+            <a href="/gameplan.php?page=home" class="gp-nav-link <?= $page === 'home' ? 'active' : '' ?>">
+                <i class="fas fa-house"></i> Dashboard
+            </a>
+            <a href="/gameplan.php?page=video_review" class="gp-nav-link <?= $page === 'video_review' ? 'active' : '' ?>">
+                <i class="fas fa-film"></i> Video Review
+            </a>
+            <?php if ($isAnyCoach): ?>
+            <a href="/gameplan.php?page=calendar" class="gp-nav-link <?= $page === 'calendar' ? 'active' : '' ?>">
+                <i class="fas fa-calendar"></i> Calendar
+            </a>
+            <a href="/gameplan.php?page=game_plan" class="gp-nav-link <?= $page === 'game_plan' ? 'active' : '' ?>">
+                <i class="fas fa-chess-board"></i> Game Plan
+            </a>
+            <a href="/gameplan.php?page=film_room" class="gp-nav-link <?= $page === 'film_room' ? 'active' : '' ?>">
+                <i class="fas fa-video"></i> Film Room
+            </a>
+            <a href="/gameplan.php?page=review_sessions" class="gp-nav-link <?= $page === 'review_sessions' ? 'active' : '' ?>">
+                <i class="fas fa-chalkboard-user"></i> Review Sessions
             </a>
             <?php else: ?>
-            <p style="font-size:12px;color:#6B6B7B;">Ask an administrator to configure the companion server.</p>
+            <a href="/gameplan.php?page=my_clips" class="gp-nav-link <?= $page === 'my_clips' ? 'active' : '' ?>">
+                <i class="fas fa-scissors"></i> My Clips
+            </a>
+            <?php endif; ?>
+
+            <?php if ($isAdmin): ?>
+            <div class="gp-nav-label">Admin</div>
+            <a href="/gameplan.php?page=permissions" class="gp-nav-link <?= $page === 'permissions' ? 'active' : '' ?>">
+                <i class="fas fa-user-shield"></i> Permissions
+            </a>
+            <a href="/gameplan.php?page=settings" class="gp-nav-link <?= $page === 'settings' ? 'active' : '' ?>">
+                <i class="fas fa-cog"></i> Settings
+            </a>
             <?php endif; ?>
         </div>
-    </div>
-    <?php endif; ?>
 
-    <?php if ($companion_url && !$companionOnline): ?>
-    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:16px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
-        <i class="fas fa-exclamation-triangle" style="color:#EF4444;font-size:18px;"></i>
-        <div>
-            <strong style="font-size:13px;">Companion Server Unreachable</strong>
-            <p style="font-size:12px;color:#A8A8B8;margin-top:2px;">Video processing features are unavailable. The companion server at <code style="background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px;font-size:11px;"><?= htmlspecialchars($companion_url) ?></code> is not responding.</p>
+        <div class="gp-sidebar-footer">
+            <a href="/dashboard.php" class="gp-nav-link">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
         </div>
-    </div>
-    <?php endif; ?>
+    </aside>
 
-    <!-- Video Library -->
-    <div class="gp-section">
-        <div class="gp-section-title"><i class="fas fa-film"></i> Video Library</div>
-
-        <?php if (empty($recentVideos)): ?>
-        <div class="gp-empty">
-            <i class="fas fa-video-slash"></i>
-            <p>No videos yet. Upload videos from the main dashboard or record them in the app.</p>
-            <a href="/dashboard.php?page=video"><i class="fas fa-upload"></i> Go to Video Upload</a>
-        </div>
-        <?php else: ?>
-        <div class="gp-grid">
-            <?php foreach ($recentVideos as $video): ?>
-            <div class="gp-card">
-                <div class="gp-card-thumb">
-                    <i class="fas fa-play-circle"></i>
-                    <span class="gp-card-badge <?= ($video['status'] ?? '') === 'reviewed' ? 'reviewed' : 'pending' ?>">
-                        <?= htmlspecialchars($video['status'] ?? 'pending') ?>
-                    </span>
-                </div>
-                <div class="gp-card-body">
-                    <div class="gp-card-title"><?= htmlspecialchars($video['title'] ?? 'Untitled Video') ?></div>
-                    <div class="gp-card-meta">
-                        <?php if (!empty($video['athlete_first_name'])): ?>
-                        <span><i class="fas fa-user"></i> <?= htmlspecialchars($video['athlete_first_name'] . ' ' . ($video['athlete_last_name'] ?? '')) ?></span>
-                        <?php endif; ?>
-                        <span><i class="fas fa-clock"></i> <?= date('M j, Y', strtotime($video['created_at'])) ?></span>
-                    </div>
-                </div>
+    <!-- Main Content Area -->
+    <div class="gp-main-area">
+        <div class="gp-overlay" onclick="document.getElementById('gpSidebar').classList.remove('open')"></div>
+        <header class="gp-topbar">
+            <button class="gp-mobile-toggle" onclick="document.getElementById('gpSidebar').classList.toggle('open')">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div style="flex:1;"></div>
+            <a href="/dashboard.php" class="gp-topbar-link"><i class="fas fa-arrow-left"></i> Main Dashboard</a>
+            <a href="/logout.php" class="gp-topbar-link"><i class="fas fa-power-off"></i> Sign Out</a>
+            <div class="gp-topbar-user">
+                <div class="avatar"><?= strtoupper(substr($user_name, 0, 1)) ?></div>
+                <?= htmlspecialchars($user_name) ?>
             </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-    </div>
+        </header>
 
-</main>
+        <div class="gp-content">
+            <?php
+            if (file_exists($view_file)) {
+                include $view_file;
+            } else {
+                // Default home view rendered inline
+                include $allowed_pages['home'] ?? __DIR__ . '/views/gameplan/home.php';
+            }
+            ?>
+        </div>
+    </div>
+</div>
 
 <script src="js/app.js"></script>
 </body>
