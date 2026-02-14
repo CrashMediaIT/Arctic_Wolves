@@ -137,7 +137,7 @@ $srReportTypes = [
                 <button class="m-schedrpt-btn" onclick="mSrToggle(<?= (int)$s['id'] ?>, <?= $isActive ? 'false' : 'true' ?>)">
                     <i class="fas fa-<?= $isActive ? 'pause' : 'play' ?>"></i> <?= $isActive ? 'Pause' : 'Enable' ?>
                 </button>
-                <button class="m-schedrpt-btn" onclick="mSrDelete(<?= (int)$s['id'] ?>, '<?= htmlspecialchars(addslashes($rName)) ?>')" style="color:#EF4444;">
+                <button class="m-schedrpt-btn" onclick="mSrDelete(<?= (int)$s['id'] ?>, <?= htmlspecialchars(json_encode($rName)) ?>)" style="color:#EF4444;">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
