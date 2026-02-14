@@ -15,6 +15,14 @@ try {
     $stmt->execute();
     $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $complaints = []; }
+
+$staffList = [];
+try {
+    $stStaff = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE role IN ('admin','coach','staff') ORDER BY first_name");
+    $staffList = $stStaff->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $staffList = []; }
+
+$nextComplaintNum = 'COMP-' . str_pad(count($complaints) + 1, 4, '0', STR_PAD_LEFT);
 ?>
 <style>
 .m-complaints { padding: 16px; font-family: Inter, sans-serif; }
@@ -48,6 +56,20 @@ try {
 .m-complaint-meta { font-size: 11px; color: #6B6B7B; display: flex; gap: 12px; }
 .m-empty-state { text-align: center; padding: 32px 20px; color: #6B6B7B; font-size: 13px; }
 .m-empty-state i { font-size: 28px; display: block; margin-bottom: 10px; }
+.m-fab { position: fixed; bottom: 60px; right: 20px; background: #6B46C1; color: #fff; border: none; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(107,70,193,0.4); z-index: 999; cursor: pointer; }
+.m-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: none; }
+.m-overlay.active { display: block; }
+.m-bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #16161F; border-radius: 16px 16px 0 0; max-height: 85vh; overflow-y: auto; z-index: 1001; padding: 20px; transform: translateY(100%); transition: transform 0.3s; }
+.m-bottom-sheet.active { transform: translateY(0); }
+.m-sheet-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 16px; display: flex; justify-content: space-between; align-items: center; }
+.m-form-group { margin-bottom: 14px; }
+.m-form-label { font-size: 12px; color: #A8A8B8; margin-bottom: 4px; display: block; }
+.m-form-input, .m-form-select, .m-form-textarea { background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 10px; color: #fff; padding: 12px; min-height: 44px; width: 100%; box-sizing: border-box; font-size: 14px; font-family: Inter, sans-serif; }
+.m-form-textarea { min-height: 80px; resize: vertical; }
+.m-btn-submit { background: #6B46C1; color: #fff; border: none; border-radius: 10px; min-height: 44px; font-weight: 600; width: 100%; font-size: 14px; cursor: pointer; margin-top: 8px; }
+.m-btn-danger { background: #EF4444; }
+.m-card-actions { display: flex; gap: 8px; margin-top: 8px; }
+.m-btn-sm { font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; min-height: 28px; font-weight: 500; }
 </style>
 
 <div class="m-complaints">
@@ -96,7 +118,164 @@ try {
                 <?php endif; ?>
                 <span><i class="fas fa-calendar" style="font-size:10px;"></i> <?= date('M j, Y', strtotime($comp['created_at'])) ?></span>
             </div>
+            <div class="m-card-actions">
+                <button class="m-btn-sm" style="background:rgba(139,92,246,0.15);color:#8B5CF6;" onclick="openEditComplaint(<?= $comp['id'] ?>, '<?= htmlspecialchars(addslashes($comp['status'] ?? ''), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($comp['priority'] ?? ''), ENT_QUOTES) ?>')">Edit</button>
+                <form method="POST" action="process_hr_complaints.php" style="display:inline;" onsubmit="return confirm('Delete this complaint?');">
+                    <?= csrfTokenInput() ?>
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="complaint_id" value="<?= $comp['id'] ?>">
+                    <button type="submit" class="m-btn-sm m-btn-danger" style="color:#fff;">Delete</button>
+                </form>
+            </div>
         </div>
         <?php endforeach; ?>
     <?php endif; ?>
 </div>
+
+<button class="m-fab" onclick="openSheet('create')"><i class="fas fa-plus" style="font-size:20px;"></i></button>
+
+<div class="m-overlay" id="mOverlay" onclick="closeSheet()"></div>
+
+<div class="m-bottom-sheet" id="mCreateSheet">
+    <div class="m-sheet-title">New Complaint <span onclick="closeSheet()" style="cursor:pointer;font-size:20px;">&times;</span></div>
+    <form method="POST" action="process_hr_complaints.php">
+        <?= csrfTokenInput() ?>
+        <input type="hidden" name="action" value="create">
+        
+        <div class="m-form-group">
+            <label class="m-form-label">Type *</label>
+            <select name="complaint_type" class="m-form-select" required>
+                <option value="">Select type</option>
+                <option value="internal">Internal</option>
+                <option value="external">External</option>
+                <option value="anonymous">Anonymous</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Category *</label>
+            <select name="category" class="m-form-select" required>
+                <option value="">Select category</option>
+                <option value="harassment">Harassment</option>
+                <option value="discrimination">Discrimination</option>
+                <option value="workplace_safety">Workplace Safety</option>
+                <option value="policy_violation">Policy Violation</option>
+                <option value="performance">Performance Issues</option>
+                <option value="conduct">Misconduct</option>
+                <option value="interpersonal_conflict">Interpersonal Conflict</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Severity *</label>
+            <select name="severity" class="m-form-select" required>
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Priority</label>
+            <select name="priority" class="m-form-select">
+                <option value="low">Low</option>
+                <option value="normal" selected>Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Complaint Date *</label>
+            <input type="date" name="complaint_date" class="m-form-input" required value="<?= date('Y-m-d') ?>">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Incident Date</label>
+            <input type="date" name="incident_date" class="m-form-input">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Incident Location</label>
+            <input type="text" name="incident_location" class="m-form-input" placeholder="Where did it occur?">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Description *</label>
+            <textarea name="description" class="m-form-textarea" required placeholder="Describe the complaint..."></textarea>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Witnesses</label>
+            <textarea name="witnesses" class="m-form-textarea" placeholder="List any witnesses..."></textarea>
+        </div>
+        <button type="submit" class="m-btn-submit">Submit Complaint</button>
+    </form>
+</div>
+
+<div class="m-bottom-sheet" id="mEditSheet">
+    <div class="m-sheet-title">Update Complaint <span onclick="closeSheet()" style="cursor:pointer;font-size:20px;">&times;</span></div>
+    <form method="POST" action="process_hr_complaints.php">
+        <?= csrfTokenInput() ?>
+        <input type="hidden" name="action" value="update">
+        <input type="hidden" name="complaint_id" id="mEditId">
+        
+        <div class="m-form-group">
+            <label class="m-form-label">Status</label>
+            <select name="status" id="mEditStatus" class="m-form-select">
+                <option value="received">Received</option>
+                <option value="open">Open</option>
+                <option value="investigation">Investigation</option>
+                <option value="in_progress">In Progress</option>
+                <option value="escalated">Escalated</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+                <option value="dismissed">Dismissed</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Severity</label>
+            <select name="severity" id="mEditSeverity" class="m-form-select">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Priority</label>
+            <select name="priority" id="mEditPriority" class="m-form-select">
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+            </select>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Resolution</label>
+            <textarea name="resolution" class="m-form-textarea" placeholder="Describe resolution..."></textarea>
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Resolution Date</label>
+            <input type="date" name="resolution_date" class="m-form-input">
+        </div>
+        <div class="m-form-group">
+            <label class="m-form-label">Add Note</label>
+            <textarea name="new_note" class="m-form-textarea" placeholder="Add a note..."></textarea>
+        </div>
+        <button type="submit" class="m-btn-submit">Update Complaint</button>
+    </form>
+</div>
+
+<script>
+function openSheet(type) {
+    document.getElementById('mOverlay').classList.add('active');
+    if (type === 'create') document.getElementById('mCreateSheet').classList.add('active');
+    else document.getElementById('mEditSheet').classList.add('active');
+}
+function closeSheet() {
+    document.getElementById('mOverlay').classList.remove('active');
+    document.getElementById('mCreateSheet').classList.remove('active');
+    document.getElementById('mEditSheet').classList.remove('active');
+}
+function openEditComplaint(id, status, priority) {
+    document.getElementById('mEditId').value = id;
+    document.getElementById('mEditStatus').value = status || 'open';
+    document.getElementById('mEditPriority').value = priority || 'normal';
+    openSheet('edit');
+}
+</script>
