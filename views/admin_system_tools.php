@@ -5063,7 +5063,15 @@ function gpShowTestAlert(type, message) {
     }
     var cls = (type === 'success') ? 'alert-success' : 'alert-danger';
     var icon = (type === 'success') ? 'fa-check-circle' : 'fa-exclamation-circle';
-    container.innerHTML = '<div class="alert ' + cls + '" style="margin-bottom:16px;"><i class="fa-solid ' + icon + '"></i> ' + message + '</div>';
+    container.textContent = '';
+    var alertDiv = document.createElement('div');
+    alertDiv.className = 'alert ' + cls;
+    alertDiv.style.marginBottom = '16px';
+    var iconEl = document.createElement('i');
+    iconEl.className = 'fa-solid ' + icon;
+    alertDiv.appendChild(iconEl);
+    alertDiv.appendChild(document.createTextNode(' ' + message));
+    container.appendChild(alertDiv);
 }
 
 function gpTestCompanion() {
@@ -5094,11 +5102,18 @@ function gpTestCompanion() {
                 statusBadge.textContent = 'Connected';
                 var cap = document.getElementById('gpHwCapText');
                 if (data.hw_accel) {
-                    var html = '<strong style="color:var(--success);"><i class="fas fa-check"></i> Server Online</strong><br>';
-                    html += 'Available methods: ' + (data.hw_accel.available.join(', ') || 'none') + '<br>';
-                    html += 'Encoders: ' + (data.hw_accel.encoders.join(', ') || 'none') + '<br>';
-                    html += 'Decoders: ' + (data.hw_accel.decoders.join(', ') || 'none');
-                    cap.innerHTML = html;
+                    cap.textContent = '';
+                    var strong = document.createElement('strong');
+                    strong.style.color = 'var(--success)';
+                    strong.innerHTML = '<i class="fas fa-check"></i> ';
+                    strong.appendChild(document.createTextNode('Server Online'));
+                    cap.appendChild(strong);
+                    cap.appendChild(document.createElement('br'));
+                    cap.appendChild(document.createTextNode('Available methods: ' + (data.hw_accel.available.join(', ') || 'none')));
+                    cap.appendChild(document.createElement('br'));
+                    cap.appendChild(document.createTextNode('Encoders: ' + (data.hw_accel.encoders.join(', ') || 'none')));
+                    cap.appendChild(document.createElement('br'));
+                    cap.appendChild(document.createTextNode('Decoders: ' + (data.hw_accel.decoders.join(', ') || 'none')));
                 }
                 gpShowTestAlert('success', 'Connection successful! Companion server is online.');
             } else {
