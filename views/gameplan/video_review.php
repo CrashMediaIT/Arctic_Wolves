@@ -255,7 +255,7 @@ if (!function_exists('vr_format_duration')) {
             <?php if (!empty($clip['tag_names'])): ?>
             <div class="vr-clip-tags-row">
                 <?php foreach (explode(', ', $clip['tag_names']) as $i => $tname): ?>
-                <?php $colors = explode(',', $clip['tag_colors'] ?? ''); $color = trim($colors[$i] ?? '#6B46C1'); ?>
+                <?php $colors = explode(',', $clip['tag_colors'] ?? ''); $color = trim($colors[$i] ?? '#6B46C1'); if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $color)) $color = '#6B46C1'; ?>
                 <span class="vr-tag-pill" style="background:<?= htmlspecialchars($color) ?>20;color:<?= htmlspecialchars($color) ?>;border:1px solid <?= htmlspecialchars($color) ?>40"><?= htmlspecialchars($tname) ?></span>
                 <?php endforeach; ?>
             </div>
