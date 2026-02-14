@@ -22,7 +22,7 @@ endif;
 $plans = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT id, title, description, total_duration, created_at
+        SELECT id, COALESCE(title, name) as title, description, COALESCE(total_duration, duration_minutes) as total_duration, focus_area, created_at
         FROM practice_plans
         WHERE created_by = ?
         ORDER BY created_at DESC
@@ -31,6 +31,20 @@ try {
     $stmt->execute([$user_id]);
     $plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $plans = []; }
+
+$drills_list = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT d.id, d.title, dc.name as category
+        FROM drills d
+        LEFT JOIN drill_categories dc ON d.category_id = dc.id
+        WHERE d.created_by = ?
+        ORDER BY dc.name, d.title
+        LIMIT 200
+    ");
+    $stmt->execute([$user_id]);
+    $drills_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { $drills_list = []; }
 ?>
 <style>
 .m-practice { padding: 16px; font-family: Inter, sans-serif; }
@@ -128,6 +142,39 @@ try {
 .m-toast.show { opacity: 1; }
 .m-toast.success { background: #10B981; }
 .m-toast.error { background: #EF4444; }
+/* Create modal extras */
+.m-modal select {
+    width: 100%; padding: 10px 12px; box-sizing: border-box;
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 8px;
+    color: #fff; font-size: 14px; font-family: Inter, sans-serif; outline: none; margin-bottom: 12px;
+    -webkit-appearance: none; appearance: none;
+}
+.m-modal select:focus { border-color: #8B5CF6; }
+.m-drill-search { width: 100%; padding: 8px 10px; box-sizing: border-box; background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 8px 8px 0 0; color: #fff; font-size: 13px; font-family: Inter, sans-serif; outline: none; border-bottom: none; }
+.m-drill-search:focus { border-color: #8B5CF6; }
+.m-drill-picker { max-height: 160px; overflow-y: auto; border: 1px solid #2D2D3F; border-radius: 0 0 8px 8px; background: #0A0A0F; margin-bottom: 12px; }
+.m-drill-item { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #1a1a2e; cursor: pointer; gap: 8px; }
+.m-drill-item:last-child { border-bottom: none; }
+.m-drill-item:active { background: #1a1a2e; }
+.m-drill-item.selected { background: rgba(107,70,193,0.15); }
+.m-drill-item .m-drill-check { width: 18px; height: 18px; border: 2px solid #2D2D3F; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: transparent; }
+.m-drill-item.selected .m-drill-check { border-color: #8B5CF6; background: #8B5CF6; color: #fff; }
+.m-drill-item .m-drill-name { font-size: 13px; color: #fff; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-drill-item .m-drill-cat { font-size: 10px; color: #6B6B7B; white-space: nowrap; }
+.m-selected-drills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 0; }
+.m-selected-drill-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(107,70,193,0.2); border: 1px solid rgba(139,92,246,0.4); border-radius: 6px; font-size: 11px; color: #C4B5FD; }
+.m-selected-drill-tag button { background: none; border: none; color: #C4B5FD; font-size: 13px; cursor: pointer; padding: 0; line-height: 1; }
+/* Delete confirmation */
+.m-confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 150; align-items: center; justify-content: center; }
+.m-confirm-overlay.active { display: flex; }
+.m-confirm-box { background: #16161F; border: 1px solid #2D2D3F; border-radius: 16px; padding: 24px 20px; width: 90%; max-width: 340px; text-align: center; }
+.m-confirm-box i { font-size: 32px; color: #EF4444; margin-bottom: 12px; display: block; }
+.m-confirm-box h4 { font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 8px; }
+.m-confirm-box p { font-size: 13px; color: #A8A8B8; margin: 0 0 20px; }
+.m-confirm-btns { display: flex; gap: 10px; }
+.m-confirm-btns button { flex: 1; padding: 11px; border-radius: 10px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; font-family: Inter, sans-serif; }
+.m-confirm-btns .m-btn-cancel { background: #0A0A0F; color: #A8A8B8; border: 1px solid #2D2D3F; }
+.m-confirm-btns .m-btn-danger { background: #EF4444; color: #fff; }
 </style>
 
 <div class="m-practice">
@@ -154,7 +201,7 @@ try {
     <?php else: ?>
         <div id="ppList">
         <?php foreach ($plans as $p): ?>
-        <div class="m-plan-card" data-plan-id="<?= (int)$p['id'] ?>" data-title="<?= htmlspecialchars($p['title'], ENT_QUOTES) ?>" data-desc="<?= htmlspecialchars($p['description'] ?? '', ENT_QUOTES) ?>" data-duration="<?= (int)($p['total_duration'] ?? 0) ?>">
+        <div class="m-plan-card" data-plan-id="<?= (int)$p['id'] ?>" data-title="<?= htmlspecialchars($p['title'], ENT_QUOTES) ?>" data-desc="<?= htmlspecialchars($p['description'] ?? '', ENT_QUOTES) ?>" data-duration="<?= (int)($p['total_duration'] ?? 0) ?>" data-focus="<?= htmlspecialchars($p['focus_area'] ?? '', ENT_QUOTES) ?>">
             <a href="?page=view_practice_plan&id=<?= (int)$p['id'] ?>" style="text-decoration:none;display:block;">
                 <div class="m-plan-top">
                     <span class="m-plan-title"><?= htmlspecialchars($p['title']) ?></span>
@@ -178,7 +225,7 @@ try {
         </div>
     <?php endif; ?>
 
-    <a href="?page=create_practice_plan" class="m-fab" title="Create Practice Plan"><i class="fas fa-plus"></i></a>
+    <button type="button" class="m-fab" onclick="openCreateModal()" title="Create Practice Plan"><i class="fas fa-plus"></i></button>
 </div>
 
 <!-- Edit Modal -->
@@ -196,6 +243,16 @@ try {
             <textarea name="description" id="ppEditDesc"></textarea>
             <label for="ppEditDur">Duration (minutes)</label>
             <input type="number" name="duration" id="ppEditDur" min="0" step="1">
+            <label for="ppEditFocus">Focus Area</label>
+            <select name="focus_area" id="ppEditFocus">
+                <option value="">— None —</option>
+                <option value="skating">Skating</option>
+                <option value="shooting">Shooting</option>
+                <option value="passing">Passing</option>
+                <option value="defense">Defense</option>
+                <option value="goaltending">Goaltending</option>
+                <option value="conditioning">Conditioning</option>
+            </select>
             <div class="m-modal-btns">
                 <button type="button" class="m-btn-cancel" onclick="closeEditModal()">Cancel</button>
                 <button type="submit" class="m-btn-save" id="ppEditSave">Save</button>
@@ -205,15 +262,77 @@ try {
 </div>
 <div class="m-toast" id="ppToast"></div>
 
+<!-- Create Modal -->
+<div class="m-modal-overlay" id="ppCreateOverlay">
+    <div class="m-modal">
+        <div class="m-modal-handle"></div>
+        <h3>Create Practice Plan</h3>
+        <form id="ppCreateForm" onsubmit="return submitCreate(event)">
+            <?= csrfTokenInput() ?>
+            <input type="hidden" name="action" value="create">
+            <input type="hidden" name="drills" id="ppCreateDrills" value="[]">
+            <label for="ppCreateTitle">Title <span style="color:#EF4444">*</span></label>
+            <input type="text" name="title" id="ppCreateTitle" required placeholder="e.g. Power skating drill day">
+            <label for="ppCreateDesc">Description</label>
+            <textarea name="description" id="ppCreateDesc" placeholder="Practice goals and notes…"></textarea>
+            <label for="ppCreateDur">Duration (minutes)</label>
+            <input type="number" name="duration" id="ppCreateDur" min="1" step="1" placeholder="60">
+            <label for="ppCreateFocus">Focus Area</label>
+            <select name="focus_area" id="ppCreateFocus">
+                <option value="">— Select —</option>
+                <option value="skating">Skating</option>
+                <option value="shooting">Shooting</option>
+                <option value="passing">Passing</option>
+                <option value="defense">Defense</option>
+                <option value="goaltending">Goaltending</option>
+                <option value="conditioning">Conditioning</option>
+            </select>
+            <label>Drills</label>
+            <div class="m-selected-drills" id="ppSelectedDrills"></div>
+            <input type="text" class="m-drill-search" id="ppDrillSearch" placeholder="Search drills…" autocomplete="off">
+            <div class="m-drill-picker" id="ppDrillPicker">
+                <?php if (empty($drills_list)): ?>
+                <div style="padding:12px;text-align:center;color:#6B6B7B;font-size:12px;">No drills available</div>
+                <?php else: ?>
+                <?php foreach ($drills_list as $d): ?>
+                <div class="m-drill-item" data-drill-id="<?= (int)$d['id'] ?>" data-drill-title="<?= htmlspecialchars($d['title'], ENT_QUOTES) ?>" onclick="toggleDrill(this)">
+                    <span class="m-drill-check"><i class="fas fa-check"></i></span>
+                    <span class="m-drill-name"><?= htmlspecialchars($d['title']) ?></span>
+                    <span class="m-drill-cat"><?= htmlspecialchars($d['category'] ?? '') ?></span>
+                </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+            <div class="m-modal-btns">
+                <button type="button" class="m-btn-cancel" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="m-btn-save" id="ppCreateSave">Create Plan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Dialog -->
+<div class="m-confirm-overlay" id="ppDeleteOverlay">
+    <div class="m-confirm-box">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h4>Delete Practice Plan</h4>
+        <p id="ppDeleteMsg">Are you sure? This cannot be undone.</p>
+        <div class="m-confirm-btns">
+            <button type="button" class="m-btn-cancel" onclick="closeDeleteDialog()">Cancel</button>
+            <button type="button" class="m-btn-danger" id="ppDeleteConfirm">Delete</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function(){
     // Search filter
-    const search = document.getElementById('ppSearch');
+    var search = document.getElementById('ppSearch');
     if (search) {
         search.addEventListener('input', function() {
-            const q = this.value.toLowerCase();
+            var q = this.value.toLowerCase();
             document.querySelectorAll('#ppList .m-plan-card').forEach(function(card) {
-                const title = (card.getAttribute('data-title') || '').toLowerCase();
+                var title = (card.getAttribute('data-title') || '').toLowerCase();
                 card.style.display = title.includes(q) ? '' : 'none';
             });
         });
@@ -227,12 +346,14 @@ try {
         setTimeout(function(){ t.classList.remove('show'); }, 2500);
     };
 
-    // Edit modal
+    // ---- Edit Modal ----
     window.openEditModal = function(card) {
         document.getElementById('ppEditId').value = card.getAttribute('data-plan-id');
         document.getElementById('ppEditTitle').value = card.getAttribute('data-title');
         document.getElementById('ppEditDesc').value = card.getAttribute('data-desc');
         document.getElementById('ppEditDur').value = card.getAttribute('data-duration') || '';
+        var focusSel = document.getElementById('ppEditFocus');
+        if (focusSel) focusSel.value = card.getAttribute('data-focus') || '';
         document.getElementById('ppEditOverlay').classList.add('active');
     };
 
@@ -263,8 +384,12 @@ try {
                 if (card) {
                     var newTitle = document.getElementById('ppEditTitle').value;
                     var newDesc = document.getElementById('ppEditDesc').value;
+                    var newDur = document.getElementById('ppEditDur').value;
+                    var newFocus = document.getElementById('ppEditFocus').value;
                     card.setAttribute('data-title', newTitle);
                     card.setAttribute('data-desc', newDesc);
+                    card.setAttribute('data-duration', newDur);
+                    card.setAttribute('data-focus', newFocus);
                     var titleEl = card.querySelector('.m-plan-title');
                     if (titleEl) titleEl.textContent = newTitle;
                     var descEl = card.querySelector('.m-plan-desc');
@@ -275,6 +400,8 @@ try {
                         p.textContent = newDesc;
                         card.querySelector('a').appendChild(p);
                     }
+                    var durEl = card.querySelector('.m-plan-duration');
+                    if (durEl && newDur) { durEl.innerHTML = '<i class="fas fa-clock"></i> ' + newDur + 'min'; }
                 }
                 closeEditModal();
                 ppToast('Plan updated', 'success');
@@ -289,12 +416,137 @@ try {
         return false;
     };
 
-    // Delete
+    // ---- Create Modal ----
+    var selectedDrills = [];
+
+    window.openCreateModal = function() {
+        document.getElementById('ppCreateForm').reset();
+        document.getElementById('ppCreateDrills').value = '[]';
+        selectedDrills = [];
+        renderSelectedDrills();
+        document.querySelectorAll('#ppDrillPicker .m-drill-item').forEach(function(el) {
+            el.classList.remove('selected');
+        });
+        document.getElementById('ppCreateOverlay').classList.add('active');
+    };
+
+    window.closeCreateModal = function() {
+        document.getElementById('ppCreateOverlay').classList.remove('active');
+    };
+
+    document.getElementById('ppCreateOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeCreateModal();
+    });
+
+    window.toggleDrill = function(el) {
+        var id = parseInt(el.getAttribute('data-drill-id'));
+        var title = el.getAttribute('data-drill-title');
+        var idx = selectedDrills.findIndex(function(d){ return d.id === id; });
+        if (idx >= 0) {
+            selectedDrills.splice(idx, 1);
+            el.classList.remove('selected');
+        } else {
+            selectedDrills.push({id: id, title: title});
+            el.classList.add('selected');
+        }
+        renderSelectedDrills();
+    };
+
+    window.removeDrill = function(id) {
+        selectedDrills = selectedDrills.filter(function(d){ return d.id !== id; });
+        var el = document.querySelector('#ppDrillPicker .m-drill-item[data-drill-id="'+id+'"]');
+        if (el) el.classList.remove('selected');
+        renderSelectedDrills();
+    };
+
+    function renderSelectedDrills() {
+        var container = document.getElementById('ppSelectedDrills');
+        var drillsInput = document.getElementById('ppCreateDrills');
+        container.innerHTML = '';
+        selectedDrills.forEach(function(d) {
+            var tag = document.createElement('span');
+            tag.className = 'm-selected-drill-tag';
+            tag.innerHTML = '<span>' + escHtml(d.title) + '</span><button type="button" onclick="removeDrill('+d.id+')">&times;</button>';
+            container.appendChild(tag);
+        });
+        drillsInput.value = JSON.stringify(selectedDrills.map(function(d){ return {id: d.id}; }));
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // Drill search filter
+    var drillSearch = document.getElementById('ppDrillSearch');
+    if (drillSearch) {
+        drillSearch.addEventListener('input', function() {
+            var q = this.value.toLowerCase();
+            document.querySelectorAll('#ppDrillPicker .m-drill-item').forEach(function(item) {
+                var name = (item.getAttribute('data-drill-title') || '').toLowerCase();
+                item.style.display = name.includes(q) ? '' : 'none';
+            });
+        });
+    }
+
+    window.submitCreate = function(e) {
+        e.preventDefault();
+        var form = document.getElementById('ppCreateForm');
+        var btn = document.getElementById('ppCreateSave');
+        btn.disabled = true;
+        fetch('process_practice_plans.php', {
+            method: 'POST',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            body: new FormData(form)
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            btn.disabled = false;
+            if (data.success) {
+                closeCreateModal();
+                ppToast('Practice plan created!', 'success');
+                setTimeout(function(){ location.reload(); }, 800);
+            } else {
+                ppToast(data.message || 'Create failed', 'error');
+            }
+        })
+        .catch(function(){
+            btn.disabled = false;
+            ppToast('Network error', 'error');
+        });
+        return false;
+    };
+
+    // ---- Delete Confirmation ----
+    var pendingDeleteId = null;
+    var pendingDeleteCard = null;
+
     window.deletePlan = function(id, card) {
-        if (!confirm('Delete this practice plan?')) return;
+        pendingDeleteId = id;
+        pendingDeleteCard = card;
+        var title = card.getAttribute('data-title') || 'this plan';
+        document.getElementById('ppDeleteMsg').textContent = 'Delete "' + title + '"? This cannot be undone.';
+        document.getElementById('ppDeleteOverlay').classList.add('active');
+    };
+
+    window.closeDeleteDialog = function() {
+        document.getElementById('ppDeleteOverlay').classList.remove('active');
+        pendingDeleteId = null;
+        pendingDeleteCard = null;
+    };
+
+    document.getElementById('ppDeleteOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeDeleteDialog();
+    });
+
+    document.getElementById('ppDeleteConfirm').addEventListener('click', function() {
+        if (!pendingDeleteId) return;
+        var btn = this;
+        btn.disabled = true;
         var fd = new FormData();
         fd.append('action', 'delete_plan');
-        fd.append('plan_id', id);
+        fd.append('plan_id', pendingDeleteId);
         var tokenInput = document.querySelector('#ppEditForm input[name="csrf_token"]');
         if (tokenInput) fd.append('csrf_token', tokenInput.value);
         fetch('process_practice_plans.php', {
@@ -304,14 +556,21 @@ try {
         })
         .then(function(r){ return r.json(); })
         .then(function(data){
+            btn.disabled = false;
             if (data.success) {
-                card.remove();
+                if (pendingDeleteCard) pendingDeleteCard.remove();
+                closeDeleteDialog();
                 ppToast('Plan deleted', 'success');
             } else {
+                closeDeleteDialog();
                 ppToast(data.message || 'Delete failed', 'error');
             }
         })
-        .catch(function(){ ppToast('Network error', 'error'); });
-    };
+        .catch(function(){
+            btn.disabled = false;
+            closeDeleteDialog();
+            ppToast('Network error', 'error');
+        });
+    });
 })();
 </script>

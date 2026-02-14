@@ -49,6 +49,30 @@ endif;
 .m-sw-btn-lap { background: rgba(59,130,246,0.2); color: #3B82F6; border: 1px solid rgba(59,130,246,0.3); }
 .m-sw-btn-reset { background: rgba(168,168,184,0.15); color: #A8A8B8; border: 1px solid #2D2D3F; }
 .m-sw-btn:active { transform: scale(0.95); }
+.m-sw-save-section {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 16px;
+    padding: 16px; margin-bottom: 24px; text-align: left;
+}
+.m-sw-save-input {
+    width: 100%; min-height: 44px; padding: 12px;
+    background: #0A0A0F; border: 1px solid #2D2D3F; border-radius: 10px;
+    color: #fff; font-size: 14px; font-family: Inter, sans-serif;
+    margin-bottom: 10px; box-sizing: border-box;
+}
+.m-sw-save-input:focus { border-color: #8B5CF6; outline: none; }
+.m-sw-save-btn {
+    width: 100%; min-height: 44px; border-radius: 10px;
+    background: #6B46C1; color: #fff; font-size: 14px; font-weight: 600;
+    border: none; cursor: pointer; font-family: Inter, sans-serif;
+}
+.m-sw-save-btn:disabled { opacity: 0.5; }
+.m-sw-save-btn:active { transform: scale(0.98); }
+.m-sw-alert {
+    padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-top: 10px;
+    display: none; text-align: center;
+}
+.m-sw-alert-success { background: rgba(16,185,129,0.15); color: #10B981; }
+.m-sw-alert-error { background: rgba(239,68,68,0.15); color: #EF4444; }
 .m-lap-section { text-align: left; }
 .m-lap-title {
     font-size: 13px; font-weight: 600; color: #6B6B7B;
@@ -66,6 +90,14 @@ endif;
 .m-lap-diff { font-size: 12px; color: #A8A8B8; font-variant-numeric: tabular-nums; }
 .m-empty-state { text-align: center; padding: 32px 20px; color: #6B6B7B; font-size: 13px; }
 .m-empty-state i { font-size: 28px; display: block; margin-bottom: 10px; }
+.m-sw-history-section { text-align: left; margin-top: 24px; }
+.m-sw-hist-item {
+    background: #16161F; border: 1px solid #2D2D3F; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 6px; min-height: 44px;
+}
+.m-sw-hist-name { font-size: 14px; font-weight: 600; color: #fff; }
+.m-sw-hist-meta { font-size: 12px; color: #6B6B7B; margin-top: 2px; }
+.m-sw-hist-laps { font-size: 12px; color: #8B5CF6; font-weight: 600; }
 </style>
 
 <div class="m-stopwatch">
@@ -90,18 +122,57 @@ endif;
         </button>
     </div>
 
+    <div class="m-sw-save-section" id="mSwSaveSection" style="display:none;">
+        <input type="text" class="m-sw-save-input" id="mSwSessionName" placeholder="Session name (e.g., Sprint Drill)">
+        <button class="m-sw-save-btn" id="mSwSaveBtn" type="button" onclick="mSwSave()">
+            <i class="fas fa-save"></i> Save Session
+        </button>
+        <div class="m-sw-alert" id="mSwAlert"></div>
+    </div>
+
     <div class="m-lap-section">
         <h3 class="m-lap-title">Laps</h3>
         <ul class="m-lap-list" id="mSwLaps">
             <li class="m-empty-state"><i class="fas fa-flag"></i>No laps recorded</li>
         </ul>
     </div>
+
+    <?php
+    $recent_sessions = [];
+    try {
+        $coach_id = $_SESSION['user_id'] ?? 0;
+        $stmt = $pdo->prepare("
+            SELECT ss.id, ss.session_name, ss.created_at,
+                   (SELECT COUNT(*) FROM stopwatch_times WHERE session_id = ss.id) as lap_count
+            FROM stopwatch_sessions ss
+            WHERE ss.coach_id = ?
+            ORDER BY ss.created_at DESC LIMIT 10
+        ");
+        $stmt->execute([$coach_id]);
+        $recent_sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { $recent_sessions = []; }
+    ?>
+    <?php if (!empty($recent_sessions)): ?>
+    <div class="m-sw-history-section">
+        <h3 class="m-lap-title">Saved Sessions</h3>
+        <?php foreach ($recent_sessions as $sess): ?>
+        <div class="m-sw-hist-item">
+            <div class="m-sw-hist-name"><?= htmlspecialchars($sess['session_name']) ?></div>
+            <div class="m-sw-hist-meta">
+                <?= date('M j, Y g:ia', strtotime($sess['created_at'])) ?>
+                &middot; <span class="m-sw-hist-laps"><?= (int)$sess['lap_count'] ?> laps</span>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 </div>
 
 <script>
 (function() {
     var running = false, startTime = 0, elapsed = 0, timer = null;
     var laps = [], lastLap = 0;
+    var csrfToken = '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>';
 
     function pad(n, d) { return String(n).padStart(d || 2, '0'); }
 
@@ -113,12 +184,29 @@ endif;
         return { main: pad(h) + ':' + pad(m) + ':' + pad(s), ms: '.' + pad(cs) };
     }
 
+    function formatTimeMs(ms) {
+        var t = formatTime(ms);
+        return t.main + t.ms;
+    }
+
     function update() {
         var now = Date.now();
         var total = elapsed + (now - startTime);
         var t = formatTime(total);
         document.getElementById('mSwTime').textContent = t.main;
         document.getElementById('mSwMs').textContent = t.ms;
+    }
+
+    function showSaveSection() {
+        document.getElementById('mSwSaveSection').style.display = (laps.length > 0 && !running) ? 'block' : 'none';
+    }
+
+    function showAlert(type, msg) {
+        var el = document.getElementById('mSwAlert');
+        el.className = 'm-sw-alert m-sw-alert-' + type;
+        el.textContent = msg;
+        el.style.display = 'block';
+        setTimeout(function() { el.style.display = 'none'; }, 4000);
     }
 
     window.mSwToggle = function() {
@@ -137,6 +225,7 @@ endif;
             btn.className = 'm-sw-btn m-sw-btn-stop';
             icon.className = 'fas fa-pause';
         }
+        showSaveSection();
     };
 
     window.mSwReset = function() {
@@ -153,6 +242,7 @@ endif;
         btn.className = 'm-sw-btn m-sw-btn-start';
         icon.className = 'fas fa-play';
         document.getElementById('mSwLaps').innerHTML = '<li class="m-empty-state"><i class="fas fa-flag"></i>No laps recorded</li>';
+        showSaveSection();
     };
 
     window.mSwLap = function() {
@@ -160,7 +250,7 @@ endif;
         var total = elapsed + (Date.now() - startTime);
         var diff = total - lastLap;
         lastLap = total;
-        laps.push({ total: total, diff: diff });
+        laps.push({ number: laps.length + 1, lapTimeMs: diff, totalTimeMs: total });
         var list = document.getElementById('mSwLaps');
         if (laps.length === 1) list.innerHTML = '';
         var t = formatTime(total);
@@ -171,6 +261,33 @@ endif;
             '<span class="m-lap-diff">+' + d.main + d.ms + '</span>' +
             '<span class="m-lap-time">' + t.main + t.ms + '</span>';
         list.insertBefore(li, list.firstChild);
+    };
+
+    window.mSwSave = function() {
+        var name = document.getElementById('mSwSessionName').value.trim();
+        if (!name) { showAlert('error', 'Enter a session name'); return; }
+        if (laps.length === 0) { showAlert('error', 'No laps to save'); return; }
+        var btn = document.getElementById('mSwSaveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        var fd = new FormData();
+        fd.append('action', 'save_session');
+        fd.append('csrf_token', csrfToken);
+        fd.append('session_name', name);
+        fd.append('skill_id', '');
+        fd.append('laps', JSON.stringify(laps));
+        fetch('process_stopwatch.php', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showAlert('success', data.message || 'Session saved!');
+                    mSwReset();
+                    document.getElementById('mSwSessionName').value = '';
+                    setTimeout(function() { window.location.reload(); }, 1500);
+                } else { showAlert('error', data.message || 'Failed to save'); }
+            })
+            .catch(function() { showAlert('error', 'Failed to save session'); })
+            .finally(function() { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Session'; });
     };
 })();
 </script>

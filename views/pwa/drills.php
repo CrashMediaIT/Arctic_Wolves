@@ -360,40 +360,50 @@ try {
         <?php endif; ?>
     </div>
 
-    <a href="?page=create_drill" class="m-fab" title="Create Drill"><i class="fas fa-plus"></i></a>
+    <button type="button" class="m-fab" title="Create Drill" onclick="mOpenCreateModal()"><i class="fas fa-plus"></i></button>
 </div>
 
-<!-- Edit Drill Modal -->
+<!-- Create / Edit Drill Modal -->
 <div class="m-modal-overlay" id="m-edit-overlay" onclick="if(event.target===this)mCloseEditModal()">
     <div class="m-modal">
         <div class="m-modal-header">
-            <h3>Edit Drill</h3>
+            <h3 id="m-modal-title">Create Drill</h3>
             <button type="button" class="m-modal-close" onclick="mCloseEditModal()"><i class="fas fa-times"></i></button>
         </div>
         <form id="m-edit-form" onsubmit="return mSubmitEdit(event)">
             <?= csrfTokenInput() ?>
             <input type="hidden" name="drill_id" id="m-edit-id">
-            <label for="m-edit-title">Title</label>
-            <input type="text" id="m-edit-title" name="title" required>
+            <input type="hidden" name="action" id="m-edit-action" value="create">
+            <label for="m-edit-title">Drill Name <span style="color:#EF4444">*</span></label>
+            <input type="text" id="m-edit-title" name="title" required placeholder="e.g. Cross-Ice Passing">
             <label for="m-edit-category">Category</label>
-            <input type="text" id="m-edit-category" name="category" placeholder="e.g. Skating, Shooting">
+            <select id="m-edit-category" name="category">
+                <option value="">— Select —</option>
+                <?php foreach ($drillCategories as $cat): ?>
+                <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
             <label for="m-edit-difficulty">Difficulty</label>
             <select id="m-edit-difficulty" name="difficulty">
                 <option value="">— Select —</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
             </select>
-            <label for="m-edit-duration">Duration (minutes)</label>
-            <input type="number" id="m-edit-duration" name="duration_minutes" min="0" max="999">
             <label for="m-edit-desc">Description</label>
-            <textarea id="m-edit-desc" name="description" rows="3"></textarea>
+            <textarea id="m-edit-desc" name="description" rows="3" placeholder="Brief description of the drill"></textarea>
+            <label for="m-edit-duration">Duration (minutes)</label>
+            <input type="number" id="m-edit-duration" name="duration_minutes" min="0" max="999" placeholder="e.g. 15">
+            <label for="m-edit-equipment">Equipment Needed</label>
+            <input type="text" id="m-edit-equipment" name="equipment_needed" placeholder="e.g. Pucks, Cones, Nets">
+            <label for="m-edit-instructions">Instructions / Steps</label>
+            <textarea id="m-edit-instructions" name="instructions" rows="3" placeholder="Step-by-step instructions"></textarea>
             <label for="m-edit-coaching">Coaching Points</label>
-            <textarea id="m-edit-coaching" name="coaching_points" rows="2"></textarea>
+            <textarea id="m-edit-coaching" name="coaching_points" rows="2" placeholder="Key coaching points"></textarea>
             <label for="m-edit-video">Video URL</label>
             <input type="url" id="m-edit-video" name="video_url" placeholder="https://…">
             <div class="m-modal-msg" id="m-edit-msg"></div>
-            <button type="submit" class="m-modal-submit" id="m-edit-submit">Save Changes</button>
+            <button type="submit" class="m-modal-submit" id="m-edit-submit">Create Drill</button>
         </form>
     </div>
 </div>
@@ -433,14 +443,40 @@ function mGetCsrf() {
     return el ? el.value : '';
 }
 
-/* Edit modal */
+/* Open modal for creating a new drill */
+function mOpenCreateModal() {
+    document.getElementById('m-modal-title').textContent = 'Create Drill';
+    document.getElementById('m-edit-submit').textContent = 'Create Drill';
+    document.getElementById('m-edit-action').value = 'create';
+    document.getElementById('m-edit-id').value = '';
+    document.getElementById('m-edit-title').value = '';
+    document.getElementById('m-edit-category').value = '';
+    document.getElementById('m-edit-difficulty').value = '';
+    document.getElementById('m-edit-duration').value = '';
+    document.getElementById('m-edit-desc').value = '';
+    document.getElementById('m-edit-equipment').value = '';
+    document.getElementById('m-edit-instructions').value = '';
+    document.getElementById('m-edit-coaching').value = '';
+    document.getElementById('m-edit-video').value = '';
+    document.getElementById('m-edit-msg').textContent = '';
+    document.getElementById('m-edit-overlay').classList.add('m-modal-open');
+}
+
+/* Open modal for editing an existing drill */
 function mOpenEditModal(drill) {
+    document.getElementById('m-modal-title').textContent = 'Edit Drill';
+    document.getElementById('m-edit-submit').textContent = 'Save Changes';
+    document.getElementById('m-edit-action').value = 'save_drill';
     document.getElementById('m-edit-id').value = drill.id || '';
     document.getElementById('m-edit-title').value = drill.title || '';
     document.getElementById('m-edit-category').value = drill.category || '';
-    document.getElementById('m-edit-difficulty').value = (drill.difficulty || '').toLowerCase();
+    var diffMap = {easy:'beginner', medium:'intermediate', hard:'advanced'};
+    var rawDiff = (drill.difficulty || '').toLowerCase();
+    document.getElementById('m-edit-difficulty').value = diffMap[rawDiff] || rawDiff;
     document.getElementById('m-edit-duration').value = drill.duration_minutes || '';
     document.getElementById('m-edit-desc').value = drill.description || '';
+    document.getElementById('m-edit-equipment').value = drill.equipment_needed || '';
+    document.getElementById('m-edit-instructions').value = drill.instructions || '';
     document.getElementById('m-edit-coaching').value = drill.coaching_points || '';
     document.getElementById('m-edit-video').value = drill.video_url || '';
     document.getElementById('m-edit-msg').textContent = '';
@@ -460,8 +496,7 @@ function mSubmitEdit(e) {
     msg.className = 'm-modal-msg';
     var form = document.getElementById('m-edit-form');
     var body = new URLSearchParams(new FormData(form));
-    body.set('action', 'save_drill');
-    body.set('drill_id', document.getElementById('m-edit-id').value);
+    body.set('action', document.getElementById('m-edit-action').value);
     body.set('csrf_token', mGetCsrf());
     fetch('process_drills.php', { method: 'POST', body: body, credentials: 'same-origin' })
         .then(function(r) {

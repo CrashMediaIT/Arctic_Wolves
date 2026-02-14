@@ -85,9 +85,13 @@ try {
                     <div class="m-package-price-sub">$<?= number_format((float)$pkg['price'] / (int)$pkg['sessions_included'], 2) ?>/session</div>
                     <?php endif; ?>
                 </div>
-                <a href="?page=purchase_package&package_id=<?= (int)$pkg['id'] ?>" class="m-package-buy">
-                    <i class="fas fa-cart-plus"></i> Purchase
-                </a>
+                <form action="process_purchase_package.php" method="POST" style="display:inline;">
+                    <?= csrfTokenInput() ?>
+                    <input type="hidden" name="package_id" value="<?= (int)$pkg['id'] ?>">
+                    <button type="submit" class="m-package-buy">
+                        <i class="fas fa-cart-plus"></i> Purchase
+                    </button>
+                </form>
             </div>
         </div>
         <?php endforeach; ?>

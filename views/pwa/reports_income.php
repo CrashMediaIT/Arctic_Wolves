@@ -75,8 +75,65 @@ try {
         </div>
     </div>
 
-    <div class="m-income-note">
-        <i class="fas fa-desktop" style="font-size:20px;display:block;margin-bottom:8px;"></i>
-        View detailed breakdowns on desktop
+    <!-- Filter & Export -->
+    <div style="margin-bottom:16px;">
+        <label style="font-size:12px;color:#A8A8B8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Period</label>
+        <select id="mIncomePeriod" style="width:100%;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;min-height:44px;font-size:14px;-webkit-appearance:none;" onchange="mIncomeChangePeriod(this.value)">
+            <option value="today" <?= ($period ?? '') === 'today' ? 'selected' : '' ?>>Today</option>
+            <option value="week" <?= ($period ?? '') === 'week' ? 'selected' : '' ?>>This Week</option>
+            <option value="month" <?= (!isset($period) || $period === 'month') ? 'selected' : '' ?>>This Month</option>
+            <option value="year" <?= ($period ?? '') === 'year' ? 'selected' : '' ?>>This Year</option>
+            <option value="custom" <?= ($period ?? '') === 'custom' ? 'selected' : '' ?>>Custom Range</option>
+        </select>
+    </div>
+
+    <div id="mIncomeCustomDates" style="display:<?= ($period ?? '') === 'custom' ? 'block' : 'none' ?>;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+                <label style="font-size:11px;color:#A8A8B8;display:block;margin-bottom:4px;">Start</label>
+                <input type="date" id="mIncomeStart" style="width:100%;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;min-height:44px;font-size:14px;" value="<?= htmlspecialchars($start_date ?? date('Y-m-01')) ?>">
+            </div>
+            <div>
+                <label style="font-size:11px;color:#A8A8B8;display:block;margin-bottom:4px;">End</label>
+                <input type="date" id="mIncomeEnd" style="width:100%;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;min-height:44px;font-size:14px;" value="<?= htmlspecialchars($end_date ?? date('Y-m-t')) ?>">
+            </div>
+        </div>
+        <button onclick="mIncomeApplyCustom()" style="width:100%;background:#6B46C1;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;min-height:44px;cursor:pointer;">Apply Range</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button onclick="mIncomeExport('csv')" style="display:flex;align-items:center;justify-content:center;gap:6px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;">
+            <i class="fas fa-file-csv" style="color:#3B82F6;"></i> Export CSV
+        </button>
+        <button onclick="mIncomeExport('pdf')" style="display:flex;align-items:center;justify-content:center;gap:6px;background:#0A0A0F;border:1px solid #2D2D3F;border-radius:10px;color:#fff;padding:12px;font-size:13px;font-weight:600;min-height:44px;cursor:pointer;">
+            <i class="fas fa-file-pdf" style="color:#EF4444;"></i> Export PDF
+        </button>
     </div>
 </div>
+
+<script>
+function mIncomeChangePeriod(val) {
+    if (val === 'custom') {
+        document.getElementById('mIncomeCustomDates').style.display = 'block';
+    } else {
+        document.getElementById('mIncomeCustomDates').style.display = 'none';
+        window.location.href = '?page=reports_income&period=' + val;
+    }
+}
+function mIncomeApplyCustom() {
+    var s = document.getElementById('mIncomeStart').value;
+    var e = document.getElementById('mIncomeEnd').value;
+    window.location.href = '?page=reports_income&period=custom&start_date=' + s + '&end_date=' + e;
+}
+function mIncomeExport(fmt) {
+    if (fmt === 'pdf') { window.print(); return; }
+    var rows = [['Period','Total Revenue','This Month','Outstanding']];
+    rows.push(['<?= htmlspecialchars($period ?? 'month') ?>','<?= number_format($totalRevenue, 2) ?>','<?= number_format($monthRevenue, 2) ?>','<?= number_format($outstanding, 2) ?>']);
+    var csv = rows.map(function(r){ return r.map(function(c){ return '"'+c+'"'; }).join(','); }).join('\n');
+    var blob = new Blob([csv], {type:'text/csv'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'income_report.csv';
+    a.click();
+}
+</script>
