@@ -113,7 +113,7 @@ foreach ($lines_teams as $t) {
         <div class="filter-row">
             <div class="filter-field">
                 <label>Team</label>
-                <select class="form-select" onchange="location.href='?page=gameplan_lines&tab=<?= $lines_tab ?>&team_id='+this.value">
+                <select class="form-select" onchange="location.href='/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id='+this.value">
                     <?php foreach ($lines_teams as $tm): ?>
                     <option value="<?= (int)$tm['id'] ?>" <?= $lines_team_id === (int)$tm['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tm['name']) ?><?= !empty($tm['division']) ? ' (' . htmlspecialchars($tm['division']) . ')' : '' ?></option>
                     <?php endforeach; ?>
@@ -128,16 +128,16 @@ foreach ($lines_teams as $t) {
 
 <!-- Sub-tabs -->
 <div class="page-tabs page-tabs-secondary" style="margin-bottom: 20px;">
-    <a class="page-tab <?= $lines_tab === 'forwards' ? 'active' : '' ?>" href="?page=gameplan_lines&team_id=<?= $lines_team_id ?>&tab=forwards">
+    <a class="page-tab <?= $lines_tab === 'forwards' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=forwards">
         <i class="fas fa-hockey-puck"></i> Forward Lines
     </a>
-    <a class="page-tab <?= $lines_tab === 'defense' ? 'active' : '' ?>" href="?page=gameplan_lines&team_id=<?= $lines_team_id ?>&tab=defense">
+    <a class="page-tab <?= $lines_tab === 'defense' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=defense">
         <i class="fas fa-shield-halved"></i> Defense Pairs
     </a>
-    <a class="page-tab <?= $lines_tab === 'special' ? 'active' : '' ?>" href="?page=gameplan_lines&team_id=<?= $lines_team_id ?>&tab=special">
+    <a class="page-tab <?= $lines_tab === 'special' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=special">
         <i class="fas fa-bolt"></i> Special Teams
     </a>
-    <a class="page-tab <?= $lines_tab === 'goalies' ? 'active' : '' ?>" href="?page=gameplan_lines&team_id=<?= $lines_team_id ?>&tab=goalies">
+    <a class="page-tab <?= $lines_tab === 'goalies' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=goalies">
         <i class="fas fa-hand"></i> Goalies
     </a>
 </div>

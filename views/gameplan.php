@@ -1,10 +1,10 @@
 <?php
 /**
- * Game Plan View - Redirect to Integrated Module
+ * Game Plan View - Redirect to Standalone Module
  *
- * The Game Plan module is now integrated into the main dashboard.
- * This view redirects users who access it via the old route.
+ * The Game Plan module is a separate standalone dashboard.
+ * This view redirects users who access it via the dashboard route.
  */
-header("Location: /dashboard.php?page=gameplan");
+header("Location: /gameplan.php");
 exit();
 ?>

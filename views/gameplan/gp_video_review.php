@@ -6,7 +6,7 @@
  *
  * Uses site standard classes: filter-box, card, btn, form-select, etc.
  * Variables $isAnyCoach, $user_id, $pdo are already available.
- * Page-header and page-tabs are already rendered by gameplan_dashboard.php.
+ * Rendered inside standalone gameplan.php shell.
  */
 
 // ── Tab & Filter parameters ───────────────────────────────────
@@ -174,14 +174,14 @@ if (!function_exists('vr_format_duration')) {
 
 <!-- Sub-tabs -->
 <div class="page-tabs page-tabs-secondary" style="flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
-    <a href="?page=gameplan_video&tab=clips" class="page-tab <?= $vr_tab === 'clips' ? 'active' : '' ?>">
+    <a href="/gameplan.php?page=video_review&tab=clips" class="page-tab <?= $vr_tab === 'clips' ? 'active' : '' ?>">
         <i class="fas fa-scissors"></i> Clips
     </a>
-    <a href="?page=gameplan_video&tab=by_game" class="page-tab <?= $vr_tab === 'by_game' ? 'active' : '' ?>">
+    <a href="/gameplan.php?page=video_review&tab=by_game" class="page-tab <?= $vr_tab === 'by_game' ? 'active' : '' ?>">
         <i class="fas fa-hockey-puck"></i> By Game
     </a>
     <?php if ($isAnyCoach): ?>
-    <a href="?page=gameplan_video&tab=scouting" class="page-tab <?= $vr_tab === 'scouting' ? 'active' : '' ?>">
+    <a href="/gameplan.php?page=video_review&tab=scouting" class="page-tab <?= $vr_tab === 'scouting' ? 'active' : '' ?>">
         <i class="fas fa-binoculars"></i> Opponent Scouting
     </a>
     <?php endif; ?>
@@ -193,7 +193,7 @@ if (!function_exists('vr_format_duration')) {
     <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Clips</div>
     <div class="filter-box-content">
         <form method="GET" action="">
-            <input type="hidden" name="page" value="gameplan_video">
+            <input type="hidden" name="page" value="video_review">
             <input type="hidden" name="tab" value="clips">
             <div class="filter-row">
                 <div class="filter-field" style="grid-column: span 2;">
@@ -232,8 +232,8 @@ if (!function_exists('vr_format_duration')) {
             </div>
             <div class="filter-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
-                <a href="?page=gameplan_video&tab=clips" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
-                <a href="?page=gameplan_video&tab=clips&view=<?= $vr_view_mode === 'grid' ? 'list' : 'grid' ?><?= $vr_search !== '' ? '&search=' . urlencode($vr_search) : '' ?><?= $vr_tag_cat !== '' ? '&tag_cat=' . urlencode($vr_tag_cat) : '' ?><?= $vr_tag_id > 0 ? '&tag_id=' . $vr_tag_id : '' ?><?= $vr_date_from !== '' ? '&date_from=' . urlencode($vr_date_from) : '' ?><?= $vr_date_to !== '' ? '&date_to=' . urlencode($vr_date_to) : '' ?>" class="btn btn-secondary" title="Toggle view">
+                <a href="/gameplan.php?page=video_review&tab=clips" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                <a href="/gameplan.php?page=video_review&tab=clips&view=<?= $vr_view_mode === 'grid' ? 'list' : 'grid' ?><?= $vr_search !== '' ? '&search=' . urlencode($vr_search) : '' ?><?= $vr_tag_cat !== '' ? '&tag_cat=' . urlencode($vr_tag_cat) : '' ?><?= $vr_tag_id > 0 ? '&tag_id=' . $vr_tag_id : '' ?><?= $vr_date_from !== '' ? '&date_from=' . urlencode($vr_date_from) : '' ?><?= $vr_date_to !== '' ? '&date_to=' . urlencode($vr_date_to) : '' ?>" class="btn btn-secondary" title="Toggle view">
                     <i class="fas <?= $vr_view_mode === 'grid' ? 'fa-list' : 'fa-grip' ?>"></i> <?= $vr_view_mode === 'grid' ? 'List View' : 'Grid View' ?>
                 </a>
             </div>
@@ -345,7 +345,7 @@ ksort($grouped);
 <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
     <?php foreach ($vr_games as $game): ?>
     <div class="card">
-        <a href="?page=gameplan_video&tab=by_game&game_id=<?= (int)$game['id'] ?>" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; text-decoration: none; color: var(--text-primary); gap: 16px;">
+        <a href="/gameplan.php?page=video_review&tab=by_game&game_id=<?= (int)$game['id'] ?>" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; text-decoration: none; color: var(--text-primary); gap: 16px;">
             <div style="display: flex; flex-direction: column; gap: 4px;">
                 <span style="font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px;">
                     <i class="fas fa-calendar" style="color: var(--primary);"></i> <?= date('M j, Y – g:ia', strtotime($game['game_date'])) ?>
@@ -413,7 +413,7 @@ ksort($grouped);
     <div class="filter-box-header"><i class="fas fa-binoculars"></i> Select Opponent</div>
     <div class="filter-box-content">
         <form method="GET" action="">
-            <input type="hidden" name="page" value="gameplan_video">
+            <input type="hidden" name="page" value="video_review">
             <input type="hidden" name="tab" value="scouting">
             <div class="filter-row">
                 <div class="filter-field" style="grid-column: span 2;">
@@ -428,7 +428,7 @@ ksort($grouped);
             </div>
             <div class="filter-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> View Clips</button>
-                <a href="?page=gameplan_video&tab=scouting" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                <a href="/gameplan.php?page=video_review&tab=scouting" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
             </div>
         </form>
     </div>

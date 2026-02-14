@@ -95,7 +95,7 @@ $perm_columns = [
         <div class="filter-row">
             <div class="filter-field">
                 <label>Team</label>
-                <select class="form-select" onchange="location.href='?page=gameplan_permissions&team_id='+this.value">
+                <select class="form-select" onchange="location.href='/gameplan.php?page=permissions&team_id='+this.value">
                     <?php foreach ($perm_teams as $tm): ?>
                     <option value="<?= (int)$tm['id'] ?>" <?= $perm_team_id === (int)$tm['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tm['name']) ?><?= !empty($tm['division']) ? ' (' . htmlspecialchars($tm['division']) . ')' : '' ?></option>
                     <?php endforeach; ?>

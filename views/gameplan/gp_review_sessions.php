@@ -84,16 +84,16 @@ try {
 
 <!-- Status Tabs -->
 <div class="page-tabs page-tabs-secondary" style="margin-bottom: 20px;">
-    <a class="page-tab <?= $rs_status === 'all' ? 'active' : '' ?>" href="?page=gameplan_review_sessions&status=all">
+    <a class="page-tab <?= $rs_status === 'all' ? 'active' : '' ?>" href="/gameplan.php?page=review_sessions&status=all">
         All (<?= $rs_counts['all'] ?>)
     </a>
-    <a class="page-tab <?= $rs_status === 'upcoming' ? 'active' : '' ?>" href="?page=gameplan_review_sessions&status=upcoming">
+    <a class="page-tab <?= $rs_status === 'upcoming' ? 'active' : '' ?>" href="/gameplan.php?page=review_sessions&status=upcoming">
         <i class="fas fa-clock"></i> Upcoming (<?= $rs_counts['upcoming'] ?>)
     </a>
-    <a class="page-tab <?= $rs_status === 'completed' ? 'active' : '' ?>" href="?page=gameplan_review_sessions&status=completed">
+    <a class="page-tab <?= $rs_status === 'completed' ? 'active' : '' ?>" href="/gameplan.php?page=review_sessions&status=completed">
         <i class="fas fa-check-circle"></i> Completed (<?= $rs_counts['completed'] ?>)
     </a>
-    <a class="page-tab <?= $rs_status === 'past_due' ? 'active' : '' ?>" href="?page=gameplan_review_sessions&status=past_due">
+    <a class="page-tab <?= $rs_status === 'past_due' ? 'active' : '' ?>" href="/gameplan.php?page=review_sessions&status=past_due">
         <i class="fas fa-exclamation-triangle"></i> Past Due (<?= $rs_counts['past_due'] ?>)
     </a>
 </div>

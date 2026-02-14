@@ -81,10 +81,10 @@ $days_in_month = (int)date('t', strtotime($cal_start));
 
 <!-- View Toggle Tabs -->
 <div class="page-tabs page-tabs-secondary" style="margin-bottom: 20px;">
-    <a class="page-tab <?= $cal_view === 'calendar' ? 'active' : '' ?>" href="?page=gameplan_calendar&view=calendar&month=<?= $cal_month ?>&year=<?= $cal_year ?>&team_id=<?= $cal_team ?>">
+    <a class="page-tab <?= $cal_view === 'calendar' ? 'active' : '' ?>" href="/gameplan.php?page=calendar&view=calendar&month=<?= $cal_month ?>&year=<?= $cal_year ?>&team_id=<?= $cal_team ?>">
         <i class="fas fa-calendar-days"></i> Calendar
     </a>
-    <a class="page-tab <?= $cal_view === 'list' ? 'active' : '' ?>" href="?page=gameplan_calendar&view=list&month=<?= $cal_month ?>&year=<?= $cal_year ?>&team_id=<?= $cal_team ?>">
+    <a class="page-tab <?= $cal_view === 'list' ? 'active' : '' ?>" href="/gameplan.php?page=calendar&view=list&month=<?= $cal_month ?>&year=<?= $cal_year ?>&team_id=<?= $cal_team ?>">
         <i class="fas fa-list"></i> List
     </a>
 </div>
@@ -96,7 +96,7 @@ $days_in_month = (int)date('t', strtotime($cal_start));
         <div class="filter-row">
             <div class="filter-field">
                 <label>Team</label>
-                <select class="form-select" onchange="location.href='?page=gameplan_calendar&view=<?= $cal_view ?>&month=<?= $cal_month ?>&year=<?= $cal_year ?>&team_id='+this.value">
+                <select class="form-select" onchange="location.href='/gameplan.php?page=calendar&view=<?= $cal_view ?>&month=<?= $cal_month ?>&year=<?= $cal_year ?>&team_id='+this.value">
                     <option value="0">All Teams</option>
                     <?php foreach ($cal_teams as $tm): ?>
                     <option value="<?= (int)$tm['id'] ?>" <?= $cal_team === (int)$tm['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tm['name']) ?></option>
@@ -112,9 +112,9 @@ $days_in_month = (int)date('t', strtotime($cal_start));
 
 <!-- Month Navigation -->
 <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px;">
-    <a href="?page=gameplan_calendar&view=<?= $cal_view ?>&month=<?= $prev_month ?>&year=<?= $prev_year ?>&team_id=<?= $cal_team ?>" class="btn btn-secondary" style="height:36px;width:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;"><i class="fas fa-chevron-left"></i></a>
+    <a href="/gameplan.php?page=calendar&view=<?= $cal_view ?>&month=<?= $prev_month ?>&year=<?= $prev_year ?>&team_id=<?= $cal_team ?>" class="btn btn-secondary" style="height:36px;width:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;"><i class="fas fa-chevron-left"></i></a>
     <h3 style="margin:0;min-width:200px;text-align:center;"><?= date('F Y', strtotime($cal_start)) ?></h3>
-    <a href="?page=gameplan_calendar&view=<?= $cal_view ?>&month=<?= $next_month ?>&year=<?= $next_year ?>&team_id=<?= $cal_team ?>" class="btn btn-secondary" style="height:36px;width:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;"><i class="fas fa-chevron-right"></i></a>
+    <a href="/gameplan.php?page=calendar&view=<?= $cal_view ?>&month=<?= $next_month ?>&year=<?= $next_year ?>&team_id=<?= $cal_team ?>" class="btn btn-secondary" style="height:36px;width:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;"><i class="fas fa-chevron-right"></i></a>
 </div>
 
 <?php if ($cal_view === 'calendar'): ?>

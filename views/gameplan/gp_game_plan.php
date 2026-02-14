@@ -74,13 +74,13 @@ try {
 
 <!-- Sub-tabs -->
 <div class="page-tabs page-tabs-secondary" style="margin-bottom: 20px;">
-    <a class="page-tab <?= $gp_tab === 'pre_game' ? 'active' : '' ?>" href="?page=gameplan_plans&tab=pre_game">
+    <a class="page-tab <?= $gp_tab === 'pre_game' ? 'active' : '' ?>" href="/gameplan.php?page=game_plan&tab=pre_game">
         <i class="fas fa-clipboard-list"></i> Pre-Game (<?= $gp_counts['pre_game'] ?>)
     </a>
-    <a class="page-tab <?= $gp_tab === 'post_game' ? 'active' : '' ?>" href="?page=gameplan_plans&tab=post_game">
+    <a class="page-tab <?= $gp_tab === 'post_game' ? 'active' : '' ?>" href="/gameplan.php?page=game_plan&tab=post_game">
         <i class="fas fa-chart-line"></i> Post-Game (<?= $gp_counts['post_game'] ?>)
     </a>
-    <a class="page-tab <?= $gp_tab === 'practice' ? 'active' : '' ?>" href="?page=gameplan_plans&tab=practice">
+    <a class="page-tab <?= $gp_tab === 'practice' ? 'active' : '' ?>" href="/gameplan.php?page=game_plan&tab=practice">
         <i class="fas fa-dumbbell"></i> Practice (<?= $gp_counts['practice'] ?>)
     </a>
 </div>

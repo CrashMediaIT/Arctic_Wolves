@@ -5,7 +5,7 @@
  */
 
 if ($isAnyCoach) {
-    echo '<div class="empty-state" style="text-align:center;padding:40px"><i class="fas fa-info-circle" style="font-size:40px;color:var(--text-muted);display:block;margin-bottom:16px"></i><h3>Athlete View</h3><p style="color:var(--text-muted)">This page is for athletes. Visit <a href="?page=gameplan_video">Video Review</a> to see all clips.</p></div>';
+    echo '<div class="empty-state" style="text-align:center;padding:40px"><i class="fas fa-info-circle" style="font-size:40px;color:var(--text-muted);display:block;margin-bottom:16px"></i><h3>Athlete View</h3><p style="color:var(--text-muted)">This page is for athletes. Visit <a href="/gameplan.php?page=video_review">Video Review</a> to see all clips.</p></div>';
     return;
 }
 
@@ -107,7 +107,7 @@ if (!function_exists('gp_format_duration')) {
     <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Clips</div>
     <div class="filter-box-content">
         <form method="GET" action="" class="filter-row">
-            <input type="hidden" name="page" value="gameplan_my_clips">
+            <input type="hidden" name="page" value="my_clips">
             <div class="filter-field">
                 <label>Search</label>
                 <input type="text" name="search" class="form-input" placeholder="Search clips…" value="<?= htmlspecialchars($mc_search) ?>">
@@ -140,7 +140,7 @@ if (!function_exists('gp_format_duration')) {
             </div>
             <div class="filter-field filter-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
-                <a href="?page=gameplan_my_clips" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                <a href="/gameplan.php?page=my_clips" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
             </div>
         </form>
     </div>

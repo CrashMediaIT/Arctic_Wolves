@@ -143,13 +143,13 @@ if (!function_exists('vr_format_duration')) {
 
 <!-- Tabs -->
 <div class="page-tabs page-tabs-secondary" style="margin-bottom: 20px;">
-    <a class="page-tab <?= $vr_tab === 'upload' ? 'active' : '' ?>" href="?page=gameplan_film_room&tab=upload">
+    <a class="page-tab <?= $vr_tab === 'upload' ? 'active' : '' ?>" href="/gameplan.php?page=film_room&tab=upload">
         <i class="fas fa-cloud-upload-alt"></i> Upload &amp; Manage
     </a>
-    <a class="page-tab <?= $vr_tab === 'editor' ? 'active' : '' ?>" href="?page=gameplan_film_room&tab=editor">
+    <a class="page-tab <?= $vr_tab === 'editor' ? 'active' : '' ?>" href="/gameplan.php?page=film_room&tab=editor">
         <i class="fas fa-scissors"></i> Clip Editor
     </a>
-    <a class="page-tab <?= $vr_tab === 'multicam' ? 'active' : '' ?>" href="?page=gameplan_film_room&tab=multicam">
+    <a class="page-tab <?= $vr_tab === 'multicam' ? 'active' : '' ?>" href="/gameplan.php?page=film_room&tab=multicam">
         <i class="fas fa-layer-group"></i> Multi-Camera
     </a>
 </div>
@@ -227,7 +227,7 @@ if (!function_exists('vr_format_duration')) {
     <div class="card-body">
         <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;">
             <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted, #888); display: inline-block;"></span>
-            <span>NDI source detection requires the companion server. <a href="?page=gameplan_home">Check status</a></span>
+            <span>NDI source detection requires the companion server. <a href="/gameplan.php?page=home">Check status</a></span>
         </div>
     </div>
 </div>
@@ -265,7 +265,7 @@ if (!function_exists('vr_format_duration')) {
                 </div>
             </div>
             <div>
-                <a href="?page=gameplan_film_room&tab=editor&source_id=<?= (int)$src['id'] ?>" class="btn btn-secondary" style="font-size: 12px;" title="Create Clips">
+                <a href="/gameplan.php?page=film_room&tab=editor&source_id=<?= (int)$src['id'] ?>" class="btn btn-secondary" style="font-size: 12px;" title="Create Clips">
                     <i class="fas fa-scissors"></i> Clip
                 </a>
             </div>
@@ -284,11 +284,11 @@ if (!function_exists('vr_format_duration')) {
     </div>
     <div class="card-body">
         <?php if (empty($vr_sources)): ?>
-        <div class="empty-state"><i class="fas fa-video-slash"></i><h3>No Sources</h3><p>No video sources available. <a href="?page=gameplan_film_room&tab=upload">Upload one first.</a></p></div>
+        <div class="empty-state"><i class="fas fa-video-slash"></i><h3>No Sources</h3><p>No video sources available. <a href="/gameplan.php?page=film_room&tab=upload">Upload one first.</a></p></div>
         <?php else: ?>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;">
             <?php foreach ($vr_sources as $src): ?>
-            <a href="?page=gameplan_film_room&tab=editor&source_id=<?= (int)$src['id'] ?>" class="card" style="text-decoration:none; color:inherit; padding: 16px; display: block;">
+            <a href="/gameplan.php?page=film_room&tab=editor&source_id=<?= (int)$src['id'] ?>" class="card" style="text-decoration:none; color:inherit; padding: 16px; display: block;">
                 <div style="text-align: center; padding: 20px 0; font-size: 32px; opacity: 0.4; margin-bottom: 10px;">
                     <i class="fas fa-film"></i>
                 </div>
@@ -412,7 +412,7 @@ if (!function_exists('vr_format_duration')) {
     </div>
     <div class="filter-box-content">
         <form method="GET" class="filter-row">
-            <input type="hidden" name="page" value="gameplan_film_room">
+            <input type="hidden" name="page" value="film_room">
             <input type="hidden" name="tab" value="multicam">
             <div class="filter-field" style="flex: 2;">
                 <label>Game</label>
@@ -430,7 +430,7 @@ if (!function_exists('vr_format_duration')) {
 <?php if ($vr_mc_game_id === 0): ?>
 <div class="empty-state"><i class="fas fa-layer-group"></i><h3>No Game Selected</h3><p>Select a game to view multi-camera angles.</p></div>
 <?php elseif (empty($vr_mc_angles)): ?>
-<div class="empty-state"><i class="fas fa-video-slash"></i><h3>No Angles</h3><p>No camera angles uploaded for this game. <a href="?page=gameplan_film_room&tab=upload">Upload sources.</a></p></div>
+<div class="empty-state"><i class="fas fa-video-slash"></i><h3>No Angles</h3><p>No camera angles uploaded for this game. <a href="/gameplan.php?page=film_room&tab=upload">Upload sources.</a></p></div>
 <?php else: ?>
 <div class="card">
     <div class="card-header">

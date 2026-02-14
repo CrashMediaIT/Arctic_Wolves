@@ -68,7 +68,7 @@ if ($isAnyCoach) {
 <div class="card">
     <div class="card-header">
         <h3><i class="fas fa-film"></i> Recent Videos</h3>
-        <a href="?page=gameplan_video" class="btn btn-secondary" style="height: 36px; padding: 0 16px; font-size: 13px;">View All</a>
+        <a href="/gameplan.php?page=video_review" class="btn btn-secondary" style="height: 36px; padding: 0 16px; font-size: 13px;">View All</a>
     </div>
     <div class="card-body">
         <?php if (empty($recentVideos)): ?>
@@ -76,7 +76,7 @@ if ($isAnyCoach) {
             <i class="fas fa-video-slash" style="font-size: 40px; color: var(--text-muted); margin-bottom: 16px; display: block;"></i>
             <h3 style="color: var(--text-secondary); margin-bottom: 8px;">No Videos Yet</h3>
             <p style="color: var(--text-muted); margin-bottom: 16px;">Upload videos from the main dashboard or record them in the app.</p>
-            <a href="?page=video" class="btn btn-primary" style="height: 40px; padding: 0 20px;"><i class="fas fa-upload"></i> Go to Video Upload</a>
+            <a href="/dashboard.php?page=video" class="btn btn-primary" style="height: 40px; padding: 0 20px;"><i class="fas fa-upload"></i> Go to Video Upload</a>
         </div>
         <?php else: ?>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;">
@@ -112,7 +112,7 @@ if ($isAnyCoach) {
     </div>
     <div class="card-body">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-            <a href="?page=gameplan_plans" style="display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-white); transition: border-color 0.2s;">
+            <a href="/gameplan.php?page=game_plan" style="display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-white); transition: border-color 0.2s;">
                 <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(59,130,246,.1); color: var(--info); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
                     <i class="fas fa-clipboard-list"></i>
                 </div>
@@ -121,7 +121,7 @@ if ($isAnyCoach) {
                     <div style="font-size: 12px; color: var(--text-muted);">Pre/post game strategies</div>
                 </div>
             </a>
-            <a href="?page=gameplan_lines" style="display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-white); transition: border-color 0.2s;">
+            <a href="/gameplan.php?page=lines" style="display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-white); transition: border-color 0.2s;">
                 <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(16,185,129,.1); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
                     <i class="fas fa-users-line"></i>
                 </div>
@@ -130,7 +130,7 @@ if ($isAnyCoach) {
                     <div style="font-size: 12px; color: var(--text-muted);">Forward, defense & special teams</div>
                 </div>
             </a>
-            <a href="?page=gameplan_film_room" style="display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-white); transition: border-color 0.2s;">
+            <a href="/gameplan.php?page=film_room" style="display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-white); transition: border-color 0.2s;">
                 <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(139,92,246,.1); color: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
                     <i class="fas fa-video"></i>
                 </div>
@@ -139,7 +139,7 @@ if ($isAnyCoach) {
                     <div style="font-size: 12px; color: var(--text-muted);">Upload & tag video footage</div>
                 </div>
             </a>
-            <a href="?page=gameplan_review_sessions" style="display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-white); transition: border-color 0.2s;">
+            <a href="/gameplan.php?page=review_sessions" style="display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text-white); transition: border-color 0.2s;">
                 <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(245,158,11,.1); color: var(--warning); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
                     <i class="fas fa-chalkboard-user"></i>
                 </div>
