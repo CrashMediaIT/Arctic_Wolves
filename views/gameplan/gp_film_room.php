@@ -5,7 +5,7 @@
  */
 
 if (!$isAnyCoach) {
-    echo '<div class="gp-empty"><i class="fas fa-lock"></i><p>Coach access required to use the Film Room.</p></div>';
+    echo '<div class="empty-state"><i class="fas fa-lock"></i><h3>Access Restricted</h3><p>Coach access required to use the Film Room.</p></div>';
     return;
 }
 
@@ -239,7 +239,7 @@ if (!function_exists('vr_format_duration')) {
     </div>
     <div class="card-body">
         <?php if (empty($vr_sources)): ?>
-        <div class="gp-empty"><i class="fas fa-video-slash"></i><p>No video sources uploaded yet.</p></div>
+        <div class="empty-state"><i class="fas fa-video-slash"></i><h3>No Sources</h3><p>No video sources uploaded yet.</p></div>
         <?php else: ?>
         <?php foreach ($vr_sources as $src): ?>
         <div class="card" style="display: grid; grid-template-columns: 80px 1fr auto; align-items: center; gap: 16px; padding: 14px 18px; margin-bottom: 10px;">
@@ -284,7 +284,7 @@ if (!function_exists('vr_format_duration')) {
     </div>
     <div class="card-body">
         <?php if (empty($vr_sources)): ?>
-        <div class="gp-empty"><i class="fas fa-video-slash"></i><p>No video sources available. <a href="?page=gameplan_film_room&tab=upload">Upload one first.</a></p></div>
+        <div class="empty-state"><i class="fas fa-video-slash"></i><h3>No Sources</h3><p>No video sources available. <a href="?page=gameplan_film_room&tab=upload">Upload one first.</a></p></div>
         <?php else: ?>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;">
             <?php foreach ($vr_sources as $src): ?>
@@ -428,9 +428,9 @@ if (!function_exists('vr_format_duration')) {
 </div>
 
 <?php if ($vr_mc_game_id === 0): ?>
-<div class="gp-empty"><i class="fas fa-layer-group"></i><p>Select a game to view multi-camera angles.</p></div>
+<div class="empty-state"><i class="fas fa-layer-group"></i><h3>No Game Selected</h3><p>Select a game to view multi-camera angles.</p></div>
 <?php elseif (empty($vr_mc_angles)): ?>
-<div class="gp-empty"><i class="fas fa-video-slash"></i><p>No camera angles uploaded for this game. <a href="?page=gameplan_film_room&tab=upload">Upload sources.</a></p></div>
+<div class="empty-state"><i class="fas fa-video-slash"></i><h3>No Angles</h3><p>No camera angles uploaded for this game. <a href="?page=gameplan_film_room&tab=upload">Upload sources.</a></p></div>
 <?php else: ?>
 <div class="card">
     <div class="card-header">
