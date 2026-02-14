@@ -35,7 +35,7 @@ try {
         echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
         exit;
     }
-    header('Location: dashboard.php?page=gameplan_settings&error=' . urlencode('Invalid CSRF token'));
+    header('Location: dashboard.php?page=system_tools&tab=gameplan&error=' . urlencode('Invalid CSRF token'));
     exit;
 }
 
@@ -74,7 +74,7 @@ try {
             upsertGameplanSetting($pdo, 'gameplan_companion_api_key', $companion_api_key);
             upsertGameplanSetting($pdo, 'gameplan_app_url', $gameplan_app_url);
 
-            header('Location: dashboard.php?page=gameplan_settings&success=settings_saved');
+            header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
             exit;
 
         case 'save_hw_accel':
@@ -89,7 +89,7 @@ try {
             upsertGameplanSetting($pdo, 'gameplan_hw_accel_enabled', $hw_enabled);
             upsertGameplanSetting($pdo, 'gameplan_hw_accel_method', $hw_method);
 
-            header('Location: dashboard.php?page=gameplan_settings&success=settings_saved');
+            header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
             exit;
 
         case 'save_video_storage':
@@ -133,7 +133,7 @@ try {
                 upsertGameplanSetting($pdo, 'gameplan_smb_domain', $smb_domain);
             }
 
-            header('Location: dashboard.php?page=gameplan_settings&success=settings_saved');
+            header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
             exit;
 
         case 'test_companion':
@@ -205,6 +205,6 @@ try {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         exit;
     }
-    header('Location: dashboard.php?page=gameplan_settings&error=' . urlencode($e->getMessage()));
+    header('Location: dashboard.php?page=system_tools&tab=gameplan&error=' . urlencode($e->getMessage()));
     exit;
 }

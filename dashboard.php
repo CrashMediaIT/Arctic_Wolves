@@ -113,6 +113,12 @@ if ($page === 'admin_settings') {
     exit();
 }
 
+// Redirect old gameplan_settings route to system_tools with gameplan tab
+if ($page === 'gameplan_settings') {
+    header("Location: dashboard.php?page=system_tools&tab=gameplan");
+    exit();
+}
+
 // FULL ROUTING TABLE - PARENT AND CHILD PAGES
 $allowed_pages = [
     // Main Menu
@@ -288,7 +294,6 @@ $allowed_pages = [
     // Profile and Settings
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
-    'gameplan_settings'       => 'views/gameplan_settings.php',
     'gameplan'                => 'views/gameplan.php'
 ];
 
@@ -912,9 +917,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
                 <i class="fa-solid fa-screwdriver-wrench icon"></i> System Tools
             </a>
             <!-- Audit Log removed - available in Security Center -->
-            <a href="?page=gameplan_settings" class="nav-link <?= $page=='gameplan_settings'?'active':'' ?>">
-                <i class="fa-solid fa-chess-board icon"></i> Game Plan Settings
-            </a>
             <a href="?page=marketing" class="nav-link <?= $page=='marketing'?'active':'' ?>">
                 <i class="fa-solid fa-bullhorn icon"></i> Marketing
             </a>

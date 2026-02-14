@@ -98,6 +98,10 @@ if ($page === 'admin_settings') {
     header("Location: pwa_tablet.php?page=system_tools&tab=landing");
     exit();
 }
+if ($page === 'gameplan_settings') {
+    header("Location: pwa_tablet.php?page=system_tools&tab=gameplan");
+    exit();
+}
 
 // Full routing table (identical to dashboard.php)
 $allowed_pages = [
@@ -227,7 +231,6 @@ $allowed_pages = [
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
     'gameplan'                => 'views/gameplan.php',
-    'gameplan_settings'       => 'views/gameplan_settings.php',
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
@@ -437,7 +440,6 @@ try {
             <a href="?page=admin_security" class="nav-link <?= $page=='admin_security'?'active':'' ?>"><i class="fa-solid fa-shield-halved"></i> Security</a>
             <a href="?page=system_tools" class="nav-link <?= $page=='system_tools'?'active':'' ?>"><i class="fa-solid fa-screwdriver-wrench"></i> System Tools</a>
             <!-- Audit Log removed - available in Security Center -->
-            <a href="?page=gameplan_settings" class="nav-link <?= $page=='gameplan_settings'?'active':'' ?>"><i class="fa-solid fa-chess-board"></i> Game Plan Settings</a>
             <a href="?page=marketing" class="nav-link <?= $page=='marketing'?'active':'' ?>"><i class="fa-solid fa-bullhorn"></i> Marketing</a>
         </nav>
     </div>
