@@ -85,6 +85,10 @@ $page = $_GET['page'] ?? 'home';
 if ($page === 'home' && $isFrontDesk) {
     $page = 'front_desk_home';
 }
+if ($page === 'gameplan_settings') {
+    header("Location: pwa.php?page=system_tools&tab=gameplan");
+    exit();
+}
 
 // Full routing table (identical to dashboard.php)
 $allowed_pages = [
@@ -214,7 +218,6 @@ $allowed_pages = [
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
     'gameplan'                => 'views/gameplan.php',
-    'gameplan_settings'       => 'views/gameplan_settings.php',
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';

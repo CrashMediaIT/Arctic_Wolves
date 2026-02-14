@@ -71,7 +71,6 @@ $allowed_pages = [
 // Admin-only pages
 if ($isAdmin) {
     $allowed_pages['permissions'] = 'views/gameplan/permissions.php';
-    $allowed_pages['settings']    = 'views/gameplan_settings.php';
 }
 
 $view_file = $allowed_pages[$page] ?? $allowed_pages['home'];
@@ -258,7 +257,7 @@ try {
             <a href="/gameplan.php?page=permissions" class="gp-nav-link <?= $page === 'permissions' ? 'active' : '' ?>">
                 <i class="fas fa-user-shield"></i> Permissions
             </a>
-            <a href="/gameplan.php?page=settings" class="gp-nav-link <?= $page === 'settings' ? 'active' : '' ?>">
+            <a href="/dashboard.php?page=system_tools&tab=gameplan" class="gp-nav-link <?= $page === 'settings' ? 'active' : '' ?>">
                 <i class="fas fa-cog"></i> Settings
             </a>
             <?php endif; ?>
