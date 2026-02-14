@@ -9,7 +9,7 @@ $is_coach = in_array(($user_role ?? ''), ['coach', 'coach_plus', 'admin']);
 $workouts = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT w.id, w.title, w.difficulty_level, w.duration_minutes, uw.status, uw.id as uw_id
+        SELECT w.id, w.title, w.difficulty_level, w.duration_minutes, uw.status
         FROM user_workouts uw
         JOIN workouts w ON w.id = uw.workout_id
         WHERE uw.user_id = ?

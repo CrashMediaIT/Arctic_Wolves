@@ -204,10 +204,19 @@ function mSessToggle(card) {
     if (detail) detail.classList.toggle('active');
 }
 function mSessExport() {
-    var rows = [['Date','Title','Time','Status','Location','City']];
-    <?php foreach ($sessions as $s): ?>
-    rows.push([<?= json_encode(date('Y-m-d', strtotime($s['session_date']))) ?>,<?= json_encode($s['title']) ?>,<?= json_encode($s['session_time'] ?? '') ?>,<?= json_encode($s['status'] ?? '') ?>,<?= json_encode($s['arena'] ?? '') ?>,<?= json_encode($s['city'] ?? '') ?>]);
-    <?php endforeach; ?>
+    var rows = <?= json_encode(array_merge(
+        [['Date','Title','Time','Status','Location','City']],
+        array_map(function($s) {
+            return [
+                date('Y-m-d', strtotime($s['session_date'])),
+                $s['title'],
+                $s['session_time'] ?? '',
+                $s['status'] ?? '',
+                $s['arena'] ?? '',
+                $s['city'] ?? ''
+            ];
+        }, $sessions)
+    )) ?>;
     var csv = rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
     var blob = new Blob([csv], {type:'text/csv'});
     var a = document.createElement('a');
