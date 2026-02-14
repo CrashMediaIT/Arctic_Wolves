@@ -1,8 +1,11 @@
 <?php
 /**
- * PWA Shop - Mobile-native product grid
+ * PWA Shop - Mobile-native product grid with add-to-cart
  * Purpose-built for mobile phones.
  */
+
+if (!isset($_SESSION['shop_cart'])) { $_SESSION['shop_cart'] = []; }
+$shopCartCount = array_sum(array_column($_SESSION['shop_cart'], 'quantity'));
 
 $products = [];
 try {
@@ -21,15 +24,27 @@ try {
 ?>
 <style>
 .m-shop { padding: 16px; font-family: Inter, sans-serif; }
-.m-shop-header { margin-bottom: 16px; }
+.m-shop-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.m-shop-header-left { flex: 1; }
 .m-shop-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0; }
 .m-shop-count { font-size: 12px; color: #A8A8B8; margin: 2px 0 0; }
+.m-shop-cart-btn {
+    position: relative; background: #6B46C1; color: #fff; border: none; border-radius: 10px;
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer; flex-shrink: 0;
+}
+.m-shop-cart-btn:active { opacity: 0.85; }
+.m-shop-cart-badge {
+    position: absolute; top: -4px; right: -4px; background: #EF4444; color: #fff;
+    font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; padding: 0 4px;
+}
 .m-product-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
 .m-product-card {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
-    overflow: hidden; text-decoration: none; display: flex; flex-direction: column;
+    overflow: hidden; display: flex; flex-direction: column;
 }
 .m-product-img {
     width: 100%; aspect-ratio: 1; background: #1E1E2E;
@@ -47,15 +62,75 @@ try {
 .m-product-stock-in { background: rgba(16,185,129,0.15); color: #10B981; }
 .m-product-stock-low { background: rgba(245,158,11,0.15); color: #F59E0B; }
 .m-product-stock-out { background: rgba(239,68,68,0.15); color: #EF4444; }
+.m-product-add-btn {
+    background: #6B46C1; color: #fff; border: none; border-radius: 10px; min-height: 44px;
+    font-weight: 600; font-size: 12px; cursor: pointer; width: 100%; margin-top: 8px;
+    font-family: Inter, sans-serif; display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.m-product-add-btn:active { opacity: 0.85; }
+.m-product-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .m-empty-state { text-align: center; padding: 40px 20px; color: #6B6B7B; }
 .m-empty-state i { font-size: 32px; display: block; margin-bottom: 12px; }
 .m-empty-state p { font-size: 14px; margin: 0; }
+/* Cart bottom sheet */
+.m-shop-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 1000; align-items: flex-end; justify-content: center;
+}
+.m-shop-overlay.m-visible { display: flex; }
+.m-shop-sheet {
+    background: #16161F; border-radius: 16px 16px 0 0; width: 100%; max-width: 500px;
+    max-height: 80vh; overflow-y: auto; padding: 20px 16px 32px;
+    animation: mShopSlideUp 0.3s ease;
+}
+@keyframes mShopSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.m-shop-sheet-handle { width: 36px; height: 4px; background: #2D2D3F; border-radius: 2px; margin: 0 auto 16px; }
+.m-shop-sheet-title { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 16px; text-align: center; }
+.m-shop-cart-item {
+    display: flex; align-items: center; gap: 10px; padding: 12px 0;
+    border-bottom: 1px solid #2D2D3F;
+}
+.m-shop-cart-item-img { width: 44px; height: 44px; border-radius: 8px; background: #0A0A0F; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+.m-shop-cart-item-img img { width: 100%; height: 100%; object-fit: cover; }
+.m-shop-cart-item-img i { color: #2D2D3F; font-size: 16px; }
+.m-shop-cart-item-info { flex: 1; min-width: 0; }
+.m-shop-cart-item-name { font-size: 13px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-shop-cart-item-size { font-size: 11px; color: #6B6B7B; }
+.m-shop-cart-item-price { font-size: 13px; font-weight: 700; color: #10B981; }
+.m-shop-cart-item-remove {
+    background: none; border: none; color: #EF4444; font-size: 14px; cursor: pointer;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+}
+.m-shop-cart-empty { text-align: center; padding: 24px; color: #6B6B7B; font-size: 13px; }
+.m-shop-cart-total {
+    display: flex; justify-content: space-between; padding: 14px 0 0;
+    font-size: 16px; font-weight: 700; color: #fff;
+}
+.m-shop-checkout-btn {
+    background: #6B46C1; color: #fff; border: none; border-radius: 10px; min-height: 44px;
+    font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; margin-top: 14px;
+    font-family: Inter, sans-serif; display: flex; align-items: center; justify-content: center; gap: 6px;
+    text-decoration: none;
+}
+.m-shop-checkout-btn:active { opacity: 0.85; }
+.m-shop-toast {
+    display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: #10B981; color: #fff; padding: 10px 20px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; z-index: 1100; font-family: Inter, sans-serif;
+}
+.m-shop-toast.m-visible { display: block; }
 </style>
 
 <div class="m-shop">
     <div class="m-shop-header">
-        <h2 class="m-shop-title">Shop</h2>
-        <p class="m-shop-count"><?= count($products) ?> product<?= count($products) !== 1 ? 's' : '' ?></p>
+        <div class="m-shop-header-left">
+            <h2 class="m-shop-title">Shop</h2>
+            <p class="m-shop-count"><?= count($products) ?> product<?= count($products) !== 1 ? 's' : '' ?></p>
+        </div>
+        <button class="m-shop-cart-btn" onclick="mOpenShopCart()" type="button">
+            <i class="fas fa-shopping-cart"></i>
+            <span class="m-shop-cart-badge" id="mShopCartBadge" style="<?= $shopCartCount > 0 ? '' : 'display:none' ?>"><?= $shopCartCount ?></span>
+        </button>
     </div>
 
     <?php if (empty($products)): ?>
@@ -78,14 +153,16 @@ try {
                     $stockLabel = 'In Stock';
                 }
             ?>
-            <a href="?page=shop&product_id=<?= (int)$p['id'] ?>" class="m-product-card">
-                <div class="m-product-img">
-                    <?php if (!empty($p['image_url'])): ?>
-                        <img src="<?= htmlspecialchars($p['image_url']) ?>" alt="<?= htmlspecialchars($p['name']) ?>">
-                    <?php else: ?>
-                        <i class="fas fa-box"></i>
-                    <?php endif; ?>
-                </div>
+            <div class="m-product-card">
+                <a href="?page=shop&product_id=<?= (int)$p['id'] ?>" style="text-decoration:none;">
+                    <div class="m-product-img">
+                        <?php if (!empty($p['image_url'])): ?>
+                            <img src="<?= htmlspecialchars($p['image_url']) ?>" alt="<?= htmlspecialchars($p['name']) ?>">
+                        <?php else: ?>
+                            <i class="fas fa-box"></i>
+                        <?php endif; ?>
+                    </div>
+                </a>
                 <div class="m-product-info">
                     <?php if (!empty($p['category_name'])): ?>
                     <div class="m-product-cat"><?= htmlspecialchars($p['category_name']) ?></div>
@@ -95,9 +172,97 @@ try {
                         <span class="m-product-price">$<?= number_format((float)$p['price'], 2) ?></span>
                         <span class="m-product-stock m-product-stock-<?= $stockClass ?>"><?= $stockLabel ?></span>
                     </div>
+                    <button class="m-product-add-btn"
+                            <?= $stock <= 0 ? 'disabled' : '' ?>
+                            onclick="mShopAddToCart(<?= (int)$p['id'] ?>, this)"
+                            type="button">
+                        <i class="fas fa-cart-plus"></i> Add to Cart
+                    </button>
                 </div>
-            </a>
+            </div>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
 </div>
+
+<!-- Cart Bottom Sheet -->
+<div class="m-shop-overlay" id="mShopOverlay" onclick="if(event.target===this)mCloseShopCart()">
+    <div class="m-shop-sheet">
+        <div class="m-shop-sheet-handle"></div>
+        <div class="m-shop-sheet-title">Your Cart</div>
+        <div id="mShopCartContent">
+            <?php if (empty($_SESSION['shop_cart'])): ?>
+            <div class="m-shop-cart-empty"><i class="fas fa-shopping-cart" style="font-size:24px;display:block;margin-bottom:8px;"></i>Your cart is empty</div>
+            <?php else: ?>
+                <?php
+                $cartTotal = 0;
+                foreach ($_SESSION['shop_cart'] as $ck => $ci):
+                    $lineTotal = (float)$ci['price'] * (int)$ci['quantity'];
+                    $cartTotal += $lineTotal;
+                ?>
+                <div class="m-shop-cart-item">
+                    <div class="m-shop-cart-item-img">
+                        <?php if (!empty($ci['image_url'])): ?><img src="<?= htmlspecialchars($ci['image_url']) ?>"><?php else: ?><i class="fas fa-box"></i><?php endif; ?>
+                    </div>
+                    <div class="m-shop-cart-item-info">
+                        <div class="m-shop-cart-item-name"><?= htmlspecialchars($ci['name']) ?></div>
+                        <?php if (!empty($ci['size'])): ?><div class="m-shop-cart-item-size">Size: <?= htmlspecialchars($ci['size']) ?></div><?php endif; ?>
+                        <div class="m-shop-cart-item-price">$<?= number_format((float)$ci['price'], 2) ?> × <?= (int)$ci['quantity'] ?></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <div id="mShopCartFooter" style="<?= empty($_SESSION['shop_cart']) ? 'display:none' : '' ?>">
+            <div class="m-shop-cart-total">
+                <span>Total</span>
+                <span id="mShopCartTotal">$<?= number_format($cartTotal ?? 0, 2) ?></span>
+            </div>
+            <a href="shop_checkout.php" class="m-shop-checkout-btn">
+                <i class="fas fa-lock"></i> Checkout
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="m-shop-toast" id="mShopToast"></div>
+
+<script>
+function mOpenShopCart() {
+    document.getElementById('mShopOverlay').classList.add('m-visible');
+}
+function mCloseShopCart() { document.getElementById('mShopOverlay').classList.remove('m-visible'); }
+
+function mShopAddToCart(productId, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    var formData = new FormData();
+    formData.append('action', 'add_to_cart');
+    formData.append('size', '');
+    formData.append('quantity', '1');
+    fetch('shop_product.php?id=' + productId, {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var badge = document.getElementById('mShopCartBadge');
+            badge.textContent = data.cart_count;
+            badge.style.display = 'flex';
+            mShowShopToast('Added to cart!');
+        } else {
+            alert(data.message || 'Could not add to cart');
+        }
+    })
+    .catch(function() { alert('An error occurred.'); })
+    .finally(function() { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cart-plus"></i> Add to Cart'; });
+}
+
+function mShowShopToast(msg) {
+    var t = document.getElementById('mShopToast');
+    t.textContent = msg;
+    t.classList.add('m-visible');
+    setTimeout(function() { t.classList.remove('m-visible'); }, 2500);
+}
+</script>
