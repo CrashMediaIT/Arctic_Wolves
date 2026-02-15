@@ -1383,6 +1383,12 @@ function handleImportCalendar() {
             foreach ($events as $event) {
                 if (!empty($event['summary']) && !empty($event['dtstart'])) {
                     $raw_summary = $event['summary'];
+
+                    // Skip TBD/TBA events – these are placeholders without confirmed opponents
+                    if (preg_match('/^\s*TBD\s*$/i', $raw_summary) || preg_match('/^\s*TBA\s*$/i', $raw_summary)) {
+                        continue;
+                    }
+
                     $game_type = 'regular';
                     // Detect game type from summary
                     $lower = strtolower($raw_summary);
@@ -1396,11 +1402,16 @@ function handleImportCalendar() {
                         $game_type = 'exhibition';
                     }
 
-                    // Parse the opponent name from summary (handles "Team A vs Team B" format)
+                    // Parse the opponent name from summary (handles "Team A vs Team B" and "Team A at Team B" formats)
                     $opponent = parseOpponentFromSummary($raw_summary, $own_team_name);
                     // If parsing returned empty (e.g. "Team - Tournament" format), use raw summary for the schedule record
                     if (empty($opponent)) {
                         $opponent = $raw_summary;
+                    }
+
+                    // Skip if parsed opponent is TBD/TBA
+                    if (preg_match('/^\s*(TBD|TBA)\s*$/i', $opponent)) {
+                        continue;
                     }
 
                     $stmt->execute([$team_id, $opponent, $event['dtstart'], $game_type, $event['description'] ?? '', $season_id]);
@@ -1408,7 +1419,7 @@ function handleImportCalendar() {
                     // Only auto-create team for actual matchups (not practices/tournaments without a parsed opponent)
                     if ($game_type !== 'practice') {
                         $parsed_team = parseOpponentFromSummary($raw_summary, $own_team_name);
-                        if (!empty($parsed_team)) {
+                        if (!empty($parsed_team) && !preg_match('/^\s*(TBD|TBA)\s*$/i', $parsed_team)) {
                             $teams_created += autoCreateTeamIfNeeded($pdo, $parsed_team, $season_id);
                         }
                     }
@@ -1482,6 +1493,8 @@ function parseICalEvents($content) {
  *   "Team A vs Team B"  → returns Team B (opponent)
  *   "Team A vs. Team B" → returns Team B
  *   "Team A v Team B"   → returns Team B
+ *   "Team A at Team B"  → returns Team B (away game)
+ *   "Team A At Team B"  → returns Team B (away game)
  *   "Team -"            → tournament/non-matchup event, returns empty string
  * If the summary doesn't match a known pattern, returns the cleaned summary as-is.
  */
@@ -1492,14 +1505,15 @@ function parseOpponentFromSummary($summary, $ownTeamName = '') {
     // "Team - something" pattern (tournament events) → not a matchup
     if (preg_match('/^.+\s+-\s*$/i', $summary) || preg_match('/^.+\s+-\s+/i', $summary)) {
         // Check if it's "Team - Event Name" style (not a matchup)
-        // Only skip if there's no "vs" in it
-        if (stripos($summary, ' vs ') === false && stripos($summary, ' vs. ') === false && stripos($summary, ' v ') === false) {
+        // Only skip if there's no "vs" or "at" separator in it
+        if (stripos($summary, ' vs ') === false && stripos($summary, ' vs. ') === false && stripos($summary, ' v ') === false && preg_match('/\s+at\s+/i', $summary) === 0) {
             return '';
         }
     }
 
     // "Team A vs Team B" or "Team A vs. Team B" or "Team A v Team B"
-    if (preg_match('/^(.+?)\s+(?:vs\.?|v)\s+(.+)$/i', $summary, $m)) {
+    // Also handles "Team A at Team B" and "Team A At Team B"
+    if (preg_match('/^(.+?)\s+(?:vs\.?|v|at)\s+(.+)$/i', $summary, $m)) {
         $teamA = trim($m[1]);
         $teamB = trim($m[2]);
 
@@ -1516,7 +1530,7 @@ function parseOpponentFromSummary($summary, $ownTeamName = '') {
                 return $teamA;
             }
         }
-        // If we can't determine which is ours, return the second team (conventional: "Us vs Them")
+        // If we can't determine which is ours, return the second team (conventional: "Us vs Them" / "Us at Them")
         return $teamB;
     }
 
