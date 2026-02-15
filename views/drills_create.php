@@ -100,7 +100,7 @@ if ($editDrillId) {
                             <!-- Drawing tools -->
                             <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
                                 <button class="btn btn-secondary drill-tool" title="Draw Line" data-tool="line" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-minus"></i></button>
-                                <button class="btn btn-secondary drill-tool" title="Draw Dashed Line" data-tool="dashed" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-ellipsis"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Draw Dashed Line" data-tool="dashed" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-ellipsis-h"></i></button>
                                 <button class="btn btn-secondary drill-tool" title="Squiggly Line (Puck Carry)" data-tool="squiggly" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-wave-square"></i></button>
                                 <button class="btn btn-secondary drill-tool" title="Arrow" data-tool="arrow" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-arrow-right"></i></button>
                                 <button class="btn btn-secondary drill-tool" title="Add Text" data-tool="text" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-font"></i></button>

@@ -1522,7 +1522,7 @@ function parseOpponentFromSummary($summary, $ownTeamName = '') {
     if (preg_match('/^.+\s+-\s*$/i', $summary) || preg_match('/^.+\s+-\s+/i', $summary)) {
         // Check if it's "Team - Event Name" style (not a matchup)
         // Only skip if there's no "vs" or "at" separator in it
-        if (stripos($summary, ' vs ') === false && stripos($summary, ' vs. ') === false && stripos($summary, ' v ') === false && preg_match('/\s+at\s+/i', $summary) === 0) {
+        if (stripos($summary, ' vs ') === false && stripos($summary, ' vs. ') === false && stripos($summary, ' v ') === false && stripos($summary, ' at ') === false) {
             return '';
         }
     }

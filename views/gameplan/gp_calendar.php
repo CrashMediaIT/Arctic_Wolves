@@ -158,7 +158,7 @@ $days_in_month = (int)date('t', strtotime($cal_start));
                     $c = $colors[$type] ?? '#3B82F6';
                     $is_past = strtotime($ev['game_date']) < time();
                 ?>
-                <a href="#" class="gp-cal-game-link" data-game-id="<?= (int)$ev['id'] ?>" data-opponent="<?= htmlspecialchars($ev['opponent_team']) ?>" data-is-past="<?= $is_past ? '1' : '0' ?>" style="display:block;padding:3px 6px;border-radius:4px;font-size:10px;margin-top:2px;background:<?= $c ?>1f;color:<?= $c ?>;text-decoration:none;cursor:pointer;transition:opacity .15s;" title="<?= htmlspecialchars($ev['opponent_team']) ?> – Click for options">
+                <a href="#" class="gp-cal-game-link" data-game-id="<?= (int)$ev['id'] ?>" data-team-id="<?= (int)$ev['team_id'] ?>" data-opponent="<?= htmlspecialchars($ev['opponent_team']) ?>" data-is-past="<?= $is_past ? '1' : '0' ?>" style="display:block;padding:3px 6px;border-radius:4px;font-size:10px;margin-top:2px;background:<?= $c ?>1f;color:<?= $c ?>;text-decoration:none;cursor:pointer;transition:opacity .15s;" title="<?= htmlspecialchars($ev['opponent_team']) ?> – Click for options">
                     <span style="font-weight:700;"><?= date('g:ia', strtotime($ev['game_date'])) ?></span>
                     <span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">vs <?= htmlspecialchars(substr($ev['opponent_team'], 0, 15)) ?></span>
                 </a>
@@ -383,10 +383,11 @@ document.addEventListener('DOMContentLoaded', function() {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             var gameId = this.dataset.gameId;
+            var teamId = this.dataset.teamId;
             var opponent = this.dataset.opponent;
             var isPast = this.dataset.isPast === '1';
             document.getElementById('gpGameOptionsTitle').textContent = (isPast ? 'View' : 'Plan') + ': vs ' + opponent;
-            document.getElementById('gpGameOptLines').href = '/gameplan.php?page=lines&game_id=' + gameId;
+            document.getElementById('gpGameOptLines').href = '/gameplan.php?page=lines&game_id=' + gameId + '&team_id=' + teamId;
             document.getElementById('gpGameOptPreGame').href = '/gameplan.php?page=game_plan&tab=pre_game&game_id=' + gameId;
             document.getElementById('gpGameOptPostGame').href = '/gameplan.php?page=game_plan&tab=post_game&game_id=' + gameId;
             document.getElementById('gpGameOptLinesLabel').textContent = isPast ? 'View Game Lines' : 'Set Game Lines';

@@ -14,6 +14,7 @@ if (!$isAnyCoach) {
 // ── Parameters ────────────────────────────────────────────────
 $gp_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'pre_game';
 if (!in_array($gp_tab, ['pre_game', 'post_game', 'practice'])) $gp_tab = 'pre_game';
+$gp_selected_game_id = isset($_GET['game_id']) ? (int)$_GET['game_id'] : 0;
 
 // ── Load teams ────────────────────────────────────────────────
 $gp_teams = [];
@@ -271,7 +272,7 @@ $pk_systems = [
                         <select name="game_id" id="gpPlanGame" class="form-input">
                             <option value="">— No Game —</option>
                             <?php foreach ($gp_games as $g): ?>
-                            <option value="<?= (int)$g['id'] ?>"><?= htmlspecialchars(($g['team_name'] ?? '') . ' vs ' . $g['opponent_team'] . ' – ' . date('M j', strtotime($g['game_date']))) ?></option>
+                            <option value="<?= (int)$g['id'] ?>" <?= $gp_selected_game_id === (int)$g['id'] ? 'selected' : '' ?>><?= htmlspecialchars(($g['team_name'] ?? '') . ' vs ' . $g['opponent_team'] . ' – ' . date('M j', strtotime($g['game_date']))) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
