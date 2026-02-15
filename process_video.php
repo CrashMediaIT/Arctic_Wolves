@@ -1545,15 +1545,22 @@ function handleCreateDevicePair() {
 
     $session_id = filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT) ?: null;
 
-    // Generate a unique 6-character pair code
-    $pair_code = strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+    // Generate a unique 6-character pair code with collision retry
     $controller_token = bin2hex(random_bytes(32));
-
-    $stmt = $pdo->prepare("
-        INSERT INTO vr_device_pairs (pair_code, session_id, controller_token, status, created_by)
-        VALUES (?, ?, ?, 'waiting', ?)
-    ");
-    $stmt->execute([$pair_code, $session_id, $controller_token, $user_id]);
+    $max_attempts = 5;
+    for ($attempt = 0; $attempt < $max_attempts; $attempt++) {
+        $pair_code = strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO vr_device_pairs (pair_code, session_id, controller_token, status, created_by)
+                VALUES (?, ?, ?, 'waiting', ?)
+            ");
+            $stmt->execute([$pair_code, $session_id, $controller_token, $user_id]);
+            break;
+        } catch (PDOException $e) {
+            if ($attempt === $max_attempts - 1) throw $e;
+        }
+    }
 
     logSecurityEvent($pdo, 'device_pair_created', "Created device pair $pair_code", $user_id);
     header('Location: /gameplan.php?page=video_review&tab=device_pair&success=pair_created');

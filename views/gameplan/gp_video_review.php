@@ -757,7 +757,7 @@ ksort($grouped);
     </div>
 </div>
 <?php endif; ?>
-<?php /* end scouting tab */ endif; ?>
+<?php /* end clips/by_game/scouting tabs */ endif; ?>
 
 <?php if ($vr_tab === 'device_pair'): ?>
 <!-- ── Device Pairing Tab ── -->
@@ -922,10 +922,12 @@ try {
 
 <script>
 function toggleFreeze(pairId) {
+    var csrfEl = document.querySelector('input[name="csrf_token"]');
+    if (!csrfEl || !csrfEl.value) { alert('Session expired. Please reload the page.'); return; }
     fetch('/process_video.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=toggle_freeze_pair&pair_id=' + pairId + '&csrf_token=' + encodeURIComponent(document.querySelector('input[name="csrf_token"]')?.value || '')
+        body: 'action=toggle_freeze_pair&pair_id=' + pairId + '&csrf_token=' + encodeURIComponent(csrfEl.value)
     }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.success) location.reload();
     });
