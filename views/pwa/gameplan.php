@@ -193,7 +193,7 @@ $gp_is_sub = ($gp_sub !== 'home');
 
 <div class="m-gp">
     <!-- Navigation Drawer (mirrors desktop sidebar) -->
-    <div class="m-gp-drawer-overlay" id="gpDrawerOverlay" onclick="document.getElementById('gpDrawer').classList.remove('open');this.classList.remove('open');"></div>
+    <div class="m-gp-drawer-overlay" id="gpDrawerOverlay" tabindex="0" role="button" aria-label="Close navigation"></div>
     <nav class="m-gp-drawer" id="gpDrawer">
         <a href="?page=gameplan" class="m-gp-drawer-brand">
             <div>
@@ -223,7 +223,7 @@ $gp_is_sub = ($gp_sub !== 'home');
             <i class="fas fa-users-line"></i> Game Lines
         </a>
         <a href="?page=gameplan&gp=roster" class="m-gp-drawer-link <?= $gp_sub === 'roster' ? 'active' : '' ?>">
-            <i class="fas fa-clipboard-list"></i> Roster
+            <i class="fas fa-id-card"></i> Roster
         </a>
         <a href="?page=gameplan&gp=film_room" class="m-gp-drawer-link <?= $gp_sub === 'film_room' ? 'active' : '' ?>">
             <i class="fas fa-video"></i> Film Room
@@ -262,7 +262,7 @@ $gp_is_sub = ($gp_sub !== 'home');
             <p class="m-gp-sub">Pre-game &amp; post-game planning</p>
             <?php endif; ?>
         </div>
-        <button class="m-gp-menu-toggle" onclick="document.getElementById('gpDrawer').classList.add('open');document.getElementById('gpDrawerOverlay').classList.add('open');" title="Navigation">
+        <button class="m-gp-menu-toggle" id="gpMenuToggle" title="Navigation" aria-label="Open navigation">
             <i class="fas fa-bars"></i>
         </button>
     </div>
@@ -378,7 +378,7 @@ $gp_is_sub = ($gp_sub !== 'home');
 
         <a href="?page=gameplan&gp=roster" class="m-gp-nav-card">
             <div class="m-gp-nav-icon" style="background: rgba(16,185,129,.1); color: var(--success, #10B981);">
-                <i class="fas fa-clipboard-list"></i>
+                <i class="fas fa-id-card"></i>
             </div>
             <div class="m-gp-nav-label">Roster</div>
             <div class="m-gp-nav-count">Team roster</div>
@@ -422,6 +422,33 @@ $gp_is_sub = ($gp_sub !== 'home');
 </div>
 
 <script>
+// Navigation drawer open/close handlers
+(function() {
+    var drawer = document.getElementById('gpDrawer');
+    var overlay = document.getElementById('gpDrawerOverlay');
+    var toggle = document.getElementById('gpMenuToggle');
+
+    function openDrawer() {
+        drawer.classList.add('open');
+        overlay.classList.add('open');
+    }
+    function closeDrawer() {
+        drawer.classList.remove('open');
+        overlay.classList.remove('open');
+    }
+
+    if (toggle) toggle.addEventListener('click', openDrawer);
+    if (overlay) {
+        overlay.addEventListener('click', closeDrawer);
+        overlay.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === 'Escape') closeDrawer();
+        });
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+    });
+})();
+
 // Rewrite internal gameplan links and forms to work within PWA context
 document.addEventListener('DOMContentLoaded', function() {
     let gpContent = document.querySelector('.m-gp-content');
