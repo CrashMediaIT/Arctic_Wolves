@@ -152,8 +152,8 @@ try {
     <!-- Greeting Card -->
     <div class="m-greeting">
         <?php $firstName = explode(' ', trim($user_name ?: 'Guest'))[0]; ?>
-        <p class="m-greeting-name"><?= htmlspecialchars($greeting) ?>, <?= htmlspecialchars($firstName) ?>!</p>
-        <p class="m-greeting-date"><?= $today ?></p>
+        <p class="m-greeting-name" id="pwa-greeting"><?= htmlspecialchars($greeting) ?>, <?= htmlspecialchars($firstName) ?>!</p>
+        <p class="m-greeting-date" id="pwa-greeting-date"><?= $today ?></p>
         <?php if ($unreadCount > 0): ?>
         <a href="?page=notifications" class="m-greeting-notif">
             <i class="fas fa-bell"></i> <?= $unreadCount ?> unread notification<?= $unreadCount !== 1 ? 's' : '' ?>
@@ -299,3 +299,21 @@ try {
         <?php endforeach; ?>
     <?php endif; ?>
 </div>
+<script>
+(function() {
+    var h = new Date().getHours();
+    var timeOfDay = h < 12 ? 'Morning' : (h < 17 ? 'Afternoon' : 'Evening');
+    var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var now = new Date();
+    var el = document.getElementById('pwa-greeting');
+    if (el) {
+        var name = el.textContent.split(',').slice(1).join(',').trim();
+        el.textContent = 'Good ' + timeOfDay + ', ' + name;
+    }
+    var dateEl = document.getElementById('pwa-greeting-date');
+    if (dateEl) {
+        dateEl.textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate();
+    }
+})();
+</script>
