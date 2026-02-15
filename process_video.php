@@ -1588,7 +1588,7 @@ function autoCreateTeamIfNeeded($pdo, $teamName, $season_id = null) {
             $season = $row['name'] ?? '';
         }
 
-        $stmt = $pdo->prepare("INSERT INTO teams (name, season, is_active) VALUES (?, ?, 1)");
+        $stmt = $pdo->prepare("INSERT INTO teams (name, season, is_active, is_managed) VALUES (?, ?, 1, 0)");
         $stmt->execute([$cleanName, $season]);
         return 1;
     } catch (PDOException $e) {

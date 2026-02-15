@@ -19,7 +19,7 @@ if (!in_array($wb_ice_view, ['full', 'left-zone', 'right-zone', 'center'])) $wb_
 // ── Load teams ────────────────────────────────────────────────
 $wb_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $wb_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('WB teams: ' . $e->getMessage()); }

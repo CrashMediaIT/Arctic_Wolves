@@ -15,7 +15,7 @@ $perm_team_id = isset($_GET['team_id']) ? (int)$_GET['team_id'] : 0;
 // ── Load teams ────────────────────────────────────────────────
 $perm_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $perm_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('Perm teams: ' . $e->getMessage()); }

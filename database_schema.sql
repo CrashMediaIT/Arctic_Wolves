@@ -77,12 +77,15 @@ CREATE TABLE IF NOT EXISTS `teams` (
     `logo_url` VARCHAR(500) DEFAULT NULL,
     `is_active` TINYINT(1) DEFAULT 1,
     `is_demo` TINYINT(1) DEFAULT 0,
+    `is_managed` TINYINT(1) DEFAULT 1 COMMENT '1 = managed team (our teams), 0 = unmanaged (opponent teams)',
+    `ical_url` VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`assistant_coach_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_active` (`is_active`),
-    INDEX `idx_coach` (`coach_id`)
+    INDEX `idx_coach` (`coach_id`),
+    INDEX `idx_managed` (`is_managed`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert demo teams
@@ -2379,6 +2382,7 @@ CREATE TABLE IF NOT EXISTS `game_schedules` (
     `status` ENUM('scheduled', 'in_progress', 'completed', 'cancelled', 'postponed') DEFAULT 'scheduled',
     `notes` TEXT DEFAULT NULL,
     `season_id` INT DEFAULT NULL,
+    `ical_uid` VARCHAR(500) DEFAULT NULL COMMENT 'UID from iCal event for sync/update tracking',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
@@ -2388,7 +2392,8 @@ CREATE TABLE IF NOT EXISTS `game_schedules` (
     INDEX `idx_date` (`game_date`),
     INDEX `idx_status` (`status`),
     INDEX `idx_type` (`game_type`),
-    INDEX `idx_season` (`season_id`)
+    INDEX `idx_season` (`season_id`),
+    UNIQUE INDEX `idx_ical_uid_team` (`ical_uid`, `team_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Create view for backwards compatibility (programs alias)

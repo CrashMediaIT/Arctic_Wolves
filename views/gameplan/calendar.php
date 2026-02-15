@@ -24,7 +24,7 @@ $cal_end   = date('Y-m-t', strtotime($cal_start));
 // ── Load teams ────────────────────────────────────────────────
 $cal_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $cal_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('Cal teams: ' . $e->getMessage()); }

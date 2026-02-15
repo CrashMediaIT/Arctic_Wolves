@@ -208,6 +208,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Note: Could not add fk_gpl_game constraint: " . $e->getMessage());
             }
             
+            // Add is_managed column to teams table for managed vs unmanaged (opponent) teams
+            try {
+                $pdo->exec("ALTER TABLE teams ADD COLUMN is_managed TINYINT(1) DEFAULT 1 COMMENT '1 = managed team (our teams), 0 = unmanaged (opponent teams)' AFTER is_demo");
+            } catch (PDOException $e) {
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    error_log("Note: Could not add is_managed column to teams: " . $e->getMessage());
+                }
+            }
+            
+            // Add ical_url column to teams table for calendar re-sync
+            try {
+                $pdo->exec("ALTER TABLE teams ADD COLUMN ical_url VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync' AFTER is_managed");
+            } catch (PDOException $e) {
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    error_log("Note: Could not add ical_url column to teams: " . $e->getMessage());
+                }
+            }
+            
+            // Add ical_uid column to game_schedules for tracking imported events
+            try {
+                $pdo->exec("ALTER TABLE game_schedules ADD COLUMN ical_uid VARCHAR(500) DEFAULT NULL COMMENT 'UID from iCal event for sync/update tracking' AFTER season_id");
+            } catch (PDOException $e) {
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    error_log("Note: Could not add ical_uid column to game_schedules: " . $e->getMessage());
+                }
+            }
+            
+            // Add unique index on ical_uid + team_id for upsert support
+            try {
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as cnt FROM information_schema.STATISTICS 
+                    WHERE TABLE_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = 'game_schedules' 
+                    AND INDEX_NAME = 'idx_ical_uid_team'
+                ");
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($result !== false && (int)$result['cnt'] === 0) {
+                    $pdo->exec("ALTER TABLE game_schedules ADD UNIQUE INDEX idx_ical_uid_team (ical_uid, team_id)");
+                }
+            } catch (PDOException $e) {
+                error_log("Note: Could not add idx_ical_uid_team index: " . $e->getMessage());
+            }
+            
             // Add fk_expense_payee foreign key constraint if it doesn't exist
             // This is done separately to ensure idempotent schema setup
             // The expenses table and payee_id column are created by database_schema.sql
