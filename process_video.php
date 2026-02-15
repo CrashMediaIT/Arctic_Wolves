@@ -1220,8 +1220,10 @@ function handleImportCalendar() {
                     'verify_peer_name' => true,
                 ],
             ]);
-            $ical_content = @file_get_contents($url, false, $ctx);
+            $ical_content = file_get_contents($url, false, $ctx);
             if ($ical_content === false) {
+                $err = error_get_last();
+                error_log('Calendar URL fetch failed: ' . ($err['message'] ?? 'unknown error') . ' URL: ' . $url);
                 throw new Exception('Could not fetch calendar from URL. Please check the URL and try again.');
             }
         }
