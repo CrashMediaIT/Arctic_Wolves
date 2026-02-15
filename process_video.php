@@ -57,6 +57,35 @@ try {
         case 'review_video':
             handleVideoReview();
             break;
+
+        // ── Game Plan Module Actions ──────────────────────────────
+        case 'create_game_plan':
+            handleCreateGamePlan();
+            break;
+
+        case 'save_hockey_lines':
+            handleSaveHockeyLines();
+            break;
+
+        case 'upload_video_source':
+            handleUploadVideoSource();
+            break;
+
+        case 'create_clip':
+            handleCreateClip();
+            break;
+
+        case 'create_review_session':
+            handleCreateReviewSession();
+            break;
+
+        case 'update_video_permissions':
+            handleUpdateVideoPermissions();
+            break;
+
+        case 'import_calendar':
+            handleImportCalendar();
+            break;
             
         default:
             throw new Exception('Invalid action');
@@ -777,4 +806,353 @@ function sendVideoReviewNotificationToAthlete($pdo, $athlete_id, $coach_id, $vid
     } catch (Exception $e) {
         error_log('Failed to send video review notification to athlete: ' . $e->getMessage());
     }
+}
+
+// =========================================================
+// GAME PLAN MODULE HANDLERS
+// =========================================================
+
+/**
+ * Create a game plan (pre-game, post-game, or practice)
+ */
+function handleCreateGamePlan() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to create game plans');
+    }
+
+    $title = trim($_POST['title'] ?? '');
+    if (empty($title)) {
+        throw new Exception('Plan title is required');
+    }
+
+    $game_id = filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: null;
+    $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT) ?: null;
+    $plan_type = $_POST['plan_type'] ?? 'pre_game';
+    $status = $_POST['status'] ?? 'draft';
+    $description = trim($_POST['description'] ?? '');
+    $offensive_system = trim($_POST['offensive_system'] ?? '');
+    $defensive_system = trim($_POST['defensive_system'] ?? '');
+    $powerplay_system = trim($_POST['powerplay_system'] ?? '');
+    $penalty_kill_system = trim($_POST['penalty_kill_system'] ?? '');
+    $key_players_notes = trim($_POST['key_players_notes'] ?? '');
+    $strategy_notes = trim($_POST['strategy_notes'] ?? '');
+
+    $valid_types = ['pre_game', 'post_game', 'practice'];
+    if (!in_array($plan_type, $valid_types)) $plan_type = 'pre_game';
+
+    $valid_statuses = ['draft', 'active', 'completed', 'archived'];
+    if (!in_array($status, $valid_statuses)) $status = 'draft';
+
+    $stmt = $pdo->prepare("
+        INSERT INTO vr_game_plans (coach_id, game_id, team_id, title, description, plan_type, status,
+                                   offensive_system, defensive_system, powerplay_system, penalty_kill_system,
+                                   key_players_notes, strategy_notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $user_id, $game_id, $team_id, $title, $description, $plan_type, $status,
+        $offensive_system ?: null, $defensive_system ?: null, $powerplay_system ?: null,
+        $penalty_kill_system ?: null, $key_players_notes ?: null, $strategy_notes ?: null
+    ]);
+
+    logSecurityEvent($pdo, 'game_plan_created', "Game plan created: $title", $user_id);
+    header('Location: /gameplan.php?page=game_plan&tab=' . urlencode($plan_type) . '&success=plan_created');
+    exit;
+}
+
+/**
+ * Save hockey lines (depth chart)
+ */
+function handleSaveHockeyLines() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to manage lines');
+    }
+
+    $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    $tab = $_POST['tab'] ?? 'forwards';
+    if (!$team_id) throw new Exception('Team is required');
+
+    $lines = $_POST['lines'] ?? [];
+    if (!is_array($lines)) throw new Exception('Invalid lines data');
+
+    // Delete existing lines for this team and tab's line names
+    $line_names = array_keys($lines);
+    if (!empty($line_names)) {
+        $placeholders = implode(',', array_fill(0, count($line_names), '?'));
+        $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND line_name IN ($placeholders)");
+        $stmt->execute(array_merge([$team_id], $line_names));
+    }
+
+    // Insert new lines
+    $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, line_name, position, athlete_id) VALUES (?, ?, ?, ?)");
+    foreach ($lines as $line_name => $positions) {
+        if (!is_array($positions)) continue;
+        foreach ($positions as $pos => $athlete_id) {
+            $athlete_id = (int)$athlete_id;
+            if ($athlete_id > 0) {
+                $stmt->execute([$team_id, $line_name, $pos, $athlete_id]);
+            }
+        }
+    }
+
+    logSecurityEvent($pdo, 'hockey_lines_saved', "Hockey lines saved for team $team_id", $user_id);
+    header('Location: /gameplan.php?page=lines&team_id=' . $team_id . '&tab=' . urlencode($tab) . '&success=lines_saved');
+    exit;
+}
+
+/**
+ * Upload a video source to the Film Room
+ */
+function handleUploadVideoSource() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to upload video sources');
+    }
+
+    $camera_angle = $_POST['camera_angle'] ?? '';
+    $game_id = filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: null;
+    $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT) ?: null;
+
+    if (empty($camera_angle)) throw new Exception('Camera angle is required');
+
+    if (!isset($_FILES['video_file']) || $_FILES['video_file']['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception('Video file upload failed');
+    }
+
+    $file = $_FILES['video_file'];
+
+    $validator = new FileUploadValidator();
+    $validation = $validator->validateVideoUpload($file);
+    if (!$validation['valid']) throw new Exception($validation['error']);
+
+    // Upload to separate gameplan video location
+    $upload_dir = __DIR__ . '/videos/gameplan/';
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $unique_name = 'gp_source_' . uniqid('', true) . '_' . time() . '.' . $ext;
+    $upload_path = $upload_dir . $unique_name;
+
+    if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
+        throw new Exception('Failed to save video file');
+    }
+
+    $stmt = $pdo->prepare("
+        INSERT INTO vr_video_sources (filename, file_path, camera_angle, file_size, game_id, team_id, uploaded_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $file['name'],
+        'videos/gameplan/' . $unique_name,
+        $camera_angle,
+        $file['size'],
+        $game_id,
+        $team_id,
+        $user_id
+    ]);
+
+    logSecurityEvent($pdo, 'video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
+    header('Location: /gameplan.php?page=film_room&tab=upload&success=source_uploaded');
+    exit;
+}
+
+/**
+ * Create a video clip from a source
+ */
+function handleCreateClip() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to create clips');
+    }
+
+    $source_id = filter_input(INPUT_POST, 'source_id', FILTER_VALIDATE_INT);
+    $title = trim($_POST['title'] ?? '');
+    $start_time = (float)($_POST['start_time'] ?? 0);
+    $end_time = (float)($_POST['end_time'] ?? 0);
+    $description = trim($_POST['description'] ?? '');
+
+    if (!$source_id) throw new Exception('Source video is required');
+    if (empty($title)) throw new Exception('Clip title is required');
+    if ($end_time <= $start_time) throw new Exception('End time must be after start time');
+
+    // Get source's game_id
+    $stmt = $pdo->prepare("SELECT game_id FROM vr_video_sources WHERE id = ?");
+    $stmt->execute([$source_id]);
+    $source = $stmt->fetch(PDO::FETCH_ASSOC);
+    $game_id = $source ? $source['game_id'] : null;
+
+    $stmt = $pdo->prepare("
+        INSERT INTO vr_video_clips (source_id, game_id, title, description, start_time, end_time, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([$source_id, $game_id, $title, $description, $start_time, $end_time, $user_id]);
+    $clip_id = $pdo->lastInsertId();
+
+    // Add tags
+    $tag_ids = $_POST['tag_ids'] ?? [];
+    if (is_array($tag_ids)) {
+        $tag_stmt = $pdo->prepare("INSERT IGNORE INTO vr_clip_tags (clip_id, tag_id) VALUES (?, ?)");
+        foreach ($tag_ids as $tag_id) {
+            $tag_id = (int)$tag_id;
+            if ($tag_id > 0) $tag_stmt->execute([$clip_id, $tag_id]);
+        }
+    }
+
+    // Add athletes
+    $athlete_ids = $_POST['athlete_ids'] ?? [];
+    if (is_array($athlete_ids)) {
+        $ath_stmt = $pdo->prepare("INSERT IGNORE INTO vr_clip_athletes (clip_id, athlete_id) VALUES (?, ?)");
+        foreach ($athlete_ids as $ath_id) {
+            $ath_id = (int)$ath_id;
+            if ($ath_id > 0) $ath_stmt->execute([$clip_id, $ath_id]);
+        }
+    }
+
+    logSecurityEvent($pdo, 'clip_created', "Clip created: $title from source $source_id", $user_id);
+    header('Location: /gameplan.php?page=film_room&tab=editor&source_id=' . $source_id . '&success=clip_created');
+    exit;
+}
+
+/**
+ * Create a review session
+ */
+function handleCreateReviewSession() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to create review sessions');
+    }
+
+    $title = trim($_POST['title'] ?? '');
+    if (empty($title)) throw new Exception('Session title is required');
+
+    $scheduled_date = $_POST['scheduled_date'] ?? '';
+    if (empty($scheduled_date)) throw new Exception('Scheduled date is required');
+
+    $description = trim($_POST['description'] ?? '');
+    $session_type = $_POST['session_type'] ?? 'pre_game';
+    $game_id = filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: null;
+
+    $stmt = $pdo->prepare("
+        INSERT INTO vr_review_sessions (coach_id, game_id, title, description, session_type, scheduled_date)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([$user_id, $game_id, $title, $description, $session_type, $scheduled_date]);
+    $session_id = $pdo->lastInsertId();
+
+    // Add clips to session
+    $clip_ids = $_POST['clip_ids'] ?? [];
+    if (is_array($clip_ids)) {
+        $clip_stmt = $pdo->prepare("INSERT IGNORE INTO vr_review_session_clips (session_id, clip_id, sort_order) VALUES (?, ?, ?)");
+        $order = 0;
+        foreach ($clip_ids as $clip_id) {
+            $clip_id = (int)$clip_id;
+            if ($clip_id > 0) {
+                $clip_stmt->execute([$session_id, $clip_id, $order++]);
+            }
+        }
+    }
+
+    logSecurityEvent($pdo, 'review_session_created', "Review session created: $title", $user_id);
+    header('Location: /gameplan.php?page=review_sessions&success=session_created');
+    exit;
+}
+
+/**
+ * Update video permissions
+ */
+function handleUpdateVideoPermissions() {
+    global $pdo, $user_id, $user_role;
+
+    if ($user_role !== 'admin') {
+        throw new Exception('Admin access required to manage permissions');
+    }
+
+    $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    if (!$team_id) throw new Exception('Team is required');
+
+    $perms = $_POST['perms'] ?? [];
+    if (!is_array($perms)) throw new Exception('Invalid permissions data');
+
+    // Delete existing permissions for this team
+    $stmt = $pdo->prepare("DELETE FROM vr_video_permissions WHERE team_id = ?");
+    $stmt->execute([$team_id]);
+
+    $stmt = $pdo->prepare("
+        INSERT INTO vr_video_permissions (user_id, team_id, can_upload, can_clip, can_tag, can_publish, can_delete)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    foreach ($perms as $uid => $user_perms) {
+        $uid = (int)$uid;
+        if ($uid <= 0) continue;
+        $stmt->execute([
+            $uid, $team_id,
+            !empty($user_perms['can_upload']) ? 1 : 0,
+            !empty($user_perms['can_clip']) ? 1 : 0,
+            !empty($user_perms['can_tag']) ? 1 : 0,
+            !empty($user_perms['can_publish']) ? 1 : 0,
+            !empty($user_perms['can_delete']) ? 1 : 0,
+        ]);
+    }
+
+    logSecurityEvent($pdo, 'video_permissions_updated', "Video permissions updated for team $team_id", $user_id);
+    header('Location: /gameplan.php?page=permissions&team_id=' . $team_id . '&success=permissions_saved');
+    exit;
+}
+
+/**
+ * Import calendar (ICS/CSV/URL)
+ */
+function handleImportCalendar() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to import calendars');
+    }
+
+    $import_type = $_POST['import_type'] ?? 'ical';
+    $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    if (!$team_id) throw new Exception('Team is required');
+
+    $imported = 0;
+
+    if ($import_type === 'csv' && isset($_FILES['calendar_file']) && $_FILES['calendar_file']['error'] === UPLOAD_ERR_OK) {
+        $handle = fopen($_FILES['calendar_file']['tmp_name'], 'r');
+        if ($handle) {
+            $header = fgetcsv($handle);
+            $stmt = $pdo->prepare("
+                INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game)
+                VALUES (?, ?, ?, 'regular', 1)
+            ");
+            while (($row = fgetcsv($handle)) !== false) {
+                if (count($row) >= 2) {
+                    $opponent = trim($row[0] ?? '');
+                    $date = trim($row[1] ?? '');
+                    if (!empty($opponent) && !empty($date)) {
+                        $stmt->execute([$team_id, $opponent, $date]);
+                        $imported++;
+                    }
+                }
+            }
+            fclose($handle);
+        }
+    }
+
+    logSecurityEvent($pdo, 'calendar_imported', "Calendar imported: $imported games for team $team_id", $user_id);
+    header('Location: /gameplan.php?page=calendar&success=imported_' . $imported);
+    exit;
 }
