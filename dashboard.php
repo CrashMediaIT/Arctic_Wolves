@@ -304,6 +304,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arctic Wolves Dashboard</title>
+    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="apple-touch-icon" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6B46C1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
