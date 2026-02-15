@@ -29,6 +29,22 @@ try {
     $cal_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('Cal teams: ' . $e->getMessage()); }
 
+// ── Load seasons ──────────────────────────────────────────────
+$cal_seasons = [];
+try {
+    $stmt = $pdo->prepare("SELECT id, name, is_active FROM seasons ORDER BY start_date DESC");
+    $stmt->execute();
+    $cal_seasons = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { error_log('Cal seasons: ' . $e->getMessage()); }
+
+// ── Load locations ────────────────────────────────────────────
+$cal_locations = [];
+try {
+    $stmt = $pdo->prepare("SELECT id, name FROM locations ORDER BY name");
+    $stmt->execute();
+    $cal_locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { error_log('Cal locations: ' . $e->getMessage()); }
+
 // ── Load games ────────────────────────────────────────────────
 $cal_games = [];
 try {
@@ -104,6 +120,7 @@ $days_in_month = (int)date('t', strtotime($cal_start));
                 </select>
             </div>
             <div class="filter-field filter-actions">
+                <button type="button" class="btn btn-secondary" id="gpAddEventBtn"><i class="fas fa-plus"></i> Add Event</button>
                 <button type="button" class="btn btn-primary" id="gpImportBtn"><i class="fas fa-file-import"></i> Import</button>
             </div>
         </div>
@@ -231,6 +248,15 @@ $days_in_month = (int)date('t', strtotime($cal_start));
                     </select>
                 </div>
                 <div style="margin-bottom:16px;">
+                    <label style="display:block;font-weight:600;margin-bottom:6px;">Season</label>
+                    <select name="season_id" class="form-select">
+                        <option value="">No Season</option>
+                        <?php foreach ($cal_seasons as $cs): ?>
+                        <option value="<?= (int)$cs['id'] ?>" <?= $cs['is_active'] ? 'selected' : '' ?>><?= htmlspecialchars($cs['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div style="margin-bottom:16px;">
                     <label style="display:block;font-weight:600;margin-bottom:6px;">File or URL</label>
                     <input type="file" name="calendar_file" class="form-input" accept=".ics,.csv">
                     <input type="url" name="calendar_url" class="form-input" placeholder="https://teamlinkt.com/..." style="margin-top:8px;">
@@ -243,12 +269,109 @@ $days_in_month = (int)date('t', strtotime($cal_start));
     </div>
 </div>
 
+<!-- Add Event Modal -->
+<div class="modal-overlay" id="gpAddEventModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);align-items:center;justify-content:center;">
+    <div class="modal-content" style="width:90%;max-width:520px;max-height:90vh;overflow-y:auto;">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Add Game or Practice</h3>
+            <button type="button" class="modal-close" id="gpCloseAddEvent">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form method="POST" action="/process_video.php">
+                <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                <input type="hidden" name="action" value="add_calendar_event">
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-weight:600;margin-bottom:6px;">Event Type</label>
+                    <select name="game_type" class="form-select" id="gpEventType">
+                        <option value="regular">Regular Season Game</option>
+                        <option value="playoff">Playoff Game</option>
+                        <option value="tournament">Tournament Game</option>
+                        <option value="exhibition">Exhibition / Scrimmage</option>
+                        <option value="practice">Practice</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-weight:600;margin-bottom:6px;">Team</label>
+                    <select name="team_id" class="form-select">
+                        <?php foreach ($cal_teams as $tm): ?>
+                        <option value="<?= (int)$tm['id'] ?>" <?= $cal_team === (int)$tm['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tm['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div style="margin-bottom:16px;" id="gpOpponentField">
+                    <label style="display:block;font-weight:600;margin-bottom:6px;">Opponent Team</label>
+                    <input type="text" name="opponent_team" class="form-input" placeholder="e.g. Rockland Nats U9">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div>
+                        <label style="display:block;font-weight:600;margin-bottom:6px;">Date *</label>
+                        <input type="date" name="game_date" class="form-input" required>
+                    </div>
+                    <div>
+                        <label style="display:block;font-weight:600;margin-bottom:6px;">Time</label>
+                        <input type="time" name="game_time" class="form-input">
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div>
+                        <label style="display:block;font-weight:600;margin-bottom:6px;">Location</label>
+                        <select name="location_id" class="form-select">
+                            <option value="">No Location</option>
+                            <?php foreach ($cal_locations as $loc): ?>
+                            <option value="<?= (int)$loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;font-weight:600;margin-bottom:6px;">Season</label>
+                        <select name="season_id" class="form-select">
+                            <option value="">No Season</option>
+                            <?php foreach ($cal_seasons as $cs): ?>
+                            <option value="<?= (int)$cs['id'] ?>" <?= $cs['is_active'] ? 'selected' : '' ?>><?= htmlspecialchars($cs['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                        <input type="checkbox" name="is_home_game" value="1" checked> Home Game
+                    </label>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-weight:600;margin-bottom:6px;">Notes</label>
+                    <textarea name="notes" class="form-input" rows="2" style="resize:vertical;"></textarea>
+                </div>
+                <div style="display:flex;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--border);margin-top:20px;">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var modal = document.getElementById('gpImportModal');
     document.getElementById('gpImportBtn').addEventListener('click', function() { modal.style.display = 'flex'; });
     document.getElementById('gpCloseImport').addEventListener('click', function() { modal.style.display = 'none'; });
     modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') modal.style.display = 'none'; });
+
+    var addModal = document.getElementById('gpAddEventModal');
+    document.getElementById('gpAddEventBtn').addEventListener('click', function() { addModal.style.display = 'flex'; });
+    document.getElementById('gpCloseAddEvent').addEventListener('click', function() { addModal.style.display = 'none'; });
+    addModal.addEventListener('click', function(e) { if (e.target === addModal) addModal.style.display = 'none'; });
+
+    // Toggle opponent field based on event type
+    document.getElementById('gpEventType').addEventListener('change', function() {
+        var opponentField = document.getElementById('gpOpponentField');
+        opponentField.style.display = this.value === 'practice' ? 'none' : 'block';
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            modal.style.display = 'none';
+            addModal.style.display = 'none';
+        }
+    });
 });
 </script>

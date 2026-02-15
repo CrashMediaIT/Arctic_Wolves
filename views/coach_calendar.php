@@ -134,6 +134,54 @@ try {
     error_log("Template sessions fetch note: " . $e->getMessage());
 }
 
+// Also load game_schedules events for teams assigned to this coach
+try {
+    $gp_events_query = "
+        SELECT gs.id, gs.opponent_team as title, gs.game_date as session_date,
+               TIME(gs.game_date) as session_time, 60 as duration_minutes,
+               gs.game_type, gs.status, gs.notes as description,
+               t.name as team_name, l.name as location_name,
+               gs.is_home_game
+        FROM game_schedules gs
+        INNER JOIN teams t ON gs.team_id = t.id
+        LEFT JOIN locations l ON gs.location_id = l.id
+        LEFT JOIN team_coach_assignments tca ON tca.team_id = gs.team_id
+        WHERE gs.game_date >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+          AND gs.status IN ('scheduled', 'in_progress')
+          AND (tca.coach_id = ? OR t.coach_id = ?)
+        GROUP BY gs.id
+        ORDER BY gs.game_date
+        LIMIT 100
+    ";
+    $gp_stmt = $pdo->prepare($gp_events_query);
+    $gp_stmt->execute([$user_id, $user_id]);
+    $gp_events = $gp_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($gp_events as &$ge) {
+        $ge['is_gameplan_event'] = true;
+        $ge['session_type_name'] = ucfirst($ge['game_type'] ?? 'regular');
+        $ge['coach_first_name'] = '';
+        $ge['coach_last_name'] = '';
+        $ge['registered_count'] = 0;
+        $ge['is_assigned_coach'] = 1;
+        $ge['package_names'] = null;
+        $ge['practice_plan_name'] = null;
+        $ge['practice_plan_id'] = null;
+        $ge['title'] = ($ge['game_type'] === 'practice')
+            ? ($ge['team_name'] . ' Practice')
+            : ($ge['team_name'] . ' vs ' . ($ge['title'] ?? 'TBD'));
+        $ge['arena'] = $ge['location_name'] ?? '';
+    }
+    unset($ge);
+
+    $sessions = array_merge($sessions, $gp_events);
+    usort($sessions, function($a, $b) {
+        return strtotime($a['session_date']) - strtotime($b['session_date']);
+    });
+} catch (PDOException $e) {
+    error_log("Game plan events fetch note: " . $e->getMessage());
+}
+
 // Get coaches, locations, practice plans, session types
 $coaches = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role IN ('coach', 'coach_plus', 'admin', 'team_coach', 'health_coach') AND is_active = 1 ORDER BY last_name, first_name")->fetchAll();
 $coaches = decryptUserRows($coaches);

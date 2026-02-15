@@ -86,6 +86,26 @@ try {
         case 'import_calendar':
             handleImportCalendar();
             break;
+
+        case 'add_roster_player':
+            handleAddRosterPlayer();
+            break;
+
+        case 'update_roster_player':
+            handleUpdateRosterPlayer();
+            break;
+
+        case 'remove_roster_player':
+            handleRemoveRosterPlayer();
+            break;
+
+        case 'link_roster_player':
+            handleLinkRosterPlayer();
+            break;
+
+        case 'add_calendar_event':
+            handleAddCalendarEvent();
+            break;
             
         default:
             throw new Exception('Invalid action');
@@ -1128,33 +1148,373 @@ function handleImportCalendar() {
 
     $import_type = $_POST['import_type'] ?? 'ical';
     $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    $season_id = filter_input(INPUT_POST, 'season_id', FILTER_VALIDATE_INT) ?: null;
     if (!$team_id) throw new Exception('Team is required');
 
     $imported = 0;
+    $teams_created = 0;
 
     if ($import_type === 'csv' && isset($_FILES['calendar_file']) && $_FILES['calendar_file']['error'] === UPLOAD_ERR_OK) {
         $handle = fopen($_FILES['calendar_file']['tmp_name'], 'r');
         if ($handle) {
             $header = fgetcsv($handle);
             $stmt = $pdo->prepare("
-                INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game)
-                VALUES (?, ?, ?, 'regular', 1)
+                INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, season_id)
+                VALUES (?, ?, ?, 'regular', 1, ?)
             ");
             while (($row = fgetcsv($handle)) !== false) {
                 if (count($row) >= 2) {
                     $opponent = trim($row[0] ?? '');
                     $date = trim($row[1] ?? '');
                     if (!empty($opponent) && !empty($date)) {
-                        $stmt->execute([$team_id, $opponent, $date]);
+                        $stmt->execute([$team_id, $opponent, $date, $season_id]);
                         $imported++;
+                        // Auto-create opponent team if it doesn't exist
+                        $teams_created += autoCreateTeamIfNeeded($pdo, $opponent, $season_id);
                     }
                 }
             }
             fclose($handle);
         }
+    } elseif ($import_type === 'ical' && isset($_FILES['calendar_file']) && $_FILES['calendar_file']['error'] === UPLOAD_ERR_OK) {
+        $ical_content = file_get_contents($_FILES['calendar_file']['tmp_name']);
+        if ($ical_content !== false) {
+            $events = parseICalEvents($ical_content);
+            $stmt = $pdo->prepare("
+                INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id)
+                VALUES (?, ?, ?, ?, 1, ?, ?)
+            ");
+            foreach ($events as $event) {
+                if (!empty($event['summary']) && !empty($event['dtstart'])) {
+                    $opponent = $event['summary'];
+                    $game_type = 'regular';
+                    // Detect game type from summary
+                    $lower = strtolower($opponent);
+                    if (strpos($lower, 'practice') !== false || strpos($lower, 'training') !== false) {
+                        $game_type = 'practice';
+                    } elseif (strpos($lower, 'tournament') !== false) {
+                        $game_type = 'tournament';
+                    } elseif (strpos($lower, 'playoff') !== false) {
+                        $game_type = 'playoff';
+                    } elseif (strpos($lower, 'exhibition') !== false || strpos($lower, 'scrimmage') !== false) {
+                        $game_type = 'exhibition';
+                    }
+                    $stmt->execute([$team_id, $opponent, $event['dtstart'], $game_type, $event['description'] ?? '', $season_id]);
+                    $imported++;
+                    if ($game_type !== 'practice') {
+                        $teams_created += autoCreateTeamIfNeeded($pdo, $opponent, $season_id);
+                    }
+                }
+            }
+        }
     }
 
-    logSecurityEvent($pdo, 'calendar_imported', "Calendar imported: $imported games for team $team_id", $user_id);
+    logSecurityEvent($pdo, 'calendar_imported', "Calendar imported: $imported games, $teams_created teams created for team $team_id", $user_id);
     header('Location: /gameplan.php?page=calendar&success=imported_' . $imported);
+    exit;
+}
+
+/**
+ * Parse iCal/ICS file content into an array of events.
+ */
+function parseICalEvents($content) {
+    $events = [];
+    $lines = preg_split('/\r?\n/', $content);
+    $current = null;
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === 'BEGIN:VEVENT') {
+            $current = ['summary' => '', 'dtstart' => '', 'description' => '', 'location' => ''];
+        } elseif ($line === 'END:VEVENT' && $current !== null) {
+            $events[] = $current;
+            $current = null;
+        } elseif ($current !== null) {
+            if (strpos($line, 'SUMMARY:') === 0 || strpos($line, 'SUMMARY;') === 0) {
+                $current['summary'] = trim(substr($line, strpos($line, ':') + 1));
+            } elseif (strpos($line, 'DTSTART') === 0) {
+                $val = trim(substr($line, strpos($line, ':') + 1));
+                // Convert iCal date format to MySQL datetime
+                $val = str_replace(['T', 'Z'], [' ', ''], $val);
+                if (strlen($val) >= 8 && ctype_digit(substr($val, 0, 8))) {
+                    $year = (int)substr($val, 0, 4);
+                    $month = (int)substr($val, 4, 2);
+                    $day = (int)substr($val, 6, 2);
+                    if (!checkdate($month, $day, $year)) continue;
+                    $time = '00:00:00';
+                    if (strlen($val) >= 15) {
+                        $hh = (int)substr($val, 9, 2);
+                        $mm = (int)substr($val, 11, 2);
+                        $ss = (int)substr($val, 13, 2);
+                        if ($hh >= 0 && $hh <= 23 && $mm >= 0 && $mm <= 59 && $ss >= 0 && $ss <= 59) {
+                            $time = sprintf('%02d:%02d:%02d', $hh, $mm, $ss);
+                        }
+                    }
+                    $current['dtstart'] = sprintf('%04d-%02d-%02d %s', $year, $month, $day, $time);
+                }
+            } elseif (strpos($line, 'DESCRIPTION:') === 0 || strpos($line, 'DESCRIPTION;') === 0) {
+                $current['description'] = trim(substr($line, strpos($line, ':') + 1));
+            } elseif (strpos($line, 'LOCATION:') === 0 || strpos($line, 'LOCATION;') === 0) {
+                $current['location'] = trim(substr($line, strpos($line, ':') + 1));
+            }
+        }
+    }
+    return $events;
+}
+
+/**
+ * Auto-create a team from an opponent name if a similar team doesn't already exist.
+ * Returns 1 if a team was created, 0 otherwise.
+ */
+function autoCreateTeamIfNeeded($pdo, $teamName, $season_id = null) {
+    $teamName = trim($teamName);
+    if (empty($teamName)) return 0;
+
+    // Remove common prefixes like "vs ", "vs. ", "@ "
+    $cleanName = preg_replace('/^(vs\.?\s+|@\s+)/i', '', $teamName);
+    $cleanName = trim($cleanName);
+    if (empty($cleanName)) return 0;
+
+    // Check for existing team with similar name (case-insensitive)
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM teams WHERE LOWER(name) = LOWER(?) LIMIT 1");
+        $stmt->execute([$cleanName]);
+        if ($stmt->fetch()) return 0; // Team already exists
+
+        // Also check for fuzzy match (contains)
+        $stmt = $pdo->prepare("SELECT id FROM teams WHERE LOWER(name) LIKE LOWER(?) LIMIT 1");
+        $stmt->execute(['%' . $cleanName . '%']);
+        if ($stmt->fetch()) return 0;
+
+        // Create the team
+        $season = '';
+        if ($season_id) {
+            $stmt = $pdo->prepare("SELECT name FROM seasons WHERE id = ?");
+            $stmt->execute([$season_id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $season = $row['name'] ?? '';
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO teams (name, season, is_active) VALUES (?, ?, 1)");
+        $stmt->execute([$cleanName, $season]);
+        return 1;
+    } catch (PDOException $e) {
+        error_log('Auto-create team: ' . $e->getMessage());
+        return 0;
+    }
+}
+
+function handleAddRosterPlayer() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required');
+    }
+
+    $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    if (!$team_id) {
+        header('Location: /gameplan.php?page=roster&error=invalid_team');
+        exit;
+    }
+
+    $first_name = trim($_POST['first_name'] ?? '');
+    $last_name  = trim($_POST['last_name'] ?? '');
+    if (empty($first_name) || empty($last_name)) {
+        header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&error=missing_fields');
+        exit;
+    }
+
+    $user_link_id  = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT) ?: null;
+    $jersey_number = filter_input(INPUT_POST, 'jersey_number', FILTER_VALIDATE_INT) ?: null;
+    $position      = trim($_POST['position'] ?? '');
+    $email         = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL) ?: null;
+    $phone         = trim($_POST['phone'] ?? '') ?: null;
+    $dob           = trim($_POST['date_of_birth'] ?? '') ?: null;
+    $parent_name   = trim($_POST['parent_name'] ?? '') ?: null;
+    $parent_email  = filter_input(INPUT_POST, 'parent_email', FILTER_VALIDATE_EMAIL) ?: null;
+    $parent_phone  = trim($_POST['parent_phone'] ?? '') ?: null;
+    $notes         = trim($_POST['notes'] ?? '') ?: null;
+    $season_id     = filter_input(INPUT_POST, 'season_id', FILTER_VALIDATE_INT) ?: null;
+
+    $stmt = $pdo->prepare("
+        INSERT INTO roster_players (team_id, user_id, first_name, last_name, email, phone,
+            jersey_number, position, date_of_birth, parent_name, parent_email, parent_phone,
+            notes, season_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $team_id, $user_link_id, $first_name, $last_name, $email, $phone,
+        $jersey_number, $position, $dob, $parent_name, $parent_email, $parent_phone,
+        $notes, $season_id
+    ]);
+
+    logSecurityEvent($pdo, 'roster_player_added', "Added $first_name $last_name to team $team_id", $user_id);
+    header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_added');
+    exit;
+}
+
+function handleUpdateRosterPlayer() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required');
+    }
+
+    $player_id = filter_input(INPUT_POST, 'player_id', FILTER_VALIDATE_INT);
+    $team_id   = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    if (!$player_id || !$team_id) {
+        header('Location: /gameplan.php?page=roster&error=player_not_found');
+        exit;
+    }
+
+    $first_name = trim($_POST['first_name'] ?? '');
+    $last_name  = trim($_POST['last_name'] ?? '');
+    if (empty($first_name) || empty($last_name)) {
+        header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&error=missing_fields');
+        exit;
+    }
+
+    $jersey_number = filter_input(INPUT_POST, 'jersey_number', FILTER_VALIDATE_INT) ?: null;
+    $position      = trim($_POST['position'] ?? '');
+    $email         = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL) ?: null;
+    $phone         = trim($_POST['phone'] ?? '') ?: null;
+    $dob           = trim($_POST['date_of_birth'] ?? '') ?: null;
+    $parent_name   = trim($_POST['parent_name'] ?? '') ?: null;
+    $parent_email  = filter_input(INPUT_POST, 'parent_email', FILTER_VALIDATE_EMAIL) ?: null;
+    $parent_phone  = trim($_POST['parent_phone'] ?? '') ?: null;
+    $notes         = trim($_POST['notes'] ?? '') ?: null;
+    $season_id     = filter_input(INPUT_POST, 'season_id', FILTER_VALIDATE_INT) ?: null;
+
+    $stmt = $pdo->prepare("
+        UPDATE roster_players SET
+            first_name = ?, last_name = ?, email = ?, phone = ?,
+            jersey_number = ?, position = ?, date_of_birth = ?,
+            parent_name = ?, parent_email = ?, parent_phone = ?,
+            notes = ?, season_id = ?
+        WHERE id = ?
+    ");
+    $stmt->execute([
+        $first_name, $last_name, $email, $phone,
+        $jersey_number, $position, $dob,
+        $parent_name, $parent_email, $parent_phone,
+        $notes, $season_id, $player_id
+    ]);
+
+    logSecurityEvent($pdo, 'roster_player_updated', "Updated roster player $player_id", $user_id);
+    header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_updated');
+    exit;
+}
+
+function handleRemoveRosterPlayer() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required');
+    }
+
+    $player_id = filter_input(INPUT_POST, 'player_id', FILTER_VALIDATE_INT);
+    $team_id   = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    if (!$player_id) {
+        header('Location: /gameplan.php?page=roster&error=player_not_found');
+        exit;
+    }
+
+    // Soft delete: set status to archived (preserves data for future account linking)
+    $stmt = $pdo->prepare("UPDATE roster_players SET status = 'archived' WHERE id = ?");
+    $stmt->execute([$player_id]);
+
+    logSecurityEvent($pdo, 'roster_player_removed', "Archived roster player $player_id", $user_id);
+    header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_removed');
+    exit;
+}
+
+function handleLinkRosterPlayer() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required');
+    }
+
+    $player_id    = filter_input(INPUT_POST, 'player_id', FILTER_VALIDATE_INT);
+    $link_user_id = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT);
+    $team_id      = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+
+    if (!$player_id || !$link_user_id) {
+        header('Location: /gameplan.php?page=roster&team_id=' . ($team_id ?: 0) . '&error=missing_fields');
+        exit;
+    }
+
+    // Verify user exists
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ? AND is_active = 1");
+    $stmt->execute([$link_user_id]);
+    if (!$stmt->fetch()) {
+        header('Location: /gameplan.php?page=roster&team_id=' . ($team_id ?: 0) . '&error=player_not_found');
+        exit;
+    }
+
+    // Link the roster player to the user account
+    $stmt = $pdo->prepare("UPDATE roster_players SET user_id = ? WHERE id = ?");
+    $stmt->execute([$link_user_id, $player_id]);
+
+    logSecurityEvent($pdo, 'roster_player_linked', "Linked roster player $player_id to user $link_user_id", $user_id);
+    header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_linked');
+    exit;
+}
+
+function handleAddCalendarEvent() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required');
+    }
+
+    $team_id   = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    if (!$team_id) throw new Exception('Team is required');
+
+    $opponent  = trim($_POST['opponent_team'] ?? '');
+    $game_date = trim($_POST['game_date'] ?? '');
+    $game_time = trim($_POST['game_time'] ?? '');
+    $game_type = trim($_POST['game_type'] ?? 'regular');
+    $is_home   = isset($_POST['is_home_game']) ? 1 : 0;
+    $notes     = trim($_POST['notes'] ?? '') ?: null;
+    $season_id = filter_input(INPUT_POST, 'season_id', FILTER_VALIDATE_INT) ?: null;
+    $location_id = filter_input(INPUT_POST, 'location_id', FILTER_VALIDATE_INT) ?: null;
+
+    if (empty($game_date)) throw new Exception('Date is required');
+
+    // Build datetime
+    $datetime = $game_date;
+    if (!empty($game_time)) {
+        $datetime .= ' ' . $game_time;
+    } else {
+        $datetime .= ' 00:00:00';
+    }
+
+    // For practices, opponent can be empty - use team name
+    if (empty($opponent) && $game_type === 'practice') {
+        $stmt = $pdo->prepare("SELECT name FROM teams WHERE id = ?");
+        $stmt->execute([$team_id]);
+        $team = $stmt->fetch(PDO::FETCH_ASSOC);
+        $opponent = ($team['name'] ?? 'Team') . ' Practice';
+    } elseif (empty($opponent)) {
+        throw new Exception('Opponent team is required for games');
+    }
+
+    $valid_types = ['regular', 'playoff', 'tournament', 'exhibition', 'practice'];
+    if (!in_array($game_type, $valid_types)) $game_type = 'regular';
+
+    $stmt = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, location_id, season_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([$team_id, $opponent, $datetime, $game_type, $is_home, $notes, $location_id, $season_id]);
+
+    logSecurityEvent($pdo, 'calendar_event_added', "Added $game_type event for team $team_id on $game_date", $user_id);
+    header('Location: /gameplan.php?page=calendar&success=event_added');
     exit;
 }

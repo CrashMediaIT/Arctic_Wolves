@@ -47,6 +47,22 @@ if ($lines_team_id > 0) {
             $lines_roster = decryptUserRows($lines_roster);
         }
     } catch (PDOException $e) { error_log('Lines roster: ' . $e->getMessage()); }
+
+    // Also load non-user roster players from roster_players table
+    try {
+        $stmt = $pdo->prepare("
+            SELECT rp.id, rp.first_name, rp.last_name, 'roster_player' as role
+            FROM roster_players rp
+            WHERE rp.team_id = ? AND rp.status = 'active' AND rp.user_id IS NULL
+            ORDER BY rp.last_name, rp.first_name
+        ");
+        $stmt->execute([$lines_team_id]);
+        $roster_only_players = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $lines_roster = array_merge($lines_roster, $roster_only_players);
+    } catch (PDOException $e) {
+        // roster_players table may not exist yet
+        error_log('Lines roster_players: ' . $e->getMessage());
+    }
 }
 
 // ── Load existing lines ───────────────────────────────────────
