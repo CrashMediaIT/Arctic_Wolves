@@ -1845,33 +1845,27 @@ function parseOpponentFromSummary($summary, $ownTeamName = '') {
             if ($teamALower === $ownLower) return $teamB;
             if ($teamBLower === $ownLower) return $teamA;
 
-            // Priority 2: Exact containment — but only if the match is the whole team name
-            // e.g., "Rockland Nats U7B" should match "Rockland Nats U7B" but NOT "Rockland Nats U7B2"
-            // Check if one fully contains the other (both directions)
-            if ($teamALower === $ownLower || $ownLower === $teamALower) return $teamB;
-            if ($teamBLower === $ownLower || $ownLower === $teamBLower) return $teamA;
-
-            // Priority 3: Partial containment with word-boundary check
-            // Ensure the match isn't a substring of a longer team name
+            // Priority 2: Partial containment with length-proximity check
+            // Allow a tolerance of 2 chars for minor variations (e.g., trailing spaces, punctuation)
+            // but NOT for different team numbers (e.g., "Nats U7B" vs "Nats U7B2")
             if (stripos($teamA, $ownTeamName) !== false || stripos($ownTeamName, $teamA) !== false) {
-                // Verify this isn't a partial match of a similar name
-                // e.g., "Rockland Nats U7B" contains "Rockland Nats U7B" but NOT "Rockland Nats U7B2"
-                if (strlen($teamA) <= strlen($ownTeamName) + 2 || strlen($ownTeamName) <= strlen($teamA) + 2) {
+                if (abs(strlen($teamA) - strlen($ownTeamName)) <= 2) {
                     return $teamB;
                 }
             }
             if (stripos($teamB, $ownTeamName) !== false || stripos($ownTeamName, $teamB) !== false) {
-                if (strlen($teamB) <= strlen($ownTeamName) + 2 || strlen($ownTeamName) <= strlen($teamB) + 2) {
+                if (abs(strlen($teamB) - strlen($ownTeamName)) <= 2) {
                     return $teamA;
                 }
             }
 
-            // Priority 4: Fuzzy match with higher threshold for similar names
+            // Priority 3: Fuzzy match using similar_text percentage
+            // High confidence (>80%) = accept unconditionally
+            // Medium confidence (>60%) = accept only if the other side doesn't also match
             similar_text($teamALower, $ownLower, $pctA);
             similar_text($teamBLower, $ownLower, $pctB);
             if ($pctA > 80) return $teamB;
             if ($pctB > 80) return $teamA;
-            // Lower threshold only if the other side didn't also match
             if ($pctA > 60 && $pctB <= 60) return $teamB;
             if ($pctB > 60 && $pctA <= 60) return $teamA;
         }
@@ -1899,35 +1893,10 @@ function autoCreateTeamIfNeeded($pdo, $teamName, $season_id = null) {
 
     // Check for existing team with similar name (case-insensitive)
     try {
-        // Priority 1: Exact name match (case-insensitive)
+        // Exact name match (case-insensitive) - prevents duplicates
         $stmt = $pdo->prepare("SELECT id FROM teams WHERE LOWER(name) = LOWER(?) LIMIT 1");
         $stmt->execute([$cleanName]);
         if ($stmt->fetch()) return 0; // Team already exists with exact name
-
-        // Priority 2: Check for near-exact matches to avoid creating "Rockland Nats U7B2"
-        // when "Rockland Nats U7B" already exists (they are different teams!)
-        // Only skip creation if there's a very close match (not just a substring)
-        $stmt = $pdo->prepare("SELECT id, name FROM teams WHERE LOWER(name) LIKE LOWER(?) ORDER BY LENGTH(name) ASC");
-        $stmt->execute(['%' . $cleanName . '%']);
-        $matches = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($matches as $match) {
-            // If the existing team name contains our name AND is nearly the same length,
-            // it's likely the same team. But if lengths differ significantly, they're different teams
-            // e.g., "Rockland Nats U7B" (18 chars) vs "Rockland Nats U7B2" (19 chars) = different teams
-            if (strtolower($match['name']) === strtolower($cleanName)) {
-                return 0; // Exact match found
-            }
-        }
-
-        // Also check reverse: our name contains an existing team name
-        $stmt = $pdo->prepare("SELECT id, name FROM teams ORDER BY name");
-        $stmt->execute();
-        $allTeams = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($allTeams as $existing) {
-            if (strtolower($existing['name']) === strtolower($cleanName)) {
-                return 0; // Exact match
-            }
-        }
 
         // Create the team as unmanaged (opponent)
         $season = '';
