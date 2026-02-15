@@ -16,6 +16,25 @@ $lines_team_id = isset($_GET['team_id']) ? (int)$_GET['team_id'] : 0;
 $lines_tab     = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'forwards';
 if (!in_array($lines_tab, ['forwards', 'defense', 'special', 'goalies'])) $lines_tab = 'forwards';
 $lines_view_mode = isset($_GET['mode']) && $_GET['mode'] === 'view' ? 'view' : 'edit';
+$lines_game_id = isset($_GET['game_id']) ? (int)$_GET['game_id'] : 0;
+$lines_is_game_specific = ($lines_game_id > 0);
+
+// ── Load game info if game-specific ───────────────────────────
+$lines_game_info = null;
+if ($lines_game_id > 0) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT gs.id, gs.team_id, gs.opponent_team, gs.game_date, gs.status, t.name AS team_name
+            FROM game_schedules gs LEFT JOIN teams t ON gs.team_id = t.id
+            WHERE gs.id = ?
+        ");
+        $stmt->execute([$lines_game_id]);
+        $lines_game_info = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($lines_game_info && $lines_team_id === 0) {
+            $lines_team_id = (int)$lines_game_info['team_id'];
+        }
+    } catch (PDOException $e) { error_log('Lines game info: ' . $e->getMessage()); }
+}
 
 // ── Load teams ────────────────────────────────────────────────
 $lines_teams = [];
@@ -69,27 +88,58 @@ if ($lines_team_id > 0) {
 
 // ── Load existing lines ───────────────────────────────────────
 $saved_lines = [];
+$lines_source = 'default'; // 'default' or 'game'
 if ($lines_team_id > 0) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT gpl.id, gpl.line_name, gpl.position, gpl.athlete_id, gpl.roster_player_id,
-                   COALESCE(u.first_name, rp.first_name) AS first_name,
-                   COALESCE(u.last_name, rp.last_name) AS last_name
-            FROM vr_game_plan_lines gpl
-            LEFT JOIN users u ON gpl.athlete_id = u.id
-            LEFT JOIN roster_players rp ON gpl.roster_player_id = rp.id
-            WHERE gpl.team_id = ?
-            ORDER BY gpl.line_name, gpl.position
-        ");
-        $stmt->execute([$lines_team_id]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        if (function_exists('decryptUserRows')) {
-            $rows = decryptUserRows($rows);
-        }
-        foreach ($rows as $r) {
-            $saved_lines[$r['line_name']][$r['position']] = $r;
-        }
-    } catch (PDOException $e) { error_log('Lines load: ' . $e->getMessage()); }
+    // If game-specific, try loading game lines first
+    if ($lines_game_id > 0) {
+        try {
+            $stmt = $pdo->prepare("
+                SELECT gpl.id, gpl.line_name, gpl.position, gpl.athlete_id, gpl.roster_player_id,
+                       COALESCE(u.first_name, rp.first_name) AS first_name,
+                       COALESCE(u.last_name, rp.last_name) AS last_name
+                FROM vr_game_plan_lines gpl
+                LEFT JOIN users u ON gpl.athlete_id = u.id
+                LEFT JOIN roster_players rp ON gpl.roster_player_id = rp.id
+                WHERE gpl.team_id = ? AND gpl.game_id = ?
+                ORDER BY gpl.line_name, gpl.position
+            ");
+            $stmt->execute([$lines_team_id, $lines_game_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (function_exists('decryptUserRows')) {
+                $rows = decryptUserRows($rows);
+            }
+            foreach ($rows as $r) {
+                $saved_lines[$r['line_name']][$r['position']] = $r;
+            }
+            if (!empty($saved_lines)) {
+                $lines_source = 'game';
+            }
+        } catch (PDOException $e) { error_log('Lines load game: ' . $e->getMessage()); }
+    }
+
+    // Fall back to default/standard lines (game_id IS NULL)
+    if (empty($saved_lines)) {
+        try {
+            $stmt = $pdo->prepare("
+                SELECT gpl.id, gpl.line_name, gpl.position, gpl.athlete_id, gpl.roster_player_id,
+                       COALESCE(u.first_name, rp.first_name) AS first_name,
+                       COALESCE(u.last_name, rp.last_name) AS last_name
+                FROM vr_game_plan_lines gpl
+                LEFT JOIN users u ON gpl.athlete_id = u.id
+                LEFT JOIN roster_players rp ON gpl.roster_player_id = rp.id
+                WHERE gpl.team_id = ? AND gpl.game_id IS NULL
+                ORDER BY gpl.line_name, gpl.position
+            ");
+            $stmt->execute([$lines_team_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (function_exists('decryptUserRows')) {
+                $rows = decryptUserRows($rows);
+            }
+            foreach ($rows as $r) {
+                $saved_lines[$r['line_name']][$r['position']] = $r;
+            }
+        } catch (PDOException $e) { error_log('Lines load default: ' . $e->getMessage()); }
+    }
 }
 
 // ── Line structure definitions ────────────────────────────────
@@ -120,25 +170,42 @@ $current_team_name = '';
 foreach ($lines_teams as $t) {
     if ((int)$t['id'] === $lines_team_id) { $current_team_name = $t['name']; break; }
 }
+
+$game_id_param = $lines_game_id > 0 ? '&game_id=' . $lines_game_id : '';
 ?>
 
 <!-- Page header -->
 <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
     <div>
-        <h1><i class="fas fa-users-line"></i> Game Lines</h1>
-        <p>Build forward lines, defense pairs, and special teams</p>
+        <h1><i class="fas fa-users-line"></i> <?= $lines_is_game_specific ? 'Game Lines' : 'Standard Lineup' ?></h1>
+        <?php if ($lines_game_info): ?>
+        <p style="display:flex;align-items:center;gap:8px;">
+            <span>vs <?= htmlspecialchars($lines_game_info['opponent_team']) ?></span>
+            <span style="color:var(--text-muted);">–</span>
+            <span style="color:var(--text-muted);"><?= date('D, M j – g:ia', strtotime($lines_game_info['game_date'])) ?></span>
+            <?php if ($lines_source === 'default' && $lines_is_game_specific): ?>
+            <span style="font-size:11px;padding:2px 8px;background:rgba(245,158,11,.1);color:#F59E0B;border:1px solid rgba(245,158,11,.2);border-radius:12px;">Using default lineup</span>
+            <?php endif; ?>
+        </p>
+        <?php else: ?>
+        <p>Build forward lines, defense pairs, and special teams (default lineup auto-assigned to upcoming games)</p>
+        <?php endif; ?>
     </div>
-    <div style="display:flex;gap:8px;" class="gp-lines-actions">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" class="gp-lines-actions">
+        <?php if ($lines_is_game_specific): ?>
+        <a href="/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id=<?= $lines_team_id ?>&mode=<?= $lines_view_mode ?>" class="btn btn-secondary"><i class="fas fa-list"></i> Standard Lineup</a>
+        <?php endif; ?>
         <?php if ($lines_view_mode === 'view'): ?>
-        <a href="/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id=<?= $lines_team_id ?>&mode=edit" class="btn btn-secondary"><i class="fas fa-pen"></i> Edit</a>
+        <a href="/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id=<?= $lines_team_id ?>&mode=edit<?= $game_id_param ?>" class="btn btn-secondary"><i class="fas fa-pen"></i> Edit</a>
         <button type="button" class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
         <?php else: ?>
-        <a href="/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id=<?= $lines_team_id ?>&mode=view" class="btn btn-secondary"><i class="fas fa-eye"></i> View / Print</a>
+        <a href="/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id=<?= $lines_team_id ?>&mode=view<?= $game_id_param ?>" class="btn btn-secondary"><i class="fas fa-eye"></i> View / Print</a>
         <?php endif; ?>
     </div>
 </div>
 
 <!-- Team Selector -->
+<?php if (!$lines_is_game_specific): ?>
 <div class="filter-box" style="margin-bottom: 20px;">
     <div class="filter-box-header"><i class="fas fa-users"></i> Select Team</div>
     <div class="filter-box-content">
@@ -157,20 +224,21 @@ foreach ($lines_teams as $t) {
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Sub-tabs (edit mode only) -->
 <?php if ($lines_view_mode !== 'view'): ?>
 <div class="page-tabs page-tabs-secondary" style="margin-bottom: 20px;">
-    <a class="page-tab <?= $lines_tab === 'forwards' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=forwards&mode=<?= $lines_view_mode ?>">
+    <a class="page-tab <?= $lines_tab === 'forwards' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=forwards&mode=<?= $lines_view_mode ?><?= $game_id_param ?>">
         <i class="fas fa-hockey-puck"></i> Forward Lines
     </a>
-    <a class="page-tab <?= $lines_tab === 'defense' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=defense&mode=<?= $lines_view_mode ?>">
+    <a class="page-tab <?= $lines_tab === 'defense' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=defense&mode=<?= $lines_view_mode ?><?= $game_id_param ?>">
         <i class="fas fa-shield-halved"></i> Defense Pairs
     </a>
-    <a class="page-tab <?= $lines_tab === 'special' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=special&mode=<?= $lines_view_mode ?>">
+    <a class="page-tab <?= $lines_tab === 'special' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=special&mode=<?= $lines_view_mode ?><?= $game_id_param ?>">
         <i class="fas fa-bolt"></i> Special Teams
     </a>
-    <a class="page-tab <?= $lines_tab === 'goalies' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=goalies&mode=<?= $lines_view_mode ?>">
+    <a class="page-tab <?= $lines_tab === 'goalies' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=goalies&mode=<?= $lines_view_mode ?><?= $game_id_param ?>">
         <i class="fas fa-hand"></i> Goalies
     </a>
 </div>
@@ -258,6 +326,9 @@ $depth_chart_sections = [
     <input type="hidden" name="action" value="save_hockey_lines">
     <input type="hidden" name="team_id" value="<?= $lines_team_id ?>">
     <input type="hidden" name="tab" value="<?= $lines_tab ?>">
+    <?php if ($lines_game_id > 0): ?>
+    <input type="hidden" name="game_id" value="<?= $lines_game_id ?>">
+    <?php endif; ?>
 
     <div style="display:grid;grid-template-columns:250px 1fr;gap:20px;align-items:start;">
         <!-- Roster Panel (Left) -->

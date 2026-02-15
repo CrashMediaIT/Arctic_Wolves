@@ -182,6 +182,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Note: Could not add fk_gpl_roster_player constraint: " . $e->getMessage());
             }
             
+            try {
+                // Add game_id column to vr_game_plan_lines for game-specific lines
+                $pdo->exec("ALTER TABLE vr_game_plan_lines ADD COLUMN game_id INT DEFAULT NULL COMMENT 'NULL = default/standard lineup, set = game-specific lines' AFTER team_id");
+            } catch (PDOException $e) {
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    error_log("Note: Could not add game_id column to vr_game_plan_lines: " . $e->getMessage());
+                }
+            }
+            
+            try {
+                // Add foreign key for game_id in vr_game_plan_lines if not already present
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as cnt FROM information_schema.TABLE_CONSTRAINTS 
+                    WHERE CONSTRAINT_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = 'vr_game_plan_lines' 
+                    AND CONSTRAINT_NAME = 'fk_gpl_game'
+                ");
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($result !== false && (int)$result['cnt'] === 0) {
+                    $pdo->exec("ALTER TABLE `vr_game_plan_lines` ADD CONSTRAINT `fk_gpl_game` FOREIGN KEY (`game_id`) REFERENCES `game_schedules`(`id`) ON DELETE CASCADE");
+                }
+            } catch (PDOException $e) {
+                error_log("Note: Could not add fk_gpl_game constraint: " . $e->getMessage());
+            }
+            
             // Add fk_expense_payee foreign key constraint if it doesn't exist
             // This is done separately to ensure idempotent schema setup
             // The expenses table and payee_id column are created by database_schema.sql

@@ -944,6 +944,7 @@ function handleSaveHockeyLines() {
     }
 
     $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    $game_id = filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: null;
     $tab = $_POST['tab'] ?? 'forwards';
     $valid_tabs = ['forwards', 'defense', 'special', 'goalies'];
     if (!in_array($tab, $valid_tabs)) $tab = 'forwards';
@@ -954,6 +955,15 @@ function handleSaveHockeyLines() {
     $stmt->execute([$team_id]);
     if (!$stmt->fetch()) {
         throw new Exception('Invalid team selected');
+    }
+
+    // Validate game exists if game_id provided
+    if ($game_id) {
+        $stmt = $pdo->prepare("SELECT id FROM game_schedules WHERE id = ?");
+        $stmt->execute([$game_id]);
+        if (!$stmt->fetch()) {
+            throw new Exception('Invalid game selected');
+        }
     }
 
     $lines = $_POST['lines'] ?? [];
@@ -1007,22 +1017,27 @@ function handleSaveHockeyLines() {
 
     $pdo->beginTransaction();
     try {
-        // Delete existing lines for this team and tab's line names
+        // Delete existing lines for this team+game and tab's line names
         $line_names = array_keys($lines);
         if (!empty($line_names)) {
             $placeholders = implode(',', array_fill(0, count($line_names), '?'));
-            $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND line_name IN ($placeholders)");
-            $stmt->execute(array_merge([$team_id], $line_names));
+            if ($game_id) {
+                $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND game_id = ? AND line_name IN ($placeholders)");
+                $stmt->execute(array_merge([$team_id, $game_id], $line_names));
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND game_id IS NULL AND line_name IN ($placeholders)");
+                $stmt->execute(array_merge([$team_id], $line_names));
+            }
         }
 
         // Insert new lines (only for validated IDs)
-        $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, line_name, position, athlete_id, roster_player_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, game_id, line_name, position, athlete_id, roster_player_id) VALUES (?, ?, ?, ?, ?, ?)");
         foreach ($parsed_lines as $line_name => $positions) {
             foreach ($positions as $pos => $entry) {
                 if ($entry['type'] === 'roster_player' && in_array($entry['id'], $valid_roster_player_ids)) {
-                    $stmt->execute([$team_id, $line_name, $pos, null, $entry['id']]);
+                    $stmt->execute([$team_id, $game_id, $line_name, $pos, null, $entry['id']]);
                 } elseif ($entry['type'] === 'user' && in_array($entry['id'], $valid_athlete_ids)) {
-                    $stmt->execute([$team_id, $line_name, $pos, $entry['id'], null]);
+                    $stmt->execute([$team_id, $game_id, $line_name, $pos, $entry['id'], null]);
                 }
             }
         }
@@ -1034,8 +1049,9 @@ function handleSaveHockeyLines() {
         throw new Exception('Failed to save lines. Please try again.');
     }
 
-    logSecurityEvent($pdo, 'hockey_lines_saved', "Hockey lines saved for team $team_id", $user_id);
-    header('Location: /gameplan.php?page=lines&team_id=' . $team_id . '&tab=' . urlencode($tab) . '&success=lines_saved');
+    $game_param = $game_id ? '&game_id=' . $game_id : '';
+    logSecurityEvent($pdo, 'hockey_lines_saved', "Hockey lines saved for team $team_id" . ($game_id ? " game $game_id" : " (default)"), $user_id);
+    header('Location: /gameplan.php?page=lines&team_id=' . $team_id . '&tab=' . urlencode($tab) . $game_param . '&success=lines_saved');
     exit;
 }
 

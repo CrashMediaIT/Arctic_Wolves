@@ -49,7 +49,7 @@ try {
 $cal_games = [];
 try {
     $q = "
-        SELECT gs.id, gs.opponent_team, gs.game_date, gs.game_type, gs.status,
+        SELECT gs.id, gs.team_id, gs.opponent_team, gs.game_date, gs.game_type, gs.status,
                gs.home_score, gs.away_score, gs.is_home_game, gs.notes,
                t.name AS team_name, l.name AS location_name,
                (SELECT COUNT(*) FROM vr_video_sources vs WHERE vs.game_id = gs.id) AS video_count
@@ -157,11 +157,8 @@ $days_in_month = (int)date('t', strtotime($cal_start));
                     $colors = ['regular' => '#3B82F6', 'playoff' => '#F59E0B', 'tournament' => '#A855F7', 'exhibition' => '#10B981', 'practice' => '#6B46C1'];
                     $c = $colors[$type] ?? '#3B82F6';
                     $is_past = strtotime($ev['game_date']) < time();
-                    $game_link = $is_past
-                        ? '/gameplan.php?page=game_plan&tab=post_game&game_id=' . (int)$ev['id']
-                        : '/gameplan.php?page=game_plan&tab=pre_game&game_id=' . (int)$ev['id'];
                 ?>
-                <a href="<?= $game_link ?>" style="display:block;padding:3px 6px;border-radius:4px;font-size:10px;margin-top:2px;background:<?= $c ?>1f;color:<?= $c ?>;text-decoration:none;cursor:pointer;transition:opacity .15s;" title="<?= htmlspecialchars($ev['opponent_team']) ?> – <?= $is_past ? 'View game history' : 'Plan this game' ?>">
+                <a href="#" class="gp-cal-game-link" data-game-id="<?= (int)$ev['id'] ?>" data-opponent="<?= htmlspecialchars($ev['opponent_team']) ?>" data-is-past="<?= $is_past ? '1' : '0' ?>" style="display:block;padding:3px 6px;border-radius:4px;font-size:10px;margin-top:2px;background:<?= $c ?>1f;color:<?= $c ?>;text-decoration:none;cursor:pointer;transition:opacity .15s;" title="<?= htmlspecialchars($ev['opponent_team']) ?> – Click for options">
                     <span style="font-weight:700;"><?= date('g:ia', strtotime($ev['game_date'])) ?></span>
                     <span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">vs <?= htmlspecialchars(substr($ev['opponent_team'], 0, 15)) ?></span>
                 </a>
@@ -220,14 +217,11 @@ $days_in_month = (int)date('t', strtotime($cal_start));
             ?>
             <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:700;text-transform:uppercase;background:<?= $sc['bg'] ?>;color:<?= $sc['color'] ?>;border:1px solid <?= $sc['border'] ?>;"><?= htmlspecialchars(ucfirst($game['status'])) ?></span>
             <!-- Game action buttons -->
-            <?php if ($game_is_past): ?>
-            <a href="/gameplan.php?page=game_plan&tab=post_game&game_id=<?= (int)$game['id'] ?>" class="btn btn-secondary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="Review this game"><i class="fas fa-chart-line"></i> Review</a>
+            <a href="/gameplan.php?page=lines&game_id=<?= (int)$game['id'] ?>&team_id=<?= (int)($game['team_id'] ?? 0) ?>" class="btn btn-secondary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="<?= $game_is_past ? 'View' : 'Set' ?> game lines"><i class="fas fa-users-line"></i> Lines</a>
+            <a href="/gameplan.php?page=game_plan&tab=pre_game&game_id=<?= (int)$game['id'] ?>" class="btn btn-<?= $game_is_past ? 'secondary' : 'primary' ?>" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="<?= $game_is_past ? 'View' : 'Create' ?> pre-game plan"><i class="fas fa-clipboard-list"></i> Pre-Game</a>
+            <a href="/gameplan.php?page=game_plan&tab=post_game&game_id=<?= (int)$game['id'] ?>" class="btn btn-secondary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="<?= $game_is_past ? 'View' : 'Create' ?> post-game review"><i class="fas fa-chart-line"></i> Post-Game</a>
             <?php if ((int)$game['video_count'] > 0): ?>
             <a href="/gameplan.php?page=film_room&tab=clips&game_id=<?= (int)$game['id'] ?>" class="btn btn-secondary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="View game clips"><i class="fas fa-film"></i> Clips</a>
-            <?php endif; ?>
-            <?php else: ?>
-            <a href="/gameplan.php?page=game_plan&tab=pre_game&game_id=<?= (int)$game['id'] ?>" class="btn btn-primary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="Plan this game"><i class="fas fa-clipboard-list"></i> Plan</a>
-            <a href="/gameplan.php?page=lines&game_id=<?= (int)$game['id'] ?>" class="btn btn-secondary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="Set game lines"><i class="fas fa-users-line"></i> Lines</a>
             <?php endif; ?>
         </div>
     </div>
@@ -383,11 +377,72 @@ document.addEventListener('DOMContentLoaded', function() {
         opponentField.style.display = this.value === 'practice' ? 'none' : 'block';
     });
 
+    // Game options popup on calendar click
+    var gameOptionsModal = document.getElementById('gpGameOptionsModal');
+    document.querySelectorAll('.gp-cal-game-link').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var gameId = this.dataset.gameId;
+            var opponent = this.dataset.opponent;
+            var isPast = this.dataset.isPast === '1';
+            document.getElementById('gpGameOptionsTitle').textContent = (isPast ? 'View' : 'Plan') + ': vs ' + opponent;
+            document.getElementById('gpGameOptLines').href = '/gameplan.php?page=lines&game_id=' + gameId;
+            document.getElementById('gpGameOptPreGame').href = '/gameplan.php?page=game_plan&tab=pre_game&game_id=' + gameId;
+            document.getElementById('gpGameOptPostGame').href = '/gameplan.php?page=game_plan&tab=post_game&game_id=' + gameId;
+            document.getElementById('gpGameOptLinesLabel').textContent = isPast ? 'View Game Lines' : 'Set Game Lines';
+            document.getElementById('gpGameOptPreGameLabel').textContent = isPast ? 'View Pre-Game Plan' : 'Create Pre-Game Plan';
+            document.getElementById('gpGameOptPostGameLabel').textContent = isPast ? 'View Post-Game Review' : 'Create Post-Game Review';
+            gameOptionsModal.style.display = 'flex';
+        });
+    });
+    document.getElementById('gpCloseGameOptions').addEventListener('click', function() { gameOptionsModal.style.display = 'none'; });
+    gameOptionsModal.addEventListener('click', function(e) { if (e.target === gameOptionsModal) gameOptionsModal.style.display = 'none'; });
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             modal.style.display = 'none';
             addModal.style.display = 'none';
+            gameOptionsModal.style.display = 'none';
         }
     });
 });
 </script>
+
+<!-- Game Options Modal -->
+<div class="modal-overlay" id="gpGameOptionsModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);align-items:center;justify-content:center;">
+    <div class="modal-content" style="width:90%;max-width:400px;">
+        <div class="modal-header">
+            <h3 id="gpGameOptionsTitle"><i class="fas fa-hockey-puck"></i> Game Options</h3>
+            <button type="button" class="modal-close" id="gpCloseGameOptions">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:0;">
+            <a href="#" id="gpGameOptLines" style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text-white);transition:background .15s;">
+                <div style="width:40px;height:40px;border-radius:10px;background:rgba(59,130,246,.1);color:#3B82F6;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;"><i class="fas fa-users-line"></i></div>
+                <div>
+                    <div style="font-weight:700;font-size:14px;" id="gpGameOptLinesLabel">Set Game Lines</div>
+                    <div style="font-size:12px;color:var(--text-muted);">Modify lines for this specific game</div>
+                </div>
+                <i class="fas fa-chevron-right" style="margin-left:auto;color:var(--text-muted);font-size:12px;"></i>
+            </a>
+            <a href="#" id="gpGameOptPreGame" style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text-white);transition:background .15s;">
+                <div style="width:40px;height:40px;border-radius:10px;background:rgba(107,70,193,.1);color:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;"><i class="fas fa-clipboard-list"></i></div>
+                <div>
+                    <div style="font-weight:700;font-size:14px;" id="gpGameOptPreGameLabel">Create Pre-Game Plan</div>
+                    <div style="font-size:12px;color:var(--text-muted);">Strategy, systems, and key players</div>
+                </div>
+                <i class="fas fa-chevron-right" style="margin-left:auto;color:var(--text-muted);font-size:12px;"></i>
+            </a>
+            <a href="#" id="gpGameOptPostGame" style="display:flex;align-items:center;gap:14px;padding:16px 20px;text-decoration:none;color:var(--text-white);transition:background .15s;">
+                <div style="width:40px;height:40px;border-radius:10px;background:rgba(16,185,129,.1);color:#10B981;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;"><i class="fas fa-chart-line"></i></div>
+                <div>
+                    <div style="font-weight:700;font-size:14px;" id="gpGameOptPostGameLabel">Create Post-Game Review</div>
+                    <div style="font-size:12px;color:var(--text-muted);">Score, notes, and performance review</div>
+                </div>
+                <i class="fas fa-chevron-right" style="margin-left:auto;color:var(--text-muted);font-size:12px;"></i>
+            </a>
+        </div>
+    </div>
+</div>
+<style>
+#gpGameOptionsModal a:hover { background: rgba(107,70,193,.06); }
+</style>

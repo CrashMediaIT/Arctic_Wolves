@@ -39,7 +39,7 @@ if ($wb_team_id > 0) {
             FROM vr_game_plan_lines gpl
             LEFT JOIN users u ON gpl.athlete_id = u.id
             LEFT JOIN roster_players rp ON gpl.roster_player_id = rp.id
-            WHERE gpl.team_id = ?
+            WHERE gpl.team_id = ? AND gpl.game_id IS NULL
             ORDER BY gpl.line_name, gpl.position
         ");
         $stmt->execute([$wb_team_id]);
