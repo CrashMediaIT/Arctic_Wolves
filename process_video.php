@@ -1192,9 +1192,43 @@ function handleImportCalendar() {
             }
             fclose($handle);
         }
-    } elseif ($import_type === 'ical' && isset($_FILES['calendar_file']) && $_FILES['calendar_file']['error'] === UPLOAD_ERR_OK) {
-        $ical_content = file_get_contents($_FILES['calendar_file']['tmp_name']);
-        if ($ical_content !== false) {
+    } elseif (in_array($import_type, ['ical', 'teamlinkt'])) {
+        // Get iCal content from file upload or URL
+        $ical_content = false;
+
+        if (isset($_FILES['calendar_file']) && $_FILES['calendar_file']['error'] === UPLOAD_ERR_OK) {
+            $ical_content = file_get_contents($_FILES['calendar_file']['tmp_name']);
+        } elseif (!empty($_POST['calendar_url'])) {
+            $url = filter_var($_POST['calendar_url'], FILTER_VALIDATE_URL);
+            if (!$url) {
+                throw new Exception('Invalid calendar URL');
+            }
+            // Only allow http/https schemes
+            $scheme = parse_url($url, PHP_URL_SCHEME);
+            if (!in_array($scheme, ['http', 'https'])) {
+                throw new Exception('Only HTTP and HTTPS URLs are supported');
+            }
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout' => 30,
+                    'user_agent' => 'ArcticWolves/1.0 Calendar Import',
+                    'follow_location' => 1,
+                    'max_redirects' => 5,
+                ],
+                'ssl' => [
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
+                ],
+            ]);
+            $ical_content = file_get_contents($url, false, $ctx);
+            if ($ical_content === false) {
+                $err = error_get_last();
+                error_log('Calendar URL fetch failed: ' . ($err['message'] ?? 'unknown error') . ' URL: ' . $url);
+                throw new Exception('Could not fetch calendar from URL. Please check the URL and try again.');
+            }
+        }
+
+        if ($ical_content !== false && !empty($ical_content)) {
             $events = parseICalEvents($ical_content);
             $stmt = $pdo->prepare("
                 INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id)
@@ -1232,9 +1266,15 @@ function handleImportCalendar() {
 
 /**
  * Parse iCal/ICS file content into an array of events.
+ * Handles RFC 5545 line folding (continuation lines starting with space/tab).
  */
 function parseICalEvents($content) {
     $events = [];
+
+    // Unfold lines per RFC 5545 section 3.1: lines starting with a space or tab
+    // are continuations of the previous line
+    $content = preg_replace('/\r?\n[ \t]/', '', $content);
+
     $lines = preg_split('/\r?\n/', $content);
     $current = null;
 

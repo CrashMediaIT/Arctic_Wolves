@@ -260,8 +260,8 @@ try {
     <meta name="mobile-web-app-capable" content="yes">
     <title>Arctic Wolves</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="assets/pwa/icon-192.png">
-    <link rel="apple-touch-icon" href="assets/pwa/icon-192.png">
+    <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
+    <link rel="apple-touch-icon" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/style-guide.css">
