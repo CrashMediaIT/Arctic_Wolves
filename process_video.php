@@ -1673,9 +1673,9 @@ function handleJoinAsController() {
         $stmt = $pdo->prepare("
             INSERT INTO vr_device_pair_controllers (pair_id, user_id, controller_token)
             VALUES (?, ?, ?)
-            ON DUPLICATE KEY UPDATE controller_token = VALUES(controller_token), joined_at = CURRENT_TIMESTAMP
+            ON DUPLICATE KEY UPDATE controller_token = ?, joined_at = CURRENT_TIMESTAMP
         ");
-        $stmt->execute([(int)$pair['id'], $user_id, $controller_token]);
+        $stmt->execute([(int)$pair['id'], $user_id, $controller_token, $controller_token]);
     } catch (PDOException $e) {
         error_log('Join as controller: ' . $e->getMessage());
         header('Location: /gameplan.php?page=video_review&tab=device_pair&error=join_failed');

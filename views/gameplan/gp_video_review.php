@@ -782,7 +782,7 @@ try {
 $vr_pair_controllers = [];
 try {
     if (!empty($vr_pairs)) {
-        $pair_ids = array_column($vr_pairs, 'id');
+        $pair_ids = array_map('intval', array_column($vr_pairs, 'id'));
         $placeholders = implode(',', array_fill(0, count($pair_ids), '?'));
         $stmt = $pdo->prepare("
             SELECT dpc.pair_id, dpc.user_id, u.first_name, u.last_name
@@ -892,7 +892,7 @@ try {
                 </div>
                 <?php if (!empty($extra_controllers)): ?>
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border, #333);">
-                    <span style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px;">Controllers (<?= 1 + count($extra_controllers) ?>)</span>
+                    <span style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px;">Additional Controllers</span>
                     <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
                         <?php foreach ($extra_controllers as $ctrl): ?>
                         <span style="font-size: 11px; background: rgba(107,70,193,.1); color: var(--primary-light, #A78BFA); padding: 2px 8px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px;">
