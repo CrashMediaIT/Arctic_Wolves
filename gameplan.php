@@ -70,6 +70,7 @@ $allowed_pages = [
     'review_sessions'  => 'views/gameplan/gp_review_sessions.php',
     'my_clips'         => 'views/gameplan/gp_my_clips.php',
     'lines'            => 'views/gameplan/gp_lines.php',
+    'roster'           => 'views/gameplan/gp_roster.php',
 ];
 
 // Admin-only pages
@@ -338,6 +339,9 @@ try {
     </a>
     <a href="/gameplan.php?page=lines" class="gp-nav-link <?= $page === 'lines' ? 'active' : '' ?>">
         <i class="fas fa-users-line"></i> Hockey Lines
+    </a>
+    <a href="/gameplan.php?page=roster" class="gp-nav-link <?= $page === 'roster' ? 'active' : '' ?>">
+        <i class="fas fa-clipboard-list"></i> Roster
     </a>
     <a href="/gameplan.php?page=film_room" class="gp-nav-link <?= $page === 'film_room' ? 'active' : '' ?>">
         <i class="fas fa-video"></i> Film Room
