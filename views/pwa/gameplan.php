@@ -1,8 +1,335 @@
 <?php
 /**
- * PWA Game Plan - Redirect to Standalone Module
- * The Game Plan module is a standalone dashboard at /gameplan.php.
+ * PWA Game Plan - Mobile-native game plan hub
+ * Purpose-built for mobile phones, renders within the PWA shell.
+ * Provides navigation to all game plan sub-pages and shows
+ * quick stats and recent activity.
  */
-header("Location: /gameplan.php");
-exit();
+
+// Determine sub-page from query parameter
+$gp_sub = isset($_GET['gp']) ? preg_replace('/[^a-z0-9_]/', '', $_GET['gp']) : 'home';
+
+// Map of sub-pages to gp_ view files
+$gp_views = [
+    'home'            => 'views/gameplan/gp_home.php',
+    'video_review'    => 'views/gameplan/gp_video_review.php',
+    'calendar'        => 'views/gameplan/gp_calendar.php',
+    'game_plan'       => 'views/gameplan/gp_game_plan.php',
+    'film_room'       => 'views/gameplan/gp_film_room.php',
+    'review_sessions' => 'views/gameplan/gp_review_sessions.php',
+    'my_clips'        => 'views/gameplan/gp_my_clips.php',
+    'lines'           => 'views/gameplan/gp_lines.php',
+];
+
+if ($isAdmin) {
+    $gp_views['permissions'] = 'views/gameplan/gp_permissions.php';
+}
+
+// Load recent videos (needed by gp_home.php)
+$recentVideos = [];
+try {
+    $videoWhere = '';
+    $videoParams = [];
+    if (!$isAnyCoach) {
+        $videoWhere = 'WHERE v.athlete_id = ?';
+        $videoParams[] = $user_id;
+    }
+    $stmt = $pdo->prepare("
+        SELECT v.id, v.title, v.filename, v.file_path, v.duration, v.status,
+               v.created_at, v.athlete_id,
+               u.first_name as athlete_first_name, u.last_name as athlete_last_name
+        FROM videos v
+        LEFT JOIN users u ON v.athlete_id = u.id
+        $videoWhere
+        ORDER BY v.created_at DESC
+        LIMIT 20
+    ");
+    $stmt->execute($videoParams);
+    $recentVideos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { /* ignore */ }
+
+// Sub-page labels for the header
+$gp_labels = [
+    'home'            => 'Game Plan',
+    'video_review'    => 'Video Review',
+    'calendar'        => 'Calendar',
+    'game_plan'       => 'Game Plans',
+    'film_room'       => 'Film Room',
+    'review_sessions' => 'Review Sessions',
+    'my_clips'        => 'My Clips',
+    'lines'           => 'Hockey Lines',
+    'permissions'     => 'Permissions',
+];
+
+$gp_current_label = $gp_labels[$gp_sub] ?? 'Game Plan';
+$gp_view_file = $gp_views[$gp_sub] ?? $gp_views['home'];
+$gp_is_sub = ($gp_sub !== 'home');
 ?>
+
+<style>
+/* PWA Game Plan mobile styles */
+.m-gp { padding: 0; font-family: Inter, sans-serif; }
+.m-gp-header {
+    padding: 16px; border-bottom: 1px solid var(--border, #2D2D3F);
+    display: flex; align-items: center; gap: 12px;
+}
+.m-gp-back {
+    width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border, #2D2D3F);
+    background: none; color: #fff; font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    min-height: auto; padding: 0; text-decoration: none;
+}
+.m-gp-header-info { flex: 1; }
+.m-gp-title {
+    font-size: 17px; font-weight: 700; color: #fff;
+    display: flex; align-items: center; gap: 8px; margin: 0;
+}
+.m-gp-title i { color: var(--primary-light, #8B5CF6); }
+.m-gp-sub { font-size: 12px; color: var(--text-muted, #A8A8B8); margin: 2px 0 0; }
+
+/* Navigation cards (home view) */
+.m-gp-nav-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 16px;
+}
+.m-gp-nav-card {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 20px 12px; background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F); border-radius: 12px;
+    text-decoration: none; color: #fff; transition: border-color 0.2s;
+    text-align: center;
+}
+.m-gp-nav-card:hover, .m-gp-nav-card:active {
+    border-color: var(--primary, #6B46C1);
+}
+.m-gp-nav-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+}
+.m-gp-nav-label { font-size: 13px; font-weight: 600; }
+.m-gp-nav-count { font-size: 11px; color: var(--text-muted, #A8A8B8); }
+
+/* Stats row */
+.m-gp-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 10px;
+    padding: 16px; border-bottom: 1px solid var(--border, #2D2D3F);
+}
+.m-gp-stat {
+    text-align: center; padding: 12px 4px;
+    background: var(--bg-card, #16161F); border: 1px solid var(--border, #2D2D3F);
+    border-radius: 10px;
+}
+.m-gp-stat-val { font-size: 22px; font-weight: 900; color: #fff; }
+.m-gp-stat-lbl { font-size: 10px; color: var(--text-muted, #A8A8B8); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* Sub-page content wrapper */
+.m-gp-content { padding: 16px; }
+
+/* Override gp_ view styles for mobile context */
+.m-gp-content .card { margin-bottom: 16px; }
+.m-gp-content .card-header { padding: 14px 16px; }
+.m-gp-content .card-body { padding: 14px 16px; }
+
+/* Desktop link banner */
+.m-gp-desktop-link {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: rgba(107,70,193,0.08); border-bottom: 1px solid var(--border, #2D2D3F);
+    font-size: 12px; color: var(--text-muted, #A8A8B8);
+}
+.m-gp-desktop-link a {
+    color: var(--primary-light, #8B5CF6); text-decoration: none; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+</style>
+
+<div class="m-gp">
+    <!-- Header with back navigation for sub-pages -->
+    <div class="m-gp-header">
+        <?php if ($gp_is_sub): ?>
+        <a href="?page=gameplan" class="m-gp-back"><i class="fas fa-arrow-left"></i></a>
+        <?php endif; ?>
+        <div class="m-gp-header-info">
+            <h2 class="m-gp-title"><i class="fas fa-chess-board"></i> <?= htmlspecialchars($gp_current_label) ?></h2>
+            <?php if (!$gp_is_sub): ?>
+            <p class="m-gp-sub">Pre-game &amp; post-game planning</p>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <?php if ($gp_sub === 'home'): ?>
+    <!-- ── HOME: Stats + Navigation Grid ──────────────────── -->
+
+    <!-- Quick Stats -->
+    <?php
+    $gp_stats = ['videos' => 0, 'plans' => 0, 'reviews' => 0, 'lines' => 0];
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM videos" . (!$isAnyCoach ? " WHERE athlete_id = ?" : ""));
+        $stmt->execute(!$isAnyCoach ? [$user_id] : []);
+        $gp_stats['videos'] = (int)$stmt->fetchColumn();
+    } catch (PDOException $e) {}
+    if ($isAnyCoach) {
+        try { $stmt = $pdo->prepare("SELECT COUNT(*) FROM vr_game_plans WHERE coach_id = ?"); $stmt->execute([$user_id]); $gp_stats['plans'] = (int)$stmt->fetchColumn(); } catch (PDOException $e) {}
+        try { $stmt = $pdo->prepare("SELECT COUNT(*) FROM vr_review_sessions WHERE coach_id = ? AND status = 'scheduled'"); $stmt->execute([$user_id]); $gp_stats['reviews'] = (int)$stmt->fetchColumn(); } catch (PDOException $e) {}
+        try { $stmt = $pdo->prepare("SELECT COUNT(DISTINCT plan_id) FROM vr_game_plan_lines WHERE plan_id IN (SELECT id FROM vr_game_plans WHERE coach_id = ?)"); $stmt->execute([$user_id]); $gp_stats['lines'] = (int)$stmt->fetchColumn(); } catch (PDOException $e) {}
+    }
+    ?>
+    <div class="m-gp-stats">
+        <div class="m-gp-stat">
+            <div class="m-gp-stat-val"><?= $gp_stats['videos'] ?></div>
+            <div class="m-gp-stat-lbl">Videos</div>
+        </div>
+        <?php if ($isAnyCoach): ?>
+        <div class="m-gp-stat">
+            <div class="m-gp-stat-val"><?= $gp_stats['plans'] ?></div>
+            <div class="m-gp-stat-lbl">Plans</div>
+        </div>
+        <div class="m-gp-stat">
+            <div class="m-gp-stat-val"><?= $gp_stats['reviews'] ?></div>
+            <div class="m-gp-stat-lbl">Reviews</div>
+        </div>
+        <div class="m-gp-stat">
+            <div class="m-gp-stat-val"><?= $gp_stats['lines'] ?></div>
+            <div class="m-gp-stat-lbl">Lines</div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Navigation Grid -->
+    <div class="m-gp-nav-grid">
+        <a href="?page=gameplan&gp=video_review" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(139,92,246,.1); color: var(--primary-light, #8B5CF6);">
+                <i class="fas fa-film"></i>
+            </div>
+            <div class="m-gp-nav-label">Video Review</div>
+            <div class="m-gp-nav-count"><?= $gp_stats['videos'] ?> videos</div>
+        </a>
+
+        <?php if ($isAnyCoach): ?>
+        <a href="?page=gameplan&gp=game_plan" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(59,130,246,.1); color: var(--info, #3B82F6);">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <div class="m-gp-nav-label">Game Plans</div>
+            <div class="m-gp-nav-count"><?= $gp_stats['plans'] ?> plans</div>
+        </a>
+
+        <a href="?page=gameplan&gp=lines" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(16,185,129,.1); color: var(--success, #10B981);">
+                <i class="fas fa-users-line"></i>
+            </div>
+            <div class="m-gp-nav-label">Hockey Lines</div>
+            <div class="m-gp-nav-count">Line management</div>
+        </a>
+
+        <a href="?page=gameplan&gp=film_room" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(139,92,246,.1); color: var(--primary-light, #8B5CF6);">
+                <i class="fas fa-video"></i>
+            </div>
+            <div class="m-gp-nav-label">Film Room</div>
+            <div class="m-gp-nav-count">Upload &amp; tag</div>
+        </a>
+
+        <a href="?page=gameplan&gp=calendar" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(245,158,11,.1); color: var(--warning, #F59E0B);">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <div class="m-gp-nav-label">Calendar</div>
+            <div class="m-gp-nav-count">Schedule</div>
+        </a>
+
+        <a href="?page=gameplan&gp=review_sessions" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(245,158,11,.1); color: var(--warning, #F59E0B);">
+                <i class="fas fa-chalkboard-user"></i>
+            </div>
+            <div class="m-gp-nav-label">Reviews</div>
+            <div class="m-gp-nav-count"><?= $gp_stats['reviews'] ?> upcoming</div>
+        </a>
+        <?php else: ?>
+        <a href="?page=gameplan&gp=my_clips" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(16,185,129,.1); color: var(--success, #10B981);">
+                <i class="fas fa-scissors"></i>
+            </div>
+            <div class="m-gp-nav-label">My Clips</div>
+            <div class="m-gp-nav-count">Tagged clips</div>
+        </a>
+        <?php endif; ?>
+
+        <?php if ($isAdmin): ?>
+        <a href="?page=gameplan&gp=permissions" class="m-gp-nav-card">
+            <div class="m-gp-nav-icon" style="background: rgba(239,68,68,.1); color: var(--error, #EF4444);">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="m-gp-nav-label">Permissions</div>
+            <div class="m-gp-nav-count">Access control</div>
+        </a>
+        <?php endif; ?>
+    </div>
+
+    <!-- Desktop link -->
+    <div class="m-gp-desktop-link">
+        <i class="fas fa-desktop"></i>
+        <span>For full features, use the <a href="/gameplan.php"><i class="fas fa-external-link-alt"></i> desktop version</a></span>
+    </div>
+
+    <?php else: ?>
+    <!-- ── SUB-PAGE: Render the gp_ view file ─────────────── -->
+    <div class="m-gp-content">
+        <?php
+        if (file_exists($gp_view_file)) {
+            include $gp_view_file;
+        } else {
+            echo '<div style="text-align:center;padding:40px 20px;color:var(--text-muted,#A8A8B8);">';
+            echo '<i class="fas fa-exclamation-triangle" style="font-size:32px;display:block;margin-bottom:12px;"></i>';
+            echo '<p style="font-size:14px;font-weight:600;">Module not available</p>';
+            echo '</div>';
+        }
+        ?>
+    </div>
+    <?php endif; ?>
+</div>
+
+<script>
+// Rewrite internal gameplan links to work within PWA context
+document.addEventListener('DOMContentLoaded', function() {
+    var gpContent = document.querySelector('.m-gp-content');
+    if (!gpContent) return;
+
+    // Rewrite /gameplan.php?page=XXX links to ?page=gameplan&gp=XXX
+    var links = gpContent.querySelectorAll('a[href*="/gameplan.php"]');
+    for (var i = 0; i < links.length; i++) {
+        var href = links[i].getAttribute('href');
+        if (!href) continue;
+        try {
+            var url = new URL(href, window.location.origin);
+            var gpPage = url.searchParams.get('page');
+            if (gpPage) {
+                // Build PWA-compatible URL preserving other params
+                var params = new URLSearchParams();
+                params.set('page', 'gameplan');
+                params.set('gp', gpPage);
+                url.searchParams.forEach(function(val, key) {
+                    if (key !== 'page') {
+                        params.set(key, val);
+                    }
+                });
+                links[i].setAttribute('href', '?' + params.toString());
+            }
+        } catch (e) { /* skip malformed URLs */ }
+    }
+
+    // Rewrite /dashboard.php links to pwa.php equivalents
+    var dashLinks = gpContent.querySelectorAll('a[href*="/dashboard.php"]');
+    for (var j = 0; j < dashLinks.length; j++) {
+        var dhref = dashLinks[j].getAttribute('href');
+        if (!dhref) continue;
+        try {
+            var dUrl = new URL(dhref, window.location.origin);
+            var dPage = dUrl.searchParams.get('page');
+            if (dPage) {
+                dashLinks[j].setAttribute('href', '?page=' + encodeURIComponent(dPage));
+            }
+        } catch (e) { /* skip */ }
+    }
+});
+</script>
