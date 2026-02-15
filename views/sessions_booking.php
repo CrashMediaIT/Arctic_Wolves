@@ -37,7 +37,6 @@ $available_sessions_query = "
     LEFT JOIN bookings b ON b.session_id = s.id
     WHERE s.session_date >= CURDATE() 
       AND s.status = 'scheduled'
-      AND (s.max_participants IS NULL OR s.max_participants > (SELECT COUNT(*) FROM bookings WHERE session_id = s.id))
     GROUP BY s.id
     
     UNION ALL
@@ -116,7 +115,8 @@ $is_demo_sessions = false;
                 <?php foreach ($available_sessions as $session): 
                     $session_datetime = strtotime($session['session_date']);
                     $spots_left = ($session['max_participants'] ?? 10) - ($session['registered_count'] ?? 0);
-                    $is_almost_full = $spots_left <= 3;
+                    $is_almost_full = $spots_left > 0 && $spots_left <= 3;
+                    $is_full = $spots_left <= 0 && !empty($session['max_participants']);
                 ?>
                 <div class="session-list-card" data-session-id="<?= $session['id'] ?>" data-date="<?= date('Y-m-d', $session_datetime) ?>">
                     <div class="session-date-column">
@@ -141,6 +141,16 @@ $is_demo_sessions = false;
                         <?php endif; ?>
                     </div>
                     <div class="session-action-column">
+                        <?php if ($is_full): ?>
+                        <div class="spots-indicator almost-full">
+                            <span class="spots-number" style="color:#EF4444;">0</span>
+                            <span class="spots-text">spots left</span>
+                        </div>
+                        <div class="session-price-tag">$<?= number_format($session['session_price'] ?? 0, 0) ?></div>
+                        <button class="btn-register" data-action="join-waitlist" data-session-id="<?= $session['id'] ?>" style="background:rgba(245,158,11,0.15);color:#F59E0B;">
+                            <i class="fas fa-clock"></i> Join Waitlist
+                        </button>
+                        <?php else: ?>
                         <div class="spots-indicator <?= $is_almost_full ? 'almost-full' : '' ?>">
                             <span class="spots-number"><?= $spots_left ?></span>
                             <span class="spots-text">spots left</span>
@@ -149,6 +159,7 @@ $is_demo_sessions = false;
                         <button class="btn-register" data-action="register-session" data-session-id="<?= $session['id'] ?>" data-price="<?= $session['session_price'] ?? 0 ?>">
                             <i class="fas fa-plus-circle"></i> Register
                         </button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -1562,6 +1573,53 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(form);
             form.submit();
         }
+    });
+    
+    // ============================================
+    // WAITLIST FUNCTIONALITY
+    // ============================================
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-action="join-waitlist"]');
+        if (!btn) return;
+        
+        const sessionId = btn.dataset.sessionId;
+        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+        if (!csrfToken) {
+            showBookingNotification('Security token missing. Please refresh the page.', 'error');
+            return;
+        }
+        if (!/^\d+$/.test(sessionId)) {
+            showBookingNotification('Invalid session ID.', 'error');
+            return;
+        }
+        
+        const form = new FormData();
+        form.append('action', 'join_waitlist');
+        form.append('session_id', sessionId);
+        form.append('csrf_token', csrfToken);
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Joining...';
+        
+        fetch('process_booking.php', { method: 'POST', body: form })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showBookingNotification(data.message || 'Added to waitlist!', 'info');
+                    btn.innerHTML = '<i class="fas fa-check"></i> On Waitlist';
+                    btn.style.background = 'rgba(16,185,129,0.15)';
+                    btn.style.color = '#10B981';
+                } else {
+                    showBookingNotification(data.message || 'Failed to join waitlist', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-clock"></i> Join Waitlist';
+                }
+            })
+            .catch(function() {
+                showBookingNotification('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-clock"></i> Join Waitlist';
+            });
     });
     
     // ============================================
