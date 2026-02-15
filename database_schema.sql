@@ -4255,6 +4255,37 @@ CREATE TABLE IF NOT EXISTS `vr_clip_athletes` (
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Roster players (non-user roster management for game plan)
+-- Allows teams to have players who are not Arctic Wolves users
+-- Players can optionally be linked to existing user accounts
+CREATE TABLE IF NOT EXISTS `roster_players` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `team_id` INT NOT NULL,
+    `user_id` INT DEFAULT NULL COMMENT 'Linked Arctic Wolves user account (NULL if external player)',
+    `first_name` VARCHAR(100) NOT NULL,
+    `last_name` VARCHAR(100) NOT NULL,
+    `email` VARCHAR(255) DEFAULT NULL,
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `jersey_number` INT DEFAULT NULL,
+    `position` VARCHAR(50) DEFAULT NULL,
+    `date_of_birth` DATE DEFAULT NULL,
+    `parent_name` VARCHAR(200) DEFAULT NULL,
+    `parent_email` VARCHAR(255) DEFAULT NULL,
+    `parent_phone` VARCHAR(20) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `status` ENUM('active', 'inactive', 'archived') DEFAULT 'active',
+    `season_id` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE SET NULL,
+    INDEX `idx_team` (`team_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_season` (`season_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Game plans (pre-game strategies, post-game reviews, practice plans)
 CREATE TABLE IF NOT EXISTS `vr_game_plans` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -4349,37 +4380,6 @@ CREATE TABLE IF NOT EXISTS `vr_review_session_clips` (
     PRIMARY KEY (`session_id`, `clip_id`),
     FOREIGN KEY (`session_id`) REFERENCES `vr_review_sessions`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`clip_id`) REFERENCES `vr_video_clips`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Roster players (non-user roster management for game plan)
--- Allows teams to have players who are not Arctic Wolves users
--- Players can optionally be linked to existing user accounts
-CREATE TABLE IF NOT EXISTS `roster_players` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `team_id` INT NOT NULL,
-    `user_id` INT DEFAULT NULL COMMENT 'Linked Arctic Wolves user account (NULL if external player)',
-    `first_name` VARCHAR(100) NOT NULL,
-    `last_name` VARCHAR(100) NOT NULL,
-    `email` VARCHAR(255) DEFAULT NULL,
-    `phone` VARCHAR(20) DEFAULT NULL,
-    `jersey_number` INT DEFAULT NULL,
-    `position` VARCHAR(50) DEFAULT NULL,
-    `date_of_birth` DATE DEFAULT NULL,
-    `parent_name` VARCHAR(200) DEFAULT NULL,
-    `parent_email` VARCHAR(255) DEFAULT NULL,
-    `parent_phone` VARCHAR(20) DEFAULT NULL,
-    `notes` TEXT DEFAULT NULL,
-    `status` ENUM('active', 'inactive', 'archived') DEFAULT 'active',
-    `season_id` INT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
-    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE SET NULL,
-    INDEX `idx_team` (`team_id`),
-    INDEX `idx_user` (`user_id`),
-    INDEX `idx_season` (`season_id`),
-    INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Device pairing for video review (viewer/controller casting)
