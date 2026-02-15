@@ -1236,15 +1236,21 @@ function parseICalEvents($content) {
                 $val = trim(substr($line, strpos($line, ':') + 1));
                 // Convert iCal date format to MySQL datetime
                 $val = str_replace(['T', 'Z'], [' ', ''], $val);
-                if (strlen($val) >= 8) {
-                    $year = substr($val, 0, 4);
-                    $month = substr($val, 4, 2);
-                    $day = substr($val, 6, 2);
+                if (strlen($val) >= 8 && ctype_digit(substr($val, 0, 8))) {
+                    $year = (int)substr($val, 0, 4);
+                    $month = (int)substr($val, 4, 2);
+                    $day = (int)substr($val, 6, 2);
+                    if (!checkdate($month, $day, $year)) continue;
                     $time = '00:00:00';
                     if (strlen($val) >= 15) {
-                        $time = substr($val, 9, 2) . ':' . substr($val, 11, 2) . ':' . substr($val, 13, 2);
+                        $hh = (int)substr($val, 9, 2);
+                        $mm = (int)substr($val, 11, 2);
+                        $ss = (int)substr($val, 13, 2);
+                        if ($hh >= 0 && $hh <= 23 && $mm >= 0 && $mm <= 59 && $ss >= 0 && $ss <= 59) {
+                            $time = sprintf('%02d:%02d:%02d', $hh, $mm, $ss);
+                        }
                     }
-                    $current['dtstart'] = "$year-$month-$day $time";
+                    $current['dtstart'] = sprintf('%04d-%02d-%02d %s', $year, $month, $day, $time);
                 }
             } elseif (strpos($line, 'DESCRIPTION:') === 0 || strpos($line, 'DESCRIPTION;') === 0) {
                 $current['description'] = trim(substr($line, strpos($line, ':') + 1));

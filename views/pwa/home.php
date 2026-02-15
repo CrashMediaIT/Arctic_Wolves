@@ -308,8 +308,13 @@ try {
     var now = new Date();
     var el = document.getElementById('pwa-greeting');
     if (el) {
-        var name = el.textContent.split(',').slice(1).join(',').trim();
-        el.textContent = 'Good ' + timeOfDay + ', ' + name;
+        var parts = el.textContent.split(',');
+        var name = parts.length > 1 ? parts.slice(1).join(',').trim() : '';
+        if (name) {
+            el.textContent = 'Good ' + timeOfDay + ', ' + name;
+        } else {
+            el.textContent = 'Good ' + timeOfDay;
+        }
     }
     var dateEl = document.getElementById('pwa-greeting-date');
     if (dateEl) {
