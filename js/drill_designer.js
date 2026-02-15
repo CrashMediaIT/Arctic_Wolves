@@ -455,11 +455,16 @@ class DrillDesigner {
     toggleFullscreen() {
         const container = this.canvas.parentElement;
         if (container) {
+            const oldWidth = this.canvas.width;
+            const oldHeight = this.canvas.height;
             container.classList.toggle('fullscreen');
-            // Resize canvas for fullscreen
+            // Resize canvas for fullscreen and scale objects to match new dimensions
             setTimeout(() => {
                 this.canvas.width = container.offsetWidth;
                 this.canvas.height = container.offsetHeight;
+                if (oldWidth !== this.canvas.width || oldHeight !== this.canvas.height) {
+                    this.objects = this.scaleObjectsUniformly(this.objects, oldWidth, oldHeight);
+                }
                 this.redraw();
             }, 100);
         }
