@@ -1,7 +1,8 @@
 <?php
 /**
- * Game Plan - Video Review View (Restyled)
- * Three tabs: Clips / By Game / Opponent Scouting
+ * Game Plan - Video Review View
+ * Three tabs: Clips / By Game (default) / Opponent Scouting
+ * Hierarchy: Select Team -> See games -> Select game -> See clips by tag
  * Athletes see clips they're tagged in; coaches see all clips.
  *
  * Uses site standard classes: filter-box, card, btn, form-select, etc.
@@ -9,9 +10,9 @@
  * Rendered inside standalone gameplan.php shell.
  */
 
-// ── Tab & Filter parameters ───────────────────────────────────
-$vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'clips';
-if (!in_array($vr_tab, ['clips', 'by_game', 'scouting'])) $vr_tab = 'clips';
+// -- Tab & Filter parameters -----------------------------------------------
+$vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'by_game';
+if (!in_array($vr_tab, ['clips', 'by_game', 'scouting'])) $vr_tab = 'by_game';
 
 $vr_tag_cat   = isset($_GET['tag_cat']) ? preg_replace('/[^a-z0-9_-]/', '', $_GET['tag_cat']) : '';
 $vr_tag_id    = isset($_GET['tag_id']) ? (int)$_GET['tag_id'] : 0;
@@ -21,8 +22,21 @@ $vr_search    = $_GET['search'] ?? '';
 $vr_view_mode = isset($_GET['view']) && $_GET['view'] === 'list' ? 'list' : 'grid';
 $vr_game_id   = isset($_GET['game_id']) ? (int)$_GET['game_id'] : 0;
 $vr_opponent  = isset($_GET['opponent']) ? preg_replace('/[^a-zA-Z0-9 _-]/', '', $_GET['opponent']) : '';
+$vr_team_id   = isset($_GET['team_id']) ? (int)$_GET['team_id'] : 0;
+$vr_month     = isset($_GET['month']) ? preg_replace('/[^0-9-]/', '', $_GET['month']) : '';
+$vr_sort      = isset($_GET['sort']) ? preg_replace('/[^a-z_]/', '', $_GET['sort']) : 'date_desc';
+if (!in_array($vr_sort, ['date_desc', 'date_asc', 'opponent_asc', 'opponent_desc'])) $vr_sort = 'date_desc';
+$vr_clip_tag_filter = isset($_GET['clip_tag']) ? (int)$_GET['clip_tag'] : 0;
 
-// ── Load tag categories & tags ────────────────────────────────
+// -- Load teams for the team selector --------------------------------------
+$vr_teams = [];
+try {
+    $stmt = $pdo->prepare("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt->execute();
+    $vr_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { error_log('VR teams: ' . $e->getMessage()); }
+
+// -- Load tag categories & tags --------------------------------------------
 $vr_tag_categories = [];
 $vr_all_tags = [];
 try {
@@ -35,7 +49,7 @@ try {
     $vr_all_tags = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('VR tags: ' . $e->getMessage()); }
 
-// ── Clips Tab Data ────────────────────────────────────────────
+// -- Clips Tab Data --------------------------------------------------------
 $vr_clips = [];
 if ($vr_tab === 'clips') {
     try {
@@ -60,6 +74,10 @@ if ($vr_tab === 'clips') {
         if (!$isAnyCoach) {
             $where[] = "c.id IN (SELECT clip_id FROM vr_clip_athletes WHERE athlete_id = ?)";
             $params[] = $user_id;
+        }
+        if ($vr_team_id > 0) {
+            $where[] = "gs.team_id = ?";
+            $params[] = $vr_team_id;
         }
         if ($vr_tag_cat !== '') {
             $where[] = "t.category = ?";
@@ -94,57 +112,137 @@ if ($vr_tab === 'clips') {
     } catch (PDOException $e) { error_log('VR clips: ' . $e->getMessage()); }
 }
 
-// ── By Game Tab Data ──────────────────────────────────────────
+// -- By Game Tab Data ------------------------------------------------------
 $vr_games = [];
 $vr_game_clips = [];
+$vr_game_info = null;
+$vr_game_opponents = [];
 if ($vr_tab === 'by_game') {
+    // Load distinct opponents for the filter dropdown (scoped to selected team)
     try {
-        $stmt = $pdo->prepare("
+        $opp_q = "SELECT DISTINCT gs.opponent_team FROM game_schedules gs WHERE gs.opponent_team IS NOT NULL";
+        $opp_params = [];
+        if ($vr_team_id > 0) {
+            $opp_q .= " AND gs.team_id = ?";
+            $opp_params[] = $vr_team_id;
+        }
+        $opp_q .= " ORDER BY gs.opponent_team";
+        $stmt = $pdo->prepare($opp_q);
+        $stmt->execute($opp_params);
+        $vr_game_opponents = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) { error_log('VR game opponents: ' . $e->getMessage()); }
+
+    // Build games query with filters
+    try {
+        $q = "
             SELECT gs.id, gs.opponent_team, gs.game_date, gs.game_type, gs.status,
                    gs.home_score, gs.away_score, gs.is_home_game,
                    t.name AS team_name,
                    (SELECT COUNT(*) FROM vr_video_clips vc WHERE vc.game_id = gs.id) AS clip_count
             FROM game_schedules gs
             LEFT JOIN teams t ON gs.team_id = t.id
-            ORDER BY gs.game_date DESC
-            LIMIT 50
-        ");
-        $stmt->execute();
+        ";
+        $where = [];
+        $params = [];
+
+        if ($vr_team_id > 0) {
+            $where[] = "gs.team_id = ?";
+            $params[] = $vr_team_id;
+        }
+        if ($vr_opponent !== '') {
+            $where[] = "gs.opponent_team = ?";
+            $params[] = $vr_opponent;
+        }
+        if ($vr_month !== '') {
+            $where[] = "DATE_FORMAT(gs.game_date, '%Y-%m') = ?";
+            $params[] = $vr_month;
+        }
+
+        if (!empty($where)) $q .= " WHERE " . implode(" AND ", $where);
+
+        switch ($vr_sort) {
+            case 'date_asc':      $q .= " ORDER BY gs.game_date ASC"; break;
+            case 'opponent_asc':  $q .= " ORDER BY gs.opponent_team ASC, gs.game_date DESC"; break;
+            case 'opponent_desc': $q .= " ORDER BY gs.opponent_team DESC, gs.game_date DESC"; break;
+            default:              $q .= " ORDER BY gs.game_date DESC"; break;
+        }
+        $q .= " LIMIT 100";
+
+        $stmt = $pdo->prepare($q);
+        $stmt->execute($params);
         $vr_games = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) { error_log('VR games: ' . $e->getMessage()); }
 
+    // Load clips for selected game, grouped by tag
     if ($vr_game_id > 0) {
         try {
             $stmt = $pdo->prepare("
-                SELECT c.id, c.title, c.start_time, c.end_time, c.thumbnail_path, c.created_at,
+                SELECT gs.id, gs.opponent_team, gs.game_date, gs.game_type, gs.status,
+                       gs.home_score, gs.away_score, gs.is_home_game,
+                       t.name AS team_name
+                FROM game_schedules gs
+                LEFT JOIN teams t ON gs.team_id = t.id
+                WHERE gs.id = ?
+            ");
+            $stmt->execute([$vr_game_id]);
+            $vr_game_info = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) { error_log('VR game info: ' . $e->getMessage()); }
+
+        try {
+            $clip_q = "
+                SELECT c.id, c.title, c.description, c.start_time, c.end_time,
+                       c.thumbnail_path, c.created_at,
                        vs.camera_angle,
-                       GROUP_CONCAT(DISTINCT t.name SEPARATOR ', ') AS tag_names
+                       GROUP_CONCAT(DISTINCT t.id ORDER BY t.category, t.name SEPARATOR ',') AS tag_ids,
+                       GROUP_CONCAT(DISTINCT t.name ORDER BY t.category, t.name SEPARATOR ', ') AS tag_names,
+                       GROUP_CONCAT(DISTINCT t.category ORDER BY t.category SEPARATOR ', ') AS tag_categories,
+                       GROUP_CONCAT(DISTINCT t.color ORDER BY t.category, t.name SEPARATOR ',') AS tag_colors
                 FROM vr_video_clips c
                 LEFT JOIN vr_video_sources vs ON c.source_id = vs.id
                 LEFT JOIN vr_clip_tags ct ON ct.clip_id = c.id
                 LEFT JOIN vr_tags t ON ct.tag_id = t.id
                 WHERE c.game_id = ?
-                GROUP BY c.id ORDER BY c.start_time
-            ");
-            $stmt->execute([$vr_game_id]);
+            ";
+            $clip_params = [$vr_game_id];
+
+            if ($vr_clip_tag_filter > 0) {
+                $clip_q .= " AND c.id IN (SELECT ct2.clip_id FROM vr_clip_tags ct2 WHERE ct2.tag_id = ?)";
+                $clip_params[] = $vr_clip_tag_filter;
+            }
+            if (!$isAnyCoach) {
+                $clip_q .= " AND c.id IN (SELECT ca.clip_id FROM vr_clip_athletes ca WHERE ca.athlete_id = ?)";
+                $clip_params[] = $user_id;
+            }
+
+            $clip_q .= " GROUP BY c.id ORDER BY c.start_time";
+
+            $stmt = $pdo->prepare($clip_q);
+            $stmt->execute($clip_params);
             $vr_game_clips = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) { error_log('VR game clips: ' . $e->getMessage()); }
     }
 }
 
-// ── Opponent Scouting Tab Data ────────────────────────────────
+// -- Opponent Scouting Tab Data --------------------------------------------
 $vr_opponents = [];
 $vr_scout_clips = [];
 if ($vr_tab === 'scouting') {
     try {
-        $stmt = $pdo->prepare("SELECT DISTINCT opponent_team FROM game_schedules WHERE opponent_team IS NOT NULL ORDER BY opponent_team");
-        $stmt->execute();
+        $opp_q = "SELECT DISTINCT opponent_team FROM game_schedules WHERE opponent_team IS NOT NULL";
+        $opp_params = [];
+        if ($vr_team_id > 0) {
+            $opp_q .= " AND team_id = ?";
+            $opp_params[] = $vr_team_id;
+        }
+        $opp_q .= " ORDER BY opponent_team";
+        $stmt = $pdo->prepare($opp_q);
+        $stmt->execute($opp_params);
         $vr_opponents = $stmt->fetchAll(PDO::FETCH_COLUMN);
     } catch (PDOException $e) { error_log('VR opponents: ' . $e->getMessage()); }
 
     if ($vr_opponent !== '') {
         try {
-            $stmt = $pdo->prepare("
+            $scout_q = "
                 SELECT c.id, c.title, c.start_time, c.end_time, c.thumbnail_path, c.created_at,
                        vs.camera_angle, gs.game_date, gs.opponent_team,
                        GROUP_CONCAT(DISTINCT t.name SEPARATOR ', ') AS tag_names
@@ -154,9 +252,16 @@ if ($vr_tab === 'scouting') {
                 LEFT JOIN vr_clip_tags ct ON ct.clip_id = c.id
                 LEFT JOIN vr_tags t ON ct.tag_id = t.id
                 WHERE gs.opponent_team = ?
-                GROUP BY c.id ORDER BY gs.game_date DESC, c.start_time
-            ");
-            $stmt->execute([$vr_opponent]);
+            ";
+            $scout_params = [$vr_opponent];
+            if ($vr_team_id > 0) {
+                $scout_q .= " AND gs.team_id = ?";
+                $scout_params[] = $vr_team_id;
+            }
+            $scout_q .= " GROUP BY c.id ORDER BY gs.game_date DESC, c.start_time";
+
+            $stmt = $pdo->prepare($scout_q);
+            $stmt->execute($scout_params);
             $vr_scout_clips = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) { error_log('VR scout: ' . $e->getMessage()); }
     }
@@ -170,37 +275,63 @@ if (!function_exists('vr_format_duration')) {
         return sprintf('%d:%02d', $m, $s);
     }
 }
+if (!function_exists('vr_safe_color')) {
+    function vr_safe_color($color, $fallback = '#6B46C1') {
+        $color = trim($color);
+        return preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/', $color) ? $color : $fallback;
+    }
+}
 ?>
+
+<!-- Team Selector (global across all tabs) -->
+<div class="filter-box" style="margin-top: 8px;">
+    <div class="filter-box-header"><i class="fas fa-users"></i> Team</div>
+    <div class="filter-box-content">
+        <form method="GET" action="" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <input type="hidden" name="page" value="video_review">
+            <input type="hidden" name="tab" value="<?= htmlspecialchars($vr_tab) ?>">
+            <div class="filter-field" style="flex: 1; min-width: 200px;">
+                <select name="team_id" class="form-select" onchange="this.form.submit()">
+                    <option value="0">All Teams</option>
+                    <?php foreach ($vr_teams as $team): ?>
+                    <option value="<?= (int)$team['id'] ?>" <?= $vr_team_id === (int)$team['id'] ? 'selected' : '' ?>><?= htmlspecialchars($team['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- Sub-tabs -->
 <div class="page-tabs page-tabs-secondary" style="flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
-    <a href="/gameplan.php?page=video_review&tab=clips" class="page-tab <?= $vr_tab === 'clips' ? 'active' : '' ?>">
+    <a href="/gameplan.php?page=video_review&tab=clips<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="page-tab <?= $vr_tab === 'clips' ? 'active' : '' ?>">
         <i class="fas fa-scissors"></i> Clips
     </a>
-    <a href="/gameplan.php?page=video_review&tab=by_game" class="page-tab <?= $vr_tab === 'by_game' ? 'active' : '' ?>">
+    <a href="/gameplan.php?page=video_review&tab=by_game<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="page-tab <?= $vr_tab === 'by_game' ? 'active' : '' ?>">
         <i class="fas fa-hockey-puck"></i> By Game
     </a>
     <?php if ($isAnyCoach): ?>
-    <a href="/gameplan.php?page=video_review&tab=scouting" class="page-tab <?= $vr_tab === 'scouting' ? 'active' : '' ?>">
+    <a href="/gameplan.php?page=video_review&tab=scouting<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="page-tab <?= $vr_tab === 'scouting' ? 'active' : '' ?>">
         <i class="fas fa-binoculars"></i> Opponent Scouting
     </a>
     <?php endif; ?>
 </div>
 
 <?php if ($vr_tab === 'clips'): ?>
-<!-- ── Clips Tab ── -->
+<!-- -- Clips Tab -- -->
 <div class="filter-box" style="margin-top: 20px;">
     <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Clips</div>
     <div class="filter-box-content">
         <form method="GET" action="">
             <input type="hidden" name="page" value="video_review">
             <input type="hidden" name="tab" value="clips">
+            <?php if ($vr_team_id > 0): ?><input type="hidden" name="team_id" value="<?= $vr_team_id ?>"><?php endif; ?>
             <div class="filter-row">
                 <div class="filter-field" style="grid-column: span 2;">
                     <label>Search</label>
                     <div class="search-input-wrapper">
                         <i class="fas fa-search"></i>
-                        <input type="text" name="search" class="form-input" placeholder="Search clips…" value="<?= htmlspecialchars($vr_search) ?>">
+                        <input type="text" name="search" class="form-input" placeholder="Search clips..." value="<?= htmlspecialchars($vr_search) ?>">
                     </div>
                 </div>
                 <div class="filter-field">
@@ -232,8 +363,8 @@ if (!function_exists('vr_format_duration')) {
             </div>
             <div class="filter-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
-                <a href="/gameplan.php?page=video_review&tab=clips" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
-                <a href="/gameplan.php?page=video_review&tab=clips&view=<?= $vr_view_mode === 'grid' ? 'list' : 'grid' ?><?= $vr_search !== '' ? '&search=' . urlencode($vr_search) : '' ?><?= $vr_tag_cat !== '' ? '&tag_cat=' . urlencode($vr_tag_cat) : '' ?><?= $vr_tag_id > 0 ? '&tag_id=' . $vr_tag_id : '' ?><?= $vr_date_from !== '' ? '&date_from=' . urlencode($vr_date_from) : '' ?><?= $vr_date_to !== '' ? '&date_to=' . urlencode($vr_date_to) : '' ?>" class="btn btn-secondary" title="Toggle view">
+                <a href="/gameplan.php?page=video_review&tab=clips<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                <a href="/gameplan.php?page=video_review&tab=clips&view=<?= $vr_view_mode === 'grid' ? 'list' : 'grid' ?><?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?><?= $vr_search !== '' ? '&search=' . urlencode($vr_search) : '' ?><?= $vr_tag_cat !== '' ? '&tag_cat=' . urlencode($vr_tag_cat) : '' ?><?= $vr_tag_id > 0 ? '&tag_id=' . $vr_tag_id : '' ?><?= $vr_date_from !== '' ? '&date_from=' . urlencode($vr_date_from) : '' ?><?= $vr_date_to !== '' ? '&date_to=' . urlencode($vr_date_to) : '' ?>" class="btn btn-secondary" title="Toggle view">
                     <i class="fas <?= $vr_view_mode === 'grid' ? 'fa-list' : 'fa-grip' ?>"></i> <?= $vr_view_mode === 'grid' ? 'List View' : 'Grid View' ?>
                 </a>
             </div>
@@ -270,7 +401,7 @@ if (!function_exists('vr_format_duration')) {
             <?php if (!empty($clip['tag_names'])): ?>
             <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;">
                 <?php foreach (explode(', ', $clip['tag_names']) as $i => $tname): ?>
-                <?php $colors = explode(',', $clip['tag_colors'] ?? ''); $color = trim($colors[$i] ?? '#6B46C1'); if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $color)) $color = '#6B46C1'; ?>
+                <?php $colors = explode(',', $clip['tag_colors'] ?? ''); $color = vr_safe_color($colors[$i] ?? ''); ?>
                 <span class="status-badge" style="font-size: 10px; padding: 2px 8px; background: <?= htmlspecialchars($color) ?>20; color: <?= htmlspecialchars($color) ?>; border: 1px solid <?= htmlspecialchars($color) ?>40;"><?= htmlspecialchars($tname) ?></span>
                 <?php endforeach; ?>
             </div>
@@ -334,51 +465,101 @@ ksort($grouped);
 <?php endif; ?>
 
 <?php elseif ($vr_tab === 'by_game'): ?>
-<!-- ── By Game Tab ── -->
-<?php if (empty($vr_games)): ?>
-<div class="empty-state" style="margin-top: 20px;">
-    <i class="fas fa-calendar-xmark"></i>
-    <h3>No Games Found</h3>
-    <p>No games found in the schedule.</p>
-</div>
-<?php else: ?>
-<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
-    <?php foreach ($vr_games as $game): ?>
+<!-- -- By Game Tab -- -->
+
+<?php if ($vr_game_id > 0 && $vr_game_info): ?>
+<!-- Game Detail View: clips grouped by tag category -->
+<div style="margin-top: 20px;">
+    <a href="/gameplan.php?page=video_review&tab=by_game<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?><?= $vr_opponent !== '' ? '&opponent=' . urlencode($vr_opponent) : '' ?><?= $vr_month !== '' ? '&month=' . urlencode($vr_month) : '' ?><?= $vr_sort !== 'date_desc' ? '&sort=' . urlencode($vr_sort) : '' ?>" class="btn btn-secondary" style="margin-bottom: 16px;">
+        <i class="fas fa-arrow-left"></i> Back to Games
+    </a>
+
     <div class="card">
-        <a href="/gameplan.php?page=video_review&tab=by_game&game_id=<?= (int)$game['id'] ?>" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; text-decoration: none; color: var(--text-primary); gap: 16px;">
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-                <span style="font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-calendar" style="color: var(--primary);"></i> <?= date('M j, Y – g:ia', strtotime($game['game_date'])) ?>
-                </span>
-                <span style="font-size: 15px; font-weight: 700;">
-                    <?= htmlspecialchars($game['team_name'] ?? 'Team') ?>
-                    <?php if ($game['status'] === 'completed' && $game['home_score'] !== null): ?>
-                        <strong><?= (int)$game['home_score'] ?> – <?= (int)$game['away_score'] ?></strong>
+        <div class="card-header">
+            <h3>
+                <i class="fas fa-hockey-puck" style="margin-right: 8px; color: var(--primary);"></i>
+                <?= htmlspecialchars($vr_game_info['team_name'] ?? 'Team') ?>
+                <?php if ($vr_game_info['status'] === 'completed' && $vr_game_info['home_score'] !== null): ?>
+                    <strong><?= (int)$vr_game_info['home_score'] ?> &ndash; <?= (int)$vr_game_info['away_score'] ?></strong>
+                <?php else: ?>
+                    vs
+                <?php endif; ?>
+                <?= htmlspecialchars($vr_game_info['opponent_team'] ?? '') ?>
+            </h3>
+            <span style="font-size: 12px; color: var(--text-muted);">
+                <i class="fas fa-calendar" style="margin-right: 4px; color: var(--primary);"></i>
+                <?= date('M j, Y', strtotime($vr_game_info['game_date'])) ?>
+            </span>
+        </div>
+    </div>
+
+    <!-- Tag filter for clips within the game -->
+    <?php
+    // Collect all tags used across this game's clips (before filtering) for the filter bar
+    $game_tags_used = [];
+    // Re-query without clip_tag filter to get all available tags for filter buttons
+    try {
+        $tag_q = "
+            SELECT DISTINCT t.id, t.name
+            FROM vr_clip_tags ct
+            JOIN vr_tags t ON ct.tag_id = t.id
+            JOIN vr_video_clips c ON ct.clip_id = c.id
+            WHERE c.game_id = ?
+            ORDER BY t.name
+        ";
+        $stmt = $pdo->prepare($tag_q);
+        $stmt->execute([$vr_game_id]);
+        $tag_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($tag_rows as $tr) {
+            $game_tags_used[(int)$tr['id']] = $tr['name'];
+        }
+    } catch (PDOException $e) { error_log('VR game tag list: ' . $e->getMessage()); }
+    ?>
+    <?php if (!empty($game_tags_used)): ?>
+    <div class="filter-box" style="margin-top: 12px;">
+        <div class="filter-box-header"><i class="fas fa-filter"></i> Filter by Tag</div>
+        <div class="filter-box-content">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                <a href="/gameplan.php?page=video_review&tab=by_game&game_id=<?= $vr_game_id ?><?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="btn <?= $vr_clip_tag_filter === 0 ? 'btn-primary' : 'btn-secondary' ?>" style="font-size: 12px; padding: 4px 12px;">All</a>
+                <?php foreach ($game_tags_used as $gtid => $gtname): ?>
+                <a href="/gameplan.php?page=video_review&tab=by_game&game_id=<?= $vr_game_id ?>&clip_tag=<?= $gtid ?><?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="btn <?= $vr_clip_tag_filter === $gtid ? 'btn-primary' : 'btn-secondary' ?>" style="font-size: 12px; padding: 4px 12px;"><?= htmlspecialchars($gtname) ?></a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (empty($vr_game_clips)): ?>
+    <div class="empty-state" style="margin-top: 20px;">
+        <i class="fas fa-film" style="font-size: 32px;"></i>
+        <h3>No Clips</h3>
+        <p>No clips found for this game<?= $vr_clip_tag_filter > 0 ? ' with the selected tag filter' : '' ?>.</p>
+    </div>
+    <?php else: ?>
+    <?php
+    // Group clips by tag category
+    $clips_by_category = [];
+    foreach ($vr_game_clips as $gc) {
+        $first_cat = explode(', ', $gc['tag_categories'] ?? '')[0] ?: 'Uncategorized';
+        $clips_by_category[$first_cat][] = $gc;
+    }
+    ksort($clips_by_category);
+    ?>
+    <?php foreach ($clips_by_category as $cat_name => $cat_clips): ?>
+    <div class="card" style="margin-top: 16px;">
+        <div class="card-header">
+            <h3><i class="fas fa-tag" style="margin-right: 8px; color: var(--primary);"></i> <?= htmlspecialchars(ucfirst($cat_name)) ?></h3>
+            <span class="status-badge active"><?= count($cat_clips) ?> clip<?= count($cat_clips) !== 1 ? 's' : '' ?></span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <?php foreach ($cat_clips as $gc): ?>
+            <div data-clip-id="<?= (int)$gc['id'] ?>" style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .2s; cursor: pointer;" onmouseover="this.style.background='var(--bg-hover, rgba(255,255,255,0.02))'" onmouseout="this.style.background='transparent'">
+                <div style="width: 80px; height: 56px; background: rgba(var(--primary-rgb, 107,70,193), 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border);">
+                    <?php if (!empty($gc['thumbnail_path'])): ?>
+                    <img src="<?= htmlspecialchars($gc['thumbnail_path']) ?>" alt="" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
                     <?php else: ?>
-                        vs
-                    <?php endif; ?>
-                    <?= htmlspecialchars($game['opponent_team']) ?>
-                </span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
-                <?php
-                    $badge_class = 'inactive';
-                    if ($game['status'] === 'completed') $badge_class = 'active';
-                    elseif ($game['status'] === 'in_progress') $badge_class = 'active';
-                ?>
-                <span class="status-badge <?= $badge_class ?>"><?= htmlspecialchars(ucfirst(str_replace('_', ' ', $game['status']))) ?></span>
-                <span style="font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px;">
-                    <i class="fas fa-scissors" style="color: var(--primary);"></i> <?= (int)$game['clip_count'] ?> clips
-                </span>
-            </div>
-        </a>
-        <?php if ($vr_game_id === (int)$game['id']): ?>
-        <div class="card-body" style="padding: 0; border-top: 1px solid var(--border);">
-            <?php if (!empty($vr_game_clips)): ?>
-            <?php foreach ($vr_game_clips as $gc): ?>
-            <div style="display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border);">
-                <div style="width: 80px; height: 56px; background: rgba(var(--primary-rgb, 107,70,193), 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);">
                     <i class="fas fa-play-circle" style="font-size: 22px; color: var(--primary);"></i>
+                    <?php endif; ?>
                 </div>
                 <div style="min-width: 0;">
                     <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0 0 6px;"><?= htmlspecialchars($gc['title'] ?? 'Clip') ?></h4>
@@ -387,39 +568,126 @@ ksort($grouped);
                         <?php if (!empty($gc['camera_angle'])): ?>
                         <span><i class="fas fa-video" style="margin-right: 4px; color: var(--primary);"></i><?= htmlspecialchars(ucfirst($gc['camera_angle'])) ?></span>
                         <?php endif; ?>
-                        <?php if (!empty($gc['tag_names'])): ?>
-                        <span><i class="fas fa-tags" style="margin-right: 4px; color: var(--primary);"></i><?= htmlspecialchars($gc['tag_names']) ?></span>
-                        <?php endif; ?>
                     </div>
+                    <?php if (!empty($gc['tag_names'])): ?>
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+                        <?php
+                        $gc_tag_names = explode(', ', $gc['tag_names']);
+                        $gc_tag_colors = explode(',', $gc['tag_colors'] ?? '');
+                        foreach ($gc_tag_names as $ti => $tname):
+                            $tcolor = vr_safe_color($gc_tag_colors[$ti] ?? '');
+                        ?>
+                        <span class="status-badge" style="font-size: 10px; padding: 2px 8px; background: <?= htmlspecialchars($tcolor) ?>20; color: <?= htmlspecialchars($tcolor) ?>; border: 1px solid <?= htmlspecialchars($tcolor) ?>40;"><?= htmlspecialchars($tname) ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>
-            <?php else: ?>
-            <div class="empty-state" style="padding: 30px; border-radius: 0;">
-                <i class="fas fa-film" style="font-size: 32px;"></i>
-                <p>No clips for this game yet.</p>
-            </div>
-            <?php endif; ?>
         </div>
-        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+    <?php endif; ?>
+</div>
+
+<?php else: ?>
+<!-- Game List View with filters -->
+<div class="filter-box" style="margin-top: 20px;">
+    <div class="filter-box-header"><i class="fas fa-filter"></i> Filter Games</div>
+    <div class="filter-box-content">
+        <form method="GET" action="">
+            <input type="hidden" name="page" value="video_review">
+            <input type="hidden" name="tab" value="by_game">
+            <?php if ($vr_team_id > 0): ?><input type="hidden" name="team_id" value="<?= $vr_team_id ?>"><?php endif; ?>
+            <div class="filter-row">
+                <div class="filter-field">
+                    <label>Opponent</label>
+                    <select name="opponent" class="form-select">
+                        <option value="">All Opponents</option>
+                        <?php foreach ($vr_game_opponents as $opp): ?>
+                        <option value="<?= htmlspecialchars($opp) ?>" <?= $vr_opponent === $opp ? 'selected' : '' ?>><?= htmlspecialchars($opp) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Month</label>
+                    <input type="month" name="month" class="form-input" value="<?= htmlspecialchars($vr_month) ?>">
+                </div>
+                <div class="filter-field">
+                    <label>Sort By</label>
+                    <select name="sort" class="form-select">
+                        <option value="date_desc" <?= $vr_sort === 'date_desc' ? 'selected' : '' ?>>Date (Newest First)</option>
+                        <option value="date_asc" <?= $vr_sort === 'date_asc' ? 'selected' : '' ?>>Date (Oldest First)</option>
+                        <option value="opponent_asc" <?= $vr_sort === 'opponent_asc' ? 'selected' : '' ?>>Opponent (A-Z)</option>
+                        <option value="opponent_desc" <?= $vr_sort === 'opponent_desc' ? 'selected' : '' ?>>Opponent (Z-A)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+                <a href="/gameplan.php?page=video_review&tab=by_game<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<?php if (empty($vr_games)): ?>
+<div class="empty-state" style="margin-top: 20px;">
+    <i class="fas fa-calendar-xmark"></i>
+    <h3>No Games Found</h3>
+    <p><?= $vr_team_id > 0 ? 'No games found for this team with the current filters.' : 'Select a team above or adjust filters.' ?></p>
+</div>
+<?php else: ?>
+<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+    <?php foreach ($vr_games as $game): ?>
+    <div class="card">
+        <a href="/gameplan.php?page=video_review&tab=by_game&game_id=<?= (int)$game['id'] ?><?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?><?= $vr_opponent !== '' ? '&opponent=' . urlencode($vr_opponent) : '' ?><?= $vr_month !== '' ? '&month=' . urlencode($vr_month) : '' ?><?= $vr_sort !== 'date_desc' ? '&sort=' . urlencode($vr_sort) : '' ?>" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; text-decoration: none; color: var(--text-primary); gap: 16px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-calendar" style="color: var(--primary);"></i> <?= date('M j, Y', strtotime($game['game_date'])) ?>
+                </span>
+                <span style="font-size: 15px; font-weight: 700;">
+                    <?= htmlspecialchars($game['team_name'] ?? 'Team') ?>
+                    <?php if ($game['status'] === 'completed' && $game['home_score'] !== null): ?>
+                        <strong><?= (int)$game['home_score'] ?> &ndash; <?= (int)$game['away_score'] ?></strong>
+                    <?php else: ?>
+                        vs
+                    <?php endif; ?>
+                    <?= htmlspecialchars($game['opponent_team'] ?? '') ?>
+                </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+                <?php
+                    $badge_class = 'inactive';
+                    if ($game['status'] === 'completed') $badge_class = 'active';
+                    elseif ($game['status'] === 'in_progress') $badge_class = 'active';
+                ?>
+                <span class="status-badge <?= $badge_class ?>"><?= htmlspecialchars(ucfirst(str_replace('_', ' ', $game['status'] ?? 'scheduled'))) ?></span>
+                <span style="font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px;">
+                    <i class="fas fa-scissors" style="color: var(--primary);"></i> <?= (int)$game['clip_count'] ?> clips
+                </span>
+            </div>
+        </a>
     </div>
     <?php endforeach; ?>
 </div>
 <?php endif; ?>
+<?php endif; ?>
 
 <?php elseif ($vr_tab === 'scouting'): ?>
-<!-- ── Opponent Scouting Tab ── -->
+<!-- -- Opponent Scouting Tab -- -->
 <div class="filter-box" style="margin-top: 20px;">
     <div class="filter-box-header"><i class="fas fa-binoculars"></i> Select Opponent</div>
     <div class="filter-box-content">
         <form method="GET" action="">
             <input type="hidden" name="page" value="video_review">
             <input type="hidden" name="tab" value="scouting">
+            <?php if ($vr_team_id > 0): ?><input type="hidden" name="team_id" value="<?= $vr_team_id ?>"><?php endif; ?>
             <div class="filter-row">
                 <div class="filter-field" style="grid-column: span 2;">
                     <label>Opponent Team</label>
                     <select name="opponent" class="form-select" onchange="this.form.submit()">
-                        <option value="">— Select Opponent —</option>
+                        <option value="">-- Select Opponent --</option>
                         <?php foreach ($vr_opponents as $opp): ?>
                         <option value="<?= htmlspecialchars($opp) ?>" <?= $vr_opponent === $opp ? 'selected' : '' ?>><?= htmlspecialchars($opp) ?></option>
                         <?php endforeach; ?>
@@ -428,7 +696,7 @@ ksort($grouped);
             </div>
             <div class="filter-actions">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> View Clips</button>
-                <a href="/gameplan.php?page=video_review&tab=scouting" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
+                <a href="/gameplan.php?page=video_review&tab=scouting<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</a>
             </div>
         </form>
     </div>

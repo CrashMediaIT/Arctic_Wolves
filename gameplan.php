@@ -263,7 +263,11 @@ try {
         .gp-mobile-toggle { display: none; }
         .gp-overlay { display: none; }
 
+        /* Hide topbar on desktop — its links duplicate the sidebar */
+        .gp-topbar { display: none; }
+
         @media (max-width: 768px) {
+            .gp-topbar { display: flex; }
             .gp-sidebar {
                 position: fixed;
                 left: -280px;

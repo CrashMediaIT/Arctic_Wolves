@@ -4176,3 +4176,183 @@ CREATE TABLE IF NOT EXISTS `ndi_cameras` (
 
 -- Add logo_url column to teams table (migration for existing databases)
 ALTER TABLE `teams` ADD COLUMN IF NOT EXISTS `logo_url` VARCHAR(500) DEFAULT NULL AFTER `assistant_coach_id`;
+
+-- =========================================================
+-- GAME PLAN MODULE TABLES (Video Review & Planning System)
+-- =========================================================
+
+-- Video clip tags (categories: offense, defense, special_teams, etc.)
+CREATE TABLE IF NOT EXISTS `vr_tags` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `category` VARCHAR(50) NOT NULL DEFAULT 'general',
+    `color` VARCHAR(20) DEFAULT '#6B46C1',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Video source files uploaded to the Film Room
+CREATE TABLE IF NOT EXISTS `vr_video_sources` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `filename` VARCHAR(255) NOT NULL,
+    `file_path` VARCHAR(500) DEFAULT NULL,
+    `camera_angle` VARCHAR(50) DEFAULT NULL,
+    `duration` INT DEFAULT NULL COMMENT 'Duration in seconds',
+    `file_size` BIGINT DEFAULT NULL,
+    `game_id` INT DEFAULT NULL,
+    `team_id` INT DEFAULT NULL,
+    `uploaded_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`game_id`) REFERENCES `game_schedules`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_game` (`game_id`),
+    INDEX `idx_team` (`team_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Video clips created from source videos
+CREATE TABLE IF NOT EXISTS `vr_video_clips` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `source_id` INT DEFAULT NULL,
+    `game_id` INT DEFAULT NULL,
+    `title` VARCHAR(255) DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
+    `start_time` DECIMAL(10,2) DEFAULT 0,
+    `end_time` DECIMAL(10,2) DEFAULT 0,
+    `thumbnail_path` VARCHAR(500) DEFAULT NULL,
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`source_id`) REFERENCES `vr_video_sources`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`game_id`) REFERENCES `game_schedules`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_source` (`source_id`),
+    INDEX `idx_game` (`game_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tags applied to clips
+CREATE TABLE IF NOT EXISTS `vr_clip_tags` (
+    `clip_id` INT NOT NULL,
+    `tag_id` INT NOT NULL,
+    PRIMARY KEY (`clip_id`, `tag_id`),
+    FOREIGN KEY (`clip_id`) REFERENCES `vr_video_clips`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`tag_id`) REFERENCES `vr_tags`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Athletes tagged in clips
+CREATE TABLE IF NOT EXISTS `vr_clip_athletes` (
+    `clip_id` INT NOT NULL,
+    `athlete_id` INT NOT NULL,
+    PRIMARY KEY (`clip_id`, `athlete_id`),
+    FOREIGN KEY (`clip_id`) REFERENCES `vr_video_clips`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Game plans (pre-game strategies, post-game reviews, practice plans)
+CREATE TABLE IF NOT EXISTS `vr_game_plans` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `coach_id` INT NOT NULL,
+    `game_id` INT DEFAULT NULL,
+    `team_id` INT DEFAULT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `plan_type` ENUM('pre_game', 'post_game', 'practice') DEFAULT 'pre_game',
+    `status` ENUM('draft', 'active', 'completed', 'archived') DEFAULT 'draft',
+    `offensive_system` VARCHAR(50) DEFAULT NULL COMMENT 'e.g., 1-2-2, 2-1-2, 1-3-1',
+    `defensive_system` VARCHAR(50) DEFAULT NULL COMMENT 'e.g., man-on-man, zone, box+1',
+    `powerplay_system` VARCHAR(50) DEFAULT NULL COMMENT 'e.g., umbrella, overload, 1-3-1',
+    `penalty_kill_system` VARCHAR(50) DEFAULT NULL COMMENT 'e.g., diamond, box',
+    `key_players_notes` TEXT DEFAULT NULL COMMENT 'Opponent key players to watch',
+    `strategy_notes` TEXT DEFAULT NULL COMMENT 'Additional strategy details',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`game_id`) REFERENCES `game_schedules`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
+    INDEX `idx_coach` (`coach_id`),
+    INDEX `idx_game` (`game_id`),
+    INDEX `idx_type` (`plan_type`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Hockey lines / depth chart assignments
+CREATE TABLE IF NOT EXISTS `vr_game_plan_lines` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `plan_id` INT DEFAULT NULL,
+    `team_id` INT DEFAULT NULL,
+    `line_name` VARCHAR(50) NOT NULL COMMENT 'e.g., Line 1, Pair 1, PP1',
+    `position` VARCHAR(20) NOT NULL COMMENT 'e.g., LW, C, RW, LD, RD',
+    `athlete_id` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`plan_id`) REFERENCES `vr_game_plans`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_plan` (`plan_id`),
+    INDEX `idx_team` (`team_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Video permissions per user per team
+CREATE TABLE IF NOT EXISTS `vr_video_permissions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `team_id` INT NOT NULL,
+    `can_upload` TINYINT(1) DEFAULT 0,
+    `can_clip` TINYINT(1) DEFAULT 0,
+    `can_tag` TINYINT(1) DEFAULT 0,
+    `can_publish` TINYINT(1) DEFAULT 0,
+    `can_delete` TINYINT(1) DEFAULT 0,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_user_team` (`user_id`, `team_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Review sessions (team video review presentations)
+CREATE TABLE IF NOT EXISTS `vr_review_sessions` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `coach_id` INT NOT NULL,
+    `game_id` INT DEFAULT NULL,
+    `team_id` INT DEFAULT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `session_type` VARCHAR(50) DEFAULT 'pre_game',
+    `status` ENUM('scheduled', 'in_progress', 'completed', 'cancelled') DEFAULT 'scheduled',
+    `scheduled_date` DATETIME NOT NULL,
+    `completed_date` DATETIME DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`coach_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`game_id`) REFERENCES `game_schedules`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE SET NULL,
+    INDEX `idx_coach` (`coach_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_scheduled` (`scheduled_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Clips linked to review sessions
+CREATE TABLE IF NOT EXISTS `vr_review_session_clips` (
+    `session_id` INT NOT NULL,
+    `clip_id` INT NOT NULL,
+    `sort_order` INT DEFAULT 0,
+    PRIMARY KEY (`session_id`, `clip_id`),
+    FOREIGN KEY (`session_id`) REFERENCES `vr_review_sessions`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`clip_id`) REFERENCES `vr_video_clips`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed default video tags
+INSERT IGNORE INTO `vr_tags` (`name`, `category`, `color`) VALUES
+('Forecheck', 'offense', '#3B82F6'),
+('Breakout', 'offense', '#10B981'),
+('Power Play', 'special_teams', '#F59E0B'),
+('Penalty Kill', 'special_teams', '#EF4444'),
+('Faceoff', 'offense', '#8B5CF6'),
+('Goal', 'highlight', '#10B981'),
+('Scoring Chance', 'highlight', '#3B82F6'),
+('Turnover', 'defense', '#EF4444'),
+('Defensive Zone', 'defense', '#6366F1'),
+('Neutral Zone', 'transition', '#A855F7'),
+('Odd Man Rush', 'offense', '#F97316'),
+('Board Play', 'offense', '#14B8A6'),
+('Save', 'goaltending', '#06B6D4'),
+('Rebound', 'goaltending', '#0EA5E9'),
+('Dump and Chase', 'offense', '#84CC16'),
+('Line Change', 'transition', '#A8A8B8');

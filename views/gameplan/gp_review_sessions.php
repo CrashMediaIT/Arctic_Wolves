@@ -161,7 +161,7 @@ try {
 
 <!-- Create Session Modal -->
 <div class="modal-overlay" id="gpSessionModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);align-items:center;justify-content:center;">
-    <div class="modal" style="width:90%;max-width:580px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-content" style="width:90%;max-width:580px;max-height:90vh;overflow-y:auto;">
         <div class="modal-header">
             <h3><i class="fas fa-plus-circle"></i> Create Review Session</h3>
             <button type="button" class="modal-close" id="gpCloseSession">&times;</button>

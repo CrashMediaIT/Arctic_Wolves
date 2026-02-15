@@ -42,10 +42,13 @@ function setupPermissions() {
             }
         }
         
-        // Set permissions to 775 for writable directories
+        // Try to set permissions to 775 for writable directories
+        // In many environments (Docker, cloud hosting) chmod may fail even though
+        // the directory is already writable — only report an issue if it's not writable
         if (file_exists($full_path)) {
-            if (!@chmod($full_path, 0775)) {
-                $permission_issues[] = "Failed to set permissions on directory: $dir";
+            @chmod($full_path, 0775);
+            if (!is_writable($full_path)) {
+                $permission_issues[] = "Directory is not writable: $dir";
             }
         }
     }
@@ -53,8 +56,9 @@ function setupPermissions() {
     // Ensure root directory is writable (775)
     // NOTE: 775 is required for setup.php to write arctic_wolves.env file during initial setup
     // This is specific to Docker environments where PHP-FPM runs as 'abc' user (UID 911)
-    if (!@chmod($base_dir, 0775)) {
-        $permission_issues[] = "Failed to set permissions on root directory";
+    @chmod($base_dir, 0775);
+    if (!is_writable($base_dir)) {
+        $permission_issues[] = "Root directory is not writable";
     }
     
     return $permission_issues;

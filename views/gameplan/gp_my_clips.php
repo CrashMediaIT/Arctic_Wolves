@@ -224,7 +224,7 @@ if (!function_exists('gp_format_duration')) {
 
 <!-- Video Player Modal -->
 <div class="modal-overlay" id="gpPlayerModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
-    <div class="modal" style="width:90%;max-width:800px;">
+    <div class="modal-content" style="width:90%;max-width:800px;">
         <div class="modal-header">
             <h3 id="gpPlayerTitle"><i class="fas fa-play-circle"></i> Clip</h3>
             <button type="button" class="modal-close" id="gpClosePlayer">&times;</button>
