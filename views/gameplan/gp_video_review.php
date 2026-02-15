@@ -275,6 +275,12 @@ if (!function_exists('vr_format_duration')) {
         return sprintf('%d:%02d', $m, $s);
     }
 }
+if (!function_exists('vr_safe_color')) {
+    function vr_safe_color($color, $fallback = '#6B46C1') {
+        $color = trim($color);
+        return preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/', $color) ? $color : $fallback;
+    }
+}
 ?>
 
 <!-- Team Selector (global across all tabs) -->
@@ -395,7 +401,7 @@ if (!function_exists('vr_format_duration')) {
             <?php if (!empty($clip['tag_names'])): ?>
             <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;">
                 <?php foreach (explode(', ', $clip['tag_names']) as $i => $tname): ?>
-                <?php $colors = explode(',', $clip['tag_colors'] ?? ''); $color = trim($colors[$i] ?? '#6B46C1'); if (!preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/', $color)) $color = '#6B46C1'; ?>
+                <?php $colors = explode(',', $clip['tag_colors'] ?? ''); $color = vr_safe_color($colors[$i] ?? ''); ?>
                 <span class="status-badge" style="font-size: 10px; padding: 2px 8px; background: <?= htmlspecialchars($color) ?>20; color: <?= htmlspecialchars($color) ?>; border: 1px solid <?= htmlspecialchars($color) ?>40;"><?= htmlspecialchars($tname) ?></span>
                 <?php endforeach; ?>
             </div>
@@ -534,8 +540,7 @@ ksort($grouped);
     // Group clips by tag category
     $clips_by_category = [];
     foreach ($vr_game_clips as $gc) {
-        $cats = $gc['tag_categories'] ?? 'Uncategorized';
-        $first_cat = explode(', ', $cats)[0] ?: 'Uncategorized';
+        $first_cat = explode(', ', $gc['tag_categories'] ?? '')[0] ?: 'Uncategorized';
         $clips_by_category[$first_cat][] = $gc;
     }
     ksort($clips_by_category);
@@ -570,8 +575,7 @@ ksort($grouped);
                         $gc_tag_names = explode(', ', $gc['tag_names']);
                         $gc_tag_colors = explode(',', $gc['tag_colors'] ?? '');
                         foreach ($gc_tag_names as $ti => $tname):
-                            $tcolor = trim($gc_tag_colors[$ti] ?? '#6B46C1');
-                            if (!preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/', $tcolor)) $tcolor = '#6B46C1';
+                            $tcolor = vr_safe_color($gc_tag_colors[$ti] ?? '');
                         ?>
                         <span class="status-badge" style="font-size: 10px; padding: 2px 8px; background: <?= htmlspecialchars($tcolor) ?>20; color: <?= htmlspecialchars($tcolor) ?>; border: 1px solid <?= htmlspecialchars($tcolor) ?>40;"><?= htmlspecialchars($tname) ?></span>
                         <?php endforeach; ?>
