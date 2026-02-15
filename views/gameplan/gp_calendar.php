@@ -87,6 +87,13 @@ if ($next_month > 12) { $next_month = 1; $next_year++; }
 
 $first_day_of_week = (int)date('w', strtotime($cal_start));
 $days_in_month = (int)date('t', strtotime($cal_start));
+
+// Check for ambiguous import events needing resolution
+$import_review = isset($_GET['review']) ? (int)$_GET['review'] : 0;
+$ambiguous_data = null;
+if ($import_review > 0 && isset($_SESSION['import_ambiguous'])) {
+    $ambiguous_data = $_SESSION['import_ambiguous'];
+}
 ?>
 
 <!-- Page header -->
@@ -463,3 +470,45 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
 #gpGameOptionsModal a:hover { background: rgba(107,70,193,.06); }
 </style>
+
+<?php if ($ambiguous_data && !empty($ambiguous_data['events'])): ?>
+<!-- Import Resolution Modal - auto-opens when there are ambiguous events -->
+<div class="modal-overlay" id="gpResolveModal" style="display:flex;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);align-items:center;justify-content:center;">
+    <div class="modal-content" style="width:90%;max-width:650px;max-height:80vh;overflow-y:auto;">
+        <div class="modal-header">
+            <h3><i class="fas fa-question-circle"></i> Review Imported Events</h3>
+            <button type="button" class="modal-close" id="gpCloseResolve">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color:var(--text-muted);margin-bottom:16px;">
+                <?= count($ambiguous_data['events']) ?> event(s) couldn't be automatically parsed. Please select the correct opponent team for each, or type "skip" to ignore.
+            </p>
+            <form method="POST" action="/process_video.php">
+                <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                <input type="hidden" name="action" value="resolve_import">
+                <?php foreach ($ambiguous_data['events'] as $idx => $amb_event): ?>
+                <div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:rgba(107,70,193,.03);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <strong style="font-size:13px;"><?= htmlspecialchars($amb_event['summary']) ?></strong>
+                        <span style="font-size:11px;color:var(--text-muted);"><?= date('M j, Y g:ia', strtotime($amb_event['dtstart'])) ?></span>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <label style="font-size:12px;color:var(--text-dim);white-space:nowrap;">Opponent:</label>
+                        <input type="text" name="resolved[<?= $idx ?>]" class="form-input" style="flex:1;height:32px;font-size:13px;" value="<?= htmlspecialchars($amb_event['parsed_opponent']) ?>" placeholder="Enter opponent team name or 'skip'">
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:16px;border-top:1px solid var(--border);margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" id="gpSkipResolve">Skip All</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Save Resolved Events</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('gpCloseResolve').addEventListener('click', function() { document.getElementById('gpResolveModal').style.display = 'none'; });
+document.getElementById('gpSkipResolve').addEventListener('click', function() { document.getElementById('gpResolveModal').style.display = 'none'; });
+document.getElementById('gpResolveModal').addEventListener('click', function(e) { if (e.target === this) this.style.display = 'none'; });
+</script>
+<?php endif; ?>

@@ -91,6 +91,10 @@ try {
             handleSyncCalendar();
             break;
 
+        case 'resolve_import':
+            handleResolveImport();
+            break;
+
         case 'add_roster_player':
             handleAddRosterPlayer();
             break;
@@ -1416,6 +1420,7 @@ function handleImportCalendar() {
             ");
 
             $updated = 0;
+            $ambiguous_events = []; // Events that couldn't be confidently parsed
             foreach ($events as $event) {
                 if (!empty($event['summary']) && !empty($event['dtstart'])) {
                     $raw_summary = $event['summary'];
@@ -1440,13 +1445,32 @@ function handleImportCalendar() {
 
                     // Parse the opponent name from summary (handles "Team A vs Team B" and "Team A at Team B" formats)
                     $opponent = parseOpponentFromSummary($raw_summary, $own_team_name);
-                    // If parsing returned empty (e.g. "Team - Tournament" format), use raw summary for the schedule record
-                    if (empty($opponent)) {
+
+                    // Check if this event is ambiguous (couldn't determine opponent)
+                    $is_ambiguous = false;
+                    if (empty($opponent) && $game_type !== 'practice') {
+                        $is_ambiguous = true;
                         $opponent = $raw_summary;
+                    } elseif (!empty($opponent) && $opponent === $raw_summary && $game_type !== 'practice') {
+                        // Opponent is the raw summary - no parsing was possible
+                        $is_ambiguous = true;
                     }
 
                     // Skip if parsed opponent is TBD/TBA
                     if (preg_match('/^\s*(TBD|TBA)\s*$/i', $opponent)) {
+                        continue;
+                    }
+
+                    // If ambiguous, store for manual review
+                    if ($is_ambiguous) {
+                        $ambiguous_events[] = [
+                            'summary' => $raw_summary,
+                            'dtstart' => $event['dtstart'],
+                            'game_type' => $game_type,
+                            'description' => $event['description'] ?? '',
+                            'uid' => $event['uid'] ?? '',
+                            'parsed_opponent' => $opponent,
+                        ];
                         continue;
                     }
 
@@ -1488,12 +1512,27 @@ function handleImportCalendar() {
                     error_log('Store ical_url: ' . $e->getMessage());
                 }
             }
+            // Store ambiguous events in session for manual resolution
+            if (!empty($ambiguous_events)) {
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
+                $_SESSION['import_ambiguous'] = [
+                    'team_id' => $team_id,
+                    'season_id' => $season_id,
+                    'events' => $ambiguous_events,
+                ];
+            }
         }
     }
 
     $msg = "Calendar imported: $imported new, $updated updated, $teams_created teams created for team $team_id";
     logSecurityEvent($pdo, 'calendar_imported', $msg, $user_id);
     $success_msg = 'imported_' . $imported . ($updated > 0 ? '_updated_' . $updated : '');
+    $ambiguous_count = count($ambiguous_events ?? []);
+    if ($ambiguous_count > 0) {
+        $success_msg .= '&review=' . $ambiguous_count;
+    }
     header('Location: /gameplan.php?page=calendar&success=' . $success_msg);
     exit;
 }
@@ -1634,6 +1673,83 @@ function handleSyncCalendar() {
 }
 
 /**
+ * Handle manual resolution of ambiguous events from calendar import.
+ * User provides opponent team names for events that couldn't be auto-parsed.
+ */
+function handleResolveImport() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to resolve imports');
+    }
+
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $stored = $_SESSION['import_ambiguous'] ?? null;
+    if (!$stored || empty($stored['events'])) {
+        header('Location: /gameplan.php?page=calendar');
+        exit;
+    }
+
+    $team_id = (int)$stored['team_id'];
+    $season_id = $stored['season_id'] ? (int)$stored['season_id'] : null;
+    $events = $stored['events'];
+
+    $resolved = $_POST['resolved'] ?? [];
+    if (!is_array($resolved)) {
+        throw new Exception('Invalid resolution data');
+    }
+
+    $imported = 0;
+    $teams_created = 0;
+
+    $stmt_upsert = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id, ical_uid)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            opponent_team = VALUES(opponent_team),
+            game_date = VALUES(game_date),
+            game_type = VALUES(game_type),
+            notes = VALUES(notes),
+            updated_at = CURRENT_TIMESTAMP
+    ");
+    $stmt_insert = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id)
+        VALUES (?, ?, ?, ?, 1, ?, ?)
+    ");
+
+    foreach ($events as $idx => $event) {
+        $opponent = trim($resolved[$idx] ?? '');
+        if (empty($opponent) || preg_match('/^\s*(TBD|TBA|skip)\s*$/i', $opponent)) {
+            continue; // User chose to skip this event
+        }
+
+        $event_uid = !empty($event['uid']) ? $event['uid'] : null;
+        $description = $event['description'] ?? '';
+
+        if ($event_uid) {
+            $stmt_upsert->execute([$team_id, $opponent, $event['dtstart'], $event['game_type'], $description, $season_id, $event_uid]);
+            $imported++;
+        } else {
+            $stmt_insert->execute([$team_id, $opponent, $event['dtstart'], $event['game_type'], $description, $season_id]);
+            $imported++;
+        }
+
+        $teams_created += autoCreateTeamIfNeeded($pdo, $opponent, $season_id);
+    }
+
+    // Clear the session data
+    unset($_SESSION['import_ambiguous']);
+
+    logSecurityEvent($pdo, 'import_resolved', "Import resolution: $imported events resolved for team $team_id", $user_id);
+    header('Location: /gameplan.php?page=calendar&success=resolved_' . $imported);
+    exit;
+}
+
+/**
  * Parse iCal/ICS file content into an array of events.
  * Handles RFC 5545 line folding (continuation lines starting with space/tab).
  */
@@ -1722,15 +1838,42 @@ function parseOpponentFromSummary($summary, $ownTeamName = '') {
         // If we know our own team name, return the other team
         if (!empty($ownTeamName)) {
             $ownLower = strtolower($ownTeamName);
-            // Check which side is our team (partial match to handle abbreviations)
-            if (stripos($teamA, $ownTeamName) !== false || stripos($ownTeamName, $teamA) !== false
-                || similar_text(strtolower($teamA), $ownLower, $pctA) && $pctA > 60) {
-                return $teamB;
+            $teamALower = strtolower($teamA);
+            $teamBLower = strtolower($teamB);
+
+            // Priority 1: Exact match (case-insensitive)
+            if ($teamALower === $ownLower) return $teamB;
+            if ($teamBLower === $ownLower) return $teamA;
+
+            // Priority 2: Exact containment — but only if the match is the whole team name
+            // e.g., "Rockland Nats U7B" should match "Rockland Nats U7B" but NOT "Rockland Nats U7B2"
+            // Check if one fully contains the other (both directions)
+            if ($teamALower === $ownLower || $ownLower === $teamALower) return $teamB;
+            if ($teamBLower === $ownLower || $ownLower === $teamBLower) return $teamA;
+
+            // Priority 3: Partial containment with word-boundary check
+            // Ensure the match isn't a substring of a longer team name
+            if (stripos($teamA, $ownTeamName) !== false || stripos($ownTeamName, $teamA) !== false) {
+                // Verify this isn't a partial match of a similar name
+                // e.g., "Rockland Nats U7B" contains "Rockland Nats U7B" but NOT "Rockland Nats U7B2"
+                if (strlen($teamA) <= strlen($ownTeamName) + 2 || strlen($ownTeamName) <= strlen($teamA) + 2) {
+                    return $teamB;
+                }
             }
-            if (stripos($teamB, $ownTeamName) !== false || stripos($ownTeamName, $teamB) !== false
-                || similar_text(strtolower($teamB), $ownLower, $pctB) && $pctB > 60) {
-                return $teamA;
+            if (stripos($teamB, $ownTeamName) !== false || stripos($ownTeamName, $teamB) !== false) {
+                if (strlen($teamB) <= strlen($ownTeamName) + 2 || strlen($ownTeamName) <= strlen($teamB) + 2) {
+                    return $teamA;
+                }
             }
+
+            // Priority 4: Fuzzy match with higher threshold for similar names
+            similar_text($teamALower, $ownLower, $pctA);
+            similar_text($teamBLower, $ownLower, $pctB);
+            if ($pctA > 80) return $teamB;
+            if ($pctB > 80) return $teamA;
+            // Lower threshold only if the other side didn't also match
+            if ($pctA > 60 && $pctB <= 60) return $teamB;
+            if ($pctB > 60 && $pctA <= 60) return $teamA;
         }
         // If we can't determine which is ours, return the second team (conventional: "Us vs Them" / "Us at Them")
         return $teamB;
@@ -1756,16 +1899,37 @@ function autoCreateTeamIfNeeded($pdo, $teamName, $season_id = null) {
 
     // Check for existing team with similar name (case-insensitive)
     try {
+        // Priority 1: Exact name match (case-insensitive)
         $stmt = $pdo->prepare("SELECT id FROM teams WHERE LOWER(name) = LOWER(?) LIMIT 1");
         $stmt->execute([$cleanName]);
-        if ($stmt->fetch()) return 0; // Team already exists
+        if ($stmt->fetch()) return 0; // Team already exists with exact name
 
-        // Also check for fuzzy match (contains)
-        $stmt = $pdo->prepare("SELECT id FROM teams WHERE LOWER(name) LIKE LOWER(?) LIMIT 1");
+        // Priority 2: Check for near-exact matches to avoid creating "Rockland Nats U7B2"
+        // when "Rockland Nats U7B" already exists (they are different teams!)
+        // Only skip creation if there's a very close match (not just a substring)
+        $stmt = $pdo->prepare("SELECT id, name FROM teams WHERE LOWER(name) LIKE LOWER(?) ORDER BY LENGTH(name) ASC");
         $stmt->execute(['%' . $cleanName . '%']);
-        if ($stmt->fetch()) return 0;
+        $matches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($matches as $match) {
+            // If the existing team name contains our name AND is nearly the same length,
+            // it's likely the same team. But if lengths differ significantly, they're different teams
+            // e.g., "Rockland Nats U7B" (18 chars) vs "Rockland Nats U7B2" (19 chars) = different teams
+            if (strtolower($match['name']) === strtolower($cleanName)) {
+                return 0; // Exact match found
+            }
+        }
 
-        // Create the team
+        // Also check reverse: our name contains an existing team name
+        $stmt = $pdo->prepare("SELECT id, name FROM teams ORDER BY name");
+        $stmt->execute();
+        $allTeams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($allTeams as $existing) {
+            if (strtolower($existing['name']) === strtolower($cleanName)) {
+                return 0; // Exact match
+            }
+        }
+
+        // Create the team as unmanaged (opponent)
         $season = '';
         if ($season_id) {
             $stmt = $pdo->prepare("SELECT name FROM seasons WHERE id = ?");
