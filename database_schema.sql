@@ -4338,6 +4338,58 @@ CREATE TABLE IF NOT EXISTS `vr_review_session_clips` (
     FOREIGN KEY (`clip_id`) REFERENCES `vr_video_clips`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Roster players (non-user roster management for game plan)
+-- Allows teams to have players who are not Arctic Wolves users
+-- Players can optionally be linked to existing user accounts
+CREATE TABLE IF NOT EXISTS `roster_players` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `team_id` INT NOT NULL,
+    `user_id` INT DEFAULT NULL COMMENT 'Linked Arctic Wolves user account (NULL if external player)',
+    `first_name` VARCHAR(100) NOT NULL,
+    `last_name` VARCHAR(100) NOT NULL,
+    `email` VARCHAR(255) DEFAULT NULL,
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `jersey_number` INT DEFAULT NULL,
+    `position` VARCHAR(50) DEFAULT NULL,
+    `date_of_birth` DATE DEFAULT NULL,
+    `parent_name` VARCHAR(200) DEFAULT NULL,
+    `parent_email` VARCHAR(255) DEFAULT NULL,
+    `parent_phone` VARCHAR(20) DEFAULT NULL,
+    `notes` TEXT DEFAULT NULL,
+    `status` ENUM('active', 'inactive', 'archived') DEFAULT 'active',
+    `season_id` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE SET NULL,
+    INDEX `idx_team` (`team_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_season` (`season_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Device pairing for video review (viewer/controller casting)
+CREATE TABLE IF NOT EXISTS `vr_device_pairs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `pair_code` VARCHAR(10) NOT NULL UNIQUE COMMENT 'Short code for pairing devices',
+    `session_id` INT DEFAULT NULL COMMENT 'Review session this pair belongs to',
+    `controller_token` VARCHAR(64) NOT NULL COMMENT 'Token identifying the controller device',
+    `viewer_token` VARCHAR(64) DEFAULT NULL COMMENT 'Token identifying the viewer device',
+    `status` ENUM('waiting', 'paired', 'active', 'ended') DEFAULT 'waiting',
+    `current_clip_id` INT DEFAULT NULL,
+    `current_time` DECIMAL(10,3) DEFAULT 0.000 COMMENT 'Current playback time in seconds',
+    `is_frozen` TINYINT(1) DEFAULT 0 COMMENT 'Whether the viewer display is frozen',
+    `created_by` INT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`session_id`) REFERENCES `vr_review_sessions`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`current_clip_id`) REFERENCES `vr_video_clips`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    INDEX `idx_pair_code` (`pair_code`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Seed default video tags
 INSERT IGNORE INTO `vr_tags` (`name`, `category`, `color`) VALUES
 ('Forecheck', 'offense', '#3B82F6'),

@@ -12,8 +12,9 @@ if (!$isAnyCoach) {
 }
 
 // ── Parameters ────────────────────────────────────────────────
-$roster_team_id = isset($_GET['team_id']) ? (int)$_GET['team_id'] : 0;
-$roster_action  = isset($_GET['action']) ? preg_replace('/[^a-z_]/', '', $_GET['action']) : 'list';
+$roster_team_id  = isset($_GET['team_id']) ? (int)$_GET['team_id'] : 0;
+$roster_action   = isset($_GET['action']) ? preg_replace('/[^a-z_]/', '', $_GET['action']) : 'list';
+$roster_season_id = isset($_GET['season_id']) ? (int)$_GET['season_id'] : 0;
 
 // ── Load teams ────────────────────────────────────────────────
 $roster_teams = [];
@@ -35,11 +36,19 @@ try {
     $seasons = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('Roster seasons: ' . $e->getMessage()); }
 
+// Default to active season if no season selected
+if ($roster_season_id === 0 && !empty($seasons)) {
+    foreach ($seasons as $s) {
+        if (!empty($s['is_active'])) { $roster_season_id = (int)$s['id']; break; }
+    }
+    if ($roster_season_id === 0) $roster_season_id = (int)$seasons[0]['id'];
+}
+
 // ── Load roster players for selected team ─────────────────────
 $roster_players = [];
 if ($roster_team_id > 0) {
     try {
-        $stmt = $pdo->prepare("
+        $roster_sql = "
             SELECT rp.id, rp.team_id, rp.user_id, rp.first_name, rp.last_name,
                    rp.email, rp.phone, rp.jersey_number, rp.position,
                    rp.date_of_birth, rp.parent_name, rp.parent_email, rp.parent_phone,
@@ -50,9 +59,15 @@ if ($roster_team_id > 0) {
             LEFT JOIN seasons s ON rp.season_id = s.id
             LEFT JOIN users u ON rp.user_id = u.id
             WHERE rp.team_id = ? AND rp.status = 'active'
-            ORDER BY rp.jersey_number ASC, rp.last_name ASC
-        ");
-        $stmt->execute([$roster_team_id]);
+        ";
+        $roster_params = [$roster_team_id];
+        if ($roster_season_id > 0) {
+            $roster_sql .= " AND rp.season_id = ?";
+            $roster_params[] = $roster_season_id;
+        }
+        $roster_sql .= " ORDER BY rp.jersey_number ASC, rp.last_name ASC";
+        $stmt = $pdo->prepare($roster_sql);
+        $stmt->execute($roster_params);
         $roster_players = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) { error_log('Roster players: ' . $e->getMessage()); }
 }
@@ -119,9 +134,18 @@ if (isset($_GET['success'])) {
         <div class="filter-row">
             <div class="filter-field">
                 <label>Team</label>
-                <select class="form-select" onchange="location.href='/gameplan.php?page=roster&team_id='+this.value">
+                <select class="form-select" id="rosterTeamSelect" onchange="updateRosterFilter()">
                     <?php foreach ($roster_teams as $tm): ?>
                     <option value="<?= (int)$tm['id'] ?>" <?= $roster_team_id === (int)$tm['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tm['name']) ?><?= !empty($tm['division']) ? ' (' . htmlspecialchars($tm['division']) . ')' : '' ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label>Season</label>
+                <select class="form-select" id="rosterSeasonSelect" onchange="updateRosterFilter()">
+                    <option value="0">All Seasons</option>
+                    <?php foreach ($seasons as $s): ?>
+                    <option value="<?= (int)$s['id'] ?>" <?= $roster_season_id === (int)$s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['name']) ?><?= !empty($s['is_active']) ? ' (Current)' : '' ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -131,6 +155,15 @@ if (isset($_GET['success'])) {
         </div>
     </div>
 </div>
+<script>
+function updateRosterFilter() {
+    var teamId = document.getElementById('rosterTeamSelect').value;
+    var seasonId = document.getElementById('rosterSeasonSelect').value;
+    var url = '/gameplan.php?page=roster&team_id=' + teamId;
+    if (seasonId !== '0') url += '&season_id=' + seasonId;
+    location.href = url;
+}
+</script>
 
 <!-- Roster Summary -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">

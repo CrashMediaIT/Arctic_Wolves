@@ -12,7 +12,7 @@
 
 // -- Tab & Filter parameters -----------------------------------------------
 $vr_tab = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'by_game';
-if (!in_array($vr_tab, ['clips', 'by_game', 'scouting'])) $vr_tab = 'by_game';
+if (!in_array($vr_tab, ['clips', 'by_game', 'scouting', 'device_pair'])) $vr_tab = 'by_game';
 
 $vr_tag_cat   = isset($_GET['tag_cat']) ? preg_replace('/[^a-z0-9_-]/', '', $_GET['tag_cat']) : '';
 $vr_tag_id    = isset($_GET['tag_id']) ? (int)$_GET['tag_id'] : 0;
@@ -313,6 +313,9 @@ if (!function_exists('vr_safe_color')) {
     <?php if ($isAnyCoach): ?>
     <a href="/gameplan.php?page=video_review&tab=scouting<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="page-tab <?= $vr_tab === 'scouting' ? 'active' : '' ?>">
         <i class="fas fa-binoculars"></i> Opponent Scouting
+    </a>
+    <a href="/gameplan.php?page=video_review&tab=device_pair<?= $vr_team_id > 0 ? '&team_id=' . $vr_team_id : '' ?>" class="page-tab <?= $vr_tab === 'device_pair' ? 'active' : '' ?>">
+        <i class="fas fa-link"></i> Device Pairing
     </a>
     <?php endif; ?>
 </div>
@@ -754,4 +757,178 @@ ksort($grouped);
     </div>
 </div>
 <?php endif; ?>
+<?php /* end scouting tab */ endif; ?>
+
+<?php if ($vr_tab === 'device_pair'): ?>
+<!-- ── Device Pairing Tab ── -->
+<?php
+// Load existing device pairs for this coach
+$vr_pairs = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT dp.id, dp.pair_code, dp.status, dp.is_frozen, dp.created_at,
+               rs.title AS session_title
+        FROM vr_device_pairs dp
+        LEFT JOIN vr_review_sessions rs ON dp.session_id = rs.id
+        WHERE dp.created_by = ? AND dp.status IN ('waiting', 'paired', 'active')
+        ORDER BY dp.created_at DESC
+    ");
+    $stmt->execute([$user_id]);
+    $vr_pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { error_log('VR pairs: ' . $e->getMessage()); }
+
+// Load review sessions for assignment
+$vr_pair_sessions = [];
+try {
+    $stmt = $pdo->prepare("
+        SELECT id, title, scheduled_date, status
+        FROM vr_review_sessions
+        WHERE coach_id = ? AND status IN ('scheduled', 'in_progress')
+        ORDER BY scheduled_date DESC LIMIT 20
+    ");
+    $stmt->execute([$user_id]);
+    $vr_pair_sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { error_log('VR pair sessions: ' . $e->getMessage()); }
+?>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+    <!-- Controller Panel -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-gamepad"></i> Controller Device</h3>
+        </div>
+        <div class="card-body">
+            <p style="font-size: 13px; color: var(--text-muted, #888); margin-bottom: 16px;">
+                The controller device manages video playback, can freeze the viewer display, and enables telestration drawing during review sessions.
+            </p>
+
+            <!-- Create New Pair -->
+            <div class="card" style="margin-bottom: 16px; border: 1px solid var(--border, #333);">
+                <div class="card-header" style="padding: 10px 16px;">
+                    <h4 style="font-size: 13px; margin: 0; color: var(--primary, #6B46C1);"><i class="fas fa-plus-circle"></i> Create Pairing Session</h4>
+                </div>
+                <div class="card-body" style="padding: 16px;">
+                    <form method="POST" action="/process_video.php" id="createPairForm">
+                        <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="create_device_pair">
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; font-weight: 600; font-size: 12px; color: var(--text-muted, #888); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px;">Review Session</label>
+                            <select name="session_id" class="form-select">
+                                <option value="">— No Session —</option>
+                                <?php foreach ($vr_pair_sessions as $ps): ?>
+                                <option value="<?= (int)$ps['id'] ?>"><?= htmlspecialchars($ps['title']) ?> (<?= date('M j', strtotime($ps['scheduled_date'])) ?>)</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-link"></i> Generate Pair Code</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Active Pairs -->
+            <?php if (!empty($vr_pairs)): ?>
+            <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 10px; color: var(--text-white, #fff);">Active Pairs</h4>
+            <?php foreach ($vr_pairs as $pair): ?>
+            <div class="card" style="margin-bottom: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+                <div style="width: 44px; height: 44px; border-radius: 10px; background: <?= $pair['status'] === 'active' ? 'rgba(16,185,129,.12)' : ($pair['status'] === 'paired' ? 'rgba(59,130,246,.12)' : 'rgba(245,158,11,.12)') ?>; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i class="fas fa-<?= $pair['status'] === 'active' ? 'play-circle' : ($pair['status'] === 'paired' ? 'check-circle' : 'clock') ?>" style="color: <?= $pair['status'] === 'active' ? '#10B981' : ($pair['status'] === 'paired' ? '#3B82F6' : '#F59E0B') ?>; font-size: 18px;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 700; font-size: 18px; letter-spacing: 3px; color: var(--primary-light, #A78BFA); font-family: monospace;"><?= htmlspecialchars($pair['pair_code']) ?></div>
+                    <div style="font-size: 11px; color: var(--text-muted, #888); margin-top: 2px;">
+                        <?= ucfirst(htmlspecialchars($pair['status'])) ?>
+                        <?php if (!empty($pair['session_title'])): ?>
+                         · <?= htmlspecialchars($pair['session_title']) ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                    <?php if ($pair['status'] === 'active'): ?>
+                    <button type="button" class="btn btn-sm btn-<?= $pair['is_frozen'] ? 'warning' : 'secondary' ?>" onclick="toggleFreeze(<?= (int)$pair['id'] ?>)" title="<?= $pair['is_frozen'] ? 'Unfreeze viewer' : 'Freeze viewer' ?>">
+                        <i class="fas fa-<?= $pair['is_frozen'] ? 'play' : 'pause' ?>"></i>
+                    </button>
+                    <?php endif; ?>
+                    <form method="POST" action="/process_video.php" style="display:inline;">
+                        <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="end_device_pair">
+                        <input type="hidden" name="pair_id" value="<?= (int)$pair['id'] ?>">
+                        <button type="submit" class="btn btn-sm btn-danger" title="End pairing"><i class="fas fa-times"></i></button>
+                    </form>
+                </div>
+            </div>
+            <?php endforeach; ?>
+            <?php else: ?>
+            <div class="empty-state" style="padding: 24px; text-align: center;">
+                <i class="fas fa-link" style="font-size: 32px; color: var(--text-muted, #888); display: block; margin-bottom: 10px; opacity: .4;"></i>
+                <p style="color: var(--text-muted, #888); font-size: 13px; margin: 0;">No active device pairs. Create one to get started.</p>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Viewer Panel -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-tv"></i> Viewer Device</h3>
+        </div>
+        <div class="card-body">
+            <p style="font-size: 13px; color: var(--text-muted, #888); margin-bottom: 16px;">
+                The viewer device displays the currently selected video view. It mirrors the controller's selected clip and playback position with 100% time sync. When frozen, telestration can be drawn on the controller and displayed here.
+            </p>
+
+            <!-- Join Pair -->
+            <div class="card" style="margin-bottom: 16px; border: 1px solid var(--border, #333);">
+                <div class="card-header" style="padding: 10px 16px;">
+                    <h4 style="font-size: 13px; margin: 0; color: var(--primary, #6B46C1);"><i class="fas fa-sign-in-alt"></i> Join as Viewer</h4>
+                </div>
+                <div class="card-body" style="padding: 16px;">
+                    <form method="POST" action="/process_video.php" id="joinPairForm">
+                        <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="join_device_pair">
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; font-weight: 600; font-size: 12px; color: var(--text-muted, #888); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px;">Pair Code</label>
+                            <input type="text" name="pair_code" class="form-input" placeholder="Enter pair code" maxlength="10" required style="text-align: center; font-size: 18px; letter-spacing: 3px; font-family: monospace; text-transform: uppercase;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-tv"></i> Connect as Viewer</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Viewer Info -->
+            <div class="card" style="padding: 16px; border: 1px solid var(--border, #333);">
+                <h4 style="font-size: 13px; font-weight: 700; margin: 0 0 10px; color: var(--text-white, #fff);"><i class="fas fa-info-circle" style="color: var(--primary-light, #A78BFA); margin-right: 6px;"></i>How It Works</h4>
+                <div style="font-size: 12px; color: var(--text-muted, #888); line-height: 1.6;">
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                        <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">1</span>
+                        <span>The <strong>Controller</strong> generates a pair code and controls playback</span>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                        <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">2</span>
+                        <span>The <strong>Viewer</strong> enters the code to connect and display the video</span>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                        <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">3</span>
+                        <span>The controller can <strong>freeze</strong> the viewer to pause on a frame for telestration</span>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">4</span>
+                        <span>Telestration drawings are synced to the viewer in real-time with <strong>100% time sync</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleFreeze(pairId) {
+    fetch('/process_video.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=toggle_freeze_pair&pair_id=' + pairId + '&csrf_token=' + encodeURIComponent(document.querySelector('input[name="csrf_token"]')?.value || '')
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) location.reload();
+    });
+}
+</script>
 <?php endif; ?>
