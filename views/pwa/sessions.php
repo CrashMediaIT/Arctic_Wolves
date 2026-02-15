@@ -108,6 +108,7 @@ try {
             ORDER BY s.session_date ASC, s.session_time ASC
             LIMIT 50
         ");
+        // First $user_id for bookings JOIN, second for waitlists JOIN
         $stmt->execute(array_merge([$user_id, $user_id], $filterParams));
     }
     $upcomingSessions = $stmt->fetchAll(PDO::FETCH_ASSOC);

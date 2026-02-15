@@ -193,14 +193,21 @@ if ($action === 'join_waitlist') {
             exit();
         }
         
-        // Get next position on the waitlist
-        $stmt = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 as next_pos FROM waitlists WHERE session_id = ?");
-        $stmt->execute([$session_id]);
-        $next_position = (int)$stmt->fetchColumn();
-        
-        // Add to waitlist
-        $stmt = $pdo->prepare("INSERT INTO waitlists (session_id, user_id, position, status) VALUES (?, ?, ?, 'waiting')");
-        $stmt->execute([$session_id, $user_id, $next_position]);
+        // Get next position on the waitlist (use transaction to prevent race condition)
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 as next_pos FROM waitlists WHERE session_id = ? FOR UPDATE");
+            $stmt->execute([$session_id]);
+            $next_position = (int)$stmt->fetchColumn();
+            
+            // Add to waitlist
+            $stmt = $pdo->prepare("INSERT INTO waitlists (session_id, user_id, position, status) VALUES (?, ?, ?, 'waiting')");
+            $stmt->execute([$session_id, $user_id, $next_position]);
+            $pdo->commit();
+        } catch (Exception $txe) {
+            $pdo->rollBack();
+            throw $txe;
+        }
         
         if (function_exists('logSecurityEvent')) {
             logSecurityEvent($pdo, 'waitlist_joined', 
@@ -239,6 +246,14 @@ if ($action === 'leave_waitlist') {
         $stmt->execute([$session_id, $user_id]);
         
         if ($stmt->rowCount() > 0) {
+            // Recalculate positions to close gaps
+            $pdo->exec("SET @pos = 0");
+            $pdo->prepare("
+                UPDATE waitlists SET position = (@pos := @pos + 1)
+                WHERE session_id = ? AND status IN ('waiting', 'offered')
+                ORDER BY position ASC
+            ")->execute([$session_id]);
+            
             echo json_encode(['success' => true, 'message' => 'You have been removed from the waitlist']);
         } else {
             echo json_encode(['success' => false, 'message' => 'You are not on the waitlist for this session']);

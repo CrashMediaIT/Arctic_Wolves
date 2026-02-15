@@ -152,7 +152,7 @@ $is_demo_sessions = false;
                         </button>
                         <?php else: ?>
                         <div class="spots-indicator <?= $is_almost_full ? 'almost-full' : '' ?>">
-                            <span class="spots-number"><?= max(0, $spots_left) ?></span>
+                            <span class="spots-number"><?= $spots_left ?></span>
                             <span class="spots-text">spots left</span>
                         </div>
                         <div class="session-price-tag">$<?= number_format($session['session_price'] ?? 0, 0) ?></div>
