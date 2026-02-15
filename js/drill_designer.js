@@ -463,7 +463,7 @@ class DrillDesigner {
                 this.canvas.width = container.offsetWidth;
                 this.canvas.height = container.offsetHeight;
                 if (oldWidth !== this.canvas.width || oldHeight !== this.canvas.height) {
-                    this.objects = this.scaleObjectsUniformly(this.objects, oldWidth, oldHeight);
+                    this.objects = this.scaleObjectsProportionally(this.objects, oldWidth, oldHeight);
                 }
                 this.redraw();
             }, 100);
@@ -1539,8 +1539,13 @@ class DrillDesigner {
             
             // Wait for CSS transition to complete (300ms defined in CSS), then resize canvas to new container size
             setTimeout(() => {
+                const oldWidth = this.canvas.width;
+                const oldHeight = this.canvas.height;
                 this.canvas.width = container.offsetWidth;
                 this.canvas.height = container.offsetHeight;
+                if (oldWidth !== this.canvas.width || oldHeight !== this.canvas.height) {
+                    this.objects = this.scaleObjectsProportionally(this.objects, oldWidth, oldHeight);
+                }
                 this.redraw();
             }, 350);
         } else {
@@ -2963,34 +2968,31 @@ class DrillDesigner {
         });
     }
     
-    // Helper function to scale objects uniformly to preserve proportions
-    scaleObjectsUniformly(objects, sourceWidth, sourceHeight) {
+    // Helper function to scale objects proportionally to match rink coordinates
+    // The rink is drawn using canvas width/height directly (x proportional to w, y proportional to h),
+    // so drawn items must scale x and y independently to stay aligned with rink features.
+    scaleObjectsProportionally(objects, sourceWidth, sourceHeight) {
         const scaleX = this.canvas.width / sourceWidth;
         const scaleY = this.canvas.height / sourceHeight;
-        const uniformScale = Math.min(scaleX, scaleY);
-        
-        // Calculate offset to center content if aspect ratios don't match exactly
-        const offsetX = (this.canvas.width - sourceWidth * uniformScale) / 2;
-        const offsetY = (this.canvas.height - sourceHeight * uniformScale) / 2;
         
         return objects.map(obj => {
             const scaled = { ...obj };
             
-            // Scale and offset position-based objects
-            if (scaled.x !== undefined) scaled.x = scaled.x * uniformScale + offsetX;
-            if (scaled.y !== undefined) scaled.y = scaled.y * uniformScale + offsetY;
+            // Scale position-based objects proportionally
+            if (scaled.x !== undefined) scaled.x = scaled.x * scaleX;
+            if (scaled.y !== undefined) scaled.y = scaled.y * scaleY;
             
-            // Scale and offset line-based objects
-            if (scaled.x1 !== undefined) scaled.x1 = scaled.x1 * uniformScale + offsetX;
-            if (scaled.y1 !== undefined) scaled.y1 = scaled.y1 * uniformScale + offsetY;
-            if (scaled.x2 !== undefined) scaled.x2 = scaled.x2 * uniformScale + offsetX;
-            if (scaled.y2 !== undefined) scaled.y2 = scaled.y2 * uniformScale + offsetY;
+            // Scale line-based objects proportionally
+            if (scaled.x1 !== undefined) scaled.x1 = scaled.x1 * scaleX;
+            if (scaled.y1 !== undefined) scaled.y1 = scaled.y1 * scaleY;
+            if (scaled.x2 !== undefined) scaled.x2 = scaled.x2 * scaleX;
+            if (scaled.y2 !== undefined) scaled.y2 = scaled.y2 * scaleY;
             
-            // Scale and offset freehand points
+            // Scale freehand points proportionally
             if (scaled.points && Array.isArray(scaled.points)) {
                 scaled.points = scaled.points.map(pt => ({
-                    x: pt.x * uniformScale + offsetX,
-                    y: pt.y * uniformScale + offsetY
+                    x: pt.x * scaleX,
+                    y: pt.y * scaleY
                 }));
             }
             
@@ -3032,7 +3034,7 @@ class DrillDesigner {
                             this.canvas.height = container.offsetHeight;
                             
                             // Scale objects using helper function
-                            this.objects = this.scaleObjectsUniformly(parsed.objects, sourceWidth, sourceHeight);
+                            this.objects = this.scaleObjectsProportionally(parsed.objects, sourceWidth, sourceHeight);
                             
                             this.redraw();
                             this.saveState();
@@ -3043,7 +3045,7 @@ class DrillDesigner {
                 
                 // Fallback: no ice view change or no container - use uniform scaling immediately
                 if (sourceWidth !== this.canvas.width || sourceHeight !== this.canvas.height) {
-                    this.objects = this.scaleObjectsUniformly(parsed.objects, sourceWidth, sourceHeight);
+                    this.objects = this.scaleObjectsProportionally(parsed.objects, sourceWidth, sourceHeight);
                 } else {
                     this.objects = parsed.objects;
                 }
@@ -3103,9 +3105,14 @@ function initDrillDesigner() {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(function() {
                 if (window.drillDesigner && window.drillDesigner.canvas) {
+                    const oldWidth = window.drillDesigner.canvas.width;
+                    const oldHeight = window.drillDesigner.canvas.height;
                     const container = window.drillDesigner.canvas.parentElement;
                     window.drillDesigner.canvas.width = container.offsetWidth;
                     window.drillDesigner.canvas.height = container.offsetHeight;
+                    if (oldWidth !== window.drillDesigner.canvas.width || oldHeight !== window.drillDesigner.canvas.height) {
+                        window.drillDesigner.objects = window.drillDesigner.scaleObjectsProportionally(window.drillDesigner.objects, oldWidth, oldHeight);
+                    }
                     window.drillDesigner.redraw();
                 }
             }, 250);
