@@ -762,20 +762,45 @@ ksort($grouped);
 <?php if ($vr_tab === 'device_pair'): ?>
 <!-- ── Device Pairing Tab ── -->
 <?php
-// Load existing device pairs for this coach
+// Load existing device pairs for this coach (created by or joined as controller)
 $vr_pairs = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT dp.id, dp.pair_code, dp.status, dp.is_frozen, dp.created_at,
+        SELECT dp.id, dp.pair_code, dp.status, dp.is_frozen, dp.created_at, dp.created_by,
                rs.title AS session_title
         FROM vr_device_pairs dp
         LEFT JOIN vr_review_sessions rs ON dp.session_id = rs.id
-        WHERE dp.created_by = ? AND dp.status IN ('waiting', 'paired', 'active')
+        WHERE dp.status IN ('waiting', 'paired', 'active')
+        AND (dp.created_by = ? OR dp.id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
         ORDER BY dp.created_at DESC
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$user_id, $user_id]);
     $vr_pairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('VR pairs: ' . $e->getMessage()); }
+
+// Load additional controllers for each pair
+$vr_pair_controllers = [];
+try {
+    if (!empty($vr_pairs)) {
+        $pair_ids = array_column($vr_pairs, 'id');
+        $placeholders = implode(',', array_fill(0, count($pair_ids), '?'));
+        $stmt = $pdo->prepare("
+            SELECT dpc.pair_id, dpc.user_id, u.first_name, u.last_name
+            FROM vr_device_pair_controllers dpc
+            LEFT JOIN users u ON dpc.user_id = u.id
+            WHERE dpc.pair_id IN ($placeholders)
+            ORDER BY dpc.joined_at ASC
+        ");
+        $stmt->execute($pair_ids);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (function_exists('decryptUserRows')) {
+            $rows = decryptUserRows($rows);
+        }
+        foreach ($rows as $r) {
+            $vr_pair_controllers[(int)$r['pair_id']][] = $r;
+        }
+    }
+} catch (PDOException $e) { error_log('VR pair controllers: ' . $e->getMessage()); }
 
 // Load review sessions for assignment
 $vr_pair_sessions = [];
@@ -828,33 +853,55 @@ try {
             <!-- Active Pairs -->
             <?php if (!empty($vr_pairs)): ?>
             <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 10px; color: var(--text-white, #fff);">Active Pairs</h4>
-            <?php foreach ($vr_pairs as $pair): ?>
-            <div class="card" style="margin-bottom: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-                <div style="width: 44px; height: 44px; border-radius: 10px; background: <?= $pair['status'] === 'active' ? 'rgba(16,185,129,.12)' : ($pair['status'] === 'paired' ? 'rgba(59,130,246,.12)' : 'rgba(245,158,11,.12)') ?>; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <i class="fas fa-<?= $pair['status'] === 'active' ? 'play-circle' : ($pair['status'] === 'paired' ? 'check-circle' : 'clock') ?>" style="color: <?= $pair['status'] === 'active' ? '#10B981' : ($pair['status'] === 'paired' ? '#3B82F6' : '#F59E0B') ?>; font-size: 18px;"></i>
-                </div>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 700; font-size: 18px; letter-spacing: 3px; color: var(--primary-light, #A78BFA); font-family: monospace;"><?= htmlspecialchars($pair['pair_code']) ?></div>
-                    <div style="font-size: 11px; color: var(--text-muted, #888); margin-top: 2px;">
-                        <?= ucfirst(htmlspecialchars($pair['status'])) ?>
-                        <?php if (!empty($pair['session_title'])): ?>
-                         · <?= htmlspecialchars($pair['session_title']) ?>
+            <?php foreach ($vr_pairs as $pair):
+                $is_owner = ((int)($pair['created_by'] ?? 0) === (int)$user_id);
+                $extra_controllers = $vr_pair_controllers[(int)$pair['id']] ?? [];
+            ?>
+            <div class="card" style="margin-bottom: 8px; padding: 12px 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: <?= $pair['status'] === 'active' ? 'rgba(16,185,129,.12)' : ($pair['status'] === 'paired' ? 'rgba(59,130,246,.12)' : 'rgba(245,158,11,.12)') ?>; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <i class="fas fa-<?= $pair['status'] === 'active' ? 'play-circle' : ($pair['status'] === 'paired' ? 'check-circle' : 'clock') ?>" style="color: <?= $pair['status'] === 'active' ? '#10B981' : ($pair['status'] === 'paired' ? '#3B82F6' : '#F59E0B') ?>; font-size: 18px;"></i>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 700; font-size: 18px; letter-spacing: 3px; color: var(--primary-light, #A78BFA); font-family: monospace;"><?= htmlspecialchars($pair['pair_code']) ?></div>
+                        <div style="font-size: 11px; color: var(--text-muted, #888); margin-top: 2px;">
+                            <?= ucfirst(htmlspecialchars($pair['status'])) ?>
+                            <?php if (!$is_owner): ?>
+                             · <span style="color: var(--primary-light, #A78BFA);">Joined as controller</span>
+                            <?php endif; ?>
+                            <?php if (!empty($pair['session_title'])): ?>
+                             · <?= htmlspecialchars($pair['session_title']) ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                        <?php if ($pair['status'] === 'active'): ?>
+                        <button type="button" class="btn btn-sm btn-<?= $pair['is_frozen'] ? 'warning' : 'secondary' ?>" onclick="toggleFreeze(<?= (int)$pair['id'] ?>)" title="<?= $pair['is_frozen'] ? 'Unfreeze viewer' : 'Freeze viewer' ?>">
+                            <i class="fas fa-<?= $pair['is_frozen'] ? 'play' : 'pause' ?>"></i>
+                        </button>
+                        <?php endif; ?>
+                        <?php if ($is_owner): ?>
+                        <form method="POST" action="/process_video.php" style="display:inline;">
+                            <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                            <input type="hidden" name="action" value="end_device_pair">
+                            <input type="hidden" name="pair_id" value="<?= (int)$pair['id'] ?>">
+                            <button type="submit" class="btn btn-sm btn-danger" title="End pairing"><i class="fas fa-times"></i></button>
+                        </form>
                         <?php endif; ?>
                     </div>
                 </div>
-                <div style="display: flex; gap: 4px; flex-shrink: 0;">
-                    <?php if ($pair['status'] === 'active'): ?>
-                    <button type="button" class="btn btn-sm btn-<?= $pair['is_frozen'] ? 'warning' : 'secondary' ?>" onclick="toggleFreeze(<?= (int)$pair['id'] ?>)" title="<?= $pair['is_frozen'] ? 'Unfreeze viewer' : 'Freeze viewer' ?>">
-                        <i class="fas fa-<?= $pair['is_frozen'] ? 'play' : 'pause' ?>"></i>
-                    </button>
-                    <?php endif; ?>
-                    <form method="POST" action="/process_video.php" style="display:inline;">
-                        <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
-                        <input type="hidden" name="action" value="end_device_pair">
-                        <input type="hidden" name="pair_id" value="<?= (int)$pair['id'] ?>">
-                        <button type="submit" class="btn btn-sm btn-danger" title="End pairing"><i class="fas fa-times"></i></button>
-                    </form>
+                <?php if (!empty($extra_controllers)): ?>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border, #333);">
+                    <span style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px;">Controllers (<?= 1 + count($extra_controllers) ?>)</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+                        <?php foreach ($extra_controllers as $ctrl): ?>
+                        <span style="font-size: 11px; background: rgba(107,70,193,.1); color: var(--primary-light, #A78BFA); padding: 2px 8px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-gamepad" style="font-size: 9px;"></i> <?= htmlspecialchars(trim(($ctrl['first_name'] ?? '') . ' ' . ($ctrl['last_name'] ?? ''))) ?>
+                        </span>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
+                <?php endif; ?>
             </div>
             <?php endforeach; ?>
             <?php else: ?>
@@ -863,6 +910,24 @@ try {
                 <p style="color: var(--text-muted, #888); font-size: 13px; margin: 0;">No active device pairs. Create one to get started.</p>
             </div>
             <?php endif; ?>
+
+            <!-- Join Existing Pair as Controller -->
+            <div class="card" style="margin-top: 16px; border: 1px solid var(--border, #333);">
+                <div class="card-header" style="padding: 10px 16px;">
+                    <h4 style="font-size: 13px; margin: 0; color: var(--primary, #6B46C1);"><i class="fas fa-gamepad"></i> Join as Additional Controller</h4>
+                </div>
+                <div class="card-body" style="padding: 16px;">
+                    <p style="font-size: 12px; color: var(--text-muted, #888); margin: 0 0 12px;">Enter another coach's pair code to join as an additional controller. Multiple coaches can telestrate and control the same viewer.</p>
+                    <form method="POST" action="/process_video.php">
+                        <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                        <input type="hidden" name="action" value="join_as_controller">
+                        <div style="margin-bottom: 12px;">
+                            <input type="text" name="pair_code" class="form-input" placeholder="Enter pair code" maxlength="10" required style="text-align: center; font-size: 18px; letter-spacing: 3px; font-family: monospace; text-transform: uppercase;">
+                        </div>
+                        <button type="submit" class="btn btn-secondary" style="width: 100%;"><i class="fas fa-gamepad"></i> Join as Controller</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -900,7 +965,7 @@ try {
                 <div style="font-size: 12px; color: var(--text-muted, #888); line-height: 1.6;">
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">1</span>
-                        <span>The <strong>Controller</strong> generates a pair code and controls playback</span>
+                        <span>A <strong>Controller</strong> generates a pair code and controls playback</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">2</span>
@@ -908,10 +973,14 @@ try {
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">3</span>
-                        <span>The controller can <strong>freeze</strong> the viewer to pause on a frame for telestration</span>
+                        <span><strong>Multiple coaches</strong> can join the same pair code as additional controllers to co-telestrate</span>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                        <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">4</span>
+                        <span>Any controller can <strong>freeze</strong> the viewer to pause on a frame for telestration</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px;">
-                        <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">4</span>
+                        <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">5</span>
                         <span>Telestration drawings are synced to the viewer in real-time with <strong>100% time sync</strong></span>
                     </div>
                 </div>

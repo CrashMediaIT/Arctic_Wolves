@@ -4393,6 +4393,20 @@ CREATE TABLE IF NOT EXISTS `vr_device_pairs` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Additional controllers linked to a device pair (multi-controller support)
+-- Allows multiple coaches to telestrate and control a single viewer session
+CREATE TABLE IF NOT EXISTS `vr_device_pair_controllers` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `pair_id` INT NOT NULL,
+    `user_id` INT NOT NULL,
+    `controller_token` VARCHAR(64) NOT NULL COMMENT 'Token identifying this controller device',
+    `joined_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`pair_id`) REFERENCES `vr_device_pairs`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `uk_pair_user` (`pair_id`, `user_id`),
+    INDEX `idx_pair` (`pair_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Seed default video tags
 INSERT IGNORE INTO `vr_tags` (`name`, `category`, `color`) VALUES
 ('Forecheck', 'offense', '#3B82F6'),
