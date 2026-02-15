@@ -113,6 +113,33 @@ if ($action === 'cancel_booking' || $action === 'cancel') {
             );
         }
         
+        // Notify the next person on the waitlist that a spot opened up
+        try {
+            $wStmt = $pdo->prepare("
+                SELECT w.id, w.user_id, w.position 
+                FROM waitlists w 
+                WHERE w.session_id = ? AND w.status = 'waiting' 
+                ORDER BY w.position ASC 
+                LIMIT 1
+            ");
+            $wStmt->execute([$booking['session_id']]);
+            $nextWaitlisted = $wStmt->fetch(PDO::FETCH_ASSOC);
+            if ($nextWaitlisted) {
+                $pdo->prepare("UPDATE waitlists SET status = 'offered', notified_at = NOW() WHERE id = ?")
+                    ->execute([$nextWaitlisted['id']]);
+                // Create a notification for the waitlisted user
+                try {
+                    $pdo->prepare("
+                        INSERT INTO notifications (user_id, type, title, message, created_at) 
+                        VALUES (?, 'session', 'Spot Available!', ?, NOW())
+                    ")->execute([
+                        $nextWaitlisted['user_id'],
+                        "A spot opened up for session: {$booking['session_title']}. Book now before it fills up!"
+                    ]);
+                } catch (PDOException $ne) { /* notifications table may not exist */ }
+            }
+        } catch (PDOException $we) { /* waitlists table may not exist yet */ }
+        
         echo json_encode([
             'success' => true, 
             'message' => $message,
@@ -124,6 +151,103 @@ if ($action === 'cancel_booking' || $action === 'cancel') {
     } catch (Exception $e) {
         error_log("Booking cancellation error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to cancel booking: ' . $e->getMessage()]);
+        exit();
+    }
+}
+
+// JOIN WAITLIST
+if ($action === 'join_waitlist') {
+    header('Content-Type: application/json');
+    
+    try {
+        $session_id = intval($_POST['session_id'] ?? 0);
+        
+        if ($session_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid session ID']);
+            exit();
+        }
+        
+        // Verify session exists
+        $stmt = $pdo->prepare("SELECT id, title FROM sessions WHERE id = ?");
+        $stmt->execute([$session_id]);
+        $session = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$session) {
+            echo json_encode(['success' => false, 'message' => 'Session not found']);
+            exit();
+        }
+        
+        // Check if user is already on waitlist
+        $stmt = $pdo->prepare("SELECT id FROM waitlists WHERE session_id = ? AND user_id = ? AND status IN ('waiting', 'offered')");
+        $stmt->execute([$session_id, $user_id]);
+        if ($stmt->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'You are already on the waitlist for this session']);
+            exit();
+        }
+        
+        // Check if user already has a confirmed booking
+        $stmt = $pdo->prepare("SELECT id FROM bookings WHERE session_id = ? AND user_id = ? AND status = 'confirmed'");
+        $stmt->execute([$session_id, $user_id]);
+        if ($stmt->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'You already have a confirmed booking for this session']);
+            exit();
+        }
+        
+        // Get next position on the waitlist
+        $stmt = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 as next_pos FROM waitlists WHERE session_id = ?");
+        $stmt->execute([$session_id]);
+        $next_position = (int)$stmt->fetchColumn();
+        
+        // Add to waitlist
+        $stmt = $pdo->prepare("INSERT INTO waitlists (session_id, user_id, position, status) VALUES (?, ?, ?, 'waiting')");
+        $stmt->execute([$session_id, $user_id, $next_position]);
+        
+        if (function_exists('logSecurityEvent')) {
+            logSecurityEvent($pdo, 'waitlist_joined', 
+                "User joined waitlist for session: {$session['title']} (position: $next_position)", 
+                $user_id
+            );
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'message' => "You've been added to the waitlist (position #$next_position)",
+            'position' => $next_position
+        ]);
+        exit();
+        
+    } catch (Exception $e) {
+        error_log("Waitlist join error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to join waitlist']);
+        exit();
+    }
+}
+
+// LEAVE WAITLIST
+if ($action === 'leave_waitlist') {
+    header('Content-Type: application/json');
+    
+    try {
+        $session_id = intval($_POST['session_id'] ?? 0);
+        
+        if ($session_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid session ID']);
+            exit();
+        }
+        
+        $stmt = $pdo->prepare("DELETE FROM waitlists WHERE session_id = ? AND user_id = ? AND status IN ('waiting', 'offered')");
+        $stmt->execute([$session_id, $user_id]);
+        
+        if ($stmt->rowCount() > 0) {
+            echo json_encode(['success' => true, 'message' => 'You have been removed from the waitlist']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'You are not on the waitlist for this session']);
+        }
+        exit();
+        
+    } catch (Exception $e) {
+        error_log("Waitlist leave error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to leave waitlist']);
         exit();
     }
 }
@@ -239,6 +363,18 @@ $stmt = $pdo->prepare("SELECT * FROM sessions WHERE id = ?");
 $stmt->execute([$session_id]);
 $session = $stmt->fetch();
 if (!$session) { die("Session not found."); }
+
+// Check capacity — if session is full, prevent booking
+if (!empty($session['max_participants'])) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookings WHERE session_id = ? AND status = 'confirmed'");
+    $stmt->execute([$session_id]);
+    $confirmed_count = (int)$stmt->fetchColumn();
+    if ($confirmed_count >= (int)$session['max_participants']) {
+        // Session is full — redirect back with message
+        header("Location: dashboard.php?page=sessions&error=session_full&session_id=" . urlencode($session_id));
+        exit();
+    }
+}
 
 // 5. CALCULATE PRICE (Discount Logic)
 $original_price = $session['price'];

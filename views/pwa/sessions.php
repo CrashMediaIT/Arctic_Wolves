@@ -72,7 +72,8 @@ try {
                    st.name as session_type_name,
                    l.name as location_name,
                    pp.name as practice_plan_name, pp.description as practice_plan_desc,
-                   (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') as attendee_count
+                   (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') as attendee_count,
+                   (SELECT COUNT(*) FROM waitlists wl WHERE wl.session_id = s.id AND wl.status IN ('waiting', 'offered')) as waitlist_count
             FROM sessions s
             LEFT JOIN users c ON s.coach_id = c.id
             LEFT JOIN session_types st ON s.session_type_id = st.id
@@ -92,7 +93,9 @@ try {
                    st.name as session_type_name,
                    l.name as location_name,
                    pp.name as practice_plan_name, pp.description as practice_plan_desc,
-                   b.id as booking_id, b.status as booking_status
+                   b.id as booking_id, b.status as booking_status,
+                   (SELECT COUNT(*) FROM bookings b2 WHERE b2.session_id = s.id AND b2.status = 'confirmed') as attendee_count,
+                   w.id as waitlist_id, w.position as waitlist_position
             FROM sessions s
             LEFT JOIN users c ON s.coach_id = c.id
             LEFT JOIN session_types st ON s.session_type_id = st.id
@@ -100,11 +103,12 @@ try {
             LEFT JOIN session_practice_plans spp ON spp.session_id = s.id
             LEFT JOIN practice_plans pp ON spp.practice_plan_id = pp.id
             LEFT JOIN bookings b ON b.session_id = s.id AND b.user_id = ? AND b.status = 'confirmed'
+            LEFT JOIN waitlists w ON w.session_id = s.id AND w.user_id = ? AND w.status IN ('waiting', 'offered')
             WHERE $dateStatusWhere $filterWhere $periodWhere
             ORDER BY s.session_date ASC, s.session_time ASC
             LIMIT 50
         ");
-        $stmt->execute(array_merge([$user_id], $filterParams));
+        $stmt->execute(array_merge([$user_id, $user_id], $filterParams));
     }
     $upcomingSessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     // Decrypt coach PII
@@ -180,6 +184,8 @@ try {
 .m-badge-booked { background: rgba(107,70,193,0.2); color: #8B5CF6; }
 .m-badge-count { background: rgba(59,130,246,0.15); color: #3B82F6; }
 .m-badge-type { background: rgba(245,158,11,0.15); color: #F59E0B; }
+.m-badge-full { background: rgba(239,68,68,0.15); color: #EF4444; }
+.m-badge-waitlist { background: rgba(245,158,11,0.2); color: #F59E0B; }
 .m-book-btn {
     display: inline-block; padding: 6px 14px; border-radius: 8px;
     font-size: 12px; font-weight: 600; text-decoration: none;
@@ -191,6 +197,8 @@ try {
 .m-book-btn-primary:active { background: #8B5CF6; }
 .m-book-btn-danger { background: rgba(239,68,68,0.15); color: #EF4444; }
 .m-book-btn-secondary { background: #2D2D3F; color: #A8A8B8; }
+.m-book-btn-warning { background: rgba(245,158,11,0.15); color: #F59E0B; }
+.m-book-btn-warning:active { background: rgba(245,158,11,0.25); }
 .m-type-card {
     background: #16161F; border: 1px solid #2D2D3F; border-radius: 12px;
     padding: 16px; margin-bottom: 10px;
@@ -445,6 +453,10 @@ try {
                 $sDate = strtotime($sess['session_date']);
                 $sTime = $sess['session_time'] ? date('g:i A', strtotime($sess['session_time'])) : '';
                 $isBooked = !empty($sess['booking_id']);
+                $isOnWaitlist = !empty($sess['waitlist_id']);
+                $attendeeCount = (int)($sess['attendee_count'] ?? 0);
+                $maxParticipants = (int)($sess['max_participants'] ?? 0);
+                $isFull = ($maxParticipants > 0 && $attendeeCount >= $maxParticipants);
                 $coachName = trim(($sess['coach_first_name'] ?? '') . ' ' . ($sess['coach_last_name'] ?? ''));
             ?>
             <div class="m-sess-card" tabindex="0" data-date="<?= date('Y-m-d', $sDate) ?>" onclick="mShowDetail(<?= $idx ?>)" onkeydown="if(event.key==='Enter')mShowDetail(<?= $idx ?>)">
@@ -468,9 +480,16 @@ try {
                 </div>
                 <div class="m-sess-actions">
                     <?php if ($isAnyCoach): ?>
-                        <span class="m-badge m-badge-count"><i class="fas fa-users"></i> <?= (int)($sess['attendee_count'] ?? 0) ?><?php if ($sess['max_participants']): ?>/<?= (int)$sess['max_participants'] ?><?php endif; ?></span>
+                        <span class="m-badge m-badge-count"><i class="fas fa-users"></i> <?= $attendeeCount ?><?php if ($maxParticipants): ?>/<?= $maxParticipants ?><?php endif; ?></span>
+                        <?php if (!empty($sess['waitlist_count']) && (int)$sess['waitlist_count'] > 0): ?>
+                        <span class="m-badge m-badge-waitlist"><i class="fas fa-clock"></i> <?= (int)$sess['waitlist_count'] ?> waitlisted</span>
+                        <?php endif; ?>
                     <?php elseif ($isBooked): ?>
                         <span class="m-badge m-badge-booked"><i class="fas fa-check"></i> Booked</span>
+                    <?php elseif ($isOnWaitlist): ?>
+                        <span class="m-badge m-badge-waitlist"><i class="fas fa-clock"></i> Waitlisted #<?= (int)$sess['waitlist_position'] ?></span>
+                    <?php elseif ($isFull): ?>
+                        <span class="m-badge m-badge-full"><i class="fas fa-ban"></i> Full</span>
                     <?php else: ?>
                         <span class="m-badge m-badge-upcoming">Open</span>
                     <?php endif; ?>
@@ -582,6 +601,8 @@ try {
 <script>
 var mSessions = <?= json_encode(array_map(function($s) use ($isAnyCoach) {
     $coachName = trim(($s['coach_first_name'] ?? '') . ' ' . ($s['coach_last_name'] ?? ''));
+    $attendeeCount = (int)($s['attendee_count'] ?? 0);
+    $maxParticipants = (int)($s['max_participants'] ?? 0);
     return [
         'id' => (int)$s['id'],
         'title' => $s['title'] ?? '',
@@ -600,6 +621,12 @@ var mSessions = <?= json_encode(array_map(function($s) use ($isAnyCoach) {
         'isBooked' => !empty($s['booking_id']),
         'isCoach' => $isAnyCoach,
         'isFuture' => strtotime($s['session_date']) >= strtotime('today'),
+        'attendeeCount' => $attendeeCount,
+        'maxParticipants' => $maxParticipants,
+        'isFull' => ($maxParticipants > 0 && $attendeeCount >= $maxParticipants),
+        'isOnWaitlist' => !empty($s['waitlist_id']),
+        'waitlistPosition' => (int)($s['waitlist_position'] ?? 0),
+        'waitlistCount' => (int)($s['waitlist_count'] ?? 0),
     ];
 }, $upcomingSessions), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 
@@ -719,14 +746,38 @@ function mShowDetail(idx) {
     if (s.price > 0) {
         html += '<div class="m-detail-row"><div class="m-detail-icon"><i class="fas fa-dollar-sign"></i></div><div><div class="m-detail-label">Price</div><div class="m-detail-value">$' + s.price.toFixed(2) + '</div></div></div>';
     }
+    // Show capacity info
+    if (s.maxParticipants > 0) {
+        var spotsLeft = s.maxParticipants - s.attendeeCount;
+        var spotsColor = spotsLeft <= 0 ? '#EF4444' : (spotsLeft <= 3 ? '#F59E0B' : '#10B981');
+        html += '<div class="m-detail-row"><div class="m-detail-icon"><i class="fas fa-users"></i></div><div><div class="m-detail-label">Availability</div><div class="m-detail-value">' + s.attendeeCount + '/' + s.maxParticipants + ' booked';
+        if (spotsLeft <= 0) {
+            html += ' &mdash; <span style="color:#EF4444;font-weight:600;">Full</span>';
+        } else {
+            html += ' &mdash; <span style="color:' + spotsColor + ';font-weight:600;">' + spotsLeft + ' spot' + (spotsLeft !== 1 ? 's' : '') + ' left</span>';
+        }
+        html += '</div></div></div>';
+    }
+    // Show waitlist info for coaches
+    if (s.isCoach && s.waitlistCount > 0) {
+        html += '<div class="m-detail-row"><div class="m-detail-icon"><i class="fas fa-clock" style="color:#F59E0B;"></i></div><div><div class="m-detail-label">Waitlist</div><div class="m-detail-value" style="color:#F59E0B;">' + s.waitlistCount + ' on waitlist</div></div></div>';
+    }
     html += '<div class="m-detail-actions">';
     if (s.isCoach && s.isFuture) {
         html += '<button type="button" class="m-book-btn m-book-btn-danger" onclick="mCancelSession(' + s.id + ')"><i class="fas fa-ban"></i> Cancel Session</button>';
     } else if (!s.isCoach) {
         if (s.isBooked && s.isFuture) {
             html += '<button type="button" class="m-book-btn m-book-btn-danger" onclick="mCancelBooking(' + s.bookingId + ')"><i class="fas fa-times"></i> Cancel Booking</button>';
+        } else if (s.isOnWaitlist && s.isFuture) {
+            html += '<span style="display:block;text-align:center;color:#F59E0B;font-size:13px;font-weight:600;margin-bottom:8px;"><i class="fas fa-clock"></i> You are #' + s.waitlistPosition + ' on the waitlist</span>';
+            html += '<button type="button" class="m-book-btn m-book-btn-danger" onclick="mLeaveWaitlist(' + s.id + ')"><i class="fas fa-times"></i> Leave Waitlist</button>';
         } else if (!s.isBooked && s.isFuture) {
-            html += '<button type="button" class="m-book-btn m-book-btn-primary" onclick="mBookSession(' + s.id + ')"><i class="fas fa-plus"></i> Book Session</button>';
+            if (s.isFull) {
+                html += '<span style="display:block;text-align:center;color:#EF4444;font-size:13px;font-weight:600;margin-bottom:8px;"><i class="fas fa-ban"></i> This session is full</span>';
+                html += '<button type="button" class="m-book-btn m-book-btn-warning" onclick="mJoinWaitlist(' + s.id + ')"><i class="fas fa-clock"></i> Join Waitlist</button>';
+            } else {
+                html += '<button type="button" class="m-book-btn m-book-btn-primary" onclick="mBookSession(' + s.id + ')"><i class="fas fa-plus"></i> Book Session</button>';
+            }
         }
     }
     html += '</div>';
@@ -780,5 +831,38 @@ function mCancelSession(sessionId) {
 function mBookSession(sessionId) {
     document.getElementById('m-book-session-id').value = sessionId;
     document.getElementById('m-book-form').submit();
+}
+
+function mJoinWaitlist(sessionId) {
+    var form = new FormData();
+    form.append('action', 'join_waitlist');
+    form.append('session_id', sessionId);
+    form.append('csrf_token', document.querySelector('#m-book-form input[name="csrf_token"]').value);
+    fetch('process_booking.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                alert(data.message || 'Added to waitlist!');
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to join waitlist');
+            }
+        })
+        .catch(function() { alert('Network error. Please try again.'); });
+}
+
+function mLeaveWaitlist(sessionId) {
+    if (!confirm('Leave the waitlist for this session?')) return;
+    var form = new FormData();
+    form.append('action', 'leave_waitlist');
+    form.append('session_id', sessionId);
+    form.append('csrf_token', document.querySelector('#m-book-form input[name="csrf_token"]').value);
+    fetch('process_booking.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { location.reload(); }
+            else { alert(data.message || 'Failed to leave waitlist'); }
+        })
+        .catch(function() { alert('Network error. Please try again.'); });
 }
 </script>
