@@ -294,7 +294,6 @@ $allowed_pages = [
     // Profile and Settings
     'profile'                 => 'views/profile.php',
     'settings'                => 'views/settings.php',
-    'gameplan'                => 'views/gameplan.php'
 ];
 
 $view_file = $allowed_pages[$page] ?? 'views/home.php';

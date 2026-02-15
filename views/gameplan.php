@@ -2,8 +2,8 @@
 /**
  * Game Plan View - Redirect to Standalone Module
  *
- * The Game Plan module is now a standalone dashboard at /gameplan.php.
- * This view redirects users who access it via the old ?page=gameplan route.
+ * The Game Plan module is a separate standalone dashboard.
+ * This view redirects users who access it via the dashboard route.
  */
 header("Location: /gameplan.php");
 exit();
