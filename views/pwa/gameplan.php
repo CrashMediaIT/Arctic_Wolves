@@ -104,10 +104,10 @@ $gp_is_sub = ($gp_sub !== 'home');
 
 /* Navigation drawer (slide-out, similar to desktop sidebar) */
 .m-gp-drawer-overlay {
-    display: none; position: fixed; inset: 0;
+    display: none !important; position: fixed; inset: 0;
     background: rgba(0,0,0,0.6); z-index: 200;
 }
-.m-gp-drawer-overlay.open { display: block; }
+.m-gp-drawer-overlay.open { display: block !important; }
 .m-gp-drawer {
     position: fixed; top: 0; left: -280px; width: 270px; height: 100vh;
     background: var(--sidebar, #13131A); border-right: 1px solid var(--border, #2D2D3F);
