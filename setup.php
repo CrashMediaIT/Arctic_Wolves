@@ -155,6 +155,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
+            try {
+                // Try to add roster_player_id column to vr_game_plan_lines for non-user roster players
+                $pdo->exec("ALTER TABLE vr_game_plan_lines ADD COLUMN roster_player_id INT DEFAULT NULL COMMENT 'References roster_players.id for non-user players' AFTER athlete_id");
+            } catch (PDOException $e) {
+                // Column might already exist, which is fine
+            }
+            
+            try {
+                // Add foreign key for roster_player_id if not already present
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as cnt FROM information_schema.TABLE_CONSTRAINTS 
+                    WHERE CONSTRAINT_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = 'vr_game_plan_lines' 
+                    AND CONSTRAINT_NAME = 'fk_gpl_roster_player'
+                ");
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($result !== false && (int)$result['cnt'] === 0) {
+                    $pdo->exec("ALTER TABLE `vr_game_plan_lines` ADD CONSTRAINT `fk_gpl_roster_player` FOREIGN KEY (`roster_player_id`) REFERENCES `roster_players`(`id`) ON DELETE SET NULL");
+                }
+            } catch (PDOException $e) {
+                error_log("Note: Could not add fk_gpl_roster_player constraint: " . $e->getMessage());
+            }
+            
             // Add fk_expense_payee foreign key constraint if it doesn't exist
             // This is done separately to ensure idempotent schema setup
             // The expenses table and payee_id column are created by database_schema.sql

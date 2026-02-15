@@ -33,10 +33,12 @@ $wb_lines = [];
 if ($wb_team_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT gpl.line_name, gpl.position, gpl.athlete_id,
-                   u.first_name, u.last_name
+            SELECT gpl.line_name, gpl.position, gpl.athlete_id, gpl.roster_player_id,
+                   COALESCE(u.first_name, rp.first_name) AS first_name,
+                   COALESCE(u.last_name, rp.last_name) AS last_name
             FROM vr_game_plan_lines gpl
             LEFT JOIN users u ON gpl.athlete_id = u.id
+            LEFT JOIN roster_players rp ON gpl.roster_player_id = rp.id
             WHERE gpl.team_id = ?
             ORDER BY gpl.line_name, gpl.position
         ");

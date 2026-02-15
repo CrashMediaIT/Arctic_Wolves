@@ -34,7 +34,7 @@ $lines_roster = [];
 if ($lines_team_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT DISTINCT u.id, u.first_name, u.last_name, u.role
+            SELECT DISTINCT u.id, u.first_name, u.last_name, u.role, 'user' as player_type
             FROM users u
             WHERE u.is_active = 1 AND u.id IN (
                 SELECT athlete_id FROM athlete_teams WHERE team_id = ? AND athlete_id IS NOT NULL
@@ -53,7 +53,7 @@ if ($lines_team_id > 0) {
     // Also load non-user roster players from roster_players table
     try {
         $stmt = $pdo->prepare("
-            SELECT rp.id, rp.first_name, rp.last_name, 'roster_player' as role
+            SELECT rp.id, rp.first_name, rp.last_name, 'roster_player' as role, 'roster_player' as player_type
             FROM roster_players rp
             WHERE rp.team_id = ? AND rp.status = 'active' AND rp.user_id IS NULL
             ORDER BY rp.last_name, rp.first_name
@@ -72,10 +72,12 @@ $saved_lines = [];
 if ($lines_team_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT gpl.id, gpl.line_name, gpl.position, gpl.athlete_id,
-                   u.first_name, u.last_name
+            SELECT gpl.id, gpl.line_name, gpl.position, gpl.athlete_id, gpl.roster_player_id,
+                   COALESCE(u.first_name, rp.first_name) AS first_name,
+                   COALESCE(u.last_name, rp.last_name) AS last_name
             FROM vr_game_plan_lines gpl
             LEFT JOIN users u ON gpl.athlete_id = u.id
+            LEFT JOIN roster_players rp ON gpl.roster_player_id = rp.id
             WHERE gpl.team_id = ?
             ORDER BY gpl.line_name, gpl.position
         ");
@@ -264,8 +266,10 @@ $depth_chart_sections = [
                 <h3><i class="fas fa-list"></i> Roster</h3>
             </div>
             <div class="card-body" style="padding:0;max-height:500px;overflow-y:auto;">
-                <?php foreach ($lines_roster as $player): ?>
-                <div class="gp-roster-player" draggable="true" data-player-id="<?= (int)$player['id'] ?>" data-player-name="<?= htmlspecialchars(trim(($player['first_name'] ?? '') . ' ' . ($player['last_name'] ?? ''))) ?>"
+                <?php foreach ($lines_roster as $player):
+                    $player_form_id = ($player['player_type'] ?? 'user') === 'roster_player' ? 'rp_' . (int)$player['id'] : (int)$player['id'];
+                ?>
+                <div class="gp-roster-player" draggable="true" data-player-id="<?= htmlspecialchars($player_form_id) ?>" data-player-name="<?= htmlspecialchars(trim(($player['first_name'] ?? '') . ' ' . ($player['last_name'] ?? ''))) ?>"
                     style="padding:10px 16px;border-bottom:1px solid var(--border);cursor:grab;display:flex;align-items:center;gap:10px;transition:background .15s;">
                     <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <?= strtoupper(substr($player['first_name'] ?? '?', 0, 1) . substr($player['last_name'] ?? '?', 0, 1)) ?>
@@ -287,7 +291,10 @@ $depth_chart_sections = [
                     <div style="display:grid;grid-template-columns:repeat(<?= count($positions) ?>,1fr);gap:12px;">
                         <?php foreach ($positions as $pos):
                             $saved = $saved_lines[$line_name][$pos] ?? null;
-                            $saved_id = $saved ? (int)$saved['athlete_id'] : '';
+                            $saved_athlete_id = $saved ? (int)($saved['athlete_id'] ?? 0) : 0;
+                            $saved_rp_id = $saved ? (int)($saved['roster_player_id'] ?? 0) : 0;
+                            $saved_id = $saved_rp_id > 0 ? 'rp_' . $saved_rp_id : ($saved_athlete_id > 0 ? $saved_athlete_id : '');
+                            $has_player = ($saved_athlete_id > 0 || $saved_rp_id > 0);
                             $saved_name = $saved ? htmlspecialchars(trim(($saved['first_name'] ?? '') . ' ' . ($saved['last_name'] ?? ''))) : '';
                             $input_name = 'lines[' . htmlspecialchars($line_name) . '][' . htmlspecialchars($pos) . ']';
                         ?>
@@ -295,7 +302,7 @@ $depth_chart_sections = [
                             <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;text-align:center;"><?= htmlspecialchars($pos) ?></label>
                             <div class="gp-line-slot" data-line="<?= htmlspecialchars($line_name) ?>" data-pos="<?= htmlspecialchars($pos) ?>"
                                 style="min-height:60px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;padding:8px;transition:border-color .2s,background .2s;text-align:center;">
-                                <?php if ($saved_id): ?>
+                                <?php if ($has_player): ?>
                                 <div class="gp-slot-filled" style="display:flex;flex-direction:column;align-items:center;gap:4px;">
                                     <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">
                                         <?= strtoupper(substr($saved['first_name'] ?? '?', 0, 1) . substr($saved['last_name'] ?? '?', 0, 1)) ?>
@@ -307,7 +314,7 @@ $depth_chart_sections = [
                                 <span style="font-size:11px;color:var(--text-muted);"><i class="fas fa-plus" style="margin-right:4px;"></i>Drop here</span>
                                 <?php endif; ?>
                             </div>
-                            <input type="hidden" name="<?= $input_name ?>" value="<?= $saved_id ?>" class="gp-slot-input">
+                            <input type="hidden" name="<?= $input_name ?>" value="<?= htmlspecialchars((string)$saved_id) ?>" class="gp-slot-input">
                         </div>
                         <?php endforeach; ?>
                     </div>

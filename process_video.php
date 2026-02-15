@@ -959,18 +959,33 @@ function handleSaveHockeyLines() {
     $lines = $_POST['lines'] ?? [];
     if (!is_array($lines)) throw new Exception('Invalid lines data');
 
-    // Collect all athlete IDs and validate they exist
+    // Collect all athlete IDs and roster player IDs separately
     $all_athlete_ids = [];
+    $all_roster_player_ids = [];
+    // Build a parsed map: [line_name][pos] => ['type' => 'user'|'roster_player', 'id' => int]
+    $parsed_lines = [];
     foreach ($lines as $line_name => $positions) {
         if (!is_array($positions)) continue;
-        foreach ($positions as $pos => $athlete_id) {
-            $athlete_id = (int)$athlete_id;
-            if ($athlete_id > 0) {
-                $all_athlete_ids[] = $athlete_id;
+        foreach ($positions as $pos => $raw_value) {
+            $raw_value = trim((string)$raw_value);
+            if ($raw_value === '') continue;
+            if (strpos($raw_value, 'rp_') === 0) {
+                $rp_id = (int)substr($raw_value, 3);
+                if ($rp_id > 0) {
+                    $all_roster_player_ids[] = $rp_id;
+                    $parsed_lines[$line_name][$pos] = ['type' => 'roster_player', 'id' => $rp_id];
+                }
+            } else {
+                $athlete_id = (int)$raw_value;
+                if ($athlete_id > 0) {
+                    $all_athlete_ids[] = $athlete_id;
+                    $parsed_lines[$line_name][$pos] = ['type' => 'user', 'id' => $athlete_id];
+                }
             }
         }
     }
 
+    // Validate user athlete IDs
     $valid_athlete_ids = [];
     if (!empty($all_athlete_ids)) {
         $unique_ids = array_unique($all_athlete_ids);
@@ -978,6 +993,16 @@ function handleSaveHockeyLines() {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders)");
         $stmt->execute(array_values($unique_ids));
         $valid_athlete_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    // Validate roster player IDs
+    $valid_roster_player_ids = [];
+    if (!empty($all_roster_player_ids)) {
+        $unique_rp_ids = array_unique($all_roster_player_ids);
+        $placeholders = implode(',', array_fill(0, count($unique_rp_ids), '?'));
+        $stmt = $pdo->prepare("SELECT id FROM roster_players WHERE id IN ($placeholders)");
+        $stmt->execute(array_values($unique_rp_ids));
+        $valid_roster_player_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
     $pdo->beginTransaction();
@@ -990,14 +1015,14 @@ function handleSaveHockeyLines() {
             $stmt->execute(array_merge([$team_id], $line_names));
         }
 
-        // Insert new lines (only for validated athlete IDs)
-        $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, line_name, position, athlete_id) VALUES (?, ?, ?, ?)");
-        foreach ($lines as $line_name => $positions) {
-            if (!is_array($positions)) continue;
-            foreach ($positions as $pos => $athlete_id) {
-                $athlete_id = (int)$athlete_id;
-                if ($athlete_id > 0 && in_array($athlete_id, $valid_athlete_ids)) {
-                    $stmt->execute([$team_id, $line_name, $pos, $athlete_id]);
+        // Insert new lines (only for validated IDs)
+        $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, line_name, position, athlete_id, roster_player_id) VALUES (?, ?, ?, ?, ?)");
+        foreach ($parsed_lines as $line_name => $positions) {
+            foreach ($positions as $pos => $entry) {
+                if ($entry['type'] === 'roster_player' && in_array($entry['id'], $valid_roster_player_ids)) {
+                    $stmt->execute([$team_id, $line_name, $pos, null, $entry['id']]);
+                } elseif ($entry['type'] === 'user' && in_array($entry['id'], $valid_athlete_ids)) {
+                    $stmt->execute([$team_id, $line_name, $pos, $entry['id'], null]);
                 }
             }
         }

@@ -4285,10 +4285,12 @@ CREATE TABLE IF NOT EXISTS `vr_game_plan_lines` (
     `line_name` VARCHAR(50) NOT NULL COMMENT 'e.g., Line 1, Pair 1, PP1',
     `position` VARCHAR(20) NOT NULL COMMENT 'e.g., LW, C, RW, LD, RD',
     `athlete_id` INT DEFAULT NULL,
+    `roster_player_id` INT DEFAULT NULL COMMENT 'References roster_players.id for non-user players',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`plan_id`) REFERENCES `vr_game_plans`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`athlete_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`roster_player_id`) REFERENCES `roster_players`(`id`) ON DELETE SET NULL,
     INDEX `idx_plan` (`plan_id`),
     INDEX `idx_team` (`team_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
