@@ -60,7 +60,7 @@ $gp_labels = [
     'film_room'       => 'Film Room',
     'review_sessions' => 'Review Sessions',
     'my_clips'        => 'My Clips',
-    'lines'           => 'Hockey Lines',
+    'lines'           => 'Game Lines',
     'permissions'     => 'Permissions',
 ];
 
@@ -233,7 +233,7 @@ $gp_is_sub = ($gp_sub !== 'home');
             <div class="m-gp-nav-icon" style="background: rgba(16,185,129,.1); color: var(--success, #10B981);">
                 <i class="fas fa-users-line"></i>
             </div>
-            <div class="m-gp-nav-label">Hockey Lines</div>
+            <div class="m-gp-nav-label">Game Lines</div>
             <div class="m-gp-nav-count">Line management</div>
         </a>
 

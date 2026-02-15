@@ -126,7 +126,7 @@ if ($isAnyCoach) {
                     <i class="fas fa-users-line"></i>
                 </div>
                 <div>
-                    <div style="font-weight: 600; font-size: 14px;">Set Hockey Lines</div>
+                    <div style="font-weight: 600; font-size: 14px;">Set Game Lines</div>
                     <div style="font-size: 12px; color: var(--text-muted);">Forward, defense & special teams</div>
                 </div>
             </a>

@@ -338,7 +338,7 @@ try {
         <i class="fas fa-clipboard-list"></i> Game Plans
     </a>
     <a href="/gameplan.php?page=lines" class="gp-nav-link <?= $page === 'lines' ? 'active' : '' ?>">
-        <i class="fas fa-users-line"></i> Hockey Lines
+        <i class="fas fa-users-line"></i> Game Lines
     </a>
     <a href="/gameplan.php?page=roster" class="gp-nav-link <?= $page === 'roster' ? 'active' : '' ?>">
         <i class="fas fa-clipboard-list"></i> Roster

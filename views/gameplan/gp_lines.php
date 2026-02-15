@@ -1,8 +1,9 @@
 <?php
 /**
- * Game Plan - Hockey Lines Builder (Coach Only)
+ * Game Plan - Game Lines Builder (Coach Only)
  * Drag-and-drop line builder for forward lines, defense pairs, special teams, goalies.
  * Uses vr_game_plan_lines table for storage.
+ * Includes view-only printable mode.
  */
 
 if (!$isAnyCoach) {
@@ -14,6 +15,7 @@ if (!$isAnyCoach) {
 $lines_team_id = isset($_GET['team_id']) ? (int)$_GET['team_id'] : 0;
 $lines_tab     = isset($_GET['tab']) ? preg_replace('/[^a-z_]/', '', $_GET['tab']) : 'forwards';
 if (!in_array($lines_tab, ['forwards', 'defense', 'special', 'goalies'])) $lines_tab = 'forwards';
+$lines_view_mode = isset($_GET['mode']) && $_GET['mode'] === 'view' ? 'view' : 'edit';
 
 // ── Load teams ────────────────────────────────────────────────
 $lines_teams = [];
@@ -103,8 +105,10 @@ $defense_pairs = [
 $special_teams = [
     'PP1' => ['LW', 'C', 'RW', 'LD', 'RD'],
     'PP2' => ['LW', 'C', 'RW', 'LD', 'RD'],
-    'PK1' => ['F1', 'F2', 'LD', 'RD'],
-    'PK2' => ['F1', 'F2', 'LD', 'RD'],
+    'PK1 (4-man)' => ['F1', 'F2', 'LD', 'RD'],
+    'PK2 (4-man)' => ['F1', 'F2', 'LD', 'RD'],
+    'PK1 (3-man)' => ['F1', 'LD', 'RD'],
+    'PK2 (3-man)' => ['F1', 'LD', 'RD'],
 ];
 $goalie_lines = [
     'Goalies' => ['Starter', 'Backup'],
@@ -117,9 +121,19 @@ foreach ($lines_teams as $t) {
 ?>
 
 <!-- Page header -->
-<div class="page-header">
-    <h1><i class="fas fa-users-line"></i> Hockey Lines</h1>
-    <p>Build forward lines, defense pairs, and special teams</p>
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
+    <div>
+        <h1><i class="fas fa-users-line"></i> Game Lines</h1>
+        <p>Build forward lines, defense pairs, and special teams</p>
+    </div>
+    <div style="display:flex;gap:8px;" class="gp-lines-actions">
+        <?php if ($lines_view_mode === 'view'): ?>
+        <a href="/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id=<?= $lines_team_id ?>&mode=edit" class="btn btn-secondary"><i class="fas fa-pen"></i> Edit</a>
+        <button type="button" class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+        <?php else: ?>
+        <a href="/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id=<?= $lines_team_id ?>&mode=view" class="btn btn-secondary"><i class="fas fa-eye"></i> View / Print</a>
+        <?php endif; ?>
+    </div>
 </div>
 
 <!-- Team Selector -->
@@ -129,7 +143,7 @@ foreach ($lines_teams as $t) {
         <div class="filter-row">
             <div class="filter-field">
                 <label>Team</label>
-                <select class="form-select" onchange="location.href='/gameplan.php?page=lines&tab=<?= $lines_tab ?>&team_id='+this.value">
+                <select class="form-select" onchange="location.href='/gameplan.php?page=lines&tab=<?= $lines_tab ?>&mode=<?= $lines_view_mode ?>&team_id='+this.value">
                     <?php foreach ($lines_teams as $tm): ?>
                     <option value="<?= (int)$tm['id'] ?>" <?= $lines_team_id === (int)$tm['id'] ? 'selected' : '' ?>><?= htmlspecialchars($tm['name']) ?><?= !empty($tm['division']) ? ' (' . htmlspecialchars($tm['division']) . ')' : '' ?></option>
                     <?php endforeach; ?>
@@ -144,16 +158,16 @@ foreach ($lines_teams as $t) {
 
 <!-- Sub-tabs -->
 <div class="page-tabs page-tabs-secondary" style="margin-bottom: 20px;">
-    <a class="page-tab <?= $lines_tab === 'forwards' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=forwards">
+    <a class="page-tab <?= $lines_tab === 'forwards' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=forwards&mode=<?= $lines_view_mode ?>">
         <i class="fas fa-hockey-puck"></i> Forward Lines
     </a>
-    <a class="page-tab <?= $lines_tab === 'defense' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=defense">
+    <a class="page-tab <?= $lines_tab === 'defense' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=defense&mode=<?= $lines_view_mode ?>">
         <i class="fas fa-shield-halved"></i> Defense Pairs
     </a>
-    <a class="page-tab <?= $lines_tab === 'special' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=special">
+    <a class="page-tab <?= $lines_tab === 'special' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=special&mode=<?= $lines_view_mode ?>">
         <i class="fas fa-bolt"></i> Special Teams
     </a>
-    <a class="page-tab <?= $lines_tab === 'goalies' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=goalies">
+    <a class="page-tab <?= $lines_tab === 'goalies' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=goalies&mode=<?= $lines_view_mode ?>">
         <i class="fas fa-hand"></i> Goalies
     </a>
 </div>
@@ -170,6 +184,57 @@ foreach ($lines_teams as $t) {
 </div>
 <?php else: ?>
 
+<?php
+// Determine which line groups to show
+if ($lines_tab === 'forwards') $line_groups = $forward_lines;
+elseif ($lines_tab === 'defense') $line_groups = $defense_pairs;
+elseif ($lines_tab === 'special') $line_groups = $special_teams;
+else $line_groups = $goalie_lines;
+?>
+
+<?php if ($lines_view_mode === 'view'): ?>
+<!-- ── View-Only / Printable Mode ── -->
+<div id="gpLinesPrintArea">
+    <div class="gp-print-header" style="display:none;text-align:center;margin-bottom:20px;">
+        <h2 style="margin:0;"><?= htmlspecialchars($current_team_name) ?> – Game Lines</h2>
+        <p style="margin:4px 0 0;color:#666;font-size:13px;"><?= ucfirst($lines_tab) ?> | <?= date('F j, Y') ?></p>
+    </div>
+
+    <?php foreach ($line_groups as $line_name => $positions): ?>
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+            <h3><i class="fas fa-grip-lines"></i> <?= htmlspecialchars($line_name) ?></h3>
+        </div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(<?= count($positions) ?>,1fr);gap:12px;">
+                <?php foreach ($positions as $pos):
+                    $saved = $saved_lines[$line_name][$pos] ?? null;
+                    $saved_name = $saved ? htmlspecialchars(trim(($saved['first_name'] ?? '') . ' ' . ($saved['last_name'] ?? ''))) : '';
+                ?>
+                <div style="text-align:center;">
+                    <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><?= htmlspecialchars($pos) ?></label>
+                    <div style="min-height:60px;border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;padding:8px;">
+                        <?php if ($saved_name): ?>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">
+                                <?= strtoupper(substr($saved['first_name'] ?? '?', 0, 1) . substr($saved['last_name'] ?? '?', 0, 1)) ?>
+                            </div>
+                            <span style="font-size:11px;font-weight:600;"><?= $saved_name ?></span>
+                        </div>
+                        <?php else: ?>
+                        <span style="font-size:11px;color:var(--text-muted);">—</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
+
+<?php else: ?>
+<!-- ── Edit Mode ── -->
 <form method="POST" action="/process_video.php" id="gpLinesForm">
     <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
     <input type="hidden" name="action" value="save_hockey_lines">
@@ -197,13 +262,6 @@ foreach ($lines_teams as $t) {
 
         <!-- Lines Panel (Right) -->
         <div>
-            <?php
-            if ($lines_tab === 'forwards') $line_groups = $forward_lines;
-            elseif ($lines_tab === 'defense') $line_groups = $defense_pairs;
-            elseif ($lines_tab === 'special') $line_groups = $special_teams;
-            else $line_groups = $goalie_lines;
-            ?>
-
             <?php foreach ($line_groups as $line_name => $positions): ?>
             <div class="card" style="margin-bottom:16px;">
                 <div class="card-header">
@@ -248,13 +306,27 @@ foreach ($lines_teams as $t) {
     </div>
 </form>
 <?php endif; ?>
+<?php endif; ?>
 
 <style>
 .gp-roster-player:hover { background: rgba(107,70,193,.08); }
 .gp-roster-player:active { cursor: grabbing; }
 .gp-line-slot.drag-over { border-color: var(--primary-light) !important; background: rgba(107,70,193,.06); }
+
+@media print {
+    .gp-sidebar, .gp-topbar, .gp-overlay, .page-tabs, .filter-box, .gp-lines-actions { display: none !important; }
+    .gp-main { display: block !important; }
+    .gp-content { padding: 0 !important; overflow: visible !important; }
+    .gp-print-header { display: block !important; }
+    body { background: #fff !important; color: #000 !important; display: block !important; height: auto !important; overflow: visible !important; }
+    .card { border: 1px solid #ccc !important; box-shadow: none !important; background: #fff !important; break-inside: avoid; }
+    .card-header h3 { color: #000 !important; }
+    .page-header h1, .page-header p { color: #000 !important; }
+    .page-header h1 i { color: #333 !important; }
+}
 </style>
 
+<?php if ($lines_view_mode === 'edit'): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var players = document.querySelectorAll('.gp-roster-player');
@@ -316,3 +388,4 @@ document.addEventListener('DOMContentLoaded', function() {
     bindClearButtons();
 });
 </script>
+<?php endif; ?>
