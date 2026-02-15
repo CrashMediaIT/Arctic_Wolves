@@ -205,7 +205,7 @@ $days_in_month = (int)date('t', strtotime($cal_start));
 
 <!-- Import Calendar Modal -->
 <div class="modal-overlay" id="gpImportModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);align-items:center;justify-content:center;">
-    <div class="modal" style="width:90%;max-width:520px;">
+    <div class="modal-content" style="width:90%;max-width:520px;">
         <div class="modal-header">
             <h3><i class="fas fa-file-import"></i> Import Calendar</h3>
             <button type="button" class="modal-close" id="gpCloseImport">&times;</button>

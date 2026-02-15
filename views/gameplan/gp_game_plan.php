@@ -145,8 +145,8 @@ try {
 <?php endif; ?>
 
 <!-- Create Plan Modal -->
-<div class="modal-overlay" id="gpPlanModal" style="display: none;">
-    <div class="modal" style="max-width: 580px;">
+<div class="modal-overlay" id="gpPlanModal" style="display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.65); align-items: center; justify-content: center;">
+    <div class="modal-content" style="max-width: 580px;">
         <div class="modal-header">
             <h2 class="modal-title">Create Game Plan</h2>
             <button type="button" class="modal-close" id="gpClosePlan">&times;</button>
