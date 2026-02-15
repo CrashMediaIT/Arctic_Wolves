@@ -156,11 +156,15 @@ $days_in_month = (int)date('t', strtotime($cal_start));
                     $type = $ev['game_type'] ?? 'regular';
                     $colors = ['regular' => '#3B82F6', 'playoff' => '#F59E0B', 'tournament' => '#A855F7', 'exhibition' => '#10B981', 'practice' => '#6B46C1'];
                     $c = $colors[$type] ?? '#3B82F6';
+                    $is_past = strtotime($ev['game_date']) < time();
+                    $game_link = $is_past
+                        ? '/gameplan.php?page=game_plan&tab=post_game&game_id=' . (int)$ev['id']
+                        : '/gameplan.php?page=game_plan&tab=pre_game&game_id=' . (int)$ev['id'];
                 ?>
-                <div style="padding:3px 6px;border-radius:4px;font-size:10px;margin-top:2px;background:<?= $c ?>1f;color:<?= $c ?>;">
+                <a href="<?= $game_link ?>" style="display:block;padding:3px 6px;border-radius:4px;font-size:10px;margin-top:2px;background:<?= $c ?>1f;color:<?= $c ?>;text-decoration:none;cursor:pointer;transition:opacity .15s;" title="<?= htmlspecialchars($ev['opponent_team']) ?> – <?= $is_past ? 'View game history' : 'Plan this game' ?>">
                     <span style="font-weight:700;"><?= date('g:ia', strtotime($ev['game_date'])) ?></span>
                     <span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">vs <?= htmlspecialchars(substr($ev['opponent_team'], 0, 15)) ?></span>
-                </div>
+                </a>
                 <?php endforeach; ?>
                 <?php endif; ?>
             </div>
@@ -182,7 +186,9 @@ $days_in_month = (int)date('t', strtotime($cal_start));
     </div>
 </div>
 <?php else: ?>
-<?php foreach ($cal_games as $game): ?>
+<?php foreach ($cal_games as $game):
+    $game_is_past = strtotime($game['game_date']) < time();
+?>
 <div class="card" style="margin-bottom:10px;">
     <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;gap:16px;flex-wrap:wrap;">
         <div>
@@ -213,6 +219,16 @@ $days_in_month = (int)date('t', strtotime($cal_start));
                 $sc = $status_colors[$game['status']] ?? $status_colors['scheduled'];
             ?>
             <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:700;text-transform:uppercase;background:<?= $sc['bg'] ?>;color:<?= $sc['color'] ?>;border:1px solid <?= $sc['border'] ?>;"><?= htmlspecialchars(ucfirst($game['status'])) ?></span>
+            <!-- Game action buttons -->
+            <?php if ($game_is_past): ?>
+            <a href="/gameplan.php?page=game_plan&tab=post_game&game_id=<?= (int)$game['id'] ?>" class="btn btn-secondary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="Review this game"><i class="fas fa-chart-line"></i> Review</a>
+            <?php if ((int)$game['video_count'] > 0): ?>
+            <a href="/gameplan.php?page=film_room&tab=clips&game_id=<?= (int)$game['id'] ?>" class="btn btn-secondary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="View game clips"><i class="fas fa-film"></i> Clips</a>
+            <?php endif; ?>
+            <?php else: ?>
+            <a href="/gameplan.php?page=game_plan&tab=pre_game&game_id=<?= (int)$game['id'] ?>" class="btn btn-primary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="Plan this game"><i class="fas fa-clipboard-list"></i> Plan</a>
+            <a href="/gameplan.php?page=lines&game_id=<?= (int)$game['id'] ?>" class="btn btn-secondary" style="height:30px;padding:0 12px;font-size:11px;display:inline-flex;align-items:center;gap:5px;" title="Set game lines"><i class="fas fa-users-line"></i> Lines</a>
+            <?php endif; ?>
         </div>
     </div>
 </div>
