@@ -1972,14 +1972,17 @@ CREATE TABLE IF NOT EXISTS `game_schedules` (
     `is_home_game` TINYINT(1) DEFAULT 1,
     `status` ENUM('scheduled', 'in_progress', 'completed', 'cancelled', 'postponed') DEFAULT 'scheduled',
     `notes` TEXT DEFAULT NULL,
+    `season_id` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`location_id`) REFERENCES `locations`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE SET NULL,
     INDEX `idx_team` (`team_id`),
     INDEX `idx_date` (`game_date`),
     INDEX `idx_status` (`status`),
-    INDEX `idx_type` (`game_type`)
+    INDEX `idx_type` (`game_type`),
+    INDEX `idx_season` (`season_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- Total unique tables: 120+
 -- Total lines: 2500+

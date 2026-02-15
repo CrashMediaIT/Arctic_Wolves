@@ -115,6 +115,10 @@ try {
             handleJoinDevicePair();
             break;
 
+        case 'join_as_controller':
+            handleJoinAsController();
+            break;
+
         case 'end_device_pair':
             handleEndDevicePair();
             break;
@@ -1634,6 +1638,55 @@ function handleJoinDevicePair() {
     exit;
 }
 
+function handleJoinAsController() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required');
+    }
+
+    $pair_code = strtoupper(trim($_POST['pair_code'] ?? ''));
+    if (empty($pair_code) || strlen($pair_code) > 10) {
+        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=invalid_code');
+        exit;
+    }
+
+    // Find the active/paired/waiting pair
+    $stmt = $pdo->prepare("SELECT id, created_by FROM vr_device_pairs WHERE pair_code = ? AND status IN ('waiting', 'paired', 'active')");
+    $stmt->execute([$pair_code]);
+    $pair = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$pair) {
+        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=pair_not_found');
+        exit;
+    }
+
+    if ((int)$pair['created_by'] === (int)$user_id) {
+        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=already_owner');
+        exit;
+    }
+
+    $controller_token = bin2hex(random_bytes(32));
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO vr_device_pair_controllers (pair_id, user_id, controller_token)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE controller_token = ?, joined_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute([(int)$pair['id'], $user_id, $controller_token, $controller_token]);
+    } catch (PDOException $e) {
+        error_log('Join as controller: ' . $e->getMessage());
+        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=join_failed');
+        exit;
+    }
+
+    logSecurityEvent($pdo, 'device_pair_controller_joined', "Joined device pair $pair_code as additional controller", $user_id);
+    header('Location: /gameplan.php?page=video_review&tab=device_pair&success=controller_joined');
+    exit;
+}
+
 function handleEndDevicePair() {
     global $pdo, $user_id, $user_role;
 
@@ -1671,8 +1724,19 @@ function handleToggleFreezePair() {
         exit;
     }
 
-    $stmt = $pdo->prepare("UPDATE vr_device_pairs SET is_frozen = NOT is_frozen WHERE id = ? AND created_by = ? AND status = 'active'");
-    $stmt->execute([$pair_id, $user_id]);
+    // Allow the pair creator or any joined controller to toggle freeze
+    $stmt = $pdo->prepare("
+        SELECT id FROM vr_device_pairs WHERE id = ? AND status = 'active'
+        AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
+    ");
+    $stmt->execute([$pair_id, $user_id, $user_id]);
+    if (!$stmt->fetch()) {
+        echo json_encode(['success' => false, 'error' => 'Not authorized or pair not active']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE vr_device_pairs SET is_frozen = NOT is_frozen WHERE id = ? AND status = 'active'");
+    $stmt->execute([$pair_id]);
 
     echo json_encode(['success' => $stmt->rowCount() > 0]);
     exit;

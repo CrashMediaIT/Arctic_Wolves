@@ -156,7 +156,8 @@ foreach ($lines_teams as $t) {
     </div>
 </div>
 
-<!-- Sub-tabs -->
+<!-- Sub-tabs (edit mode only) -->
+<?php if ($lines_view_mode !== 'view'): ?>
 <div class="page-tabs page-tabs-secondary" style="margin-bottom: 20px;">
     <a class="page-tab <?= $lines_tab === 'forwards' ? 'active' : '' ?>" href="/gameplan.php?page=lines&team_id=<?= $lines_team_id ?>&tab=forwards&mode=<?= $lines_view_mode ?>">
         <i class="fas fa-hockey-puck"></i> Forward Lines
@@ -171,6 +172,7 @@ foreach ($lines_teams as $t) {
         <i class="fas fa-hand"></i> Goalies
     </a>
 </div>
+<?php endif; ?>
 
 <?php if (empty($lines_roster)): ?>
 <div class="card">
@@ -190,45 +192,59 @@ if ($lines_tab === 'forwards') $line_groups = $forward_lines;
 elseif ($lines_tab === 'defense') $line_groups = $defense_pairs;
 elseif ($lines_tab === 'special') $line_groups = $special_teams;
 else $line_groups = $goalie_lines;
+
+// In view mode, build a full depth chart with all line groups
+$depth_chart_sections = [
+    ['title' => 'Forward Lines', 'icon' => 'fa-hockey-puck', 'groups' => $forward_lines],
+    ['title' => 'Defense Pairs', 'icon' => 'fa-shield-halved', 'groups' => $defense_pairs],
+    ['title' => 'Special Teams', 'icon' => 'fa-bolt', 'groups' => $special_teams],
+    ['title' => 'Goalies', 'icon' => 'fa-hand', 'groups' => $goalie_lines],
+];
 ?>
 
 <?php if ($lines_view_mode === 'view'): ?>
-<!-- ── View-Only / Printable Mode ── -->
+<!-- ── View-Only / Printable Depth Chart ── -->
 <div id="gpLinesPrintArea">
     <div class="gp-print-header" style="display:none;text-align:center;margin-bottom:20px;">
-        <h2 style="margin:0;"><?= htmlspecialchars($current_team_name) ?> – Game Lines</h2>
-        <p style="margin:4px 0 0;color:#666;font-size:13px;"><?= ucfirst($lines_tab) ?> | <?= date('F j, Y') ?></p>
+        <h2 style="margin:0;"><?= htmlspecialchars($current_team_name) ?> – Depth Chart</h2>
+        <p style="margin:4px 0 0;color:#666;font-size:13px;"><?= date('F j, Y') ?></p>
     </div>
 
-    <?php foreach ($line_groups as $line_name => $positions): ?>
-    <div class="card" style="margin-bottom:16px;">
-        <div class="card-header">
-            <h3><i class="fas fa-grip-lines"></i> <?= htmlspecialchars($line_name) ?></h3>
-        </div>
-        <div class="card-body">
-            <div style="display:grid;grid-template-columns:repeat(<?= count($positions) ?>,1fr);gap:12px;">
-                <?php foreach ($positions as $pos):
-                    $saved = $saved_lines[$line_name][$pos] ?? null;
-                    $saved_name = $saved ? htmlspecialchars(trim(($saved['first_name'] ?? '') . ' ' . ($saved['last_name'] ?? ''))) : '';
-                ?>
-                <div style="text-align:center;">
-                    <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><?= htmlspecialchars($pos) ?></label>
-                    <div style="min-height:60px;border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;padding:8px;">
-                        <?php if ($saved_name): ?>
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-                            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">
-                                <?= strtoupper(substr($saved['first_name'] ?? '?', 0, 1) . substr($saved['last_name'] ?? '?', 0, 1)) ?>
+    <?php foreach ($depth_chart_sections as $section): ?>
+    <div style="margin-bottom:24px;">
+        <h2 style="font-size:15px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px;color:var(--text-white,#fff);">
+            <i class="fas <?= $section['icon'] ?>" style="color:var(--primary-light,#A78BFA);font-size:14px;"></i> <?= $section['title'] ?>
+        </h2>
+
+        <?php foreach ($section['groups'] as $line_name => $positions): ?>
+        <div class="card" style="margin-bottom:10px;">
+            <div class="card-body" style="padding:12px 16px;">
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                    <span style="font-size:12px;font-weight:700;color:var(--primary-light,#A78BFA);min-width:90px;text-transform:uppercase;letter-spacing:.5px;"><?= htmlspecialchars($line_name) ?></span>
+                    <div style="display:flex;gap:10px;flex:1;flex-wrap:wrap;">
+                        <?php foreach ($positions as $pos):
+                            $saved = $saved_lines[$line_name][$pos] ?? null;
+                            $saved_name = $saved ? htmlspecialchars(trim(($saved['first_name'] ?? '') . ' ' . ($saved['last_name'] ?? ''))) : '';
+                        ?>
+                        <div style="display:flex;align-items:center;gap:6px;min-width:140px;">
+                            <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;width:24px;text-align:right;flex-shrink:0;"><?= htmlspecialchars($pos) ?></span>
+                            <?php if ($saved_name): ?>
+                            <div style="display:flex;align-items:center;gap:6px;background:rgba(107,70,193,.06);border:1px solid rgba(107,70,193,.15);border-radius:8px;padding:4px 10px 4px 4px;">
+                                <div style="width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <?= strtoupper(substr($saved['first_name'] ?? '?', 0, 1) . substr($saved['last_name'] ?? '?', 0, 1)) ?>
+                                </div>
+                                <span style="font-size:12px;font-weight:600;white-space:nowrap;"><?= $saved_name ?></span>
                             </div>
-                            <span style="font-size:11px;font-weight:600;"><?= $saved_name ?></span>
+                            <?php else: ?>
+                            <span style="font-size:11px;color:var(--text-muted);font-style:italic;">—</span>
+                            <?php endif; ?>
                         </div>
-                        <?php else: ?>
-                        <span style="font-size:11px;color:var(--text-muted);">—</span>
-                        <?php endif; ?>
+                        <?php endforeach; ?>
                     </div>
                 </div>
-                <?php endforeach; ?>
             </div>
         </div>
+        <?php endforeach; ?>
     </div>
     <?php endforeach; ?>
 </div>

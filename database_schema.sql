@@ -2378,14 +2378,17 @@ CREATE TABLE IF NOT EXISTS `game_schedules` (
     `is_home_game` TINYINT(1) DEFAULT 1,
     `status` ENUM('scheduled', 'in_progress', 'completed', 'cancelled', 'postponed') DEFAULT 'scheduled',
     `notes` TEXT DEFAULT NULL,
+    `season_id` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`location_id`) REFERENCES `locations`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`season_id`) REFERENCES `seasons`(`id`) ON DELETE SET NULL,
     INDEX `idx_team` (`team_id`),
     INDEX `idx_date` (`game_date`),
     INDEX `idx_status` (`status`),
-    INDEX `idx_type` (`game_type`)
+    INDEX `idx_type` (`game_type`),
+    INDEX `idx_season` (`season_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Create view for backwards compatibility (programs alias)
@@ -4388,6 +4391,20 @@ CREATE TABLE IF NOT EXISTS `vr_device_pairs` (
     FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
     INDEX `idx_pair_code` (`pair_code`),
     INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Additional controllers linked to a device pair (multi-controller support)
+-- Allows multiple coaches to telestrate and control a single viewer session
+CREATE TABLE IF NOT EXISTS `vr_device_pair_controllers` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `pair_id` INT NOT NULL,
+    `user_id` INT NOT NULL,
+    `controller_token` VARCHAR(64) NOT NULL COMMENT 'Token identifying this controller device',
+    `joined_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`pair_id`) REFERENCES `vr_device_pairs`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `uk_pair_user` (`pair_id`, `user_id`),
+    INDEX `idx_pair` (`pair_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Seed default video tags
