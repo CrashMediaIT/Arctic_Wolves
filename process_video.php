@@ -87,6 +87,10 @@ try {
             handleImportCalendar();
             break;
 
+        case 'sync_calendar':
+            handleSyncCalendar();
+            break;
+
         case 'add_roster_player':
             handleAddRosterPlayer();
             break;
@@ -1321,6 +1325,7 @@ function handleImportCalendar() {
     if (!$team_id) throw new Exception('Team is required');
 
     $imported = 0;
+    $updated = 0;
     $teams_created = 0;
 
     // Get our team name for parsing "Team A vs Team B" patterns
@@ -1392,10 +1397,25 @@ function handleImportCalendar() {
 
         if ($ical_content !== false && !empty($ical_content)) {
             $events = parseICalEvents($ical_content);
-            $stmt = $pdo->prepare("
+
+            // Prepare UPSERT statement: if ical_uid matches for this team, update; otherwise insert
+            $stmt_upsert = $pdo->prepare("
+                INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id, ical_uid)
+                VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    opponent_team = VALUES(opponent_team),
+                    game_date = VALUES(game_date),
+                    game_type = VALUES(game_type),
+                    notes = VALUES(notes),
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            // Fallback INSERT for events without UID (no upsert possible)
+            $stmt_insert = $pdo->prepare("
                 INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id)
                 VALUES (?, ?, ?, ?, 1, ?, ?)
             ");
+
+            $updated = 0;
             foreach ($events as $event) {
                 if (!empty($event['summary']) && !empty($event['dtstart'])) {
                     $raw_summary = $event['summary'];
@@ -1430,8 +1450,24 @@ function handleImportCalendar() {
                         continue;
                     }
 
-                    $stmt->execute([$team_id, $opponent, $event['dtstart'], $game_type, $event['description'] ?? '', $season_id]);
-                    $imported++;
+                    $event_uid = !empty($event['uid']) ? $event['uid'] : null;
+                    $description = $event['description'] ?? '';
+
+                    if ($event_uid) {
+                        // UPSERT: insert or update based on ical_uid + team_id unique key
+                        $stmt_upsert->execute([$team_id, $opponent, $event['dtstart'], $game_type, $description, $season_id, $event_uid]);
+                        if ($stmt_upsert->rowCount() === 2) {
+                            // rowCount=2 means ON DUPLICATE KEY UPDATE was triggered (existing row updated)
+                            $updated++;
+                        } else {
+                            $imported++;
+                        }
+                    } else {
+                        // No UID — simple insert (legacy behavior, can't deduplicate)
+                        $stmt_insert->execute([$team_id, $opponent, $event['dtstart'], $game_type, $description, $season_id]);
+                        $imported++;
+                    }
+
                     // Only auto-create team for actual matchups (not practices/tournaments without a parsed opponent)
                     if ($game_type !== 'practice') {
                         $parsed_team = parseOpponentFromSummary($raw_summary, $own_team_name);
@@ -1441,11 +1477,159 @@ function handleImportCalendar() {
                     }
                 }
             }
+
+            // Store iCal URL on team for future re-sync
+            $calendar_url = filter_var($_POST['calendar_url'] ?? '', FILTER_VALIDATE_URL);
+            if ($calendar_url) {
+                try {
+                    $stmt = $pdo->prepare("UPDATE teams SET ical_url = ? WHERE id = ?");
+                    $stmt->execute([$calendar_url, $team_id]);
+                } catch (PDOException $e) {
+                    error_log('Store ical_url: ' . $e->getMessage());
+                }
+            }
         }
     }
 
-    logSecurityEvent($pdo, 'calendar_imported', "Calendar imported: $imported games, $teams_created teams created for team $team_id", $user_id);
-    header('Location: /gameplan.php?page=calendar&success=imported_' . $imported);
+    $msg = "Calendar imported: $imported new, $updated updated, $teams_created teams created for team $team_id";
+    logSecurityEvent($pdo, 'calendar_imported', $msg, $user_id);
+    $success_msg = 'imported_' . $imported . ($updated > 0 ? '_updated_' . $updated : '');
+    header('Location: /gameplan.php?page=calendar&success=' . $success_msg);
+    exit;
+}
+
+/**
+ * Re-sync a team's calendar from its stored iCal URL.
+ * Fetches the iCal feed and uses the same UPSERT logic as import.
+ */
+function handleSyncCalendar() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to sync calendars');
+    }
+
+    $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    if (!$team_id) throw new Exception('Team is required');
+
+    // Load the team's stored iCal URL
+    $stmt = $pdo->prepare("SELECT name, ical_url FROM teams WHERE id = ? AND is_managed = 1");
+    $stmt->execute([$team_id]);
+    $team = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$team || empty($team['ical_url'])) {
+        throw new Exception('No calendar URL stored for this team. Import a calendar first using a URL.');
+    }
+
+    $url = $team['ical_url'];
+    $own_team_name = $team['name'];
+
+    // Fetch the iCal feed
+    $scheme = parse_url($url, PHP_URL_SCHEME);
+    if (!in_array($scheme, ['http', 'https'])) {
+        throw new Exception('Only HTTP and HTTPS URLs are supported');
+    }
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 30,
+            'user_agent' => 'ArcticWolves/1.0 Calendar Sync',
+            'follow_location' => 1,
+            'max_redirects' => 5,
+        ],
+        'ssl' => [
+            'verify_peer' => true,
+            'verify_peer_name' => true,
+        ],
+    ]);
+    $ical_content = file_get_contents($url, false, $ctx);
+    if ($ical_content === false) {
+        throw new Exception('Could not fetch calendar from stored URL. The URL may have changed.');
+    }
+
+    // Get season_id from the most recent import for this team
+    $season_id = null;
+    try {
+        $stmt = $pdo->prepare("SELECT season_id FROM game_schedules WHERE team_id = ? AND season_id IS NOT NULL ORDER BY created_at DESC LIMIT 1");
+        $stmt->execute([$team_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) $season_id = (int)$row['season_id'];
+    } catch (PDOException $e) { /* use null */ }
+
+    $events = parseICalEvents($ical_content);
+    $imported = 0;
+    $updated = 0;
+    $teams_created = 0;
+
+    $stmt_upsert = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id, ical_uid)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            opponent_team = VALUES(opponent_team),
+            game_date = VALUES(game_date),
+            game_type = VALUES(game_type),
+            notes = VALUES(notes),
+            updated_at = CURRENT_TIMESTAMP
+    ");
+    $stmt_insert = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id)
+        VALUES (?, ?, ?, ?, 1, ?, ?)
+    ");
+
+    foreach ($events as $event) {
+        if (!empty($event['summary']) && !empty($event['dtstart'])) {
+            $raw_summary = $event['summary'];
+
+            if (preg_match('/^\s*TBD\s*$/i', $raw_summary) || preg_match('/^\s*TBA\s*$/i', $raw_summary)) {
+                continue;
+            }
+
+            $game_type = 'regular';
+            $lower = strtolower($raw_summary);
+            if (strpos($lower, 'practice') !== false || strpos($lower, 'training') !== false) {
+                $game_type = 'practice';
+            } elseif (strpos($lower, 'tournament') !== false) {
+                $game_type = 'tournament';
+            } elseif (strpos($lower, 'playoff') !== false) {
+                $game_type = 'playoff';
+            } elseif (strpos($lower, 'exhibition') !== false || strpos($lower, 'scrimmage') !== false) {
+                $game_type = 'exhibition';
+            }
+
+            $opponent = parseOpponentFromSummary($raw_summary, $own_team_name);
+            if (empty($opponent)) {
+                $opponent = $raw_summary;
+            }
+            if (preg_match('/^\s*(TBD|TBA)\s*$/i', $opponent)) {
+                continue;
+            }
+
+            $event_uid = !empty($event['uid']) ? $event['uid'] : null;
+            $description = $event['description'] ?? '';
+
+            if ($event_uid) {
+                $stmt_upsert->execute([$team_id, $opponent, $event['dtstart'], $game_type, $description, $season_id, $event_uid]);
+                if ($stmt_upsert->rowCount() === 2) {
+                    $updated++;
+                } else {
+                    $imported++;
+                }
+            } else {
+                $stmt_insert->execute([$team_id, $opponent, $event['dtstart'], $game_type, $description, $season_id]);
+                $imported++;
+            }
+
+            if ($game_type !== 'practice') {
+                $parsed_team = parseOpponentFromSummary($raw_summary, $own_team_name);
+                if (!empty($parsed_team) && !preg_match('/^\s*(TBD|TBA)\s*$/i', $parsed_team)) {
+                    $teams_created += autoCreateTeamIfNeeded($pdo, $parsed_team, $season_id);
+                }
+            }
+        }
+    }
+
+    logSecurityEvent($pdo, 'calendar_synced', "Calendar synced: $imported new, $updated updated, $teams_created teams created for team $team_id", $user_id);
+    $success_msg = 'synced_' . $imported . '_updated_' . $updated;
+    header('Location: /gameplan.php?page=calendar&success=' . $success_msg);
     exit;
 }
 
@@ -1466,13 +1650,15 @@ function parseICalEvents($content) {
     foreach ($lines as $line) {
         $line = trim($line);
         if ($line === 'BEGIN:VEVENT') {
-            $current = ['summary' => '', 'dtstart' => '', 'description' => '', 'location' => ''];
+            $current = ['summary' => '', 'dtstart' => '', 'description' => '', 'location' => '', 'uid' => ''];
         } elseif ($line === 'END:VEVENT' && $current !== null) {
             $events[] = $current;
             $current = null;
         } elseif ($current !== null) {
             if (strpos($line, 'SUMMARY:') === 0 || strpos($line, 'SUMMARY;') === 0) {
                 $current['summary'] = trim(substr($line, strpos($line, ':') + 1));
+            } elseif (strpos($line, 'UID:') === 0 || strpos($line, 'UID;') === 0) {
+                $current['uid'] = trim(substr($line, strpos($line, ':') + 1));
             } elseif (strpos($line, 'DTSTART') === 0) {
                 $val = trim(substr($line, strpos($line, ':') + 1));
                 // Convert iCal date format to MySQL datetime

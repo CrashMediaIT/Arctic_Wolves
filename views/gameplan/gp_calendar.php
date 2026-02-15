@@ -24,7 +24,7 @@ $cal_end   = date('Y-m-t', strtotime($cal_start));
 // ── Load teams ────────────────────────────────────────────────
 $cal_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name, division, ical_url FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $cal_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('Cal teams: ' . $e->getMessage()); }
@@ -122,6 +122,22 @@ $days_in_month = (int)date('t', strtotime($cal_start));
             <div class="filter-field filter-actions">
                 <button type="button" class="btn btn-secondary" id="gpAddEventBtn"><i class="fas fa-plus"></i> Add Event</button>
                 <button type="button" class="btn btn-primary" id="gpImportBtn"><i class="fas fa-file-import"></i> Import</button>
+                <?php
+                // Build list of teams with stored iCal URLs for sync
+                $syncable_teams = array_filter($cal_teams, function($t) { return !empty($t['ical_url']); });
+                if (!empty($syncable_teams)):
+                ?>
+                <form method="POST" action="/process_video.php" style="display:inline;" id="gpSyncForm">
+                    <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="sync_calendar">
+                    <select name="team_id" class="form-select" style="display:inline-block;width:auto;min-width:120px;height:36px;font-size:12px;">
+                        <?php foreach ($syncable_teams as $st): ?>
+                        <option value="<?= (int)$st['id'] ?>"><?= htmlspecialchars($st['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" class="btn btn-secondary" title="Re-sync calendar from stored iCal URL"><i class="fas fa-sync"></i> Sync</button>
+                </form>
+                <?php endif; ?>
             </div>
         </div>
     </div>
