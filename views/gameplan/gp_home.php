@@ -75,8 +75,8 @@ if ($isAnyCoach) {
         <div class="empty-state" style="text-align: center; padding: 40px 20px;">
             <i class="fas fa-video-slash" style="font-size: 40px; color: var(--text-muted); margin-bottom: 16px; display: block;"></i>
             <h3 style="color: var(--text-secondary); margin-bottom: 8px;">No Videos Yet</h3>
-            <p style="color: var(--text-muted); margin-bottom: 16px;">Upload videos from the main dashboard or record them in the app.</p>
-            <a href="/dashboard.php?page=video" class="btn btn-primary" style="height: 40px; padding: 0 20px;"><i class="fas fa-upload"></i> Go to Video Upload</a>
+            <p style="color: var(--text-muted); margin-bottom: 16px;">Upload game footage in the Film Room to get started.</p>
+            <a href="/gameplan.php?page=film_room&tab=upload" class="btn btn-primary" style="height: 40px; padding: 0 20px;"><i class="fas fa-upload"></i> Go to Film Room</a>
         </div>
         <?php else: ?>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;">
