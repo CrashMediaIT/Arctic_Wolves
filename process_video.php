@@ -1282,6 +1282,15 @@ function handleImportCalendar() {
     $imported = 0;
     $teams_created = 0;
 
+    // Get our team name for parsing "Team A vs Team B" patterns
+    $own_team_name = '';
+    try {
+        $stmt = $pdo->prepare("SELECT name FROM teams WHERE id = ?");
+        $stmt->execute([$team_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $own_team_name = $row['name'] ?? '';
+    } catch (PDOException $e) { /* ignore */ }
+
     if ($import_type === 'csv' && isset($_FILES['calendar_file']) && $_FILES['calendar_file']['error'] === UPLOAD_ERR_OK) {
         $handle = fopen($_FILES['calendar_file']['tmp_name'], 'r');
         if ($handle) {
@@ -1348,10 +1357,10 @@ function handleImportCalendar() {
             ");
             foreach ($events as $event) {
                 if (!empty($event['summary']) && !empty($event['dtstart'])) {
-                    $opponent = $event['summary'];
+                    $raw_summary = $event['summary'];
                     $game_type = 'regular';
                     // Detect game type from summary
-                    $lower = strtolower($opponent);
+                    $lower = strtolower($raw_summary);
                     if (strpos($lower, 'practice') !== false || strpos($lower, 'training') !== false) {
                         $game_type = 'practice';
                     } elseif (strpos($lower, 'tournament') !== false) {
@@ -1361,10 +1370,22 @@ function handleImportCalendar() {
                     } elseif (strpos($lower, 'exhibition') !== false || strpos($lower, 'scrimmage') !== false) {
                         $game_type = 'exhibition';
                     }
+
+                    // Parse the opponent name from summary (handles "Team A vs Team B" format)
+                    $opponent = parseOpponentFromSummary($raw_summary, $own_team_name);
+                    // If parsing returned empty (e.g. "Team - Tournament" format), use raw summary for the schedule record
+                    if (empty($opponent)) {
+                        $opponent = $raw_summary;
+                    }
+
                     $stmt->execute([$team_id, $opponent, $event['dtstart'], $game_type, $event['description'] ?? '', $season_id]);
                     $imported++;
+                    // Only auto-create team for actual matchups (not practices/tournaments without a parsed opponent)
                     if ($game_type !== 'practice') {
-                        $teams_created += autoCreateTeamIfNeeded($pdo, $opponent, $season_id);
+                        $parsed_team = parseOpponentFromSummary($raw_summary, $own_team_name);
+                        if (!empty($parsed_team)) {
+                            $teams_created += autoCreateTeamIfNeeded($pdo, $parsed_team, $season_id);
+                        }
                     }
                 }
             }
@@ -1428,6 +1449,55 @@ function parseICalEvents($content) {
         }
     }
     return $events;
+}
+
+/**
+ * Parse opponent team name from a calendar event summary.
+ * Handles common formats:
+ *   "Team A vs Team B"  → returns Team B (opponent)
+ *   "Team A vs. Team B" → returns Team B
+ *   "Team A v Team B"   → returns Team B
+ *   "Team -"            → tournament/non-matchup event, returns empty string
+ * If the summary doesn't match a known pattern, returns the cleaned summary as-is.
+ */
+function parseOpponentFromSummary($summary, $ownTeamName = '') {
+    $summary = trim($summary);
+    if (empty($summary)) return '';
+
+    // "Team - something" pattern (tournament events) → not a matchup
+    if (preg_match('/^.+\s+-\s*$/i', $summary) || preg_match('/^.+\s+-\s+/i', $summary)) {
+        // Check if it's "Team - Event Name" style (not a matchup)
+        // Only skip if there's no "vs" in it
+        if (stripos($summary, ' vs ') === false && stripos($summary, ' vs. ') === false && stripos($summary, ' v ') === false) {
+            return '';
+        }
+    }
+
+    // "Team A vs Team B" or "Team A vs. Team B" or "Team A v Team B"
+    if (preg_match('/^(.+?)\s+(?:vs\.?|v)\s+(.+)$/i', $summary, $m)) {
+        $teamA = trim($m[1]);
+        $teamB = trim($m[2]);
+
+        // If we know our own team name, return the other team
+        if (!empty($ownTeamName)) {
+            $ownLower = strtolower($ownTeamName);
+            // Check which side is our team (partial match to handle abbreviations)
+            if (stripos($teamA, $ownTeamName) !== false || stripos($ownTeamName, $teamA) !== false
+                || similar_text(strtolower($teamA), $ownLower, $pctA) && $pctA > 60) {
+                return $teamB;
+            }
+            if (stripos($teamB, $ownTeamName) !== false || stripos($ownTeamName, $teamB) !== false
+                || similar_text(strtolower($teamB), $ownLower, $pctB) && $pctB > 60) {
+                return $teamA;
+            }
+        }
+        // If we can't determine which is ours, return the second team (conventional: "Us vs Them")
+        return $teamB;
+    }
+
+    // Remove common prefixes
+    $cleaned = preg_replace('/^(vs\.?\s+|@\s+)/i', '', $summary);
+    return trim($cleaned);
 }
 
 /**

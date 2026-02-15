@@ -235,7 +235,7 @@ if (!function_exists('vr_format_duration')) {
         <?php if (empty($ndi_cameras)): ?>
         <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;">
             <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted, #888); display: inline-block;"></span>
-            <span>No NDI cameras configured. <a href="/dashboard.php?page=system_tools&tab=ndi_cameras">Configure cameras</a> in System Tools, or check the <a href="/gameplan.php?page=home">companion server status</a>.</span>
+            <span>No NDI cameras configured. <a href="/dashboard.php?page=system_tools&tab=ndi_cameras" style="color:var(--primary-light, #8B5CF6);text-decoration:none;font-weight:600;">Configure cameras</a> in System Tools, or check the <a href="/gameplan.php?page=home" style="color:var(--primary-light, #8B5CF6);text-decoration:none;font-weight:600;">companion server status</a>.</span>
         </div>
         <?php else: ?>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;">
