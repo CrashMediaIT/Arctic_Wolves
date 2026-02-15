@@ -876,6 +876,8 @@ function handleSaveHockeyLines() {
 
     $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
     $tab = $_POST['tab'] ?? 'forwards';
+    $valid_tabs = ['forwards', 'defense', 'special', 'goalies'];
+    if (!in_array($tab, $valid_tabs)) $tab = 'forwards';
     if (!$team_id) throw new Exception('Team is required');
 
     $lines = $_POST['lines'] ?? [];
