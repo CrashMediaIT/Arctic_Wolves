@@ -521,6 +521,17 @@ $totalItems = count($skills) + count($drillTypes) + count($merchCats) + count($t
         <input type="hidden" name="id" id="mResEditId" value="">
         <input type="hidden" name="redirect_page" value="categories">
 
+        <!-- Resource Type Selector (shown only when adding) -->
+        <div class="m-cat-form-group" id="mGrpResType">
+            <label class="m-cat-form-label">Resource Type *</label>
+            <select id="mFldResType" class="m-cat-form-select" onchange="mResTypeChanged(this.value)">
+                <option value="skill">Skill</option>
+                <option value="drill_type">Drill Type</option>
+                <option value="merchandise">Merchandise Category</option>
+                <option value="location">Location</option>
+            </select>
+        </div>
+
         <!-- Shared: name -->
         <div class="m-cat-form-group" id="mGrpName">
             <label class="m-cat-form-label" id="mLblName">Name *</label>
@@ -674,19 +685,34 @@ function mClearForm() {
     document.getElementById('mResEditId').value = '';
 }
 
-/* FAB: add resource for the currently active editable section */
+/* FAB: add resource - show type selector so user can pick any category */
 function mResAdd() {
     var section = mActiveSection;
     if (mEditableSections.indexOf(section) === -1) section = 'skill';
     mClearForm();
     mConfigureForm(section, false);
+    // Show the resource type selector and set it to the current section
+    document.getElementById('mGrpResType').style.display = '';
+    document.getElementById('mFldResType').value = section;
     mSheetOpen();
+}
+
+/* Called when user changes the resource type dropdown */
+function mResTypeChanged(section) {
+    if (mEditableSections.indexOf(section) === -1) return;
+    mClearForm();
+    mConfigureForm(section, false);
+    // Keep the type selector visible during add
+    document.getElementById('mGrpResType').style.display = '';
+    document.getElementById('mFldResType').value = section;
 }
 
 /* Edit a resource */
 function mResEdit(section, data) {
     mClearForm();
     mConfigureForm(section, true);
+    // Hide the resource type selector during edit
+    document.getElementById('mGrpResType').style.display = 'none';
     document.getElementById('mResEditId').value = data.id || '';
     document.getElementById('mFldName').value = data.name || '';
     document.getElementById('mFldDesc').value = data.description || '';

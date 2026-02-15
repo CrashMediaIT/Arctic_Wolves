@@ -223,8 +223,11 @@ $allowed_pages = [
 $view_file = $allowed_pages[$page] ?? 'views/home.php';
 
 // Prefer mobile-native PWA views when available
+// Skip PWA override for profile page when edit or change_password params are set
+// so the full desktop profile form is used instead
 $pwa_view_file = 'views/pwa/' . $page . '.php';
-if (file_exists(__DIR__ . '/' . $pwa_view_file)) {
+$skipPwaOverride = ($page === 'profile' && isset($_GET['tab']));
+if (!$skipPwaOverride && file_exists(__DIR__ . '/' . $pwa_view_file)) {
     $view_file = $pwa_view_file;
 }
 
@@ -423,10 +426,10 @@ document.getElementById('installBtn')?.addEventListener('click', () => {
     }
 });
 
-// Request notification permission
-if ('Notification' in window && Notification.permission === 'default') {
-    // Ask after a brief delay so it doesn't feel intrusive
+// Request notification permission (only once per device)
+if ('Notification' in window && Notification.permission === 'default' && !localStorage.getItem('aw_notif_prompted')) {
     setTimeout(() => {
+        localStorage.setItem('aw_notif_prompted', '1');
         Notification.requestPermission();
     }, 5000);
 }

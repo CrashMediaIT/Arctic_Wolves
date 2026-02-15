@@ -21,9 +21,12 @@ $activeGoals = [];
 if ($athleteId > 0) {
     // Get athlete info
     try {
-        $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, phone, role, position, profile_image_url, primary_arena, created_at FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, phone, role, position, profile_image, primary_arena, created_at FROM users WHERE id = ?");
         $stmt->execute([$athleteId]);
         $athlete = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($athlete) {
+            $athlete = decryptUserRow($athlete);
+        }
     } catch (PDOException $e) { $athlete = null; }
 
     if ($athlete) {
@@ -130,8 +133,8 @@ if ($athleteId > 0) {
     ?>
         <div class="m-ad-hero">
             <div class="m-ad-avatar">
-                <?php if (!empty($athlete['profile_image_url'])): ?>
-                    <img src="<?= htmlspecialchars($athlete['profile_image_url']) ?>" alt="<?= htmlspecialchars($fullName) ?>">
+                <?php if (!empty($athlete['profile_image'])): ?>
+                    <img src="<?= htmlspecialchars($athlete['profile_image']) ?>" alt="<?= htmlspecialchars($fullName) ?>">
                 <?php else: ?>
                     <?= $initials ?>
                 <?php endif; ?>
