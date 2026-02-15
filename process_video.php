@@ -130,6 +130,12 @@ try {
         default:
             throw new Exception('Invalid action');
     }
+} catch (PDOException $e) {
+    logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id);
+    error_log('process_video PDO error: ' . $e->getMessage());
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'A database error occurred. Please try again.']);
+    exit;
 } catch (Exception $e) {
     logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id);
     http_response_code(400);
@@ -886,17 +892,40 @@ function handleCreateGamePlan() {
     $valid_statuses = ['draft', 'active', 'completed', 'archived'];
     if (!in_array($status, $valid_statuses)) $status = 'draft';
 
-    $stmt = $pdo->prepare("
-        INSERT INTO vr_game_plans (coach_id, game_id, team_id, title, description, plan_type, status,
-                                   offensive_system, defensive_system, powerplay_system, penalty_kill_system,
-                                   key_players_notes, strategy_notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->execute([
-        $user_id, $game_id, $team_id, $title, $description, $plan_type, $status,
-        $offensive_system ?: null, $defensive_system ?: null, $powerplay_system ?: null,
-        $penalty_kill_system ?: null, $key_players_notes ?: null, $strategy_notes ?: null
-    ]);
+    // Validate team_id FK if provided
+    if ($team_id !== null) {
+        $stmt = $pdo->prepare("SELECT id FROM teams WHERE id = ?");
+        $stmt->execute([$team_id]);
+        if (!$stmt->fetch()) {
+            throw new Exception('Invalid team selected');
+        }
+    }
+
+    // Validate game_id FK if provided
+    if ($game_id !== null) {
+        $stmt = $pdo->prepare("SELECT id FROM game_schedules WHERE id = ?");
+        $stmt->execute([$game_id]);
+        if (!$stmt->fetch()) {
+            $game_id = null; // Clear invalid FK reference
+        }
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO vr_game_plans (coach_id, game_id, team_id, title, description, plan_type, status,
+                                       offensive_system, defensive_system, powerplay_system, penalty_kill_system,
+                                       key_players_notes, strategy_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $user_id, $game_id, $team_id, $title, $description, $plan_type, $status,
+            $offensive_system ?: null, $defensive_system ?: null, $powerplay_system ?: null,
+            $penalty_kill_system ?: null, $key_players_notes ?: null, $strategy_notes ?: null
+        ]);
+    } catch (PDOException $e) {
+        error_log('Create game plan failed: ' . $e->getMessage());
+        throw new Exception('Failed to create game plan. Please try again.');
+    }
 
     logSecurityEvent($pdo, 'game_plan_created', "Game plan created: $title", $user_id);
     header('Location: /gameplan.php?page=game_plan&tab=' . urlencode($plan_type) . '&success=plan_created');
@@ -920,27 +949,64 @@ function handleSaveHockeyLines() {
     if (!in_array($tab, $valid_tabs)) $tab = 'forwards';
     if (!$team_id) throw new Exception('Team is required');
 
+    // Validate team exists
+    $stmt = $pdo->prepare("SELECT id FROM teams WHERE id = ?");
+    $stmt->execute([$team_id]);
+    if (!$stmt->fetch()) {
+        throw new Exception('Invalid team selected');
+    }
+
     $lines = $_POST['lines'] ?? [];
     if (!is_array($lines)) throw new Exception('Invalid lines data');
 
-    // Delete existing lines for this team and tab's line names
-    $line_names = array_keys($lines);
-    if (!empty($line_names)) {
-        $placeholders = implode(',', array_fill(0, count($line_names), '?'));
-        $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND line_name IN ($placeholders)");
-        $stmt->execute(array_merge([$team_id], $line_names));
-    }
-
-    // Insert new lines
-    $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, line_name, position, athlete_id) VALUES (?, ?, ?, ?)");
+    // Collect all athlete IDs and validate they exist
+    $all_athlete_ids = [];
     foreach ($lines as $line_name => $positions) {
         if (!is_array($positions)) continue;
         foreach ($positions as $pos => $athlete_id) {
             $athlete_id = (int)$athlete_id;
             if ($athlete_id > 0) {
-                $stmt->execute([$team_id, $line_name, $pos, $athlete_id]);
+                $all_athlete_ids[] = $athlete_id;
             }
         }
+    }
+
+    $valid_athlete_ids = [];
+    if (!empty($all_athlete_ids)) {
+        $unique_ids = array_unique($all_athlete_ids);
+        $placeholders = implode(',', array_fill(0, count($unique_ids), '?'));
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders)");
+        $stmt->execute(array_values($unique_ids));
+        $valid_athlete_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        // Delete existing lines for this team and tab's line names
+        $line_names = array_keys($lines);
+        if (!empty($line_names)) {
+            $placeholders = implode(',', array_fill(0, count($line_names), '?'));
+            $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND line_name IN ($placeholders)");
+            $stmt->execute(array_merge([$team_id], $line_names));
+        }
+
+        // Insert new lines (only for validated athlete IDs)
+        $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, line_name, position, athlete_id) VALUES (?, ?, ?, ?)");
+        foreach ($lines as $line_name => $positions) {
+            if (!is_array($positions)) continue;
+            foreach ($positions as $pos => $athlete_id) {
+                $athlete_id = (int)$athlete_id;
+                if ($athlete_id > 0 && in_array($athlete_id, $valid_athlete_ids)) {
+                    $stmt->execute([$team_id, $line_name, $pos, $athlete_id]);
+                }
+            }
+        }
+
+        $pdo->commit();
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        error_log('Save hockey lines failed: ' . $e->getMessage());
+        throw new Exception('Failed to save lines. Please try again.');
     }
 
     logSecurityEvent($pdo, 'hockey_lines_saved', "Hockey lines saved for team $team_id", $user_id);
@@ -1052,13 +1118,20 @@ function handleCreateClip() {
         }
     }
 
-    // Add athletes
+    // Add athletes (validate they exist first)
     $athlete_ids = $_POST['athlete_ids'] ?? [];
     if (is_array($athlete_ids)) {
+        $valid_ids = [];
+        $int_ids = array_filter(array_map('intval', $athlete_ids), function($id) { return $id > 0; });
+        if (!empty($int_ids)) {
+            $placeholders = implode(',', array_fill(0, count($int_ids), '?'));
+            $check_stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders)");
+            $check_stmt->execute(array_values($int_ids));
+            $valid_ids = $check_stmt->fetchAll(PDO::FETCH_COLUMN);
+        }
         $ath_stmt = $pdo->prepare("INSERT IGNORE INTO vr_clip_athletes (clip_id, athlete_id) VALUES (?, ?)");
-        foreach ($athlete_ids as $ath_id) {
-            $ath_id = (int)$ath_id;
-            if ($ath_id > 0) $ath_stmt->execute([$clip_id, $ath_id]);
+        foreach ($valid_ids as $ath_id) {
+            $ath_stmt->execute([$clip_id, $ath_id]);
         }
     }
 
@@ -1126,28 +1199,59 @@ function handleUpdateVideoPermissions() {
     $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
     if (!$team_id) throw new Exception('Team is required');
 
+    // Validate team exists
+    $stmt = $pdo->prepare("SELECT id FROM teams WHERE id = ?");
+    $stmt->execute([$team_id]);
+    if (!$stmt->fetch()) {
+        throw new Exception('Invalid team selected');
+    }
+
     $perms = $_POST['perms'] ?? [];
     if (!is_array($perms)) throw new Exception('Invalid permissions data');
 
-    // Delete existing permissions for this team
-    $stmt = $pdo->prepare("DELETE FROM vr_video_permissions WHERE team_id = ?");
-    $stmt->execute([$team_id]);
-
-    $stmt = $pdo->prepare("
-        INSERT INTO vr_video_permissions (user_id, team_id, can_upload, can_clip, can_tag, can_publish, can_delete)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ");
+    // Collect and validate user IDs
+    $user_ids = [];
     foreach ($perms as $uid => $user_perms) {
         $uid = (int)$uid;
-        if ($uid <= 0) continue;
-        $stmt->execute([
-            $uid, $team_id,
-            !empty($user_perms['can_upload']) ? 1 : 0,
-            !empty($user_perms['can_clip']) ? 1 : 0,
-            !empty($user_perms['can_tag']) ? 1 : 0,
-            !empty($user_perms['can_publish']) ? 1 : 0,
-            !empty($user_perms['can_delete']) ? 1 : 0,
-        ]);
+        if ($uid > 0) $user_ids[] = $uid;
+    }
+
+    $valid_user_ids = [];
+    if (!empty($user_ids)) {
+        $placeholders = implode(',', array_fill(0, count($user_ids), '?'));
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders)");
+        $stmt->execute($user_ids);
+        $valid_user_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        // Delete existing permissions for this team
+        $stmt = $pdo->prepare("DELETE FROM vr_video_permissions WHERE team_id = ?");
+        $stmt->execute([$team_id]);
+
+        $stmt = $pdo->prepare("
+            INSERT INTO vr_video_permissions (user_id, team_id, can_upload, can_clip, can_tag, can_publish, can_delete)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        foreach ($perms as $uid => $user_perms) {
+            $uid = (int)$uid;
+            if ($uid <= 0 || !in_array($uid, $valid_user_ids)) continue;
+            $stmt->execute([
+                $uid, $team_id,
+                !empty($user_perms['can_upload']) ? 1 : 0,
+                !empty($user_perms['can_clip']) ? 1 : 0,
+                !empty($user_perms['can_tag']) ? 1 : 0,
+                !empty($user_perms['can_publish']) ? 1 : 0,
+                !empty($user_perms['can_delete']) ? 1 : 0,
+            ]);
+        }
+
+        $pdo->commit();
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        error_log('Update video permissions failed: ' . $e->getMessage());
+        throw new Exception('Failed to update permissions. Please try again.');
     }
 
     logSecurityEvent($pdo, 'video_permissions_updated', "Video permissions updated for team $team_id", $user_id);
@@ -1397,17 +1501,49 @@ function handleAddRosterPlayer() {
     $notes         = trim($_POST['notes'] ?? '') ?: null;
     $season_id     = filter_input(INPUT_POST, 'season_id', FILTER_VALIDATE_INT) ?: null;
 
-    $stmt = $pdo->prepare("
-        INSERT INTO roster_players (team_id, user_id, first_name, last_name, email, phone,
-            jersey_number, position, date_of_birth, parent_name, parent_email, parent_phone,
-            notes, season_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->execute([
-        $team_id, $user_link_id, $first_name, $last_name, $email, $phone,
-        $jersey_number, $position, $dob, $parent_name, $parent_email, $parent_phone,
-        $notes, $season_id
-    ]);
+    // Validate team exists
+    $stmt = $pdo->prepare("SELECT id FROM teams WHERE id = ?");
+    $stmt->execute([$team_id]);
+    if (!$stmt->fetch()) {
+        header('Location: /gameplan.php?page=roster&error=invalid_team');
+        exit;
+    }
+
+    // Validate user_id FK if provided
+    if ($user_link_id !== null) {
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+        $stmt->execute([$user_link_id]);
+        if (!$stmt->fetch()) {
+            $user_link_id = null; // Clear invalid FK reference
+        }
+    }
+
+    // Validate season_id FK if provided
+    if ($season_id !== null) {
+        $stmt = $pdo->prepare("SELECT id FROM seasons WHERE id = ?");
+        $stmt->execute([$season_id]);
+        if (!$stmt->fetch()) {
+            $season_id = null; // Clear invalid FK reference
+        }
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO roster_players (team_id, user_id, first_name, last_name, email, phone,
+                jersey_number, position, date_of_birth, parent_name, parent_email, parent_phone,
+                notes, season_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $team_id, $user_link_id, $first_name, $last_name, $email, $phone,
+            $jersey_number, $position, $dob, $parent_name, $parent_email, $parent_phone,
+            $notes, $season_id
+        ]);
+    } catch (PDOException $e) {
+        error_log('Add roster player failed: ' . $e->getMessage());
+        header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&error=save_failed');
+        exit;
+    }
 
     logSecurityEvent($pdo, 'roster_player_added', "Added $first_name $last_name to team $team_id", $user_id);
     header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_added');
@@ -1447,20 +1583,35 @@ function handleUpdateRosterPlayer() {
     $notes         = trim($_POST['notes'] ?? '') ?: null;
     $season_id     = filter_input(INPUT_POST, 'season_id', FILTER_VALIDATE_INT) ?: null;
 
-    $stmt = $pdo->prepare("
-        UPDATE roster_players SET
-            first_name = ?, last_name = ?, email = ?, phone = ?,
-            jersey_number = ?, position = ?, date_of_birth = ?,
-            parent_name = ?, parent_email = ?, parent_phone = ?,
-            notes = ?, season_id = ?
-        WHERE id = ?
-    ");
-    $stmt->execute([
-        $first_name, $last_name, $email, $phone,
-        $jersey_number, $position, $dob,
-        $parent_name, $parent_email, $parent_phone,
-        $notes, $season_id, $player_id
-    ]);
+    // Validate season_id FK if provided
+    if ($season_id !== null) {
+        $stmt = $pdo->prepare("SELECT id FROM seasons WHERE id = ?");
+        $stmt->execute([$season_id]);
+        if (!$stmt->fetch()) {
+            $season_id = null;
+        }
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            UPDATE roster_players SET
+                first_name = ?, last_name = ?, email = ?, phone = ?,
+                jersey_number = ?, position = ?, date_of_birth = ?,
+                parent_name = ?, parent_email = ?, parent_phone = ?,
+                notes = ?, season_id = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([
+            $first_name, $last_name, $email, $phone,
+            $jersey_number, $position, $dob,
+            $parent_name, $parent_email, $parent_phone,
+            $notes, $season_id, $player_id
+        ]);
+    } catch (PDOException $e) {
+        error_log('Update roster player failed: ' . $e->getMessage());
+        header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&error=save_failed');
+        exit;
+    }
 
     logSecurityEvent($pdo, 'roster_player_updated', "Updated roster player $player_id", $user_id);
     header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_updated');
