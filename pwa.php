@@ -226,7 +226,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
 // Skip PWA override for profile page when edit or change_password params are set
 // so the full desktop profile form is used instead
 $pwa_view_file = 'views/pwa/' . $page . '.php';
-$skipPwaOverride = ($page === 'profile' && (isset($_GET['edit']) || isset($_GET['change_password']) || isset($_GET['tab'])));
+$skipPwaOverride = ($page === 'profile' && isset($_GET['tab']));
 if (!$skipPwaOverride && file_exists(__DIR__ . '/' . $pwa_view_file)) {
     $view_file = $pwa_view_file;
 }
