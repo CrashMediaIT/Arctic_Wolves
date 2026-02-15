@@ -892,16 +892,16 @@ function handleCreateGamePlan() {
     $valid_statuses = ['draft', 'active', 'completed', 'archived'];
     if (!in_array($status, $valid_statuses)) $status = 'draft';
 
-    // Validate team_id FK if provided
+    // Validate team_id FK if provided (optional field)
     if ($team_id !== null) {
         $stmt = $pdo->prepare("SELECT id FROM teams WHERE id = ?");
         $stmt->execute([$team_id]);
         if (!$stmt->fetch()) {
-            throw new Exception('Invalid team selected');
+            $team_id = null; // Clear invalid FK reference
         }
     }
 
-    // Validate game_id FK if provided
+    // Validate game_id FK if provided (optional field)
     if ($game_id !== null) {
         $stmt = $pdo->prepare("SELECT id FROM game_schedules WHERE id = ?");
         $stmt->execute([$game_id]);
@@ -1122,11 +1122,15 @@ function handleCreateClip() {
     $athlete_ids = $_POST['athlete_ids'] ?? [];
     if (is_array($athlete_ids)) {
         $valid_ids = [];
-        $int_ids = array_filter(array_map('intval', $athlete_ids), function($id) { return $id > 0; });
+        $int_ids = [];
+        foreach ($athlete_ids as $aid) {
+            $aid = (int)$aid;
+            if ($aid > 0) $int_ids[] = $aid;
+        }
         if (!empty($int_ids)) {
             $placeholders = implode(',', array_fill(0, count($int_ids), '?'));
             $check_stmt = $pdo->prepare("SELECT id FROM users WHERE id IN ($placeholders)");
-            $check_stmt->execute(array_values($int_ids));
+            $check_stmt->execute($int_ids);
             $valid_ids = $check_stmt->fetchAll(PDO::FETCH_COLUMN);
         }
         $ath_stmt = $pdo->prepare("INSERT IGNORE INTO vr_clip_athletes (clip_id, athlete_id) VALUES (?, ?)");
