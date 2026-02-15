@@ -106,6 +106,22 @@ try {
         case 'add_calendar_event':
             handleAddCalendarEvent();
             break;
+
+        case 'create_device_pair':
+            handleCreateDevicePair();
+            break;
+
+        case 'join_device_pair':
+            handleJoinDevicePair();
+            break;
+
+        case 'end_device_pair':
+            handleEndDevicePair();
+            break;
+
+        case 'toggle_freeze_pair':
+            handleToggleFreezePair();
+            break;
             
         default:
             throw new Exception('Invalid action');
@@ -1516,5 +1532,108 @@ function handleAddCalendarEvent() {
 
     logSecurityEvent($pdo, 'calendar_event_added', "Added $game_type event for team $team_id on $game_date", $user_id);
     header('Location: /gameplan.php?page=calendar&success=event_added');
+    exit;
+}
+
+function handleCreateDevicePair() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required');
+    }
+
+    $session_id = filter_input(INPUT_POST, 'session_id', FILTER_VALIDATE_INT) ?: null;
+
+    // Generate a unique 6-character pair code with collision retry
+    $controller_token = bin2hex(random_bytes(32));
+    $max_attempts = 5;
+    for ($attempt = 0; $attempt < $max_attempts; $attempt++) {
+        $pair_code = strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO vr_device_pairs (pair_code, session_id, controller_token, status, created_by)
+                VALUES (?, ?, ?, 'waiting', ?)
+            ");
+            $stmt->execute([$pair_code, $session_id, $controller_token, $user_id]);
+            break;
+        } catch (PDOException $e) {
+            if ($attempt === $max_attempts - 1) throw $e;
+        }
+    }
+
+    logSecurityEvent($pdo, 'device_pair_created', "Created device pair $pair_code", $user_id);
+    header('Location: /gameplan.php?page=video_review&tab=device_pair&success=pair_created');
+    exit;
+}
+
+function handleJoinDevicePair() {
+    global $pdo, $user_id;
+
+    $pair_code = strtoupper(trim($_POST['pair_code'] ?? ''));
+    if (empty($pair_code) || strlen($pair_code) > 10) {
+        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=invalid_code');
+        exit;
+    }
+
+    $viewer_token = bin2hex(random_bytes(32));
+
+    $stmt = $pdo->prepare("
+        UPDATE vr_device_pairs SET viewer_token = ?, status = 'paired'
+        WHERE pair_code = ? AND status = 'waiting'
+    ");
+    $stmt->execute([$viewer_token, $pair_code]);
+
+    if ($stmt->rowCount() === 0) {
+        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=pair_not_found');
+        exit;
+    }
+
+    logSecurityEvent($pdo, 'device_pair_joined', "Joined device pair $pair_code as viewer", $user_id);
+    header('Location: /gameplan.php?page=video_review&tab=device_pair&success=pair_joined');
+    exit;
+}
+
+function handleEndDevicePair() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required');
+    }
+
+    $pair_id = filter_input(INPUT_POST, 'pair_id', FILTER_VALIDATE_INT);
+    if (!$pair_id) {
+        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=invalid_pair');
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE vr_device_pairs SET status = 'ended' WHERE id = ? AND created_by = ?");
+    $stmt->execute([$pair_id, $user_id]);
+
+    logSecurityEvent($pdo, 'device_pair_ended', "Ended device pair $pair_id", $user_id);
+    header('Location: /gameplan.php?page=video_review&tab=device_pair&success=pair_ended');
+    exit;
+}
+
+function handleToggleFreezePair() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        echo json_encode(['success' => false, 'error' => 'Coach access required']);
+        exit;
+    }
+
+    $pair_id = filter_input(INPUT_POST, 'pair_id', FILTER_VALIDATE_INT);
+    if (!$pair_id) {
+        echo json_encode(['success' => false, 'error' => 'Invalid pair']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE vr_device_pairs SET is_frozen = NOT is_frozen WHERE id = ? AND created_by = ? AND status = 'active'");
+    $stmt->execute([$pair_id, $user_id]);
+
+    echo json_encode(['success' => $stmt->rowCount() > 0]);
     exit;
 }

@@ -35,6 +35,7 @@ try {
 
 // ── Upload tab: existing sources ──────────────────────────────
 $vr_sources = [];
+$ndi_cameras = [];
 if ($vr_tab === 'upload') {
     try {
         $stmt = $pdo->prepare("
@@ -49,6 +50,12 @@ if ($vr_tab === 'upload') {
         $stmt->execute();
         $vr_sources = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) { error_log('FR sources: ' . $e->getMessage()); }
+
+    try {
+        $stmt = $pdo->prepare("SELECT id, name, ip_address, port, ndi_name, location, is_active FROM ndi_cameras ORDER BY name ASC");
+        $stmt->execute();
+        $ndi_cameras = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) { error_log('FR ndi cameras: ' . $e->getMessage()); }
 }
 
 // ── Editor tab: source video & roster ─────────────────────────
@@ -225,10 +232,37 @@ if (!function_exists('vr_format_duration')) {
         <h3><i class="fas fa-broadcast-tower"></i> NDI Camera Recording</h3>
     </div>
     <div class="card-body">
+        <?php if (empty($ndi_cameras)): ?>
         <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;">
             <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted, #888); display: inline-block;"></span>
-            <span>NDI source detection requires the companion server. <a href="/gameplan.php?page=home">Check status</a></span>
+            <span>No NDI cameras configured. <a href="/dashboard.php?page=system_tools&tab=ndi_cameras">Configure cameras</a> in System Tools, or check the <a href="/gameplan.php?page=home">companion server status</a>.</span>
         </div>
+        <?php else: ?>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;">
+            <?php foreach ($ndi_cameras as $cam): ?>
+            <div class="card" style="margin-bottom: 0; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: <?= $cam['is_active'] ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)' ?>; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i class="fas fa-video" style="color: <?= $cam['is_active'] ? 'var(--success, #10B981)' : 'var(--danger, #EF4444)' ?>; font-size: 16px;"></i>
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 600; font-size: 13px; color: var(--text-white, #fff);"><?= htmlspecialchars($cam['name']) ?></div>
+                    <div style="font-size: 11px; color: var(--text-muted, #888); display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px;">
+                        <span><code style="font-size: 10px;"><?= htmlspecialchars($cam['ip_address']) ?>:<?= (int)$cam['port'] ?></code></span>
+                        <?php if (!empty($cam['location'])): ?>
+                        <span><i class="fas fa-map-marker-alt" style="margin-right: 3px;"></i><?= htmlspecialchars($cam['location']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <span class="badge badge-<?= $cam['is_active'] ? 'success' : 'error' ?>" style="font-size: 10px; flex-shrink: 0;">
+                    <?= $cam['is_active'] ? 'Active' : 'Disabled' ?>
+                </span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <div style="margin-top: 12px; font-size: 12px; color: var(--text-muted, #888);">
+            <a href="/dashboard.php?page=system_tools&tab=ndi_cameras">Manage cameras in System Tools</a>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
