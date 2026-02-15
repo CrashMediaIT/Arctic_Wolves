@@ -11,6 +11,26 @@ if (!$isAnyCoach) {
     return;
 }
 
+// ── Fetch center ice logo URL from theme settings ─────────────
+$wb_centerLogoUrl = '';
+try {
+    $logoStmt = $pdo->prepare("
+        SELECT COALESCE(
+            MAX(CASE WHEN setting_name = 'center_ice_logo_url' AND setting_value != '' THEN setting_value END),
+            MAX(CASE WHEN setting_name = 'logo_url' AND setting_value != '' THEN setting_value END)
+        ) as logo_url 
+        FROM theme_settings 
+        WHERE setting_name IN ('center_ice_logo_url', 'logo_url')
+    ");
+    $logoStmt->execute();
+    $logoResult = $logoStmt->fetch(PDO::FETCH_ASSOC);
+    if ($logoResult && !empty($logoResult['logo_url'])) {
+        $wb_centerLogoUrl = $logoResult['logo_url'];
+    }
+} catch (PDOException $e) {
+    error_log("Error fetching center ice logo URL for whiteboard: " . $e->getMessage());
+}
+
 // ── Parameters ────────────────────────────────────────────────
 $wb_team_id = isset($_GET['team_id']) ? (int)$_GET['team_id'] : 0;
 $wb_ice_view = isset($_GET['ice_view']) ? preg_replace('/[^a-z\-]/', '', $_GET['ice_view']) : 'full';
@@ -271,7 +291,10 @@ document.addEventListener('DOMContentLoaded', function() {
     logoImage.crossOrigin = 'anonymous';
     logoImage.onload = function() { logoLoaded = true; drawRink(); };
     logoImage.onerror = function() { logoLoaded = false; drawRink(); };
-    logoImage.src = 'https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png';
+    var wbLogoUrl = '<?= htmlspecialchars($wb_centerLogoUrl, ENT_QUOTES, 'UTF-8') ?>';
+    if (wbLogoUrl) {
+        logoImage.src = wbLogoUrl;
+    }
 
     function resizeCanvases() {
         var rect = container.getBoundingClientRect();
