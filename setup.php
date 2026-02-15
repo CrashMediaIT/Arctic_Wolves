@@ -159,7 +159,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Try to add roster_player_id column to vr_game_plan_lines for non-user roster players
                 $pdo->exec("ALTER TABLE vr_game_plan_lines ADD COLUMN roster_player_id INT DEFAULT NULL COMMENT 'References roster_players.id for non-user players' AFTER athlete_id");
             } catch (PDOException $e) {
-                // Column might already exist, which is fine
+                // Column might already exist (error code 42S21 / 1060), which is fine
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    error_log("Note: Could not add roster_player_id column: " . $e->getMessage());
+                }
             }
             
             try {
