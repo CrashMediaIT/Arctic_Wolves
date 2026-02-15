@@ -6,9 +6,12 @@
 
 $profile = null;
 try {
-    $stmt = $pdo->prepare("SELECT first_name, last_name, email, phone, role, profile_image_url, created_at FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT first_name, last_name, email, phone, role, profile_image, created_at FROM users WHERE id = ?");
     $stmt->execute([$user_id]);
     $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($profile) {
+        $profile = decryptUserRow($profile);
+    }
 } catch (PDOException $e) { $profile = null; }
 
 if (!$profile) {
@@ -18,7 +21,7 @@ if (!$profile) {
         'email' => '',
         'phone' => '',
         'role' => $user_role ?? 'user',
-        'profile_image_url' => '',
+        'profile_image' => '',
         'created_at' => null,
     ];
 }
@@ -84,8 +87,8 @@ $roleBg = $roleBadgeColors[$profile['role']][1] ?? 'rgba(168,168,184,0.15)';
 <div class="m-profile">
     <div class="m-profile-hero">
         <div class="m-profile-avatar">
-            <?php if (!empty($profile['profile_image_url'])): ?>
-                <img src="<?= htmlspecialchars($profile['profile_image_url']) ?>" alt="Profile">
+            <?php if (!empty($profile['profile_image'])): ?>
+                <img src="<?= htmlspecialchars($profile['profile_image']) ?>" alt="Profile">
             <?php else: ?>
                 <?= $initials ?>
             <?php endif; ?>
@@ -126,10 +129,10 @@ $roleBg = $roleBadgeColors[$profile['role']][1] ?? 'rgba(168,168,184,0.15)';
     </div>
 
     <div class="m-profile-actions">
-        <a href="?page=profile&edit=1" class="m-profile-action m-profile-action-primary">
+        <a href="?page=profile&tab=personal" class="m-profile-action m-profile-action-primary">
             <i class="fas fa-pen"></i> Edit Profile
         </a>
-        <a href="?page=profile&change_password=1" class="m-profile-action m-profile-action-secondary">
+        <a href="?page=profile&tab=security" class="m-profile-action m-profile-action-secondary">
             <i class="fas fa-lock"></i> Change Password
         </a>
     </div>
