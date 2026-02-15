@@ -17,7 +17,7 @@ if (!in_array($gp_tab, ['pre_game', 'post_game', 'practice'])) $gp_tab = 'pre_ga
 // ── Load teams ────────────────────────────────────────────────
 $gp_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $gp_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('GP teams: ' . $e->getMessage()); }

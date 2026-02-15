@@ -87,6 +87,14 @@ try {
             handleImportCalendar();
             break;
 
+        case 'sync_calendar':
+            handleSyncCalendar();
+            break;
+
+        case 'resolve_import':
+            handleResolveImport();
+            break;
+
         case 'add_roster_player':
             handleAddRosterPlayer();
             break;
@@ -944,6 +952,7 @@ function handleSaveHockeyLines() {
     }
 
     $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    $game_id = filter_input(INPUT_POST, 'game_id', FILTER_VALIDATE_INT) ?: null;
     $tab = $_POST['tab'] ?? 'forwards';
     $valid_tabs = ['forwards', 'defense', 'special', 'goalies'];
     if (!in_array($tab, $valid_tabs)) $tab = 'forwards';
@@ -956,21 +965,45 @@ function handleSaveHockeyLines() {
         throw new Exception('Invalid team selected');
     }
 
+    // Validate game exists if game_id provided
+    if ($game_id) {
+        $stmt = $pdo->prepare("SELECT id FROM game_schedules WHERE id = ?");
+        $stmt->execute([$game_id]);
+        if (!$stmt->fetch()) {
+            throw new Exception('Invalid game selected');
+        }
+    }
+
     $lines = $_POST['lines'] ?? [];
     if (!is_array($lines)) throw new Exception('Invalid lines data');
 
-    // Collect all athlete IDs and validate they exist
+    // Collect all athlete IDs and roster player IDs separately
     $all_athlete_ids = [];
+    $all_roster_player_ids = [];
+    // Build a parsed map: [line_name][pos] => ['type' => 'user'|'roster_player', 'id' => int]
+    $parsed_lines = [];
     foreach ($lines as $line_name => $positions) {
         if (!is_array($positions)) continue;
-        foreach ($positions as $pos => $athlete_id) {
-            $athlete_id = (int)$athlete_id;
-            if ($athlete_id > 0) {
-                $all_athlete_ids[] = $athlete_id;
+        foreach ($positions as $pos => $raw_value) {
+            $raw_value = trim((string)$raw_value);
+            if ($raw_value === '') continue;
+            if (strpos($raw_value, 'rp_') === 0) {
+                $rp_id = (int)substr($raw_value, 3);
+                if ($rp_id > 0) {
+                    $all_roster_player_ids[] = $rp_id;
+                    $parsed_lines[$line_name][$pos] = ['type' => 'roster_player', 'id' => $rp_id];
+                }
+            } else {
+                $athlete_id = (int)$raw_value;
+                if ($athlete_id > 0) {
+                    $all_athlete_ids[] = $athlete_id;
+                    $parsed_lines[$line_name][$pos] = ['type' => 'user', 'id' => $athlete_id];
+                }
             }
         }
     }
 
+    // Validate user athlete IDs
     $valid_athlete_ids = [];
     if (!empty($all_athlete_ids)) {
         $unique_ids = array_unique($all_athlete_ids);
@@ -980,24 +1013,39 @@ function handleSaveHockeyLines() {
         $valid_athlete_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    // Validate roster player IDs
+    $valid_roster_player_ids = [];
+    if (!empty($all_roster_player_ids)) {
+        $unique_rp_ids = array_unique($all_roster_player_ids);
+        $placeholders = implode(',', array_fill(0, count($unique_rp_ids), '?'));
+        $stmt = $pdo->prepare("SELECT id FROM roster_players WHERE id IN ($placeholders)");
+        $stmt->execute(array_values($unique_rp_ids));
+        $valid_roster_player_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
     $pdo->beginTransaction();
     try {
-        // Delete existing lines for this team and tab's line names
+        // Delete existing lines for this team+game and tab's line names
         $line_names = array_keys($lines);
         if (!empty($line_names)) {
             $placeholders = implode(',', array_fill(0, count($line_names), '?'));
-            $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND line_name IN ($placeholders)");
-            $stmt->execute(array_merge([$team_id], $line_names));
+            if ($game_id) {
+                $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND game_id = ? AND line_name IN ($placeholders)");
+                $stmt->execute(array_merge([$team_id, $game_id], $line_names));
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM vr_game_plan_lines WHERE team_id = ? AND game_id IS NULL AND line_name IN ($placeholders)");
+                $stmt->execute(array_merge([$team_id], $line_names));
+            }
         }
 
-        // Insert new lines (only for validated athlete IDs)
-        $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, line_name, position, athlete_id) VALUES (?, ?, ?, ?)");
-        foreach ($lines as $line_name => $positions) {
-            if (!is_array($positions)) continue;
-            foreach ($positions as $pos => $athlete_id) {
-                $athlete_id = (int)$athlete_id;
-                if ($athlete_id > 0 && in_array($athlete_id, $valid_athlete_ids)) {
-                    $stmt->execute([$team_id, $line_name, $pos, $athlete_id]);
+        // Insert new lines (only for validated IDs)
+        $stmt = $pdo->prepare("INSERT INTO vr_game_plan_lines (team_id, game_id, line_name, position, athlete_id, roster_player_id) VALUES (?, ?, ?, ?, ?, ?)");
+        foreach ($parsed_lines as $line_name => $positions) {
+            foreach ($positions as $pos => $entry) {
+                if ($entry['type'] === 'roster_player' && in_array($entry['id'], $valid_roster_player_ids)) {
+                    $stmt->execute([$team_id, $game_id, $line_name, $pos, null, $entry['id']]);
+                } elseif ($entry['type'] === 'user' && in_array($entry['id'], $valid_athlete_ids)) {
+                    $stmt->execute([$team_id, $game_id, $line_name, $pos, $entry['id'], null]);
                 }
             }
         }
@@ -1009,8 +1057,9 @@ function handleSaveHockeyLines() {
         throw new Exception('Failed to save lines. Please try again.');
     }
 
-    logSecurityEvent($pdo, 'hockey_lines_saved', "Hockey lines saved for team $team_id", $user_id);
-    header('Location: /gameplan.php?page=lines&team_id=' . $team_id . '&tab=' . urlencode($tab) . '&success=lines_saved');
+    $game_param = $game_id ? '&game_id=' . $game_id : '';
+    logSecurityEvent($pdo, 'hockey_lines_saved', "Hockey lines saved for team $team_id" . ($game_id ? " game $game_id" : " (default)"), $user_id);
+    header('Location: /gameplan.php?page=lines&team_id=' . $team_id . '&tab=' . urlencode($tab) . $game_param . '&success=lines_saved');
     exit;
 }
 
@@ -1280,6 +1329,7 @@ function handleImportCalendar() {
     if (!$team_id) throw new Exception('Team is required');
 
     $imported = 0;
+    $updated = 0;
     $teams_created = 0;
 
     // Get our team name for parsing "Team A vs Team B" patterns
@@ -1351,13 +1401,35 @@ function handleImportCalendar() {
 
         if ($ical_content !== false && !empty($ical_content)) {
             $events = parseICalEvents($ical_content);
-            $stmt = $pdo->prepare("
+
+            // Prepare UPSERT statement: if ical_uid matches for this team, update; otherwise insert
+            $stmt_upsert = $pdo->prepare("
+                INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id, ical_uid)
+                VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    opponent_team = VALUES(opponent_team),
+                    game_date = VALUES(game_date),
+                    game_type = VALUES(game_type),
+                    notes = VALUES(notes),
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            // Fallback INSERT for events without UID (no upsert possible)
+            $stmt_insert = $pdo->prepare("
                 INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id)
                 VALUES (?, ?, ?, ?, 1, ?, ?)
             ");
+
+            $updated = 0;
+            $ambiguous_events = []; // Events that couldn't be confidently parsed
             foreach ($events as $event) {
                 if (!empty($event['summary']) && !empty($event['dtstart'])) {
                     $raw_summary = $event['summary'];
+
+                    // Skip TBD/TBA events – these are placeholders without confirmed opponents
+                    if (preg_match('/^\s*TBD\s*$/i', $raw_summary) || preg_match('/^\s*TBA\s*$/i', $raw_summary)) {
+                        continue;
+                    }
+
                     $game_type = 'regular';
                     // Detect game type from summary
                     $lower = strtolower($raw_summary);
@@ -1371,29 +1443,309 @@ function handleImportCalendar() {
                         $game_type = 'exhibition';
                     }
 
-                    // Parse the opponent name from summary (handles "Team A vs Team B" format)
+                    // Parse the opponent name from summary (handles "Team A vs Team B" and "Team A at Team B" formats)
                     $opponent = parseOpponentFromSummary($raw_summary, $own_team_name);
-                    // If parsing returned empty (e.g. "Team - Tournament" format), use raw summary for the schedule record
-                    if (empty($opponent)) {
+
+                    // Check if this event is ambiguous (couldn't determine opponent)
+                    $is_ambiguous = false;
+                    if (empty($opponent) && $game_type !== 'practice') {
+                        $is_ambiguous = true;
                         $opponent = $raw_summary;
+                    } elseif (!empty($opponent) && $opponent === $raw_summary && $game_type !== 'practice') {
+                        // Opponent is the raw summary - no parsing was possible
+                        $is_ambiguous = true;
                     }
 
-                    $stmt->execute([$team_id, $opponent, $event['dtstart'], $game_type, $event['description'] ?? '', $season_id]);
-                    $imported++;
+                    // Skip if parsed opponent is TBD/TBA
+                    if (preg_match('/^\s*(TBD|TBA)\s*$/i', $opponent)) {
+                        continue;
+                    }
+
+                    // If ambiguous, store for manual review
+                    if ($is_ambiguous) {
+                        $ambiguous_events[] = [
+                            'summary' => $raw_summary,
+                            'dtstart' => $event['dtstart'],
+                            'game_type' => $game_type,
+                            'description' => $event['description'] ?? '',
+                            'uid' => $event['uid'] ?? '',
+                            'parsed_opponent' => $opponent,
+                        ];
+                        continue;
+                    }
+
+                    $event_uid = !empty($event['uid']) ? $event['uid'] : null;
+                    $description = $event['description'] ?? '';
+
+                    if ($event_uid) {
+                        // UPSERT: insert or update based on ical_uid + team_id unique key
+                        $stmt_upsert->execute([$team_id, $opponent, $event['dtstart'], $game_type, $description, $season_id, $event_uid]);
+                        if ($stmt_upsert->rowCount() === 2) {
+                            // rowCount=2 means ON DUPLICATE KEY UPDATE was triggered (existing row updated)
+                            $updated++;
+                        } else {
+                            $imported++;
+                        }
+                    } else {
+                        // No UID — simple insert (legacy behavior, can't deduplicate)
+                        $stmt_insert->execute([$team_id, $opponent, $event['dtstart'], $game_type, $description, $season_id]);
+                        $imported++;
+                    }
+
                     // Only auto-create team for actual matchups (not practices/tournaments without a parsed opponent)
                     if ($game_type !== 'practice') {
                         $parsed_team = parseOpponentFromSummary($raw_summary, $own_team_name);
-                        if (!empty($parsed_team)) {
+                        if (!empty($parsed_team) && !preg_match('/^\s*(TBD|TBA)\s*$/i', $parsed_team)) {
                             $teams_created += autoCreateTeamIfNeeded($pdo, $parsed_team, $season_id);
                         }
                     }
                 }
             }
+
+            // Store iCal URL on team for future re-sync
+            $calendar_url = filter_var($_POST['calendar_url'] ?? '', FILTER_VALIDATE_URL);
+            if ($calendar_url) {
+                try {
+                    $stmt = $pdo->prepare("UPDATE teams SET ical_url = ? WHERE id = ?");
+                    $stmt->execute([$calendar_url, $team_id]);
+                } catch (PDOException $e) {
+                    error_log('Store ical_url: ' . $e->getMessage());
+                }
+            }
+            // Store ambiguous events in session for manual resolution
+            if (!empty($ambiguous_events)) {
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
+                $_SESSION['import_ambiguous'] = [
+                    'team_id' => $team_id,
+                    'season_id' => $season_id,
+                    'events' => $ambiguous_events,
+                ];
+            }
         }
     }
 
-    logSecurityEvent($pdo, 'calendar_imported', "Calendar imported: $imported games, $teams_created teams created for team $team_id", $user_id);
-    header('Location: /gameplan.php?page=calendar&success=imported_' . $imported);
+    $msg = "Calendar imported: $imported new, $updated updated, $teams_created teams created for team $team_id";
+    logSecurityEvent($pdo, 'calendar_imported', $msg, $user_id);
+    $success_msg = 'imported_' . $imported . ($updated > 0 ? '_updated_' . $updated : '');
+    $ambiguous_count = count($ambiguous_events ?? []);
+    if ($ambiguous_count > 0) {
+        $success_msg .= '&review=' . $ambiguous_count;
+    }
+    header('Location: /gameplan.php?page=calendar&success=' . $success_msg);
+    exit;
+}
+
+/**
+ * Re-sync a team's calendar from its stored iCal URL.
+ * Fetches the iCal feed and uses the same UPSERT logic as import.
+ */
+function handleSyncCalendar() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to sync calendars');
+    }
+
+    $team_id = filter_input(INPUT_POST, 'team_id', FILTER_VALIDATE_INT);
+    if (!$team_id) throw new Exception('Team is required');
+
+    // Load the team's stored iCal URL
+    $stmt = $pdo->prepare("SELECT name, ical_url FROM teams WHERE id = ? AND is_managed = 1");
+    $stmt->execute([$team_id]);
+    $team = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$team || empty($team['ical_url'])) {
+        throw new Exception('No calendar URL stored for this team. Import a calendar first using a URL.');
+    }
+
+    $url = $team['ical_url'];
+    $own_team_name = $team['name'];
+
+    // Fetch the iCal feed
+    $scheme = parse_url($url, PHP_URL_SCHEME);
+    if (!in_array($scheme, ['http', 'https'])) {
+        throw new Exception('Only HTTP and HTTPS URLs are supported');
+    }
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 30,
+            'user_agent' => 'ArcticWolves/1.0 Calendar Sync',
+            'follow_location' => 1,
+            'max_redirects' => 5,
+        ],
+        'ssl' => [
+            'verify_peer' => true,
+            'verify_peer_name' => true,
+        ],
+    ]);
+    $ical_content = file_get_contents($url, false, $ctx);
+    if ($ical_content === false) {
+        throw new Exception('Could not fetch calendar from stored URL. The URL may have changed.');
+    }
+
+    // Get season_id from the most recent import for this team
+    $season_id = null;
+    try {
+        $stmt = $pdo->prepare("SELECT season_id FROM game_schedules WHERE team_id = ? AND season_id IS NOT NULL ORDER BY created_at DESC LIMIT 1");
+        $stmt->execute([$team_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) $season_id = (int)$row['season_id'];
+    } catch (PDOException $e) { /* use null */ }
+
+    $events = parseICalEvents($ical_content);
+    $imported = 0;
+    $updated = 0;
+    $teams_created = 0;
+
+    $stmt_upsert = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id, ical_uid)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            opponent_team = VALUES(opponent_team),
+            game_date = VALUES(game_date),
+            game_type = VALUES(game_type),
+            notes = VALUES(notes),
+            updated_at = CURRENT_TIMESTAMP
+    ");
+    $stmt_insert = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id)
+        VALUES (?, ?, ?, ?, 1, ?, ?)
+    ");
+
+    foreach ($events as $event) {
+        if (!empty($event['summary']) && !empty($event['dtstart'])) {
+            $raw_summary = $event['summary'];
+
+            if (preg_match('/^\s*TBD\s*$/i', $raw_summary) || preg_match('/^\s*TBA\s*$/i', $raw_summary)) {
+                continue;
+            }
+
+            $game_type = 'regular';
+            $lower = strtolower($raw_summary);
+            if (strpos($lower, 'practice') !== false || strpos($lower, 'training') !== false) {
+                $game_type = 'practice';
+            } elseif (strpos($lower, 'tournament') !== false) {
+                $game_type = 'tournament';
+            } elseif (strpos($lower, 'playoff') !== false) {
+                $game_type = 'playoff';
+            } elseif (strpos($lower, 'exhibition') !== false || strpos($lower, 'scrimmage') !== false) {
+                $game_type = 'exhibition';
+            }
+
+            $opponent = parseOpponentFromSummary($raw_summary, $own_team_name);
+            if (empty($opponent)) {
+                $opponent = $raw_summary;
+            }
+            if (preg_match('/^\s*(TBD|TBA)\s*$/i', $opponent)) {
+                continue;
+            }
+
+            $event_uid = !empty($event['uid']) ? $event['uid'] : null;
+            $description = $event['description'] ?? '';
+
+            if ($event_uid) {
+                $stmt_upsert->execute([$team_id, $opponent, $event['dtstart'], $game_type, $description, $season_id, $event_uid]);
+                if ($stmt_upsert->rowCount() === 2) {
+                    $updated++;
+                } else {
+                    $imported++;
+                }
+            } else {
+                $stmt_insert->execute([$team_id, $opponent, $event['dtstart'], $game_type, $description, $season_id]);
+                $imported++;
+            }
+
+            if ($game_type !== 'practice') {
+                $parsed_team = parseOpponentFromSummary($raw_summary, $own_team_name);
+                if (!empty($parsed_team) && !preg_match('/^\s*(TBD|TBA)\s*$/i', $parsed_team)) {
+                    $teams_created += autoCreateTeamIfNeeded($pdo, $parsed_team, $season_id);
+                }
+            }
+        }
+    }
+
+    logSecurityEvent($pdo, 'calendar_synced', "Calendar synced: $imported new, $updated updated, $teams_created teams created for team $team_id", $user_id);
+    $success_msg = 'synced_' . $imported . '_updated_' . $updated;
+    header('Location: /gameplan.php?page=calendar&success=' . $success_msg);
+    exit;
+}
+
+/**
+ * Handle manual resolution of ambiguous events from calendar import.
+ * User provides opponent team names for events that couldn't be auto-parsed.
+ */
+function handleResolveImport() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        throw new Exception('Coach access required to resolve imports');
+    }
+
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $stored = $_SESSION['import_ambiguous'] ?? null;
+    if (!$stored || empty($stored['events'])) {
+        header('Location: /gameplan.php?page=calendar');
+        exit;
+    }
+
+    $team_id = (int)$stored['team_id'];
+    $season_id = $stored['season_id'] ? (int)$stored['season_id'] : null;
+    $events = $stored['events'];
+
+    $resolved = $_POST['resolved'] ?? [];
+    if (!is_array($resolved)) {
+        throw new Exception('Invalid resolution data');
+    }
+
+    $imported = 0;
+    $teams_created = 0;
+
+    $stmt_upsert = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id, ical_uid)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            opponent_team = VALUES(opponent_team),
+            game_date = VALUES(game_date),
+            game_type = VALUES(game_type),
+            notes = VALUES(notes),
+            updated_at = CURRENT_TIMESTAMP
+    ");
+    $stmt_insert = $pdo->prepare("
+        INSERT INTO game_schedules (team_id, opponent_team, game_date, game_type, is_home_game, notes, season_id)
+        VALUES (?, ?, ?, ?, 1, ?, ?)
+    ");
+
+    foreach ($events as $idx => $event) {
+        $opponent = trim($resolved[$idx] ?? '');
+        if (empty($opponent) || preg_match('/^\s*(TBD|TBA|skip)\s*$/i', $opponent)) {
+            continue; // User chose to skip this event
+        }
+
+        $event_uid = !empty($event['uid']) ? $event['uid'] : null;
+        $description = $event['description'] ?? '';
+
+        if ($event_uid) {
+            $stmt_upsert->execute([$team_id, $opponent, $event['dtstart'], $event['game_type'], $description, $season_id, $event_uid]);
+            $imported++;
+        } else {
+            $stmt_insert->execute([$team_id, $opponent, $event['dtstart'], $event['game_type'], $description, $season_id]);
+            $imported++;
+        }
+
+        $teams_created += autoCreateTeamIfNeeded($pdo, $opponent, $season_id);
+    }
+
+    // Clear the session data
+    unset($_SESSION['import_ambiguous']);
+
+    logSecurityEvent($pdo, 'import_resolved', "Import resolution: $imported events resolved for team $team_id", $user_id);
+    header('Location: /gameplan.php?page=calendar&success=resolved_' . $imported);
     exit;
 }
 
@@ -1414,13 +1766,15 @@ function parseICalEvents($content) {
     foreach ($lines as $line) {
         $line = trim($line);
         if ($line === 'BEGIN:VEVENT') {
-            $current = ['summary' => '', 'dtstart' => '', 'description' => '', 'location' => ''];
+            $current = ['summary' => '', 'dtstart' => '', 'description' => '', 'location' => '', 'uid' => ''];
         } elseif ($line === 'END:VEVENT' && $current !== null) {
             $events[] = $current;
             $current = null;
         } elseif ($current !== null) {
             if (strpos($line, 'SUMMARY:') === 0 || strpos($line, 'SUMMARY;') === 0) {
                 $current['summary'] = trim(substr($line, strpos($line, ':') + 1));
+            } elseif (strpos($line, 'UID:') === 0 || strpos($line, 'UID;') === 0) {
+                $current['uid'] = trim(substr($line, strpos($line, ':') + 1));
             } elseif (strpos($line, 'DTSTART') === 0) {
                 $val = trim(substr($line, strpos($line, ':') + 1));
                 // Convert iCal date format to MySQL datetime
@@ -1457,6 +1811,8 @@ function parseICalEvents($content) {
  *   "Team A vs Team B"  → returns Team B (opponent)
  *   "Team A vs. Team B" → returns Team B
  *   "Team A v Team B"   → returns Team B
+ *   "Team A at Team B"  → returns Team B (away game)
+ *   "Team A At Team B"  → returns Team B (away game)
  *   "Team -"            → tournament/non-matchup event, returns empty string
  * If the summary doesn't match a known pattern, returns the cleaned summary as-is.
  */
@@ -1467,31 +1823,53 @@ function parseOpponentFromSummary($summary, $ownTeamName = '') {
     // "Team - something" pattern (tournament events) → not a matchup
     if (preg_match('/^.+\s+-\s*$/i', $summary) || preg_match('/^.+\s+-\s+/i', $summary)) {
         // Check if it's "Team - Event Name" style (not a matchup)
-        // Only skip if there's no "vs" in it
-        if (stripos($summary, ' vs ') === false && stripos($summary, ' vs. ') === false && stripos($summary, ' v ') === false) {
+        // Only skip if there's no "vs" or "at" separator in it
+        if (stripos($summary, ' vs ') === false && stripos($summary, ' vs. ') === false && stripos($summary, ' v ') === false && stripos($summary, ' at ') === false) {
             return '';
         }
     }
 
     // "Team A vs Team B" or "Team A vs. Team B" or "Team A v Team B"
-    if (preg_match('/^(.+?)\s+(?:vs\.?|v)\s+(.+)$/i', $summary, $m)) {
+    // Also handles "Team A at Team B" and "Team A At Team B"
+    if (preg_match('/^(.+?)\s+(?:vs\.?|v|at)\s+(.+)$/i', $summary, $m)) {
         $teamA = trim($m[1]);
         $teamB = trim($m[2]);
 
         // If we know our own team name, return the other team
         if (!empty($ownTeamName)) {
             $ownLower = strtolower($ownTeamName);
-            // Check which side is our team (partial match to handle abbreviations)
-            if (stripos($teamA, $ownTeamName) !== false || stripos($ownTeamName, $teamA) !== false
-                || similar_text(strtolower($teamA), $ownLower, $pctA) && $pctA > 60) {
-                return $teamB;
+            $teamALower = strtolower($teamA);
+            $teamBLower = strtolower($teamB);
+
+            // Priority 1: Exact match (case-insensitive)
+            if ($teamALower === $ownLower) return $teamB;
+            if ($teamBLower === $ownLower) return $teamA;
+
+            // Priority 2: Partial containment with length-proximity check
+            // Allow a tolerance of 2 chars for minor variations (e.g., trailing spaces, punctuation)
+            // but NOT for different team numbers (e.g., "Nats U7B" vs "Nats U7B2")
+            if (stripos($teamA, $ownTeamName) !== false || stripos($ownTeamName, $teamA) !== false) {
+                if (abs(strlen($teamA) - strlen($ownTeamName)) <= 2) {
+                    return $teamB;
+                }
             }
-            if (stripos($teamB, $ownTeamName) !== false || stripos($ownTeamName, $teamB) !== false
-                || similar_text(strtolower($teamB), $ownLower, $pctB) && $pctB > 60) {
-                return $teamA;
+            if (stripos($teamB, $ownTeamName) !== false || stripos($ownTeamName, $teamB) !== false) {
+                if (abs(strlen($teamB) - strlen($ownTeamName)) <= 2) {
+                    return $teamA;
+                }
             }
+
+            // Priority 3: Fuzzy match using similar_text percentage
+            // High confidence (>80%) = accept unconditionally
+            // Medium confidence (>60%) = accept only if the other side doesn't also match
+            similar_text($teamALower, $ownLower, $pctA);
+            similar_text($teamBLower, $ownLower, $pctB);
+            if ($pctA > 80) return $teamB;
+            if ($pctB > 80) return $teamA;
+            if ($pctA > 60 && $pctB <= 60) return $teamB;
+            if ($pctB > 60 && $pctA <= 60) return $teamA;
         }
-        // If we can't determine which is ours, return the second team (conventional: "Us vs Them")
+        // If we can't determine which is ours, return the second team (conventional: "Us vs Them" / "Us at Them")
         return $teamB;
     }
 
@@ -1515,16 +1893,12 @@ function autoCreateTeamIfNeeded($pdo, $teamName, $season_id = null) {
 
     // Check for existing team with similar name (case-insensitive)
     try {
+        // Exact name match (case-insensitive) - prevents duplicates
         $stmt = $pdo->prepare("SELECT id FROM teams WHERE LOWER(name) = LOWER(?) LIMIT 1");
         $stmt->execute([$cleanName]);
-        if ($stmt->fetch()) return 0; // Team already exists
+        if ($stmt->fetch()) return 0; // Team already exists with exact name
 
-        // Also check for fuzzy match (contains)
-        $stmt = $pdo->prepare("SELECT id FROM teams WHERE LOWER(name) LIKE LOWER(?) LIMIT 1");
-        $stmt->execute(['%' . $cleanName . '%']);
-        if ($stmt->fetch()) return 0;
-
-        // Create the team
+        // Create the team as unmanaged (opponent)
         $season = '';
         if ($season_id) {
             $stmt = $pdo->prepare("SELECT name FROM seasons WHERE id = ?");
@@ -1533,7 +1907,7 @@ function autoCreateTeamIfNeeded($pdo, $teamName, $season_id = null) {
             $season = $row['name'] ?? '';
         }
 
-        $stmt = $pdo->prepare("INSERT INTO teams (name, season, is_active) VALUES (?, ?, 1)");
+        $stmt = $pdo->prepare("INSERT INTO teams (name, season, is_active, is_managed) VALUES (?, ?, 1, 0)");
         $stmt->execute([$cleanName, $season]);
         return 1;
     } catch (PDOException $e) {

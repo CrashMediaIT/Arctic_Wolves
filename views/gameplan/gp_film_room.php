@@ -15,7 +15,7 @@ if (!in_array($vr_tab, ['upload', 'editor', 'multicam'])) $vr_tab = 'upload';
 // ── Load teams ────────────────────────────────────────────────
 $vr_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $vr_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('FR teams: ' . $e->getMessage()); }

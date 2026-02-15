@@ -31,7 +31,7 @@ $vr_clip_tag_filter = isset($_GET['clip_tag']) ? (int)$_GET['clip_tag'] : 0;
 // -- Load teams for the team selector --------------------------------------
 $vr_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $vr_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('VR teams: ' . $e->getMessage()); }

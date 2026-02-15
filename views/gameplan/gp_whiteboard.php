@@ -19,7 +19,7 @@ if (!in_array($wb_ice_view, ['full', 'left-zone', 'right-zone', 'center'])) $wb_
 // ── Load teams ────────────────────────────────────────────────
 $wb_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name, division FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $wb_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('WB teams: ' . $e->getMessage()); }
@@ -33,11 +33,13 @@ $wb_lines = [];
 if ($wb_team_id > 0) {
     try {
         $stmt = $pdo->prepare("
-            SELECT gpl.line_name, gpl.position, gpl.athlete_id,
-                   u.first_name, u.last_name
+            SELECT gpl.line_name, gpl.position, gpl.athlete_id, gpl.roster_player_id,
+                   COALESCE(u.first_name, rp.first_name) AS first_name,
+                   COALESCE(u.last_name, rp.last_name) AS last_name
             FROM vr_game_plan_lines gpl
             LEFT JOIN users u ON gpl.athlete_id = u.id
-            WHERE gpl.team_id = ?
+            LEFT JOIN roster_players rp ON gpl.roster_player_id = rp.id
+            WHERE gpl.team_id = ? AND gpl.game_id IS NULL
             ORDER BY gpl.line_name, gpl.position
         ");
         $stmt->execute([$wb_team_id]);

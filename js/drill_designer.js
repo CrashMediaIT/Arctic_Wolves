@@ -161,11 +161,11 @@ class DrillDesigner {
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
         
         // Tool buttons
-        document.querySelectorAll('.tool-btn').forEach(btn => {
+        document.querySelectorAll('.tool-btn, .drill-tool').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const title = e.currentTarget.getAttribute('title');
                 this.setTool(title);
-                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tool-btn, .drill-tool').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
             });
         });
@@ -229,7 +229,7 @@ class DrillDesigner {
         if (paintBtn) {
             paintBtn.addEventListener('click', (e) => {
                 this.currentTool = 'paint';
-                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tool-btn, .drill-tool').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
             });
         }
@@ -239,7 +239,7 @@ class DrillDesigner {
     selectPaintTool() {
         this.currentTool = 'paint';
         // Update UI to show paint tool as active
-        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tool-btn, .drill-tool').forEach(b => b.classList.remove('active'));
         const paintBtn = document.querySelector('[data-tool="paint"]');
         if (paintBtn) {
             paintBtn.classList.add('active');

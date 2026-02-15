@@ -19,7 +19,7 @@ $roster_season_id = isset($_GET['season_id']) ? (int)$_GET['season_id'] : 0;
 // ── Load teams ────────────────────────────────────────────────
 $roster_teams = [];
 try {
-    $stmt = $pdo->prepare("SELECT id, name, division, season FROM teams WHERE is_active = 1 ORDER BY name");
+    $stmt = $pdo->prepare("SELECT id, name, division, season FROM teams WHERE is_active = 1 AND is_managed = 1 ORDER BY name");
     $stmt->execute();
     $roster_teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { error_log('Roster teams: ' . $e->getMessage()); }

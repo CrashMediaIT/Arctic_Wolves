@@ -48,117 +48,125 @@ if ($editDrillId) {
 
 <div class="create-drill-content">
     <!-- Interactive Drill Designer - Now on top -->
-    <div class="drill-designer-section">
+    <div class="drill-designer-section" id="drillDesignerSection">
         <div class="content-card">
-            <div class="card-header">
+            <div class="card-header" id="drillDesignerHeader">
                 <h3><i class="fas fa-drafting-compass"></i> Drill Diagram</h3>
             </div>
             <div class="card-body">
-                <!-- Tool Groups -->
-                <div class="designer-toolbar">
-                    <div class="tool-group">
-                        <span class="tool-group-label">Selection</span>
-                        <button class="tool-btn active" title="Select" data-tool="select"><i class="fas fa-mouse-pointer"></i></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Players</span>
-                        <button class="tool-btn" title="Forward (F)" data-tool="forward"><span class="tool-label">F</span></button>
-                        <button class="tool-btn" title="Forward 1 (F1)" data-tool="f1"><span class="tool-label">F1</span></button>
-                        <button class="tool-btn" title="Forward 2 (F2)" data-tool="f2"><span class="tool-label">F2</span></button>
-                        <button class="tool-btn" title="Forward 3 (F3)" data-tool="f3"><span class="tool-label">F3</span></button>
-                        <button class="tool-btn" title="Defense (D)" data-tool="defense"><span class="tool-label">D</span></button>
-                        <button class="tool-btn" title="Defense 1 (D1)" data-tool="d1"><span class="tool-label">D1</span></button>
-                        <button class="tool-btn" title="Defense 2 (D2)" data-tool="d2"><span class="tool-label">D2</span></button>
-                        <button class="tool-btn" title="Coach" data-tool="coach"><i class="fas fa-user-tie"></i></button>
-                        <button class="tool-btn" title="Goalie (G)" data-tool="goalie"><span class="tool-label">G</span></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Positions</span>
-                        <button class="tool-btn" title="Center (C)" data-tool="center"><span class="tool-label">C</span></button>
-                        <button class="tool-btn" title="Left Wing (LW)" data-tool="lw"><span class="tool-label">LW</span></button>
-                        <button class="tool-btn" title="Right Wing (RW)" data-tool="rw"><span class="tool-label">RW</span></button>
-                        <button class="tool-btn" title="Left Defense (LD)" data-tool="ld"><span class="tool-label">LD</span></button>
-                        <button class="tool-btn" title="Right Defense (RD)" data-tool="rd"><span class="tool-label">RD</span></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Equipment</span>
-                        <button class="tool-btn" title="Single Puck" data-tool="puck"><i class="fas fa-hockey-puck"></i></button>
-                        <button class="tool-btn" title="Puck Group" data-tool="pucks"><i class="fas fa-circle"></i><i class="fas fa-circle" style="margin-left: -8px;"></i></button>
-                        <button class="tool-btn" title="Cone" data-tool="cone"><i class="fas fa-play" style="transform: rotate(-90deg);"></i></button>
-                        <button class="tool-btn" title="Net" data-tool="net"><i class="fas fa-border-all"></i></button>
-                        <button class="tool-btn" title="Mini Net" data-tool="mininet"><i class="fas fa-th-large"></i></button>
-                        <button class="tool-btn" title="Tire" data-tool="tire"><i class="fas fa-circle-notch"></i></button>
-                        <button class="tool-btn" title="Stick" data-tool="stick">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: block; position: relative; z-index: 1;">
-                                <path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Drawing</span>
-                        <button class="tool-btn" title="Draw Line" data-tool="line"><i class="fas fa-minus"></i></button>
-                        <button class="tool-btn" title="Draw Dashed Line" data-tool="dashed"><i class="fas fa-ellipsis-h"></i></button>
-                        <button class="tool-btn" title="Squiggly Line (Puck Carry)" data-tool="squiggly"><i class="fas fa-wave-square"></i></button>
-                        <button class="tool-btn" title="Arrow" data-tool="arrow"><i class="fas fa-long-arrow-alt-right"></i></button>
-                        <button class="tool-btn" title="Add Text" data-tool="text"><i class="fas fa-font"></i></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Skating Patterns</span>
-                        <button class="tool-btn" title="Forward Skating" data-tool="skating_forward"><i class="fas fa-arrow-right"></i></button>
-                        <button class="tool-btn" title="Backward Skating" data-tool="skating_backward"><i class="fas fa-arrow-left"></i></button>
-                        <button class="tool-btn" title="Lateral Skating" data-tool="skating_lateral"><i class="fas fa-arrows-alt-h"></i></button>
-                        <button class="tool-btn" title="C-Cuts Skating" data-tool="skating_ccuts"><span class="tool-label" style="font-weight: bold;">C</span></button>
-                        <button class="tool-btn" title="Forward Skating with Puck" data-tool="skating_forward_puck"><i class="fas fa-hockey-puck"></i><i class="fas fa-arrow-right" style="font-size: 8px; margin-left: 2px;"></i></button>
-                        <button class="tool-btn" title="Backward Skating with Puck" data-tool="skating_backward_puck"><i class="fas fa-arrow-left" style="font-size: 8px; margin-right: 2px;"></i><i class="fas fa-hockey-puck"></i></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Pass/Shot</span>
-                        <button class="tool-btn" title="Pass" data-tool="pass"><i class="fas fa-share"></i></button>
-                        <button class="tool-btn" title="Shot" data-tool="shot"><i class="fas fa-crosshairs"></i></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Numbers</span>
-                        <button class="tool-btn" title="Number 0" data-tool="num0"><span class="tool-label">0</span></button>
-                        <button class="tool-btn" title="Number 1" data-tool="num1"><span class="tool-label">1</span></button>
-                        <button class="tool-btn" title="Number 2" data-tool="num2"><span class="tool-label">2</span></button>
-                        <button class="tool-btn" title="Number 3" data-tool="num3"><span class="tool-label">3</span></button>
-                        <button class="tool-btn" title="Number 4" data-tool="num4"><span class="tool-label">4</span></button>
-                        <button class="tool-btn" title="Number 5" data-tool="num5"><span class="tool-label">5</span></button>
-                        <button class="tool-btn" title="Number 6" data-tool="num6"><span class="tool-label">6</span></button>
-                        <button class="tool-btn" title="Number 7" data-tool="num7"><span class="tool-label">7</span></button>
-                        <button class="tool-btn" title="Number 8" data-tool="num8"><span class="tool-label">8</span></button>
-                        <button class="tool-btn" title="Number 9" data-tool="num9"><span class="tool-label">9</span></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Color</span>
-                        <button class="tool-btn" title="Paint Color" data-tool="paint"><i class="fas fa-paint-brush"></i></button>
-                        <div class="color-picker-wrapper">
-                            <input type="color" id="drill-color-picker" data-drill-action="color-picker" value="#000000" title="Select Color">
-                            <div class="active-color-circle" style="background-color: #000000;"></div>
+                <!-- Compact Toolbar (whiteboard-style) -->
+                <div class="card" style="margin-bottom:12px;" id="drillToolbar">
+                    <div class="card-body" style="padding:10px 16px;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <!-- Selection -->
+                            <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
+                                <button class="btn btn-secondary drill-tool active" title="Select" data-tool="select" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-mouse-pointer"></i></button>
+                            </div>
+                            <!-- Players -->
+                            <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
+                                <button class="btn btn-secondary drill-tool" title="Forward (F)" data-tool="forward" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">F</button>
+                                <button class="btn btn-secondary drill-tool" title="Forward 1 (F1)" data-tool="f1" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">F1</button>
+                                <button class="btn btn-secondary drill-tool" title="Forward 2 (F2)" data-tool="f2" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">F2</button>
+                                <button class="btn btn-secondary drill-tool" title="Forward 3 (F3)" data-tool="f3" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">F3</button>
+                                <button class="btn btn-secondary drill-tool" title="Defense (D)" data-tool="defense" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">D</button>
+                                <button class="btn btn-secondary drill-tool" title="Defense 1 (D1)" data-tool="d1" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">D1</button>
+                                <button class="btn btn-secondary drill-tool" title="Defense 2 (D2)" data-tool="d2" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">D2</button>
+                                <button class="btn btn-secondary drill-tool" title="Coach" data-tool="coach" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-user-tie"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Goalie (G)" data-tool="goalie" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">G</button>
+                            </div>
+                            <!-- Positions -->
+                            <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
+                                <button class="btn btn-secondary drill-tool" title="Center (C)" data-tool="center" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">C</button>
+                                <button class="btn btn-secondary drill-tool" title="Left Wing (LW)" data-tool="lw" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">LW</button>
+                                <button class="btn btn-secondary drill-tool" title="Right Wing (RW)" data-tool="rw" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">RW</button>
+                                <button class="btn btn-secondary drill-tool" title="Left Defense (LD)" data-tool="ld" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">LD</button>
+                                <button class="btn btn-secondary drill-tool" title="Right Defense (RD)" data-tool="rd" style="height:32px;width:32px;padding:0;font-size:10px;font-weight:700;">RD</button>
+                            </div>
+                            <!-- Equipment -->
+                            <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
+                                <button class="btn btn-secondary drill-tool" title="Single Puck" data-tool="puck" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-hockey-puck"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Puck Group" data-tool="pucks" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-circle"></i><i class="fas fa-circle" style="margin-left:-8px;"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Cone" data-tool="cone" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-play" style="transform:rotate(-90deg);"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Net" data-tool="net" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-border-all"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Mini Net" data-tool="mininet" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-th-large"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Tire" data-tool="tire" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-circle-notch"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Stick" data-tool="stick" style="height:32px;width:32px;padding:0;font-size:13px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4 L12 18 L18 14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
                         </div>
-                        <button class="tool-btn color-preset" title="Black" data-color-preset="#000000" style="background-color: #000000;"></button>
-                        <button class="tool-btn color-preset" title="Red" data-color-preset="#c41e3a" style="background-color: #c41e3a;"></button>
-                        <button class="tool-btn color-preset" title="Blue" data-color-preset="#0033a0" style="background-color: #0033a0;"></button>
-                        <button class="tool-btn color-preset" title="Light Blue" data-color-preset="#00bfff" style="background-color: #00bfff;"></button>
-                        <button class="tool-btn color-preset" title="Orange" data-color-preset="#ff6600" style="background-color: #ff6600;"></button>
-                        <button class="tool-btn color-preset" title="Green" data-color-preset="#10b981" style="background-color: #10b981;"></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Edit</span>
-                        <button class="tool-btn" title="Rotate Item" data-tool="rotate" data-drill-action="rotate"><i class="fas fa-sync-alt"></i></button>
-                        <button class="tool-btn danger-btn" title="Delete Selected" data-tool="delete" data-drill-action="delete"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                    <div class="tool-group">
-                        <span class="tool-group-label">Actions</span>
-                        <button class="tool-btn danger-btn" title="Clear All" data-tool="clear"><i class="fas fa-trash"></i></button>
-                        <button class="tool-btn fullscreen-btn" title="Fullscreen" data-tool="fullscreen"><i class="fas fa-expand"></i></button>
+                        <!-- Row 2: Drawing, Skating, Actions -->
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                            <!-- Drawing tools -->
+                            <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
+                                <button class="btn btn-secondary drill-tool" title="Draw Line" data-tool="line" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-minus"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Draw Dashed Line" data-tool="dashed" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-ellipsis-h"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Squiggly Line (Puck Carry)" data-tool="squiggly" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-wave-square"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Arrow" data-tool="arrow" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-arrow-right"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Add Text" data-tool="text" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-font"></i></button>
+                            </div>
+                            <!-- Skating patterns -->
+                            <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
+                                <button class="btn btn-secondary drill-tool" title="Forward Skating" data-tool="skating_forward" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-arrow-right"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Backward Skating" data-tool="skating_backward" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-arrow-left"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Lateral Skating" data-tool="skating_lateral" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-arrows-alt-h"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="C-Cuts Skating" data-tool="skating_ccuts" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">C</button>
+                                <button class="btn btn-secondary drill-tool" title="Forward Skating with Puck" data-tool="skating_forward_puck" style="height:32px;width:32px;padding:0;font-size:11px;"><i class="fas fa-hockey-puck" style="font-size:9px;"></i><i class="fas fa-arrow-right" style="font-size:8px;margin-left:1px;"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Backward Skating with Puck" data-tool="skating_backward_puck" style="height:32px;width:32px;padding:0;font-size:11px;"><i class="fas fa-arrow-left" style="font-size:8px;margin-right:1px;"></i><i class="fas fa-hockey-puck" style="font-size:9px;"></i></button>
+                            </div>
+                            <!-- Pass/Shot -->
+                            <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
+                                <button class="btn btn-secondary drill-tool" title="Pass" data-tool="pass" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-share"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Shot" data-tool="shot" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-crosshairs"></i></button>
+                            </div>
+                            <!-- Numbers -->
+                            <div style="display:flex;gap:4px;border-right:1px solid var(--border);padding-right:12px;">
+                                <button class="btn btn-secondary drill-tool" title="Number 0" data-tool="num0" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">0</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 1" data-tool="num1" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">1</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 2" data-tool="num2" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">2</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 3" data-tool="num3" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">3</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 4" data-tool="num4" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">4</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 5" data-tool="num5" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">5</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 6" data-tool="num6" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">6</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 7" data-tool="num7" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">7</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 8" data-tool="num8" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">8</button>
+                                <button class="btn btn-secondary drill-tool" title="Number 9" data-tool="num9" style="height:32px;width:32px;padding:0;font-size:11px;font-weight:700;">9</button>
+                            </div>
+                            <!-- Colors -->
+                            <div style="display:flex;gap:4px;align-items:center;border-right:1px solid var(--border);padding-right:12px;" id="drillColors">
+                                <button class="btn btn-secondary drill-tool" title="Paint Color" data-tool="paint" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-paint-brush"></i></button>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="drill-color-picker" data-drill-action="color-picker" value="#000000" title="Select Color">
+                                    <div class="active-color-circle" style="background-color: #000000;"></div>
+                                </div>
+                                <button class="drill-color" data-color-preset="#000000" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;cursor:pointer;background:#000000;" title="Black"></button>
+                                <button class="drill-color" data-color-preset="#c41e3a" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#c41e3a;" title="Red"></button>
+                                <button class="drill-color" data-color-preset="#0033a0" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#0033a0;" title="Blue"></button>
+                                <button class="drill-color" data-color-preset="#00bfff" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#00bfff;" title="Light Blue"></button>
+                                <button class="drill-color" data-color-preset="#ff6600" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#ff6600;" title="Orange"></button>
+                                <button class="drill-color" data-color-preset="#10b981" style="width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#10b981;" title="Green"></button>
+                            </div>
+                            <!-- Actions -->
+                            <div style="display:flex;gap:4px;">
+                                <button class="btn btn-secondary drill-tool" title="Rotate Item" data-tool="rotate" data-drill-action="rotate" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-sync-alt"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Delete Selected" data-tool="delete" data-drill-action="delete" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-trash-alt"></i></button>
+                                <button class="btn btn-secondary" onclick="drillUndo()" title="Undo" style="height:32px;width:32px;padding:0;font-size:13px;" data-drill-action="undo"><i class="fas fa-undo"></i></button>
+                                <button class="btn btn-secondary" onclick="drillRedo()" title="Redo" style="height:32px;width:32px;padding:0;font-size:13px;" data-drill-action="redo"><i class="fas fa-redo"></i></button>
+                                <button class="btn btn-secondary drill-tool" title="Clear All" data-tool="clear" style="height:32px;padding:0 12px;font-size:12px;display:inline-flex;align-items:center;gap:5px;color:var(--error, #EF4444);"><i class="fas fa-trash"></i> Clear</button>
+                                <button class="btn btn-secondary" onclick="drillExport()" title="Export Image" style="height:32px;width:32px;padding:0;font-size:13px;" data-drill-action="export"><i class="fas fa-download"></i></button>
+                                <?php if ($isEditMode): ?>
+                                <button class="btn btn-secondary" title="Share Link" style="height:32px;width:32px;padding:0;font-size:13px;" data-drill-action="share"><i class="fas fa-share-alt"></i></button>
+                                <?php endif; ?>
+                                <button class="btn btn-secondary" onclick="drillToggleFullscreen()" title="Toggle fullscreen" id="drillFullscreenBtn" style="height:32px;width:32px;padding:0;font-size:13px;"><i class="fas fa-expand"></i></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Ice View Selector -->
-                <div class="ice-view-selector">
-                    <label>Ice View:</label>
-                    <select class="form-input-small" id="iceViewSelect" data-ice-view>
+                <!-- Ice View Selector (integrated into toolbar style) -->
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <label style="font-size:11px;color:var(--text-muted);font-weight:600;">Ice View</label>
+                    <select class="form-select" id="iceViewSelect" data-ice-view style="width:auto;min-width:140px;height:32px;font-size:12px;">
                         <option value="full" selected>Full Ice</option>
                         <option value="left-zone">Left Zone</option>
                         <option value="right-zone">Right Zone</option>
@@ -169,14 +177,6 @@ if ($editDrillId) {
                     <div class="rink-overlay">
                         <p><i class="fas fa-info-circle"></i> Click the tools above to start designing your drill</p>
                     </div>
-                </div>
-                <div class="canvas-controls">
-                    <button class="btn-secondary" data-drill-action="undo"><i class="fas fa-undo"></i> Undo</button>
-                    <button class="btn-secondary" data-drill-action="redo"><i class="fas fa-redo"></i> Redo</button>
-                    <button class="btn-secondary" data-drill-action="export"><i class="fas fa-download"></i> Export Image</button>
-                    <?php if ($isEditMode): ?>
-                    <button class="btn-secondary" data-drill-action="share"><i class="fas fa-share-alt"></i> Share Link</button>
-                    <?php endif; ?>
                 </div>
                 <div class="canvas-help-text">
                     <p><i class="fas fa-lightbulb"></i> <strong>Tips:</strong> Click Rotate/Delete tool then click items to edit. Select item + press <kbd>R</kbd> to rotate or <kbd>Delete</kbd> to remove. Use Freehand for smooth paint-like lines.</p>
@@ -425,95 +425,45 @@ if ($editDrillId) {
     margin-bottom: 16px;
 }
 
-/* Designer Toolbar Styles */
-.designer-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding: 16px;
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 16px;
+/* Designer Toolbar Styles (whiteboard-style compact layout) */
+.drill-tool.active {
+    background: var(--primary) !important;
+    color: #fff !important;
+    border-color: var(--primary) !important;
 }
-
-.tool-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-    padding: 8px 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-}
-
-.tool-group-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    width: 100%;
-    margin-bottom: 6px;
-}
-
-.tool-btn {
-    width: 36px;
-    height: 36px;
-    background: var(--bg-main);
-    border: 1px solid var(--border);
-    color: var(--text-white);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-}
-
-.tool-btn:hover {
-    background: rgba(107, 70, 193, 0.2);
-    border-color: var(--primary);
-}
-
-.tool-btn.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-}
-
-.tool-btn .tool-label {
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.tool-btn.danger-btn:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: #ef4444;
-    color: #ef4444;
-}
-
-.tool-btn i {
-    font-size: 14px;
+.drill-color.active {
+    box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 /* Stick icon special styling - golden color for visibility */
-.tool-btn[data-tool="stick"] svg {
+.drill-tool[data-tool="stick"] svg {
     stroke: #D4A76A;
-    display: block;
-    position: relative;
-    z-index: 1;
 }
 
-.tool-btn[data-tool="stick"]:hover svg,
-.tool-btn[data-tool="stick"].active svg {
+.drill-tool[data-tool="stick"]:hover svg,
+.drill-tool[data-tool="stick"].active svg {
     stroke: #fff;
 }
 
-.fullscreen-btn {
-    margin-left: auto;
+/* Drill fullscreen mode */
+#drillDesignerSection.drill-fullscreen {
+    position: fixed !important;
+    inset: 0;
+    z-index: 1000;
+    margin: 0;
+    background: var(--bg-main);
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+#drillDesignerSection.drill-fullscreen .content-card {
+    flex: 1;
+    border-radius: 0;
+    margin: 0;
+}
+#drillDesignerSection.drill-fullscreen .ice-rink-canvas {
+    max-height: none;
+    flex: 1;
 }
 
 /* Ice View Selector */
@@ -660,8 +610,8 @@ if ($editDrillId) {
 }
 
 .color-picker-wrapper input[type="color"] {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -1155,3 +1105,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Load Drill Designer JavaScript -->
 <script src="js/drill_designer.js"></script>
+<script>
+// Global functions for drill toolbar actions (similar to whiteboard pattern)
+window.drillUndo = function() {
+    var btn = document.querySelector('[data-drill-action="undo"]');
+    if (btn) btn.click();
+};
+window.drillRedo = function() {
+    var btn = document.querySelector('[data-drill-action="redo"]');
+    if (btn) btn.click();
+};
+window.drillExport = function() {
+    var btn = document.querySelector('[data-drill-action="export"]');
+    if (btn) btn.click();
+};
+window.drillToggleFullscreen = function() {
+    var section = document.getElementById('drillDesignerSection');
+    var header = document.getElementById('drillDesignerHeader');
+    var sidebar = document.querySelector('.gp-sidebar');
+    var btn = document.getElementById('drillFullscreenBtn');
+
+    if (section.classList.contains('drill-fullscreen')) {
+        // Exit fullscreen
+        section.classList.remove('drill-fullscreen');
+        if (header) header.style.display = '';
+        if (sidebar) sidebar.style.display = '';
+        if (btn) btn.innerHTML = '<i class="fas fa-expand"></i>';
+        document.body.style.overflow = '';
+    } else {
+        // Enter fullscreen
+        section.classList.add('drill-fullscreen');
+        if (sidebar) sidebar.style.display = 'none';
+        if (btn) btn.innerHTML = '<i class="fas fa-compress"></i>';
+        document.body.style.overflow = 'hidden';
+    }
+    // Trigger resize for canvas to adapt
+    setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 100);
+};
+// Escape key exits fullscreen
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        var section = document.getElementById('drillDesignerSection');
+        if (section && section.classList.contains('drill-fullscreen')) {
+            drillToggleFullscreen();
+        }
+    }
+});
+</script>
