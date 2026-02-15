@@ -6,9 +6,6 @@
  * quick stats and recent activity.
  */
 
-// Determine sub-page from query parameter
-$gp_sub = isset($_GET['gp']) ? preg_replace('/[^a-z0-9_]/', '', $_GET['gp']) : 'home';
-
 // Map of sub-pages to gp_ view files
 $gp_views = [
     'home'            => 'views/gameplan/gp_home.php',
@@ -23,6 +20,12 @@ $gp_views = [
 
 if ($isAdmin) {
     $gp_views['permissions'] = 'views/gameplan/gp_permissions.php';
+}
+
+// Determine sub-page from query parameter, validate against allowed keys
+$gp_sub = isset($_GET['gp']) ? preg_replace('/[^a-z0-9_]/', '', $_GET['gp']) : 'home';
+if (!isset($gp_views[$gp_sub])) {
+    $gp_sub = 'home';
 }
 
 // Load recent videos (needed by gp_home.php)
@@ -169,9 +172,21 @@ $gp_is_sub = ($gp_sub !== 'home');
         $gp_stats['videos'] = (int)$stmt->fetchColumn();
     } catch (PDOException $e) {}
     if ($isAnyCoach) {
-        try { $stmt = $pdo->prepare("SELECT COUNT(*) FROM vr_game_plans WHERE coach_id = ?"); $stmt->execute([$user_id]); $gp_stats['plans'] = (int)$stmt->fetchColumn(); } catch (PDOException $e) {}
-        try { $stmt = $pdo->prepare("SELECT COUNT(*) FROM vr_review_sessions WHERE coach_id = ? AND status = 'scheduled'"); $stmt->execute([$user_id]); $gp_stats['reviews'] = (int)$stmt->fetchColumn(); } catch (PDOException $e) {}
-        try { $stmt = $pdo->prepare("SELECT COUNT(DISTINCT plan_id) FROM vr_game_plan_lines WHERE plan_id IN (SELECT id FROM vr_game_plans WHERE coach_id = ?)"); $stmt->execute([$user_id]); $gp_stats['lines'] = (int)$stmt->fetchColumn(); } catch (PDOException $e) {}
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM vr_game_plans WHERE coach_id = ?");
+            $stmt->execute([$user_id]);
+            $gp_stats['plans'] = (int)$stmt->fetchColumn();
+        } catch (PDOException $e) {}
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM vr_review_sessions WHERE coach_id = ? AND status = 'scheduled'");
+            $stmt->execute([$user_id]);
+            $gp_stats['reviews'] = (int)$stmt->fetchColumn();
+        } catch (PDOException $e) {}
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(DISTINCT plan_id) FROM vr_game_plan_lines WHERE plan_id IN (SELECT id FROM vr_game_plans WHERE coach_id = ?)");
+            $stmt->execute([$user_id]);
+            $gp_stats['lines'] = (int)$stmt->fetchColumn();
+        } catch (PDOException $e) {}
     }
     ?>
     <div class="m-gp-stats">
@@ -290,46 +305,88 @@ $gp_is_sub = ($gp_sub !== 'home');
 </div>
 
 <script>
-// Rewrite internal gameplan links to work within PWA context
+// Rewrite internal gameplan links and forms to work within PWA context
 document.addEventListener('DOMContentLoaded', function() {
-    var gpContent = document.querySelector('.m-gp-content');
+    let gpContent = document.querySelector('.m-gp-content');
     if (!gpContent) return;
 
-    // Rewrite /gameplan.php?page=XXX links to ?page=gameplan&gp=XXX
-    var links = gpContent.querySelectorAll('a[href*="/gameplan.php"]');
-    for (var i = 0; i < links.length; i++) {
-        var href = links[i].getAttribute('href');
-        if (!href) continue;
+    // Helper: convert /gameplan.php?page=XXX URL to ?page=gameplan&gp=XXX
+    function rewriteGameplanUrl(href) {
         try {
-            var url = new URL(href, window.location.origin);
-            var gpPage = url.searchParams.get('page');
+            let url = new URL(href, window.location.origin);
+            let gpPage = url.searchParams.get('page');
             if (gpPage) {
-                // Build PWA-compatible URL preserving other params
-                var params = new URLSearchParams();
+                let params = new URLSearchParams();
                 params.set('page', 'gameplan');
                 params.set('gp', gpPage);
                 url.searchParams.forEach(function(val, key) {
-                    if (key !== 'page') {
-                        params.set(key, val);
-                    }
+                    if (key !== 'page') params.set(key, val);
                 });
-                links[i].setAttribute('href', '?' + params.toString());
+                return '?' + params.toString();
             }
-        } catch (e) { /* skip malformed URLs */ }
+        } catch (e) { /* skip */ }
+        return null;
+    }
+
+    // Rewrite /gameplan.php?page=XXX links to ?page=gameplan&gp=XXX
+    let links = gpContent.querySelectorAll('a[href*="/gameplan.php"]');
+    for (let i = 0; i < links.length; i++) {
+        let href = links[i].getAttribute('href');
+        if (!href) continue;
+        let newHref = rewriteGameplanUrl(href);
+        if (newHref) links[i].setAttribute('href', newHref);
     }
 
     // Rewrite /dashboard.php links to pwa.php equivalents
-    var dashLinks = gpContent.querySelectorAll('a[href*="/dashboard.php"]');
-    for (var j = 0; j < dashLinks.length; j++) {
-        var dhref = dashLinks[j].getAttribute('href');
+    let dashLinks = gpContent.querySelectorAll('a[href*="/dashboard.php"]');
+    for (let j = 0; j < dashLinks.length; j++) {
+        let dhref = dashLinks[j].getAttribute('href');
         if (!dhref) continue;
         try {
-            var dUrl = new URL(dhref, window.location.origin);
-            var dPage = dUrl.searchParams.get('page');
+            let dUrl = new URL(dhref, window.location.origin);
+            let dPage = dUrl.searchParams.get('page');
             if (dPage) {
                 dashLinks[j].setAttribute('href', '?page=' + encodeURIComponent(dPage));
             }
         } catch (e) { /* skip */ }
+    }
+
+    // Fix GET forms: add hidden fields so form submissions stay in PWA gameplan context
+    // Forms with action="" submit to current page. We need page=gameplan&gp=<sub-page>
+    let forms = gpContent.querySelectorAll('form[method="GET"], form:not([method])');
+    for (let k = 0; k < forms.length; k++) {
+        let form = forms[k];
+        // Only handle forms with empty or no action (submit to current page)
+        let action = form.getAttribute('action');
+        if (action && action !== '#') continue;
+
+        // Check if the form has a hidden "page" input that maps to a gp sub-page
+        let pageInput = form.querySelector('input[name="page"]');
+        if (pageInput) {
+            // This form's "page" value is the gp sub-page (e.g., "video_review")
+            // We need page=gameplan and gp=<sub-page> instead
+            let gpSubPage = pageInput.value;
+            pageInput.value = 'gameplan';
+            // Add the gp hidden field
+            let gpInput = document.createElement('input');
+            gpInput.type = 'hidden';
+            gpInput.name = 'gp';
+            gpInput.value = gpSubPage;
+            form.insertBefore(gpInput, pageInput.nextSibling);
+        }
+    }
+
+    // Rewrite inline onchange handlers that navigate using location.href
+    let selects = gpContent.querySelectorAll('select[onchange]');
+    for (let m = 0; m < selects.length; m++) {
+        let oc = selects[m].getAttribute('onchange');
+        if (oc && oc.indexOf('/gameplan.php') !== -1) {
+            // Replace /gameplan.php?page=XXX with pwa-compatible URL
+            let newOc = oc.replace(/\/gameplan\.php\?page=([a-z0-9_]+)/g, function(match, gpPage) {
+                return '?page=gameplan&gp=' + gpPage;
+            });
+            selects[m].setAttribute('onchange', newOc);
+        }
     }
 });
 </script>
