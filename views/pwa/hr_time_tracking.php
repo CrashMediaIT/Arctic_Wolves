@@ -218,6 +218,7 @@ function clockAction(action) {
             msgEl.style.background = 'rgba(16,185,129,0.15)';
             msgEl.style.color = '#10B981';
             msgEl.textContent = data.message || 'Success';
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             msgEl.style.background = 'rgba(239,68,68,0.15)';

@@ -343,7 +343,7 @@ try {
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 toast(d.message || (d.success ? 'Schedule deleted' : 'Delete failed'), d.success ? 'success' : 'error');
-                if (d.success) location.reload();
+                if (d.success) { persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
             })
             .catch(function() { toast('An error occurred', 'error'); });
         });
@@ -375,7 +375,7 @@ try {
         .then(function(d) {
             submitBtn.disabled = false;
             toast(d.message || (d.success ? (isEdit ? 'Schedule updated' : 'Schedule created') : 'Operation failed'), d.success ? 'success' : 'error');
-            if (d.success) { closeSheet(); location.reload(); }
+            if (d.success) { closeSheet(); persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
         })
         .catch(function() { submitBtn.disabled = false; toast('An error occurred', 'error'); });
     });

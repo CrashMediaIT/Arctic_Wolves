@@ -919,6 +919,7 @@ function createRestriction(e) {
             msg.style.background = 'rgba(16,185,129,0.15)';
             msg.style.color = '#10b981';
             msg.textContent = data.message;
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             msg.style.display = 'block';
@@ -965,6 +966,7 @@ function addBlocklistEntry(e) {
             msg.style.background = 'rgba(16,185,129,0.15)';
             msg.style.color = '#10b981';
             msg.textContent = data.message;
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             msg.style.display = 'block';
@@ -1158,6 +1160,7 @@ function addPosWhitelistEntry(e) {
             msg.style.background = 'rgba(16,185,129,0.15)';
             msg.style.color = '#10b981';
             msg.textContent = data.message;
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             msg.style.display = 'block';
@@ -1188,6 +1191,7 @@ function togglePosWhitelistEntry(entryId, newStatus) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to update entry'));

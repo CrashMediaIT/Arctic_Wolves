@@ -428,6 +428,7 @@ function updateOrderStatus(orderId, newStatus) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Failed to update status: ' + (data.message || 'Unknown error'));

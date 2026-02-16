@@ -4916,6 +4916,7 @@ function toggleNdiCamera(cameraId, newState) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to update camera status'));
@@ -4992,6 +4993,7 @@ function saveNdiCamera() {
     .then(data => {
         if (data.success) {
             closeNdiEditModal();
+            persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to update camera'));
@@ -5020,6 +5022,7 @@ function deleteNdiCamera(cameraId, cameraName) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             window.location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to delete camera'));

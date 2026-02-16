@@ -313,6 +313,7 @@ try {
             btn.disabled = false;
             if (data.success) {
                 mCloseProductModal();
+                persistToast(data.message || 'Operation completed successfully', 'success');
                 location.reload();
             } else {
                 alert('Error: ' + (data.message || 'Failed to save'));

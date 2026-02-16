@@ -998,7 +998,7 @@ function toggleFreeze(pairId) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'action=toggle_freeze_pair&pair_id=' + pairId + '&csrf_token=' + encodeURIComponent(csrfEl.value)
     }).then(function(r) { return r.json(); }).then(function(data) {
-        if (data.success) location.reload();
+        if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
     });
 }
 </script>

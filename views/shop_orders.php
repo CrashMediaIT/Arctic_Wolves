@@ -399,7 +399,7 @@ function updateOrderStatus(orderId, newStatus) {
     .then(response => response.json())
     .then(data => {
         if (!data.success) {
-            alert('Failed to update status: ' + (data.message || 'Unknown error'));
+            persistToast(data.message || 'Failed to update status', 'error');
             location.reload();
         }
     })

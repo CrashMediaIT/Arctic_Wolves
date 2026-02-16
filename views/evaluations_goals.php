@@ -1041,6 +1041,7 @@ document.getElementById('evaluationForm').addEventListener('submit', function(e)
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);

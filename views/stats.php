@@ -2318,6 +2318,7 @@ function toggleStep(stepId, goalId, isCompleted) {
     .then(data => {
         if (data.success) {
             viewGoalDetail(goalId); // Refresh detail view
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload(); // Refresh main view
         } else {
             alert('Error: ' + (data.message || 'Failed to update step'));
@@ -2349,6 +2350,7 @@ function completeGoal(goalId) {
     })
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to complete goal'));

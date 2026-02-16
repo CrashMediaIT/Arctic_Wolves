@@ -952,6 +952,7 @@ function deleteSchedule(scheduleId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert(data.message || 'Failed to delete schedule');

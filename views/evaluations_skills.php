@@ -1340,6 +1340,7 @@ async function uploadMedia(scoreId, file) {
         const data = await response.json();
         
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error uploading media: ' + data.message);
@@ -1390,6 +1391,7 @@ async function completeEvaluation(evalId) {
         const data = await response.json();
         
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error completing evaluation');
@@ -1415,6 +1417,7 @@ async function archiveEvaluation(evalId) {
         const data = await response.json();
         
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error archiving evaluation');

@@ -183,7 +183,7 @@ function updateOnlineOrderStatus(orderId) {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        if (data.success) { location.reload(); }
+        if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         else { alert('Failed: ' + (data.message || 'Unknown error')); }
     })
     .catch(function() { alert('Request failed'); });

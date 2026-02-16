@@ -808,7 +808,7 @@ function mCancelBooking(bookingId) {
     fetch('process_booking.php', { method: 'POST', body: form })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) { location.reload(); }
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
             else { alert(data.message || 'Failed to cancel booking'); }
         })
         .catch(function() { alert('Network error. Please try again.'); });
@@ -823,7 +823,7 @@ function mCancelSession(sessionId) {
     fetch('process_edit_session.php', { method: 'POST', body: form })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) { location.reload(); }
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
             else { alert(data.message || 'Failed to cancel session'); }
         })
         .catch(function() { alert('Network error. Please try again.'); });
@@ -861,7 +861,7 @@ function mLeaveWaitlist(sessionId) {
     fetch('process_booking.php', { method: 'POST', body: form })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) { location.reload(); }
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
             else { alert(data.message || 'Failed to leave waitlist'); }
         })
         .catch(function() { alert('Network error. Please try again.'); });

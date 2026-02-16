@@ -562,6 +562,7 @@ function toggleCategoryStatus(id, currentStatus) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Unknown error'));
@@ -596,6 +597,7 @@ function deleteCategory(category) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Unknown error'));

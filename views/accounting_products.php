@@ -2524,6 +2524,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     submitBtn.disabled = false;
                 }
                 if (data.success) {
+                    persistToast(data.message || 'Operation completed successfully', 'success');
                     location.reload();
                 } else {
                     alert('Error: ' + (data.message || 'Unknown error'));

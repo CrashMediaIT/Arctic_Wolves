@@ -200,7 +200,7 @@ function mSubmitCeval(e) {
     fetch('process_eval_skills.php', { method: 'POST', body: fd })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) { location.reload(); } else { alert(data.message || 'Error creating evaluation'); }
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         })
         .catch(function() { alert('Error creating evaluation'); });
 }
