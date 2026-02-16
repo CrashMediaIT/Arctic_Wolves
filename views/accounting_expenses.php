@@ -820,7 +820,7 @@ document.getElementById('expenseForm').addEventListener('submit', function(e) {
     submitBtn.disabled = true;
     fetch(this.getAttribute('action'), { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
     .then(function(r) { return r.json(); })
-    .then(function(data) { submitBtn.innerHTML = originalText; submitBtn.disabled = false; if (data.success) { showNotification(data.message || 'Expense added successfully!', 'success'); location.reload(); } else { showNotification('Error: ' + (data.message || 'Failed to add expense'), 'error'); } })
+    .then(function(data) { submitBtn.innerHTML = originalText; submitBtn.disabled = false; if (data.success) { persistToast(data.message || 'Expense added successfully!', 'success'); location.reload(); } else { showNotification('Error: ' + (data.message || 'Failed to add expense'), 'error'); } })
     .catch(function() { submitBtn.innerHTML = originalText; submitBtn.disabled = false; showNotification('An error occurred', 'error'); });
 });
 </script>

@@ -845,7 +845,7 @@ function submitPin(e) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('PIN set successfully');
+            persistToast('PIN set successfully', 'success');
             closePinModal();
             location.reload();
         } else {
@@ -924,7 +924,7 @@ function submitSchedule(e) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(scheduleId ? 'Schedule updated successfully' : 'Schedule created successfully');
+            persistToast(scheduleId ? 'Schedule updated successfully' : 'Schedule created successfully', 'success');
             closeScheduleModal();
             location.reload();
         } else {

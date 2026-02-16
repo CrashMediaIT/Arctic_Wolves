@@ -1381,10 +1381,8 @@ document.getElementById('colorsForm').addEventListener('submit', async function(
         const data = await response.json();
         
         if (data.success) {
-            showAlert('success', data.message);
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            persistToast(data.message, 'success');
+            window.location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1412,10 +1410,8 @@ async function resetTheme() {
         const data = await response.json();
         
         if (data.success) {
-            showAlert('success', data.message);
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            persistToast(data.message, 'success');
+            window.location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1477,10 +1473,8 @@ document.getElementById('brandingForm').addEventListener('submit', async functio
         const data = await response.json();
         
         if (data.success) {
-            showAlert('success', data.message);
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            persistToast(data.message, 'success');
+            window.location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1505,10 +1499,8 @@ document.getElementById('heroForm').addEventListener('submit', async function(e)
         const data = await response.json();
         
         if (data.success) {
-            showAlert('success', data.message);
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            persistToast(data.message, 'success');
+            window.location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1563,11 +1555,9 @@ document.getElementById('programForm').addEventListener('submit', async function
         const data = await response.json();
         
         if (data.success) {
-            showAlert('success', data.message);
+            persistToast(data.message, 'success');
             closeProgramModal();
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            window.location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1596,10 +1586,8 @@ async function deleteProgram(programId) {
         const data = await response.json();
         
         if (data.success) {
-            showAlert('success', data.message);
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            persistToast(data.message, 'success');
+            window.location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1652,14 +1640,14 @@ document.getElementById('centerIceLogoForm').addEventListener('submit', async fu
         try {
             const data = JSON.parse(text);
             if (data.success) {
-                showAlert('success', data.message || 'Center ice logo saved successfully!');
+                persistToast(data.message || 'Center ice logo saved successfully!', 'success');
                 window.location.reload();
             } else {
                 showAlert('error', data.message || 'Failed to save center ice logo');
             }
         } catch (parseError) {
             // If it's not JSON, the form likely submitted successfully
-            showAlert('success', 'Center ice logo saved!');
+            persistToast('Center ice logo saved!', 'success');
             window.location.reload();
         }
     } catch (error) {
@@ -1688,7 +1676,7 @@ async function removeCenterIceLogo() {
             return;
         }
         
-        showAlert('success', 'Center ice logo removed!');
+        persistToast('Center ice logo removed!', 'success');
         window.location.reload();
     } catch (error) {
         showAlert('error', 'An error occurred while removing center ice logo.');

@@ -1045,7 +1045,7 @@ function saveJob(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('success', data.message);
+            persistToast(data.message, 'success');
             closeJobModal();
             location.reload();
         } else {
@@ -1081,7 +1081,7 @@ function deleteJob(jobId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('success', data.message);
+            persistToast(data.message, 'success');
             location.reload();
         } else {
             showAlert('error', data.message);
@@ -1105,7 +1105,7 @@ function toggleJobStatus(jobId, currentStatus) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('success', data.message);
+            persistToast(data.message, 'success');
             location.reload();
         } else {
             showAlert('error', data.message);
@@ -1135,7 +1135,7 @@ function runBackupNow(jobId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('success', data.message);
+            persistToast(data.message, 'success');
             location.reload();
         } else {
             showAlert('error', data.message);

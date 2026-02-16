@@ -207,8 +207,8 @@ $totalProducts = count($products);
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            mToast(d.message || (d.success ? 'Deleted!' : 'Error'), d.success ? 'success' : 'error');
-            if (d.success) location.reload();
+            if (d.success) { persistToast(d.message || 'Deleted!', 'success'); location.reload(); }
+            else { mToast(d.message || 'Error', 'error'); }
         })
         .catch(function() { mToast('An error occurred', 'error'); });
     };
@@ -232,8 +232,8 @@ $totalProducts = count($products);
         .then(function(r) { return r.json(); })
         .then(function(d) {
             btn.innerHTML = orig; btn.disabled = false;
-            mToast(d.message || (d.success ? 'Saved!' : 'Error'), d.success ? 'success' : 'error');
-            if (d.success) { document.getElementById('mProdSheet').classList.remove('m-active'); location.reload(); }
+            if (d.success) { persistToast(d.message || 'Saved!', 'success'); document.getElementById('mProdSheet').classList.remove('m-active'); location.reload(); }
+            else { mToast(d.message || 'Error', 'error'); }
         })
         .catch(function() { btn.innerHTML = orig; btn.disabled = false; mToast('An error occurred', 'error'); });
     });

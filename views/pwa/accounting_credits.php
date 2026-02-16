@@ -393,7 +393,7 @@ try {
                 submitBtn.innerHTML = origHTML;
                 submitBtn.disabled = false;
                 if (data.success) {
-                    showToast(data.message || 'Submitted successfully!', 'success');
+                    persistToast(data.message || 'Submitted successfully!', 'success');
                     closeModal();
                     location.reload();
                 } else {
@@ -427,7 +427,7 @@ try {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showToast(data.message || (label + 'd!'), 'success');
+                    persistToast(data.message || (label + 'd!'), 'success');
                     location.reload();
                 } else {
                     self.disabled = false;

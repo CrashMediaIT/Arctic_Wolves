@@ -640,7 +640,7 @@ function restoreAuditEntry(logId) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
-            alert('Change reverted successfully');
+            persistToast('Change reverted successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to revert'));

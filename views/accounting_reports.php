@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(response) {
                 // If the response is a redirect, the report was generated
                 if (response.redirected) {
-                    showNotification('Report generated successfully! The page will reload to show your report.', 'success');
+                    persistToast('Report generated successfully! The page will reload to show your report.', 'success');
                     window.location.href = response.url;
                     return null;
                 }
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 if (data.success) {
-                    showNotification(data.message || 'Report generated successfully!', 'success');
+                    persistToast(data.message || 'Report generated successfully!', 'success');
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to generate report'), 'error');

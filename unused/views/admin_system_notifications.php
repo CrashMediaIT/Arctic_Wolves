@@ -826,7 +826,7 @@ function submitForm(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Notification saved successfully', 'success');
+            persistToast(data.message || 'Notification saved successfully', 'success');
             window.location.reload();
         } else {
             showToast('Error: ' + (data.message || 'Unknown error'), 'error');
@@ -852,7 +852,7 @@ function toggleActive(id) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast('Status updated', 'success');
+            persistToast('Status updated', 'success');
             window.location.reload();
         } else {
             showToast('Error: ' + (data.message || 'Update failed'), 'error');
@@ -875,7 +875,7 @@ function deleteNotification(id, title) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast('Notification deleted', 'success');
+            persistToast('Notification deleted', 'success');
             window.location.reload();
         } else {
             showToast('Error: ' + (data.message || 'Delete failed'), 'error');

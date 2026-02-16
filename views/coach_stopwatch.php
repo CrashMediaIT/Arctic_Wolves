@@ -933,10 +933,10 @@ function swSaveSession(e) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            swShowAlert('success', data.message || 'Session saved successfully!');
+            persistToast(data.message || 'Session saved successfully!', 'success');
             swReset();
             document.getElementById('sw-session-name').value = '';
-            // Reload page after short delay to update history
+            // Reload page to update history
             window.location.reload();
         } else {
             swShowAlert('error', data.message || 'Failed to save session.');

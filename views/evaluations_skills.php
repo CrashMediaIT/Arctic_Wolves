@@ -1537,7 +1537,7 @@ async function saveTeamEvaluation() {
         const data = await response.json();
         
         if (data.success) {
-            alert('Evaluation saved successfully!');
+            persistToast('Evaluation saved successfully!', 'success');
             // Keep same URL for easy athlete switching
             location.reload();
         } else {

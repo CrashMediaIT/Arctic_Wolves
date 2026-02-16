@@ -856,7 +856,7 @@ document.getElementById('virtualCardForm').addEventListener('submit', function(e
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-credit-card"></i> Create Card';
         if (data.success) {
-            alert('Virtual card created successfully!');
+            persistToast('Virtual card created successfully!', 'success');
             location.reload();
         } else {
             alert(data.message || 'Error creating virtual card');

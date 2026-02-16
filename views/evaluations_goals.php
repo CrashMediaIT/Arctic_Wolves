@@ -919,7 +919,7 @@ function approveStep(stepId) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert('Step approved!');
+            persistToast('Step approved!', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);
@@ -943,7 +943,7 @@ function rejectStep(stepId) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert('Step rejected');
+            persistToast('Step rejected', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);

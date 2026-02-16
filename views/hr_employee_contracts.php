@@ -1203,7 +1203,7 @@ function sendForSignature(contractId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Contract sent for signature successfully!');
+            persistToast('Contract sent for signature successfully!', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);
@@ -1260,7 +1260,7 @@ function cancelContract(contractId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Contract cancelled.');
+            persistToast('Contract cancelled.', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);
@@ -1317,7 +1317,7 @@ document.getElementById('create-template-form')?.addEventListener('submit', func
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Template created successfully! The template is now available in DocuSeal.');
+            persistToast('Template created successfully! The template is now available in DocuSeal.', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);
@@ -1577,7 +1577,7 @@ document.getElementById('edit-template-form')?.addEventListener('submit', functi
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Template updated successfully!');
+            persistToast('Template updated successfully!', 'success');
             closeEditModal();
             location.reload();
         } else {
@@ -1610,7 +1610,7 @@ function cloneTemplate(templateId, templateName) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Template cloned successfully!');
+            persistToast('Template cloned successfully!', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);
@@ -1639,7 +1639,7 @@ function deleteTemplate(templateId, templateName) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Template deleted successfully!');
+            persistToast('Template deleted successfully!', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);

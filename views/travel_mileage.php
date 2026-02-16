@@ -1155,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.disabled = false;
                 
                 if (data.success) {
-                    showNotification(data.message || 'Mileage entry updated!', 'success');
+                    persistToast(data.message || 'Mileage entry updated!', 'success');
                     closeMileageModal();
                     location.reload();
                 } else {
@@ -1193,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteBtn.disabled = false;
             
             if (data.success) {
-                showNotification(data.message || 'Entry deleted!', 'success');
+                persistToast(data.message || 'Entry deleted!', 'success');
                 closeDeleteModal();
                 location.reload();
             } else {

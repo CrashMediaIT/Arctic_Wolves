@@ -481,7 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showNotification(data.message || (action === 'approve' ? 'Approved!' : 'Rejected!'), 'success');
+                    persistToast(data.message || (action === 'approve' ? 'Approved!' : 'Rejected!'), 'success');
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
@@ -516,7 +516,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.disabled = false;
                 
                 if (data.success) {
-                    showNotification(data.message || 'Credit/Refund issued successfully!', 'success');
+                    persistToast(data.message || 'Credit/Refund issued successfully!', 'success');
                     closeModal('issue-credit-refund-modal');
                     location.reload();
                 } else {

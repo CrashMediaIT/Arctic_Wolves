@@ -471,7 +471,7 @@ function deleteLocation(id) {
     .then(function(response) { return response.json(); })
     .then(function(data) {
         if (data.success) {
-            showNotification(data.message || 'Location deleted!', 'success');
+            persistToast(data.message || 'Location deleted!', 'success');
             location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
@@ -531,7 +531,7 @@ document.getElementById('locationForm').addEventListener('submit', function(e) {
         submitBtn.disabled = false;
         
         if (data.success) {
-            showNotification(data.message || 'Location saved!', 'success');
+            persistToast(data.message || 'Location saved!', 'success');
             closeModal();
             location.reload();
         } else {

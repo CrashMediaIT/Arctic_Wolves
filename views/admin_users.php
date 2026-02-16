@@ -499,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(data.message || 'User status updated!', 'success');
+                    persistToast(data.message || 'User status updated!', 'success');
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to update status'), 'error');
@@ -1682,7 +1682,7 @@ document.getElementById('edit-profile-image-form').addEventListener('submit', fu
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message || 'Profile image updated!', 'success');
+            persistToast(data.message || 'Profile image updated!', 'success');
             location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to update image'), 'error');
@@ -1712,7 +1712,7 @@ document.getElementById('edit-remove-profile-image').addEventListener('click', f
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message || 'Profile image removed!', 'success');
+            persistToast(data.message || 'Profile image removed!', 'success');
             location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to remove image'), 'error');
@@ -1733,7 +1733,7 @@ document.getElementById('edit-assignments-form').addEventListener('submit', func
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message || 'Assignments updated!', 'success');
+            persistToast(data.message || 'Assignments updated!', 'success');
             location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to update assignments'), 'error');
@@ -1782,7 +1782,7 @@ document.getElementById('edit-roles-form').addEventListener('submit', function(e
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message || 'Roles updated!', 'success');
+            persistToast(data.message || 'Roles updated!', 'success');
             location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to update roles'), 'error');
@@ -2112,7 +2112,7 @@ document.getElementById('reset-password-form').addEventListener('submit', functi
         submitBtn.disabled = false;
         
         if (data.success) {
-            showNotification(data.message || 'Password reset successfully!', 'success');
+            persistToast(data.message || 'Password reset successfully!', 'success');
             closeModal('security-modal');
             // Reload page after successful password reset to show updated data
             location.reload();

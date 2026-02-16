@@ -557,7 +557,7 @@ function submitShipOrder(e) {
         
         if (data.success) {
             closeModal('ship-order-modal');
-            alert(data.message || 'Order shipped successfully!');
+            persistToast(data.message || 'Order shipped successfully!', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to ship order'));

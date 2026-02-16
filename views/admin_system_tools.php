@@ -3602,7 +3602,7 @@ function updateStripeLibrary() {
         btn.innerHTML = originalText;
         
         if (data.success) {
-            alert('Success: Stripe Library Updated!\n\n' + (data.message || 'Update completed successfully.'));
+            persistToast('Success: Stripe Library Updated! ' + (data.message || 'Update completed successfully.'), 'success');
             location.reload();
         } else {
             alert('Error: Update Failed\n\n' + (data.message || 'Unknown error'));

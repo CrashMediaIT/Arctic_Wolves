@@ -771,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showNotification('Schedule ' + (isActive ? 'paused' : 'resumed') + ' successfully!', 'success');
+                    persistToast('Schedule ' + (isActive ? 'paused' : 'resumed') + ' successfully!', 'success');
                     window.location.reload();
                 } else {
                     showNotification(data.message || 'Failed to update schedule', 'error');
@@ -805,7 +805,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showNotification('Schedule deleted successfully!', 'success');
+                    persistToast('Schedule deleted successfully!', 'success');
                     window.location.reload();
                 } else {
                     showNotification(data.message || 'Failed to delete schedule', 'error');
@@ -879,7 +879,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.disabled = false;
                 
                 if (data.success) {
-                    showNotification(data.message || 'Schedule updated!', 'success');
+                    persistToast(data.message || 'Schedule updated!', 'success');
                     closeEditModal();
                     window.location.reload();
                 } else {

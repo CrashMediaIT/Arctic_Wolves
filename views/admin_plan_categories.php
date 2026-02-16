@@ -455,7 +455,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showNotification(data.message || 'Category deleted!', 'success');
+                    persistToast(data.message || 'Category deleted!', 'success');
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
@@ -487,7 +487,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
                 submitBtn.disabled = false;
                 
                 if (data.success) {
-                    showNotification(data.message || 'Category created!', 'success');
+                    persistToast(data.message || 'Category created!', 'success');
                     closeModal();
                     location.reload();
                 } else {

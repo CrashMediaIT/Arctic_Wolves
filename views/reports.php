@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = originalBtnText;
                 
                 if (data.success) {
-                    alert('Report generated successfully!');
+                    persistToast('Report generated successfully!', 'success');
                     location.reload();
                 } else {
                     alert('Error: ' + (data.message || 'Failed to generate report'));

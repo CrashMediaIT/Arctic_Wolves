@@ -659,7 +659,7 @@ function deletePackage(id, name) {
     .then(function(response) { return response.json(); })
     .then(function(data) {
         if (data.success) {
-            showNotification(data.message || 'Package deleted!', 'success');
+            persistToast(data.message || 'Package deleted!', 'success');
             location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
@@ -751,7 +751,7 @@ document.getElementById('packageForm').addEventListener('submit', function(e) {
         submitBtn.disabled = false;
         
         if (data.success) {
-            showNotification(data.message || 'Package saved successfully!', 'success');
+            persistToast(data.message || 'Package saved successfully!', 'success');
             closePackageModal();
             location.reload();
         } else {

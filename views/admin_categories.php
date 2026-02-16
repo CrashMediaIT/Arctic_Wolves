@@ -1918,7 +1918,7 @@ try {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        showNotification('Deleted successfully!', 'success');
+                        persistToast('Deleted successfully!', 'success');
                         location.reload();
                     } else {
                         showNotification('Error: ' + (data.message || 'Unknown error'), 'error');
@@ -2056,7 +2056,7 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             }
             
             if (data.success) {
-                showNotification(data.message || 'Operation completed successfully!', 'success');
+                persistToast(data.message || 'Operation completed successfully!', 'success');
                 if (modal) closeModal(modal.id);
                 location.reload();
             } else {

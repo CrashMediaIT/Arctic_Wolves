@@ -1328,10 +1328,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.disabled = false;
                 
                 const form = document.getElementById('create-invoice-form');
-                const successMsg = document.getElementById('invoice-success-message');
                 form.style.display = 'none';
-                successMsg.style.display = 'block';
                 
+                persistToast('Invoice created successfully!', 'success');
                 window.location.reload();
             })
             .catch(error => {

@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(data.message || 'Cron job executed successfully!', 'success');
+                    persistToast(data.message || 'Cron job executed successfully!', 'success');
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to run cron job'), 'error');
@@ -499,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(data.message || 'Status toggled successfully!', 'success');
+                    persistToast(data.message || 'Status toggled successfully!', 'success');
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to toggle status'), 'error');
@@ -523,7 +523,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(data.message || 'Cron job deleted!', 'success');
+                    persistToast(data.message || 'Cron job deleted!', 'success');
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
@@ -561,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 if (data.success) {
-                    showNotification(data.message || 'Cron job saved successfully!', 'success');
+                    persistToast(data.message || 'Cron job saved successfully!', 'success');
                     if (modal) closeModal(modal.id);
                     location.reload();
                 } else {

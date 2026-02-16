@@ -774,7 +774,7 @@ document.getElementById('scheduleForm').addEventListener('submit', async functio
         const result = await response.json();
         
         if (result.success) {
-            showAlert(result.message || 'Schedule saved successfully', 'success');
+            persistToast(result.message || 'Schedule saved successfully', 'success');
             closeModal();
             location.reload();
         } else {
@@ -803,7 +803,7 @@ async function toggleSchedule(scheduleId, activate) {
         const result = await response.json();
         
         if (result.success) {
-            showAlert(result.message || 'Schedule updated successfully', 'success');
+            persistToast(result.message || 'Schedule updated successfully', 'success');
             location.reload();
         } else {
             showAlert(result.message || 'Failed to update schedule', 'error');
@@ -834,7 +834,7 @@ async function deleteSchedule(scheduleId, reportName) {
         const result = await response.json();
         
         if (result.success) {
-            showAlert(result.message || 'Schedule deleted successfully', 'success');
+            persistToast(result.message || 'Schedule deleted successfully', 'success');
             location.reload();
         } else {
             showAlert(result.message || 'Failed to delete schedule', 'error');

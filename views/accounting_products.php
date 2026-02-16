@@ -1719,7 +1719,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(data.message || 'Status updated successfully!', 'success');
+                    persistToast(data.message || 'Status updated successfully!', 'success');
                     var icon = button.querySelector('i');
                     if (icon) {
                         icon.classList.toggle('fa-toggle-on');
@@ -1766,7 +1766,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(itemType.charAt(0).toUpperCase() + itemType.slice(1) + ' deleted successfully!', 'success');
+                    persistToast(itemType.charAt(0).toUpperCase() + itemType.slice(1) + ' deleted successfully!', 'success');
                     location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');

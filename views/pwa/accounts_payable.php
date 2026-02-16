@@ -295,7 +295,7 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showToast(data.message || 'Marked as paid!', 'success');
+                    persistToast(data.message || 'Marked as paid!', 'success');
                     location.reload();
                 } else {
                     self.disabled = false;
