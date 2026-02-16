@@ -1043,7 +1043,7 @@ function addMealToEditPlan(id, name, type) {
     const mealTypeOptions = ['breakfast', 'lunch', 'dinner', 'snack', 'pre_workout', 'post_workout'];
     let selectHtml = '<select name="meals[' + index + '][type]" class="form-input">';
     mealTypeOptions.forEach(opt => {
-        const label = opt.replace('_', '-').replace(/\b\w/g, c => c.toUpperCase());
+        const label = opt.replaceAll('_', '-').replace(/\b\w/g, c => c.toUpperCase());
         selectHtml += '<option value="' + opt + '"' + (opt === type ? ' selected' : '') + '>' + label + '</option>';
     });
     selectHtml += '</select>';
@@ -1198,8 +1198,7 @@ function initDragAndDrop(container, context) {
             this.classList.remove('dragging');
             container.querySelectorAll('.selected-meal-item').forEach(el => el.classList.remove('drag-over'));
             // Reindex after drop
-            const prefix = container.id === 'selected-meals' ? 'meals' : 'meals';
-            reindexMeals(container, prefix);
+            reindexMeals(container, 'meals');
         });
         
         item.addEventListener('dragover', function(e) {
