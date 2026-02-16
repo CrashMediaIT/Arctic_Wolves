@@ -1324,15 +1324,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return { success: true };
             })
             .then(data => {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-                
-                const form = document.getElementById('create-invoice-form');
-                const successMsg = document.getElementById('invoice-success-message');
-                form.style.display = 'none';
-                successMsg.style.display = 'block';
-                
-                setTimeout(() => window.location.reload(), 1500);
+                persistToast('Invoice created successfully!', 'success');
+                window.location.reload();
             })
             .catch(error => {
                 submitBtn.innerHTML = originalText;

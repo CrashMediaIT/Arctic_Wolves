@@ -258,7 +258,7 @@ function mSrToggle(id, activate) {
     fetch('process_reports.php', {method:'POST', body:fd})
         .then(function(r){ return r.json(); })
         .then(function(d){
-            if (d.success) { location.reload(); }
+            if (d.success) { persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
             else { alert(d.message || 'Error'); }
         })
         .catch(function(){ alert('An error occurred'); });
@@ -273,7 +273,7 @@ function mSrDelete(id, name) {
     fetch('process_reports.php', {method:'POST', body:fd})
         .then(function(r){ return r.json(); })
         .then(function(d){
-            if (d.success) { location.reload(); }
+            if (d.success) { persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
             else { alert(d.message || 'Error'); }
         })
         .catch(function(){ alert('An error occurred'); });
@@ -285,7 +285,7 @@ document.getElementById('mSrForm').addEventListener('submit', async function(e) 
     try {
         var r = await fetch('process_reports.php', {method:'POST', body:fd});
         var d = await r.json();
-        if (d.success) { mSrCloseSheet(); location.reload(); }
+        if (d.success) { mSrCloseSheet(); persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
         else { alert(d.message || 'Error saving schedule'); }
     } catch(err) { alert('An error occurred'); }
 });

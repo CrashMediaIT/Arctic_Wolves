@@ -25,6 +25,34 @@
     // ===================================================================
 
     /**
+     * Persist a toast message in sessionStorage so it survives a page reload
+     */
+    function persistToast(message, type = 'info') {
+        try {
+            sessionStorage.setItem('arctic_toast', JSON.stringify({ message, type }));
+        } catch (e) {
+            // sessionStorage unavailable, show immediately as fallback
+            showToast(message, type);
+        }
+    }
+
+    /**
+     * Show any toast message that was persisted before a page reload
+     */
+    function showPersistedToast() {
+        try {
+            const raw = sessionStorage.getItem('arctic_toast');
+            if (raw) {
+                sessionStorage.removeItem('arctic_toast');
+                const { message, type } = JSON.parse(raw);
+                showToast(message, type);
+            }
+        } catch (e) {
+            // ignore parse errors
+        }
+    }
+
+    /**
      * Show toast notification
      */
     function showToast(message, type = 'info') {
@@ -477,8 +505,8 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                showToast('Job completed successfully', 'success');
-                                setTimeout(() => window.location.reload(), 1500);
+                                persistToast('Job completed successfully', 'success');
+                                window.location.reload();
                             } else {
                                 showToast(data.message || 'Job failed', 'error');
                             }
@@ -503,8 +531,8 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            showToast(data.message || 'Status updated', 'success');
-                            setTimeout(() => window.location.reload(), 1000);
+                            persistToast(data.message || 'Status updated', 'success');
+                            window.location.reload();
                         } else {
                             showToast(data.message || 'Update failed', 'error');
                         }
@@ -545,8 +573,8 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                showToast(data.message || 'Status updated successfully', 'success');
-                                setTimeout(() => window.location.reload(), 1000);
+                                persistToast(data.message || 'Status updated successfully', 'success');
+                                window.location.reload();
                             } else {
                                 showToast(data.message || 'Failed to update status', 'error');
                             }
@@ -602,8 +630,8 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                showToast('Session cancelled successfully', 'success');
-                                setTimeout(() => window.location.reload(), 1000);
+                                persistToast('Session cancelled successfully', 'success');
+                                window.location.reload();
                             } else {
                                 showToast(data.message || 'Failed to cancel session', 'error');
                             }
@@ -721,13 +749,18 @@
                 .then(data => {
                     hideLoading(loader);
                     if (data.success) {
-                        showToast(data.message || 'Operation successful', 'success');
                         if (data.redirect) {
-                            setTimeout(() => window.location.href = data.redirect, 1000);
+                            persistToast(data.message || 'Operation successful', 'success');
+                            window.location.href = data.redirect;
                         } else {
+                            showToast(data.message || 'Operation successful', 'success');
                             this.reset();
                             const modalId = this.closest('[data-modal-id]')?.getAttribute('data-modal-id');
                             if (modalId) closeModal(modalId);
+                            // Dispatch event for live UI updates without full page reload
+                            document.dispatchEvent(new CustomEvent('arctic:content-updated', {
+                                detail: { action: 'create', data: data }
+                            }));
                         }
                     } else {
                         showToast(data.message || 'Operation failed', 'error');
@@ -1265,8 +1298,8 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            showToast('Video deleted successfully', 'success');
-                            setTimeout(() => window.location.reload(), 1000);
+                            persistToast('Video deleted successfully', 'success');
+                            window.location.reload();
                         } else {
                             showToast(data.message || 'Failed to delete video', 'error');
                         }
@@ -1289,6 +1322,9 @@
      */
     function init() {
         console.log('Arctic Wolves App initializing...');
+        
+        // Show any toast messages that were persisted before a page reload
+        showPersistedToast();
         
         // Initialize all components
         initializeSearch();
@@ -1393,6 +1429,7 @@
     // Export functions for external use
     window.ArcticWolvesApp = {
         showToast,
+        persistToast,
         showLoading,
         hideLoading,
         openModal,
@@ -1404,6 +1441,7 @@
     window.closeModal = closeModal;
     window.openModal = openModal;
     window.showToast = showToast;
+    window.persistToast = persistToast;
     window.updateFileLabel = updateFileLabel;
 
 })();

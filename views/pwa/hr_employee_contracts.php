@@ -198,7 +198,8 @@ function submitCreateContract(e) {
                 msgEl.style.background = 'rgba(16,185,129,0.15)';
                 msgEl.style.color = '#10B981';
                 msgEl.textContent = data.message || 'Contract created!';
-                setTimeout(() => location.reload(), 1000);
+                persistToast(data.message || 'Operation completed successfully', 'success');
+                location.reload();
             } else {
                 msgEl.style.background = 'rgba(239,68,68,0.15)';
                 msgEl.style.color = '#EF4444';
@@ -222,7 +223,7 @@ function cancelContract(id) {
         .then(r => r.json())
         .then(data => {
             alert(data.message || (data.success ? 'Cancelled' : 'Error'));
-            if (data.success) location.reload();
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         })
         .catch(() => alert('Network error'));
 }

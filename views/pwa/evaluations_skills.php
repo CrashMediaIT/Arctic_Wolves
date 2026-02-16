@@ -180,7 +180,7 @@ function mCreateSkillEval(e) {
     fetch('process_eval_skills.php', { method: 'POST', body: fd })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) { location.reload(); } else { alert(data.message || 'Error'); }
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); } else { alert(data.message || 'Error'); }
         })
         .catch(function() { alert('Error creating evaluation'); });
 }

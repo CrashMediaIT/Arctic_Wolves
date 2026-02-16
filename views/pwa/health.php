@@ -310,7 +310,7 @@ function mSaveWorkout() {
     fetch('process_workout.php', {
         method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'}, body: body
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success) { mCloseModal('mWorkoutModal'); location.reload(); }
+        if (d.success) { mCloseModal('mWorkoutModal'); persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
         else { alert(d.message || 'Error saving workout'); }
     }).catch(function() { alert('Network error'); });
 }
@@ -352,7 +352,7 @@ function mSaveMeal() {
     fetch('process_nutrition.php', {
         method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'}, body: body
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success) { mCloseModal('mMealModal'); location.reload(); }
+        if (d.success) { mCloseModal('mMealModal'); persistToast(d.message || 'Operation completed successfully', 'success'); location.reload(); }
         else { alert(d.message || 'Error saving meal plan'); }
     }).catch(function() { alert('Network error'); });
 }

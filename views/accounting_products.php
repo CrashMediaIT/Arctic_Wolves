@@ -1719,13 +1719,13 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(data.message || 'Status updated successfully!', 'success');
+                    persistToast(data.message || 'Status updated successfully!', 'success');
                     var icon = button.querySelector('i');
                     if (icon) {
                         icon.classList.toggle('fa-toggle-on');
                         icon.classList.toggle('fa-toggle-off');
                     }
-                    setTimeout(function() { location.reload(); }, 1000);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to toggle status'), 'error');
                 }
@@ -1766,8 +1766,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(itemType.charAt(0).toUpperCase() + itemType.slice(1) + ' deleted successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 1000);
+                    persistToast(itemType.charAt(0).toUpperCase() + itemType.slice(1) + ' deleted successfully!', 'success');
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
                 }
@@ -2524,6 +2524,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     submitBtn.disabled = false;
                 }
                 if (data.success) {
+                    persistToast(data.message || 'Operation completed successfully', 'success');
                     location.reload();
                 } else {
                     alert('Error: ' + (data.message || 'Unknown error'));

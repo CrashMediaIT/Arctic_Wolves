@@ -673,6 +673,7 @@ function clockIn() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert(data.message || 'Failed to clock in');
@@ -699,6 +700,7 @@ function startLunch() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert(data.message || 'Failed to start lunch break');
@@ -723,6 +725,7 @@ function endLunch() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert(data.message || 'Failed to end lunch break');

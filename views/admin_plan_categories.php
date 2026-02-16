@@ -455,8 +455,8 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showNotification(data.message || 'Category deleted!', 'success');
-                    setTimeout(function() { location.reload(); }, 1500);
+                    persistToast(data.message || 'Category deleted!', 'success');
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
                 }
@@ -487,9 +487,9 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
                 submitBtn.disabled = false;
                 
                 if (data.success) {
-                    showNotification(data.message || 'Category created!', 'success');
+                    persistToast(data.message || 'Category created!', 'success');
                     closeModal();
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to create'), 'error');
                 }

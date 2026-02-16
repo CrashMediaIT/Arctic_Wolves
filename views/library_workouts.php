@@ -919,7 +919,7 @@ document.querySelectorAll('[data-action="delete-exercise"]').forEach(button => {
             })
             .then(r => r.json())
             .then(data => {
-                if (data.success) location.reload();
+                if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
                 else alert('Error: ' + data.message);
             });
         }
@@ -1010,7 +1010,7 @@ document.querySelectorAll('[data-action="delete-plan"]').forEach(button => {
             })
             .then(r => r.json())
             .then(data => {
-                if (data.success) location.reload();
+                if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
                 else alert('Error: ' + data.message);
             });
         }
@@ -1069,6 +1069,7 @@ document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
             if (data.success) {
+                persistToast(data.message || 'Operation completed successfully', 'success');
                 location.reload();
             } else {
                 alert('Error: ' + (data.message || 'Unknown error'));
@@ -1226,6 +1227,7 @@ document.getElementById('assign-athletes-form').addEventListener('submit', funct
         submitBtn.disabled = false;
         if (data.success) {
             closeModal('assign-athletes-modal');
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Unknown error'));

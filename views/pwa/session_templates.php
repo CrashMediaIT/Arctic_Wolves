@@ -234,9 +234,9 @@ try {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showAlert('success', data.message || 'Template saved');
+                    persistToast(data.message || 'Template saved', 'success');
                     mSessTplClose();
-                    setTimeout(function() { window.location.reload(); }, 1000);
+                    window.location.reload();
                 } else { showAlert('error', data.message || 'Error saving template'); }
             })
             .catch(function() { showAlert('error', 'Network error'); })

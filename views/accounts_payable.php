@@ -816,7 +816,7 @@ function deletePayee(id) {
         })
         .then(r => r.json())
         .then(data => {
-            if (data.success) { location.reload(); }
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
             else { alert(data.message || 'Error deleting payee'); }
         });
     }
@@ -831,7 +831,7 @@ document.getElementById('payeeForm').addEventListener('submit', function(e) {
     fetch('process_expenses.php', { method: 'POST', body: formData })
     .then(r => r.json())
     .then(data => {
-        if (data.success) { location.reload(); }
+        if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         else { alert(data.message || 'Error saving payee'); }
     });
 });
@@ -856,7 +856,7 @@ document.getElementById('virtualCardForm').addEventListener('submit', function(e
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-credit-card"></i> Create Card';
         if (data.success) {
-            alert('Virtual card created successfully!');
+            persistToast('Virtual card created successfully!', 'success');
             location.reload();
         } else {
             alert(data.message || 'Error creating virtual card');
@@ -873,7 +873,7 @@ function activateCard(id) {
         })
         .then(r => r.json())
         .then(data => {
-            if (data.success) { location.reload(); }
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
             else { alert(data.message || 'Error activating card'); }
         });
     }
@@ -893,7 +893,7 @@ function processBatch(id) {
         .then(r => r.json())
         .then(data => {
             alert(data.message || (data.success ? 'Batch processed' : 'Error'));
-            if (data.success) location.reload();
+            if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         });
     }
 }

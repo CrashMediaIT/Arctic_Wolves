@@ -1200,9 +1200,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(function(response) { return response.json(); })
         .then(function(data) {
             if (data.success) {
-                showNotification(data.message || 'Operation successful!', 'success');
+                persistToast(data.message || 'Operation successful!', 'success');
                 if (onSuccess) onSuccess(data);
-                setTimeout(function() { location.reload(); }, 1500);
+                location.reload();
             } else {
                 showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
             }
@@ -1369,9 +1369,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 if (data.success) {
-                    showNotification(data.message || 'Created successfully!', 'success');
+                    persistToast(data.message || 'Created successfully!', 'success');
                     if (modal) closeModal(modal.id);
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
                 }

@@ -597,6 +597,7 @@ function toggleNotification(id) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to toggle notification'));
@@ -626,6 +627,7 @@ function deleteNotification(id) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to delete notification'));
@@ -659,6 +661,7 @@ document.getElementById('notification-form').addEventListener('submit', function
         
         if (data.success) {
             closeModal();
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to save notification'));

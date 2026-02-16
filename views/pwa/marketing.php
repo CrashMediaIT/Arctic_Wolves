@@ -216,9 +216,9 @@ try {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showAlert('success', data.message || 'Saved');
+                    persistToast(data.message || 'Saved', 'success');
                     mBcardClose();
-                    setTimeout(function() { window.location.reload(); }, 1000);
+                    window.location.reload();
                 } else { showAlert('error', data.message || 'Error saving'); }
             })
             .catch(function() { showAlert('error', 'Network error'); })

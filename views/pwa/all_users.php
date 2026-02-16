@@ -275,7 +275,7 @@ function toggleUserStatus(userId, btn) {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        if (data.success) { location.reload(); }
+        if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
         else { alert(data.message || 'Failed to toggle status'); }
     })
     .catch(function() { alert('Request failed'); });

@@ -298,8 +298,8 @@ function mVidDelete(videoId) {
         .then(function(r) { return r.json(); })
         .then(function(d) {
             if (d.success) {
-                mVidShowToast('Video deleted', 'success');
-                setTimeout(function() { location.reload(); }, 800);
+                persistToast('Video deleted', 'success');
+                location.reload();
             } else {
                 mVidShowToast(d.error || 'Delete failed', 'error');
             }
@@ -336,8 +336,8 @@ function mVidSubmitReview() {
         .then(function(d) {
             if (d.success) {
                 mVidCloseReview();
-                mVidShowToast('Review submitted', 'success');
-                setTimeout(function() { location.reload(); }, 800);
+                persistToast('Review submitted', 'success');
+                location.reload();
             } else {
                 mVidShowToast(d.error || 'Review failed', 'error');
                 btn.disabled = false;

@@ -1056,6 +1056,7 @@ function toggleProductStatus(id, currentStatus) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Unknown error'));
@@ -1085,6 +1086,7 @@ function deleteProduct(product) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Unknown error'));
@@ -1510,9 +1512,9 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             }
             
             if (data.success) {
-                showNotification(data.message || 'Operation completed successfully!', 'success');
+                persistToast(data.message || 'Operation completed successfully!', 'success');
                 if (modal) closeModal(modal.id);
-                setTimeout(function() { location.reload(); }, 1500);
+                location.reload();
             } else {
                 showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
             }

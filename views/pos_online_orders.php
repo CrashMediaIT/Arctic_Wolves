@@ -428,6 +428,7 @@ function updateOrderStatus(orderId, newStatus) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Failed to update status: ' + (data.message || 'Unknown error'));
@@ -557,7 +558,7 @@ function submitShipOrder(e) {
         
         if (data.success) {
             closeModal('ship-order-modal');
-            alert(data.message || 'Order shipped successfully!');
+            persistToast(data.message || 'Order shipped successfully!', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Failed to ship order'));

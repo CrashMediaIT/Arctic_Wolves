@@ -280,10 +280,10 @@ endif;
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showAlert('success', data.message || 'Session saved!');
+                    persistToast(data.message || 'Session saved!', 'success');
                     mSwReset();
                     document.getElementById('mSwSessionName').value = '';
-                    setTimeout(function() { window.location.reload(); }, 1500);
+                    window.location.reload();
                 } else { showAlert('error', data.message || 'Failed to save'); }
             })
             .catch(function() { showAlert('error', 'Failed to save session'); })

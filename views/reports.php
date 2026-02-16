@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = originalBtnText;
                 
                 if (data.success) {
-                    alert('Report generated successfully!');
+                    persistToast('Report generated successfully!', 'success');
                     location.reload();
                 } else {
                     alert('Error: ' + (data.message || 'Failed to generate report'));
@@ -573,6 +573,7 @@ function deleteReport(reportId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                persistToast(data.message || 'Operation completed successfully', 'success');
                 location.reload();
             } else {
                 alert('Error: ' + data.message);
@@ -591,6 +592,7 @@ function deleteSchedule(scheduleId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                persistToast(data.message || 'Operation completed successfully', 'success');
                 location.reload();
             } else {
                 alert('Error: ' + data.message);
@@ -608,6 +610,7 @@ function toggleSchedule(scheduleId, status) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);

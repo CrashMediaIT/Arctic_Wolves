@@ -251,9 +251,9 @@ $totalSchedules = count($schedules);
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showAlert('success', data.message || 'Schedule saved');
+                    persistToast(data.message || 'Schedule saved', 'success');
                     mSchedFormClose();
-                    setTimeout(function() { window.location.reload(); }, 1000);
+                    window.location.reload();
                 } else { showAlert('error', data.message || 'Error saving schedule'); }
             })
             .catch(function() { showAlert('error', 'Network error'); })
@@ -275,8 +275,8 @@ $totalSchedules = count($schedules);
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) {
-                showAlert('success', 'Schedule ' + (currentActive ? 'paused' : 'resumed'));
-                setTimeout(function() { window.location.reload(); }, 1000);
+                persistToast('Schedule ' + (currentActive ? 'paused' : 'resumed'), 'success');
+                window.location.reload();
             } else { showAlert('error', data.message || 'Error updating schedule'); }
         })
         .catch(function() { showAlert('error', 'Network error'); });

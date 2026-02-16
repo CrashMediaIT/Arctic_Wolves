@@ -393,9 +393,9 @@ try {
                 submitBtn.innerHTML = origHTML;
                 submitBtn.disabled = false;
                 if (data.success) {
-                    showToast(data.message || 'Submitted successfully!', 'success');
+                    persistToast(data.message || 'Submitted successfully!', 'success');
                     closeModal();
-                    setTimeout(function() { location.reload(); }, 1200);
+                    location.reload();
                 } else {
                     showToast(data.message || 'Failed to process', 'error');
                 }
@@ -427,8 +427,8 @@ try {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showToast(data.message || (label + 'd!'), 'success');
-                    setTimeout(function() { location.reload(); }, 1200);
+                    persistToast(data.message || (label + 'd!'), 'success');
+                    location.reload();
                 } else {
                     self.disabled = false;
                     showToast(data.message || 'Operation failed', 'error');

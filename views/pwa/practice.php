@@ -505,8 +505,8 @@ try {
             btn.disabled = false;
             if (data.success) {
                 closeCreateModal();
-                ppToast('Practice plan created!', 'success');
-                setTimeout(function(){ location.reload(); }, 800);
+                persistToast('Practice plan created!', 'success');
+                location.reload();
             } else {
                 ppToast(data.message || 'Create failed', 'error');
             }

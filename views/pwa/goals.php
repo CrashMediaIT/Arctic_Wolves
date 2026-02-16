@@ -751,8 +751,8 @@ function mGoalSubmit(e) {
     fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
         .then(function(r) {
             if (r.redirected || r.ok) {
-                mGoalToast('Goal saved!', 'success');
-                setTimeout(function() { window.location.reload(); }, 600);
+                persistToast('Goal saved!', 'success');
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Save failed'); });
             }
@@ -775,10 +775,10 @@ function mGoalDelete(id) {
     fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
         .then(function(r) {
             if (r.redirected || r.ok) {
-                mGoalToast('Goal deleted', 'success');
+                persistToast('Goal deleted', 'success');
                 var card = document.querySelector('.m-goal-card[data-goal-id="' + id + '"]');
                 if (card) card.style.display = 'none';
-                setTimeout(function() { window.location.reload(); }, 600);
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Delete failed'); });
             }
@@ -797,8 +797,8 @@ function mGoalComplete(id) {
     fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
         .then(function(r) {
             if (r.redirected || r.ok) {
-                mGoalToast('Goal completed!', 'success');
-                setTimeout(function() { window.location.reload(); }, 600);
+                persistToast('Goal completed!', 'success');
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Complete failed'); });
             }
@@ -817,10 +817,10 @@ function mGoalArchive(id) {
     fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
         .then(function(r) {
             if (r.redirected || r.ok) {
-                mGoalToast('Goal archived', 'success');
+                persistToast('Goal archived', 'success');
                 var card = document.querySelector('.m-goal-card[data-goal-id="' + id + '"]');
                 if (card) card.style.display = 'none';
-                setTimeout(function() { window.location.reload(); }, 600);
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Archive failed'); });
             }
@@ -865,7 +865,7 @@ function mGoalSaveProgress(id) {
                     barEl.style.background = val >= 75 ? '#10B981' : (val >= 40 ? '#F59E0B' : '#8B5CF6');
                 }
                 document.getElementById('m-prog-' + id).classList.remove('m-visible');
-                if (parseInt(val) >= 100) setTimeout(function() { window.location.reload(); }, 800);
+                if (parseInt(val) >= 100) window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Update failed'); });
             }
@@ -1008,11 +1008,11 @@ function mGoalSubmitProgressNote(e) {
     fetch('process_goals.php', { method: 'POST', body: data, credentials: 'same-origin' })
         .then(function(r) {
             if (r.redirected || r.ok) {
-                mGoalToast('Progress note added!', 'success');
+                persistToast('Progress note added!', 'success');
                 mGoalCloseProgressNote();
                 var goalId = document.getElementById('mGoalProgressNoteId').value;
                 if (goalId) mGoalViewDetail(parseInt(goalId));
-                setTimeout(function() { window.location.reload(); }, 800);
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Save failed'); });
             }

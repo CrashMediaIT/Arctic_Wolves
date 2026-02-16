@@ -1045,9 +1045,9 @@ function saveJob(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('success', data.message);
+            persistToast(data.message, 'success');
             closeJobModal();
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1081,8 +1081,8 @@ function deleteJob(jobId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('success', data.message);
-            setTimeout(() => location.reload(), 1000);
+            persistToast(data.message, 'success');
+            location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1105,8 +1105,8 @@ function toggleJobStatus(jobId, currentStatus) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('success', data.message);
-            setTimeout(() => location.reload(), 1000);
+            persistToast(data.message, 'success');
+            location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1135,8 +1135,8 @@ function runBackupNow(jobId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('success', data.message);
-            setTimeout(() => location.reload(), 2000);
+            persistToast(data.message, 'success');
+            location.reload();
         } else {
             showAlert('error', data.message);
             btn.disabled = false;

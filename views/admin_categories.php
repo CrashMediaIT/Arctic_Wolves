@@ -1327,13 +1327,9 @@ try {
                     <label class="form-label">Age Group</label>
                     <select name="age_group" class="form-input">
                         <option value="">Select Age Group</option>
-                        <option value="U8">U8</option>
-                        <option value="U10">U10</option>
-                        <option value="U12">U12</option>
-                        <option value="U14">U14</option>
-                        <option value="U16">U16</option>
-                        <option value="U18">U18</option>
-                        <option value="Adult">Adult</option>
+                        <?php foreach ($age_groups as $ag): ?>
+                        <option value="<?= htmlspecialchars($ag['name']) ?>"><?= htmlspecialchars($ag['name']) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 
@@ -1341,10 +1337,9 @@ try {
                     <label class="form-label">Skill Level</label>
                     <select name="skill_level" class="form-input">
                         <option value="">Select Skill Level</option>
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate">Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                        <option value="Elite">Elite</option>
+                        <?php foreach ($skill_levels as $sl): ?>
+                        <option value="<?= htmlspecialchars($sl['name']) ?>"><?= htmlspecialchars($sl['name']) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 
@@ -1445,13 +1440,9 @@ try {
                     <label class="form-label">Age Group</label>
                     <select name="age_group" id="edit-team-age-group" class="form-input">
                         <option value="">Select Age Group</option>
-                        <option value="U8">U8</option>
-                        <option value="U10">U10</option>
-                        <option value="U12">U12</option>
-                        <option value="U14">U14</option>
-                        <option value="U16">U16</option>
-                        <option value="U18">U18</option>
-                        <option value="Adult">Adult</option>
+                        <?php foreach ($age_groups as $ag): ?>
+                        <option value="<?= htmlspecialchars($ag['name']) ?>"><?= htmlspecialchars($ag['name']) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 
@@ -1459,10 +1450,9 @@ try {
                     <label class="form-label">Skill Level</label>
                     <select name="skill_level" id="edit-team-skill-level" class="form-input">
                         <option value="">Select Skill Level</option>
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate">Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                        <option value="Elite">Elite</option>
+                        <?php foreach ($skill_levels as $sl): ?>
+                        <option value="<?= htmlspecialchars($sl['name']) ?>"><?= htmlspecialchars($sl['name']) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 
@@ -1918,8 +1908,8 @@ try {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        showNotification('Deleted successfully!', 'success');
-                        setTimeout(function() { location.reload(); }, 1000);
+                        persistToast('Deleted successfully!', 'success');
+                        location.reload();
                     } else {
                         showNotification('Error: ' + (data.message || 'Unknown error'), 'error');
                     }
@@ -2056,9 +2046,9 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             }
             
             if (data.success) {
-                showNotification(data.message || 'Operation completed successfully!', 'success');
+                persistToast(data.message || 'Operation completed successfully!', 'success');
                 if (modal) closeModal(modal.id);
-                setTimeout(function() { location.reload(); }, 1500);
+                location.reload();
             } else {
                 showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
             }

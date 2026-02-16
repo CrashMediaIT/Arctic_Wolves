@@ -1293,7 +1293,8 @@ function toggleStep(stepId, goalId, isCompleted) {
     .then(data => {
         if (data.success) {
             viewGoalDetail(goalId); // Refresh detail view
-            setTimeout(() => location.reload(), 500); // Refresh main view
+            persistToast(data.message || 'Operation completed successfully', 'success');
+            location.reload(); // Refresh main view
         }
     });
 }
@@ -1313,6 +1314,7 @@ function completeGoal(goalId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + data.message);

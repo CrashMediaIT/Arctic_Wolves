@@ -198,8 +198,8 @@ $totalCats = count($categories);
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            mToast(d.message || (d.success ? 'Deleted!' : 'Error'), d.success ? 'success' : 'error');
-            if (d.success) setTimeout(function() { location.reload(); }, 1200);
+            if (d.success) { persistToast(d.message || 'Deleted!', 'success'); location.reload(); }
+            else { mToast(d.message || 'Error', 'error'); }
         })
         .catch(function() { mToast('An error occurred', 'error'); });
     };
@@ -223,8 +223,8 @@ $totalCats = count($categories);
         .then(function(r) { return r.json(); })
         .then(function(d) {
             btn.innerHTML = orig; btn.disabled = false;
-            mToast(d.message || (d.success ? 'Saved!' : 'Error'), d.success ? 'success' : 'error');
-            if (d.success) { document.getElementById('mCatSheet').classList.remove('m-active'); setTimeout(function() { location.reload(); }, 1200); }
+            if (d.success) { persistToast(d.message || 'Saved!', 'success'); document.getElementById('mCatSheet').classList.remove('m-active'); location.reload(); }
+            else { mToast(d.message || 'Error', 'error'); }
         })
         .catch(function() { btn.innerHTML = orig; btn.disabled = false; mToast('An error occurred', 'error'); });
     });

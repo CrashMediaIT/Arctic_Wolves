@@ -955,7 +955,7 @@ document.querySelectorAll('[data-action="delete-meal"]').forEach(button => {
             })
             .then(r => r.json())
             .then(data => {
-                if (data.success) location.reload();
+                if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
                 else alert('Error: ' + data.message);
             });
         }
@@ -1051,7 +1051,7 @@ document.querySelectorAll('[data-action="delete-plan"]').forEach(button => {
             })
             .then(r => r.json())
             .then(data => {
-                if (data.success) location.reload();
+                if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
                 else alert('Error: ' + data.message);
             });
         }
@@ -1115,6 +1115,7 @@ document.querySelectorAll('.modal form, #create-plan-form').forEach(form => {
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
             if (data.success) {
+                persistToast(data.message || 'Operation completed successfully', 'success');
                 location.reload();
             } else {
                 alert('Error: ' + (data.message || 'Unknown error'));
@@ -1281,6 +1282,7 @@ document.getElementById('assign-nutrition-athletes-form').addEventListener('subm
         submitBtn.disabled = false;
         if (data.success) {
             closeModal('assign-nutrition-athletes-modal');
+            persistToast(data.message || 'Operation completed successfully', 'success');
             location.reload();
         } else {
             alert('Error: ' + (data.message || 'Unknown error'));

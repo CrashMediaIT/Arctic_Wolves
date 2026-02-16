@@ -263,8 +263,8 @@ $totalCount = count($workout_categories) + count($nutrition_categories) + count(
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            toast(d.message || (d.success ? 'Deleted!' : 'Error'), d.success ? 'success' : 'error');
-            if (d.success) setTimeout(function() { location.reload(); }, 1200);
+            if (d.success) { persistToast(d.message || 'Deleted!', 'success'); location.reload(); }
+            else { toast(d.message || 'Error', 'error'); }
         })
         .catch(function() { toast('An error occurred', 'error'); });
     };
@@ -288,9 +288,9 @@ $totalCount = count($workout_categories) + count($nutrition_categories) + count(
             btn.innerHTML = origText;
             btn.disabled = false;
             if (d.success) {
-                toast(d.message || 'Category created!', 'success');
+                persistToast(d.message || 'Category created!', 'success');
                 mPlanCatHideCreate();
-                setTimeout(function() { location.reload(); }, 1200);
+                location.reload();
             } else {
                 toast(d.message || 'Failed to create', 'error');
             }

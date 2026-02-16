@@ -744,8 +744,8 @@ async function toggleSchedule(scheduleId, status) {
         var response = await fetch('process_reports.php', { method: 'POST', body: formData });
         var result = await response.json();
         if (result.success) {
-            showNotification('Schedule updated successfully', 'success');
-            setTimeout(function() { location.reload(); }, 1000);
+            persistToast('Schedule updated successfully', 'success');
+            location.reload();
         } else {
             showNotification(result.message || 'Failed to update schedule', 'error');
         }
@@ -767,8 +767,8 @@ async function deleteSchedule(scheduleId, name) {
         var response = await fetch('process_reports.php', { method: 'POST', body: formData });
         var result = await response.json();
         if (result.success) {
-            showNotification('Schedule deleted successfully', 'success');
-            setTimeout(function() { location.reload(); }, 1000);
+            persistToast('Schedule deleted successfully', 'success');
+            location.reload();
         } else {
             showNotification(result.message || 'Failed to delete schedule', 'error');
         }
@@ -790,8 +790,8 @@ async function deleteReport(reportId) {
         var response = await fetch('process_reports.php', { method: 'POST', body: formData });
         var result = await response.json();
         if (result.success) {
-            showNotification('Report deleted successfully', 'success');
-            setTimeout(function() { location.reload(); }, 1000);
+            persistToast('Report deleted successfully', 'success');
+            location.reload();
         } else {
             showNotification(result.message || 'Failed to delete report', 'error');
         }
@@ -809,9 +809,9 @@ document.getElementById('editScheduleForm').addEventListener('submit', async fun
         var response = await fetch('process_reports.php', { method: 'POST', body: formData });
         var result = await response.json();
         if (result.success) {
-            showNotification('Schedule updated successfully', 'success');
+            persistToast('Schedule updated successfully', 'success');
             closeModal();
-            setTimeout(function() { location.reload(); }, 1000);
+            location.reload();
         } else {
             showNotification(result.message || 'Failed to update schedule', 'error');
         }
