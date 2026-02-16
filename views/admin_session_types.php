@@ -324,7 +324,7 @@ function deleteType(id) {
     .then(function(data) {
         if (data.success) {
             showNotification(data.message || 'Session type deleted!', 'success');
-            setTimeout(function() { location.reload(); }, 1500);
+            location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
         }
@@ -357,7 +357,7 @@ document.getElementById('typeForm').addEventListener('submit', function(e) {
         if (data.success) {
             showNotification(data.message || 'Session type saved!', 'success');
             closeModal();
-            setTimeout(function() { location.reload(); }, 1500);
+            location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to save'), 'error');
         }

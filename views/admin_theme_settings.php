@@ -1653,14 +1653,14 @@ document.getElementById('centerIceLogoForm').addEventListener('submit', async fu
             const data = JSON.parse(text);
             if (data.success) {
                 showAlert('success', data.message || 'Center ice logo saved successfully!');
-                setTimeout(() => window.location.reload(), 1500);
+                window.location.reload();
             } else {
                 showAlert('error', data.message || 'Failed to save center ice logo');
             }
         } catch (parseError) {
             // If it's not JSON, the form likely submitted successfully
             showAlert('success', 'Center ice logo saved!');
-            setTimeout(() => window.location.reload(), 1500);
+            window.location.reload();
         }
     } catch (error) {
         showAlert('error', 'An error occurred while saving center ice logo.');
@@ -1689,7 +1689,7 @@ async function removeCenterIceLogo() {
         }
         
         showAlert('success', 'Center ice logo removed!');
-        setTimeout(() => window.location.reload(), 1500);
+        window.location.reload();
     } catch (error) {
         showAlert('error', 'An error occurred while removing center ice logo.');
     }

@@ -208,7 +208,7 @@ $totalProducts = count($products);
         .then(function(r) { return r.json(); })
         .then(function(d) {
             mToast(d.message || (d.success ? 'Deleted!' : 'Error'), d.success ? 'success' : 'error');
-            if (d.success) setTimeout(function() { location.reload(); }, 1200);
+            if (d.success) location.reload();
         })
         .catch(function() { mToast('An error occurred', 'error'); });
     };
@@ -233,7 +233,7 @@ $totalProducts = count($products);
         .then(function(d) {
             btn.innerHTML = orig; btn.disabled = false;
             mToast(d.message || (d.success ? 'Saved!' : 'Error'), d.success ? 'success' : 'error');
-            if (d.success) { document.getElementById('mProdSheet').classList.remove('m-active'); setTimeout(function() { location.reload(); }, 1200); }
+            if (d.success) { document.getElementById('mProdSheet').classList.remove('m-active'); location.reload(); }
         })
         .catch(function() { btn.innerHTML = orig; btn.disabled = false; mToast('An error occurred', 'error'); });
     });

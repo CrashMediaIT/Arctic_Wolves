@@ -395,7 +395,7 @@ try {
                 if (data.success) {
                     showToast(data.message || 'Submitted successfully!', 'success');
                     closeModal();
-                    setTimeout(function() { location.reload(); }, 1200);
+                    location.reload();
                 } else {
                     showToast(data.message || 'Failed to process', 'error');
                 }
@@ -428,7 +428,7 @@ try {
             .then(function(data) {
                 if (data.success) {
                     showToast(data.message || (label + 'd!'), 'success');
-                    setTimeout(function() { location.reload(); }, 1200);
+                    location.reload();
                 } else {
                     self.disabled = false;
                     showToast(data.message || 'Operation failed', 'error');

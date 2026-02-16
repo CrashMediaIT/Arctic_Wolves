@@ -1157,7 +1157,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     showNotification(data.message || 'Mileage entry updated!', 'success');
                     closeMileageModal();
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to update'), 'error');
                 }
@@ -1195,7 +1195,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 showNotification(data.message || 'Entry deleted!', 'success');
                 closeDeleteModal();
-                setTimeout(function() { location.reload(); }, 1500);
+                location.reload();
             } else {
                 showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
             }

@@ -283,7 +283,7 @@ endif;
                     showAlert('success', data.message || 'Session saved!');
                     mSwReset();
                     document.getElementById('mSwSessionName').value = '';
-                    setTimeout(function() { window.location.reload(); }, 1500);
+                    window.location.reload();
                 } else { showAlert('error', data.message || 'Failed to save'); }
             })
             .catch(function() { showAlert('error', 'Failed to save session'); })

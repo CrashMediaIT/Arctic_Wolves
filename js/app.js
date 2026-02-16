@@ -478,7 +478,7 @@
                         .then(data => {
                             if (data.success) {
                                 showToast('Job completed successfully', 'success');
-                                setTimeout(() => window.location.reload(), 1500);
+                                window.location.reload();
                             } else {
                                 showToast(data.message || 'Job failed', 'error');
                             }
@@ -504,7 +504,7 @@
                     .then(data => {
                         if (data.success) {
                             showToast(data.message || 'Status updated', 'success');
-                            setTimeout(() => window.location.reload(), 1000);
+                            window.location.reload();
                         } else {
                             showToast(data.message || 'Update failed', 'error');
                         }
@@ -546,7 +546,7 @@
                         .then(data => {
                             if (data.success) {
                                 showToast(data.message || 'Status updated successfully', 'success');
-                                setTimeout(() => window.location.reload(), 1000);
+                                window.location.reload();
                             } else {
                                 showToast(data.message || 'Failed to update status', 'error');
                             }
@@ -603,7 +603,7 @@
                         .then(data => {
                             if (data.success) {
                                 showToast('Session cancelled successfully', 'success');
-                                setTimeout(() => window.location.reload(), 1000);
+                                window.location.reload();
                             } else {
                                 showToast(data.message || 'Failed to cancel session', 'error');
                             }
@@ -723,11 +723,15 @@
                     if (data.success) {
                         showToast(data.message || 'Operation successful', 'success');
                         if (data.redirect) {
-                            setTimeout(() => window.location.href = data.redirect, 1000);
+                            window.location.href = data.redirect;
                         } else {
                             this.reset();
                             const modalId = this.closest('[data-modal-id]')?.getAttribute('data-modal-id');
                             if (modalId) closeModal(modalId);
+                            // Dispatch event for live UI updates without full page reload
+                            document.dispatchEvent(new CustomEvent('arctic:content-updated', {
+                                detail: { action: 'create', data: data }
+                            }));
                         }
                     } else {
                         showToast(data.message || 'Operation failed', 'error');
@@ -1266,7 +1270,7 @@
                     .then(data => {
                         if (data.success) {
                             showToast('Video deleted successfully', 'success');
-                            setTimeout(() => window.location.reload(), 1000);
+                            window.location.reload();
                         } else {
                             showToast(data.message || 'Failed to delete video', 'error');
                         }

@@ -660,7 +660,7 @@ function deletePackage(id, name) {
     .then(function(data) {
         if (data.success) {
             showNotification(data.message || 'Package deleted!', 'success');
-            setTimeout(function() { location.reload(); }, 1500);
+            location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
         }
@@ -753,7 +753,7 @@ document.getElementById('packageForm').addEventListener('submit', function(e) {
         if (data.success) {
             showNotification(data.message || 'Package saved successfully!', 'success');
             closePackageModal();
-            setTimeout(function() { location.reload(); }, 1500);
+            location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to save'), 'error');
         }

@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(data) {
                 if (data.success) {
                     showNotification(data.message || (action === 'approve' ? 'Approved!' : 'Rejected!'), 'success');
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
                 }
@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     showNotification(data.message || 'Credit/Refund issued successfully!', 'success');
                     closeModal('issue-credit-refund-modal');
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to process'), 'error');
                 }

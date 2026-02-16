@@ -1725,7 +1725,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         icon.classList.toggle('fa-toggle-on');
                         icon.classList.toggle('fa-toggle-off');
                     }
-                    setTimeout(function() { location.reload(); }, 1000);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to toggle status'), 'error');
                 }
@@ -1767,7 +1767,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     showNotification(itemType.charAt(0).toUpperCase() + itemType.slice(1) + ' deleted successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 1000);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
                 }

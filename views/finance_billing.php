@@ -1332,7 +1332,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 form.style.display = 'none';
                 successMsg.style.display = 'block';
                 
-                setTimeout(() => window.location.reload(), 1500);
+                window.location.reload();
             })
             .catch(error => {
                 submitBtn.innerHTML = originalText;

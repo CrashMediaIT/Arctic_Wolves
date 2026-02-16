@@ -344,7 +344,7 @@ $totalAthletes = count($athletes);
                     msg.textContent = 'Athlete added successfully!';
                     msg.style.display = 'block';
                     form.reset();
-                    setTimeout(function() { location.reload(); }, 1200);
+                    location.reload();
                 } else {
                     msg.className = 'm-form-msg is-error';
                     msg.textContent = res.text.indexOf('email_taken') !== -1 ? 'Email already in use.' : 'Failed to add athlete. Please try again.';

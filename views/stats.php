@@ -2318,7 +2318,7 @@ function toggleStep(stepId, goalId, isCompleted) {
     .then(data => {
         if (data.success) {
             viewGoalDetail(goalId); // Refresh detail view
-            setTimeout(() => location.reload(), 500); // Refresh main view
+            location.reload(); // Refresh main view
         } else {
             alert('Error: ' + (data.message || 'Failed to update step'));
         }

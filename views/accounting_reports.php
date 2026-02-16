@@ -378,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // If the response is a redirect, the report was generated
                 if (response.redirected) {
                     showNotification('Report generated successfully! The page will reload to show your report.', 'success');
-                    setTimeout(function() { window.location.href = response.url; }, 2000);
+                    window.location.href = response.url;
                     return null;
                 }
                 return response.json();
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (data.success) {
                     showNotification(data.message || 'Report generated successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to generate report'), 'error');
                 }

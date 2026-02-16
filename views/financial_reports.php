@@ -745,7 +745,7 @@ async function toggleSchedule(scheduleId, status) {
         var result = await response.json();
         if (result.success) {
             showNotification('Schedule updated successfully', 'success');
-            setTimeout(function() { location.reload(); }, 1000);
+            location.reload();
         } else {
             showNotification(result.message || 'Failed to update schedule', 'error');
         }
@@ -768,7 +768,7 @@ async function deleteSchedule(scheduleId, name) {
         var result = await response.json();
         if (result.success) {
             showNotification('Schedule deleted successfully', 'success');
-            setTimeout(function() { location.reload(); }, 1000);
+            location.reload();
         } else {
             showNotification(result.message || 'Failed to delete schedule', 'error');
         }
@@ -791,7 +791,7 @@ async function deleteReport(reportId) {
         var result = await response.json();
         if (result.success) {
             showNotification('Report deleted successfully', 'success');
-            setTimeout(function() { location.reload(); }, 1000);
+            location.reload();
         } else {
             showNotification(result.message || 'Failed to delete report', 'error');
         }
@@ -811,7 +811,7 @@ document.getElementById('editScheduleForm').addEventListener('submit', async fun
         if (result.success) {
             showNotification('Schedule updated successfully', 'success');
             closeModal();
-            setTimeout(function() { location.reload(); }, 1000);
+            location.reload();
         } else {
             showNotification(result.message || 'Failed to update schedule', 'error');
         }

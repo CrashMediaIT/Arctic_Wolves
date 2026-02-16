@@ -1919,7 +1919,7 @@ try {
                 .then(data => {
                     if (data.success) {
                         showNotification('Deleted successfully!', 'success');
-                        setTimeout(function() { location.reload(); }, 1000);
+                        location.reload();
                     } else {
                         showNotification('Error: ' + (data.message || 'Unknown error'), 'error');
                     }
@@ -2058,7 +2058,7 @@ document.querySelectorAll('.modal form').forEach(function(form) {
             if (data.success) {
                 showNotification(data.message || 'Operation completed successfully!', 'success');
                 if (modal) closeModal(modal.id);
-                setTimeout(function() { location.reload(); }, 1500);
+                location.reload();
             } else {
                 showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
             }

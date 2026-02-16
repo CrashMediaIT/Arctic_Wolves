@@ -345,7 +345,7 @@ function mRefundAction(action, id) {
     .then(function(data) {
         if (data.success) {
             mRefundToast(data.message || (action === 'approve' ? 'Refund approved' : 'Refund rejected'), false);
-            setTimeout(function() { location.reload(); }, 1000);
+            location.reload();
         } else {
             mRefundToast(data.message || 'Action failed', true);
         }
@@ -371,7 +371,7 @@ function mRefundAction(action, id) {
                 mRefundToast(data.message || 'Refund processed', false);
                 mRefundCloseSheet('create');
                 form.reset();
-                setTimeout(function() { location.reload(); }, 1000);
+                location.reload();
             } else {
                 mRefundToast(data.message || 'Failed to process refund', true);
             }

@@ -218,7 +218,7 @@ try {
                 if (data.success) {
                     showAlert('success', data.message || 'Saved');
                     mBcardClose();
-                    setTimeout(function() { window.location.reload(); }, 1000);
+                    window.location.reload();
                 } else { showAlert('error', data.message || 'Error saving'); }
             })
             .catch(function() { showAlert('error', 'Network error'); })

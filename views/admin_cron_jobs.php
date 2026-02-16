@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     showNotification(data.message || 'Cron job executed successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 1000);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to run cron job'), 'error');
                 }
@@ -500,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     showNotification(data.message || 'Status toggled successfully!', 'success');
-                    setTimeout(function() { location.reload(); }, 1000);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to toggle status'), 'error');
                 }
@@ -524,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     showNotification(data.message || 'Cron job deleted!', 'success');
-                    setTimeout(function() { location.reload(); }, 1000);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
                 }
@@ -563,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     showNotification(data.message || 'Cron job saved successfully!', 'success');
                     if (modal) closeModal(modal.id);
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Operation failed'), 'error');
                 }

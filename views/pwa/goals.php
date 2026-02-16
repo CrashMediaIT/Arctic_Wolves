@@ -752,7 +752,7 @@ function mGoalSubmit(e) {
         .then(function(r) {
             if (r.redirected || r.ok) {
                 mGoalToast('Goal saved!', 'success');
-                setTimeout(function() { window.location.reload(); }, 600);
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Save failed'); });
             }
@@ -778,7 +778,7 @@ function mGoalDelete(id) {
                 mGoalToast('Goal deleted', 'success');
                 var card = document.querySelector('.m-goal-card[data-goal-id="' + id + '"]');
                 if (card) card.style.display = 'none';
-                setTimeout(function() { window.location.reload(); }, 600);
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Delete failed'); });
             }
@@ -798,7 +798,7 @@ function mGoalComplete(id) {
         .then(function(r) {
             if (r.redirected || r.ok) {
                 mGoalToast('Goal completed!', 'success');
-                setTimeout(function() { window.location.reload(); }, 600);
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Complete failed'); });
             }
@@ -820,7 +820,7 @@ function mGoalArchive(id) {
                 mGoalToast('Goal archived', 'success');
                 var card = document.querySelector('.m-goal-card[data-goal-id="' + id + '"]');
                 if (card) card.style.display = 'none';
-                setTimeout(function() { window.location.reload(); }, 600);
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Archive failed'); });
             }
@@ -865,7 +865,7 @@ function mGoalSaveProgress(id) {
                     barEl.style.background = val >= 75 ? '#10B981' : (val >= 40 ? '#F59E0B' : '#8B5CF6');
                 }
                 document.getElementById('m-prog-' + id).classList.remove('m-visible');
-                if (parseInt(val) >= 100) setTimeout(function() { window.location.reload(); }, 800);
+                if (parseInt(val) >= 100) window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Update failed'); });
             }
@@ -1012,7 +1012,7 @@ function mGoalSubmitProgressNote(e) {
                 mGoalCloseProgressNote();
                 var goalId = document.getElementById('mGoalProgressNoteId').value;
                 if (goalId) mGoalViewDetail(parseInt(goalId));
-                setTimeout(function() { window.location.reload(); }, 800);
+                window.location.reload();
             } else {
                 return r.text().then(function(t) { throw new Error(t || 'Save failed'); });
             }

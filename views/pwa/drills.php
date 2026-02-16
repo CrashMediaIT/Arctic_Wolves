@@ -503,7 +503,7 @@ function mSubmitEdit(e) {
             if (r.ok || r.redirected) {
                 msg.textContent = 'Saved!';
                 msg.className = 'm-modal-msg m-msg-ok';
-                setTimeout(function() { window.location.reload(); }, 600);
+                window.location.reload();
             } else {
                 throw new Error('Server returned ' + r.status);
             }

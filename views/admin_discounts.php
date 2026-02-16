@@ -438,7 +438,7 @@ function deleteDiscount(id) {
     .then(function(data) {
         if (data.success) {
             showNotification(data.message || 'Discount code deleted!', 'success');
-            setTimeout(function() { location.reload(); }, 1500);
+            location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
         }
@@ -471,7 +471,7 @@ document.getElementById('discountForm').addEventListener('submit', function(e) {
         if (data.success) {
             showNotification(data.message || 'Discount code saved!', 'success');
             closeModal();
-            setTimeout(function() { location.reload(); }, 1500);
+            location.reload();
         } else {
             showNotification('Error: ' + (data.message || 'Failed to save'), 'error');
         }

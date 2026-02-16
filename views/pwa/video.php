@@ -299,7 +299,7 @@ function mVidDelete(videoId) {
         .then(function(d) {
             if (d.success) {
                 mVidShowToast('Video deleted', 'success');
-                setTimeout(function() { location.reload(); }, 800);
+                location.reload();
             } else {
                 mVidShowToast(d.error || 'Delete failed', 'error');
             }
@@ -337,7 +337,7 @@ function mVidSubmitReview() {
             if (d.success) {
                 mVidCloseReview();
                 mVidShowToast('Review submitted', 'success');
-                setTimeout(function() { location.reload(); }, 800);
+                location.reload();
             } else {
                 mVidShowToast(d.error || 'Review failed', 'error');
                 btn.disabled = false;

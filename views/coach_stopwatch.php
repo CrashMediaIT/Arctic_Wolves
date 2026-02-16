@@ -937,7 +937,7 @@ function swSaveSession(e) {
             swReset();
             document.getElementById('sw-session-name').value = '';
             // Reload page after short delay to update history
-            setTimeout(() => window.location.reload(), 1500);
+            window.location.reload();
         } else {
             swShowAlert('error', data.message || 'Failed to save session.');
         }

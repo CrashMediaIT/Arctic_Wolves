@@ -776,7 +776,7 @@ document.getElementById('scheduleForm').addEventListener('submit', async functio
         if (result.success) {
             showAlert(result.message || 'Schedule saved successfully', 'success');
             closeModal();
-            setTimeout(() => location.reload(), 1500);
+            location.reload();
         } else {
             showAlert(result.message || 'Failed to save schedule', 'error');
         }
@@ -804,7 +804,7 @@ async function toggleSchedule(scheduleId, activate) {
         
         if (result.success) {
             showAlert(result.message || 'Schedule updated successfully', 'success');
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
             showAlert(result.message || 'Failed to update schedule', 'error');
         }
@@ -835,7 +835,7 @@ async function deleteSchedule(scheduleId, reportName) {
         
         if (result.success) {
             showAlert(result.message || 'Schedule deleted successfully', 'success');
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
             showAlert(result.message || 'Failed to delete schedule', 'error');
         }

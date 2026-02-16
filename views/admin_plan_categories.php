@@ -456,7 +456,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
             .then(function(data) {
                 if (data.success) {
                     showNotification(data.message || 'Category deleted!', 'success');
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to delete'), 'error');
                 }
@@ -489,7 +489,7 @@ function getCategoryCount($pdo, $table, $column, $category_id) {
                 if (data.success) {
                     showNotification(data.message || 'Category created!', 'success');
                     closeModal();
-                    setTimeout(function() { location.reload(); }, 1500);
+                    location.reload();
                 } else {
                     showNotification('Error: ' + (data.message || 'Failed to create'), 'error');
                 }

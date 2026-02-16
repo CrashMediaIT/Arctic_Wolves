@@ -1047,7 +1047,7 @@ function saveJob(event) {
         if (data.success) {
             showAlert('success', data.message);
             closeJobModal();
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1082,7 +1082,7 @@ function deleteJob(jobId) {
     .then(data => {
         if (data.success) {
             showAlert('success', data.message);
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1106,7 +1106,7 @@ function toggleJobStatus(jobId, currentStatus) {
     .then(data => {
         if (data.success) {
             showAlert('success', data.message);
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
             showAlert('error', data.message);
         }
@@ -1136,7 +1136,7 @@ function runBackupNow(jobId) {
     .then(data => {
         if (data.success) {
             showAlert('success', data.message);
-            setTimeout(() => location.reload(), 2000);
+            location.reload();
         } else {
             showAlert('error', data.message);
             btn.disabled = false;

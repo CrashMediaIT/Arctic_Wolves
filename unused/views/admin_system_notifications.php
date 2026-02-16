@@ -827,7 +827,7 @@ function submitForm(event) {
     .then(data => {
         if (data.success) {
             showToast(data.message || 'Notification saved successfully', 'success');
-            setTimeout(function() { window.location.reload(); }, 1500);
+            window.location.reload();
         } else {
             showToast('Error: ' + (data.message || 'Unknown error'), 'error');
         }
@@ -853,7 +853,7 @@ function toggleActive(id) {
     .then(data => {
         if (data.success) {
             showToast('Status updated', 'success');
-            setTimeout(function() { window.location.reload(); }, 1500);
+            window.location.reload();
         } else {
             showToast('Error: ' + (data.message || 'Update failed'), 'error');
         }
@@ -876,7 +876,7 @@ function deleteNotification(id, title) {
     .then(data => {
         if (data.success) {
             showToast('Notification deleted', 'success');
-            setTimeout(function() { window.location.reload(); }, 1500);
+            window.location.reload();
         } else {
             showToast('Error: ' + (data.message || 'Delete failed'), 'error');
         }
