@@ -280,7 +280,7 @@ endif;
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showAlert('success', data.message || 'Session saved!');
+                    persistToast(data.message || 'Session saved!', 'success');
                     mSwReset();
                     document.getElementById('mSwSessionName').value = '';
                     window.location.reload();

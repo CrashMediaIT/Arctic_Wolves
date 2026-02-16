@@ -344,7 +344,7 @@ function mRefundAction(action, id) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
-            mRefundToast(data.message || (action === 'approve' ? 'Refund approved' : 'Refund rejected'), false);
+            persistToast(data.message || (action === 'approve' ? 'Refund approved' : 'Refund rejected'), 'success');
             location.reload();
         } else {
             mRefundToast(data.message || 'Action failed', true);
@@ -368,7 +368,7 @@ function mRefundAction(action, id) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) {
-                mRefundToast(data.message || 'Refund processed', false);
+                persistToast(data.message || 'Refund processed', 'success');
                 mRefundCloseSheet('create');
                 form.reset();
                 location.reload();

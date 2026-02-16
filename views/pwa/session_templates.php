@@ -234,7 +234,7 @@ try {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
-                    showAlert('success', data.message || 'Template saved');
+                    persistToast(data.message || 'Template saved', 'success');
                     mSessTplClose();
                     window.location.reload();
                 } else { showAlert('error', data.message || 'Error saving template'); }

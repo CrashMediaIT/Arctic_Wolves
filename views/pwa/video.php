@@ -298,7 +298,7 @@ function mVidDelete(videoId) {
         .then(function(r) { return r.json(); })
         .then(function(d) {
             if (d.success) {
-                mVidShowToast('Video deleted', 'success');
+                persistToast('Video deleted', 'success');
                 location.reload();
             } else {
                 mVidShowToast(d.error || 'Delete failed', 'error');
@@ -336,7 +336,7 @@ function mVidSubmitReview() {
         .then(function(d) {
             if (d.success) {
                 mVidCloseReview();
-                mVidShowToast('Review submitted', 'success');
+                persistToast('Review submitted', 'success');
                 location.reload();
             } else {
                 mVidShowToast(d.error || 'Review failed', 'error');

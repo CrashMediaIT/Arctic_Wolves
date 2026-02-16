@@ -843,7 +843,7 @@ function mJoinWaitlist(sessionId) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) {
-                alert(data.message || 'Added to waitlist!');
+                persistToast(data.message || 'Added to waitlist!', 'success');
                 location.reload();
             } else {
                 alert(data.message || 'Failed to join waitlist');
