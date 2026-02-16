@@ -292,7 +292,7 @@ $allAthletes = decryptUserRows($allAthletes);
                         <h4 class="section-title"><i class="fas fa-list"></i> Select Exercises</h4>
                         <p class="info-text" style="margin-bottom: 16px;">
                             <i class="fas fa-info-circle"></i>
-                            Add exercises to this workout plan. You can customize sets, reps, and weights for each.
+                            Add exercises to this workout plan. Drag to reorder. Sets, reps, and weights are configured per athlete when assigning.
                         </p>
                         
                         <div class="selected-exercises" id="selected-exercises">
@@ -500,10 +500,16 @@ $allAthletes = decryptUserRows($allAthletes);
 }
 
 .plan-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: var(--space-2);
     padding-top: var(--space-4);
     border-top: 1px solid var(--border);
+}
+
+.plan-actions .btn {
+    width: 100%;
+    justify-content: center;
 }
 
 /* Form Styles */
@@ -544,7 +550,7 @@ $allAthletes = decryptUserRows($allAthletes);
 
 .selected-exercise-item {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    grid-template-columns: auto 1fr auto;
     gap: var(--space-3);
     align-items: center;
     padding: var(--space-3);
@@ -552,6 +558,73 @@ $allAthletes = decryptUserRows($allAthletes);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-2);
+    cursor: grab;
+    transition: box-shadow 0.2s, opacity 0.2s;
+}
+
+.selected-exercise-item:active {
+    cursor: grabbing;
+}
+
+.selected-exercise-item.dragging {
+    opacity: 0.5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.selected-exercise-item.drag-over {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(107, 70, 193, 0.3);
+}
+
+.drag-handle {
+    color: var(--text-dim);
+    cursor: grab;
+    font-size: 14px;
+    padding: 4px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Exercise Selector Modal */
+.exercise-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.exercise-selector-item {
+    padding: 12px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.exercise-selector-item:hover {
+    border-color: var(--primary);
+    background: var(--bg-secondary);
+}
+
+.exercise-selector-icon {
+    color: var(--primary-light);
+    font-size: 18px;
+}
+
+.exercise-selector-info h5 {
+    color: var(--text-white);
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.exercise-selector-info span {
+    font-size: 12px;
+    color: var(--text-muted);
 }
 
 /* Button Icons */
@@ -802,9 +875,16 @@ $allAthletes = decryptUserRows($allAthletes);
                 
                 <div class="form-section">
                     <h4 class="section-title"><i class="fas fa-list"></i> Plan Exercises</h4>
-                    <div id="edit-plan-exercises">
+                    <p class="info-text" style="margin-bottom: 16px;">
+                        <i class="fas fa-info-circle"></i>
+                        Drag exercises to reorder them. You can add new exercises or remove existing ones.
+                    </p>
+                    <div id="edit-plan-exercises" class="selected-exercises">
                         <!-- Exercises will be populated via JavaScript -->
                     </div>
+                    <button type="button" class="btn btn-secondary" id="edit-add-exercise-to-plan">
+                        <i class="fas fa-plus"></i> Add Exercise
+                    </button>
                 </div>
             </div>
             
@@ -927,6 +1007,7 @@ document.querySelectorAll('[data-action="delete-exercise"]').forEach(button => {
 });
 
 // Edit plan handler
+let editExerciseCount = 0;
 document.querySelectorAll('[data-action="edit-plan"]').forEach(button => {
     button.addEventListener('click', function() {
         document.getElementById('edit-plan-id').value = this.dataset.id;
@@ -935,24 +1016,42 @@ document.querySelectorAll('[data-action="edit-plan"]').forEach(button => {
         document.getElementById('edit-plan-duration').value = this.dataset.durationWeeks || '';
         document.getElementById('edit-plan-difficulty').value = this.dataset.difficultyLevel || '';
         
-        // Populate exercises
+        // Populate exercises with full controls
         const exercises = JSON.parse(this.dataset.exercises || '[]');
         const container = document.getElementById('edit-plan-exercises');
         container.innerHTML = '';
+        editExerciseCount = 0;
         
-        exercises.forEach((ex, i) => {
-            container.innerHTML += '<div class="selected-exercise-item">' +
-                '<span>' + ex.exercise_name + '</span>' +
-                '<input type="hidden" name="exercises[' + i + '][id]" value="' + ex.exercise_id + '">' +
-                '<input type="number" name="exercises[' + i + '][sets]" class="form-input" placeholder="Sets" value="' + (ex.sets || '') + '">' +
-                '<input type="text" name="exercises[' + i + '][reps]" class="form-input" placeholder="Reps" value="' + (ex.reps || '') + '">' +
-                '<input type="number" name="exercises[' + i + '][rest]" class="form-input" placeholder="Rest (sec)" value="' + (ex.rest_seconds || '') + '">' +
-                '</div>';
-        });
+        if (exercises.length === 0) {
+            container.innerHTML = '<p class="edit-plan-empty-msg" style="color: var(--text-dim);">No exercises added to this plan yet.</p>';
+        } else {
+            exercises.forEach((ex) => {
+                addExerciseToEditPlan(ex.exercise_id, ex.exercise_name || 'Exercise');
+            });
+        }
         
+        initExerciseDragAndDrop(container);
         openModal('edit-plan-modal');
     });
 });
+
+function addExerciseToEditPlan(id, name) {
+    const container = document.getElementById('edit-plan-exercises');
+    // Remove "no exercises" message if present
+    const emptyMsg = container.querySelector('.edit-plan-empty-msg');
+    if (emptyMsg) emptyMsg.remove();
+    
+    const index = editExerciseCount++;
+    
+    const div = document.createElement('div');
+    div.className = 'selected-exercise-item';
+    div.draggable = true;
+    div.innerHTML = '<span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>' +
+        '<span>' + name + '</span>' +
+        '<input type="hidden" name="exercises[' + index + '][id]" value="' + id + '">' +
+        '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove(); reindexExercises(document.getElementById(\'edit-plan-exercises\'))"><i class="fas fa-times"></i></button>';
+    container.appendChild(div);
+}
 
 // View plan handler
 document.querySelectorAll('[data-action="view-plan"]').forEach(button => {
@@ -1019,24 +1118,97 @@ document.querySelectorAll('[data-action="delete-plan"]').forEach(button => {
 
 // Add exercise to plan (Create tab)
 let exerciseCount = 0;
+let exerciseSelectorTarget = 'create'; // 'create' or 'edit'
+
 document.getElementById('add-exercise-to-plan').addEventListener('click', function() {
+    exerciseSelectorTarget = 'create';
+    openModal('exercise-selector-modal');
+});
+
+document.getElementById('edit-add-exercise-to-plan').addEventListener('click', function() {
+    exerciseSelectorTarget = 'edit';
     openModal('exercise-selector-modal');
 });
 
 function selectExerciseForPlan(id, name) {
-    const container = document.getElementById('selected-exercises');
-    const index = exerciseCount++;
-    
-    container.innerHTML += '<div class="selected-exercise-item">' +
-        '<span>' + name + '</span>' +
-        '<input type="hidden" name="exercises[' + index + '][id]" value="' + id + '">' +
-        '<input type="number" name="exercises[' + index + '][sets]" class="form-input" placeholder="Sets" min="1">' +
-        '<input type="text" name="exercises[' + index + '][reps]" class="form-input" placeholder="Reps">' +
-        '<input type="number" name="exercises[' + index + '][rest]" class="form-input" placeholder="Rest (sec)" min="0">' +
-        '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>' +
-        '</div>';
+    if (exerciseSelectorTarget === 'edit') {
+        addExerciseToEditPlan(id, name);
+        reindexExercises(document.getElementById('edit-plan-exercises'));
+        initExerciseDragAndDrop(document.getElementById('edit-plan-exercises'));
+    } else {
+        const container = document.getElementById('selected-exercises');
+        const index = exerciseCount++;
+        
+        const div = document.createElement('div');
+        div.className = 'selected-exercise-item';
+        div.draggable = true;
+        div.innerHTML = '<span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>' +
+            '<span>' + name + '</span>' +
+            '<input type="hidden" name="exercises[' + index + '][id]" value="' + id + '">' +
+            '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove(); reindexExercises(document.getElementById(\'selected-exercises\'))"><i class="fas fa-times"></i></button>';
+        container.appendChild(div);
+        
+        initExerciseDragAndDrop(container);
+    }
     
     closeModal('exercise-selector-modal');
+}
+
+// Reindex exercise hidden inputs after reorder or removal
+function reindexExercises(container) {
+    const items = container.querySelectorAll('.selected-exercise-item');
+    items.forEach((item, i) => {
+        const hiddenInput = item.querySelector('input[type="hidden"][name*="[id]"]');
+        if (hiddenInput) hiddenInput.name = 'exercises[' + i + '][id]';
+    });
+}
+
+// Drag and drop support for exercise reordering
+function initExerciseDragAndDrop(container) {
+    const items = container.querySelectorAll('.selected-exercise-item');
+    
+    items.forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', '');
+        });
+        
+        item.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+            container.querySelectorAll('.selected-exercise-item').forEach(el => el.classList.remove('drag-over'));
+            reindexExercises(container);
+        });
+        
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const dragging = container.querySelector('.dragging');
+            if (dragging && dragging !== this) {
+                this.classList.add('drag-over');
+            }
+        });
+        
+        item.addEventListener('dragleave', function() {
+            this.classList.remove('drag-over');
+        });
+        
+        item.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const dragging = container.querySelector('.dragging');
+            if (dragging && dragging !== this) {
+                const allItems = [...container.querySelectorAll('.selected-exercise-item')];
+                const dragIdx = allItems.indexOf(dragging);
+                const dropIdx = allItems.indexOf(this);
+                if (dragIdx < dropIdx) {
+                    container.insertBefore(dragging, this.nextSibling);
+                } else {
+                    container.insertBefore(dragging, this);
+                }
+            }
+        });
+    });
 }
 
 function openModal(id) {
