@@ -1046,10 +1046,32 @@ function addExerciseToEditPlan(id, name) {
     const div = document.createElement('div');
     div.className = 'selected-exercise-item';
     div.draggable = true;
-    div.innerHTML = '<span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>' +
-        '<span>' + name + '</span>' +
-        '<input type="hidden" name="exercises[' + index + '][id]" value="' + id + '">' +
-        '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove(); reindexExercises(document.getElementById(\'edit-plan-exercises\'))"><i class="fas fa-times"></i></button>';
+    
+    const handle = document.createElement('span');
+    handle.className = 'drag-handle';
+    handle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+    
+    const label = document.createElement('span');
+    label.textContent = name;
+    
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'exercises[' + index + '][id]';
+    hidden.value = id;
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-icon btn-icon-danger';
+    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    removeBtn.addEventListener('click', function() {
+        div.remove();
+        reindexExercises(container);
+    });
+    
+    div.appendChild(handle);
+    div.appendChild(label);
+    div.appendChild(hidden);
+    div.appendChild(removeBtn);
     container.appendChild(div);
 }
 
@@ -1142,10 +1164,33 @@ function selectExerciseForPlan(id, name) {
         const div = document.createElement('div');
         div.className = 'selected-exercise-item';
         div.draggable = true;
-        div.innerHTML = '<span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>' +
-            '<span>' + name + '</span>' +
-            '<input type="hidden" name="exercises[' + index + '][id]" value="' + id + '">' +
-            '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove(); reindexExercises(document.getElementById(\'selected-exercises\'))"><i class="fas fa-times"></i></button>';
+        
+        const handle = document.createElement('span');
+        handle.className = 'drag-handle';
+        handle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+        
+        const label = document.createElement('span');
+        label.textContent = name;
+        
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'exercises[' + index + '][id]';
+        hidden.value = id;
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn-icon btn-icon-danger';
+        removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        removeBtn.addEventListener('click', function() {
+            div.remove();
+            reindexExercises(container);
+        });
+        
+        div.appendChild(handle);
+        div.appendChild(label);
+        div.appendChild(hidden);
+        div.appendChild(removeBtn);
+        container.appendChild(div);
         container.appendChild(div);
         
         initExerciseDragAndDrop(container);
@@ -1163,51 +1208,59 @@ function reindexExercises(container) {
     });
 }
 
-// Drag and drop support for exercise reordering
+// Drag and drop support for exercise reordering (uses event delegation)
+const _dragInitialized = new WeakSet();
 function initExerciseDragAndDrop(container) {
-    const items = container.querySelectorAll('.selected-exercise-item');
+    if (_dragInitialized.has(container)) return;
+    _dragInitialized.add(container);
     
-    items.forEach(item => {
-        item.addEventListener('dragstart', function(e) {
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', '');
-        });
-        
-        item.addEventListener('dragend', function() {
-            this.classList.remove('dragging');
-            container.querySelectorAll('.selected-exercise-item').forEach(el => el.classList.remove('drag-over'));
-            reindexExercises(container);
-        });
-        
-        item.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const dragging = container.querySelector('.dragging');
-            if (dragging && dragging !== this) {
-                this.classList.add('drag-over');
+    container.addEventListener('dragstart', function(e) {
+        const item = e.target.closest('.selected-exercise-item');
+        if (!item) return;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+    });
+    
+    container.addEventListener('dragend', function(e) {
+        const item = e.target.closest('.selected-exercise-item');
+        if (!item) return;
+        item.classList.remove('dragging');
+        container.querySelectorAll('.selected-exercise-item').forEach(el => el.classList.remove('drag-over'));
+        reindexExercises(container);
+    });
+    
+    container.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const item = e.target.closest('.selected-exercise-item');
+        const dragging = container.querySelector('.dragging');
+        if (item && dragging && dragging !== item) {
+            item.classList.add('drag-over');
+        }
+    });
+    
+    container.addEventListener('dragleave', function(e) {
+        const item = e.target.closest('.selected-exercise-item');
+        if (item) item.classList.remove('drag-over');
+    });
+    
+    container.addEventListener('drop', function(e) {
+        e.preventDefault();
+        const item = e.target.closest('.selected-exercise-item');
+        if (!item) return;
+        item.classList.remove('drag-over');
+        const dragging = container.querySelector('.dragging');
+        if (dragging && dragging !== item) {
+            const allItems = [...container.querySelectorAll('.selected-exercise-item')];
+            const dragIdx = allItems.indexOf(dragging);
+            const dropIdx = allItems.indexOf(item);
+            if (dragIdx < dropIdx) {
+                container.insertBefore(dragging, item.nextSibling);
+            } else {
+                container.insertBefore(dragging, item);
             }
-        });
-        
-        item.addEventListener('dragleave', function() {
-            this.classList.remove('drag-over');
-        });
-        
-        item.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.classList.remove('drag-over');
-            const dragging = container.querySelector('.dragging');
-            if (dragging && dragging !== this) {
-                const allItems = [...container.querySelectorAll('.selected-exercise-item')];
-                const dragIdx = allItems.indexOf(dragging);
-                const dropIdx = allItems.indexOf(this);
-                if (dragIdx < dropIdx) {
-                    container.insertBefore(dragging, this.nextSibling);
-                } else {
-                    container.insertBefore(dragging, this);
-                }
-            }
-        });
+        }
     });
 }
 
