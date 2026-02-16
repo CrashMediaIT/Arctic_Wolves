@@ -43,7 +43,7 @@ $nutritionPlans = decryptUserRows($nutritionPlans);
 $planMeals = [];
 foreach ($nutritionPlans as $plan) {
     $stmt = $pdo->prepare("
-        SELECT npm.*, fl.name as food_name, fl.calories, fl.protein_g, fl.carbs_g, fl.fat_g
+        SELECT npm.*, fl.name as food_name, fl.calories, fl.protein_g, fl.carbs_g, fl.fat_g, npmf.food_id
         FROM nutrition_plan_meals npm
         LEFT JOIN nutrition_plan_meal_foods npmf ON npm.id = npmf.meal_id
         LEFT JOIN food_library fl ON npmf.food_id = fl.id
@@ -533,10 +533,16 @@ $allAthletes = decryptUserRows($allAthletes);
 }
 
 .plan-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: var(--space-2);
     padding-top: var(--space-4);
     border-top: 1px solid var(--border);
+}
+
+.plan-actions .btn {
+    width: 100%;
+    justify-content: center;
 }
 
 /* Form Styles */
@@ -577,7 +583,7 @@ $allAthletes = decryptUserRows($allAthletes);
 
 .selected-meal-item {
     display: grid;
-    grid-template-columns: 2fr 1fr auto;
+    grid-template-columns: auto 2fr 1fr auto;
     gap: var(--space-3);
     align-items: center;
     padding: var(--space-3);
@@ -585,6 +591,33 @@ $allAthletes = decryptUserRows($allAthletes);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-2);
+    cursor: grab;
+    transition: box-shadow 0.2s, opacity 0.2s;
+}
+
+.selected-meal-item:active {
+    cursor: grabbing;
+}
+
+.selected-meal-item.dragging {
+    opacity: 0.5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.selected-meal-item.drag-over {
+    border-color: var(--success);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+}
+
+.drag-handle {
+    color: var(--text-dim);
+    cursor: grab;
+    font-size: 14px;
+    padding: 4px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }
 
 /* Button Icons */
@@ -840,9 +873,16 @@ $allAthletes = decryptUserRows($allAthletes);
                 
                 <div class="form-section">
                     <h4 class="section-title"><i class="fas fa-utensils"></i> Plan Meals</h4>
-                    <div id="edit-plan-meals">
+                    <p class="info-text" style="margin-bottom: 16px;">
+                        <i class="fas fa-info-circle"></i>
+                        Drag meals to reorder them. You can add new meals or remove existing ones.
+                    </p>
+                    <div id="edit-plan-meals" class="selected-meals">
                         <!-- Meals will be populated via JavaScript -->
                     </div>
+                    <button type="button" class="btn btn-secondary" id="edit-add-meal-to-plan">
+                        <i class="fas fa-plus"></i> Add Meal
+                    </button>
                 </div>
             </div>
             
@@ -963,6 +1003,7 @@ document.querySelectorAll('[data-action="delete-meal"]').forEach(button => {
 });
 
 // Edit plan handler
+let editMealCount = 0;
 document.querySelectorAll('[data-action="edit-plan"]').forEach(button => {
     button.addEventListener('click', function() {
         document.getElementById('edit-plan-id').value = this.dataset.id;
@@ -973,26 +1014,50 @@ document.querySelectorAll('[data-action="edit-plan"]').forEach(button => {
         document.getElementById('edit-plan-carbs').value = this.dataset.carbs;
         document.getElementById('edit-plan-fat').value = this.dataset.fat;
         
-        // Populate meals
+        // Populate meals with full controls
         const meals = JSON.parse(this.dataset.meals || '[]');
         const container = document.getElementById('edit-plan-meals');
         container.innerHTML = '';
+        editMealCount = 0;
         
         if (meals.length === 0) {
-            container.innerHTML = '<p style="color: var(--text-dim);">No meals added to this plan yet.</p>';
+            container.innerHTML = '<p class="edit-plan-empty-msg" style="color: var(--text-dim);">No meals added to this plan yet.</p>';
         } else {
-            meals.forEach((meal, i) => {
-                container.innerHTML += '<div class="selected-meal-item" style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;">' +
-                    '<span style="flex: 1;"><strong>' + (meal.food_name || meal.name || 'Meal') + '</strong>' +
-                    (meal.calories ? ' - ' + meal.calories + ' cal' : '') + '</span>' +
-                    '<span class="type-badge">' + (meal.meal_type || 'meal') + '</span>' +
-                    '</div>';
+            meals.forEach((meal) => {
+                addMealToEditPlan(meal.food_id || meal.id, meal.food_name || meal.name || 'Meal', meal.meal_type || 'breakfast');
             });
         }
         
+        initDragAndDrop(container, 'edit_meals');
         openModal('edit-plan-modal');
     });
 });
+
+function addMealToEditPlan(id, name, type) {
+    const container = document.getElementById('edit-plan-meals');
+    // Remove "no meals" message if present
+    const emptyMsg = container.querySelector('.edit-plan-empty-msg');
+    if (emptyMsg) emptyMsg.remove();
+    
+    const index = editMealCount++;
+    const mealTypeOptions = ['breakfast', 'lunch', 'dinner', 'snack', 'pre_workout', 'post_workout'];
+    let selectHtml = '<select name="meals[' + index + '][type]" class="form-input">';
+    mealTypeOptions.forEach(opt => {
+        const label = opt.replaceAll('_', '-').replace(/\b\w/g, c => c.toUpperCase());
+        selectHtml += '<option value="' + opt + '"' + (opt === type ? ' selected' : '') + '>' + label + '</option>';
+    });
+    selectHtml += '</select>';
+    
+    const div = document.createElement('div');
+    div.className = 'selected-meal-item';
+    div.draggable = true;
+    div.innerHTML = '<span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>' +
+        '<span>' + name + '</span>' +
+        '<input type="hidden" name="meals[' + index + '][id]" value="' + id + '">' +
+        selectHtml +
+        '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove(); reindexMeals(document.getElementById(\'edit-plan-meals\'), \'meals\')"><i class="fas fa-times"></i></button>';
+    container.appendChild(div);
+}
 
 // View plan handler
 document.querySelectorAll('[data-action="view-plan"]').forEach(button => {
@@ -1060,29 +1125,111 @@ document.querySelectorAll('[data-action="delete-plan"]').forEach(button => {
 
 // Add meal to plan (Create tab)
 let mealCount = 0;
+let mealSelectorTarget = 'create'; // 'create' or 'edit'
+
 document.getElementById('add-meal-to-plan').addEventListener('click', function() {
+    mealSelectorTarget = 'create';
+    openModal('meal-selector-modal');
+});
+
+document.getElementById('edit-add-meal-to-plan').addEventListener('click', function() {
+    mealSelectorTarget = 'edit';
     openModal('meal-selector-modal');
 });
 
 function selectMealForPlan(id, name) {
-    const container = document.getElementById('selected-meals');
-    const index = mealCount++;
-    
-    container.innerHTML += '<div class="selected-meal-item">' +
-        '<span>' + name + '</span>' +
-        '<input type="hidden" name="meals[' + index + '][id]" value="' + id + '">' +
-        '<select name="meals[' + index + '][type]" class="form-input">' +
-            '<option value="breakfast">Breakfast</option>' +
-            '<option value="lunch">Lunch</option>' +
-            '<option value="dinner">Dinner</option>' +
-            '<option value="snack">Snack</option>' +
-            '<option value="pre_workout">Pre-Workout</option>' +
-            '<option value="post_workout">Post-Workout</option>' +
-        '</select>' +
-        '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>' +
-        '</div>';
+    if (mealSelectorTarget === 'edit') {
+        addMealToEditPlan(id, name, 'breakfast');
+        reindexMeals(document.getElementById('edit-plan-meals'), 'meals');
+        initDragAndDrop(document.getElementById('edit-plan-meals'), 'edit_meals');
+    } else {
+        const container = document.getElementById('selected-meals');
+        const index = mealCount++;
+        
+        const div = document.createElement('div');
+        div.className = 'selected-meal-item';
+        div.draggable = true;
+        div.innerHTML = '<span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>' +
+            '<span>' + name + '</span>' +
+            '<input type="hidden" name="meals[' + index + '][id]" value="' + id + '">' +
+            '<select name="meals[' + index + '][type]" class="form-input">' +
+                '<option value="breakfast">Breakfast</option>' +
+                '<option value="lunch">Lunch</option>' +
+                '<option value="dinner">Dinner</option>' +
+                '<option value="snack">Snack</option>' +
+                '<option value="pre_workout">Pre-Workout</option>' +
+                '<option value="post_workout">Post-Workout</option>' +
+            '</select>' +
+            '<button type="button" class="btn-icon btn-icon-danger" onclick="this.parentElement.remove(); reindexMeals(document.getElementById(\'selected-meals\'), \'meals\')"><i class="fas fa-times"></i></button>';
+        container.appendChild(div);
+        
+        initDragAndDrop(container, 'create_meals');
+    }
     
     closeModal('meal-selector-modal');
+}
+
+// Reindex meal hidden inputs after reorder or removal
+function reindexMeals(container, prefix) {
+    const items = container.querySelectorAll('.selected-meal-item');
+    items.forEach((item, i) => {
+        const hiddenInput = item.querySelector('input[type="hidden"][name*="[id]"]');
+        const selectInput = item.querySelector('select[name*="[type]"]');
+        if (hiddenInput) hiddenInput.name = prefix + '[' + i + '][id]';
+        if (selectInput) selectInput.name = prefix + '[' + i + '][type]';
+    });
+}
+
+// Drag and drop support for meal reordering
+function initDragAndDrop(container, context) {
+    const items = container.querySelectorAll('.selected-meal-item');
+    
+    items.forEach(item => {
+        // Remove old listeners by cloning
+        item.removeAttribute('data-drag-init');
+        
+        item.addEventListener('dragstart', function(e) {
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', '');
+        });
+        
+        item.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+            container.querySelectorAll('.selected-meal-item').forEach(el => el.classList.remove('drag-over'));
+            // Reindex after drop
+            reindexMeals(container, 'meals');
+        });
+        
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const dragging = container.querySelector('.dragging');
+            if (dragging && dragging !== this) {
+                this.classList.add('drag-over');
+            }
+        });
+        
+        item.addEventListener('dragleave', function() {
+            this.classList.remove('drag-over');
+        });
+        
+        item.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const dragging = container.querySelector('.dragging');
+            if (dragging && dragging !== this) {
+                const allItems = [...container.querySelectorAll('.selected-meal-item')];
+                const dragIdx = allItems.indexOf(dragging);
+                const dropIdx = allItems.indexOf(this);
+                if (dragIdx < dropIdx) {
+                    container.insertBefore(dragging, this.nextSibling);
+                } else {
+                    container.insertBefore(dragging, this);
+                }
+            }
+        });
+    });
 }
 
 function openModal(id) {

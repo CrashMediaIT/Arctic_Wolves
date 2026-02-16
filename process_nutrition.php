@@ -157,10 +157,13 @@ try {
             $target_protein_g = !empty($_POST['target_protein_g']) ? intval($_POST['target_protein_g']) : null;
             $target_carbs_g = !empty($_POST['target_carbs_g']) ? intval($_POST['target_carbs_g']) : null;
             $target_fat_g = !empty($_POST['target_fat_g']) ? intval($_POST['target_fat_g']) : null;
+            $meals = $_POST['meals'] ?? [];
             
             if (empty($id) || empty($name)) {
                 throw new Exception('Plan ID and name are required');
             }
+            
+            $pdo->beginTransaction();
             
             $stmt = $pdo->prepare("
                 UPDATE nutrition_plans 
@@ -168,6 +171,41 @@ try {
                 WHERE id = ?
             ");
             $stmt->execute([$name, $description ?: null, $target_calories, $target_protein_g, $target_carbs_g, $target_fat_g, $id]);
+            
+            // Remove existing meals and re-add with new order
+            $stmt = $pdo->prepare("SELECT id FROM nutrition_plan_meals WHERE nutrition_plan_id = ?");
+            $stmt->execute([$id]);
+            $existingMealIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            if (!empty($existingMealIds)) {
+                $placeholders = implode(',', array_fill(0, count($existingMealIds), '?'));
+                $pdo->prepare("DELETE FROM nutrition_plan_meal_foods WHERE meal_id IN ($placeholders)")->execute($existingMealIds);
+                $pdo->prepare("DELETE FROM nutrition_plan_meals WHERE nutrition_plan_id = ?")->execute([$id]);
+            }
+            
+            // Add meals in new order
+            if (!empty($meals)) {
+                $order = 0;
+                foreach ($meals as $meal) {
+                    if (!empty($meal['id'])) {
+                        $meal_type = $meal['type'] ?? 'breakfast';
+                        $stmt = $pdo->prepare("
+                            INSERT INTO nutrition_plan_meals (nutrition_plan_id, meal_type, meal_order)
+                            VALUES (?, ?, ?)
+                        ");
+                        $stmt->execute([$id, $meal_type, $order++]);
+                        $plan_meal_id = $pdo->lastInsertId();
+                        
+                        $stmt = $pdo->prepare("
+                            INSERT INTO nutrition_plan_meal_foods (meal_id, food_id, serving_quantity)
+                            VALUES (?, ?, 1)
+                        ");
+                        $stmt->execute([$plan_meal_id, intval($meal['id'])]);
+                    }
+                }
+            }
+            
+            $pdo->commit();
             
             echo json_encode(['success' => true, 'message' => 'Nutrition plan updated successfully']);
             break;
