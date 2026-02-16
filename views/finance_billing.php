@@ -1324,12 +1324,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return { success: true };
             })
             .then(data => {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-                
-                const form = document.getElementById('create-invoice-form');
-                form.style.display = 'none';
-                
                 persistToast('Invoice created successfully!', 'success');
                 window.location.reload();
             })

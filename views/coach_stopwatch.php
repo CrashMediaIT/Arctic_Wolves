@@ -934,9 +934,6 @@ function swSaveSession(e) {
     .then(data => {
         if (data.success) {
             persistToast(data.message || 'Session saved successfully!', 'success');
-            swReset();
-            document.getElementById('sw-session-name').value = '';
-            // Reload page to update history
             window.location.reload();
         } else {
             swShowAlert('error', data.message || 'Failed to save session.');
