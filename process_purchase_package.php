@@ -101,6 +101,17 @@ try {
     $tax_amount = round($subtotal * ($tax_rate / 100), 2);
     $total = $subtotal + $tax_amount;
     
+    // Build line item description
+    $item_desc = $package['description'] ?: 'Session package';
+    if (!empty($selected_addon_ids)) {
+        $addon_names_stmt = $pdo->prepare("SELECT name FROM camp_add_ons WHERE id IN (" . str_repeat('?,', count($selected_addon_ids) - 1) . '?' . ") AND package_id = ?");
+        $addon_names_stmt->execute(array_merge($selected_addon_ids, [$package_id]));
+        $addon_names = $addon_names_stmt->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($addon_names)) {
+            $item_desc .= ' (includes: ' . implode(', ', $addon_names) . ')';
+        }
+    }
+    
     // Create line items for Stripe
     $line_items = [[
         'price_data' => [
@@ -158,17 +169,6 @@ try {
         'total' => $total,
         'selected_addons' => $selected_addon_ids
     ];
-    
-    // Build line item description
-    $item_desc = $package['description'] ?: 'Session package';
-    if (!empty($selected_addon_ids)) {
-        $addon_names_stmt = $pdo->prepare("SELECT name FROM camp_add_ons WHERE id IN (" . str_repeat('?,', count($selected_addon_ids) - 1) . '?' . ") AND package_id = ?");
-        $addon_names_stmt->execute(array_merge($selected_addon_ids, [$package_id]));
-        $addon_names = $addon_names_stmt->fetchAll(PDO::FETCH_COLUMN);
-        if (!empty($addon_names)) {
-            $item_desc .= ' (includes: ' . implode(', ', $addon_names) . ')';
-        }
-    }
     
     // Create Stripe checkout session
     $checkout_session = \Stripe\Checkout\Session::create([

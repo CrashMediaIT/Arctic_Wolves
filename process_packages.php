@@ -131,7 +131,7 @@ try {
             $package_id = $pdo->lastInsertId();
             
             // Save camp daily schedules if provided
-            if (($package_type === 'camp' || $package_type === 'multi_week') && !empty($_POST['schedule_dates'])) {
+            if ($package_type === 'camp' && !empty($_POST['schedule_dates'])) {
                 $sched_stmt = $pdo->prepare("
                     INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description)
                     VALUES (?, ?, ?, ?, ?, ?)
@@ -253,7 +253,7 @@ try {
             ]);
             
             // Update camp daily schedules
-            if ($package_type === 'camp' || $package_type === 'multi_week') {
+            if ($package_type === 'camp') {
                 // Remove old schedules and re-insert
                 $pdo->prepare("DELETE FROM camp_daily_schedules WHERE package_id = ?")->execute([$package_id]);
                 
@@ -271,8 +271,10 @@ try {
                         $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null]);
                     }
                 }
-                
-                // Update add-ons
+            }
+            
+            // Update add-ons (for camp and multi-week)
+            if ($package_type === 'camp' || $package_type === 'multi_week') {
                 $pdo->prepare("DELETE FROM camp_add_ons WHERE package_id = ?")->execute([$package_id]);
                 
                 if (!empty($_POST['addon_names'])) {
@@ -299,10 +301,11 @@ try {
                 
                 $pdo->prepare("DELETE FROM multiweek_program_dates WHERE package_id = ?")->execute([$package_id]);
                 
-                // Clean up auto-created sessions
+                // Clean up auto-created sessions (only if no bookings exist)
                 if (!empty($old_session_ids)) {
                     $placeholders = str_repeat('?,', count($old_session_ids) - 1) . '?';
-                    $pdo->prepare("DELETE FROM sessions WHERE id IN ($placeholders)")->execute($old_session_ids);
+                    // Only delete sessions that have no bookings
+                    $pdo->prepare("DELETE FROM sessions WHERE id IN ($placeholders) AND id NOT IN (SELECT session_id FROM session_bookings WHERE session_id IN ($placeholders))")->execute(array_merge($old_session_ids, $old_session_ids));
                 }
                 
                 if (!empty($_POST['program_dates'])) {
