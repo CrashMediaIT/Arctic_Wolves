@@ -34,6 +34,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit();
 }
 
+// Handle GET request for retrieving camp schedules (AJAX)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_camp_schedules') {
+    $package_id = intval($_GET['package_id'] ?? 0);
+    
+    $stmt = $pdo->prepare("SELECT * FROM camp_daily_schedules WHERE package_id = ? ORDER BY schedule_date");
+    $stmt->execute([$package_id]);
+    $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    header('Content-Type: application/json');
+    echo json_encode($schedules);
+    exit();
+}
+
+// Handle GET request for retrieving camp add-ons (AJAX)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_camp_addons') {
+    $package_id = intval($_GET['package_id'] ?? 0);
+    
+    $stmt = $pdo->prepare("SELECT * FROM camp_add_ons WHERE package_id = ? ORDER BY display_order");
+    $stmt->execute([$package_id]);
+    $addons = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    header('Content-Type: application/json');
+    echo json_encode($addons);
+    exit();
+}
+
+// Handle GET request for retrieving multi-week program dates (AJAX)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_program_dates') {
+    $package_id = intval($_GET['package_id'] ?? 0);
+    
+    $stmt = $pdo->prepare("SELECT * FROM multiweek_program_dates WHERE package_id = ? ORDER BY session_date");
+    $stmt->execute([$package_id]);
+    $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    header('Content-Type: application/json');
+    echo json_encode($dates);
+    exit();
+}
+
 // Validate CSRF token for POST requests
 checkCsrfToken();
 
@@ -54,27 +93,110 @@ try {
             $store_credit = floatval($_POST['store_credit'] ?? 0);
             $enable_child_checkin = isset($_POST['enable_child_checkin']) ? 1 : 0;
             
+            // Camp-specific fields
+            $camp_start_date = !empty($_POST['camp_start_date']) ? $_POST['camp_start_date'] : null;
+            $camp_end_date = !empty($_POST['camp_end_date']) ? $_POST['camp_end_date'] : null;
+            $daily_start_time = !empty($_POST['daily_start_time']) ? $_POST['daily_start_time'] : null;
+            $daily_end_time = !empty($_POST['daily_end_time']) ? $_POST['daily_end_time'] : null;
+            $age_group_id = !empty($_POST['age_group_id']) ? intval($_POST['age_group_id']) : null;
+            $skill_level_id = !empty($_POST['skill_level_id']) ? intval($_POST['skill_level_id']) : null;
+            $allow_individual_sessions = isset($_POST['allow_individual_sessions']) ? 1 : 0;
+            
             if (empty($name) || $price < 0) {
                 throw new Exception('Invalid package data: name is required and price must be positive');
             }
             
+            // Validate camp dates
+            if ($package_type === 'camp' && (!$camp_start_date || !$camp_end_date)) {
+                throw new Exception('Camp packages require start and end dates');
+            }
+            
             $pdo->beginTransaction();
             
-            // Insert package with package_type and store_credit
+            // Insert package with all fields
             $stmt = $pdo->prepare("
                 INSERT INTO packages (name, description, price, credits, valid_days, 
-                                     age_group, skill_level, is_active, package_type, store_credit, enable_child_checkin)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     age_group, skill_level, is_active, package_type, store_credit, enable_child_checkin,
+                                     camp_start_date, camp_end_date, daily_start_time, daily_end_time,
+                                     age_group_id, skill_level_id, allow_individual_sessions)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $enable_child_checkin
+                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $enable_child_checkin,
+                $camp_start_date, $camp_end_date, $daily_start_time, $daily_end_time,
+                $age_group_id, $skill_level_id, $allow_individual_sessions
             ]);
             
             $package_id = $pdo->lastInsertId();
             
-            // Note: package_sessions table may have different schema - skip for now if columns don't exist
-            // Package sessions feature requires schema update
+            // Save camp daily schedules if provided
+            if (($package_type === 'camp' || $package_type === 'multi_week') && !empty($_POST['schedule_dates'])) {
+                $sched_stmt = $pdo->prepare("
+                    INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                foreach ($_POST['schedule_dates'] as $i => $date) {
+                    if (empty($date)) continue;
+                    $s_start = $_POST['schedule_start_times'][$i] ?? ($daily_start_time ?: '09:00');
+                    $s_end = $_POST['schedule_end_times'][$i] ?? ($daily_end_time ?: '17:00');
+                    $s_title = $_POST['schedule_titles'][$i] ?? '';
+                    $s_desc = $_POST['schedule_descriptions'][$i] ?? '';
+                    $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null]);
+                }
+            }
+            
+            // Save camp add-ons if provided
+            if (($package_type === 'camp' || $package_type === 'multi_week') && !empty($_POST['addon_names'])) {
+                $addon_stmt = $pdo->prepare("
+                    INSERT INTO camp_add_ons (package_id, name, description, price, is_default, display_order)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                foreach ($_POST['addon_names'] as $i => $addon_name) {
+                    if (empty($addon_name)) continue;
+                    $addon_desc = $_POST['addon_descriptions'][$i] ?? '';
+                    $addon_price = floatval($_POST['addon_prices'][$i] ?? 0);
+                    $addon_default = isset($_POST['addon_defaults'][$i]) ? 1 : 0;
+                    $addon_stmt->execute([$package_id, $addon_name, $addon_desc ?: null, $addon_price, $addon_default, $i]);
+                }
+            }
+            
+            // For multi-week programs, save program dates and auto-create sessions
+            if ($package_type === 'multi_week' && !empty($_POST['program_dates'])) {
+                $prog_stmt = $pdo->prepare("
+                    INSERT INTO multiweek_program_dates (package_id, session_date, start_time, end_time, title, individual_price, auto_session_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+                $session_stmt = $pdo->prepare("
+                    INSERT INTO sessions (title, description, session_date, session_time, duration_minutes, price, age_group, skill_level, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled')
+                ");
+                
+                foreach ($_POST['program_dates'] as $i => $pdate) {
+                    if (empty($pdate)) continue;
+                    $p_start = $_POST['program_start_times'][$i] ?? ($daily_start_time ?: '09:00');
+                    $p_end = $_POST['program_end_times'][$i] ?? ($daily_end_time ?: '10:00');
+                    $p_title = $_POST['program_titles'][$i] ?? '';
+                    $p_ind_price = !empty($_POST['program_individual_prices'][$i]) ? floatval($_POST['program_individual_prices'][$i]) : null;
+                    
+                    $auto_session_id = null;
+                    // Auto-create individual sessions if individual purchase is allowed
+                    if ($allow_individual_sessions && $p_ind_price !== null) {
+                        $session_title = !empty($p_title) ? $p_title : ($name . ' - ' . date('M j, Y', strtotime($pdate)));
+                        $start_dt = new DateTime($pdate . ' ' . $p_start);
+                        $end_dt = new DateTime($pdate . ' ' . $p_end);
+                        $duration = ($end_dt->getTimestamp() - $start_dt->getTimestamp()) / 60;
+                        $session_stmt->execute([
+                            $session_title, $description, $pdate, $p_start,
+                            max(1, intval($duration)), $p_ind_price,
+                            $age_group ?: null, $skill_level ?: null
+                        ]);
+                        $auto_session_id = $pdo->lastInsertId();
+                    }
+                    
+                    $prog_stmt->execute([$package_id, $pdate, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id]);
+                }
+            }
             
             $pdo->commit();
             
@@ -100,20 +222,126 @@ try {
             $store_credit = floatval($_POST['store_credit'] ?? 0);
             $enable_child_checkin = isset($_POST['enable_child_checkin']) ? 1 : 0;
             
+            // Camp-specific fields
+            $camp_start_date = !empty($_POST['camp_start_date']) ? $_POST['camp_start_date'] : null;
+            $camp_end_date = !empty($_POST['camp_end_date']) ? $_POST['camp_end_date'] : null;
+            $daily_start_time = !empty($_POST['daily_start_time']) ? $_POST['daily_start_time'] : null;
+            $daily_end_time = !empty($_POST['daily_end_time']) ? $_POST['daily_end_time'] : null;
+            $age_group_id = !empty($_POST['age_group_id']) ? intval($_POST['age_group_id']) : null;
+            $skill_level_id = !empty($_POST['skill_level_id']) ? intval($_POST['skill_level_id']) : null;
+            $allow_individual_sessions = isset($_POST['allow_individual_sessions']) ? 1 : 0;
+            
             if (empty($name) || $price < 0 || $package_id <= 0) {
                 throw new Exception('Invalid package data');
             }
             
+            $pdo->beginTransaction();
+            
             $stmt = $pdo->prepare("
                 UPDATE packages 
                 SET name = ?, description = ?, price = ?, credits = ?, 
-                    valid_days = ?, age_group = ?, skill_level = ?, is_active = ?, package_type = ?, store_credit = ?, enable_child_checkin = ?
+                    valid_days = ?, age_group = ?, skill_level = ?, is_active = ?, package_type = ?, store_credit = ?, enable_child_checkin = ?,
+                    camp_start_date = ?, camp_end_date = ?, daily_start_time = ?, daily_end_time = ?,
+                    age_group_id = ?, skill_level_id = ?, allow_individual_sessions = ?
                 WHERE id = ?
             ");
             $stmt->execute([
                 $name, $description, $price, $credits, $valid_days,
-                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $enable_child_checkin, $package_id
+                $age_group ?: null, $skill_level ?: null, $is_active, $package_type, $store_credit, $enable_child_checkin,
+                $camp_start_date, $camp_end_date, $daily_start_time, $daily_end_time,
+                $age_group_id, $skill_level_id, $allow_individual_sessions, $package_id
             ]);
+            
+            // Update camp daily schedules
+            if ($package_type === 'camp' || $package_type === 'multi_week') {
+                // Remove old schedules and re-insert
+                $pdo->prepare("DELETE FROM camp_daily_schedules WHERE package_id = ?")->execute([$package_id]);
+                
+                if (!empty($_POST['schedule_dates'])) {
+                    $sched_stmt = $pdo->prepare("
+                        INSERT INTO camp_daily_schedules (package_id, schedule_date, start_time, end_time, title, description)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    foreach ($_POST['schedule_dates'] as $i => $date) {
+                        if (empty($date)) continue;
+                        $s_start = $_POST['schedule_start_times'][$i] ?? ($daily_start_time ?: '09:00');
+                        $s_end = $_POST['schedule_end_times'][$i] ?? ($daily_end_time ?: '17:00');
+                        $s_title = $_POST['schedule_titles'][$i] ?? '';
+                        $s_desc = $_POST['schedule_descriptions'][$i] ?? '';
+                        $sched_stmt->execute([$package_id, $date, $s_start, $s_end, $s_title ?: null, $s_desc ?: null]);
+                    }
+                }
+                
+                // Update add-ons
+                $pdo->prepare("DELETE FROM camp_add_ons WHERE package_id = ?")->execute([$package_id]);
+                
+                if (!empty($_POST['addon_names'])) {
+                    $addon_stmt = $pdo->prepare("
+                        INSERT INTO camp_add_ons (package_id, name, description, price, is_default, display_order)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    foreach ($_POST['addon_names'] as $i => $addon_name) {
+                        if (empty($addon_name)) continue;
+                        $addon_desc = $_POST['addon_descriptions'][$i] ?? '';
+                        $addon_price = floatval($_POST['addon_prices'][$i] ?? 0);
+                        $addon_default = isset($_POST['addon_defaults'][$i]) ? 1 : 0;
+                        $addon_stmt->execute([$package_id, $addon_name, $addon_desc ?: null, $addon_price, $addon_default, $i]);
+                    }
+                }
+            }
+            
+            // Update multi-week program dates
+            if ($package_type === 'multi_week') {
+                // Delete auto-created sessions that are no longer needed
+                $old_sessions = $pdo->prepare("SELECT auto_session_id FROM multiweek_program_dates WHERE package_id = ? AND auto_session_id IS NOT NULL");
+                $old_sessions->execute([$package_id]);
+                $old_session_ids = $old_sessions->fetchAll(PDO::FETCH_COLUMN);
+                
+                $pdo->prepare("DELETE FROM multiweek_program_dates WHERE package_id = ?")->execute([$package_id]);
+                
+                // Clean up auto-created sessions
+                if (!empty($old_session_ids)) {
+                    $placeholders = str_repeat('?,', count($old_session_ids) - 1) . '?';
+                    $pdo->prepare("DELETE FROM sessions WHERE id IN ($placeholders)")->execute($old_session_ids);
+                }
+                
+                if (!empty($_POST['program_dates'])) {
+                    $prog_stmt = $pdo->prepare("
+                        INSERT INTO multiweek_program_dates (package_id, session_date, start_time, end_time, title, individual_price, auto_session_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $session_stmt = $pdo->prepare("
+                        INSERT INTO sessions (title, description, session_date, session_time, duration_minutes, price, age_group, skill_level, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled')
+                    ");
+                    
+                    foreach ($_POST['program_dates'] as $i => $pdate) {
+                        if (empty($pdate)) continue;
+                        $p_start = $_POST['program_start_times'][$i] ?? ($daily_start_time ?: '09:00');
+                        $p_end = $_POST['program_end_times'][$i] ?? ($daily_end_time ?: '10:00');
+                        $p_title = $_POST['program_titles'][$i] ?? '';
+                        $p_ind_price = !empty($_POST['program_individual_prices'][$i]) ? floatval($_POST['program_individual_prices'][$i]) : null;
+                        
+                        $auto_session_id = null;
+                        if ($allow_individual_sessions && $p_ind_price !== null) {
+                            $session_title = !empty($p_title) ? $p_title : ($name . ' - ' . date('M j, Y', strtotime($pdate)));
+                            $start_dt = new DateTime($pdate . ' ' . $p_start);
+                            $end_dt = new DateTime($pdate . ' ' . $p_end);
+                            $duration = ($end_dt->getTimestamp() - $start_dt->getTimestamp()) / 60;
+                            $session_stmt->execute([
+                                $session_title, $description, $pdate, $p_start,
+                                max(1, intval($duration)), $p_ind_price,
+                                $age_group ?: null, $skill_level ?: null
+                            ]);
+                            $auto_session_id = $pdo->lastInsertId();
+                        }
+                        
+                        $prog_stmt->execute([$package_id, $pdate, $p_start, $p_end, $p_title ?: null, $p_ind_price, $auto_session_id]);
+                    }
+                }
+            }
+            
+            $pdo->commit();
             
             if ($isAjax) {
                 header('Content-Type: application/json');
