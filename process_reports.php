@@ -761,22 +761,11 @@ function getUserActivityData($parameters) {
     $date_to = $parameters['date_to'] ?? date('Y-m-d');
     $athlete_ids = $parameters['athlete_ids'] ?? [];
     
-    // Build user filter
-    $user_filter = '';
-    $bind_params = [$date_from, $date_to, $date_from, $date_to, $date_from, $date_to];
+    // Build optional user ID filter
+    $id_filter = '';
     if (!empty($athlete_ids) && is_array($athlete_ids)) {
-        $placeholders = implode(',', array_fill(0, count($athlete_ids), '?'));
-        $user_filter = "AND u.id IN ($placeholders)";
-        // Insert user IDs before date params (need to rebuild)
-        $bind_params = [];
-        foreach ($athlete_ids as $aid) {
-            $bind_params[] = intval($aid);
-        }
-        $bind_params = array_merge($bind_params, [$date_from, $date_to, $date_from, $date_to, $date_from, $date_to]);
+        $id_filter = "AND u.id IN (" . implode(',', array_fill(0, count($athlete_ids), '?')) . ")";
     }
-    
-    // Build main query for users with their activity counts
-    $id_filter = !empty($athlete_ids) ? "AND u.id IN (" . implode(',', array_fill(0, count($athlete_ids), '?')) . ")" : '';
     
     $sql = "
         SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at as member_since,
@@ -797,37 +786,9 @@ function getUserActivityData($parameters) {
         ORDER BY u.last_name, u.first_name
     ";
     
-    $params = [];
-    if (!empty($athlete_ids)) {
-        foreach ($athlete_ids as $aid) {
-            $params[] = intval($aid);
-        }
-    }
-    // 3 pairs of date params for the subqueries
-    $params = array_merge([$date_from, $date_to, $date_from, $date_to, $date_from, $date_to], $params);
-    
-    // Rewrite to get the order right: date params first (for subqueries), then id filter
-    $sql = "
-        SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at as member_since,
-               (SELECT COUNT(*) FROM bookings b
-                INNER JOIN sessions s ON b.session_id = s.id
-                WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id)
-                AND b.status = 'confirmed' AND b.payment_status = 'paid'
-                AND s.session_date BETWEEN ? AND ?) as sessions_attended,
-               (SELECT COUNT(*) FROM user_packages up
-                WHERE up.user_id = u.id
-                AND up.purchase_date BETWEEN ? AND ?) as packages_purchased,
-               (SELECT COALESCE(SUM(up.amount_paid), 0) FROM user_packages up
-                WHERE up.user_id = u.id
-                AND up.purchase_date BETWEEN ? AND ?) as total_spent
-        FROM users u
-        WHERE u.role IN ('athlete', 'parent')
-        $id_filter
-        ORDER BY u.last_name, u.first_name
-    ";
-    
+    // Date params for subqueries come first, then optional ID filter params
     $params = [$date_from, $date_to, $date_from, $date_to, $date_from, $date_to];
-    if (!empty($athlete_ids)) {
+    if (!empty($athlete_ids) && is_array($athlete_ids)) {
         foreach ($athlete_ids as $aid) {
             $params[] = intval($aid);
         }

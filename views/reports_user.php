@@ -377,7 +377,7 @@ $csrf_token = generateCsrfToken();
                                 <td><?php echo $stat['shots_against'] ?? 0; ?></td>
                                 <td><?php echo $stat['goals_against'] ?? 0; ?></td>
                                 <td><?php echo $stat['saves'] ?? 0; ?></td>
-                                <td><?php echo number_format(($stat['save_percentage'] ?? 0) * 100, 1); ?>%</td>
+                                <td><?php /* save_percentage is stored as decimal, e.g. 0.923 */ echo number_format(($stat['save_percentage'] ?? 0) * 100, 1); ?>%</td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -542,7 +542,12 @@ function filterUsers() {
 function switchTab(tabName) {
     // Update active tab button
     document.querySelectorAll('.user-reports .tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
-    event.currentTarget.classList.add('active');
+    // Find the clicked button by tab name
+    document.querySelectorAll('.user-reports .tab-btn').forEach(function(btn) {
+        if (btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf("'" + tabName + "'") !== -1) {
+            btn.classList.add('active');
+        }
+    });
     // Show corresponding content
     document.querySelectorAll('.user-reports .tab-content').forEach(function(el) { el.classList.remove('active'); });
     var tabEl = document.getElementById('tab-' + tabName);
