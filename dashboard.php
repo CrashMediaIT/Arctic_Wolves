@@ -261,6 +261,7 @@ $allowed_pages = [
     
     // Reports
     'reports_athlete'         => 'views/reports_athlete.php',
+    'reports_user'            => 'views/reports_user.php',
     'reports_income'          => 'views/reports_income.php',
     'scheduled_reports'       => 'views/scheduled_reports.php',
     'report_view'             => 'views/report_view.php',
@@ -829,6 +830,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=financial_reports" class="nav-link <?= in_array($page, ['reports', 'schedules', 'financial_reports'])?'active':'' ?>">
                 <i class="fa-solid fa-chart-pie icon"></i> Financial Reports Hub
+            </a>
+            <a href="?page=reports_user" class="nav-link <?= $page=='reports_user'?'active':'' ?>">
+                <i class="fa-solid fa-users-gear icon"></i> User Reports
             </a>
             <a href="?page=credits_refunds" class="nav-link <?= $page=='credits_refunds'?'active':'' ?>">
                 <i class="fa-solid fa-money-bill-transfer icon"></i> Credits & Refunds

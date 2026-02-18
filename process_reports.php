@@ -342,6 +342,20 @@ function fetchReportData($report_type, $parameters) {
             $data = getCoachPaymentsData($parameters);
             break;
             
+        case 'user_activity':
+            if ($user_role !== 'admin') {
+                throw new Exception('Insufficient permissions');
+            }
+            $data = getUserActivityData($parameters);
+            break;
+            
+        case 'user_stats':
+            if ($user_role !== 'admin') {
+                throw new Exception('Insufficient permissions');
+            }
+            $data = getUserStatsData($parameters);
+            break;
+            
         default:
             // Log unknown report type for debugging
             error_log("Unknown report type requested: " . htmlspecialchars($report_type));
@@ -738,6 +752,168 @@ function getPackagesDiscountsData($parameters) {
     return $stmt->fetchAll();
 }
 
+/**
+ * Get detailed user activity data - registrations, sessions, packages in a time frame
+ */
+function getUserActivityData($parameters) {
+    global $pdo;
+    $date_from = $parameters['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
+    $date_to = $parameters['date_to'] ?? date('Y-m-d');
+    $athlete_ids = $parameters['athlete_ids'] ?? [];
+    
+    // Build user filter
+    $user_filter = '';
+    $bind_params = [$date_from, $date_to, $date_from, $date_to, $date_from, $date_to];
+    if (!empty($athlete_ids) && is_array($athlete_ids)) {
+        $placeholders = implode(',', array_fill(0, count($athlete_ids), '?'));
+        $user_filter = "AND u.id IN ($placeholders)";
+        // Insert user IDs before date params (need to rebuild)
+        $bind_params = [];
+        foreach ($athlete_ids as $aid) {
+            $bind_params[] = intval($aid);
+        }
+        $bind_params = array_merge($bind_params, [$date_from, $date_to, $date_from, $date_to, $date_from, $date_to]);
+    }
+    
+    // Build main query for users with their activity counts
+    $id_filter = !empty($athlete_ids) ? "AND u.id IN (" . implode(',', array_fill(0, count($athlete_ids), '?')) . ")" : '';
+    
+    $sql = "
+        SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at as member_since,
+               (SELECT COUNT(*) FROM bookings b
+                INNER JOIN sessions s ON b.session_id = s.id
+                WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id)
+                AND b.status = 'confirmed' AND b.payment_status = 'paid'
+                AND s.session_date BETWEEN ? AND ?) as sessions_attended,
+               (SELECT COUNT(*) FROM user_packages up
+                WHERE up.user_id = u.id
+                AND up.purchase_date BETWEEN ? AND ?) as packages_purchased,
+               (SELECT COALESCE(SUM(up.amount_paid), 0) FROM user_packages up
+                WHERE up.user_id = u.id
+                AND up.purchase_date BETWEEN ? AND ?) as total_spent
+        FROM users u
+        WHERE u.role IN ('athlete', 'parent')
+        $id_filter
+        ORDER BY u.last_name, u.first_name
+    ";
+    
+    $params = [];
+    if (!empty($athlete_ids)) {
+        foreach ($athlete_ids as $aid) {
+            $params[] = intval($aid);
+        }
+    }
+    // 3 pairs of date params for the subqueries
+    $params = array_merge([$date_from, $date_to, $date_from, $date_to, $date_from, $date_to], $params);
+    
+    // Rewrite to get the order right: date params first (for subqueries), then id filter
+    $sql = "
+        SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at as member_since,
+               (SELECT COUNT(*) FROM bookings b
+                INNER JOIN sessions s ON b.session_id = s.id
+                WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id)
+                AND b.status = 'confirmed' AND b.payment_status = 'paid'
+                AND s.session_date BETWEEN ? AND ?) as sessions_attended,
+               (SELECT COUNT(*) FROM user_packages up
+                WHERE up.user_id = u.id
+                AND up.purchase_date BETWEEN ? AND ?) as packages_purchased,
+               (SELECT COALESCE(SUM(up.amount_paid), 0) FROM user_packages up
+                WHERE up.user_id = u.id
+                AND up.purchase_date BETWEEN ? AND ?) as total_spent
+        FROM users u
+        WHERE u.role IN ('athlete', 'parent')
+        $id_filter
+        ORDER BY u.last_name, u.first_name
+    ";
+    
+    $params = [$date_from, $date_to, $date_from, $date_to, $date_from, $date_to];
+    if (!empty($athlete_ids)) {
+        foreach ($athlete_ids as $aid) {
+            $params[] = intval($aid);
+        }
+    }
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
+    
+    // For each user, get their session detail list
+    $result = [];
+    foreach ($users as $user) {
+        $detail_stmt = $pdo->prepare("
+            SELECT s.title as session_title, s.session_date, s.session_time,
+                   st.name as session_type, l.name as location_name,
+                   b.amount as amount_paid, b.booking_date, b.payment_status
+            FROM bookings b
+            INNER JOIN sessions s ON b.session_id = s.id
+            LEFT JOIN session_types st ON s.session_type_id = st.id
+            LEFT JOIN locations l ON s.location_id = l.id
+            WHERE (b.user_id = ? OR b.booked_for_user_id = ?)
+            AND s.session_date BETWEEN ? AND ?
+            ORDER BY s.session_date DESC
+        ");
+        $detail_stmt->execute([$user['id'], $user['id'], $date_from, $date_to]);
+        $sessions = $detail_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $user['sessions'] = $sessions;
+        $result[] = $user;
+    }
+    
+    return $result;
+}
+
+/**
+ * Get user stats data - athlete performance statistics
+ */
+function getUserStatsData($parameters) {
+    global $pdo;
+    $date_from = $parameters['date_from'] ?? date('Y-m-d', strtotime('-365 days'));
+    $date_to = $parameters['date_to'] ?? date('Y-m-d');
+    $athlete_ids = $parameters['athlete_ids'] ?? [];
+    
+    $id_filter = '';
+    $params = [];
+    if (!empty($athlete_ids) && is_array($athlete_ids)) {
+        $id_filter = "AND u.id IN (" . implode(',', array_fill(0, count($athlete_ids), '?')) . ")";
+        foreach ($athlete_ids as $aid) {
+            $params[] = intval($aid);
+        }
+    }
+    
+    // Get users with their stats
+    $sql = "
+        SELECT u.id, u.first_name, u.last_name, u.email, u.role,
+               ast.season, ast.games_played, ast.goals, ast.assists, ast.points,
+               ast.penalty_minutes, ast.shots, ast.plus_minus,
+               ast.shots_against, ast.goals_against, ast.saves, ast.save_percentage,
+               (SELECT COUNT(*) FROM athlete_evaluations ae
+                WHERE ae.athlete_id = u.id
+                AND ae.evaluation_date BETWEEN ? AND ?) as evaluation_count,
+               (SELECT ROUND(AVG(ae.rating), 1) FROM athlete_evaluations ae
+                WHERE ae.athlete_id = u.id
+                AND ae.evaluation_date BETWEEN ? AND ?) as avg_evaluation_rating,
+               (SELECT COUNT(*) FROM goals g
+                WHERE g.athlete_id = u.id AND g.status = 'completed') as completed_goals,
+               (SELECT COUNT(*) FROM goals g
+                WHERE g.athlete_id = u.id AND g.status = 'active') as active_goals
+        FROM users u
+        LEFT JOIN athlete_stats ast ON u.id = ast.user_id
+        WHERE u.role = 'athlete'
+        $id_filter
+        ORDER BY u.last_name, u.first_name
+    ";
+    
+    $all_params = array_merge([$date_from, $date_to, $date_from, $date_to], $params);
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($all_params);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $users = decryptUserRows($users);
+    
+    return $users;
+}
+
 function generateReportFile($report_type, $format, $data, $parameters) {
     if ($format === 'csv') {
         return generateCSV($report_type, $data, $parameters);
@@ -866,6 +1042,42 @@ function generateExcelTable($report_type, $data) {
             }
             break;
             
+        case 'user_activity':
+            $html .= '<tr><th>Name</th><th>Email</th><th>Role</th><th>Sessions</th><th>Packages</th><th>Total Spent</th></tr>';
+            if (is_array($data)) {
+                foreach ($data as $row) {
+                    $html .= '<tr>';
+                    $html .= '<td>' . htmlspecialchars(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['email'] ?? '') . '</td>';
+                    $html .= '<td>' . htmlspecialchars(ucfirst($row['role'] ?? '')) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['sessions_attended'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['packages_purchased'] ?? 0) . '</td>';
+                    $html .= '<td>$' . number_format($row['total_spent'] ?? 0, 2) . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            break;
+            
+        case 'user_stats':
+            $html .= '<tr><th>Name</th><th>Season</th><th>GP</th><th>G</th><th>A</th><th>PTS</th><th>PIM</th><th>+/-</th><th>Evaluations</th><th>Avg Rating</th></tr>';
+            if (is_array($data)) {
+                foreach ($data as $row) {
+                    $html .= '<tr>';
+                    $html .= '<td>' . htmlspecialchars(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['season'] ?? 'N/A') . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['games_played'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['goals'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['assists'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['points'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['penalty_minutes'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['plus_minus'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['evaluation_count'] ?? 0) . '</td>';
+                    $html .= '<td>' . htmlspecialchars($row['avg_evaluation_rating'] ?? 'N/A') . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            break;
+            
         default:
             $html .= '<tr><th>Data</th></tr>';
             $html .= '<tr><td>' . htmlspecialchars(json_encode($data)) . '</td></tr>';
@@ -950,6 +1162,62 @@ function generateCSV($report_type, $data, $parameters) {
                     $package['purchases'],
                     '$' . number_format($package['revenue'], 2),
                     $package['discounted_purchases']
+                ]);
+            }
+            break;
+            
+        case 'user_activity':
+            fputcsv($fp, ['Name', 'Email', 'Role', 'Member Since', 'Sessions Attended', 'Packages Purchased', 'Total Spent']);
+            foreach ($data as $user) {
+                fputcsv($fp, [
+                    ($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''),
+                    $user['email'] ?? '',
+                    ucfirst($user['role'] ?? ''),
+                    $user['member_since'] ? date('Y-m-d', strtotime($user['member_since'])) : 'N/A',
+                    $user['sessions_attended'] ?? 0,
+                    $user['packages_purchased'] ?? 0,
+                    '$' . number_format($user['total_spent'] ?? 0, 2)
+                ]);
+            }
+            // Add detailed session rows
+            fputcsv($fp, []);
+            fputcsv($fp, ['--- Session Details ---']);
+            fputcsv($fp, ['User', 'Session', 'Date', 'Time', 'Type', 'Location', 'Amount', 'Status']);
+            foreach ($data as $user) {
+                $name = ($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '');
+                foreach ($user['sessions'] ?? [] as $sess) {
+                    fputcsv($fp, [
+                        $name,
+                        $sess['session_title'] ?? '',
+                        $sess['session_date'] ? date('Y-m-d', strtotime($sess['session_date'])) : '',
+                        $sess['session_time'] ?? '',
+                        $sess['session_type'] ?? '',
+                        $sess['location_name'] ?? '',
+                        '$' . number_format($sess['amount_paid'] ?? 0, 2),
+                        $sess['payment_status'] ?? ''
+                    ]);
+                }
+            }
+            break;
+            
+        case 'user_stats':
+            fputcsv($fp, ['Name', 'Email', 'Season', 'Games Played', 'Goals', 'Assists', 'Points', 'PIM', 'Shots', '+/-', 'Evaluations', 'Avg Rating', 'Active Goals', 'Completed Goals']);
+            foreach ($data as $user) {
+                fputcsv($fp, [
+                    ($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''),
+                    $user['email'] ?? '',
+                    $user['season'] ?? 'N/A',
+                    $user['games_played'] ?? 0,
+                    $user['goals'] ?? 0,
+                    $user['assists'] ?? 0,
+                    $user['points'] ?? 0,
+                    $user['penalty_minutes'] ?? 0,
+                    $user['shots'] ?? 0,
+                    $user['plus_minus'] ?? 0,
+                    $user['evaluation_count'] ?? 0,
+                    $user['avg_evaluation_rating'] ?? 'N/A',
+                    $user['active_goals'] ?? 0,
+                    $user['completed_goals'] ?? 0
                 ]);
             }
             break;
@@ -1089,6 +1357,105 @@ function generatePDFHTML($report_type, $data, $parameters) {
                     <td><?= htmlspecialchars($session['location_name']) ?></td>
                     <td><?= $session['total_bookings'] ?></td>
                     <td><?= $session['confirmed_bookings'] ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        
+        <?php if ($report_type === 'user_activity'): ?>
+        <h2>User Activity Report</h2>
+        <p>Showing registrations and sessions for <?= htmlspecialchars($parameters['date_from']) ?> to <?= htmlspecialchars($parameters['date_to']) ?></p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Sessions Attended</th>
+                    <th>Packages Purchased</th>
+                    <th>Total Spent</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($data as $user): ?>
+                <tr>
+                    <td><?= htmlspecialchars(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')) ?></td>
+                    <td><?= htmlspecialchars($user['email'] ?? '') ?></td>
+                    <td><?= htmlspecialchars(ucfirst($user['role'] ?? '')) ?></td>
+                    <td><?= $user['sessions_attended'] ?? 0 ?></td>
+                    <td><?= $user['packages_purchased'] ?? 0 ?></td>
+                    <td>$<?= number_format($user['total_spent'] ?? 0, 2) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        
+        <?php foreach ($data as $user): ?>
+        <?php if (!empty($user['sessions'])): ?>
+        <h3 style="margin-top: 30px;"><?= htmlspecialchars(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')) ?> - Session Details</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Session</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Location</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($user['sessions'] as $sess): ?>
+                <tr>
+                    <td><?= htmlspecialchars($sess['session_title'] ?? '') ?></td>
+                    <td><?= $sess['session_date'] ? date('M j, Y', strtotime($sess['session_date'])) : '' ?></td>
+                    <td><?= $sess['session_time'] ?? '' ?></td>
+                    <td><?= htmlspecialchars($sess['session_type'] ?? '') ?></td>
+                    <td><?= htmlspecialchars($sess['location_name'] ?? '') ?></td>
+                    <td>$<?= number_format($sess['amount_paid'] ?? 0, 2) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        <?php endforeach; ?>
+        <?php endif; ?>
+        
+        <?php if ($report_type === 'user_stats'): ?>
+        <h2>User Stats Report</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Season</th>
+                    <th>GP</th>
+                    <th>G</th>
+                    <th>A</th>
+                    <th>PTS</th>
+                    <th>PIM</th>
+                    <th>+/-</th>
+                    <th>Evaluations</th>
+                    <th>Avg Rating</th>
+                    <th>Active Goals</th>
+                    <th>Completed Goals</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($data as $user): ?>
+                <tr>
+                    <td><?= htmlspecialchars(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')) ?></td>
+                    <td><?= htmlspecialchars($user['season'] ?? 'N/A') ?></td>
+                    <td><?= $user['games_played'] ?? 0 ?></td>
+                    <td><?= $user['goals'] ?? 0 ?></td>
+                    <td><?= $user['assists'] ?? 0 ?></td>
+                    <td><?= $user['points'] ?? 0 ?></td>
+                    <td><?= $user['penalty_minutes'] ?? 0 ?></td>
+                    <td><?= $user['plus_minus'] ?? 0 ?></td>
+                    <td><?= $user['evaluation_count'] ?? 0 ?></td>
+                    <td><?= $user['avg_evaluation_rating'] ?? 'N/A' ?></td>
+                    <td><?= $user['active_goals'] ?? 0 ?></td>
+                    <td><?= $user['completed_goals'] ?? 0 ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>

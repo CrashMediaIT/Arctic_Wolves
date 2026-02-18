@@ -309,6 +309,14 @@ $csrf_token = generateCsrfToken();
                         <div class="report-type-title"><i class="fas fa-users-cog"></i> All Athletes</div>
                         <div class="report-type-desc">Complete database of all athletes with comprehensive data</div>
                     </div>
+                    <div class="report-type-card" data-type="user_activity">
+                        <div class="report-type-title"><i class="fas fa-user-clock"></i> User Activity Report</div>
+                        <div class="report-type-desc">Detailed user registrations, sessions attended, packages purchased within a time frame</div>
+                    </div>
+                    <div class="report-type-card" data-type="user_stats">
+                        <div class="report-type-title"><i class="fas fa-chart-line"></i> User Stats Report</div>
+                        <div class="report-type-desc">Pull and filter user performance stats including goals, assists, points and evaluations</div>
+                    </div>
                     <div class="report-type-card" data-type="all_teams">
                         <div class="report-type-title"><i class="fas fa-sitemap"></i> All Teams</div>
                         <div class="report-type-desc">Overview of all teams, rosters, and team coaches</div>
@@ -490,7 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
             reportFilters.style.display = 'block';
             
             // Show/hide filters based on report type
-            athleteFilter.style.display = reportType === 'athlete_progress' ? 'block' : 'none';
+            athleteFilter.style.display = ['athlete_progress', 'user_activity', 'user_stats'].includes(reportType) ? 'block' : 'none';
             teamFilter.style.display = ['team_roster', 'session_attendance'].includes(reportType) ? 'block' : 'none';
         });
     });
