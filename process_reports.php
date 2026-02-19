@@ -611,7 +611,7 @@ function getAthleteProgressData($athlete_id, $parameters) {
                (SELECT COUNT(*) FROM goals WHERE user_id = u.id AND status = 'active') as active_goals,
                (SELECT COUNT(*) FROM bookings b 
                 INNER JOIN sessions s ON b.session_id = s.id 
-                WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id) 
+                WHERE b.user_id = u.id 
                 AND b.status = 'paid' 
                 AND s.session_date BETWEEN ? AND ?) as sessions_attended
         FROM users u
@@ -676,7 +676,7 @@ function getAllAthletesData($parameters) {
                c.first_name as coach_first_name, c.last_name as coach_last_name,
                (SELECT COUNT(*) FROM bookings b 
                 INNER JOIN sessions s ON b.session_id = s.id 
-                WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id) 
+                WHERE b.user_id = u.id 
                 AND b.status = 'paid' 
                 AND s.session_date BETWEEN ? AND ?) as sessions_attended
         FROM users u
@@ -771,7 +771,7 @@ function getUserActivityData($parameters) {
         SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at as member_since,
                (SELECT COUNT(*) FROM bookings b
                 INNER JOIN sessions s ON b.session_id = s.id
-                WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id)
+                WHERE b.user_id = u.id
                 AND b.status = 'confirmed' AND b.payment_status = 'paid'
                 AND s.session_date BETWEEN ? AND ?) as sessions_attended,
                (SELECT COUNT(*) FROM user_packages up
@@ -810,11 +810,11 @@ function getUserActivityData($parameters) {
             INNER JOIN sessions s ON b.session_id = s.id
             LEFT JOIN session_types st ON s.session_type_id = st.id
             LEFT JOIN locations l ON s.location_id = l.id
-            WHERE (b.user_id = ? OR b.booked_for_user_id = ?)
+            WHERE b.user_id = ?
             AND s.session_date BETWEEN ? AND ?
             ORDER BY s.session_date DESC
         ");
-        $detail_stmt->execute([$user['id'], $user['id'], $date_from, $date_to]);
+        $detail_stmt->execute([$user['id'], $date_from, $date_to]);
         $sessions = $detail_stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $user['sessions'] = $sessions;

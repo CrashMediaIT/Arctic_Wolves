@@ -21,7 +21,7 @@ $users_stmt = $pdo->prepare("
     SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.created_at,
            (SELECT COUNT(*) FROM bookings b
             INNER JOIN sessions s ON b.session_id = s.id
-            WHERE (b.user_id = u.id OR b.booked_for_user_id = u.id)
+            WHERE b.user_id = u.id
             AND s.session_date BETWEEN ? AND ?) as sessions_count
     FROM users u
     WHERE u.role IN ('athlete', 'parent')
@@ -58,11 +58,11 @@ if ($selected_user_id) {
         INNER JOIN sessions s ON b.session_id = s.id
         LEFT JOIN session_types st ON s.session_type_id = st.id
         LEFT JOIN locations l ON s.location_id = l.id
-        WHERE (b.user_id = ? OR b.booked_for_user_id = ?)
+        WHERE b.user_id = ?
         AND s.session_date BETWEEN ? AND ?
         ORDER BY s.session_date DESC
     ");
-    $sess_stmt->execute([$selected_user_id, $selected_user_id, $date_from, $date_to]);
+    $sess_stmt->execute([$selected_user_id, $date_from, $date_to]);
     $user_sessions = $sess_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Athlete stats

@@ -98,13 +98,11 @@ try {
             
             $query = "
                 SELECT b.*, u.email, u.first_name, u.last_name,
-                       s.session_name, s.session_date, s.session_time,
-                       bf.first_name as athlete_first_name, bf.last_name as athlete_last_name
+                       s.title as session_name, s.session_date, s.session_time
                 FROM bookings b
                 JOIN users u ON b.user_id = u.id
                 LEFT JOIN sessions s ON b.session_id = s.id
-                LEFT JOIN users bf ON b.booked_for_user_id = bf.id
-                WHERE b.status = 'paid'
+                WHERE b.payment_status = 'paid'
             ";
             
             $params = [];
@@ -133,7 +131,7 @@ try {
             $bookings = decryptUserRows($bookings);
             // Build athlete_name from decrypted fields
             foreach ($bookings as &$b) {
-                $b['athlete_name'] = (!empty($b['athlete_first_name'])) ? $b['athlete_first_name'] . ' ' . $b['athlete_last_name'] : null;
+                $b['athlete_name'] = null;
             }
             unset($b);
             
@@ -302,16 +300,14 @@ try {
                 
                 // Create new booking for exchange session
                 $exchange_booking = $pdo->prepare("
-                    INSERT INTO bookings (user_id, session_id, amount_paid, original_price, tax_amount, status, booked_for_user_id, created_at)
-                    VALUES (?, ?, ?, ?, ?, 'paid', ?, NOW())
+                    INSERT INTO bookings (user_id, session_id, amount_paid, original_price, payment_status, status, booking_date)
+                    VALUES (?, ?, ?, ?, 'paid', 'confirmed', NOW())
                 ");
                 $exchange_booking->execute([
                     $booking['user_id'],
                     $actual_session_id,
                     0, // No new payment
-                    $exchange_session['price'],
-                    0,
-                    $booking['booked_for_user_id']
+                    $exchange_session['price']
                 ]);
             }
             
