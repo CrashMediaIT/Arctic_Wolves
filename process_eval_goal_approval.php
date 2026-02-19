@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -88,7 +90,7 @@ function sendApprovalNotification($pdo, $to_user_id, $type, $details) {
         
         return true;
     } catch (Exception $e) {
-        error_log("Error sending notification: " . $e->getMessage());
+        ErrorLogger::error("Error sending notification: " . $e->getMessage());
         return false;
     }
 }
@@ -157,6 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, 'pending', NOW(), NOW())
                 ");
                 $approval_stmt->execute([$step_id, $user_id]);
+                Auditor::log($pdo, $user_id, 'create', 'goal_eval_approvals', $pdo->lastInsertId(), ['action' => 'Requested step approval', 'step_id' => $step_id]);
                 
                 // Send notification to coach who created the evaluation
                 sendApprovalNotification($pdo, $step['created_by'], 'approval_requested', [
@@ -204,6 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $update_stmt->execute([$user_id, $step_id]);
+                Auditor::log($pdo, $user_id, 'update', 'goal_eval_steps', $step_id, ['action' => 'Approved step']);
                 
                 // Update approval request if exists
                 if ($step['approval_id']) {
@@ -269,6 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $update_stmt->execute([$step_id]);
+                Auditor::log($pdo, $user_id, 'update', 'goal_eval_steps', $step_id, ['action' => 'Rejected step']);
                 
                 // Update approval request if exists
                 if ($step['approval_id']) {
@@ -324,6 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if ($step['approval_id']) {
                     $pdo->prepare("DELETE FROM goal_eval_approvals WHERE id = ?")->execute([$step['approval_id']]);
+                    Auditor::log($pdo, $user_id, 'delete', 'goal_eval_approvals', $step['approval_id'], ['action' => 'Cancelled approval request']);
                 }
                 
                 echo json_encode([
@@ -373,7 +379,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => false, 'message' => 'Invalid action']);
         }
     } catch (Exception $e) {
-        error_log("Error in process_eval_goal_approval.php: " . $e->getMessage());
+        ErrorLogger::error("Error in process_eval_goal_approval.php: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
     }
     exit;
@@ -426,7 +432,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 echo json_encode(['success' => false, 'message' => 'Invalid action']);
         }
     } catch (Exception $e) {
-        error_log("Error in process_eval_goal_approval.php GET: " . $e->getMessage());
+        ErrorLogger::error("Error in process_eval_goal_approval.php GET: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Server error']);
     }
     exit;
