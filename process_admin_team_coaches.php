@@ -2,6 +2,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Check if this is an AJAX request
 $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
@@ -24,6 +26,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['user_role'] !== 'admin') {
 }
 
 $action = $_POST['action'] ?? '';
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine redirect target - if a redirect_page was specified, use it
 $redirect_page = 'admin_team_coaches';
@@ -69,6 +72,7 @@ try {
                 VALUES (?, ?, ?, ?)
             ");
             $stmt->execute([$name, $start_date, $end_date, $is_active]);
+            Auditor::log($pdo, $user_id, 'create', 'seasons', $pdo->lastInsertId(), ['action' => "Created season: $name"]);
             
             respond(true, "Season '$name' created successfully!", $redirect_page);
             break;
@@ -82,6 +86,7 @@ try {
             // Activate selected season
             $stmt = $pdo->prepare("UPDATE seasons SET is_active = 1 WHERE id = ?");
             $stmt->execute([$season_id]);
+            Auditor::log($pdo, $user_id, 'update', 'seasons', $season_id, ['action' => 'Season activated']);
             
             respond(true, 'Season activated successfully!', $redirect_page);
             break;
@@ -100,6 +105,7 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM seasons WHERE id = ?");
             $stmt->execute([$season_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'seasons', $season_id, ['action' => 'Season deleted']);
             
             respond(true, 'Season deleted successfully!', $redirect_page);
             break;
@@ -114,6 +120,7 @@ try {
                 VALUES (?, ?, ?)
             ");
             $stmt->execute([$coach_id, $team_id, $season_id]);
+            Auditor::log($pdo, $user_id, 'create', 'team_coach_assignments', $pdo->lastInsertId(), ['action' => 'Coach assignment created']);
             
             header("Location: dashboard.php?page=admin_team_coaches&msg=assignment_created");
             break;
@@ -123,6 +130,7 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM team_coach_assignments WHERE id = ?");
             $stmt->execute([$assignment_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'team_coach_assignments', $assignment_id, ['action' => 'Coach assignment deleted']);
             
             header("Location: dashboard.php?page=admin_team_coaches&msg=assignment_deleted");
             break;
@@ -136,6 +144,7 @@ try {
                 VALUES (?, ?)
             ");
             $stmt->execute([$team_id, $season_id]);
+            Auditor::log($pdo, $user_id, 'create', 'team_seasons', $pdo->lastInsertId(), ['action' => 'Team season added']);
             
             header("Location: dashboard.php?page=admin_team_coaches&msg=team_season_added");
             break;
@@ -159,6 +168,7 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM team_seasons WHERE id = ?");
             $stmt->execute([$team_season_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'team_seasons', $team_season_id, ['action' => 'Team season removed']);
             
             header("Location: dashboard.php?page=admin_team_coaches&msg=team_season_removed");
             break;
@@ -175,6 +185,7 @@ try {
                 VALUES (?, ?, ?, ?, ?)
             ");
             $stmt->execute([$team_id, $athlete_id, $season_id, $jersey_number, $position]);
+            Auditor::log($pdo, $user_id, 'create', 'team_roster', $pdo->lastInsertId(), ['action' => 'Roster athlete added', 'athlete_id' => $athlete_id]);
             
             // Auto-sync to athlete_teams so assignment appears on profile/stats
             $team_info = $pdo->prepare("SELECT name FROM teams WHERE id = ?");
@@ -222,6 +233,7 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM team_roster WHERE id = ?");
             $stmt->execute([$roster_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'team_roster', $roster_id, ['action' => 'Roster athlete removed']);
             
             // Remove corresponding athlete_teams entry
             if ($roster_row) {
@@ -251,7 +263,7 @@ try {
             break;
     }
 } catch (PDOException $e) {
-    error_log("Team coach management error: " . $e->getMessage());
+    ErrorLogger::error("Team coach management error: " . $e->getMessage());
     header("Location: dashboard.php?page=admin_team_coaches&error=database_error");
 }
 exit();

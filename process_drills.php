@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Security check - must be logged in
 if (!isset($_SESSION['logged_in'])) {
@@ -185,6 +187,8 @@ if ($action === 'save_drill' || $action === 'create') {
             }
         }
         
+        Auditor::log($pdo, $user_id, isset($_POST['drill_id']) && !empty($_POST['drill_id']) ? 'update' : 'create', 'drills', $drill_id, ['action' => 'drill_saved', 'title' => $title]);
+
         header("Location: dashboard.php?page=drills&status=drill_saved");
         exit();
         
@@ -204,6 +208,7 @@ if ($action === 'delete_drill') {
     
     try {
         $pdo->prepare("DELETE FROM drills WHERE id = ? AND created_by = ?")->execute([$drill_id, $user_id]);
+        Auditor::log($pdo, $user_id, 'delete', 'drills', $drill_id, ['action' => 'drill_deleted']);
         header("Location: dashboard.php?page=drills&status=drill_deleted");
         exit();
     } catch (PDOException $e) {
@@ -227,9 +232,10 @@ if ($action === 'create_category') {
     }
     
     try {
-        // drill_categories table has: id, name, description, created_at (no created_by column)
         $stmt = $pdo->prepare("INSERT INTO drill_categories (name, description) VALUES (?, ?)");
         $stmt->execute([$name, $description]);
+        $new_cat_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'drill_categories', $new_cat_id, ['action' => 'category_created', 'name' => $name]);
         header("Location: dashboard.php?page=drills&status=category_created");
         exit();
     } catch (PDOException $e) {
@@ -252,6 +258,7 @@ if ($action === 'delete_category') {
     
     try {
         $pdo->prepare("DELETE FROM drill_categories WHERE id = ?")->execute([$category_id]);
+        Auditor::log($pdo, $user_id, 'delete', 'drill_categories', $category_id, ['action' => 'category_deleted']);
         header("Location: dashboard.php?page=drills&status=category_deleted");
         exit();
     } catch (PDOException $e) {
@@ -314,11 +321,14 @@ if ($action === 'import_ihs') {
         ");
         $stmt->execute([$title, $full_description, $category_id, $ihs_source_url, $user_id]);
         
+        $imported_drill_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'drills', $imported_drill_id, ['action' => 'drill_imported_ihs', 'title' => $title]);
+
         header("Location: dashboard.php?page=drill_library&status=drill_imported");
         exit();
         
     } catch (PDOException $e) {
-        error_log("IHS Import Error: " . $e->getMessage());
+        ErrorLogger::error("IHS Import Error: " . $e->getMessage());
         header("Location: dashboard.php?page=import_drill&error=import_failed");
         exit();
     }
@@ -433,11 +443,14 @@ if ($action === 'import_from_url') {
         ");
         $stmt->execute([$drill_name, $description, $category_id, $ihs_url, $user_id]);
         
+        $url_drill_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'drills', $url_drill_id, ['action' => 'drill_imported_url', 'title' => $drill_name]);
+
         header("Location: dashboard.php?page=drill_library&status=drill_imported");
         exit();
         
     } catch (PDOException $e) {
-        error_log("URL Import Error: " . $e->getMessage());
+        ErrorLogger::error("URL Import Error: " . $e->getMessage());
         header("Location: dashboard.php?page=import_drill&error=import_failed");
         exit();
     }
@@ -493,7 +506,7 @@ if ($action === 'fetch_ihs_drill') {
         curl_close($ch);
         
         if ($http_code !== 200 || empty($html)) {
-            error_log("IHS Fetch Error: HTTP $http_code - $curl_error");
+            ErrorLogger::error("IHS Fetch Error: HTTP $http_code - $curl_error");
             echo json_encode(['success' => false, 'message' => 'Failed to fetch page content']);
             exit();
         }
@@ -510,7 +523,7 @@ if ($action === 'fetch_ihs_drill') {
         exit();
         
     } catch (Exception $e) {
-        error_log("IHS Fetch Error: " . $e->getMessage());
+        ErrorLogger::error("IHS Fetch Error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'An error occurred while fetching the drill']);
         exit();
     }
@@ -575,11 +588,14 @@ if ($action === 'import_ihs_url') {
         ");
         $stmt->execute([$title, $description, $setup, $coaching_points, $progression, $category_id, $custom_image, $ihs_url, $user_id]);
         
+        $ihs_url_drill_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'drills', $ihs_url_drill_id, ['action' => 'drill_imported_ihs_url', 'title' => $title]);
+
         header("Location: dashboard.php?page=drill_library&status=drill_imported");
         exit();
         
     } catch (PDOException $e) {
-        error_log("IHS Import Error: " . $e->getMessage());
+        ErrorLogger::error("IHS Import Error: " . $e->getMessage());
         header("Location: dashboard.php?page=import_drill&error=import_failed");
         exit();
     }

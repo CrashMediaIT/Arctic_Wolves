@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -57,7 +59,7 @@ try {
             die(json_encode(['success' => false, 'message' => 'Invalid action']));
     }
 } catch (PDOException $e) {
-    error_log("Process Evaluations Error: " . $e->getMessage());
+    ErrorLogger::error("Process Evaluations Error: " . $e->getMessage());
     http_response_code(500);
     die(json_encode(['success' => false, 'message' => 'Database error occurred']));
 }
@@ -89,6 +91,8 @@ function handleCreate($pdo, $user_id, $is_coach) {
     $stmt->execute([$athlete_id, $user_id, $eval_date, $notes]);
     $eval_id = $pdo->lastInsertId();
     
+    Auditor::log($pdo, $user_id, 'create', 'athlete_evaluations', $eval_id, ['action' => 'evaluation_created', 'athlete_id' => $athlete_id]);
+
     echo json_encode([
         'success' => true,
         'message' => 'Evaluation created successfully',
@@ -152,6 +156,8 @@ function handleUpdate($pdo, $user_id, $is_coach) {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     
+    Auditor::log($pdo, $user_id, 'update', 'athlete_evaluations', intval($eval_id), ['action' => 'evaluation_updated']);
+
     echo json_encode([
         'success' => true,
         'message' => 'Evaluation updated successfully'
@@ -189,6 +195,8 @@ function handleDelete($pdo, $user_id, $is_coach) {
     // Delete evaluation
     $stmt = $pdo->prepare("DELETE FROM athlete_evaluations WHERE id = ?");
     $stmt->execute([$eval_id]);
+    
+    Auditor::log($pdo, $user_id, 'delete', 'athlete_evaluations', intval($eval_id), ['action' => 'evaluation_deleted']);
     
     echo json_encode([
         'success' => true,

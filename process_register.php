@@ -10,6 +10,8 @@ require 'mailer.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/blocklist.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 /**
  * Generate a unique email for an athlete based on parent's email
@@ -281,12 +283,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     unset($_SESSION['parent_invitation_token']);
                 }
             } catch (PDOException $e) {
-                error_log("Invitation acceptance during registration error: " . $e->getMessage());
+                ErrorLogger::error("Invitation acceptance during registration error: " . $e->getMessage());
             }
         }
         
         // Commit transaction
         $pdo->commit();
+
+        $registered_id = ($role === 'athlete') ? $new_user_id : $parent_id;
+        Auditor::log($pdo, $registered_id, 'create', 'users', $registered_id, ['action' => 'user_registered', 'role' => $role, 'email' => $email]);
 
         // 3. SEND VERIFICATION EMAIL
         sendEmail($email, 'verification', [
@@ -301,7 +306,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } catch (PDOException $e) {
         // Rollback on error
         $pdo->rollBack();
-        error_log("Registration error: " . $e->getMessage());
+        ErrorLogger::error("Registration error: " . $e->getMessage());
         header("Location: register.php?error=database_error");
         exit();
     }

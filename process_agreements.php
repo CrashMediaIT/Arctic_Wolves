@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -55,13 +57,14 @@ if ($action === 'accept_agreements') {
         $pdo->prepare($update_sql)->execute([$promotional_opt_in, $user_id]);
 
         $pdo->commit();
-
+        Auditor::log($pdo, $user_id, 'create', 'user_agreements', $user_id, ['action' => 'Agreements accepted']);
+        
         header("Location: dashboard.php");
         exit();
 
     } catch (PDOException $e) {
         $pdo->rollBack();
-        error_log("Agreement acceptance error: " . $e->getMessage());
+        ErrorLogger::error("Agreement acceptance error: " . $e->getMessage());
         header("Location: dashboard.php?error=database_error");
         exit();
     }
@@ -89,11 +92,12 @@ if ($action === 'update_template') {
     try {
         $stmt = $pdo->prepare("UPDATE agreement_templates SET title = ?, content = ?, version = ?, docuseal_template_id = ?, is_active = ?, updated_at = NOW() WHERE id = ?");
         $stmt->execute([$title, $content, $version, $docuseal_template_id, $is_active, $template_id]);
-
+        Auditor::log($pdo, $user_id, 'update', 'agreement_templates', $template_id, ['action' => 'Agreement template updated', 'title' => $title]);
+        
         header("Location: dashboard.php?page=employee_contracts&tab=agreements&status=success");
         exit();
     } catch (PDOException $e) {
-        error_log("Agreement template update error: " . $e->getMessage());
+        ErrorLogger::error("Agreement template update error: " . $e->getMessage());
         header("Location: dashboard.php?page=employee_contracts&tab=agreements&error=database_error");
         exit();
     }
@@ -139,12 +143,13 @@ if ($action === 'publish_and_force_resign') {
         }
 
         $pdo->commit();
-
+        Auditor::log($pdo, $user_id, 'update', 'agreement_templates', $template_id, ['action' => 'Agreement published and force re-sign triggered', 'title' => $title]);
+        
         header("Location: dashboard.php?page=employee_contracts&tab=agreements&status=success&message=" . urlencode('Agreement published. All users will be required to re-sign.'));
         exit();
     } catch (PDOException $e) {
         $pdo->rollBack();
-        error_log("Agreement publish & force resign error: " . $e->getMessage());
+        ErrorLogger::error("Agreement publish & force resign error: " . $e->getMessage());
         header("Location: dashboard.php?page=employee_contracts&tab=agreements&error=database_error");
         exit();
     }

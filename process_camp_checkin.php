@@ -8,6 +8,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -122,6 +124,7 @@ try {
                 ");
                 $stmt->execute([$booking_id, $athlete_id, $session_id, $user_id, $code_type, $code, $items_description ?: null, $expires_at]);
                 $code_id = $pdo->lastInsertId();
+                Auditor::log($pdo, $user_id, 'create', 'camp_checkin_codes', $code_id, ['action' => 'Check-in code generated', 'code_type' => $code_type]);
             }
 
             if ($isAjax) {
@@ -164,6 +167,7 @@ try {
             // Update code with share info
             $stmt = $pdo->prepare("UPDATE camp_checkin_codes SET shared_email = ?, shared_name = ? WHERE id = ?");
             $stmt->execute([$share_email, $share_name ?: null, $code_id]);
+            Auditor::log($pdo, $user_id, 'update', 'camp_checkin_codes', $code_id, ['action' => 'Check-in code shared']);
 
             // Send email with QR code info
             try {
@@ -212,7 +216,7 @@ try {
                     'link' => $scan_url
                 ]);
             } catch (Exception $e) {
-                error_log("Failed to send check-in code email: " . $e->getMessage());
+                ErrorLogger::error("Failed to send check-in code email: " . $e->getMessage());
             }
 
             if ($isAjax) {
@@ -299,6 +303,7 @@ try {
             // Mark code as used
             $stmt = $pdo->prepare("UPDATE camp_checkin_codes SET is_used = 1, used_at = NOW(), scanned_by = ? WHERE id = ?");
             $stmt->execute([$user_id, $code_record['id']]);
+            Auditor::log($pdo, $user_id, 'update', 'camp_checkin_codes', $code_record['id'], ['action' => 'Code scanned', 'code_type' => $code_record['code_type']]);
 
             // Update session_attendance
             if ($code_record['code_type'] === 'checkin') {
@@ -348,7 +353,7 @@ try {
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log("Camp check-in error: " . $e->getMessage());
+    ErrorLogger::error("Camp check-in error: " . $e->getMessage());
 
     if ($isAjax) {
         header('Content-Type: application/json');

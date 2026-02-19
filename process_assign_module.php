@@ -2,6 +2,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Validate CSRF token for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -9,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $action = $_POST['action'];
+$user_id = $_SESSION['user_id'] ?? 0;
 
 if ($action == 'assign_workout_template') {
     $uid = $_POST['user_id'];
@@ -24,6 +27,7 @@ if ($action == 'assign_workout_template') {
     $pdo->prepare("INSERT INTO user_workouts (user_id, coach_id, title) VALUES (?, ?, ?)")
         ->execute([$uid, $cid, $t_data['title']]);
     $uw_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'user_workouts', $uw_id, ['action' => 'Workout template assigned', 'template_id' => $tid]);
     
     // 3. Copy Items from Template to User Items
     $items = $pdo->prepare("SELECT * FROM workout_template_items WHERE template_id = ?");
@@ -54,6 +58,7 @@ if ($action == 'update_workout_items') {
         $w = $weight[$item_id];
         $update->execute([$s, $r, $w, $item_id]);
     }
+    Auditor::log($pdo, $user_id, 'update', 'user_workout_items', $uw_id, ['action' => 'Workout items updated']);
     
     header("Location: dashboard.php?page=athlete_detail&id=" . $uid);
 }

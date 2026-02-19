@@ -3,6 +3,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // 1. SECURITY: Ensure user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -105,6 +107,8 @@ if ($action === 'cancel_booking' || $action === 'cancel') {
         ");
         $stmt->execute([$booking_id, $user_id]);
         
+        Auditor::log($pdo, $user_id, 'delete', 'bookings', $booking_id, ['action' => 'cancel_booking', 'session_title' => $booking['session_title']]);
+        
         // Log the cancellation
         if (function_exists('logSecurityEvent')) {
             logSecurityEvent($pdo, 'booking_cancelled', 
@@ -149,7 +153,7 @@ if ($action === 'cancel_booking' || $action === 'cancel') {
         exit();
         
     } catch (Exception $e) {
-        error_log("Booking cancellation error: " . $e->getMessage());
+        ErrorLogger::error("Booking cancellation error: " . $e->getMessage(), ['booking_id' => $booking_id ?? 0, 'user_id' => $user_id]);
         echo json_encode(['success' => false, 'message' => 'Failed to cancel booking: ' . $e->getMessage()]);
         exit();
     }
@@ -203,7 +207,10 @@ if ($action === 'join_waitlist') {
             // Add to waitlist
             $stmt = $pdo->prepare("INSERT INTO waitlists (session_id, user_id, position, status) VALUES (?, ?, ?, 'waiting')");
             $stmt->execute([$session_id, $user_id, $next_position]);
+            $waitlist_id = $pdo->lastInsertId();
             $pdo->commit();
+            
+            Auditor::log($pdo, $user_id, 'create', 'waitlists', $waitlist_id, ['action' => 'join_waitlist', 'session_id' => $session_id, 'position' => $next_position]);
         } catch (Exception $txe) {
             $pdo->rollBack();
             throw $txe;
@@ -224,7 +231,7 @@ if ($action === 'join_waitlist') {
         exit();
         
     } catch (Exception $e) {
-        error_log("Waitlist join error: " . $e->getMessage());
+        ErrorLogger::error("Waitlist join error: " . $e->getMessage(), ['session_id' => $session_id ?? 0, 'user_id' => $user_id]);
         echo json_encode(['success' => false, 'message' => 'Failed to join waitlist']);
         exit();
     }
@@ -246,6 +253,8 @@ if ($action === 'leave_waitlist') {
         $stmt->execute([$session_id, $user_id]);
         
         if ($stmt->rowCount() > 0) {
+            Auditor::log($pdo, $user_id, 'delete', 'waitlists', null, ['action' => 'leave_waitlist', 'session_id' => $session_id]);
+            
             // Recalculate positions to close gaps
             $pdo->exec("SET @pos = 0");
             $pdo->prepare("
@@ -261,7 +270,7 @@ if ($action === 'leave_waitlist') {
         exit();
         
     } catch (Exception $e) {
-        error_log("Waitlist leave error: " . $e->getMessage());
+        ErrorLogger::error("Waitlist leave error: " . $e->getMessage(), ['session_id' => $session_id ?? 0, 'user_id' => $user_id]);
         echo json_encode(['success' => false, 'message' => 'Failed to leave waitlist']);
         exit();
     }
@@ -354,13 +363,16 @@ if ($action === 'book_private_session') {
             VALUES (?, ?, ?, 'pending', 'pending', ?)
         ");
         $stmt->execute([$session_id, $user_id, $final_price, $notes]);
+        $new_booking_id = $pdo->lastInsertId();
+        
+        Auditor::log($pdo, $user_id, 'create', 'bookings', $new_booking_id, ['action' => 'book_private_session', 'session_id' => $session_id, 'amount' => $final_price]);
         
         // Redirect to Stripe
         header("Location: " . $checkout_session->url);
         exit();
         
     } catch (Exception $e) {
-        error_log("Private session booking error: " . $e->getMessage());
+        ErrorLogger::error("Private session booking error: " . $e->getMessage(), ['user_id' => $user_id]);
         die("Error creating private session: " . $e->getMessage());
     }
 }
@@ -445,6 +457,9 @@ try {
     // 7. SAVE PENDING BOOKING IN DB
     $stmt = $pdo->prepare("INSERT INTO bookings (user_id, session_id, stripe_session_id, amount_paid, original_price, discount_code, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
     $stmt->execute([$user_id, $session_id, $checkout_session->id, $final_price, $original_price, $applied_code]);
+    $new_booking_id = $pdo->lastInsertId();
+
+    Auditor::log($pdo, $user_id, 'create', 'bookings', $new_booking_id, ['action' => 'book_session', 'session_id' => $session_id, 'amount' => $final_price, 'discount_code' => $applied_code]);
 
     // Redirect user to Stripe
     header("Location: " . $checkout_session->url);

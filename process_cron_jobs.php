@@ -7,6 +7,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 header('Content-Type: application/json');
 
@@ -55,7 +57,9 @@ try {
                 VALUES (?, ?, ?, ?, ?)
             ");
             $stmt->execute([$name, $description, $schedule, $is_active, $next_run]);
+            $new_job_id = $pdo->lastInsertId();
             
+            Auditor::log($pdo, $user_id, 'create', 'cron_jobs', $new_job_id, ['action' => 'Created cron job: ' . $name]);
             logAction($pdo, $user_id, 'cron_job_created', 'Created cron job: ' . $name);
             
             echo json_encode(['success' => true, 'message' => 'Cron job created successfully']);
@@ -90,6 +94,7 @@ try {
             ");
             $stmt->execute([$name, $description, $schedule, $is_active, $next_run, $id]);
             
+            Auditor::log($pdo, $user_id, 'update', 'cron_jobs', $id, ['action' => 'Updated cron job: ' . $name]);
             logAction($pdo, $user_id, 'cron_job_updated', 'Updated cron job: ' . $name);
             
             echo json_encode(['success' => true, 'message' => 'Cron job updated successfully']);
@@ -111,6 +116,7 @@ try {
             $stmt = $pdo->prepare("DELETE FROM cron_jobs WHERE id = ?");
             $stmt->execute([$id]);
             
+            Auditor::log($pdo, $user_id, 'delete', 'cron_jobs', $id, ['action' => 'Deleted cron job: ' . $job['job_name']]);
             logAction($pdo, $user_id, 'cron_job_deleted', 'Deleted cron job: ' . $job['job_name']);
             
             echo json_encode(['success' => true, 'message' => 'Cron job deleted successfully']);
@@ -136,6 +142,7 @@ try {
             $stmt = $pdo->prepare("UPDATE cron_jobs SET is_active = ? WHERE id = ?");
             $stmt->execute([$new_is_active, $id]);
             
+            Auditor::log($pdo, $user_id, 'update', 'cron_jobs', $id, ['action' => 'Toggled cron job status: ' . $job['job_name'] . ' to ' . $new_status_text]);
             logAction($pdo, $user_id, 'cron_job_toggled', 'Toggled cron job status: ' . $job['job_name'] . ' to ' . $new_status_text);
             
             echo json_encode(['success' => true, 'message' => 'Status updated to ' . $new_status_text]);
@@ -169,6 +176,7 @@ try {
             ");
             $stmt->execute([$id]);
             
+            Auditor::log($pdo, $user_id, 'update', 'cron_jobs', $id, ['action' => 'Manually executed cron job: ' . $job['job_name']]);
             logAction($pdo, $user_id, 'cron_job_run', 'Manually executed cron job: ' . $job['job_name']);
             
             echo json_encode(['success' => true, 'message' => 'Cron job executed successfully']);

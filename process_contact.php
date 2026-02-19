@@ -8,6 +8,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -130,6 +132,7 @@ try {
                     $encrypted_message,
                     $priority
                 ]);
+                Auditor::log($pdo, $user_id, 'create', 'messages', $pdo->lastInsertId(), ['action' => 'Message sent', 'recipient_id' => $recipient['id']]);
                 
                 // Create notification
                 $notif_title = "New message from $sender_name";
@@ -149,7 +152,7 @@ try {
                     sendEmail($recipient['email'], 'contact_message', $email_data);
                 } catch (Exception $e) {
                     // Log but don't fail on email error
-                    error_log("Failed to send email notification: " . $e->getMessage());
+                    ErrorLogger::error("Failed to send email notification: " . $e->getMessage());
                 }
                 
                 $sent_count++;
@@ -170,6 +173,7 @@ try {
                     WHERE id = ? AND recipient_id = ? AND read_at IS NULL
                 ");
                 $stmt->execute([$message_id, $user_id]);
+                Auditor::log($pdo, $user_id, 'update', 'messages', $message_id, ['action' => 'Message marked as read']);
             }
             
             header('Content-Type: application/json');
@@ -181,7 +185,7 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log("Contact form error: " . $e->getMessage());
+    ErrorLogger::error("Contact form error: " . $e->getMessage());
     
     // Check if JSON response expected
     if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {

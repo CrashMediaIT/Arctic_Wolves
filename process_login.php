@@ -5,6 +5,7 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/error_logger.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
 
 /**
  * Record login attempt in login_history table
@@ -24,7 +25,7 @@ function recordLoginHistory($pdo, $user_id, $status, $failure_reason = null) {
             $failure_reason
         ]);
     } catch (PDOException $e) {
-        error_log("Failed to record login history: " . $e->getMessage());
+        ErrorLogger::error("Failed to record login history: " . $e->getMessage());
     }
 }
 
@@ -123,6 +124,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     'role' => $user['role']
                 ]);
                 recordLoginHistory($pdo, $user['id'], 'success');
+                Auditor::logLogin($pdo, $user['id'], true);
 
                 // Check if password change is required (for coach-created accounts)
                 if (isset($user['force_pass_change']) && $user['force_pass_change'] === 1) {

@@ -2,6 +2,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Apply security headers
 setSecurityHeaders();
@@ -13,6 +15,8 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
 }
 
 requirePermission($pdo, $_SESSION['user_id'], $_SESSION['user_role'], 'admin.manage_settings');
+
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // Verify CSRF token for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -63,6 +67,9 @@ try {
             VALUES (?, ?, ?)
         ");
         $stmt->execute([$name, $description, $display_order]);
+        $new_category_id = $pdo->lastInsertId();
+
+        Auditor::log($pdo, $user_id, 'create', $table, $new_category_id, ['action' => "Created {$category_type} plan category: {$name}"]);
 
         // Log the action
         logSecurityEvent($pdo, $_SESSION['user_id'], 'category_created', 
@@ -97,6 +104,8 @@ try {
         // Delete the category (plans using it will have category_id set to NULL due to ON DELETE SET NULL)
         $stmt = $pdo->prepare("DELETE FROM $table WHERE id = ?");
         $stmt->execute([$category_id]);
+
+        Auditor::log($pdo, $user_id, 'delete', $table, $category_id, ['action' => "Deleted {$category_type} plan category: {$category['name']}"]);
 
         // Log the action
         logSecurityEvent($pdo, $_SESSION['user_id'], 'category_deleted', 
@@ -140,6 +149,8 @@ try {
             WHERE id = ?
         ");
         $stmt->execute([$name, $description, $display_order, $category_id]);
+
+        Auditor::log($pdo, $user_id, 'update', $table, $category_id, ['action' => "Updated {$category_type} plan category: {$name}"]);
 
         // Log the action
         logSecurityEvent($pdo, $_SESSION['user_id'], 'category_updated', 

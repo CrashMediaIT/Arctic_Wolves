@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Helper function to check if this is an AJAX request
 function isAjaxRequest() {
@@ -69,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$name, $description]);
                 $category_id = $pdo->lastInsertId();
+                Auditor::log($pdo, $user_id, 'create', 'eval_categories', $category_id, ['action' => 'Created eval category', 'name' => $name]);
                 
                 // If skills were selected from library, assign them to this category
                 if (!empty($skill_ids) && is_array($skill_ids)) {
@@ -146,6 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$name, $description, $category_id]);
+                Auditor::log($pdo, $user_id, 'update', 'eval_categories', $category_id, ['action' => 'Updated eval category', 'name' => $name]);
                 
                 sendResponse(true, 'Category updated successfully');
                 break;
@@ -162,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt = $pdo->prepare("DELETE FROM eval_categories WHERE id = ?");
                 $stmt->execute([$category_id]);
+                Auditor::log($pdo, $user_id, 'delete', 'eval_categories', $category_id, ['action' => 'Deleted eval category']);
                 
                 sendResponse(true, 'Category deleted successfully');
                 break;
@@ -214,8 +219,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([$category_id, $name, $description, $has_stopwatch]);
+                $newSkillId = $pdo->lastInsertId();
+                Auditor::log($pdo, $user_id, 'create', 'eval_skills', $newSkillId, ['action' => 'Created eval skill', 'name' => $name]);
                 
-                sendResponse(true, 'Skill created successfully', 'admin_eval_framework', ['skill_id' => $pdo->lastInsertId()]);
+                sendResponse(true, 'Skill created successfully', 'admin_eval_framework', ['skill_id' => $newSkillId]);
                 break;
                 
             case 'update_skill':
@@ -241,6 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$category_id, $name, $description, $skill_id]);
+                Auditor::log($pdo, $user_id, 'update', 'eval_skills', $skill_id, ['action' => 'Updated eval skill', 'name' => $name]);
                 
                 sendResponse(true, 'Skill updated successfully');
                 break;
@@ -257,6 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt = $pdo->prepare("DELETE FROM eval_skills WHERE id = ?");
                 $stmt->execute([$skill_id]);
+                Auditor::log($pdo, $user_id, 'delete', 'eval_skills', $skill_id, ['action' => 'Deleted eval skill']);
                 
                 sendResponse(true, 'Skill deleted successfully');
                 break;
@@ -361,6 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$title, $description, $user_id]);
                 $template_id = $pdo->lastInsertId();
+                Auditor::log($pdo, $user_id, 'create', 'evaluation_templates', $template_id, ['action' => 'Created evaluation template', 'title' => $title]);
                 
                 // Link categories to template
                 $insertCat = $pdo->prepare("
@@ -403,6 +413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     UPDATE evaluation_templates SET title = ?, description = ?, updated_at = NOW() WHERE id = ?
                 ");
                 $stmt->execute([$title, $description, $template_id]);
+                Auditor::log($pdo, $user_id, 'update', 'evaluation_templates', $template_id, ['action' => 'Updated evaluation template', 'title' => $title]);
                 
                 // Replace category associations
                 $pdo->prepare("DELETE FROM evaluation_template_categories WHERE template_id = ?")->execute([$template_id]);
@@ -440,6 +451,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt = $pdo->prepare("DELETE FROM evaluation_templates WHERE id = ?");
                 $stmt->execute([$template_id]);
+                Auditor::log($pdo, $user_id, 'delete', 'evaluation_templates', $template_id, ['action' => 'Deleted evaluation template']);
                 
                 sendResponse(true, 'Evaluation deleted successfully');
                 break;
@@ -550,6 +562,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, 'draft', ?, NOW())
                 ");
                 $stmt->execute([$session_id, $template_id, $template['title'], '', $user_id]);
+                Auditor::log($pdo, $user_id, 'create', 'session_evaluations', $pdo->lastInsertId(), ['action' => 'Assigned evaluation to session', 'template_id' => $template_id, 'session_id' => $session_id]);
                 
                 sendResponse(true, 'Evaluation assigned to session successfully');
                 break;

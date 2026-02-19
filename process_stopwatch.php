@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'csrf_protection.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 header('Content-Type: application/json');
 
@@ -107,6 +109,7 @@ try {
             }
 
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'create', 'stopwatch_sessions', $session_id, ['action' => 'Stopwatch session saved', 'laps' => count($laps)]);
             sendJson(true, 'Session saved with ' . count($laps) . ' lap(s)', ['session_id' => $session_id]);
             break;
 
@@ -160,6 +163,7 @@ try {
 
             $stmt = $pdo->prepare("DELETE FROM stopwatch_sessions WHERE id = ? AND coach_id = ?");
             $stmt->execute([$session_id, $user_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'stopwatch_sessions', $session_id, ['action' => 'Stopwatch session deleted']);
             sendJson(true, 'Session deleted');
             break;
 

@@ -9,6 +9,7 @@ session_start();
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/error_logger.php';
+require_once __DIR__ . '/lib/auditor.php';
 
 /**
  * Generate a random Base32 secret for TOTP
@@ -186,6 +187,7 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
                     return password_hash($code, PASSWORD_DEFAULT);
                 }, $backupCodes));
                 $stmt->execute([$user_id, $secret, $method, $hashedCodes]);
+                Auditor::log($pdo, $user_id, 'create', 'two_factor_auth', $user_id, ['action' => '2FA setup initiated', 'method' => $method]);
                 
                 echo json_encode([
                     'success' => true,
@@ -195,7 +197,7 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
                     'method' => $method
                 ]);
             } catch (PDOException $e) {
-                error_log("2FA setup error: " . $e->getMessage());
+                ErrorLogger::error("2FA setup error: " . $e->getMessage());
                 echo json_encode(['success' => false, 'message' => 'Failed to setup 2FA']);
             }
             exit;
@@ -218,6 +220,7 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
                 if (verifyTOTP($tfa['secret'], $code)) {
                     $stmt = $pdo->prepare("UPDATE two_factor_auth SET is_enabled = 1, verified_at = NOW() WHERE user_id = ?");
                     $stmt->execute([$user_id]);
+                    Auditor::log($pdo, $user_id, 'update', 'two_factor_auth', $user_id, ['action' => '2FA enabled']);
                     
                     ErrorLogger::security("2FA enabled", ['user_id' => $user_id]);
                     logSecurityEvent('2fa_enabled', 'User enabled two-factor authentication', ['user_id' => $user_id]);
@@ -227,7 +230,7 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
                     echo json_encode(['success' => false, 'message' => 'Invalid verification code. Please try again.']);
                 }
             } catch (PDOException $e) {
-                error_log("2FA verify error: " . $e->getMessage());
+                ErrorLogger::error("2FA verify error: " . $e->getMessage());
                 echo json_encode(['success' => false, 'message' => 'Verification failed']);
             }
             exit;
@@ -269,6 +272,7 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
                                 unset($storedCodes[$idx]);
                                 $stmt = $pdo->prepare("UPDATE two_factor_auth SET backup_codes = ? WHERE user_id = ?");
                                 $stmt->execute([json_encode(array_values($storedCodes)), $verify_user_id]);
+                                Auditor::log($pdo, $verify_user_id, 'update', 'two_factor_auth', $verify_user_id, ['action' => 'Backup code used']);
                                 break;
                             }
                         }
@@ -309,7 +313,7 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
                     echo json_encode(['success' => false, 'message' => 'Invalid code. Please try again.']);
                 }
             } catch (PDOException $e) {
-                error_log("2FA login verify error: " . $e->getMessage());
+                ErrorLogger::error("2FA login verify error: " . $e->getMessage());
                 echo json_encode(['success' => false, 'message' => 'Verification failed']);
             }
             exit;
@@ -336,13 +340,14 @@ if (basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
                 
                 $stmt = $pdo->prepare("DELETE FROM two_factor_auth WHERE user_id = ?");
                 $stmt->execute([$user_id]);
+                Auditor::log($pdo, $user_id, 'delete', 'two_factor_auth', $user_id, ['action' => '2FA disabled']);
                 
                 ErrorLogger::security("2FA disabled", ['user_id' => $user_id]);
                 logSecurityEvent('2fa_disabled', 'User disabled two-factor authentication', ['user_id' => $user_id]);
                 
                 echo json_encode(['success' => true, 'message' => 'Two-factor authentication disabled']);
             } catch (PDOException $e) {
-                error_log("2FA disable error: " . $e->getMessage());
+                ErrorLogger::error("2FA disable error: " . $e->getMessage());
                 echo json_encode(['success' => false, 'message' => 'Failed to disable 2FA']);
             }
             exit;

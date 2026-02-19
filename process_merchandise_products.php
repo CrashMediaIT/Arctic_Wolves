@@ -4,6 +4,8 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 require 'file_upload_validator.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -150,6 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 checkCsrfToken();
 
 $action = $_POST['action'] ?? '';
+$user_id = $_SESSION['user_id'] ?? 0;
 
 /**
  * Handle image upload for merchandise products
@@ -292,6 +295,7 @@ try {
             }
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'CREATE', 'merchandise_products', $productId, ['action' => 'Created merchandise product', 'name' => $name]);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -360,6 +364,7 @@ try {
             }
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'UPDATE', 'merchandise_products', $id, ['action' => 'Updated merchandise product', 'name' => $name]);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -426,6 +431,7 @@ try {
             }
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'UPDATE', 'merchandise_product_sizes', $productId, ['action' => 'Updated product inventory']);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -457,6 +463,7 @@ try {
             $stmt->execute([$id]);
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'DELETE', 'merchandise_products', $id, ['action' => 'Deleted merchandise product']);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -485,6 +492,7 @@ try {
             $newStatus = $product['is_active'] ? 0 : 1;
             $stmt = $pdo->prepare("UPDATE merchandise_products SET is_active = ? WHERE id = ?");
             $stmt->execute([$newStatus, $id]);
+            Auditor::log($pdo, $user_id, 'UPDATE', 'merchandise_products', $id, ['action' => 'Toggled product status', 'new_status' => $newStatus]);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -551,6 +559,7 @@ try {
             }
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'CREATE', 'merchandise_stock_movements', $productId, ['action' => 'Recorded product shipment', 'total_added' => $totalAdded]);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -633,6 +642,7 @@ try {
             }
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'CREATE', 'merchandise_stock_audits', $auditId, ['action' => 'Completed stock audit', 'discrepancies' => $discrepancies]);
             
             $message = "Stock audit completed. ";
             if ($discrepancies > 0) {
@@ -658,7 +668,7 @@ try {
         $pdo->rollBack();
     }
     
-    error_log("Merchandise product processing error: " . $e->getMessage());
+    ErrorLogger::error("Merchandise product processing error: " . $e->getMessage());
     
     if ($isAjax) {
         header('Content-Type: application/json');

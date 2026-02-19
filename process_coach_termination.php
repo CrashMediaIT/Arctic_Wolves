@@ -9,6 +9,8 @@ session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -173,7 +175,7 @@ if ($action === 'create') {
                     }
                 }
             } catch (Exception $nc_error) {
-                error_log("Nextcloud upload error: " . $nc_error->getMessage());
+                ErrorLogger::error("Nextcloud upload error: " . $nc_error->getMessage());
                 // Continue without Nextcloud - not critical
             }
             
@@ -213,6 +215,8 @@ if ($action === 'create') {
             
             // Commit transaction
             $pdo->commit();
+            
+            Auditor::log($pdo, $user_id, 'create', 'employee_terminations', $termination_id, ['action' => 'Created employee termination record for ' . $staff_member['name']]);
             
             // Redirect back to termination page with success message
             $_SESSION['flash_message'] = 'Termination record created successfully for ' . $staff_member['name'];
@@ -323,7 +327,7 @@ try {
             throw new Exception('Backup creation failed: ' . implode("\n", $output));
         }
     } catch (Exception $e) {
-        error_log("Backup creation warning: " . $e->getMessage());
+        ErrorLogger::error("Backup creation warning: " . $e->getMessage());
         // Continue anyway - backup is a safety measure but not critical
         $backup_file = 'Backup creation skipped: ' . $e->getMessage();
     }
@@ -447,6 +451,8 @@ try {
         
         // Commit transaction
         $pdo->commit();
+        
+        Auditor::log($pdo, $user_id, 'delete', 'users', $coach_to_terminate, ['action' => 'Coach termination and data transfer to coach ' . $transfer_to_coach]);
         
         $success_message = sprintf(
             'Coach %s has been successfully terminated. ' .

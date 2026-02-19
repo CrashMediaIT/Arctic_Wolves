@@ -8,6 +8,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/cloud_config.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 header('Content-Type: application/json');
 
@@ -82,6 +84,8 @@ try {
                 $smb_path, $smb_username, $encrypted_password, $smb_domain,
                 $retention_days, $next_backup, $status, $user_id
             ]);
+            $jobId = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'create', 'backup_jobs', $jobId, ['action' => 'Created backup job: ' . $name]);
             
             logAction($pdo, $user_id, 'backup_job_created', 'Created backup job: ' . $name);
             
@@ -136,6 +140,7 @@ try {
                 $smb_path, $smb_username, $encrypted_password, $smb_domain,
                 $retention_days, $next_backup, $status, $id
             ]);
+            Auditor::log($pdo, $user_id, 'update', 'backup_jobs', $id, ['action' => 'Updated backup job: ' . $name]);
             
             logAction($pdo, $user_id, 'backup_job_updated', 'Updated backup job: ' . $name);
             
@@ -157,6 +162,7 @@ try {
             // Delete job (history records will remain via ON DELETE SET NULL)
             $stmt = $pdo->prepare("DELETE FROM backup_jobs WHERE id = ?");
             $stmt->execute([$id]);
+            Auditor::log($pdo, $user_id, 'delete', 'backup_jobs', $id, ['action' => 'Deleted backup job: ' . $job['name']]);
             
             logAction($pdo, $user_id, 'backup_job_deleted', 'Deleted backup job: ' . $job['name']);
             
@@ -365,6 +371,7 @@ try {
     }
     
 } catch (Exception $e) {
+    ErrorLogger::error('Database backup error: ' . $e->getMessage());
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 

@@ -2,11 +2,15 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // 1. SECURITY CHECK: Admins & Coaches Only
 if (!isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'coach')) {
     header("Location: dashboard.php"); exit();
 }
+
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // Validate CSRF token for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -35,6 +39,7 @@ if ($action == 'add_exercise') {
 
     // Insert into exercise_library with correct columns
     $pdo->prepare("INSERT INTO exercise_library (name, category, video_url) VALUES (?, ?, ?)")->execute([$name, $target, $link]);
+    Auditor::log($pdo, $user_id, 'CREATE', 'exercise_library', $pdo->lastInsertId(), ['action' => 'Added exercise to library']);
     header("Location: dashboard.php?page=library_workouts&status=added");
 }
 
@@ -46,6 +51,7 @@ if ($action == 'create_template') {
     // 1. Create Template Header
     $pdo->prepare("INSERT INTO workout_templates (title) VALUES (?)")->execute([$title]);
     $template_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'CREATE', 'workout_templates', $template_id, ['action' => 'Created workout template']);
     
     // 2. Link Exercises
     if (!empty($selected_exercises)) {
@@ -61,6 +67,7 @@ if ($action == 'create_template') {
 if ($action == 'delete_workout_template') {
     $id = $_POST['id'];
     $pdo->prepare("DELETE FROM workout_templates WHERE id = ?")->execute([$id]);
+    Auditor::log($pdo, $user_id, 'DELETE', 'workout_templates', $id, ['action' => 'Deleted workout template']);
     header("Location: dashboard.php?page=library_workouts");
 }
 
@@ -83,6 +90,7 @@ if ($action == 'add_food') {
     }
 
     $pdo->prepare("INSERT INTO foods (name, type, recipe) VALUES (?, ?, ?)")->execute([$name, $type, $recipe]);
+    Auditor::log($pdo, $user_id, 'CREATE', 'foods', $pdo->lastInsertId(), ['action' => 'Added food item']);
     header("Location: dashboard.php?page=library_nutrition&status=added");
 }
 
@@ -95,6 +103,7 @@ if ($action == 'create_nutrition_template') {
     // 1. Create Template Header
     $pdo->prepare("INSERT INTO nutrition_templates (title) VALUES (?)")->execute([$title]);
     $template_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'CREATE', 'nutrition_templates', $template_id, ['action' => 'Created nutrition template']);
     
     // 2. Link Foods
     if (!empty($selected_foods)) {
@@ -112,6 +121,7 @@ if ($action == 'create_nutrition_template') {
 if ($action == 'delete_nutrition_template') {
     $id = $_POST['id'];
     $pdo->prepare("DELETE FROM nutrition_templates WHERE id = ?")->execute([$id]);
+    Auditor::log($pdo, $user_id, 'DELETE', 'nutrition_templates', $id, ['action' => 'Deleted nutrition template']);
     header("Location: dashboard.php?page=library_nutrition");
 }
 
@@ -129,6 +139,7 @@ if ($action == 'create_session_template') {
 
     $pdo->prepare("INSERT INTO session_templates (title, session_type, age_group, description, session_plan) VALUES (?, ?, ?, ?, ?)")
         ->execute([$title, $type, $age, $desc, $plan]);
+    Auditor::log($pdo, $user_id, 'CREATE', 'session_templates', $pdo->lastInsertId(), ['action' => 'Created session template']);
     
     header("Location: dashboard.php?page=library_sessions&status=created");
 }
@@ -137,6 +148,7 @@ if ($action == 'create_session_template') {
 if ($action == 'delete_session_template') {
     $id = $_POST['id'];
     $pdo->prepare("DELETE FROM session_templates WHERE id = ?")->execute([$id]);
+    Auditor::log($pdo, $user_id, 'DELETE', 'session_templates', $id, ['action' => 'Deleted session template']);
     header("Location: dashboard.php?page=library_sessions");
 }
 

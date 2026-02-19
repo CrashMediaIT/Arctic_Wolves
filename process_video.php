@@ -11,6 +11,8 @@ require_once 'csrf_protection.php';
 require_once 'lib/file_upload_validator.php';
 require_once 'notifications.php';
 require_once 'mailer.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -159,7 +161,7 @@ try {
     }
 } catch (PDOException $e) {
     logSecurityEvent($pdo, 'video_error', $e->getMessage(), $user_id);
-    error_log('process_video PDO error: ' . $e->getMessage());
+    ErrorLogger::error('process_video PDO error: ' . $e->getMessage());
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'A database error occurred. Please try again.']);
     exit;
@@ -250,6 +252,7 @@ function handleVideoUpload() {
     ]);
     
     $video_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Coach video uploaded']);
     
     // Log the action
     logSecurityEvent($pdo, 'video_upload', "Video uploaded for athlete ID: $athlete_id", $user_id);
@@ -402,6 +405,7 @@ function handleAthleteVideoUpload() {
     ]);
     
     $video_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Athlete video uploaded']);
     
     // Log the action
     logSecurityEvent($pdo, 'athlete_video_upload', "Athlete video uploaded for review, ID: $video_id", $athlete_id);
@@ -528,7 +532,7 @@ function handleDrillVideoUpload() {
         }
     } catch (Exception $e) {
         // Log error but continue - file is saved locally
-        error_log('Nextcloud upload failed: ' . $e->getMessage());
+        ErrorLogger::error('Nextcloud upload failed: ' . $e->getMessage());
     }
     
     // Insert video record into database
@@ -565,6 +569,7 @@ function handleDrillVideoUpload() {
     ]);
     
     $video_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'videos', $video_id, ['action' => 'Drill video uploaded']);
     
     // Log the action
     logSecurityEvent($pdo, 'drill_video_upload', "Drill video uploaded: $title (ID: $video_id)", $user_id);
@@ -621,6 +626,7 @@ function handleVideoUpdate() {
     }
     
     logSecurityEvent($pdo, 'video_update', "Video ID: $video_id updated", $user_id);
+    Auditor::log($pdo, $user_id, 'update', 'videos', $video_id, ['action' => 'Video updated']);
     
     echo json_encode(['success' => true, 'message' => 'Video updated successfully']);
 }
@@ -655,6 +661,7 @@ function handleVideoDelete() {
     // Delete database record
     $stmt = $pdo->prepare("DELETE FROM videos WHERE id = ?");
     $stmt->execute([$video_id]);
+    Auditor::log($pdo, $user_id, 'delete', 'videos', $video_id, ['action' => 'Video deleted']);
     
     logSecurityEvent($pdo, 'video_delete', "Video ID: $video_id deleted", $user_id);
     
@@ -695,6 +702,7 @@ function handleVideoReview() {
         WHERE v.id = ? AND (v.coach_id = ? OR v.coach_id IS NULL OR u.assigned_coach_id = ?)
     ");
     $stmt->execute([$user_id, $coach_notes, $video_id, $user_id, $user_id]);
+    Auditor::log($pdo, $user_id, 'update', 'videos', $video_id, ['action' => 'Video reviewed']);
     
     if ($stmt->rowCount() === 0) {
         throw new Exception('Video not found or access denied');
@@ -747,7 +755,7 @@ function sendVideoNotification($pdo, $athlete_id, $coach_id, $video_id, $type) {
         $link = 'dashboard.php?page=coaches_reviews';
         $stmt->execute([$athlete_id, $title, $message, $link]);
     } catch (Exception $e) {
-        error_log('Failed to send video notification: ' . $e->getMessage());
+        ErrorLogger::error('Failed to send video notification: ' . $e->getMessage());
     }
 }
 
@@ -808,11 +816,11 @@ function sendVideoUploadNotificationToCoach($pdo, $coach_id, $athlete_id, $video
                     $mailer->send($coach['email'], 'New Video for Review - Arctic Wolves', $email_body, $smtp_settings);
                 }
             } catch (Exception $email_error) {
-                error_log('Failed to send email to coach: ' . $email_error->getMessage());
+                ErrorLogger::error('Failed to send email to coach: ' . $email_error->getMessage());
             }
         }
     } catch (Exception $e) {
-        error_log('Failed to send video upload notification to coach: ' . $e->getMessage());
+        ErrorLogger::error('Failed to send video upload notification to coach: ' . $e->getMessage());
     }
 }
 
@@ -873,11 +881,11 @@ function sendVideoReviewNotificationToAthlete($pdo, $athlete_id, $coach_id, $vid
                     $mailer->send($athlete['email'], 'Video Reviewed - Arctic Wolves', $email_body, $smtp_settings);
                 }
             } catch (Exception $email_error) {
-                error_log('Failed to send email to athlete: ' . $email_error->getMessage());
+                ErrorLogger::error('Failed to send email to athlete: ' . $email_error->getMessage());
             }
         }
     } catch (Exception $e) {
-        error_log('Failed to send video review notification to athlete: ' . $e->getMessage());
+        ErrorLogger::error('Failed to send video review notification to athlete: ' . $e->getMessage());
     }
 }
 
@@ -949,8 +957,10 @@ function handleCreateGamePlan() {
             $offensive_system ?: null, $defensive_system ?: null, $powerplay_system ?: null,
             $penalty_kill_system ?: null, $key_players_notes ?: null, $strategy_notes ?: null
         ]);
+        $plan_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'vr_game_plans', $plan_id, ['action' => 'Game plan created']);
     } catch (PDOException $e) {
-        error_log('Create game plan failed: ' . $e->getMessage());
+        ErrorLogger::error('Create game plan failed: ' . $e->getMessage());
         throw new Exception('Failed to create game plan. Please try again.');
     }
 
@@ -1072,7 +1082,7 @@ function handleSaveHockeyLines() {
         $pdo->commit();
     } catch (PDOException $e) {
         $pdo->rollBack();
-        error_log('Save hockey lines failed: ' . $e->getMessage());
+        ErrorLogger::error('Save hockey lines failed: ' . $e->getMessage());
         throw new Exception('Failed to save lines. Please try again.');
     }
 
@@ -1136,6 +1146,8 @@ function handleUploadVideoSource() {
         $team_id,
         $user_id
     ]);
+    $source_id_new = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'vr_video_sources', $source_id_new, ['action' => 'Video source uploaded']);
 
     logSecurityEvent($pdo, 'video_source_uploaded', "Video source uploaded: " . $file['name'], $user_id);
     header('Location: /gameplan.php?page=film_room&tab=upload&success=source_uploaded');
@@ -1175,6 +1187,7 @@ function handleCreateClip() {
     ");
     $stmt->execute([$source_id, $game_id, $title, $description, $start_time, $end_time, $user_id]);
     $clip_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'vr_video_clips', $clip_id, ['action' => 'Video clip created']);
 
     // Add tags
     $tag_ids = $_POST['tag_ids'] ?? [];
@@ -1239,6 +1252,7 @@ function handleCreateReviewSession() {
     ");
     $stmt->execute([$user_id, $game_id, $title, $description, $session_type, $scheduled_date]);
     $session_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'vr_review_sessions', $session_id, ['action' => 'Review session created']);
 
     // Add clips to session
     $clip_ids = $_POST['clip_ids'] ?? [];
@@ -1322,7 +1336,7 @@ function handleUpdateVideoPermissions() {
         $pdo->commit();
     } catch (PDOException $e) {
         $pdo->rollBack();
-        error_log('Update video permissions failed: ' . $e->getMessage());
+        ErrorLogger::error('Update video permissions failed: ' . $e->getMessage());
         throw new Exception('Failed to update permissions. Please try again.');
     }
 
@@ -1413,7 +1427,7 @@ function handleImportCalendar() {
             $ical_content = file_get_contents($url, false, $ctx);
             if ($ical_content === false) {
                 $err = error_get_last();
-                error_log('Calendar URL fetch failed: ' . ($err['message'] ?? 'unknown error') . ' URL: ' . $url);
+                ErrorLogger::error('Calendar URL fetch failed: ' . ($err['message'] ?? 'unknown error') . ' URL: ' . $url);
                 throw new Exception('Could not fetch calendar from URL. Please check the URL and try again.');
             }
         }
@@ -1528,7 +1542,7 @@ function handleImportCalendar() {
                     $stmt = $pdo->prepare("UPDATE teams SET ical_url = ? WHERE id = ?");
                     $stmt->execute([$calendar_url, $team_id]);
                 } catch (PDOException $e) {
-                    error_log('Store ical_url: ' . $e->getMessage());
+                    ErrorLogger::error('Store ical_url: ' . $e->getMessage());
                 }
             }
             // Store ambiguous events in session for manual resolution
@@ -1930,7 +1944,7 @@ function autoCreateTeamIfNeeded($pdo, $teamName, $season_id = null) {
         $stmt->execute([$cleanName, $season]);
         return 1;
     } catch (PDOException $e) {
-        error_log('Auto-create team: ' . $e->getMessage());
+        ErrorLogger::error('Auto-create team: ' . $e->getMessage());
         return 0;
     }
 }
@@ -2006,8 +2020,10 @@ function handleAddRosterPlayer() {
             $jersey_number, $position, $dob, $parent_name, $parent_email, $parent_phone,
             $notes, $season_id
         ]);
+        $new_player_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'roster_players', $new_player_id, ['action' => 'Roster player added']);
     } catch (PDOException $e) {
-        error_log('Add roster player failed: ' . $e->getMessage());
+        ErrorLogger::error('Add roster player failed: ' . $e->getMessage());
         header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&error=save_failed');
         exit;
     }
@@ -2074,8 +2090,9 @@ function handleUpdateRosterPlayer() {
             $parent_name, $parent_email, $parent_phone,
             $notes, $season_id, $player_id
         ]);
+        Auditor::log($pdo, $user_id, 'update', 'roster_players', $player_id, ['action' => 'Roster player updated']);
     } catch (PDOException $e) {
-        error_log('Update roster player failed: ' . $e->getMessage());
+        ErrorLogger::error('Update roster player failed: ' . $e->getMessage());
         header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&error=save_failed');
         exit;
     }
@@ -2103,6 +2120,7 @@ function handleRemoveRosterPlayer() {
     // Soft delete: set status to archived (preserves data for future account linking)
     $stmt = $pdo->prepare("UPDATE roster_players SET status = 'archived' WHERE id = ?");
     $stmt->execute([$player_id]);
+    Auditor::log($pdo, $user_id, 'update', 'roster_players', $player_id, ['action' => 'Roster player archived']);
 
     logSecurityEvent($pdo, 'roster_player_removed', "Archived roster player $player_id", $user_id);
     header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_removed');
@@ -2137,6 +2155,7 @@ function handleLinkRosterPlayer() {
     // Link the roster player to the user account
     $stmt = $pdo->prepare("UPDATE roster_players SET user_id = ? WHERE id = ?");
     $stmt->execute([$link_user_id, $player_id]);
+    Auditor::log($pdo, $user_id, 'update', 'roster_players', $player_id, ['action' => 'Roster player linked to user']);
 
     logSecurityEvent($pdo, 'roster_player_linked', "Linked roster player $player_id to user $link_user_id", $user_id);
     header('Location: /gameplan.php?page=roster&team_id=' . $team_id . '&success=player_linked');
@@ -2191,6 +2210,8 @@ function handleAddCalendarEvent() {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([$team_id, $opponent, $datetime, $game_type, $is_home, $notes, $location_id, $season_id]);
+    $event_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'game_schedules', $event_id, ['action' => 'Calendar event added']);
 
     logSecurityEvent($pdo, 'calendar_event_added', "Added $game_type event for team $team_id on $game_date", $user_id);
     header('Location: /gameplan.php?page=calendar&success=event_added');
@@ -2218,6 +2239,7 @@ function handleCreateDevicePair() {
                 VALUES (?, ?, ?, 'waiting', ?)
             ");
             $stmt->execute([$pair_code, $session_id, $controller_token, $user_id]);
+            Auditor::log($pdo, $user_id, 'create', 'vr_device_pairs', $pdo->lastInsertId(), ['action' => 'Device pair created']);
             break;
         } catch (PDOException $e) {
             if ($attempt === $max_attempts - 1) throw $e;
@@ -2295,7 +2317,7 @@ function handleJoinAsController() {
         ");
         $stmt->execute([(int)$pair['id'], $user_id, $controller_token, $controller_token]);
     } catch (PDOException $e) {
-        error_log('Join as controller: ' . $e->getMessage());
+        ErrorLogger::error('Join as controller: ' . $e->getMessage());
         header('Location: ' . devicePairRedirect('error=join_failed'));
         exit;
     }
@@ -2321,6 +2343,7 @@ function handleEndDevicePair() {
 
     $stmt = $pdo->prepare("UPDATE vr_device_pairs SET status = 'ended' WHERE id = ? AND created_by = ?");
     $stmt->execute([$pair_id, $user_id]);
+    Auditor::log($pdo, $user_id, 'update', 'vr_device_pairs', $pair_id, ['action' => 'Device pair ended']);
 
     logSecurityEvent($pdo, 'device_pair_ended', "Ended device pair $pair_id", $user_id);
     header('Location: ' . devicePairRedirect('success=pair_ended'));

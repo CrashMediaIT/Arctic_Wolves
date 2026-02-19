@@ -2,8 +2,10 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
-if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['admin', 'coach', 'health_coach', 'team_coach'])) {
+if (!isset($_SESSION['user_role'])|| !in_array($_SESSION['user_role'], ['admin', 'coach', 'health_coach', 'team_coach'])) {
     header("Location: dashboard.php"); exit();
 }
 
@@ -14,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $action = $_POST['action'] ?? '';
 $coach_id = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // =========================================================
 // ACTION: CREATE PRIVATE SESSION (from coach_calendar.php)
@@ -135,7 +138,7 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
                         'link' => $base_url . '/dashboard.php?page=sessions_upcoming'
                     ]);
                 } catch (Exception $e) {
-                    error_log("Failed to send session assignment email to {$athlete['email']}: " . $e->getMessage());
+                    ErrorLogger::error("Failed to send session assignment email to {$athlete['email']}: " . $e->getMessage());
                 }
             }
         }
@@ -143,6 +146,8 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
         // Commit transaction
         $pdo->commit();
         
+        Auditor::log($pdo, $user_id, 'create', 'sessions', $session_id, ['action' => 'private_session_created', 'title' => $title]);
+
         header("Location: dashboard.php?page=coach_calendar&status=session_created");
         exit();
         
@@ -151,7 +156,7 @@ if ($action == 'create_private_session' && $_SERVER["REQUEST_METHOD"] == "POST")
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Create private session error: " . $e->getMessage());
+        ErrorLogger::error("Create private session error: " . $e->getMessage());
         header("Location: dashboard.php?page=coach_calendar&error=creation_failed");
         exit();
     }
@@ -191,6 +196,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($action)) {
         
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$type, $age_group, $title, $desc, $plan, $date, $time, $capacity, $coaches, $arena, $city, $country, $enable_child_checkin]);
+
+        $legacy_session_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'sessions', $legacy_session_id, ['action' => 'session_created', 'title' => $title]);
 
         header("Location: dashboard.php?page=session_history&status=created");
         exit();

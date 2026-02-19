@@ -5,6 +5,7 @@ require 'db_config.php';
 require 'security.php';
 require 'cloud_config.php';
 require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 require_once __DIR__ . '/lib/blocklist.php';
 
 setSecurityHeaders();
@@ -499,7 +500,7 @@ try {
             if ($response === false) {
                 $error = error_get_last();
                 $error_message = $error ? $error['message'] : 'Unknown error';
-                error_log("Google Maps API test failed: " . $error_message);
+                ErrorLogger::error("Google Maps API test failed: " . $error_message);
                 echo json_encode(['success' => false, 'message' => 'Failed to connect to Google Maps API. Please check your server network connection.']);
                 exit;
             }
@@ -1031,7 +1032,7 @@ try {
                 if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
                     echo json_encode(['success' => false, 'message' => 'This IP address is already in the whitelist']);
                 } else {
-                    error_log("Add POS whitelist error: " . $e->getMessage());
+                    ErrorLogger::error("Add POS whitelist error", ["error" => $e->getMessage()]);
                     echo json_encode(['success' => false, 'message' => 'Failed to add entry']);
                 }
             }
@@ -1054,7 +1055,7 @@ try {
                     echo json_encode(['success' => false, 'message' => 'Entry not found or already removed']);
                 }
             } catch (PDOException $e) {
-                error_log("Remove POS whitelist error: " . $e->getMessage());
+                ErrorLogger::error("Remove POS whitelist error", ["error" => $e->getMessage()]);
                 echo json_encode(['success' => false, 'message' => 'Failed to remove entry']);
             }
             exit;
@@ -1079,7 +1080,7 @@ try {
                     echo json_encode(['success' => false, 'message' => 'Entry not found or no change needed']);
                 }
             } catch (PDOException $e) {
-                error_log("Toggle POS whitelist error: " . $e->getMessage());
+                ErrorLogger::error("Toggle POS whitelist error", ["error" => $e->getMessage()]);
                 echo json_encode(['success' => false, 'message' => 'Failed to update entry']);
             }
             exit;
@@ -1134,7 +1135,7 @@ try {
                 header('Location: dashboard.php?page=system_tools&tab=api_keys&success=1&key_generated=1');
                 exit;
             } catch (PDOException $e) {
-                error_log("API key generation error: " . $e->getMessage());
+                ErrorLogger::error("API key generation error", ["error" => $e->getMessage()]);
                 header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Failed to generate API key.'));
                 exit;
             }
@@ -1157,7 +1158,7 @@ try {
                 header('Location: dashboard.php?page=system_tools&tab=api_keys&success=1');
                 exit;
             } catch (PDOException $e) {
-                error_log("API key revoke error: " . $e->getMessage());
+                ErrorLogger::error("API key revoke error", ["error" => $e->getMessage()]);
                 header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Failed to revoke API key.'));
                 exit;
             }
@@ -1180,7 +1181,7 @@ try {
                 header('Location: dashboard.php?page=system_tools&tab=api_keys&success=1');
                 exit;
             } catch (PDOException $e) {
-                error_log("API key delete error: " . $e->getMessage());
+                ErrorLogger::error("API key delete error", ["error" => $e->getMessage()]);
                 header('Location: dashboard.php?page=system_tools&tab=api_keys&error=' . urlencode('Failed to delete API key.'));
                 exit;
             }
@@ -1215,7 +1216,7 @@ try {
                 header('Location: dashboard.php?page=system_tools&tab=ndi_cameras&success=1');
                 exit;
             } catch (PDOException $e) {
-                error_log("NDI camera add error: " . $e->getMessage());
+                ErrorLogger::error("NDI camera add error", ["error" => $e->getMessage()]);
                 header('Location: dashboard.php?page=system_tools&tab=ndi_cameras&error=' . urlencode('Failed to add NDI camera.'));
                 exit;
             }
@@ -1275,7 +1276,7 @@ try {
 
                 echo json_encode(['success' => true, 'message' => 'Camera updated successfully']);
             } catch (PDOException $e) {
-                error_log("NDI camera update error: " . $e->getMessage());
+                ErrorLogger::error("NDI camera update error", ["error" => $e->getMessage()]);
                 echo json_encode(['success' => false, 'message' => 'Failed to update camera']);
             }
             exit;
@@ -1297,7 +1298,7 @@ try {
 
                 echo json_encode(['success' => true, 'message' => 'Camera deleted successfully']);
             } catch (PDOException $e) {
-                error_log("NDI camera delete error: " . $e->getMessage());
+                ErrorLogger::error("NDI camera delete error", ["error" => $e->getMessage()]);
                 echo json_encode(['success' => false, 'message' => 'Failed to delete camera']);
             }
             exit;
@@ -1324,7 +1325,7 @@ try {
 
                 echo json_encode(['success' => true, 'message' => 'Camera status updated']);
             } catch (PDOException $e) {
-                error_log("NDI camera toggle error: " . $e->getMessage());
+                ErrorLogger::error("NDI camera toggle error", ["error" => $e->getMessage()]);
                 echo json_encode(['success' => false, 'message' => 'Failed to update camera status']);
             }
             exit;

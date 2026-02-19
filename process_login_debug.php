@@ -7,6 +7,8 @@ error_reporting(E_ALL);
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Generate CSRF token for this session
 generateCSRFToken();

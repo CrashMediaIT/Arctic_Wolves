@@ -8,6 +8,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/csrf_protection.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -73,6 +75,7 @@ try {
             upsertGameplanSetting($pdo, 'gameplan_companion_url', $companion_url);
             upsertGameplanSetting($pdo, 'gameplan_companion_api_key', $companion_api_key);
             upsertGameplanSetting($pdo, 'gameplan_app_url', $gameplan_app_url);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'Updated companion server settings']);
 
             header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
             exit;
@@ -88,6 +91,7 @@ try {
 
             upsertGameplanSetting($pdo, 'gameplan_hw_accel_enabled', $hw_enabled);
             upsertGameplanSetting($pdo, 'gameplan_hw_accel_method', $hw_method);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'Updated hardware acceleration settings']);
 
             header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
             exit;
@@ -133,6 +137,7 @@ try {
                 upsertGameplanSetting($pdo, 'gameplan_smb_domain', $smb_domain);
             }
 
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'Updated video storage settings', 'storage_type' => $storage_type]);
             header('Location: dashboard.php?page=system_tools&tab=gameplan&success=settings_saved');
             exit;
 
@@ -201,6 +206,7 @@ try {
             throw new Exception('Invalid action');
     }
 } catch (Exception $e) {
+    ErrorLogger::error('Gameplan settings error: ' . $e->getMessage());
     if ($is_json) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         exit;

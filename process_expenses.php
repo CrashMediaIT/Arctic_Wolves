@@ -3,6 +3,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Conditionally load cloud_config if available
 if (file_exists(__DIR__ . '/cloud_config.php')) {
@@ -76,7 +78,7 @@ function uploadReceiptToNextcloud($pdo, $local_file_path, $expense_date, $vendor
         ];
         
     } catch (Exception $e) {
-        error_log("Nextcloud upload error: " . $e->getMessage());
+        ErrorLogger::error("Nextcloud upload error: " . $e->getMessage());
         return ['success' => false, 'message' => $e->getMessage()];
     }
 }
@@ -276,6 +278,8 @@ try {
             
             $expense_id = $pdo->lastInsertId();
             
+            Auditor::log($pdo, $user_id, 'create', 'expenses', $expense_id, ['action' => 'created_expense', 'category' => $category, 'amount' => $total_amount]);
+            
             // Save line items if provided
             if (!empty($line_items)) {
                 $item_stmt = $pdo->prepare("
@@ -404,6 +408,8 @@ try {
                 ]);
             }
             
+            Auditor::log($pdo, $user_id, 'update', 'expenses', $expense_id, ['action' => 'updated_expense', 'category' => $category, 'amount' => $total_amount]);
+            
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => true, 'message' => 'Expense updated successfully!']);
@@ -432,6 +438,8 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
             $stmt->execute([$expense_id]);
+            
+            Auditor::log($pdo, $user_id, 'delete', 'expenses', $expense_id, ['action' => 'deleted_expense']);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -1015,7 +1023,7 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log("Expense processing error: " . $e->getMessage());
+    ErrorLogger::error("Expense processing error: " . $e->getMessage());
     
     if ($isAjax) {
         header('Content-Type: application/json');

@@ -4,6 +4,8 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Disable error display for AJAX (errors go to logs only)
 ini_set('display_errors', 0);
@@ -256,12 +258,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $action = $_POST['action'] ?? '';
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // =========================================================
 // MODULE 1: LOCATION MANAGEMENT
 // =========================================================
 if ($action == 'add_location') {
     $pdo->prepare("INSERT INTO locations (name, city) VALUES (?, ?)")->execute([trim($_POST['name']), trim($_POST['city'])]);
+    Auditor::log($pdo, $user_id, 'create', 'locations', $pdo->lastInsertId(), ['action' => 'add_location']);
     header("Location: dashboard.php?page=admin_locations&status=added"); exit();
 }
 if ($action == 'create_location') {
@@ -279,6 +283,7 @@ if ($action == 'create_location') {
         
         $stmt = $pdo->prepare("INSERT INTO locations (name, city, google_place_id, image_url) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null]);
+        Auditor::log($pdo, $user_id, 'create', 'locations', $pdo->lastInsertId(), ['action' => 'create_location']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -287,7 +292,7 @@ if ($action == 'create_location') {
         }
         header("Location: dashboard.php?page=categories&tab=locations&status=added");
     } catch (Exception $e) {
-        error_log("Create location error: " . $e->getMessage());
+        ErrorLogger::error("Create location error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -313,6 +318,7 @@ if ($action == 'edit_location') {
         
         $stmt = $pdo->prepare("UPDATE locations SET name = ?, city = ?, google_place_id = ?, image_url = ? WHERE id = ?");
         $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null, $location_id]);
+        Auditor::log($pdo, $user_id, 'update', 'locations', $location_id, ['action' => 'edit_location']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -321,7 +327,7 @@ if ($action == 'edit_location') {
         }
         header("Location: dashboard.php?page=admin_locations&status=updated");
     } catch (Exception $e) {
-        error_log("Edit location error: " . $e->getMessage());
+        ErrorLogger::error("Edit location error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -337,6 +343,7 @@ if ($action == 'delete_location') {
     
     try {
         $pdo->prepare("DELETE FROM locations WHERE id = ?")->execute([$location_id]);
+        Auditor::log($pdo, $user_id, 'delete', 'locations', $location_id, ['action' => 'delete_location']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -345,7 +352,7 @@ if ($action == 'delete_location') {
         }
         header("Location: dashboard.php?page=admin_locations&status=deleted");
     } catch (PDOException $e) {
-        error_log("Delete location error: " . $e->getMessage());
+        ErrorLogger::error("Delete location error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to delete location']);
@@ -361,6 +368,7 @@ if ($action == 'delete_location') {
 // =========================================================
 if ($action == 'add_type') {
     $pdo->prepare("INSERT INTO session_types (name, description) VALUES (?, ?)")->execute([trim($_POST['name']), trim($_POST['desc'])]);
+    Auditor::log($pdo, $user_id, 'create', 'session_types', $pdo->lastInsertId(), ['action' => 'add_type']);
     header("Location: dashboard.php?page=admin_session_types&status=added"); exit();
 }
 if ($action == 'create_session_type') {
@@ -386,6 +394,7 @@ if ($action == 'create_session_type') {
         // Full session type creation with pricing and details
         $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $description, $price, $duration]);
+        Auditor::log($pdo, $user_id, 'create', 'session_types', $pdo->lastInsertId(), ['action' => 'create_session_type']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -394,7 +403,7 @@ if ($action == 'create_session_type') {
         }
         header("Location: dashboard.php?page=accounting_products&tab=sessions&status=added");
     } catch (Exception $e) {
-        error_log("Create session type error: " . $e->getMessage());
+        ErrorLogger::error("Create session type error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -418,6 +427,7 @@ if ($action == 'edit_session_type') {
         
         $stmt = $pdo->prepare("UPDATE session_types SET name = ?, description = ? WHERE id = ?");
         $stmt->execute([$name, $description, $type_id]);
+        Auditor::log($pdo, $user_id, 'update', 'session_types', $type_id, ['action' => 'edit_session_type']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -426,7 +436,7 @@ if ($action == 'edit_session_type') {
         }
         header("Location: dashboard.php?page=admin_session_types&status=updated");
     } catch (Exception $e) {
-        error_log("Edit session type error: " . $e->getMessage());
+        ErrorLogger::error("Edit session type error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -442,6 +452,7 @@ if ($action == 'delete_session_type') {
     
     try {
         $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$type_id]);
+        Auditor::log($pdo, $user_id, 'delete', 'session_types', $type_id, ['action' => 'delete_session_type']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -450,7 +461,7 @@ if ($action == 'delete_session_type') {
         }
         header("Location: dashboard.php?page=admin_session_types&status=deleted");
     } catch (PDOException $e) {
-        error_log("Delete session type error: " . $e->getMessage());
+        ErrorLogger::error("Delete session type error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to delete session type']);
@@ -462,6 +473,7 @@ if ($action == 'delete_session_type') {
 }
 if ($action == 'delete_type') {
     $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$_POST['id']]);
+    Auditor::log($pdo, $user_id, 'delete', 'session_types', intval($_POST['id']), ['action' => 'delete_type']);
     header("Location: dashboard.php?page=admin_session_types&status=deleted"); exit();
 }
 
@@ -538,6 +550,7 @@ if ($action == 'create_training_session') {
         }
         
         $pdo->commit();
+        Auditor::log($pdo, $user_id, 'create', 'training_session_templates', $templateId, ['action' => 'create_training_session']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -549,7 +562,7 @@ if ($action == 'create_training_session') {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Create training session error: " . $e->getMessage());
+        ErrorLogger::error("Create training session error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -573,6 +586,7 @@ if ($action == 'toggle_session_status') {
         if ($template) {
             $newStatus = $template['is_active'] ? 0 : 1;
             $pdo->prepare("UPDATE training_session_templates SET is_active = ? WHERE id = ?")->execute([$newStatus, $sessionId]);
+            Auditor::log($pdo, $user_id, 'update', 'training_session_templates', $sessionId, ['action' => 'toggle_session_status']);
         } else {
             // Try session_types
             $stmt = $pdo->prepare("SELECT id, is_active FROM session_types WHERE id = ?");
@@ -582,6 +596,7 @@ if ($action == 'toggle_session_status') {
             if ($sessionType) {
                 $newStatus = $sessionType['is_active'] ? 0 : 1;
                 $pdo->prepare("UPDATE session_types SET is_active = ? WHERE id = ?")->execute([$newStatus, $sessionId]);
+                Auditor::log($pdo, $user_id, 'update', 'session_types', $sessionId, ['action' => 'toggle_session_status']);
             } else {
                 throw new Exception('Session not found');
             }
@@ -594,7 +609,7 @@ if ($action == 'toggle_session_status') {
         }
         header("Location: dashboard.php?page=products&tab=sessions&status=success");
     } catch (Exception $e) {
-        error_log("Toggle session status error: " . $e->getMessage());
+        ErrorLogger::error("Toggle session status error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -657,6 +672,7 @@ if ($action == 'update_training_session') {
         }
         
         $pdo->commit();
+        Auditor::log($pdo, $user_id, 'update', 'training_session_templates', $sessionId, ['action' => 'update_training_session']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -668,7 +684,7 @@ if ($action == 'update_training_session') {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Update training session error: " . $e->getMessage());
+        ErrorLogger::error("Update training session error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -709,6 +725,7 @@ if ($action == 'add_session_date') {
         ");
         $stmt->execute([$templateId, $sessionDate, $teamId]);
         $newDateId = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'create', 'training_session_dates', $newDateId, ['action' => 'add_session_date']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -717,7 +734,7 @@ if ($action == 'add_session_date') {
         }
         header("Location: dashboard.php?page=products&tab=sessions&status=date_added");
     } catch (Exception $e) {
-        error_log("Add session date error: " . $e->getMessage());
+        ErrorLogger::error("Add session date error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -746,6 +763,7 @@ if ($action == 'remove_session_date') {
         if ($stmt->rowCount() === 0) {
             throw new Exception('Session date not found');
         }
+        Auditor::log($pdo, $user_id, 'delete', 'training_session_dates', $dateId, ['action' => 'remove_session_date']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -754,7 +772,7 @@ if ($action == 'remove_session_date') {
         }
         header("Location: dashboard.php?page=products&tab=sessions&status=date_removed");
     } catch (Exception $e) {
-        error_log("Remove session date error: " . $e->getMessage());
+        ErrorLogger::error("Remove session date error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -799,6 +817,7 @@ if ($action == 'update_package') {
         ");
         $stmt->execute([$name, $description, $price, $credits, $validDays, $isActive,
                         $ageGroup ?: null, $skillLevel ?: null, $packageType, $storeCredit, $showOnLanding, $enableChildCheckin, $packageId]);
+        Auditor::log($pdo, $user_id, 'update', 'packages', $packageId, ['action' => 'update_package']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -807,7 +826,7 @@ if ($action == 'update_package') {
         }
         header("Location: dashboard.php?page=products&tab=packages&status=updated");
     } catch (Exception $e) {
-        error_log("Update package error: " . $e->getMessage());
+        ErrorLogger::error("Update package error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -844,6 +863,7 @@ if ($action == 'update_discount') {
             WHERE id = ?
         ");
         $stmt->execute([$code, $description, $discountType, $discountValue, $maxUses, $isActive, $discountId]);
+        Auditor::log($pdo, $user_id, 'update', 'discount_codes', $discountId, ['action' => 'update_discount']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -852,7 +872,7 @@ if ($action == 'update_discount') {
         }
         header("Location: dashboard.php?page=products&tab=discounts&status=updated");
     } catch (Exception $e) {
-        error_log("Update discount error: " . $e->getMessage());
+        ErrorLogger::error("Update discount error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -869,6 +889,7 @@ if ($action == 'update_discount') {
 if ($action == 'update_role') {
     if ($_POST['user_id'] != $_SESSION['user_id']) {
         $pdo->prepare("UPDATE users SET role = ? WHERE id = ?")->execute([$_POST['new_role'], $_POST['user_id']]);
+        Auditor::log($pdo, $user_id, 'update', 'users', intval($_POST['user_id']), ['action' => 'update_role']);
         header("Location: dashboard.php?page=athletes&status=role_updated");
     } else {
         header("Location: dashboard.php?page=athletes&error=cannot_change_self");
@@ -889,6 +910,7 @@ if ($action == 'update_smtp') {
             $del->execute([$k]);
             $ins->execute([$k, $val]);
         }
+        Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_smtp']);
         header("Location: dashboard.php?page=settings&status=settings_updated");
     } catch (PDOException $e) { die("DB Error: " . $e->getMessage()); }
     exit();
@@ -907,6 +929,7 @@ if ($action == 'update_billing') {
             $del->execute([$k]);
             $ins->execute([$k, $val]);
         }
+        Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_billing']);
         header("Location: dashboard.php?page=settings&status=settings_updated");
     } catch (PDOException $e) { die("DB Error: " . $e->getMessage()); }
     exit();
@@ -962,6 +985,7 @@ if ($action == 'create_invoice') {
                 }
             }
         }
+        Auditor::log($pdo, $_SESSION['user_id'] ?? 0, 'create', 'invoices', $invoice_id, ['action' => 'create_invoice']);
         
         // Check if AJAX request
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
@@ -972,7 +996,7 @@ if ($action == 'create_invoice') {
         
         header("Location: dashboard.php?page=finance_dashboard&tab=billing&status=invoice_created&invoice_id=$invoice_id");
     } catch (PDOException $e) {
-        error_log("Invoice creation error: " . $e->getMessage());
+        ErrorLogger::error("Invoice creation error: " . $e->getMessage());
         
         // Check if AJAX request
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
@@ -1112,7 +1136,7 @@ if ($action == 'download_invoice' || (isset($_GET['action']) && $_GET['action'] 
         exit();
         
     } catch (PDOException $e) {
-        error_log("Invoice download error: " . $e->getMessage());
+        ErrorLogger::error("Invoice download error: " . $e->getMessage());
         header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=download_failed");
         exit();
     }
@@ -1261,7 +1285,7 @@ if ($action == 'view_invoice' || (isset($_GET['action']) && $_GET['action'] == '
         exit();
         
     } catch (PDOException $e) {
-        error_log("Invoice view error: " . $e->getMessage());
+        ErrorLogger::error("Invoice view error: " . $e->getMessage());
         header("Location: dashboard.php?page=finance_dashboard&tab=billing&error=view_failed");
         exit();
     }
@@ -1321,6 +1345,7 @@ if ($action == 'record_payment') {
         if ($total_paid >= $invoice['total_amount']) {
             $pdo->prepare("UPDATE invoices SET status = 'paid' WHERE id = ?")->execute([$invoice_id]);
         }
+        Auditor::log($pdo, $user_id, 'create', 'payments', $pdo->lastInsertId(), ['action' => 'record_payment']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -1334,7 +1359,7 @@ if ($action == 'record_payment') {
         
         header("Location: dashboard.php?page=finance_dashboard&tab=billing&status=payment_recorded");
     } catch (Exception $e) {
-        error_log("Record payment error: " . $e->getMessage());
+        ErrorLogger::error("Record payment error: " . $e->getMessage());
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -1360,6 +1385,7 @@ if ($action == 'add_discount') {
     try {
         $stmt = $pdo->prepare("INSERT INTO discount_codes (code, type, value, usage_limit, expiry_date) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$code, $type, $val, $lim, $exp]);
+        Auditor::log($pdo, $user_id, 'create', 'discount_codes', $pdo->lastInsertId(), ['action' => 'add_discount']);
         header("Location: dashboard.php?page=admin_discounts&status=added");
     } catch (PDOException $e) { die("Error: " . $e->getMessage()); }
     exit();
@@ -1387,6 +1413,7 @@ if ($action == 'create_discount') {
         // Only insert columns that exist in the discount_codes table schema
         $stmt = $pdo->prepare("INSERT INTO discount_codes (code, discount_type, discount_value, max_uses, valid_from, valid_until, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active]);
+        Auditor::log($pdo, $user_id, 'create', 'discount_codes', $pdo->lastInsertId(), ['action' => 'create_discount']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -1395,7 +1422,7 @@ if ($action == 'create_discount') {
         }
         header("Location: dashboard.php?page=products&tab=discounts&status=success");
     } catch (PDOException $e) {
-        error_log("Create discount error: " . $e->getMessage());
+        ErrorLogger::error("Create discount error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to create discount code: ' . $e->getMessage()]);
@@ -1425,6 +1452,7 @@ if ($action == 'edit_discount') {
     try {
         $stmt = $pdo->prepare("UPDATE discount_codes SET code = ?, discount_type = ?, discount_value = ?, max_uses = ?, valid_from = ?, valid_until = ?, is_active = ? WHERE id = ?");
         $stmt->execute([$code, $discount_type, $discount_value, $max_uses, $valid_from, $valid_until, $is_active, $discount_id]);
+        Auditor::log($pdo, $user_id, 'update', 'discount_codes', $discount_id, ['action' => 'edit_discount']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -1433,7 +1461,7 @@ if ($action == 'edit_discount') {
         }
         header("Location: dashboard.php?page=products&tab=discounts&status=success");
     } catch (PDOException $e) {
-        error_log("Edit discount error: " . $e->getMessage());
+        ErrorLogger::error("Edit discount error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to update discount code: ' . $e->getMessage()]);
@@ -1453,7 +1481,7 @@ if ($action == 'delete_discount') {
         $stmt = $pdo->prepare("SELECT 1 FROM discount_codes WHERE id = ? LIMIT 1");
         $stmt->execute([$discount_id]);
         if (!$stmt->fetch()) {
-            error_log("Delete discount error: Discount ID $discount_id not found");
+            ErrorLogger::error("Delete discount error: Discount ID $discount_id not found");
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => 'Discount not found']);
@@ -1464,6 +1492,7 @@ if ($action == 'delete_discount') {
         }
         
         $pdo->prepare("DELETE FROM discount_codes WHERE id = ?")->execute([$discount_id]);
+        Auditor::log($pdo, $user_id, 'delete', 'discount_codes', $discount_id, ['action' => 'delete_discount']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -1472,7 +1501,7 @@ if ($action == 'delete_discount') {
         }
         header("Location: dashboard.php?page=accounting_products&tab=discounts&status=success");
     } catch (PDOException $e) {
-        error_log("Delete discount error: " . $e->getMessage());
+        ErrorLogger::error("Delete discount error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to delete discount']);
@@ -1604,10 +1633,11 @@ if ($action == 'create_user') {
             'email' => $email,
             'password' => $password
         ]);
+        Auditor::log($pdo, $user_id, 'create', 'users', $new_user_id, ['action' => 'create_user']);
         
         header("Location: dashboard.php?page=all_users&status=success");
     } catch (PDOException $e) {
-        error_log("Create user error: " . $e->getMessage());
+        ErrorLogger::error("Create user error: " . $e->getMessage());
         header("Location: dashboard.php?page=all_users&status=error");
     }
     exit();
@@ -1713,10 +1743,11 @@ if ($action == 'update_user') {
                 }
             }
         }
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'update_user']);
         
         header("Location: dashboard.php?page=all_users&status=success");
     } catch (PDOException $e) {
-        error_log("Update user error: " . $e->getMessage());
+        ErrorLogger::error("Update user error:" . $e->getMessage());
         header("Location: dashboard.php?page=all_users&status=error");
     }
     exit();
@@ -1766,10 +1797,11 @@ if ($action == 'admin_update_sip') {
                 $user_id_to_update
             ]);
         }
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'admin_update_sip']);
 
         header("Location: dashboard.php?page=all_users&status=success&msg=sip_updated");
     } catch (PDOException $e) {
-        error_log("Admin update SIP error: " . $e->getMessage());
+        ErrorLogger::error("Admin update SIP error:" . $e->getMessage());
         header("Location: dashboard.php?page=all_users&status=error&msg=sip_update_failed");
     }
     exit();
@@ -1805,6 +1837,7 @@ if ($action == 'toggle_user_status') {
         $new_status = $user['is_verified'] ? 0 : 1;
         $stmt = $pdo->prepare("UPDATE users SET is_verified = ? WHERE id = ?");
         $stmt->execute([$new_status, $user_id_to_toggle]);
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_toggle, ['action' => 'toggle_user_status']);
         
         $status_text = $new_status ? 'enabled' : 'disabled';
         echo json_encode([
@@ -1812,7 +1845,7 @@ if ($action == 'toggle_user_status') {
             'message' => "User {$user['first_name']} {$user['last_name']} has been {$status_text}"
         ]);
     } catch (PDOException $e) {
-        error_log("Toggle user status error: " . $e->getMessage());
+        ErrorLogger::error("Toggle user status error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -1861,13 +1894,14 @@ if ($action == 'reset_user_password') {
         $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
         $stmt = $pdo->prepare("UPDATE users SET password = ?, force_pass_change = ? WHERE id = ?");
         $stmt->execute([$hashed_password, $force_change, $user_id_to_reset]);
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_reset, ['action' => 'reset_user_password']);
         
         echo json_encode([
             'success' => true, 
             'message' => "Password reset successfully for {$user['first_name']} {$user['last_name']}"
         ]);
     } catch (PDOException $e) {
-        error_log("Reset user password error: " . $e->getMessage());
+        ErrorLogger::error("Reset user password error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -1922,13 +1956,14 @@ if ($action == 'admin_reset_pin') {
             ON DUPLICATE KEY UPDATE pin_hash = ?, is_active = 1
         ");
         $stmt->execute([$user_id_to_reset, $pin_hash, $pin_hash]);
+        Auditor::log($pdo, $user_id, 'update', 'staff_pins', $user_id_to_reset, ['action' => 'admin_reset_pin']);
         
         echo json_encode([
             'success' => true, 
             'message' => "PIN set successfully for {$user['first_name']} {$user['last_name']}"
         ]);
     } catch (PDOException $e) {
-        error_log("Admin reset PIN error: " . $e->getMessage());
+        ErrorLogger::error("Admin reset PIN error:" . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -1962,12 +1997,13 @@ if ($action == 'force_2fa') {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         $action_text = $two_factor_required ? 'required' : 'not required';
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'force_2fa']);
         echo json_encode([
             'success' => true,
             'message' => "2FA is now {$action_text} for " . ($user ? $user['first_name'] . ' ' . $user['last_name'] : 'this user')
         ]);
     } catch (PDOException $e) {
-        error_log("Admin force 2FA error: " . $e->getMessage());
+        ErrorLogger::error("Admin force 2FA error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -1998,6 +2034,7 @@ if ($action == 'toggle_session_status') {
             $new_status = $session['is_active'] ? 0 : 1;
             $stmt = $pdo->prepare("UPDATE session_types SET is_active = ? WHERE id = ?");
             $stmt->execute([$new_status, $session_type_id]);
+            Auditor::log($pdo, $user_id, 'update', 'session_types', $session_type_id, ['action' => 'toggle_session_type_status']);
             
             $status_text = $new_status ? 'enabled' : 'disabled';
             echo json_encode([
@@ -2009,7 +2046,7 @@ if ($action == 'toggle_session_status') {
             echo json_encode(['success' => true, 'message' => 'Session type status toggled']);
         }
     } catch (PDOException $e) {
-        error_log("Toggle session status error: " . $e->getMessage());
+        ErrorLogger::error("Toggle session status error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -2081,13 +2118,14 @@ if ($action == 'admin_update_profile_image') {
             
             // Update database
             $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $user_id_to_update]);
+            Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'admin_update_profile_image']);
             
             echo json_encode(['success' => true, 'message' => 'Profile image updated successfully']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to save uploaded file']);
         }
     } catch (PDOException $e) {
-        error_log("Admin profile image update error: " . $e->getMessage());
+        ErrorLogger::error("Admin profile image update error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -2115,10 +2153,11 @@ if ($action == 'admin_remove_profile_image') {
         
         // Update database
         $pdo->prepare("UPDATE users SET profile_image = NULL WHERE id = ?")->execute([$user_id_to_update]);
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'admin_remove_profile_image']);
         
         echo json_encode(['success' => true, 'message' => 'Profile image removed successfully']);
     } catch (PDOException $e) {
-        error_log("Admin profile image remove error: " . $e->getMessage());
+        ErrorLogger::error("Admin profile image remove error:" . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -2201,8 +2240,9 @@ if ($action == 'admin_update_assignments') {
         }
         
         echo json_encode(['success' => true, 'message' => 'Assignments updated successfully']);
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'admin_update_assignments']);
     } catch (PDOException $e) {
-        error_log("Admin assignments update error: " . $e->getMessage());
+        ErrorLogger::error("Admin assignments update error:" . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -2236,8 +2276,9 @@ if ($action == 'admin_update_notifications') {
         }
         
         echo json_encode(['success' => true, 'message' => 'Notification settings updated successfully']);
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'admin_update_notifications']);
     } catch (PDOException $e) {
-        error_log("Admin notifications update error: " . $e->getMessage());
+        ErrorLogger::error("Admin notifications update error:" . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -2291,9 +2332,10 @@ if ($action == 'admin_update_roles') {
         $pdo->commit();
         
         echo json_encode(['success' => true, 'message' => 'User roles updated successfully']);
+        Auditor::log($pdo, $user_id, 'update', 'users', $user_id_to_update, ['action' => 'admin_update_roles']);
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        error_log("Admin roles update error: " . $e->getMessage());
+        ErrorLogger::error("Admin roles update error:" . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -2331,10 +2373,11 @@ if ($action == 'admin_assign_parent') {
         // Create the assignment
         $stmt = $pdo->prepare("INSERT INTO managed_athletes (parent_id, athlete_id, relationship, can_book, can_view_stats) VALUES (?, ?, ?, 1, 1)");
         $stmt->execute([$parent_id, $athlete_id, $relationship]);
+        Auditor::log($pdo, $user_id, 'create', 'parent_athlete', $pdo->lastInsertId(), ['action' => 'admin_assign_parent']);
         
         echo json_encode(['success' => true, 'message' => 'Parent assigned successfully']);
     } catch (PDOException $e) {
-        error_log("Admin parent assignment error: " . $e->getMessage());
+        ErrorLogger::error("Admin parent assignment error:" . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -2352,10 +2395,11 @@ if ($action == 'admin_remove_parent') {
         }
         
         $pdo->prepare("DELETE FROM managed_athletes WHERE id = ?")->execute([$managed_id]);
+        Auditor::log($pdo, $user_id, 'delete', 'parent_athlete', 0, ['action' => 'admin_remove_parent']);
         
         echo json_encode(['success' => true, 'message' => 'Parent assignment removed']);
     } catch (PDOException $e) {
-        error_log("Admin remove parent error: " . $e->getMessage());
+        ErrorLogger::error("Admin remove parent error:" . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     }
     exit();
@@ -2486,7 +2530,7 @@ if ($action == 'export_users') {
         fclose($output);
         exit();
     } catch (PDOException $e) {
-        error_log("Export users error: " . $e->getMessage());
+        ErrorLogger::error("Export users error: " . $e->getMessage());
         header("Location: dashboard.php?page=all_users&status=export_error");
         exit();
     }
@@ -2535,7 +2579,7 @@ if ($action == 'export') {
         fclose($output);
         exit();
     } catch (PDOException $e) {
-        error_log("Export users error: " . $e->getMessage());
+        ErrorLogger::error("Export users error: " . $e->getMessage());
         header("Location: dashboard.php?page=all_users&status=export_error");
         exit();
     }
@@ -2576,6 +2620,7 @@ if ($action == 'create_skill') {
             trim($_POST['name']),
             trim($_POST['description'] ?? '')
         ]);
+        Auditor::log($pdo, $user_id, 'create', 'skills', $pdo->lastInsertId(), ['action' => 'create_skill']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2584,7 +2629,7 @@ if ($action == 'create_skill') {
         }
         header("Location: dashboard.php?page=categories&status=skill_added");
     } catch (PDOException $e) {
-        error_log("Create skill error: " . $e->getMessage());
+        ErrorLogger::error("Create skill error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to create skill']);
@@ -2609,6 +2654,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'skill') {
         
         $stmt = $pdo->prepare("UPDATE eval_skills SET name = ?, description = ? WHERE id = ?");
         $stmt->execute([$name, $description, $id]);
+        Auditor::log($pdo, $user_id, 'update', 'skills', intval($_POST['id']), ['action' => 'edit_skill']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2617,7 +2663,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'skill') {
         }
         header("Location: dashboard.php?page=categories&status=skill_updated");
     } catch (PDOException $e) {
-        error_log("Edit skill database error: " . $e->getMessage());
+        ErrorLogger::error("Edit skill database error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to update skill. Please try again.']);
@@ -2625,7 +2671,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'skill') {
         }
         header("Location: dashboard.php?page=categories&status=error");
     } catch (Exception $e) {
-        error_log("Edit skill error: " . $e->getMessage());
+        ErrorLogger::error("Edit skill error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2647,6 +2693,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'skill') {
         
         $stmt = $pdo->prepare("DELETE FROM eval_skills WHERE id = ?");
         $stmt->execute([$id]);
+        Auditor::log($pdo, $user_id, 'delete', 'skills', intval($_POST['id']), ['action' => 'delete_skill']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2655,7 +2702,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'skill') {
         }
         header("Location: dashboard.php?page=categories&status=skill_deleted");
     } catch (PDOException $e) {
-        error_log("Delete skill database error: " . $e->getMessage());
+        ErrorLogger::error("Delete skill database error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to delete skill. Please try again.']);
@@ -2663,7 +2710,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'skill') {
         }
         header("Location: dashboard.php?page=categories&status=error");
     } catch (Exception $e) {
-        error_log("Delete skill error: " . $e->getMessage());
+        ErrorLogger::error("Delete skill error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2697,6 +2744,7 @@ if ($action == 'create_drill_type') {
             trim($_POST['description'] ?? ''),
             $positionType
         ]);
+        Auditor::log($pdo, $user_id, 'create', 'drill_types', $pdo->lastInsertId(), ['action' => 'create_drill_type']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2705,7 +2753,7 @@ if ($action == 'create_drill_type') {
         }
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_added");
     } catch (Exception $e) {
-        error_log("Create drill type error: " . $e->getMessage());
+        ErrorLogger::error("Create drill type error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage() ?: 'Failed to create drill type']);
@@ -2740,6 +2788,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'drill_type'
             $positionType,
             $id
         ]);
+        Auditor::log($pdo, $user_id, 'update', 'drill_types', intval($_POST['id']), ['action' => 'edit_drill_type']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2748,7 +2797,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'drill_type'
         }
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_updated");
     } catch (PDOException $e) {
-        error_log("Edit drill type database error: " . $e->getMessage());
+        ErrorLogger::error("Edit drill type database error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to update drill type. Please try again.']);
@@ -2756,7 +2805,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'drill_type'
         }
         header("Location: dashboard.php?page=categories&tab=drills&status=error");
     } catch (Exception $e) {
-        error_log("Edit drill type error: " . $e->getMessage());
+        ErrorLogger::error("Edit drill type error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2778,6 +2827,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
         
         $stmt = $pdo->prepare("DELETE FROM drill_categories WHERE id = ?");
         $stmt->execute([$id]);
+        Auditor::log($pdo, $user_id, 'delete', 'drill_types', intval($_POST['id']), ['action' => 'delete_drill_type']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2786,7 +2836,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
         }
         header("Location: dashboard.php?page=categories&tab=drills&status=drill_type_deleted");
     } catch (PDOException $e) {
-        error_log("Delete drill type database error: " . $e->getMessage());
+        ErrorLogger::error("Delete drill type database error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to delete drill type. Please try again.']);
@@ -2794,7 +2844,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'drill_typ
         }
         header("Location: dashboard.php?page=categories&tab=drills&status=error");
     } catch (Exception $e) {
-        error_log("Delete drill type error: " . $e->getMessage());
+        ErrorLogger::error("Delete drill type error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2820,6 +2870,7 @@ if ($action == 'create_merchandise_category') {
         
         $stmt = $pdo->prepare("INSERT INTO merchandise_categories (name, description, is_active) VALUES (?, ?, 1)");
         $stmt->execute([$name, $description]);
+        Auditor::log($pdo, $user_id, 'create', 'merchandise_categories', $pdo->lastInsertId(), ['action' => 'create_merchandise_category']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2828,7 +2879,7 @@ if ($action == 'create_merchandise_category') {
         }
         header("Location: dashboard.php?page=categories&tab=merchandise&status=category_added");
     } catch (Exception $e) {
-        error_log("Create merchandise category error: " . $e->getMessage());
+        ErrorLogger::error("Create merchandise category error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2853,6 +2904,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'merchandise
         
         $stmt = $pdo->prepare("UPDATE merchandise_categories SET name = ?, description = ? WHERE id = ?");
         $stmt->execute([$name, $description, $id]);
+        Auditor::log($pdo, $user_id, 'update', 'merchandise_categories', intval($_POST['id']), ['action' => 'edit_merchandise_category']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2861,7 +2913,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'merchandise
         }
         header("Location: dashboard.php?page=categories&tab=merchandise&status=category_updated");
     } catch (Exception $e) {
-        error_log("Edit merchandise category error: " . $e->getMessage());
+        ErrorLogger::error("Edit merchandise category error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2884,6 +2936,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'merchandi
         
         $stmt = $pdo->prepare("DELETE FROM merchandise_categories WHERE id = ?");
         $stmt->execute([$id]);
+        Auditor::log($pdo, $user_id, 'delete', 'merchandise_categories', intval($_POST['id']), ['action' => 'delete_merchandise_category']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2892,7 +2945,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'merchandi
         }
         header("Location: dashboard.php?page=categories&tab=merchandise&status=category_deleted");
     } catch (Exception $e) {
-        error_log("Delete merchandise category error: " . $e->getMessage());
+        ErrorLogger::error("Delete merchandise category error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -2966,6 +3019,7 @@ if ($action == 'create_team') {
                 }
             }
         }
+        Auditor::log($pdo, $user_id, 'create', 'teams', $new_team_id, ['action' => 'create_team']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -2974,7 +3028,7 @@ if ($action == 'create_team') {
         }
         header("Location: dashboard.php?page=categories&tab=teams&status=success&message=team_created");
     } catch (PDOException $e) {
-        error_log("Error creating team: " . $e->getMessage());
+        ErrorLogger::error("Error creating team:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to create team']);
@@ -3041,6 +3095,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
                 }
             }
         }
+        Auditor::log($pdo, $user_id, 'update', 'teams', intval($_POST['id']), ['action' => 'edit_team']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -3049,7 +3104,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'team') {
         }
         header("Location: dashboard.php?page=categories&tab=teams&status=team_updated");
     } catch (Exception $e) {
-        error_log("Edit team error: " . $e->getMessage());
+        ErrorLogger::error("Edit team error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -3079,6 +3134,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'team') {
         
         $stmt = $pdo->prepare("DELETE FROM teams WHERE id = ?");
         $stmt->execute([$id]);
+        Auditor::log($pdo, $user_id, 'delete', 'teams', intval($_POST['id']), ['action' => 'delete_team']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -3087,7 +3143,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'team') {
         }
         header("Location: dashboard.php?page=categories&tab=teams&status=team_deleted");
     } catch (Exception $e) {
-        error_log("Delete team error: " . $e->getMessage());
+        ErrorLogger::error("Delete team error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -3120,6 +3176,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'location') 
         
         $stmt = $pdo->prepare("UPDATE locations SET name = ?, address = ?, city = ?, province = ?, postal_code = ?, phone = ?, is_active = ?, google_place_id = ?, image_url = ? WHERE id = ?");
         $stmt->execute([$name, $address ?: null, $city, $province ?: null, $postal_code ?: null, $phone ?: null, $is_active, $google_place_id ?: null, $image_url ?: null, $id]);
+        Auditor::log($pdo, $user_id, 'update', 'locations', intval($_POST['id']), ['action' => 'edit_location']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -3128,7 +3185,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'location') 
         }
         header("Location: dashboard.php?page=categories&tab=locations&status=location_updated");
     } catch (Exception $e) {
-        error_log("Edit location error: " . $e->getMessage());
+        ErrorLogger::error("Edit location error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -3158,6 +3215,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'location'
         
         $stmt = $pdo->prepare("DELETE FROM locations WHERE id = ?");
         $stmt->execute([$id]);
+        Auditor::log($pdo, $user_id, 'delete', 'locations', intval($_POST['id']), ['action' => 'delete_location']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -3166,7 +3224,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'location'
         }
         header("Location: dashboard.php?page=categories&tab=locations&status=location_deleted");
     } catch (Exception $e) {
-        error_log("Delete location error: " . $e->getMessage());
+        ErrorLogger::error("Delete location error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -3205,6 +3263,7 @@ if ($action == 'create_position') {
     try {
         $stmt = $pdo->prepare("INSERT INTO player_positions (name, abbreviation, description, position_type) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $abbreviation, $description, $position_type]);
+        Auditor::log($pdo, $user_id, 'create', 'positions', $pdo->lastInsertId(), ['action' => 'create_position']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -3213,7 +3272,7 @@ if ($action == 'create_position') {
         }
         header("Location: dashboard.php?page=categories&tab=positions&status=success&message=position_created");
     } catch (PDOException $e) {
-        error_log("Error creating position: " . $e->getMessage());
+        ErrorLogger::error("Error creating position:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to create position']);
@@ -3244,10 +3303,11 @@ if ($action == 'update_position') {
     try {
         $stmt = $pdo->prepare("UPDATE player_positions SET name = ?, abbreviation = ?, description = ?, position_type = ? WHERE id = ?");
         $stmt->execute([$name, $abbreviation, $description, $position_type, $id]);
+        Auditor::log($pdo, $user_id, 'update', 'positions', $id, ['action' => 'update_position']);
         
         header("Location: dashboard.php?page=categories&tab=positions&status=success&message=position_updated");
     } catch (PDOException $e) {
-        error_log("Error updating position: " . $e->getMessage());
+        ErrorLogger::error("Error updating position:" . $e->getMessage());
         header("Location: dashboard.php?page=categories&tab=positions&status=error&message=position_update_failed");
     }
     exit();
@@ -3264,10 +3324,11 @@ if ($action == 'delete_position') {
     try {
         $stmt = $pdo->prepare("DELETE FROM player_positions WHERE id = ?");
         $stmt->execute([$id]);
+        Auditor::log($pdo, $user_id, 'delete', 'positions', $id, ['action' => 'delete_position']);
         
         echo json_encode(['success' => true, 'message' => 'Position deleted successfully']);
     } catch (PDOException $e) {
-        error_log("Error deleting position: " . $e->getMessage());
+        ErrorLogger::error("Error deleting position:" . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to delete position']);
     }
     exit();
@@ -3289,6 +3350,7 @@ if ($action == 'create_equipment') {
             CATEGORY_DEFAULT_QUANTITY,  // No quantity for category items
             trim($_POST['description'] ?? '')
         ]);
+        Auditor::log($pdo, $user_id, 'create', 'equipment', $pdo->lastInsertId(), ['action' => 'create_equipment']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -3297,7 +3359,7 @@ if ($action == 'create_equipment') {
         }
         header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_added");
     } catch (PDOException $e) {
-        error_log("Create equipment error: " . $e->getMessage());
+        ErrorLogger::error("Create equipment error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to create equipment']);
@@ -3322,6 +3384,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'equipment')
         
         $stmt = $pdo->prepare("UPDATE equipment SET name = ?, notes = ? WHERE id = ?");
         $stmt->execute([$name, $description, $id]);
+        Auditor::log($pdo, $user_id, 'update', 'equipment', intval($_POST['id']), ['action' => 'edit_equipment']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -3330,7 +3393,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'equipment')
         }
         header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_updated");
     } catch (PDOException $e) {
-        error_log("Edit equipment database error: " . $e->getMessage());
+        ErrorLogger::error("Edit equipment database error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to update equipment. Please try again.']);
@@ -3338,7 +3401,7 @@ if ($action == 'edit' && isset($_POST['type']) && $_POST['type'] == 'equipment')
         }
         header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     } catch (Exception $e) {
-        error_log("Edit equipment error: " . $e->getMessage());
+        ErrorLogger::error("Edit equipment error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -3360,6 +3423,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'equipment
         
         $stmt = $pdo->prepare("DELETE FROM equipment WHERE id = ?");
         $stmt->execute([$id]);
+        Auditor::log($pdo, $user_id, 'delete', 'equipment', intval($_POST['id']), ['action' => 'delete_equipment']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -3368,7 +3432,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'equipment
         }
         header("Location: dashboard.php?page=categories&tab=equipment&status=equipment_deleted");
     } catch (PDOException $e) {
-        error_log("Delete equipment database error: " . $e->getMessage());
+        ErrorLogger::error("Delete equipment database error:" . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Failed to delete equipment. Please try again.']);
@@ -3376,7 +3440,7 @@ if ($action == 'delete' && isset($_POST['type']) && $_POST['type'] == 'equipment
         }
         header("Location: dashboard.php?page=categories&tab=equipment&status=error");
     } catch (Exception $e) {
-        error_log("Delete equipment error: " . $e->getMessage());
+        ErrorLogger::error("Delete equipment error: " . $e->getMessage());
         if ($isAjax) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -3438,6 +3502,7 @@ if ($action == 'cleanup_demo_data') {
             "Removed $deleted_count demo records",
             $_SERVER['REMOTE_ADDR']
         ]);
+        Auditor::log($pdo, $user_id, 'delete', 'users', 0, ['action' => 'cleanup_demo_data']);
         
         header('Content-Type: application/json');
         echo json_encode([

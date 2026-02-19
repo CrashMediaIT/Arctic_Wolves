@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -141,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 echo json_encode(['success' => false, 'message' => 'Invalid action']);
         }
     } catch (Exception $e) {
-        error_log("Error in process_eval_goals.php GET: " . $e->getMessage());
+        ErrorLogger::error("Error in process_eval_goals.php GET: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Server error']);
     }
     exit;
@@ -181,6 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$athlete_id, $user_id, $title, $description, $status, $is_public]);
                 
                 $eval_id = $pdo->lastInsertId();
+                Auditor::log($pdo, $user_id, 'create', 'goal_evaluations', $eval_id, ['action' => 'Created goal evaluation', 'title' => $title]);
                 
                 echo json_encode([
                     'success' => true,
@@ -217,6 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$title, $description, $status, $is_public, $eval_id]);
+                Auditor::log($pdo, $user_id, 'update', 'goal_evaluations', $eval_id, ['action' => 'Updated goal evaluation', 'title' => $title]);
                 
                 echo json_encode([
                     'success' => true,
@@ -242,6 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("DELETE FROM goal_eval_progress WHERE goal_eval_step_id IN (SELECT id FROM goal_eval_steps WHERE goal_eval_id = ?)")->execute([$eval_id]);
                 $pdo->prepare("DELETE FROM goal_eval_steps WHERE goal_eval_id = ?")->execute([$eval_id]);
                 $pdo->prepare("DELETE FROM goal_evaluations WHERE id = ?")->execute([$eval_id]);
+                Auditor::log($pdo, $user_id, 'delete', 'goal_evaluations', $eval_id, ['action' => 'Deleted goal evaluation']);
                 
                 echo json_encode([
                     'success' => true,
@@ -281,6 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([$eval_id, $next_order, $title, $description, $needs_approval]);
+                Auditor::log($pdo, $user_id, 'create', 'goal_eval_steps', $pdo->lastInsertId(), ['action' => 'Added evaluation step', 'title' => $title]);
                 
                 echo json_encode([
                     'success' => true,
@@ -306,6 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$title, $description, $needs_approval, $step_id]);
+                Auditor::log($pdo, $user_id, 'update', 'goal_eval_steps', $step_id, ['action' => 'Updated evaluation step', 'title' => $title]);
                 
                 echo json_encode([
                     'success' => true,
@@ -465,6 +472,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([$step_id, $user_id, $progress_note, $media_url, $media_type]);
+                Auditor::log($pdo, $user_id, 'create', 'goal_eval_progress', $pdo->lastInsertId(), ['action' => 'Added media to step', 'step_id' => $step_id]);
                 
                 echo json_encode([
                     'success' => true,
@@ -532,7 +540,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => false, 'message' => 'Invalid action']);
         }
     } catch (Exception $e) {
-        error_log("Error in process_eval_goals.php POST: " . $e->getMessage());
+        ErrorLogger::error("Error in process_eval_goals.php POST: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
     }
     exit;

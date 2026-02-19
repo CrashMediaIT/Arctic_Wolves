@@ -9,6 +9,8 @@ require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -113,6 +115,8 @@ try {
             ");
             $insert_stmt->execute([$user_id, $athlete['id'], $relationship]);
             
+            Auditor::log($pdo, $user_id, 'create', 'managed_athletes', $athlete['id'], ['action' => 'linked_athlete', 'athlete_email' => $athlete_email]);
+            
             // Log security event
             logSecurityEvent($pdo, 'athlete_linked', "Parent $user_id linked athlete {$athlete['id']}", $user_id);
             
@@ -195,6 +199,8 @@ try {
             ");
             $link_stmt->execute([$user_id, $athlete_id, $relationship]);
             
+            Auditor::log($pdo, $user_id, 'create', 'users', $athlete_id, ['action' => 'created_athlete_account', 'email' => $email]);
+            
             // Log security event
             logSecurityEvent($pdo, 'athlete_created', "Parent $user_id created athlete account $athlete_id", $user_id);
             
@@ -249,6 +255,8 @@ try {
             $delete_stmt = $pdo->prepare("DELETE FROM managed_athletes WHERE id = ? AND parent_id = ?");
             $delete_stmt->execute([$managed_id, $user_id]);
             
+            Auditor::log($pdo, $user_id, 'delete', 'managed_athletes', $managed_id, ['action' => 'removed_athlete', 'athlete_id' => $managed['athlete_id']]);
+            
             // Log security event
             logSecurityEvent($pdo, 'athlete_removed', "Parent $user_id removed athlete {$managed['athlete_id']} from managed list", $user_id);
             
@@ -261,11 +269,11 @@ try {
     }
     
 } catch (PDOException $e) {
-    error_log("Database error in process_manage_athletes.php: " . $e->getMessage());
+    ErrorLogger::error("Database error in process_manage_athletes.php: " . $e->getMessage());
     header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'database_error']));
     exit();
 } catch (Exception $e) {
-    error_log("Error in process_manage_athletes.php: " . $e->getMessage());
+    ErrorLogger::error("Error in process_manage_athletes.php: " . $e->getMessage());
     header("Location: " . buildRedirectUrl($redirect_source, 'manage_athletes', ['error' => 'unknown_error']));
     exit();
 }

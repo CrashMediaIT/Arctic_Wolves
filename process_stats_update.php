@@ -2,6 +2,10 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
+
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // 1. Security Check
 if (!isset($_SESSION['logged_in'])) { 
@@ -36,6 +40,7 @@ if (in_array($col, $allowed)) {
         // A. Increment the specific stat
         $sql = "UPDATE athlete_stats SET $col = $col + 1 WHERE user_id = ? AND team_id = ?";
         $pdo->prepare($sql)->execute([$target_user_id, $team_id]);
+        Auditor::log($pdo, $user_id, 'update', 'athlete_stats', null, ['action' => 'Stat incremented', 'column' => $col, 'target_user' => $target_user_id]);
 
         // B. Auto-Calculate Derived Stats
         
@@ -63,7 +68,8 @@ if (in_array($col, $allowed)) {
         exit();
 
     } catch (PDOException $e) {
-        die("Error updating stats: " . $e->getMessage());
+        ErrorLogger::error("Error updating stats: " . $e->getMessage());
+        die("Error updating stats.");
     }
 } else {
     die("Invalid stat column.");

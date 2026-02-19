@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Check if user is admin
 $user_role = $_SESSION['user_role'] ?? '';
@@ -53,7 +55,7 @@ try {
     exit;
 
 } catch (PDOException $e) {
-    error_log("User email export error: " . $e->getMessage());
+    ErrorLogger::error("User email export error: " . $e->getMessage());
     http_response_code(500);
     exit('Export failed');
 }

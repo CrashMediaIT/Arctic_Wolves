@@ -7,6 +7,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 checkCsrfToken();
 
@@ -358,7 +360,7 @@ function fetchReportData($report_type, $parameters) {
             
         default:
             // Log unknown report type for debugging
-            error_log("Unknown report type requested: " . htmlspecialchars($report_type));
+            ErrorLogger::error("Unknown report type requested: " . htmlspecialchars($report_type));
             // Generate placeholder report with message
             $data = [
                 'message' => 'Report generated for type: ' . htmlspecialchars($report_type), 
@@ -445,7 +447,7 @@ function getStripeTransactionsData($parameters) {
         ];
         
     } catch (Exception $e) {
-        error_log("Stripe report error: " . $e->getMessage());
+        ErrorLogger::error("Stripe report error: " . $e->getMessage());
         return [
             'error' => 'Stripe API Error',
             'message' => $e->getMessage(),
@@ -1469,9 +1471,10 @@ function deleteReport() {
         unlink(__DIR__ . '/' . $report['file_path']);
     }
     
-    // Delete record
     $stmt = $pdo->prepare("DELETE FROM reports WHERE id = ?");
     $stmt->execute([$report_id]);
+    
+    Auditor::log($pdo, $user_id, 'delete', 'reports', $report_id, ['action' => 'report_deleted']);
     
     echo json_encode(['success' => true]);
     exit;
@@ -1485,6 +1488,8 @@ function deleteSchedule() {
     $stmt = $pdo->prepare("DELETE FROM report_schedules WHERE id = ? AND created_by = ?");
     $stmt->execute([$schedule_id, $user_id]);
     
+    Auditor::log($pdo, $user_id, 'delete', 'report_schedules', $schedule_id, ['action' => 'report_schedule_deleted']);
+    
     echo json_encode(['success' => true]);
     exit;
 }
@@ -1497,6 +1502,8 @@ function toggleSchedule() {
     
     $stmt = $pdo->prepare("UPDATE report_schedules SET is_active = ? WHERE id = ? AND created_by = ?");
     $stmt->execute([$status, $schedule_id, $user_id]);
+    
+    Auditor::log($pdo, $user_id, 'update', 'report_schedules', $schedule_id, ['action' => 'report_schedule_toggled']);
     
     echo json_encode(['success' => true, 'message' => 'Schedule updated successfully']);
     exit;
@@ -1583,6 +1590,9 @@ function createSchedule() {
         $report_name
     ]);
     
+    $new_schedule_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'report_schedules', $new_schedule_id, ['action' => 'report_schedule_created']);
+    
     header('Location: dashboard.php?page=financial_reports&tab=schedules&success=Schedule+created+successfully');
     exit;
 }
@@ -1667,6 +1677,8 @@ function updateSchedule() {
         $schedule_id,
         $user_id
     ]);
+    
+    Auditor::log($pdo, $user_id, 'update', 'report_schedules', $schedule_id, ['action' => 'report_schedule_updated']);
     
     echo json_encode(['success' => true, 'message' => 'Schedule updated successfully']);
     exit;

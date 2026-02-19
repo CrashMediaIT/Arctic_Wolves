@@ -7,6 +7,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -40,7 +42,7 @@ function recordTestResult($pdo, $test_name, $status, $message = '', $details = n
         ]);
         return true;
     } catch (Exception $e) {
-        error_log("Failed to record test: " . $e->getMessage());
+        ErrorLogger::error("Failed to record test: " . $e->getMessage());
         return false;
     }
 }
@@ -217,6 +219,7 @@ try {
                 
                 // Record the result
                 recordTestResult($pdo, ucwords(str_replace('_', ' ', $test)), $result['status'], $result['message']);
+                Auditor::log($pdo, $user_id, 'create', 'test_results', null, ['action' => 'Test executed', 'test' => $test, 'status' => $result['status']]);
                 $results[$test] = $result;
             }
             
@@ -238,6 +241,7 @@ try {
             }
             
             recordTestResult($pdo, $test_name, $status, $message);
+            Auditor::log($pdo, $user_id, 'create', 'test_results', null, ['action' => 'Test result recorded', 'test' => $test_name]);
             
             header('Location: dashboard.php?page=testing&test_recorded=1');
             exit;
@@ -252,6 +256,7 @@ try {
                     ) as t
                 )
             ");
+            Auditor::log($pdo, $user_id, 'delete', 'test_results', null, ['action' => 'Old test results cleared']);
             
             header('Location: dashboard.php?page=testing&cleared=1');
             exit;
@@ -261,7 +266,7 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log("Testing error: " . $e->getMessage());
+    ErrorLogger::error("Testing error: " . $e->getMessage());
     header('Location: dashboard.php?page=testing&error=' . urlencode($e->getMessage()));
     exit;
 }

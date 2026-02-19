@@ -8,6 +8,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/admin/feature_importer.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -23,6 +25,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();
     
+    $user_id = $_SESSION['user_id'] ?? 0;
     $action = $_POST['action'] ?? '';
     
     try {
@@ -72,6 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Initialize importer and run import
                 $importer = new FeatureImporter($pdo, __DIR__);
                 $result = $importer->importFeature($temp_file);
+                
+                Auditor::log($pdo, $user_id, 'create', 'feature_imports', null, ['action' => 'Imported feature package: ' . $file['name']]);
                 
                 // Clean up uploaded file
                 if (file_exists($temp_file)) {

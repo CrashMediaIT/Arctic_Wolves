@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -140,6 +142,8 @@ try {
             ]);
             
             $pdo->commit();
+            
+            Auditor::log($pdo, $user_id, 'create', 'audit_logs', $log_id, ['action' => 'Restored ' . $log['action_type'] . ' record from audit log for table ' . $table_name]);
             
             echo json_encode([
                 'success' => true,

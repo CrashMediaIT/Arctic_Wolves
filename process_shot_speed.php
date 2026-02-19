@@ -7,6 +7,7 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -161,7 +162,7 @@ try {
     }
     
 } catch (PDOException $e) {
-    error_log("Shot speed error: " . $e->getMessage());
+    ErrorLogger::error("Shot speed error", ["error" => $e->getMessage()]);
     echo json_encode(['success' => false, 'message' => 'Database error occurred']);
     exit;
 }

@@ -2,8 +2,10 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
-$allowed_roles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'];
+$allowed_roles= ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach'];
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $allowed_roles)) {
     header("Location: dashboard.php"); exit();
 }
@@ -15,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $action = $_POST['action'] ?? '';
 $id     = $_POST['id'] ?? $_POST['session_id'] ?? 0;
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // ASSIGN PRACTICE PLAN to a specific session date
 if ($action == 'assign_practice_plan') {
@@ -53,10 +56,12 @@ if ($action == 'assign_practice_plan') {
         // Also update the practice_plan_id column on the sessions table for backward compatibility
         $pdo->prepare("UPDATE sessions SET practice_plan_id = ? WHERE id = ?")->execute([$practice_plan_id, $session_id]);
 
+        Auditor::log($pdo, $user_id, 'update', 'sessions', $session_id, ['action' => 'practice_plan_assigned', 'practice_plan_id' => $practice_plan_id]);
+
         header("Location: dashboard.php?page=coach_calendar&status=success&message=" . urlencode('Practice plan assigned successfully'));
         exit();
     } catch (PDOException $e) {
-        error_log("Error assigning practice plan: " . $e->getMessage());
+        ErrorLogger::error("Error assigning practice plan: " . $e->getMessage());
         header("Location: dashboard.php?page=coach_calendar&status=error&message=" . urlencode('Database error occurred'));
         exit();
     }
@@ -73,6 +78,7 @@ if ($action == 'cancel_session') {
     try {
         $stmt = $pdo->prepare("UPDATE sessions SET status = 'cancelled' WHERE id = ?");
         $stmt->execute([$session_id]);
+        Auditor::log($pdo, $user_id, 'update', 'sessions', $session_id, ['action' => 'session_cancelled']);
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
         http_response_code(500);
@@ -94,6 +100,7 @@ if ($action == 'update_status') {
     try {
         $stmt = $pdo->prepare("UPDATE sessions SET status = ? WHERE id = ?");
         $stmt->execute([$newStatus, $session_id]);
+        Auditor::log($pdo, $user_id, 'update', 'sessions', $session_id, ['action' => 'status_updated', 'status' => $newStatus]);
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
         http_response_code(500);
@@ -107,6 +114,7 @@ if ($action == 'delete') {
     // Note: Foreign keys in 'bookings' should be set to ON DELETE CASCADE
     // If not, you'd delete bookings first: $pdo->prepare("DELETE FROM bookings WHERE session_id=?")->execute([$id]);
     $pdo->prepare("DELETE FROM sessions WHERE id = ?")->execute([$id]);
+    Auditor::log($pdo, $user_id, 'delete', 'sessions', intval($id), ['action' => 'session_deleted']);
     header("Location: dashboard.php?page=session_history&status=deleted");
     exit();
 }
@@ -131,6 +139,8 @@ if ($action == 'update') {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$type, $title, $date, $time, $plan, $locName, $city, $id]);
         
+        Auditor::log($pdo, $user_id, 'update', 'sessions', intval($id), ['action' => 'session_updated', 'title' => $title]);
+
         header("Location: dashboard.php?page=session_history&status=updated");
         exit();
     } catch (PDOException $e) {

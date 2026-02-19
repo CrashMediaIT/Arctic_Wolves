@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -67,7 +69,7 @@ try {
             die(json_encode(['success' => false, 'message' => 'Invalid action']));
     }
 } catch (PDOException $e) {
-    error_log("Process Evaluation Templates Error: " . $e->getMessage());
+    ErrorLogger::error("Process Evaluation Templates Error: " . $e->getMessage());
     http_response_code(500);
     die(json_encode(['success' => false, 'message' => 'Database error occurred']));
 }
@@ -99,6 +101,7 @@ function handleCreate($pdo, $user_id) {
     ");
     $stmt->execute([$user_id, $description]);
     $template_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'athlete_evaluations', $template_id, ['action' => 'Created evaluation template']);
     
     echo json_encode([
         'success' => true,
@@ -139,6 +142,7 @@ function handleUpdate($pdo, $user_id) {
             WHERE id = ?
         ");
         $stmt->execute([$notes, $template_id]);
+        Auditor::log($pdo, $user_id, 'update', 'athlete_evaluations', $template_id, ['action' => 'Updated evaluation template']);
     }
     
     echo json_encode([
@@ -173,6 +177,7 @@ function handleDelete($pdo, $user_id) {
     // Delete template
     $stmt = $pdo->prepare("DELETE FROM athlete_evaluations WHERE id = ?");
     $stmt->execute([$template_id]);
+    Auditor::log($pdo, $user_id, 'delete', 'athlete_evaluations', $template_id, ['action' => 'Deleted evaluation template']);
     
     echo json_encode([
         'success' => true,

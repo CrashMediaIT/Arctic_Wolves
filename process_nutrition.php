@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -56,6 +58,7 @@ try {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([$name, $description ?: null, $category ?: null, $serving_size ?: null, $calories, $protein_g, $carbs_g, $fat_g, $user_id]);
+            Auditor::log($pdo, $user_id, 'CREATE', 'food_library', $pdo->lastInsertId(), ['action' => 'Created meal']);
             
             echo json_encode(['success' => true, 'message' => 'Meal created successfully']);
             break;
@@ -81,6 +84,7 @@ try {
                 WHERE id = ?
             ");
             $stmt->execute([$name, $description ?: null, $category ?: null, $serving_size ?: null, $calories, $protein_g, $carbs_g, $fat_g, $id]);
+            Auditor::log($pdo, $user_id, 'UPDATE', 'food_library', $id, ['action' => 'Updated meal']);
             
             echo json_encode(['success' => true, 'message' => 'Meal updated successfully']);
             break;
@@ -94,6 +98,7 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM food_library WHERE id = ?");
             $stmt->execute([$id]);
+            Auditor::log($pdo, $user_id, 'DELETE', 'food_library', $id, ['action' => 'Deleted meal']);
             
             echo json_encode(['success' => true, 'message' => 'Meal deleted successfully']);
             break;
@@ -119,6 +124,7 @@ try {
             ");
             $stmt->execute([$name, $description ?: null, $target_calories, $target_protein_g, $target_carbs_g, $target_fat_g, $user_id]);
             $plan_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'CREATE', 'nutrition_plans', $plan_id, ['action' => 'Created nutrition plan']);
             
             // Add meals to plan
             if (!empty($meals)) {
@@ -171,6 +177,7 @@ try {
                 WHERE id = ?
             ");
             $stmt->execute([$name, $description ?: null, $target_calories, $target_protein_g, $target_carbs_g, $target_fat_g, $id]);
+            Auditor::log($pdo, $user_id, 'UPDATE', 'nutrition_plans', $id, ['action' => 'Updated nutrition plan']);
             
             // Remove existing meals and re-add with new order
             $stmt = $pdo->prepare("SELECT id FROM nutrition_plan_meals WHERE nutrition_plan_id = ?");
@@ -220,6 +227,7 @@ try {
             // Delete plan (cascade will handle related records)
             $stmt = $pdo->prepare("DELETE FROM nutrition_plans WHERE id = ?");
             $stmt->execute([$id]);
+            Auditor::log($pdo, $user_id, 'DELETE', 'nutrition_plans', $id, ['action' => 'Deleted nutrition plan']);
             
             echo json_encode(['success' => true, 'message' => 'Nutrition plan deleted successfully']);
             break;
@@ -327,6 +335,7 @@ try {
             $pdo->commit();
             
             $count = count($athlete_ids);
+            Auditor::log($pdo, $user_id, 'CREATE', 'athlete_nutrition_assignments', 0, ['action' => 'Assigned nutrition plan to athletes', 'count' => $count]);
             echo json_encode(['success' => true, 'message' => "Nutrition plan assigned to {$count} athlete(s) successfully"]);
             break;
             

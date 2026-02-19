@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -68,6 +70,9 @@ try {
             ");
             $stmt->execute([$name, $description ?: null, $category ?: null, $equipment_needed ?: null, $difficulty_level ?: null, $video_url ?: null, $image_url, $user_id]);
             
+            $exercise_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'create', 'exercise_library', $exercise_id, ['action' => 'Exercise created']);
+            
             echo json_encode(['success' => true, 'message' => 'Exercise created successfully']);
             break;
             
@@ -109,6 +114,8 @@ try {
             ");
             $stmt->execute($params);
             
+            Auditor::log($pdo, $user_id, 'update', 'exercise_library', $id, ['action' => 'Exercise updated']);
+            
             echo json_encode(['success' => true, 'message' => 'Exercise updated successfully']);
             break;
             
@@ -121,6 +128,8 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM exercise_library WHERE id = ?");
             $stmt->execute([$id]);
+            
+            Auditor::log($pdo, $user_id, 'delete', 'exercise_library', $id, ['action' => 'Exercise deleted']);
             
             echo json_encode(['success' => true, 'message' => 'Exercise deleted successfully']);
             break;
@@ -167,6 +176,8 @@ try {
             
             $pdo->commit();
             
+            Auditor::log($pdo, $user_id, 'create', 'workout_plans', $plan_id, ['action' => 'Workout plan created']);
+            
             echo json_encode(['success' => true, 'message' => 'Workout plan created successfully']);
             break;
             
@@ -212,6 +223,8 @@ try {
             
             $pdo->commit();
             
+            Auditor::log($pdo, $user_id, 'update', 'workout_plans', $id, ['action' => 'Workout plan updated']);
+            
             echo json_encode(['success' => true, 'message' => 'Workout plan updated successfully']);
             break;
             
@@ -225,6 +238,8 @@ try {
             // Delete plan (cascade will handle related records)
             $stmt = $pdo->prepare("DELETE FROM workout_plans WHERE id = ?");
             $stmt->execute([$id]);
+            
+            Auditor::log($pdo, $user_id, 'delete', 'workout_plans', $id, ['action' => 'Workout plan deleted']);
             
             echo json_encode(['success' => true, 'message' => 'Workout plan deleted successfully']);
             break;
@@ -333,6 +348,8 @@ try {
             }
             
             $pdo->commit();
+            
+            Auditor::log($pdo, $user_id, 'create', 'athlete_workout_assignments', null, ['action' => 'Workout plan assigned', 'plan_id' => $workout_plan_id, 'athletes' => count($athlete_ids)]);
             
             $count = count($athlete_ids);
             echo json_encode(['success' => true, 'message' => "Workout plan assigned to {$count} athlete(s) successfully"]);

@@ -4,6 +4,8 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 require 'notifications.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -191,7 +193,7 @@ try {
     exit();
     
 } catch (Exception $e) {
-    error_log("Package purchase error: " . $e->getMessage());
+    ErrorLogger::error("Package purchase error: " . $e->getMessage());
     header("Location: dashboard.php?page=packages&error=purchase_failed");
     exit();
 }

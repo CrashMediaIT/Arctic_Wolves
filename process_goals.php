@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -29,7 +31,7 @@ function logGoalHistory($pdo, $goal_id, $action, $user_id, $changes = null) {
     if ($changes !== null) {
         $changes_json = json_encode($changes);
         if ($changes_json === false) {
-            error_log("Failed to encode changes for goal $goal_id action $action");
+            ErrorLogger::error("Failed to encode changes for goal $goal_id action $action");
             $changes_json = json_encode(['error' => 'Failed to encode changes']);
         }
     }
@@ -257,6 +259,8 @@ try {
                 'category' => $category
             ]);
             
+            Auditor::log($pdo, $user_id, 'create', 'goals', $goal_id, ['action' => 'goal_created', 'title' => $title]);
+
             $pdo->commit();
             header("Location: dashboard.php?page=stats&tab=goals&athlete_id=$athlete_id&msg=created");
             exit();
@@ -381,6 +385,8 @@ try {
                 'new' => ['title' => $title, 'category' => $category]
             ]);
             
+            Auditor::log($pdo, $user_id, 'update', 'goals', $goal_id, ['action' => 'goal_updated', 'title' => $title]);
+
             $pdo->commit();
             header("Location: dashboard.php?page=stats&tab=goals&athlete_id={$old_goal['athlete_id']}&msg=updated");
             exit();
@@ -408,6 +414,8 @@ try {
             // Log history
             logGoalHistory($pdo, $goal_id, 'archived', $user_id);
             
+            Auditor::log($pdo, $user_id, 'delete', 'goals', $goal_id, ['action' => 'goal_archived']);
+
             $pdo->commit();
             header("Location: dashboard.php?page=stats&tab=goals&msg=archived");
             exit();

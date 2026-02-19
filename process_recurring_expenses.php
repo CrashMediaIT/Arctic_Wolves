@@ -8,6 +8,8 @@ session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Conditionally load cloud_config if available
 if (file_exists(__DIR__ . '/cloud_config.php')) {
@@ -83,7 +85,7 @@ function uploadContractToNextcloud($pdo, $local_file_path, $vendor_name, $contra
         ];
         
     } catch (Exception $e) {
-        error_log("Nextcloud contract upload error: " . $e->getMessage());
+        ErrorLogger::error("Nextcloud contract upload error: " . $e->getMessage());
         return ['success' => false, 'message' => $e->getMessage()];
     }
 }
@@ -136,6 +138,7 @@ try {
             ]);
             
             $recurring_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'create', 'recurring_expenses', $recurring_id, ['action' => 'recurring_expense_created']);
             $nextcloud_path = null;
             
             // Handle contract file upload
@@ -290,7 +293,7 @@ try {
             exit();
     }
 } catch (Exception $e) {
-    error_log("Recurring expense error: " . $e->getMessage());
+    ErrorLogger::error("Recurring expense error: " . $e->getMessage());
     header("Location: dashboard.php?page=expenses&expenses_tab=recurring&status=error&message=" . urlencode('An error occurred: ' . $e->getMessage()));
     exit();
 }
