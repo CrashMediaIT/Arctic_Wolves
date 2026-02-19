@@ -2,6 +2,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Security: Coaches Only
 if (!isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'coach')) {
@@ -23,6 +25,7 @@ if ($action == 'add_note') {
     
     $stmt = $pdo->prepare("INSERT INTO athlete_notes (user_id, coach_id, note_content, is_private) VALUES (?, ?, ?, ?)");
     $stmt->execute([$user_id, $coach_id, $content, $private]);
+    Auditor::log($pdo, $coach_id, 'create', 'athlete_notes', $pdo->lastInsertId(), ['action' => 'Note added for athlete', 'athlete_id' => $user_id]);
 }
 
 if ($action == 'assign_workout') {
@@ -32,6 +35,7 @@ if ($action == 'assign_workout') {
     
     $stmt = $pdo->prepare("INSERT INTO workouts (user_id, coach_id, title, description, link) VALUES (?, ?, ?, ?, ?)");
     $stmt->execute([$user_id, $coach_id, $title, $desc, $link]);
+    Auditor::log($pdo, $coach_id, 'create', 'workouts', $pdo->lastInsertId(), ['action' => 'Workout assigned', 'athlete_id' => $user_id]);
 }
 
 if ($action == 'assign_nutrition') {
@@ -40,6 +44,7 @@ if ($action == 'assign_nutrition') {
     
     $stmt = $pdo->prepare("INSERT INTO nutrition_plans (user_id, coach_id, title, content) VALUES (?, ?, ?, ?)");
     $stmt->execute([$user_id, $coach_id, $title, $content]);
+    Auditor::log($pdo, $coach_id, 'create', 'nutrition_plans', $pdo->lastInsertId(), ['action' => 'Nutrition plan assigned', 'athlete_id' => $user_id]);
 }
 
 // Redirect back to that specific athlete's page

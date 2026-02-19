@@ -9,6 +9,8 @@ session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -173,7 +175,7 @@ if ($action === 'create') {
                     }
                 }
             } catch (Exception $nc_error) {
-                error_log("Nextcloud upload error: " . $nc_error->getMessage());
+                ErrorLogger::error("Nextcloud upload error: " . $nc_error->getMessage());
                 // Continue without Nextcloud - not critical
             }
             
@@ -323,7 +325,7 @@ try {
             throw new Exception('Backup creation failed: ' . implode("\n", $output));
         }
     } catch (Exception $e) {
-        error_log("Backup creation warning: " . $e->getMessage());
+        ErrorLogger::error("Backup creation warning: " . $e->getMessage());
         // Continue anyway - backup is a safety measure but not critical
         $backup_file = 'Backup creation skipped: ' . $e->getMessage();
     }

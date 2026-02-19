@@ -7,6 +7,8 @@ session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -52,6 +54,7 @@ try {
                 $company_address ?: null, $description ?: null, $enc_contact_name, $contact_title ?: null,
                 $contact_email ?: null, $enc_contact_phone, $user_id
             ]);
+            Auditor::log($pdo, $user_id, 'create', 'business_partners', $pdo->lastInsertId(), ['action' => 'Partner created', 'company_name' => $company_name]);
 
             header("Location: dashboard.php?page=" . $redirect_page . "&status=success&message=" . urlencode('Partner created successfully'));
             exit();
@@ -91,6 +94,7 @@ try {
                 $company_address ?: null, $description ?: null, $enc_contact_name, $contact_title ?: null,
                 $contact_email ?: null, $enc_contact_phone, $status, $partner_id
             ]);
+            Auditor::log($pdo, $user_id, 'update', 'business_partners', $partner_id, ['action' => 'Partner updated', 'company_name' => $company_name]);
 
             header("Location: dashboard.php?page=business_partners&tab=partners&status=success&message=" . urlencode('Partner updated successfully'));
             exit();
@@ -105,6 +109,7 @@ try {
             // Delete contracts first (cascade should handle this, but be explicit)
             $pdo->prepare("DELETE FROM partner_contracts WHERE partner_id = ?")->execute([$partner_id]);
             $pdo->prepare("DELETE FROM business_partners WHERE id = ?")->execute([$partner_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'business_partners', $partner_id, ['action' => 'Partner deleted']);
 
             header("Location: dashboard.php?page=business_partners&tab=partners&status=success&message=" . urlencode('Partner deleted successfully'));
             exit();
@@ -136,6 +141,7 @@ try {
                 $partner_id, $title, $description ?: null, $partnership_items ?: null,
                 $value, $start_date, $end_date, $status, $notes ?: null, $user_id
             ]);
+            Auditor::log($pdo, $user_id, 'create', 'partner_contracts', $pdo->lastInsertId(), ['action' => 'Contract created', 'title' => $title]);
 
             header("Location: dashboard.php?page=business_partners&tab=contracts&partner_id=$partner_id&status=success&message=" . urlencode('Contract created successfully'));
             exit();
@@ -150,6 +156,7 @@ try {
             }
 
             $pdo->prepare("DELETE FROM partner_contracts WHERE id = ?")->execute([$contract_id]);
+            Auditor::log($pdo, $user_id, 'delete', 'partner_contracts', $contract_id, ['action' => 'Contract deleted']);
 
             header("Location: dashboard.php?page=business_partners&tab=contracts&partner_id=$partner_id&status=success&message=" . urlencode('Contract deleted successfully'));
             exit();
@@ -159,7 +166,7 @@ try {
             exit();
     }
 } catch (PDOException $e) {
-    error_log("Business partner error: " . $e->getMessage());
+    ErrorLogger::error("Business partner error: " . $e->getMessage());
     header("Location: dashboard.php?page=business_partners&tab=partners&status=error&message=" . urlencode('A database error occurred'));
     exit();
 }

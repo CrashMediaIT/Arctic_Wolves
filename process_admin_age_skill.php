@@ -3,6 +3,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -58,6 +60,7 @@ if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
 }
 
 $action = $_POST['action'] ?? '';
+$user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine redirect target - if a redirect_page was specified, use it
 $age_group_redirect = 'admin_age_skill';
@@ -79,6 +82,7 @@ try {
             $stmt = $pdo->prepare("INSERT INTO age_groups (name, min_age, max_age, description, display_order) 
                                    VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$name, $min_age, $max_age, $description, $display_order]);
+            Auditor::log($pdo, $user_id, 'create', 'age_groups', $pdo->lastInsertId(), ['action' => "Created age group: $name"]);
             
             logSecurityEvent($pdo, 'age_group_created', "Created age group: $name", $_SESSION['user_id']);
             
@@ -95,6 +99,7 @@ try {
             
             $stmt = $pdo->prepare("UPDATE age_groups SET name = ?, min_age = ?, max_age = ?, description = ?, display_order = ? WHERE id = ?");
             $stmt->execute([$name, $min_age, $max_age, $description, $display_order, $id]);
+            Auditor::log($pdo, $user_id, 'update', 'age_groups', $id, ['action' => "Updated age group: $name"]);
             
             logSecurityEvent($pdo, 'age_group_updated', "Updated age group: $name", $_SESSION['user_id']);
             
@@ -111,6 +116,7 @@ try {
             
             if ($ag) {
                 $pdo->prepare("DELETE FROM age_groups WHERE id = ?")->execute([$id]);
+                Auditor::log($pdo, $user_id, 'delete', 'age_groups', $id, ['action' => "Deleted age group: {$ag['name']}"]);
                 logSecurityEvent($pdo, 'age_group_deleted', "Deleted age group: {$ag['name']}", $_SESSION['user_id']);
             }
             
@@ -125,6 +131,7 @@ try {
             $stmt = $pdo->prepare("INSERT INTO skill_levels (name, description, display_order) 
                                    VALUES (?, ?, ?)");
             $stmt->execute([$name, $description, $display_order]);
+            Auditor::log($pdo, $user_id, 'create', 'skill_levels', $pdo->lastInsertId(), ['action' => "Created skill level: $name"]);
             
             logSecurityEvent($pdo, 'skill_level_created', "Created skill level: $name", $_SESSION['user_id']);
             
@@ -139,6 +146,7 @@ try {
             
             $stmt = $pdo->prepare("UPDATE skill_levels SET name = ?, description = ?, display_order = ? WHERE id = ?");
             $stmt->execute([$name, $description, $display_order, $id]);
+            Auditor::log($pdo, $user_id, 'update', 'skill_levels', $id, ['action' => "Updated skill level: $name"]);
             
             logSecurityEvent($pdo, 'skill_level_updated', "Updated skill level: $name", $_SESSION['user_id']);
             
@@ -155,6 +163,7 @@ try {
             
             if ($sl) {
                 $pdo->prepare("DELETE FROM skill_levels WHERE id = ?")->execute([$id]);
+                Auditor::log($pdo, $user_id, 'delete', 'skill_levels', $id, ['action' => "Deleted skill level: {$sl['name']}"]);
                 logSecurityEvent($pdo, 'skill_level_deleted', "Deleted skill level: {$sl['name']}", $_SESSION['user_id']);
             }
             
@@ -174,6 +183,7 @@ try {
             $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('tax_name', ?) 
                           ON DUPLICATE KEY UPDATE setting_value = ?")
                 ->execute([$tax_name, $tax_name]);
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => "Updated tax settings: $tax_name = $tax_rate%"]);
             
             logSecurityEvent($pdo, 'tax_settings_updated', "Updated tax settings: $tax_name = $tax_rate%", $_SESSION['user_id']);
             
@@ -186,6 +196,7 @@ try {
     }
     
 } catch (PDOException $e) {
+    ErrorLogger::error("Age/skill management error: " . $e->getMessage());
     logSecurityEvent($pdo, 'age_skill_error', "Error in age/skill management: " . $e->getMessage(), $_SESSION['user_id']);
     respond(false, $e->getMessage());
 }
