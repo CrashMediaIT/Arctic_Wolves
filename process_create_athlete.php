@@ -5,8 +5,10 @@ require 'db_config.php';
 require 'security.php';
 require 'mailer.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
-// 1. SECURITY: Only Coach, Coach Plus, Health Coach, Team Coach, or Admin can run this
+// 1. SECURITY:Only Coach, Coach Plus, Health Coach, Team Coach, or Admin can run this
 $coach_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $coach_roles)) {
     header("Location: dashboard.php"); 
@@ -76,6 +78,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         $pdo->commit();
 
+        Auditor::log($pdo, $coach_id, 'create', 'users', $athlete_id, ['action' => 'athlete_created', 'email' => $email]);
+
         // 5. SEND EMAIL (Now Working!)
         try {
             sendEmail($email, 'manual_welcome', [
@@ -84,7 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'password' => $raw_pass
             ]);
         } catch (Exception $e) {
-            error_log("Failed to send welcome email to {$email}: " . $e->getMessage());
+            ErrorLogger::error("Failed to send welcome email to {$email}: " . $e->getMessage());
             // Continue anyway - user is created
         }
 
@@ -94,7 +98,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     } catch (PDOException $e) {
         $pdo->rollBack();
-        error_log("Athlete creation error: " . $e->getMessage());
+        ErrorLogger::error("Athlete creation error: " . $e->getMessage());
         header("Location: dashboard.php?page={$redirect_page}&error=creation_failed");
         exit();
     }
