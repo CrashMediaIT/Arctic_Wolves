@@ -75,7 +75,7 @@ try {
                             <th>DID</th>
                             <th>Extension</th>
                             <th>Email</th>
-                            <?php if ($isAdmin && count($custom_entries) > 0): ?><th>Action</th><?php endif; ?>
+                            <?php if ($isAdmin): ?><th>Action</th><?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
