@@ -18,9 +18,13 @@ $current_user_id = $_SESSION['user_id'] ?? null;
 // Fetch current user's SIP settings
 $sip_data = null;
 try {
-    $stmt = $pdo->prepare("SELECT sip_username, sip_domain, sip_extension, sip_did FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT sip_username, sip_domain, sip_extension, sip_did, sip_password FROM users WHERE id = ?");
     $stmt->execute([$current_user_id]);
     $sip_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Decrypt the stored SIP password
+    if (!empty($sip_data['sip_password'])) {
+        $sip_data['sip_password'] = FieldEncryption::decrypt($sip_data['sip_password']);
+    }
 } catch (PDOException $e) {
     error_log("SIP settings fetch error: " . $e->getMessage());
 }
@@ -88,22 +92,22 @@ try {
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-phone"></i> Extension</label>
                     <input type="text" name="sip_extension" id="sip_extension" class="form-input"
-                           placeholder="e.g., 1001" value="<?php echo htmlspecialchars($sip_data['sip_extension'] ?? ''); ?>" readonly>
-                    <small class="form-hint">Your extension number (set by administrator)</small>
+                           placeholder="e.g., 1001" value="<?php echo htmlspecialchars($sip_data['sip_extension'] ?? ''); ?>" <?php echo !$isAdmin ? 'readonly' : ''; ?>>
+                    <small class="form-hint"><?php echo $isAdmin ? 'Your extension number' : 'Your extension number (set by administrator)'; ?></small>
                 </div>
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-phone-square"></i> DID Number</label>
                     <input type="text" name="sip_did" id="sip_did" class="form-input"
-                           placeholder="e.g., +16045551234" value="<?php echo htmlspecialchars($sip_data['sip_did'] ?? ''); ?>" readonly>
-                    <small class="form-hint">Your Direct Inward Dialing number (set by administrator)</small>
+                           placeholder="e.g., +16045551234" value="<?php echo htmlspecialchars($sip_data['sip_did'] ?? ''); ?>" <?php echo !$isAdmin ? 'readonly' : ''; ?>>
+                    <small class="form-hint"><?php echo $isAdmin ? 'Your Direct Inward Dialing number' : 'Your Direct Inward Dialing number (set by administrator)'; ?></small>
                 </div>
             </div>
 
             <div class="form-group">
                 <label class="form-label"><i class="fas fa-key"></i> SIP Password</label>
                 <input type="password" name="sip_password" id="sip_password" class="form-input"
-                       placeholder="Enter SIP password to register">
-                <small class="form-hint">Your SIP account password (stored in browser only, not saved to server)</small>
+                       placeholder="Enter SIP password" value="<?php echo htmlspecialchars($sip_data['sip_password'] ?? ''); ?>">
+                <small class="form-hint">Your SIP account password (encrypted and saved securely on the server)</small>
             </div>
 
             <div class="form-actions">
@@ -266,10 +270,13 @@ function initAudio() {
     }
 }
 
-// Save SIP settings to server (username and domain only)
+// Save SIP settings to server
 function saveSipSettings() {
     const username = document.getElementById('sip_username').value.trim();
     const domain = document.getElementById('sip_domain').value.trim();
+    const password = document.getElementById('sip_password').value;
+    const extension = document.getElementById('sip_extension').value.trim();
+    const did = document.getElementById('sip_did').value.trim();
     const csrfToken = document.querySelector('[name="csrf_token"]').value;
 
     const saveBtn = document.getElementById('sip-save-btn');
@@ -277,13 +284,15 @@ function saveSipSettings() {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
+    let body = `action=update_own_sip&csrf_token=${encodeURIComponent(csrfToken)}&sip_username=${encodeURIComponent(username)}&sip_domain=${encodeURIComponent(domain)}&sip_password=${encodeURIComponent(password)}&sip_extension=${encodeURIComponent(extension)}&sip_did=${encodeURIComponent(did)}`;
+
     fetch('process_profile_update.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest'
         },
-        body: `action=update_own_sip&csrf_token=${encodeURIComponent(csrfToken)}&sip_username=${encodeURIComponent(username)}&sip_domain=${encodeURIComponent(domain)}`
+        body: body
     })
     .then(response => response.json())
     .then(data => {

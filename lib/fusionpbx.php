@@ -86,7 +86,7 @@ function fusionpbxApiRequest($settings, $endpoint, $method = 'GET', $data = null
         return ['success' => false, 'message' => 'FusionPBX API key is not configured'];
     }
     
-    $url = rtrim($settings['fusionpbx_url'], '/') . '/api' . $endpoint;
+    $url = rtrim($settings['fusionpbx_url'], '/') . '/app/api' . $endpoint;
     
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

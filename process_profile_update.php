@@ -687,18 +687,42 @@ if ($action == 'update_own_sip') {
     
     $sip_username = trim($_POST['sip_username'] ?? '');
     $sip_domain = trim($_POST['sip_domain'] ?? '');
+    $sip_password = $_POST['sip_password'] ?? '';
+    $sip_extension = trim($_POST['sip_extension'] ?? '');
+    $sip_did = trim($_POST['sip_did'] ?? '');
+    
+    // Encrypt the SIP password before saving
+    $encrypted_password = !empty($sip_password) ? FieldEncryption::encrypt($sip_password) : null;
     
     try {
-        $stmt = $pdo->prepare("
-            UPDATE users 
-            SET sip_username = ?, sip_domain = ?
-            WHERE id = ?
-        ");
-        $stmt->execute([
-            $sip_username ?: null,
-            $sip_domain ?: null,
-            $current_user_id
-        ]);
+        // Admins can update their own extension and DID
+        if ($role === 'admin') {
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET sip_username = ?, sip_domain = ?, sip_password = ?, sip_extension = ?, sip_did = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $sip_username ?: null,
+                $sip_domain ?: null,
+                $encrypted_password,
+                $sip_extension ?: null,
+                $sip_did ?: null,
+                $current_user_id
+            ]);
+        } else {
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET sip_username = ?, sip_domain = ?, sip_password = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $sip_username ?: null,
+                $sip_domain ?: null,
+                $encrypted_password,
+                $current_user_id
+            ]);
+        }
         
         echo json_encode(['success' => true, 'message' => 'SIP settings updated']);
     } catch (PDOException $e) {
