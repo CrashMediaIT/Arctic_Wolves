@@ -8,6 +8,8 @@ class ErrorLogger {
     
     private static $logPath = __DIR__ . '/logs/';
     private static $initialized = false;
+    private static $pdo = null;
+    private static $dbLogging = false;
     
     /**
      * Initialize error handling
@@ -37,6 +39,17 @@ class ErrorLogger {
     }
     
     /**
+     * Set database connection for database-backed logging
+     * Call this after establishing PDO connection to enable error_logs table writes
+     */
+    public static function setDatabase($pdo) {
+        if ($pdo instanceof PDO) {
+            self::$pdo = $pdo;
+            self::$dbLogging = true;
+        }
+    }
+    
+    /**
      * Log message to file
      */
     public static function log($message, $level = 'INFO', $file = 'application.log') {
@@ -45,6 +58,47 @@ class ErrorLogger {
         
         $logFile = self::$logPath . $file;
         file_put_contents($logFile, $logMessage, FILE_APPEND);
+        
+        // Also log to database if connection is available
+        self::logToDatabase($message, $level);
+    }
+    
+    /**
+     * Write log entry to database error_logs table
+     */
+    private static function logToDatabase($message, $level, $sourceFile = null, $sourceLine = null, $stackTrace = null, $context = null) {
+        if (!self::$dbLogging || self::$pdo === null) {
+            return;
+        }
+        
+        try {
+            $stmt = self::$pdo->prepare("
+                INSERT INTO error_logs (error_level, message, file, line, stack_trace, user_id, url, ip_address, user_agent, context, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            
+            $userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+            $url = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null;
+            $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
+            $userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : null;
+            
+            $stmt->execute([
+                $level,
+                $message,
+                $sourceFile,
+                $sourceLine,
+                $stackTrace,
+                $userId,
+                $url,
+                $ip,
+                $userAgent,
+                $context
+            ]);
+        } catch (PDOException $e) {
+            // Fallback to file-only logging to avoid infinite recursion
+            $fallbackMsg = "[" . date('Y-m-d H:i:s') . "] [ERROR] Failed to write to error_logs table: " . $e->getMessage() . "\n";
+            file_put_contents(self::$logPath . 'error.log', $fallbackMsg, FILE_APPEND);
+        }
     }
     
     /**
@@ -52,7 +106,19 @@ class ErrorLogger {
      */
     public static function error($message, $context = []) {
         $contextStr = !empty($context) ? ' | Context: ' . json_encode($context) : '';
-        self::log($message . $contextStr, 'ERROR', 'error.log');
+        $contextJson = !empty($context) ? json_encode($context) : null;
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = isset($trace[1]) ? $trace[1] : (isset($trace[0]) ? $trace[0] : []);
+        $file = isset($caller['file']) ? $caller['file'] : null;
+        $line = isset($caller['line']) ? $caller['line'] : null;
+        
+        // Write to file
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] [ERROR] {$message}{$contextStr}\n";
+        file_put_contents(self::$logPath . 'error.log', $logMessage, FILE_APPEND);
+        
+        // Write to database
+        self::logToDatabase($message, 'ERROR', $file, $line, null, $contextJson);
     }
     
     /**
@@ -60,7 +126,17 @@ class ErrorLogger {
      */
     public static function warning($message, $context = []) {
         $contextStr = !empty($context) ? ' | Context: ' . json_encode($context) : '';
-        self::log($message . $contextStr, 'WARNING', 'warning.log');
+        $contextJson = !empty($context) ? json_encode($context) : null;
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = isset($trace[1]) ? $trace[1] : (isset($trace[0]) ? $trace[0] : []);
+        $file = isset($caller['file']) ? $caller['file'] : null;
+        $line = isset($caller['line']) ? $caller['line'] : null;
+        
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] [WARNING] {$message}{$contextStr}\n";
+        file_put_contents(self::$logPath . 'warning.log', $logMessage, FILE_APPEND);
+        
+        self::logToDatabase($message, 'WARNING', $file, $line, null, $contextJson);
     }
     
     /**
@@ -68,7 +144,13 @@ class ErrorLogger {
      */
     public static function info($message, $context = []) {
         $contextStr = !empty($context) ? ' | Context: ' . json_encode($context) : '';
-        self::log($message . $contextStr, 'INFO', 'application.log');
+        $contextJson = !empty($context) ? json_encode($context) : null;
+        
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] [INFO] {$message}{$contextStr}\n";
+        file_put_contents(self::$logPath . 'application.log', $logMessage, FILE_APPEND);
+        
+        self::logToDatabase($message, 'INFO', null, null, null, $contextJson);
     }
     
     /**
@@ -76,7 +158,17 @@ class ErrorLogger {
      */
     public static function security($message, $context = []) {
         $contextStr = !empty($context) ? ' | Context: ' . json_encode($context) : '';
-        self::log($message . $contextStr, 'SECURITY', 'security.log');
+        $contextJson = !empty($context) ? json_encode($context) : null;
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = isset($trace[1]) ? $trace[1] : (isset($trace[0]) ? $trace[0] : []);
+        $file = isset($caller['file']) ? $caller['file'] : null;
+        $line = isset($caller['line']) ? $caller['line'] : null;
+        
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] [SECURITY] {$message}{$contextStr}\n";
+        file_put_contents(self::$logPath . 'security.log', $logMessage, FILE_APPEND);
+        
+        self::logToDatabase($message, 'SECURITY', $file, $line, null, $contextJson);
     }
     
     /**
@@ -92,7 +184,14 @@ class ErrorLogger {
      */
     public static function errorHandler($errno, $errstr, $errfile, $errline) {
         $message = "Error [{$errno}]: {$errstr} in {$errfile} on line {$errline}";
-        self::error($message);
+        
+        // Write to file
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] [ERROR] {$message}\n";
+        file_put_contents(self::$logPath . 'error.log', $logMessage, FILE_APPEND);
+        
+        // Write to database with file/line info
+        self::logToDatabase($errstr, 'ERROR', $errfile, $errline);
         
         // Don't execute PHP internal error handler
         return true;
@@ -106,7 +205,20 @@ class ErrorLogger {
                    " in " . $exception->getFile() . 
                    " on line " . $exception->getLine() . 
                    "\nStack trace:\n" . $exception->getTraceAsString();
-        self::error($message);
+        
+        // Write to file
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] [ERROR] {$message}\n";
+        file_put_contents(self::$logPath . 'error.log', $logMessage, FILE_APPEND);
+        
+        // Write to database with full exception details
+        self::logToDatabase(
+            $exception->getMessage(),
+            'ERROR',
+            $exception->getFile(),
+            $exception->getLine(),
+            $exception->getTraceAsString()
+        );
         
         // Display user-friendly error in production
         if (!self::isDebugMode()) {
@@ -122,7 +234,14 @@ class ErrorLogger {
         $error = error_get_last();
         if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
             $message = "Fatal Error [{$error['type']}]: {$error['message']} in {$error['file']} on line {$error['line']}";
-            self::error($message);
+            
+            // Write to file
+            $timestamp = date('Y-m-d H:i:s');
+            $logMessage = "[{$timestamp}] [ERROR] {$message}\n";
+            file_put_contents(self::$logPath . 'error.log', $logMessage, FILE_APPEND);
+            
+            // Write to database
+            self::logToDatabase($error['message'], 'ERROR', $error['file'], $error['line']);
         }
     }
     

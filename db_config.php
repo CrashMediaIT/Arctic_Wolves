@@ -108,6 +108,11 @@ if ($db_config_valid) {
         // Connection successful
         $db_connected = true;
         
+        // Enable database-backed error logging
+        if (class_exists('ErrorLogger')) {
+            ErrorLogger::setDatabase($pdo);
+        }
+        
     } catch (PDOException $e) {
         // Connection failed - set safe defaults
         $db_connected = false;
