@@ -35,9 +35,8 @@ try {
         SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.job_title,
                u.sip_extension, u.sip_username, u.sip_domain, u.sip_did, u.profile_image
         FROM users u
-        WHERE (u.sip_extension IS NOT NULL AND u.sip_extension != '')
-           OR (u.sip_username IS NOT NULL AND u.sip_username != '')
-           OR (u.sip_domain IS NOT NULL AND u.sip_domain != '')
+        WHERE ((u.sip_extension IS NOT NULL AND u.sip_extension != '')
+           OR (u.sip_username IS NOT NULL AND u.sip_username != '' AND u.sip_domain IS NOT NULL AND u.sip_domain != ''))
         AND u.is_verified = 1
         ORDER BY u.first_name ASC, u.last_name ASC
     ");
@@ -226,7 +225,14 @@ try {
                                 <td>
                                     <div class="user-cell">
                                         <div class="user-avatar" style="width: 32px; height: 32px; font-size: 12px; background: var(--warning, #f59e0b);">
-                                            <i class="fas fa-<?php echo $entry['entry_type'] === 'room' ? 'door-open' : 'phone-alt'; ?>" style="font-size: 14px;"></i>
+                                            <i class="fas fa-<?php
+                                                switch($entry['entry_type']) {
+                                                    case 'room': echo 'door-open'; break;
+                                                    case 'shared': echo 'users'; break;
+                                                    case 'external': echo 'external-link-alt'; break;
+                                                    default: echo 'phone-alt'; break;
+                                                }
+                                            ?>" style="font-size: 14px;"></i>
                                         </div>
                                         <span class="user-name"><?php echo htmlspecialchars($entry['display_name']); ?></span>
                                     </div>
@@ -684,7 +690,7 @@ function addDirectoryEntry() {
 
 function deleteDirectoryEntry(id, name) {
     if (!confirm('Remove "' + name + '" from the phone directory?')) return;
-    const csrfToken = document.querySelector('[name="csrf_token"]').value;
+    const csrfToken = document.querySelector('#sip-settings-form [name="csrf_token"]').value;
 
     fetch('process_profile_update.php', {
         method: 'POST',
