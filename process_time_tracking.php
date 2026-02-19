@@ -6,6 +6,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -107,6 +109,8 @@ try {
             $stmt->execute([$userId]);
             $shiftId = $pdo->lastInsertId();
             
+            Auditor::log($pdo, $userId, 'create', 'staff_shifts', $shiftId, ['action' => 'Clock in']);
+            
             $_SESSION['shift_id'] = $shiftId;
             
             echo json_encode([
@@ -147,6 +151,8 @@ try {
             ");
             $stmt->execute([$shiftId]);
             
+            Auditor::log($pdo, $userId, 'update', 'staff_shifts', $shiftId, ['action' => 'Lunch break started']);
+            
             echo json_encode(['success' => true, 'message' => 'Lunch break started']);
             break;
             
@@ -175,6 +181,8 @@ try {
                 UPDATE staff_shifts SET lunch_end = NOW() WHERE id = ?
             ");
             $stmt->execute([$shiftId]);
+            
+            Auditor::log($pdo, $userId, 'update', 'staff_shifts', $shiftId, ['action' => 'Lunch break ended']);
             
             echo json_encode(['success' => true, 'message' => 'Lunch break ended']);
             break;
@@ -228,6 +236,8 @@ try {
                 WHERE id = ?
             ");
             $stmt->execute([$totalHours, $shiftId]);
+            
+            Auditor::log($pdo, $userId, 'update', 'staff_shifts', $shiftId, ['action' => 'Shift ended', 'total_hours' => $totalHours]);
             
             // Clear shift from session
             unset($_SESSION['shift_id']);
@@ -419,6 +429,8 @@ try {
             ");
             $stmt->execute([$staffId, $scheduleDate, $startTime, $endTime, $lunchBreakMinutes, $location, $notes, $userId]);
             
+            Auditor::log($pdo, $userId, 'create', 'staff_schedules', $pdo->lastInsertId(), ['action' => 'Schedule created']);
+            
             echo json_encode([
                 'success' => true,
                 'message' => 'Schedule created successfully',
@@ -465,6 +477,8 @@ try {
             ");
             $stmt->execute([$staffId, $scheduleDate, $startTime, $endTime, $lunchBreakMinutes, $location, $notes, $scheduleId]);
             
+            Auditor::log($pdo, $userId, 'update', 'staff_schedules', $scheduleId, ['action' => 'Schedule updated']);
+            
             echo json_encode(['success' => true, 'message' => 'Schedule updated successfully']);
             break;
             
@@ -483,6 +497,8 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM staff_schedules WHERE id = ?");
             $stmt->execute([$scheduleId]);
+            
+            Auditor::log($pdo, $userId, 'delete', 'staff_schedules', $scheduleId, ['action' => 'Schedule deleted']);
             
             echo json_encode(['success' => true, 'message' => 'Schedule deleted successfully']);
             break;
@@ -518,6 +534,8 @@ try {
                 ON DUPLICATE KEY UPDATE pin_hash = ?, is_active = 1
             ");
             $stmt->execute([$staffId, $pinHash, $pinHash]);
+            
+            Auditor::log($pdo, $userId, 'update', 'staff_pins', null, ['action' => 'Staff PIN set', 'staff_id' => $staffId]);
             
             echo json_encode(['success' => true, 'message' => 'PIN set successfully']);
             break;
@@ -769,9 +787,9 @@ try {
     }
     
 } catch (PDOException $e) {
-    error_log("Time tracking error: " . $e->getMessage());
+    ErrorLogger::error("Time tracking error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 } catch (Exception $e) {
-    error_log("Time tracking error: " . $e->getMessage());
+    ErrorLogger::error("Time tracking error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred']);
 }

@@ -6,6 +6,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set JSON header
 header('Content-Type: application/json');
@@ -48,6 +50,9 @@ try {
                 $user_id
             ]);
             
+            $notification_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'create', 'system_notifications', $notification_id, ['action' => 'System notification created']);
+            
             // Send email to all users if send_email is checked
             $emails_sent = 0;
             if ($send_email && $is_active) {
@@ -83,7 +88,7 @@ try {
                         $offset += $batch_size;
                     } while (count($users) === $batch_size);
                 } catch (Exception $e) {
-                    error_log("System notification email error: " . $e->getMessage());
+                    ErrorLogger::error("System notification email error: " . $e->getMessage());
                 }
             }
             
@@ -118,6 +123,8 @@ try {
                 $_POST['id']
             ]);
             
+            Auditor::log($pdo, $user_id, 'update', 'system_notifications', intval($_POST['id']), ['action' => 'System notification updated']);
+            
             echo json_encode(['success' => true, 'message' => 'Notification updated successfully']);
             break;
             
@@ -125,12 +132,16 @@ try {
             $stmt = $pdo->prepare("UPDATE system_notifications SET is_active = NOT is_active WHERE id = ?");
             $stmt->execute([$_POST['id']]);
             
+            Auditor::log($pdo, $user_id, 'update', 'system_notifications', intval($_POST['id']), ['action' => 'System notification toggled']);
+            
             echo json_encode(['success' => true, 'message' => 'Notification status toggled']);
             break;
             
         case 'delete':
             $stmt = $pdo->prepare("DELETE FROM system_notifications WHERE id = ?");
             $stmt->execute([$_POST['id']]);
+            
+            Auditor::log($pdo, $user_id, 'delete', 'system_notifications', intval($_POST['id']), ['action' => 'System notification deleted']);
             
             echo json_encode(['success' => true, 'message' => 'Notification deleted successfully']);
             break;
@@ -140,9 +151,9 @@ try {
     }
     
 } catch (PDOException $e) {
-    error_log("System notifications error: " . $e->getMessage());
+    ErrorLogger::error("System notifications error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 } catch (Exception $e) {
-    error_log("System notifications error: " . $e->getMessage());
+    ErrorLogger::error("System notifications error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

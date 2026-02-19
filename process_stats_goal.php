@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -57,6 +59,8 @@ if ($action === 'create_goal') {
         
         $goal_id = $pdo->lastInsertId();
         
+        Auditor::log($pdo, $user_id, 'create', 'goals', $goal_id, ['action' => 'Goal created from stats page']);
+        
         // Log the goal creation
         if (function_exists('logSecurityEvent')) {
             logSecurityEvent($pdo, 'goal_created', "Goal ID: $goal_id created from stats page", $user_id);
@@ -67,7 +71,7 @@ if ($action === 'create_goal') {
         exit();
         
     } catch (PDOException $e) {
-        error_log("Goal creation error: " . $e->getMessage());
+        ErrorLogger::error("Goal creation error: " . $e->getMessage());
         header("Location: dashboard.php?page=stats&error=goal_creation_failed");
         exit();
     }

@@ -7,6 +7,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -123,9 +125,11 @@ try {
                 }
             }
             
+            Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Theme colors updated']);
+            
             $redirect = 'dashboard.php?page=admin_theme_settings&tab=colors&success=1';
             if (!empty($invalid_colors)) {
-                error_log("Invalid color values for: " . implode(', ', $invalid_colors));
+                ErrorLogger::error("Invalid color values for: " . implode(', ', $invalid_colors));
                 $redirect .= '&warning=' . urlencode('Some color values were invalid and were not saved.');
             }
             header('Location: ' . $redirect);
@@ -161,6 +165,8 @@ try {
             if (isset($_POST['site_description'])) {
                 updateThemeSetting($pdo, 'site_description', trim($_POST['site_description']));
             }
+            
+            Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Branding settings updated']);
             
             header('Location: dashboard.php?page=admin_theme_settings&tab=branding&success=1');
             exit;
@@ -257,6 +263,8 @@ try {
                 $stmt->execute([$title, $description, $price, $features, $image_url, $display_order, $is_featured, $is_active]);
             }
             
+            Auditor::log($pdo, $user_id, $program_id > 0 ? 'update' : 'create', 'training_programs', $program_id > 0 ? $program_id : intval($pdo->lastInsertId()), ['action' => $program_id > 0 ? 'Training program updated' : 'Training program created']);
+            
             header('Location: dashboard.php?page=admin_theme_settings&tab=programs&success=1');
             exit;
             
@@ -266,6 +274,8 @@ try {
                 $stmt = $pdo->prepare("DELETE FROM training_programs WHERE id = ?");
                 $stmt->execute([$program_id]);
             }
+            
+            Auditor::log($pdo, $user_id, 'delete', 'training_programs', $program_id, ['action' => 'Training program deleted']);
             
             header('Location: dashboard.php?page=admin_theme_settings&tab=programs&success=1');
             exit;
@@ -290,6 +300,8 @@ try {
             foreach ($defaults as $name => $value) {
                 updateThemeSetting($pdo, $name, $value);
             }
+            
+            Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Theme colors reset to defaults']);
             
             header('Location: dashboard.php?page=admin_theme_settings&tab=colors&success=1&reset=1');
             exit;
@@ -356,6 +368,8 @@ try {
                 updateThemeSetting($pdo, 'center_ice_logo_method', $_POST['center_ice_logo_method']);
             }
             
+            Auditor::log($pdo, $user_id, 'update', 'theme_settings', null, ['action' => 'Theme settings updated']);
+            
             // Redirect back to system_tools theme tab
             header('Location: dashboard.php?page=system_tools&tab=theme&success=1');
             exit;
@@ -365,7 +379,7 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log("Theme settings error: " . $e->getMessage());
+    ErrorLogger::error("Theme settings error: " . $e->getMessage());
     // Check if redirect_page was set to determine where to redirect on error
     $redirect_page = $_POST['redirect_page'] ?? 'admin_theme_settings';
     if ($redirect_page === 'system_tools') {
