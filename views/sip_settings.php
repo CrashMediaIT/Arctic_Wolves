@@ -355,7 +355,7 @@ try {
 <script>
 // SIP Phone notification helper
 function showNotification(message, type = 'info') {
-    const alertClass = type === 'error' ? 'alert-error' : type === 'warning' ? 'alert-warning' : type === 'success' ? 'alert-success' : 'alert-success';
+    const alertClass = type === 'error' ? 'alert-error' : type === 'warning' ? 'alert-warning' : type === 'success' ? 'alert-success' : 'alert-info';
     const alertDiv = document.createElement('div');
     alertDiv.className = 'alert ' + alertClass;
     alertDiv.textContent = message;

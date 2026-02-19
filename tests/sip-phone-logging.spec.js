@@ -39,6 +39,11 @@ test.describe('SIP Settings - showNotification defined', () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
     expect(content).toContain('alert-success');
   });
+
+  test('showNotification should default to info type', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('alert-info');
+  });
 });
 
 // ================================================
