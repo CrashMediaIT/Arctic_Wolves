@@ -448,3 +448,236 @@ button:focus-visible {
 
   .tv-sidebar-toggle { width: 60px; height: 60px; font-size: 26px; border-radius: 14px; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PAIRING SCREEN — displayed before any content
+   ══════════════════════════════════════════════════════════════ */
+.tv-pair-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(ellipse at center, #13131A 0%, #0A0A0F 70%);
+}
+
+.tv-pair-card {
+  text-align: center;
+  max-width: 520px;
+  width: 90%;
+  padding: 48px 40px;
+  background: var(--bg-card, #16161F);
+  border: 2px solid var(--border, #2D2D3F);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.tv-pair-logo { margin-bottom: 20px; }
+.tv-pair-logo img { height: 80px; width: auto; }
+
+.tv-pair-title {
+  font-size: 28px;
+  font-weight: 900;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.tv-pair-title i { color: var(--primary-light, #8B5CF6); }
+
+.tv-pair-subtitle {
+  font-size: 15px;
+  color: var(--text-muted, #A8A8B8);
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+.tv-pair-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #EF4444;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tv-pair-form {
+  margin-bottom: 32px;
+}
+
+.tv-pair-input {
+  width: 100%;
+  text-align: center;
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  font-family: 'Courier New', monospace;
+  padding: 20px;
+  background: var(--bg-main, #0A0A0F);
+  border: 2px solid var(--border, #2D2D3F);
+  border-radius: 14px;
+  color: var(--primary-light, #8B5CF6);
+  outline: none;
+  transition: border-color 0.2s;
+  margin-bottom: 16px;
+}
+.tv-pair-input::placeholder {
+  color: #475569;
+  font-size: 24px;
+  letter-spacing: 4px;
+  font-weight: 600;
+}
+.tv-pair-input:focus {
+  border-color: var(--primary, #6B46C1);
+  box-shadow: 0 0 0 4px rgba(107, 70, 193, 0.25);
+}
+
+.tv-pair-btn {
+  width: 100%;
+  padding: 18px;
+  font-size: 18px;
+  font-weight: 700;
+  background: var(--primary, #6B46C1);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.tv-pair-btn:hover,
+.tv-pair-btn:focus {
+  background: #7C5ACF;
+  box-shadow: 0 0 0 4px rgba(107, 70, 193, 0.3);
+}
+
+.tv-pair-steps {
+  text-align: left;
+}
+.tv-pair-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--text-secondary, #C0C0CC);
+}
+.tv-pair-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(107, 70, 193, 0.15);
+  color: var(--primary-light, #8B5CF6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VIEWER MODE — no sidebar, full-screen content
+   ══════════════════════════════════════════════════════════════ */
+.tv-viewer-mode {
+  width: 100%;
+}
+
+.tv-frozen-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 14px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warning, #F59E0B);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 20px;
+  animation: tv-pulse 2s ease-in-out infinite;
+}
+@keyframes tv-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.tv-pair-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(107, 70, 193, 0.1);
+  border: 1px solid rgba(107, 70, 193, 0.25);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-light, #8B5CF6);
+}
+.tv-pair-badge-code {
+  font-family: 'Courier New', monospace;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.tv-unpair-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 10px;
+  color: var(--error, #EF4444);
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.15s;
+}
+.tv-unpair-btn:hover,
+.tv-unpair-btn:focus {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* ── 2K pairing screen adjustments ─────────────────────── */
+@media (min-width: 2560px) {
+  .tv-pair-card { max-width: 640px; padding: 60px 52px; border-radius: 28px; }
+  .tv-pair-logo img { height: 100px; }
+  .tv-pair-title { font-size: 34px; gap: 14px; }
+  .tv-pair-subtitle { font-size: 18px; margin-bottom: 36px; }
+  .tv-pair-input { font-size: 44px; letter-spacing: 10px; padding: 24px; border-radius: 16px; }
+  .tv-pair-input::placeholder { font-size: 28px; }
+  .tv-pair-btn { padding: 22px; font-size: 22px; border-radius: 14px; }
+  .tv-pair-step { font-size: 16px; margin-bottom: 12px; }
+  .tv-pair-step-num { width: 34px; height: 34px; font-size: 15px; }
+  .tv-frozen-badge { font-size: 16px; padding: 6px 18px; }
+  .tv-pair-badge { font-size: 16px; padding: 8px 18px; }
+  .tv-unpair-btn { width: 48px; height: 48px; font-size: 18px; }
+}
+
+/* ── 4K pairing screen adjustments ─────────────────────── */
+@media (min-width: 3840px) {
+  .tv-pair-card { max-width: 800px; padding: 80px 64px; border-radius: 32px; }
+  .tv-pair-logo img { height: 128px; }
+  .tv-pair-title { font-size: 44px; gap: 18px; }
+  .tv-pair-subtitle { font-size: 22px; margin-bottom: 44px; }
+  .tv-pair-input { font-size: 56px; letter-spacing: 14px; padding: 30px; border-radius: 20px; }
+  .tv-pair-input::placeholder { font-size: 36px; letter-spacing: 6px; }
+  .tv-pair-btn { padding: 28px; font-size: 28px; border-radius: 18px; }
+  .tv-pair-step { font-size: 20px; margin-bottom: 14px; gap: 16px; }
+  .tv-pair-step-num { width: 42px; height: 42px; font-size: 18px; }
+  .tv-pair-error { font-size: 18px; padding: 16px 20px; }
+  .tv-frozen-badge { font-size: 20px; padding: 8px 22px; }
+  .tv-pair-badge { font-size: 20px; padding: 10px 22px; }
+  .tv-unpair-btn { width: 56px; height: 56px; font-size: 22px; border-radius: 14px; }
+}

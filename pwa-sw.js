@@ -53,6 +53,7 @@ self.addEventListener('fetch', (event) => {
   if (
     event.request.method !== 'GET' ||
     url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/api_') ||
     url.pathname.startsWith('/process_') ||
     url.pathname.includes('logout')
   ) {

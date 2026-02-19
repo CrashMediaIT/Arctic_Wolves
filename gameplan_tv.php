@@ -1,12 +1,18 @@
 <?php
 /**
- * Game Plan TV – 10-foot UI PWA
+ * Game Plan TV – 10-foot Viewer-Only PWA
  *
  * Designed for Smart TVs, set-top boxes, and large displays.
- * Uses the same game plan sub-views (views/gameplan/gp_*.php) as the
- * desktop and mobile apps but wrapped in a TV-optimised shell with
- * large fonts, high-contrast elements, and D-pad / remote friendly
- * navigation.
+ * The TV acts as a viewer-only display that must be paired with a
+ * controller device before showing any content. No navigation is
+ * shown — all navigation is done from the controller device.
+ *
+ * Flow:
+ *   1. TV shows pairing screen with a code entry form
+ *   2. Controller generates a pair code (from gameplan.php or pwa.php)
+ *   3. TV enters the code to pair as viewer
+ *   4. Once paired, TV displays the page the controller navigates to
+ *   5. Controller can freeze the viewer to navigate privately
  *
  * Install as a PWA on Android TV, Fire TV, LG webOS, Samsung Tizen,
  * or any Chromium-based TV browser.
@@ -58,8 +64,90 @@ $isCoach     = in_array('coach', $user_roles_list);
 $isTeamCoach = in_array('team_coach', $user_roles_list);
 $isAnyCoach  = ($isCoach || $isAdmin || $isTeamCoach);
 
-// Page routing – same sub-pages as gameplan.php
-$page = isset($_GET['page']) ? preg_replace('/[^a-z0-9_]/', '', $_GET['page']) : 'home';
+// ── Pairing gate ──────────────────────────────────────────
+// Check if this TV session has an active pair (stored in session)
+$tv_pair_id   = $_SESSION['tv_pair_id'] ?? 0;
+$tv_paired    = false;
+$tv_pair_code = '';
+$tv_is_frozen = false;
+$tv_controller_page = 'home';
+
+if ($tv_pair_id > 0) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id, pair_code, status, is_frozen, controller_page
+            FROM vr_device_pairs WHERE id = ? AND status IN ('paired', 'active')
+        ");
+        $stmt->execute([$tv_pair_id]);
+        $pair_row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($pair_row) {
+            $tv_paired    = true;
+            $tv_pair_code = $pair_row['pair_code'];
+            $tv_is_frozen = (bool)$pair_row['is_frozen'];
+            $tv_controller_page = $pair_row['controller_page'] ?? 'home';
+        } else {
+            // Pair ended or invalid — clear session
+            unset($_SESSION['tv_pair_id']);
+            $tv_pair_id = 0;
+        }
+    } catch (PDOException $e) { error_log('TV pair check: ' . $e->getMessage()); }
+}
+
+// Handle pair code submission (viewer joining)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['tv_action'] ?? '') === 'join_viewer') {
+    $join_code = strtoupper(trim($_POST['pair_code'] ?? ''));
+    $submitted_token = $_POST['csrf_token'] ?? '';
+    if (!empty($join_code) && strlen($join_code) <= 10 && CSRFProtection::validateToken($submitted_token)) {
+        $viewer_token = bin2hex(random_bytes(32));
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE vr_device_pairs SET viewer_token = ?, status = 'paired'
+                WHERE pair_code = ? AND status = 'waiting'
+            ");
+            $stmt->execute([$viewer_token, $join_code]);
+            if ($stmt->rowCount() > 0) {
+                // Fetch the pair id to store in session
+                $stmt2 = $pdo->prepare("SELECT id FROM vr_device_pairs WHERE pair_code = ? AND viewer_token = ?");
+                $stmt2->execute([$join_code, $viewer_token]);
+                $joined = $stmt2->fetch(PDO::FETCH_ASSOC);
+                if ($joined) {
+                    $_SESSION['tv_pair_id'] = (int)$joined['id'];
+                    logSecurityEvent($pdo, 'tv_viewer_paired', "TV joined pair $join_code as viewer", $user_id);
+                }
+                header('Location: /gameplan_tv.php');
+                exit;
+            }
+        } catch (PDOException $e) { error_log('TV join: ' . $e->getMessage()); }
+    }
+    // If we get here, pairing failed
+    $tv_pair_error = 'Invalid or expired pair code. Please try again.';
+}
+
+// Handle unpair action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['tv_action'] ?? '') === 'unpair') {
+    $submitted_token = $_POST['csrf_token'] ?? '';
+    if (CSRFProtection::validateToken($submitted_token)) {
+        unset($_SESSION['tv_pair_id']);
+        $tv_pair_id = 0;
+        $tv_paired = false;
+        header('Location: /gameplan_tv.php');
+        exit;
+    }
+}
+
+// ── Page routing (only used when paired) ──────────────────
+// When paired and not frozen, use the controller's navigated page.
+// When frozen, keep showing the last page.
+$page = 'home';
+if ($tv_paired) {
+    if ($tv_is_frozen) {
+        // Frozen: keep current page from session, don't follow controller
+        $page = $_SESSION['tv_frozen_page'] ?? $tv_controller_page;
+    } else {
+        $page = $tv_controller_page;
+        $_SESSION['tv_frozen_page'] = $page; // save for when frozen
+    }
+}
 
 $allowed_pages = [
     'home'             => 'views/gameplan/gp_home.php',
@@ -74,35 +162,36 @@ $allowed_pages = [
     'whiteboard'       => 'views/gameplan/gp_whiteboard.php',
 ];
 
-// Admin-only pages
 if ($isAdmin) {
     $allowed_pages['permissions'] = 'views/gameplan/gp_permissions.php';
 }
 
 $view_file = $allowed_pages[$page] ?? $allowed_pages['home'];
 
-// Load recent videos for the home page
+// Load recent videos (needed by sub-views)
 $recentVideos = [];
-try {
-    $videoWhere = '';
-    $videoParams = [];
-    if (!$isAnyCoach) {
-        $videoWhere = 'WHERE v.athlete_id = ?';
-        $videoParams[] = $user_id;
-    }
-    $stmt = $pdo->prepare("
-        SELECT v.id, v.title, v.filename, v.file_path, v.duration, v.status,
-               v.created_at, v.athlete_id,
-               u.first_name as athlete_first_name, u.last_name as athlete_last_name
-        FROM videos v
-        LEFT JOIN users u ON v.athlete_id = u.id
-        $videoWhere
-        ORDER BY v.created_at DESC
-        LIMIT 20
-    ");
-    $stmt->execute($videoParams);
-    $recentVideos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { /* ignore */ }
+if ($tv_paired) {
+    try {
+        $videoWhere = '';
+        $videoParams = [];
+        if (!$isAnyCoach) {
+            $videoWhere = 'WHERE v.athlete_id = ?';
+            $videoParams[] = $user_id;
+        }
+        $stmt = $pdo->prepare("
+            SELECT v.id, v.title, v.filename, v.file_path, v.duration, v.status,
+                   v.created_at, v.athlete_id,
+                   u.first_name as athlete_first_name, u.last_name as athlete_last_name
+            FROM videos v
+            LEFT JOIN users u ON v.athlete_id = u.id
+            $videoWhere
+            ORDER BY v.created_at DESC
+            LIMIT 20
+        ");
+        $stmt->execute($videoParams);
+        $recentVideos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) { /* ignore */ }
+}
 
 // Page labels for topbar
 $page_labels = [
@@ -139,89 +228,77 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
 </head>
 <body class="tv-body">
 
-<!-- ── Sidebar ──────────────────────────────────────────── -->
-<aside class="tv-sidebar">
-    <a href="/gameplan_tv.php" class="brand">
-        <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Logo">
-        <div>
-            GAME <span>PLAN</span>
-            <small>Arctic Wolves</small>
+<?php if (!$tv_paired): ?>
+<!-- ══════════════════════════════════════════════════════════
+     PAIRING SCREEN — shown until a controller pairs this TV
+     ══════════════════════════════════════════════════════════ -->
+<div class="tv-pair-screen">
+    <div class="tv-pair-card">
+        <div class="tv-pair-logo">
+            <img src="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png" alt="Arctic Wolves">
         </div>
-    </a>
+        <h1 class="tv-pair-title">
+            <i class="fas fa-tv"></i> Game Plan TV
+        </h1>
+        <p class="tv-pair-subtitle">Enter the pair code from your controller device to connect this display.</p>
 
-    <span class="nav-label">Navigation</span>
-    <a href="/gameplan_tv.php?page=home" class="nav-link <?= $page === 'home' ? 'active' : '' ?>">
-        <i class="fas fa-house"></i> Dashboard
-    </a>
-    <a href="/gameplan_tv.php?page=video_review" class="nav-link <?= $page === 'video_review' ? 'active' : '' ?>">
-        <i class="fas fa-film"></i> Video Review
-    </a>
-    <?php if ($isAnyCoach): ?>
-    <a href="/gameplan_tv.php?page=calendar" class="nav-link <?= $page === 'calendar' ? 'active' : '' ?>">
-        <i class="fas fa-calendar"></i> Calendar
-    </a>
-    <a href="/gameplan_tv.php?page=game_plan" class="nav-link <?= $page === 'game_plan' ? 'active' : '' ?>">
-        <i class="fas fa-clipboard-list"></i> Game Plans
-    </a>
-    <a href="/gameplan_tv.php?page=whiteboard" class="nav-link <?= $page === 'whiteboard' ? 'active' : '' ?>">
-        <i class="fas fa-chalkboard"></i> Whiteboard
-    </a>
-    <a href="/gameplan_tv.php?page=lines" class="nav-link <?= $page === 'lines' ? 'active' : '' ?>">
-        <i class="fas fa-users-line"></i> Game Lines
-    </a>
-    <a href="/gameplan_tv.php?page=roster" class="nav-link <?= $page === 'roster' ? 'active' : '' ?>">
-        <i class="fas fa-id-card"></i> Roster
-    </a>
-    <a href="/gameplan_tv.php?page=film_room" class="nav-link <?= $page === 'film_room' ? 'active' : '' ?>">
-        <i class="fas fa-video"></i> Film Room
-    </a>
-    <a href="/gameplan_tv.php?page=review_sessions" class="nav-link <?= $page === 'review_sessions' ? 'active' : '' ?>">
-        <i class="fas fa-chalkboard-user"></i> Review Sessions
-    </a>
-    <?php else: ?>
-    <a href="/gameplan_tv.php?page=my_clips" class="nav-link <?= $page === 'my_clips' ? 'active' : '' ?>">
-        <i class="fas fa-scissors"></i> My Clips
-    </a>
-    <?php endif; ?>
+        <?php if (!empty($tv_pair_error)): ?>
+        <div class="tv-pair-error">
+            <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($tv_pair_error) ?>
+        </div>
+        <?php endif; ?>
 
-    <?php if ($isAdmin): ?>
-    <span class="nav-label" style="margin-top: 16px;">Admin</span>
-    <a href="/gameplan_tv.php?page=permissions" class="nav-link <?= $page === 'permissions' ? 'active' : '' ?>">
-        <i class="fas fa-user-shield"></i> Permissions
-    </a>
-    <?php endif; ?>
+        <form method="POST" action="/gameplan_tv.php" class="tv-pair-form" autocomplete="off">
+            <input type="hidden" name="tv_action" value="join_viewer">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+            <input type="text" name="pair_code" class="tv-pair-input" placeholder="PAIR CODE" maxlength="10" required autofocus autocomplete="off">
+            <button type="submit" class="tv-pair-btn">
+                <i class="fas fa-link"></i> Connect Display
+            </button>
+        </form>
 
-    <div class="tv-sidebar-footer">
-        <a href="/gameplan.php" class="nav-link">
-            <i class="fas fa-desktop"></i> Desktop View
-        </a>
-        <a href="/dashboard.php" class="nav-link">
-            <i class="fas fa-arrow-left"></i> Main Dashboard
-        </a>
-        <a href="/logout.php" class="nav-link" style="color: var(--error, #EF4444);">
-            <i class="fas fa-power-off"></i> Sign Out
-        </a>
-        <div class="tv-sidebar-user">
-            <div class="avatar"><?= strtoupper(substr($user_name, 0, 1)) ?></div>
-            <div class="user-info">
-                <strong><?= htmlspecialchars($user_name) ?></strong>
-                <small><?= str_replace('_', ' ', $user_role) ?></small>
+        <div class="tv-pair-steps">
+            <div class="tv-pair-step">
+                <span class="tv-pair-step-num">1</span>
+                <span>Open <strong>Game Plan</strong> on your phone or laptop</span>
+            </div>
+            <div class="tv-pair-step">
+                <span class="tv-pair-step-num">2</span>
+                <span>Go to <strong>Video Review → Device Pairing</strong></span>
+            </div>
+            <div class="tv-pair-step">
+                <span class="tv-pair-step-num">3</span>
+                <span>Tap <strong>Generate Pair Code</strong> and enter it here</span>
             </div>
         </div>
     </div>
-</aside>
+</div>
 
-<!-- ── Main Content ────────────────────────────────────── -->
-<div class="tv-main">
+<?php else: ?>
+<!-- ══════════════════════════════════════════════════════════
+     PAIRED VIEWER — no sidebar, no navigation, content only
+     ══════════════════════════════════════════════════════════ -->
+<div class="tv-main tv-viewer-mode">
     <header class="tv-topbar">
         <div class="tv-topbar-title">
-            <button class="tv-sidebar-toggle" id="tvSidebarToggle" onclick="toggleTvSidebar()" aria-label="Toggle navigation">
-                <i class="fas fa-times" id="tvToggleIcon"></i>
-            </button>
             <i class="fas fa-chess-board"></i>
             <?= htmlspecialchars($current_label) ?>
+            <?php if ($tv_is_frozen): ?>
+            <span class="tv-frozen-badge"><i class="fas fa-snowflake"></i> Frozen</span>
+            <?php endif; ?>
         </div>
         <div class="tv-topbar-actions">
+            <span class="tv-pair-badge">
+                <i class="fas fa-link"></i>
+                <span class="tv-pair-badge-code"><?= htmlspecialchars($tv_pair_code) ?></span>
+            </span>
+            <form method="POST" action="/gameplan_tv.php" style="display:inline;">
+                <input type="hidden" name="tv_action" value="unpair">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
+                <button type="submit" class="tv-unpair-btn" title="Disconnect from controller">
+                    <i class="fas fa-unlink"></i>
+                </button>
+            </form>
             <span class="clock" id="tvClock"></span>
         </div>
     </header>
@@ -239,31 +316,10 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
         ?>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- ── Scripts ─────────────────────────────────────────── -->
 <script>
-// Sidebar toggle
-function toggleTvSidebar() {
-    var sidebar = document.querySelector('.tv-sidebar');
-    var icon = document.getElementById('tvToggleIcon');
-    if (!sidebar) return;
-    sidebar.classList.toggle('collapsed');
-    if (icon) {
-        icon.className = sidebar.classList.contains('collapsed') ? 'fas fa-bars' : 'fas fa-times';
-    }
-    sessionStorage.setItem('tvSidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
-}
-// Restore sidebar state on load
-(function() {
-    var sidebar = document.querySelector('.tv-sidebar');
-    var icon = document.getElementById('tvToggleIcon');
-    var state = sessionStorage.getItem('tvSidebarCollapsed');
-    if (state === '1' && sidebar) {
-        sidebar.classList.add('collapsed');
-        if (icon) icon.className = 'fas fa-bars';
-    }
-})();
-
 // Live clock in topbar
 (function() {
     function updateClock() {
@@ -277,6 +333,48 @@ function toggleTvSidebar() {
     }
     updateClock();
     setInterval(updateClock, 10000);
+})();
+
+<?php if ($tv_paired): ?>
+// Poll for controller page changes and freeze state
+(function() {
+    var pairId = <?= (int)$tv_pair_id ?>;
+    var currentPage = '<?= htmlspecialchars($page, ENT_QUOTES) ?>';
+    var isFrozen = <?= $tv_is_frozen ? 'true' : 'false' ?>;
+
+    function pollPairState() {
+        fetch('/api_tv_pair_state.php?pair_id=' + pairId + '&_=' + Date.now())
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.active) {
+                    // Pair ended — reload to show pairing screen
+                    window.location.href = '/gameplan_tv.php';
+                    return;
+                }
+                // If not frozen and controller changed page, reload
+                if (!data.is_frozen && data.controller_page && data.controller_page !== currentPage) {
+                    window.location.reload();
+                }
+                // If freeze state changed, reload to update UI
+                if (data.is_frozen !== isFrozen) {
+                    window.location.reload();
+                }
+            })
+            .catch(function() { /* retry on next poll */ });
+    }
+
+    setInterval(pollPairState, 3000);
+})();
+<?php endif; ?>
+
+// Auto-uppercase pair code input
+(function() {
+    var input = document.querySelector('.tv-pair-input');
+    if (input) {
+        input.addEventListener('input', function() {
+            this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+    }
 })();
 
 // Service worker registration

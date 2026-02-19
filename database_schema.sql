@@ -4485,6 +4485,7 @@ CREATE TABLE IF NOT EXISTS `vr_device_pairs` (
     `current_clip_id` INT DEFAULT NULL,
     `current_time` DECIMAL(10,3) DEFAULT 0.000 COMMENT 'Current playback time in seconds',
     `is_frozen` TINYINT(1) DEFAULT 0 COMMENT 'Whether the viewer display is frozen',
+    `controller_page` VARCHAR(50) DEFAULT 'home' COMMENT 'Current page the controller is navigating',
     `created_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
