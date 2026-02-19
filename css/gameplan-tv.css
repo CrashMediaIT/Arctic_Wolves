@@ -330,15 +330,13 @@ button:focus-visible {
   .tv-content .card-header { padding: 24px 28px; font-size: 18px; }
   .tv-content .card-body { padding: 24px 28px; }
 
-  .tv-stats-row { gap: 24px; margin-bottom: 44px; }
-  .tv-stats-row { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .tv-stats-row { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-bottom: 44px; }
   .tv-stat-card { padding: 34px 28px; border-radius: 16px; }
   .tv-stat-card i { font-size: 34px; margin-bottom: 12px; }
   .tv-stat-val { font-size: 48px; }
   .tv-stat-lbl { font-size: 15px; margin-top: 8px; }
 
-  .tv-nav-grid { gap: 24px; margin-bottom: 44px; }
-  .tv-nav-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .tv-nav-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin-bottom: 44px; }
   .tv-nav-card { padding: 28px; gap: 24px; border-radius: 16px; }
   .tv-nav-icon { width: 72px; height: 72px; border-radius: 16px; font-size: 28px; }
   .tv-nav-label { font-size: 20px; }
@@ -386,15 +384,13 @@ button:focus-visible {
   .tv-content .card-header { padding: 28px 36px; font-size: 22px; }
   .tv-content .card-body { padding: 28px 36px; }
 
-  .tv-stats-row { gap: 32px; margin-bottom: 56px; }
-  .tv-stats-row { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  .tv-stats-row { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 32px; margin-bottom: 56px; }
   .tv-stat-card { padding: 44px 36px; border-radius: 20px; }
   .tv-stat-card i { font-size: 44px; margin-bottom: 16px; }
   .tv-stat-val { font-size: 64px; }
   .tv-stat-lbl { font-size: 18px; letter-spacing: 1px; margin-top: 10px; }
 
-  .tv-nav-grid { gap: 32px; margin-bottom: 56px; }
-  .tv-nav-grid { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); }
+  .tv-nav-grid { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 32px; margin-bottom: 56px; }
   .tv-nav-card { padding: 36px; gap: 30px; border-radius: 20px; border-width: 3px; }
   .tv-nav-card:hover,
   .tv-nav-card:focus { box-shadow: 0 0 0 4px rgba(107, 70, 193, 0.35); }
