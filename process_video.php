@@ -30,6 +30,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrfToken();
 }
 
+/**
+ * Build redirect URL for device pair operations.
+ * Uses the referrer_url POST field to detect PWA context, otherwise defaults to gameplan.php.
+ * Only whitelisted internal paths are accepted to prevent open redirect.
+ */
+function devicePairRedirect($suffix) {
+    $base = '/gameplan.php?page=video_review&tab=device_pair';
+    $referrer = $_POST['referrer_url'] ?? '';
+    // Only allow known internal PWA path — prevents open redirect
+    if (!empty($referrer) && preg_match('#^/pwa\.php\b#', $referrer)) {
+        $base = '/pwa.php?page=gameplan&gp=video_review&tab=device_pair';
+    }
+    return $base . '&' . $suffix;
+}
+
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 try {
@@ -133,6 +148,10 @@ try {
 
         case 'toggle_freeze_pair':
             handleToggleFreezePair();
+            break;
+
+        case 'navigate_pair':
+            handleNavigatePair();
             break;
             
         default:
@@ -2206,7 +2225,7 @@ function handleCreateDevicePair() {
     }
 
     logSecurityEvent($pdo, 'device_pair_created', "Created device pair $pair_code", $user_id);
-    header('Location: /gameplan.php?page=video_review&tab=device_pair&success=pair_created');
+    header('Location: ' . devicePairRedirect('success=pair_created'));
     exit;
 }
 
@@ -2215,7 +2234,7 @@ function handleJoinDevicePair() {
 
     $pair_code = strtoupper(trim($_POST['pair_code'] ?? ''));
     if (empty($pair_code) || strlen($pair_code) > 10) {
-        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=invalid_code');
+        header('Location: ' . devicePairRedirect('error=invalid_code'));
         exit;
     }
 
@@ -2228,12 +2247,12 @@ function handleJoinDevicePair() {
     $stmt->execute([$viewer_token, $pair_code]);
 
     if ($stmt->rowCount() === 0) {
-        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=pair_not_found');
+        header('Location: ' . devicePairRedirect('error=pair_not_found'));
         exit;
     }
 
     logSecurityEvent($pdo, 'device_pair_joined', "Joined device pair $pair_code as viewer", $user_id);
-    header('Location: /gameplan.php?page=video_review&tab=device_pair&success=pair_joined');
+    header('Location: ' . devicePairRedirect('success=pair_joined'));
     exit;
 }
 
@@ -2247,7 +2266,7 @@ function handleJoinAsController() {
 
     $pair_code = strtoupper(trim($_POST['pair_code'] ?? ''));
     if (empty($pair_code) || strlen($pair_code) > 10) {
-        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=invalid_code');
+        header('Location: ' . devicePairRedirect('error=invalid_code'));
         exit;
     }
 
@@ -2257,12 +2276,12 @@ function handleJoinAsController() {
     $pair = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$pair) {
-        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=pair_not_found');
+        header('Location: ' . devicePairRedirect('error=pair_not_found'));
         exit;
     }
 
     if ((int)$pair['created_by'] === (int)$user_id) {
-        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=already_owner');
+        header('Location: ' . devicePairRedirect('error=already_owner'));
         exit;
     }
 
@@ -2277,12 +2296,12 @@ function handleJoinAsController() {
         $stmt->execute([(int)$pair['id'], $user_id, $controller_token, $controller_token]);
     } catch (PDOException $e) {
         error_log('Join as controller: ' . $e->getMessage());
-        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=join_failed');
+        header('Location: ' . devicePairRedirect('error=join_failed'));
         exit;
     }
 
     logSecurityEvent($pdo, 'device_pair_controller_joined', "Joined device pair $pair_code as additional controller", $user_id);
-    header('Location: /gameplan.php?page=video_review&tab=device_pair&success=controller_joined');
+    header('Location: ' . devicePairRedirect('success=controller_joined'));
     exit;
 }
 
@@ -2296,7 +2315,7 @@ function handleEndDevicePair() {
 
     $pair_id = filter_input(INPUT_POST, 'pair_id', FILTER_VALIDATE_INT);
     if (!$pair_id) {
-        header('Location: /gameplan.php?page=video_review&tab=device_pair&error=invalid_pair');
+        header('Location: ' . devicePairRedirect('error=invalid_pair'));
         exit;
     }
 
@@ -2304,7 +2323,7 @@ function handleEndDevicePair() {
     $stmt->execute([$pair_id, $user_id]);
 
     logSecurityEvent($pdo, 'device_pair_ended', "Ended device pair $pair_id", $user_id);
-    header('Location: /gameplan.php?page=video_review&tab=device_pair&success=pair_ended');
+    header('Location: ' . devicePairRedirect('success=pair_ended'));
     exit;
 }
 
@@ -2325,7 +2344,7 @@ function handleToggleFreezePair() {
 
     // Allow the pair creator or any joined controller to toggle freeze
     $stmt = $pdo->prepare("
-        SELECT id FROM vr_device_pairs WHERE id = ? AND status = 'active'
+        SELECT id FROM vr_device_pairs WHERE id = ? AND status IN ('paired', 'active')
         AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
     ");
     $stmt->execute([$pair_id, $user_id, $user_id]);
@@ -2334,9 +2353,54 @@ function handleToggleFreezePair() {
         exit;
     }
 
-    $stmt = $pdo->prepare("UPDATE vr_device_pairs SET is_frozen = NOT is_frozen WHERE id = ? AND status = 'active'");
+    $stmt = $pdo->prepare("UPDATE vr_device_pairs SET is_frozen = NOT is_frozen WHERE id = ? AND status IN ('paired', 'active')");
     $stmt->execute([$pair_id]);
 
     echo json_encode(['success' => $stmt->rowCount() > 0]);
+    exit;
+}
+
+/**
+ * Handle controller navigating to a page (syncs to TV viewer)
+ */
+function handleNavigatePair() {
+    global $pdo, $user_id, $user_role;
+
+    $allowed_roles = ['coach', 'coach_plus', 'health_coach', 'team_coach', 'admin'];
+    if (!in_array($user_role, $allowed_roles)) {
+        echo json_encode(['success' => false, 'error' => 'Coach access required']);
+        exit;
+    }
+
+    $pair_id = filter_input(INPUT_POST, 'pair_id', FILTER_VALIDATE_INT);
+    $target_page = preg_replace('/[^a-z0-9_]/', '', $_POST['target_page'] ?? '');
+    if (!$pair_id || empty($target_page)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+        exit;
+    }
+
+    // Validate page name
+    $valid_pages = ['home', 'video_review', 'calendar', 'game_plan', 'film_room',
+                    'review_sessions', 'my_clips', 'lines', 'roster', 'whiteboard', 'permissions'];
+    if (!in_array($target_page, $valid_pages)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid page']);
+        exit;
+    }
+
+    // Only the creator or joined controllers can navigate
+    $stmt = $pdo->prepare("
+        SELECT id FROM vr_device_pairs WHERE id = ? AND status IN ('paired', 'active')
+        AND (created_by = ? OR id IN (SELECT pair_id FROM vr_device_pair_controllers WHERE user_id = ?))
+    ");
+    $stmt->execute([$pair_id, $user_id, $user_id]);
+    if (!$stmt->fetch()) {
+        echo json_encode(['success' => false, 'error' => 'Not authorized']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE vr_device_pairs SET controller_page = ?, status = 'active' WHERE id = ?");
+    $stmt->execute([$target_page, $pair_id]);
+
+    echo json_encode(['success' => $stmt->rowCount() > 0, 'page' => $target_page]);
     exit;
 }

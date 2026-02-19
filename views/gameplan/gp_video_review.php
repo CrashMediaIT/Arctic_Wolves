@@ -824,7 +824,7 @@ try {
         </div>
         <div class="card-body">
             <p style="font-size: 13px; color: var(--text-muted, #888); margin-bottom: 16px;">
-                The controller device manages video playback, can freeze the viewer display, and enables telestration drawing during review sessions.
+                As a controller, you manage what appears on the paired TV display. Navigate to any page and it will appear on the TV. Use freeze to navigate privately without updating the TV.
             </p>
 
             <!-- Create New Pair -->
@@ -836,6 +836,7 @@ try {
                     <form method="POST" action="/process_video.php" id="createPairForm">
                         <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
                         <input type="hidden" name="action" value="create_device_pair">
+                        <input type="hidden" name="referrer_url" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '') ?>">
                         <div style="margin-bottom: 12px;">
                             <label style="display: block; font-weight: 600; font-size: 12px; color: var(--text-muted, #888); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px;">Review Session</label>
                             <select name="session_id" class="form-select">
@@ -856,49 +857,78 @@ try {
             <?php foreach ($vr_pairs as $pair):
                 $is_owner = ((int)($pair['created_by'] ?? 0) === (int)$user_id);
                 $extra_controllers = $vr_pair_controllers[(int)$pair['id']] ?? [];
+                $pair_is_active = in_array($pair['status'], ['paired', 'active']);
             ?>
-            <div class="card" style="margin-bottom: 8px; padding: 12px 16px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: <?= $pair['status'] === 'active' ? 'rgba(16,185,129,.12)' : ($pair['status'] === 'paired' ? 'rgba(59,130,246,.12)' : 'rgba(245,158,11,.12)') ?>; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <i class="fas fa-<?= $pair['status'] === 'active' ? 'play-circle' : ($pair['status'] === 'paired' ? 'check-circle' : 'clock') ?>" style="color: <?= $pair['status'] === 'active' ? '#10B981' : ($pair['status'] === 'paired' ? '#3B82F6' : '#F59E0B') ?>; font-size: 18px;"></i>
-                    </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-weight: 700; font-size: 18px; letter-spacing: 3px; color: var(--primary-light, #A78BFA); font-family: monospace;"><?= htmlspecialchars($pair['pair_code']) ?></div>
-                        <div style="font-size: 11px; color: var(--text-muted, #888); margin-top: 2px;">
-                            <?= ucfirst(htmlspecialchars($pair['status'])) ?>
-                            <?php if (!$is_owner): ?>
-                             · <span style="color: var(--primary-light, #A78BFA);">Joined as controller</span>
+            <div class="card" style="margin-bottom: 12px; padding: 0; border: 1px solid var(--border, #333);">
+                <div style="padding: 12px 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 10px; background: <?= $pair['status'] === 'active' ? 'rgba(16,185,129,.12)' : ($pair['status'] === 'paired' ? 'rgba(59,130,246,.12)' : 'rgba(245,158,11,.12)') ?>; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fas fa-<?= $pair['status'] === 'active' ? 'play-circle' : ($pair['status'] === 'paired' ? 'check-circle' : 'clock') ?>" style="color: <?= $pair['status'] === 'active' ? '#10B981' : ($pair['status'] === 'paired' ? '#3B82F6' : '#F59E0B') ?>; font-size: 18px;"></i>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 700; font-size: 18px; letter-spacing: 3px; color: var(--primary-light, #A78BFA); font-family: monospace;"><?= htmlspecialchars($pair['pair_code']) ?></div>
+                            <div style="font-size: 11px; color: var(--text-muted, #888); margin-top: 2px;">
+                                <?= ucfirst(htmlspecialchars($pair['status'])) ?>
+                                <?php if (!$is_owner): ?>
+                                 · <span style="color: var(--primary-light, #A78BFA);">Joined as controller</span>
+                                <?php endif; ?>
+                                <?php if (!empty($pair['session_title'])): ?>
+                                 · <?= htmlspecialchars($pair['session_title']) ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                            <?php if ($pair_is_active): ?>
+                            <button type="button" class="btn btn-sm btn-<?= $pair['is_frozen'] ? 'warning' : 'secondary' ?>" onclick="toggleFreeze(<?= (int)$pair['id'] ?>)" title="<?= $pair['is_frozen'] ? 'Unfreeze — TV follows your navigation' : 'Freeze — navigate privately without updating TV' ?>" style="min-width: 90px;">
+                                <i class="fas fa-<?= $pair['is_frozen'] ? 'play' : 'snowflake' ?>"></i>
+                                <?= $pair['is_frozen'] ? 'Unfreeze' : 'Freeze' ?>
+                            </button>
                             <?php endif; ?>
-                            <?php if (!empty($pair['session_title'])): ?>
-                             · <?= htmlspecialchars($pair['session_title']) ?>
+                            <?php if ($is_owner): ?>
+                            <form method="POST" action="/process_video.php" style="display:inline;">
+                                <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
+                                <input type="hidden" name="action" value="end_device_pair">
+                                <input type="hidden" name="pair_id" value="<?= (int)$pair['id'] ?>">
+                                <input type="hidden" name="referrer_url" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '') ?>">
+                                <button type="submit" class="btn btn-sm btn-danger" title="End pairing"><i class="fas fa-times"></i></button>
+                            </form>
                             <?php endif; ?>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 4px; flex-shrink: 0;">
-                        <?php if ($pair['status'] === 'active'): ?>
-                        <button type="button" class="btn btn-sm btn-<?= $pair['is_frozen'] ? 'warning' : 'secondary' ?>" onclick="toggleFreeze(<?= (int)$pair['id'] ?>)" title="<?= $pair['is_frozen'] ? 'Unfreeze viewer' : 'Freeze viewer' ?>">
-                            <i class="fas fa-<?= $pair['is_frozen'] ? 'play' : 'pause' ?>"></i>
-                        </button>
-                        <?php endif; ?>
-                        <?php if ($is_owner): ?>
-                        <form method="POST" action="/process_video.php" style="display:inline;">
-                            <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
-                            <input type="hidden" name="action" value="end_device_pair">
-                            <input type="hidden" name="pair_id" value="<?= (int)$pair['id'] ?>">
-                            <button type="submit" class="btn btn-sm btn-danger" title="End pairing"><i class="fas fa-times"></i></button>
-                        </form>
+
+                    <?php if (!empty($extra_controllers)): ?>
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border, #333);">
+                        <span style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px;">Additional Controllers</span>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+                            <?php foreach ($extra_controllers as $ctrl): ?>
+                            <span style="font-size: 11px; background: rgba(107,70,193,.1); color: var(--primary-light, #A78BFA); padding: 2px 8px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-gamepad" style="font-size: 9px;"></i> <?= htmlspecialchars(trim(($ctrl['first_name'] ?? '') . ' ' . ($ctrl['last_name'] ?? ''))) ?>
+                            </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- TV Navigation — controller sends pages to the TV viewer -->
+                <?php if ($pair_is_active): ?>
+                <div style="padding: 12px 16px; border-top: 1px solid var(--border, #333); background: rgba(107,70,193,.04);">
+                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px;">
+                        <i class="fas fa-tv" style="margin-right: 4px;"></i> Navigate TV Display
+                        <?php if ($pair['is_frozen']): ?>
+                        <span style="color: var(--warning, #F59E0B); margin-left: 6px;"><i class="fas fa-snowflake"></i> Frozen — TV won't update</span>
                         <?php endif; ?>
                     </div>
-                </div>
-                <?php if (!empty($extra_controllers)): ?>
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border, #333);">
-                    <span style="font-size: 10px; font-weight: 700; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px;">Additional Controllers</span>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
-                        <?php foreach ($extra_controllers as $ctrl): ?>
-                        <span style="font-size: 11px; background: rgba(107,70,193,.1); color: var(--primary-light, #A78BFA); padding: 2px 8px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px;">
-                            <i class="fas fa-gamepad" style="font-size: 9px;"></i> <?= htmlspecialchars(trim(($ctrl['first_name'] ?? '') . ' ' . ($ctrl['last_name'] ?? ''))) ?>
-                        </span>
-                        <?php endforeach; ?>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="tvNavBtns_<?= (int)$pair['id'] ?>">
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="home"><i class="fas fa-house"></i> Dashboard</button>
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="video_review"><i class="fas fa-film"></i> Video Review</button>
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="game_plan"><i class="fas fa-clipboard-list"></i> Game Plans</button>
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="whiteboard"><i class="fas fa-chalkboard"></i> Whiteboard</button>
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="lines"><i class="fas fa-users-line"></i> Game Lines</button>
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="roster"><i class="fas fa-id-card"></i> Roster</button>
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="calendar"><i class="fas fa-calendar"></i> Calendar</button>
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="film_room"><i class="fas fa-video"></i> Film Room</button>
+                        <button type="button" class="btn btn-sm btn-secondary tv-nav-btn" data-pair="<?= (int)$pair['id'] ?>" data-page="review_sessions"><i class="fas fa-chalkboard-user"></i> Reviews</button>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -917,10 +947,11 @@ try {
                     <h4 style="font-size: 13px; margin: 0; color: var(--primary, #6B46C1);"><i class="fas fa-gamepad"></i> Join as Additional Controller</h4>
                 </div>
                 <div class="card-body" style="padding: 16px;">
-                    <p style="font-size: 12px; color: var(--text-muted, #888); margin: 0 0 12px;">Enter another coach's pair code to join as an additional controller. Multiple coaches can telestrate and control the same viewer.</p>
+                    <p style="font-size: 12px; color: var(--text-muted, #888); margin: 0 0 12px;">Enter another coach's pair code to join as an additional controller. Multiple coaches can control the same TV viewer.</p>
                     <form method="POST" action="/process_video.php">
                         <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
                         <input type="hidden" name="action" value="join_as_controller">
+                        <input type="hidden" name="referrer_url" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '') ?>">
                         <div style="margin-bottom: 12px;">
                             <input type="text" name="pair_code" class="form-input" placeholder="Enter pair code" maxlength="10" required style="text-align: center; font-size: 18px; letter-spacing: 3px; font-family: monospace; text-transform: uppercase;">
                         </div>
@@ -934,54 +965,36 @@ try {
     <!-- Viewer Panel -->
     <div class="card">
         <div class="card-header">
-            <h3><i class="fas fa-tv"></i> Viewer Device</h3>
+            <h3><i class="fas fa-tv"></i> Viewer Device (TV)</h3>
         </div>
         <div class="card-body">
             <p style="font-size: 13px; color: var(--text-muted, #888); margin-bottom: 16px;">
-                The viewer device displays the currently selected video view. It mirrors the controller's selected clip and playback position with 100% time sync. When frozen, telestration can be drawn on the controller and displayed here.
+                The TV viewer display requires pairing before showing any content. Once paired, the controller navigates and the TV follows. Use the <strong>Game Plan TV</strong> app on your TV or go to <code style="background: rgba(107,70,193,.1); padding: 2px 6px; border-radius: 4px; font-size: 12px;">/gameplan_tv.php</code> on any large display.
             </p>
 
-            <!-- Join Pair -->
-            <div class="card" style="margin-bottom: 16px; border: 1px solid var(--border, #333);">
-                <div class="card-header" style="padding: 10px 16px;">
-                    <h4 style="font-size: 13px; margin: 0; color: var(--primary, #6B46C1);"><i class="fas fa-sign-in-alt"></i> Join as Viewer</h4>
-                </div>
-                <div class="card-body" style="padding: 16px;">
-                    <form method="POST" action="/process_video.php" id="joinPairForm">
-                        <?php if (function_exists('csrfTokenInput')) echo csrfTokenInput(); ?>
-                        <input type="hidden" name="action" value="join_device_pair">
-                        <div style="margin-bottom: 12px;">
-                            <label style="display: block; font-weight: 600; font-size: 12px; color: var(--text-muted, #888); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px;">Pair Code</label>
-                            <input type="text" name="pair_code" class="form-input" placeholder="Enter pair code" maxlength="10" required style="text-align: center; font-size: 18px; letter-spacing: 3px; font-family: monospace; text-transform: uppercase;">
-                        </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-tv"></i> Connect as Viewer</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Viewer Info -->
+            <!-- Viewer Info: How It Works -->
             <div class="card" style="padding: 16px; border: 1px solid var(--border, #333);">
                 <h4 style="font-size: 13px; font-weight: 700; margin: 0 0 10px; color: var(--text-white, #fff);"><i class="fas fa-info-circle" style="color: var(--primary-light, #A78BFA); margin-right: 6px;"></i>How It Works</h4>
                 <div style="font-size: 12px; color: var(--text-muted, #888); line-height: 1.6;">
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">1</span>
-                        <span>A <strong>Controller</strong> generates a pair code and controls playback</span>
+                        <span><strong>Generate</strong> a pair code above — the TV must be paired before it shows anything</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">2</span>
-                        <span>The <strong>Viewer</strong> enters the code to connect and display the video</span>
+                        <span>Open <strong>Game Plan TV</strong> on the TV and enter the pair code</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">3</span>
-                        <span><strong>Multiple coaches</strong> can join the same pair code as additional controllers to co-telestrate</span>
+                        <span>Use the <strong>Navigate TV Display</strong> buttons to control what the TV shows — all pages are available</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">4</span>
-                        <span>Any controller can <strong>freeze</strong> the viewer to pause on a frame for telestration</span>
+                        <span><strong>Freeze</strong> the viewer to navigate on your device without updating the TV</span>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 8px;">
                         <span style="background: var(--primary, #6B46C1); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0;">5</span>
-                        <span>Telestration drawings are synced to the viewer in real-time with <strong>100% time sync</strong></span>
+                        <span>The first controller can <strong>invite additional controllers</strong> by sharing the pair code</span>
                     </div>
                 </div>
             </div>
@@ -992,14 +1005,53 @@ try {
 <script>
 function toggleFreeze(pairId) {
     var csrfEl = document.querySelector('input[name="csrf_token"]');
-    if (!csrfEl || !csrfEl.value) { alert('Session expired. Please reload the page.'); return; }
+    if (!csrfEl || !csrfEl.value) { if (typeof persistToast === 'function') persistToast('Session expired. Please reload.', 'error'); return; }
     fetch('/process_video.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'action=toggle_freeze_pair&pair_id=' + pairId + '&csrf_token=' + encodeURIComponent(csrfEl.value)
     }).then(function(r) { return r.json(); }).then(function(data) {
-        if (data.success) { persistToast(data.message || 'Operation completed successfully', 'success'); location.reload(); }
+        if (data.success) { persistToast('Viewer freeze state updated', 'success'); location.reload(); }
     });
 }
+
+// TV navigation — send page changes to the paired TV
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.tv-nav-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var pairId = this.dataset.pair;
+            var page = this.dataset.page;
+            var csrfEl = document.querySelector('input[name="csrf_token"]');
+            if (!csrfEl || !csrfEl.value) { if (typeof persistToast === 'function') persistToast('Session expired. Please reload.', 'error'); return; }
+
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+
+            fetch('/process_video.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=navigate_pair&pair_id=' + pairId + '&target_page=' + encodeURIComponent(page) + '&csrf_token=' + encodeURIComponent(csrfEl.value)
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                if (data.success) {
+                    // Highlight the active nav button
+                    var container = document.getElementById('tvNavBtns_' + pairId);
+                    if (container) {
+                        container.querySelectorAll('.tv-nav-btn').forEach(function(b) {
+                            b.classList.remove('btn-primary');
+                            b.classList.add('btn-secondary');
+                        });
+                    }
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-primary');
+                }
+            }).catch(function() {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            });
+        });
+    });
+});
 </script>
 <?php endif; ?>
