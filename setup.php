@@ -374,8 +374,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['setup']['encryption'] = true;
                     
                     if ($is_existing_db) {
-                        // For existing databases, skip admin creation (step 3) and go to schema migration
-                        $_SESSION['setup']['admin'] = true; // Admin already exists
+                        // Skip admin creation for existing databases — users already exist
+                        $_SESSION['setup']['admin'] = true;
                         header("Location: setup.php?step=3");
                     } else {
                         header("Location: setup.php?step=3");

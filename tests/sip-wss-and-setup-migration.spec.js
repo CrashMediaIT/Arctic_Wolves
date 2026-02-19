@@ -129,7 +129,8 @@ test.describe('SIP WSS Port - Backend Save', () => {
     const filePath = path.join(__dirname, '..', 'process_profile_update.php');
     const content = fs.readFileSync(filePath, 'utf-8');
     
-    // Count occurrences of sip_wss_port in SQL statements
+    // Count occurrences of sip_wss_port in SQL SET clauses.
+    // There are 4 update paths: admin+password, admin-no-password, non-admin+password, non-admin-no-password
     const matches = content.match(/sip_wss_port\s*=\s*\?/g) || [];
     expect(matches.length).toBeGreaterThanOrEqual(4);
   });
