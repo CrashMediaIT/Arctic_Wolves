@@ -182,3 +182,48 @@ test.describe('FusionPBX - Encryption Library', () => {
     expect(content).toContain('aes-256-cbc');
   });
 });
+
+test.describe('FusionPBX - Admin SIP Password in All Users Page', () => {
+  test('admin_users.php should have SIP password field in edit form', async () => {
+    const viewPath = path.join(__dirname, '..', 'views', 'admin_users.php');
+    const content = fs.readFileSync(viewPath, 'utf-8');
+    
+    expect(content).toContain('id="edit-sip-password"');
+    expect(content).toContain('name="sip_password"');
+    expect(content).toContain('Leave blank to keep current password');
+  });
+
+  test('admin_users.php SIP password field should be a password type input', async () => {
+    const viewPath = path.join(__dirname, '..', 'views', 'admin_users.php');
+    const content = fs.readFileSync(viewPath, 'utf-8');
+    
+    expect(content).toContain('type="password" name="sip_password" id="edit-sip-password"');
+  });
+
+  test('process_admin_action.php should encrypt SIP password before saving', async () => {
+    const processPath = path.join(__dirname, '..', 'process_admin_action.php');
+    const content = fs.readFileSync(processPath, 'utf-8');
+    
+    // Should accept sip_password from POST in admin_update_sip action
+    expect(content).toContain("sip_password = \$_POST['sip_password']");
+    // Should encrypt the password
+    expect(content).toContain('FieldEncryption::encrypt($sip_password)');
+  });
+
+  test('process_admin_action.php should only update password when admin provides one', async () => {
+    const processPath = path.join(__dirname, '..', 'process_admin_action.php');
+    const content = fs.readFileSync(processPath, 'utf-8');
+    
+    // Should check if password was provided
+    expect(content).toContain('update_password');
+    // Should have sip_password in the SQL update
+    expect(content).toContain('sip_password = ?');
+  });
+
+  test('process_admin_action.php should include encryption library', async () => {
+    const processPath = path.join(__dirname, '..', 'process_admin_action.php');
+    const content = fs.readFileSync(processPath, 'utf-8');
+    
+    expect(content).toContain("require_once __DIR__ . '/lib/encryption.php'");
+  });
+});

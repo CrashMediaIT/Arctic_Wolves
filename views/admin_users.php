@@ -1563,6 +1563,12 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                         </div>
                     </div>
                     
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-key"></i> SIP Password</label>
+                        <input type="password" name="sip_password" id="edit-sip-password" class="form-input" placeholder="Leave blank to keep current password">
+                        <small class="form-hint">SIP account password from FusionPBX (encrypted and saved securely)</small>
+                    </div>
+                    
                     <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save Phone/SIP Settings</button>
                 </form>
             </div>
