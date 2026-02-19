@@ -159,6 +159,17 @@ test.describe('Phone Directory Entries - Database Schema', () => {
     expect(content).toContain("'shared'");
     expect(content).toContain("'external'");
   });
+
+  test('phone_directory_entries should have did and email columns', async () => {
+    const filePath = path.join(__dirname, '..', 'database_schema.sql');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    
+    // Find the phone_directory_entries table definition and check it has did and email
+    const tableStart = content.indexOf('phone_directory_entries');
+    const tableSection = content.substring(tableStart, tableStart + 500);
+    expect(tableSection).toContain('`did`');
+    expect(tableSection).toContain('`email`');
+  });
 });
 
 // ================================================
@@ -191,6 +202,7 @@ test.describe('Admin - Custom Directory Entries', () => {
     expect(content).toContain("'add_directory_entry'");
     expect(content).toContain('phone_directory_entries');
     expect(content).toContain('display_name');
+    expect(content).toContain(", did, email,");
   });
 
   test('process_profile_update.php should handle delete_directory_entry action', async () => {

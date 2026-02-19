@@ -2,8 +2,9 @@
 <?php
 /**
  * Company Directory
- * Searchable directory of all staff members and custom entries (rooms, shared lines).
- * Admins can also add non-user entries (rooms, shared lines) to the phone directory.
+ * Searchable directory of all staff members and custom entries (rooms, partner contacts).
+ * Columns: Name, Title, DID, Extension, Email.
+ * Admins can add non-user entries (rooms, shared lines, partner contacts) to the directory.
  * Access restricted to staff roles: Admin, Coach, Health Coach, Front Desk, HR, Accounting.
  */
 
@@ -20,7 +21,7 @@ $directory_staff = [];
 try {
     $stmt = $pdo->query("
         SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.job_title,
-               u.sip_extension, u.profile_image
+               u.sip_extension, u.sip_did, u.profile_image
         FROM users u
         WHERE u.is_verified = 1
         ORDER BY u.first_name ASC, u.last_name ASC
@@ -31,7 +32,7 @@ try {
     error_log("Company directory fetch error: " . $e->getMessage());
 }
 
-// Fetch custom directory entries (rooms, non-users) - admin managed
+// Fetch custom directory entries (rooms, partner contacts) - admin managed
 $custom_entries = [];
 try {
     $stmt = $pdo->query("SELECT * FROM phone_directory_entries ORDER BY display_name ASC");
@@ -59,7 +60,7 @@ try {
         <div style="margin-bottom: 16px;">
             <div style="position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                <input type="text" id="directory-search" class="form-input" placeholder="Search by name, job title, or extension..."
+                <input type="text" id="directory-search" class="form-input" placeholder="Search by name, title, extension, or email..."
                        style="padding-left: 40px; font-size: 15px;" oninput="filterDirectory()">
             </div>
         </div>
@@ -70,8 +71,10 @@ try {
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Job Title / Type</th>
+                            <th>Title</th>
+                            <th>DID</th>
                             <th>Extension</th>
+                            <th>Email</th>
                             <?php if ($isAdmin && count($custom_entries) > 0): ?><th>Action</th><?php endif; ?>
                         </tr>
                     </thead>
@@ -100,10 +103,24 @@ try {
                                 </td>
                                 <td><?php echo htmlspecialchars($staff['job_title'] ?? ucfirst(str_replace('_', ' ', $staff['role']))); ?></td>
                                 <td>
+                                    <?php if (!empty($staff['sip_did'])): ?>
+                                        <?php echo htmlspecialchars($staff['sip_did']); ?>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-muted);">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
                                     <?php if (!empty($staff['sip_extension'])): ?>
                                         <span class="badge" style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px;">
-                                            <i class="fas fa-phone"></i> <?php echo htmlspecialchars($staff['sip_extension']); ?>
+                                            <?php echo htmlspecialchars($staff['sip_extension']); ?>
                                         </span>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-muted);">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($staff['email'])): ?>
+                                        <a href="mailto:<?php echo htmlspecialchars($staff['email']); ?>" style="color: var(--primary);"><?php echo htmlspecialchars($staff['email']); ?></a>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted);">—</span>
                                     <?php endif; ?>
@@ -134,10 +151,24 @@ try {
                                     </span>
                                 </td>
                                 <td>
+                                    <?php if (!empty($entry['did'])): ?>
+                                        <?php echo htmlspecialchars($entry['did']); ?>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-muted);">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
                                     <?php if (!empty($entry['extension'])): ?>
                                         <span class="badge" style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px;">
-                                            <i class="fas fa-phone"></i> <?php echo htmlspecialchars($entry['extension']); ?>
+                                            <?php echo htmlspecialchars($entry['extension']); ?>
                                         </span>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-muted);">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($entry['email'])): ?>
+                                        <a href="mailto:<?php echo htmlspecialchars($entry['email']); ?>" style="color: var(--primary);"><?php echo htmlspecialchars($entry['email']); ?></a>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted);">—</span>
                                     <?php endif; ?>
@@ -173,20 +204,14 @@ try {
         <h3><i class="fas fa-plus-circle"></i> Add Directory Entry</h3>
     </div>
     <div class="card-body">
-        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Add non-user entries such as conference rooms, shared lines, or external numbers to the phone directory.</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Add entries such as conference rooms, shared lines, partner contacts, or external numbers to the directory.</p>
         <form id="add-directory-entry-form">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-tag"></i> Name</label>
-                    <input type="text" name="entry_name" id="entry_name" class="form-input" placeholder="e.g., Board Room, Lobby Phone" required>
+                    <input type="text" name="entry_name" id="entry_name" class="form-input" placeholder="e.g., Board Room, Partner Contact" required>
                 </div>
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-phone"></i> Extension</label>
-                    <input type="text" name="entry_extension" id="entry_extension" class="form-input" placeholder="e.g., 2001">
-                </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-list"></i> Type</label>
                     <select name="entry_type" id="entry_type" class="form-input">
@@ -195,6 +220,22 @@ try {
                         <option value="external">External</option>
                         <option value="other">Other</option>
                     </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-phone-square"></i> DID</label>
+                    <input type="text" name="entry_did" id="entry_did" class="form-input" placeholder="e.g., +16045551234">
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-phone"></i> Extension</label>
+                    <input type="text" name="entry_extension" id="entry_extension" class="form-input" placeholder="e.g., 2001">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" name="entry_email" id="entry_email" class="form-input" placeholder="e.g., contact@partner.com">
                 </div>
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-sticky-note"></i> Description</label>
@@ -244,6 +285,8 @@ function filterDirectory() {
 function addDirectoryEntry() {
     const name = document.getElementById('entry_name').value.trim();
     const extension = document.getElementById('entry_extension').value.trim();
+    const did = document.getElementById('entry_did').value.trim();
+    const email = document.getElementById('entry_email').value.trim();
     const type = document.getElementById('entry_type').value;
     const description = document.getElementById('entry_description').value.trim();
     const csrfToken = document.querySelector('#add-directory-entry-form [name="csrf_token"]').value;
@@ -262,6 +305,8 @@ function addDirectoryEntry() {
         body: 'action=add_directory_entry&csrf_token=' + encodeURIComponent(csrfToken) +
               '&display_name=' + encodeURIComponent(name) +
               '&extension=' + encodeURIComponent(extension) +
+              '&did=' + encodeURIComponent(did) +
+              '&email=' + encodeURIComponent(email) +
               '&entry_type=' + encodeURIComponent(type) +
               '&description=' + encodeURIComponent(description)
     })

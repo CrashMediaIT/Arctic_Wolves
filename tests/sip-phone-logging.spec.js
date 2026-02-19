@@ -60,7 +60,7 @@ test.describe('Company Directory - Search Functionality', () => {
   test('should have a search input', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
     expect(content).toContain('directory-search');
-    expect(content).toContain('Search by name, job title, or extension');
+    expect(content).toContain('Search by name, title, extension, or email');
   });
 
   test('should have filterDirectory JavaScript function', async () => {
@@ -81,7 +81,43 @@ test.describe('Company Directory - Search Functionality', () => {
 });
 
 // ================================================
-// 3. Directory Shows All Verified Staff
+// 3. Directory Columns: Name, Title, DID, Extension, Email
+// ================================================
+test.describe('Company Directory - Table Columns', () => {
+  test('should have Name, Title, DID, Extension, Email columns', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('<th>Name</th>');
+    expect(content).toContain('<th>Title</th>');
+    expect(content).toContain('<th>DID</th>');
+    expect(content).toContain('<th>Extension</th>');
+    expect(content).toContain('<th>Email</th>');
+  });
+
+  test('should display staff DID from sip_did field', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain("staff['sip_did']");
+  });
+
+  test('should display staff email with mailto link', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain("mailto:");
+    expect(content).toContain("staff['email']");
+  });
+
+  test('should display custom entry DID and email', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain("entry['did']");
+    expect(content).toContain("entry['email']");
+  });
+
+  test('SQL query should fetch sip_did for staff', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('u.sip_did');
+  });
+});
+
+// ================================================
+// 4. Directory Shows All Verified Staff
 // ================================================
 test.describe('Company Directory - All Verified Staff', () => {
   test('should query all verified users not just SIP users', async () => {
@@ -94,7 +130,7 @@ test.describe('Company Directory - All Verified Staff', () => {
 });
 
 // ================================================
-// 4. Admin Directory Entry Management Preserved
+// 5. Admin Directory Entry Management Preserved
 // ================================================
 test.describe('Company Directory - Admin Management', () => {
   test('should have admin form to add directory entries', async () => {
@@ -104,6 +140,12 @@ test.describe('Company Directory - Admin Management', () => {
     expect(content).toContain('entry_extension');
     expect(content).toContain('entry_type');
     expect(content).toContain('addDirectoryEntry');
+  });
+
+  test('admin form should have DID and Email fields', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('entry_did');
+    expect(content).toContain('entry_email');
   });
 
   test('should show custom entries in directory table', async () => {
