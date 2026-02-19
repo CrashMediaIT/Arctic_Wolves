@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -67,7 +69,7 @@ try {
             die(json_encode(['success' => false, 'message' => 'Invalid action']));
     }
 } catch (PDOException $e) {
-    error_log("Process Goal Templates Error: " . $e->getMessage());
+    ErrorLogger::error("Process Goal Templates Error: " . $e->getMessage());
     http_response_code(500);
     die(json_encode(['success' => false, 'message' => 'Database error occurred']));
 }
@@ -98,6 +100,7 @@ function handleCreate($pdo, $user_id) {
     ");
     $stmt->execute([$user_id, $title, $description, $category]);
     $template_id = $pdo->lastInsertId();
+    Auditor::log($pdo, $user_id, 'create', 'goals', $template_id, ['action' => 'Created goal template', 'title' => $title]);
     
     echo json_encode([
         'success' => true,
@@ -156,7 +159,8 @@ function handleUpdate($pdo, $user_id) {
     $sql = "UPDATE goals SET " . implode(', ', $updates) . " WHERE id = ?";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    
+    Auditor::log($pdo, $user_id, 'update', 'goals', $template_id, ['action' => 'Updated goal template']);
+
     echo json_encode([
         'success' => true,
         'message' => 'Goal template updated successfully'
@@ -189,7 +193,8 @@ function handleDelete($pdo, $user_id) {
     // Delete template
     $stmt = $pdo->prepare("DELETE FROM goals WHERE id = ?");
     $stmt->execute([$template_id]);
-    
+    Auditor::log($pdo, $user_id, 'delete', 'goals', $template_id, ['action' => 'Deleted goal template']);
+
     echo json_encode([
         'success' => true,
         'message' => 'Goal template deleted successfully'
