@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Security check - must be logged in
 if (!isset($_SESSION['logged_in'])) {
@@ -111,6 +113,7 @@ if ($action === 'import_drills') {
         }
         
         $pdo->commit();
+        Auditor::log($pdo, $user_id, 'CREATE', 'drills', 0, ['action' => 'IHS drill import', 'imported' => $imported, 'skipped' => $skipped]);
         
         // Log the import
         logSecurityEvent($pdo, 'ihs_import_drills', "Imported $imported drills, skipped $skipped", $user_id);
@@ -228,6 +231,7 @@ if ($action === 'import_plans') {
         }
         
         $pdo->commit();
+        Auditor::log($pdo, $user_id, 'CREATE', 'practice_plans', $plan_id, ['action' => 'IHS practice plan import', 'title' => $title]);
         
         // Log the import
         logSecurityEvent($pdo, 'ihs_import_plan', "Imported practice plan: $title", $user_id);

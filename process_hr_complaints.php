@@ -8,6 +8,8 @@ session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -97,6 +99,7 @@ if ($action === 'create') {
         ]);
         
         $complaint_id = $pdo->lastInsertId();
+        Auditor::log($pdo, $user_id, 'CREATE', 'hr_complaints', $complaint_id, ['action' => 'Created HR complaint']);
         
         // Add initial note
         $initial_note = "Complaint filed and recorded in the system.";
@@ -114,7 +117,7 @@ if ($action === 'create') {
         exit();
         
     } catch (PDOException $e) {
-        error_log("HR Complaint creation error: " . $e->getMessage());
+        ErrorLogger::error("HR Complaint creation error: " . $e->getMessage());
         header("Location: dashboard.php?page=complaints&tab=new&error=database_error");
         exit();
     }
@@ -182,6 +185,7 @@ if ($action === 'update') {
             'description' => $description,
             'id' => $complaint_id
         ]);
+        Auditor::log($pdo, $user_id, 'UPDATE', 'hr_complaints', $complaint_id, ['action' => 'Updated HR complaint', 'status' => $status]);
         
         // Add note if provided
         if (!empty($new_note)) {
@@ -218,7 +222,7 @@ if ($action === 'update') {
         exit();
         
     } catch (PDOException $e) {
-        error_log("HR Complaint update error: " . $e->getMessage());
+        ErrorLogger::error("HR Complaint update error: " . $e->getMessage());
         header("Location: dashboard.php?page=complaints&tab=list&error=update_failed");
         exit();
     }
@@ -365,7 +369,7 @@ if ($action === 'get_details') {
         exit();
         
     } catch (PDOException $e) {
-        error_log("HR Complaint details error: " . $e->getMessage());
+        ErrorLogger::error("HR Complaint details error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error']);
         exit();
     }
@@ -399,12 +403,13 @@ if ($action === 'add_note') {
             'is_confidential' => $is_confidential,
             'created_by' => $user_id
         ]);
+        Auditor::log($pdo, $user_id, 'CREATE', 'hr_complaint_notes', $pdo->lastInsertId(), ['action' => 'Added note to HR complaint', 'complaint_id' => $complaint_id]);
         
         echo json_encode(['success' => true, 'message' => 'Note added successfully']);
         exit();
         
     } catch (PDOException $e) {
-        error_log("HR Complaint add note error: " . $e->getMessage());
+        ErrorLogger::error("HR Complaint add note error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to add note']);
         exit();
     }
@@ -425,12 +430,13 @@ if ($action === 'delete') {
         // Notes and documents will cascade delete
         $stmt = $pdo->prepare("DELETE FROM hr_complaints WHERE id = :id");
         $stmt->execute(['id' => $complaint_id]);
+        Auditor::log($pdo, $user_id, 'DELETE', 'hr_complaints', $complaint_id, ['action' => 'Deleted HR complaint']);
         
         header("Location: dashboard.php?page=complaints&tab=list&success=complaint_deleted");
         exit();
         
     } catch (PDOException $e) {
-        error_log("HR Complaint delete error: " . $e->getMessage());
+        ErrorLogger::error("HR Complaint delete error: " . $e->getMessage());
         header("Location: dashboard.php?page=complaints&tab=list&error=delete_failed");
         exit();
     }

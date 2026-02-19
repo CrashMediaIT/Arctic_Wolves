@@ -9,6 +9,8 @@ require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -102,7 +104,7 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
         ];
         
     } catch (Exception $e) {
-        error_log("Error uploading onboarding documents: " . $e->getMessage());
+        ErrorLogger::error("Error uploading onboarding documents: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage(),
@@ -210,7 +212,7 @@ function exportOnboardingData($pdo, $settings, $onboardingData, $staffName, $yea
         ];
         
     } catch (Exception $e) {
-        error_log("Error exporting onboarding data: " . $e->getMessage());
+        ErrorLogger::error("Error exporting onboarding data: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
@@ -425,7 +427,7 @@ if ($action === 'create') {
                     $extensionRequested = true;
                     error_log("Extension request email sent to IT for $staffDisplayName");
                 } catch (Exception $emailError) {
-                    error_log("Extension request email error: " . $emailError->getMessage());
+                    ErrorLogger::error("Extension request email error: " . $emailError->getMessage());
                     // Continue without email - not critical
                 }
             }
@@ -494,7 +496,7 @@ if ($action === 'create') {
                     }
                 }
             } catch (Exception $ncError) {
-                error_log("Nextcloud upload error: " . $ncError->getMessage());
+                ErrorLogger::error("Nextcloud upload error: " . $ncError->getMessage());
                 // Continue without Nextcloud - not critical
             }
             
@@ -563,11 +565,11 @@ if ($action === 'create') {
                         // Update onboarding record to indicate contract was sent
                         $pdo->prepare("UPDATE employee_onboarding SET contract_sent = 1, contract_id = ? WHERE id = ?")->execute([$contractId, $onboardingId]);
                     } else {
-                        error_log("Failed to send contract for signature: " . $esignResult['message']);
+                        ErrorLogger::error("Failed to send contract for signature: " . $esignResult['message']);
                     }
                     
                 } catch (Exception $contractError) {
-                    error_log("Error creating/sending contract during onboarding: " . $contractError->getMessage());
+                    ErrorLogger::error("Error creating/sending contract during onboarding: " . $contractError->getMessage());
                     // Continue without contract - not critical to fail the entire onboarding
                 }
             }
@@ -657,6 +659,7 @@ if ($action === 'complete') {
             WHERE id = ?
         ");
         $updateStmt->execute([$onboardingId]);
+        Auditor::log($pdo, $user_id, 'UPDATE', 'employee_onboarding', $onboardingId, ['action' => 'Completed onboarding']);
         
         $_SESSION['flash_message'] = 'Onboarding marked as completed';
         $_SESSION['flash_type'] = 'success';
@@ -682,6 +685,7 @@ if ($action === 'cancel') {
             WHERE id = ?
         ");
         $updateStmt->execute([$onboardingId]);
+        Auditor::log($pdo, $user_id, 'UPDATE', 'employee_onboarding', $onboardingId, ['action' => 'Cancelled onboarding']);
         
         $_SESSION['flash_message'] = 'Onboarding cancelled';
         $_SESSION['flash_type'] = 'success';

@@ -7,6 +7,8 @@
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/csrf_protection.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 session_start();
 
@@ -100,6 +102,7 @@ if ($action === 'assign_workout') {
                 WHERE athlete_id = ? AND workout_plan_id = ? AND status = 'active'
             ");
             $update_stmt->execute([$start_date, $notes, $user_id, $athlete_id, $workout_plan_id]);
+            Auditor::log($pdo, $user_id, 'UPDATE', 'athlete_workout_assignments', $athlete_id, ['action' => 'Updated workout assignment']);
         } else {
             // Create new assignment
             $insert_stmt = $pdo->prepare("
@@ -108,13 +111,14 @@ if ($action === 'assign_workout') {
                 VALUES (?, ?, ?, ?, ?, 'active', NOW())
             ");
             $insert_stmt->execute([$athlete_id, $workout_plan_id, $user_id, $start_date, $notes]);
+            Auditor::log($pdo, $user_id, 'CREATE', 'athlete_workout_assignments', $pdo->lastInsertId(), ['action' => 'Assigned workout plan to athlete']);
         }
         
         header('Location: dashboard.php?page=health_coach_roster&status=plan_assigned');
         exit;
         
     } catch (PDOException $e) {
-        error_log("Workout assignment error: " . $e->getMessage());
+        ErrorLogger::error("Workout assignment error: " . $e->getMessage());
         header('Location: dashboard.php?page=health_coach_roster&error=assignment_failed');
         exit;
     }
@@ -158,6 +162,7 @@ if ($action === 'assign_workout') {
                 WHERE athlete_id = ? AND nutrition_plan_id = ? AND status = 'active'
             ");
             $update_stmt->execute([$start_date, $notes, $user_id, $athlete_id, $nutrition_plan_id]);
+            Auditor::log($pdo, $user_id, 'UPDATE', 'athlete_nutrition_assignments', $athlete_id, ['action' => 'Updated nutrition assignment']);
         } else {
             // Create new assignment
             $insert_stmt = $pdo->prepare("
@@ -166,13 +171,14 @@ if ($action === 'assign_workout') {
                 VALUES (?, ?, ?, ?, ?, 'active', NOW())
             ");
             $insert_stmt->execute([$athlete_id, $nutrition_plan_id, $user_id, $start_date, $notes]);
+            Auditor::log($pdo, $user_id, 'CREATE', 'athlete_nutrition_assignments', $pdo->lastInsertId(), ['action' => 'Assigned nutrition plan to athlete']);
         }
         
         header('Location: dashboard.php?page=health_coach_roster&status=plan_assigned');
         exit;
         
     } catch (PDOException $e) {
-        error_log("Nutrition assignment error: " . $e->getMessage());
+        ErrorLogger::error("Nutrition assignment error: " . $e->getMessage());
         header('Location: dashboard.php?page=health_coach_roster&error=assignment_failed');
         exit;
     }

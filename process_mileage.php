@@ -3,6 +3,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -110,6 +112,7 @@ try {
             ]);
             
             $mileage_log_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'CREATE', 'mileage_logs', $mileage_log_id, ['action' => 'Created mileage log']);
             
             // Insert waypoints
             if ($waypoints && is_array($waypoints)) {
@@ -197,6 +200,7 @@ try {
                 $distance_km, $distance_miles, $effective_rate,
                 $reimbursement_amount, $log_id, $user_id
             ]);
+            Auditor::log($pdo, $user_id, 'UPDATE', 'mileage_logs', $log_id, ['action' => 'Updated mileage log']);
             
             // Delete old stops and insert new ones
             $pdo->prepare("DELETE FROM mileage_stops WHERE mileage_log_id = ?")->execute([$log_id]);
@@ -225,6 +229,7 @@ try {
             
             $stmt = $pdo->prepare("DELETE FROM mileage_logs WHERE id = ? AND user_id = ?");
             $stmt->execute([$log_id, $user_id]);
+            Auditor::log($pdo, $user_id, 'DELETE', 'mileage_logs', $log_id, ['action' => 'Deleted mileage log']);
             
             echo json_encode(['success' => true, 'message' => 'Mileage log deleted successfully']);
             break;
@@ -240,6 +245,7 @@ try {
             
             $stmt = $pdo->prepare("UPDATE mileage_logs SET is_reimbursed = 1 WHERE id = ?");
             $stmt->execute([$log_id]);
+            Auditor::log($pdo, $user_id, 'UPDATE', 'mileage_logs', $log_id, ['action' => 'Marked mileage as reimbursed']);
             
             echo json_encode(['success' => true, 'message' => 'Marked as reimbursed']);
             break;
@@ -401,7 +407,7 @@ function tryCalculateDistanceFromWaypoints($waypoints) {
     try {
         return calculateDistance($waypoints);
     } catch (Exception $e) {
-        error_log('Google Maps distance calculation failed, using manual entry: ' . $e->getMessage());
+        ErrorLogger::error('Google Maps distance calculation failed, using manual entry: ' . $e->getMessage());
         return null;
     }
 }
@@ -440,14 +446,14 @@ function calculateDistance($waypoints) {
         curl_close($ch);
         
         if ($response === false) {
-            error_log('Google Maps Distance Matrix API curl error: ' . $curl_error);
+            ErrorLogger::error('Google Maps Distance Matrix API curl error: ' . $curl_error);
             throw new Exception('Failed to connect to Google Maps API: ' . $curl_error);
         }
         
         $data = json_decode($response, true);
         
         if (!$data || ($data['status'] ?? '') !== 'OK') {
-            error_log('Google Maps Distance Matrix API error: ' . ($response ?: 'empty response') . ' HTTP: ' . $http_code);
+            ErrorLogger::error('Google Maps Distance Matrix API error: ' . ($response ?: 'empty response') . ' HTTP: ' . $http_code);
             throw new Exception('Google Maps API error: ' . ($data['error_message'] ?? $data['status'] ?? 'Unknown error'));
         }
         

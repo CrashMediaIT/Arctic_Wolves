@@ -3,6 +3,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -77,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 checkCsrfToken();
 
 $action = $_POST['action'] ?? '';
+$user_id = $_SESSION['user_id'] ?? 0;
 
 try {
     switch ($action) {
@@ -199,6 +202,7 @@ try {
             }
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'CREATE', 'packages', $package_id, ['action' => 'Created package', 'name' => $name]);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -345,6 +349,7 @@ try {
             }
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'UPDATE', 'packages', $package_id, ['action' => 'Updated package', 'name' => $name]);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -368,6 +373,7 @@ try {
             // Delete package
             $stmt = $pdo->prepare("DELETE FROM packages WHERE id = ?");
             $stmt->execute([$package_id]);
+            Auditor::log($pdo, $user_id, 'DELETE', 'packages', $package_id, ['action' => 'Deleted package']);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -416,6 +422,7 @@ try {
             }
             
             $pdo->commit();
+            Auditor::log($pdo, $user_id, 'UPDATE', 'package_sessions', $package_id, ['action' => 'Updated package sessions']);
             
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -447,6 +454,7 @@ try {
             $new_status = $package['is_active'] ? 0 : 1;
             $stmt = $pdo->prepare("UPDATE packages SET is_active = ? WHERE id = ?");
             $stmt->execute([$new_status, $package_id]);
+            Auditor::log($pdo, $user_id, 'UPDATE', 'packages', $package_id, ['action' => 'Toggled package status', 'new_status' => $new_status]);
             
             echo json_encode(['success' => true, 'message' => 'Package status updated']);
             exit();
@@ -460,7 +468,7 @@ try {
         $pdo->rollBack();
     }
     
-    error_log("Package processing error: " . $e->getMessage());
+    ErrorLogger::error("Package processing error: " . $e->getMessage());
     
     if ($isAjax) {
         header('Content-Type: application/json');
