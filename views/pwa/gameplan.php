@@ -189,6 +189,170 @@ $gp_is_sub = ($gp_sub !== 'home');
 .m-gp-content .card { margin-bottom: 16px; }
 .m-gp-content .card-header { padding: 14px 16px; }
 .m-gp-content .card-body { padding: 14px 16px; }
+
+/* ── Mobile overrides for gp_ sub-views ────────────────────── */
+
+/* Page headers: compact for mobile */
+.m-gp-content .page-header { margin-bottom: 16px; }
+.m-gp-content .page-header h1 { font-size: 18px; gap: 8px; }
+.m-gp-content .page-header p { font-size: 12px; }
+
+/* Page tabs: horizontal scroll instead of wrapping */
+.m-gp-content .page-tabs {
+    display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    gap: 0; white-space: nowrap; margin-bottom: 16px;
+    scrollbar-width: none; -ms-overflow-style: none;
+}
+.m-gp-content .page-tabs::-webkit-scrollbar { display: none; }
+.m-gp-content .page-tab { font-size: 12px; padding: 8px 12px; flex-shrink: 0; }
+
+/* Filter boxes: stack fields vertically */
+.m-gp-content .filter-box { margin-bottom: 16px; }
+.m-gp-content .filter-row {
+    display: flex; flex-direction: column; gap: 10px;
+}
+.m-gp-content .filter-field { width: 100%; min-width: 0; }
+.m-gp-content .filter-actions {
+    display: flex; gap: 8px; flex-direction: row;
+}
+
+/* Buttons: touch-friendly */
+.m-gp-content .btn { min-height: 38px; font-size: 13px; }
+
+/* Modals: full-width on mobile */
+.m-gp-content .modal-overlay {
+    align-items: flex-end; padding: 0;
+}
+.m-gp-content .modal-content {
+    width: 100% !important; max-width: 100% !important;
+    max-height: 92vh; border-radius: 16px 16px 0 0;
+}
+
+/* Form grids: stack two-column layouts */
+.m-gp-content .form-row,
+.m-gp-content [style*="grid-template-columns: 1fr 1fr"],
+.m-gp-content [style*="grid-template-columns:1fr 1fr"] {
+    display: grid !important; grid-template-columns: 1fr !important;
+}
+
+/* Card grids: single column on small screens */
+.m-gp-content [style*="minmax(320px"],
+.m-gp-content [style*="minmax(300px"],
+.m-gp-content [style*="minmax(280px"],
+.m-gp-content [style*="minmax(260px"] {
+    grid-template-columns: 1fr !important;
+}
+
+/* Lines builder: stack roster sidebar + content vertically */
+.m-gp-content [style*="grid-template-columns: 250px 1fr"],
+.m-gp-content [style*="grid-template-columns:250px 1fr"] {
+    display: flex !important; flex-direction: column !important; gap: 16px !important;
+}
+/* Remove sticky on roster panel in stacked layout */
+.m-gp-content .card[style*="sticky"] { position: relative !important; top: auto !important; }
+
+/* Film room: clip editor two-column to stacked */
+.m-gp-content [style*="grid-template-columns: 1fr 350px"],
+.m-gp-content [style*="grid-template-columns:1fr 350px"] {
+    display: flex !important; flex-direction: column !important; gap: 16px !important;
+}
+
+/* Source list cards: stack instead of 3-column grid */
+.m-gp-content [style*="grid-template-columns: 80px 1fr auto"],
+.m-gp-content [style*="grid-template-columns:80px 1fr auto"] {
+    display: flex !important; flex-direction: column !important; gap: 10px !important;
+    text-align: left;
+}
+.m-gp-content [style*="grid-template-columns: 80px 1fr auto"] > div:first-child {
+    width: 56px !important; height: 40px !important; font-size: 16px;
+}
+
+/* Permissions table: horizontally scrollable container */
+.m-gp-content table { font-size: 12px; }
+.m-gp-content table th { padding: 10px 8px !important; font-size: 10px; }
+.m-gp-content table td { padding: 10px 8px !important; }
+.m-gp-content .card-body[style*="overflow-x"] { -webkit-overflow-scrolling: touch; }
+
+/* Whiteboard toolbar: wrap buttons, reduce size */
+.m-gp-content #wbToolbar .card-body > div {
+    gap: 6px !important; justify-content: flex-start;
+}
+.m-gp-content #wbToolbar .card-body > div > div {
+    border-right: none !important; padding-right: 6px !important;
+}
+.m-gp-content .wb-tool,
+.m-gp-content #wbToolbar .btn { height: 36px !important; width: 36px !important; }
+.m-gp-content .wb-color { width: 28px !important; height: 28px !important; }
+
+/* Whiteboard selects: full width stacked */
+.m-gp-content #wbHeader [style*="display:flex"] { flex-direction: column; gap: 8px; }
+.m-gp-content #wbHeader select { width: 100% !important; min-width: 0 !important; }
+
+/* Line position slots: 2-col minimum on small screens */
+.m-gp-content .card-body [style*="grid-template-columns:repeat(5"] {
+    grid-template-columns: repeat(3, 1fr) !important;
+}
+.m-gp-content .card-body [style*="grid-template-columns:repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
+/* Depth chart view: positions stack vertically */
+.m-gp-content [style*="min-width:140px"] { min-width: 0 !important; }
+.m-gp-content [style*="min-width:90px"] { min-width: auto !important; }
+
+/* Stats grid: 2 columns instead of auto-fit with wide items */
+.m-gp-content [style*="minmax(140px"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
+/* Game plan action rows: wrap */
+.m-gp-content .gp-lines-actions { flex-wrap: wrap; }
+
+/* Fullscreen whiteboard: safe area */
+.m-gp-content #wbCanvasContainer.wb-fullscreen {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Clip player modal: full mobile width */
+.m-gp-content #gpPlayerModal .modal-content,
+.m-gp-content #gpSessionModal .modal-content,
+.m-gp-content #gpPlanModal .modal-content {
+    width: 100% !important; max-width: 100% !important;
+    border-radius: 16px 16px 0 0;
+}
+
+/* Forms: textarea and selects full width */
+.m-gp-content .form-input,
+.m-gp-content .form-select,
+.m-gp-content input[type="text"],
+.m-gp-content input[type="number"],
+.m-gp-content input[type="date"],
+.m-gp-content input[type="datetime-local"],
+.m-gp-content select,
+.m-gp-content textarea { width: 100%; box-sizing: border-box; font-size: 16px; }
+
+/* Prevent zoom on input focus (iOS) by using 16px font-size above */
+
+/* NDI camera grid: single column */
+.m-gp-content [style*="minmax(260px"] {
+    grid-template-columns: 1fr !important;
+}
+
+/* Upcoming games: touch-friendly row */
+.m-gp-content [style*="justify-content:space-between"][style*="border-bottom"] {
+    flex-direction: column; align-items: flex-start !important; gap: 10px !important;
+}
+
+/* Review sessions: compact card layout */
+.m-gp-content .card-body [style*="justify-content:space-between"][style*="flex-wrap:wrap"] {
+    flex-direction: column; gap: 10px;
+}
+
+/* Long text overflow protection */
+.m-gp-content h1, .m-gp-content h2, .m-gp-content h3, .m-gp-content h4 {
+    overflow-wrap: break-word; word-break: break-word;
+}
+.m-gp-content { overflow-x: hidden; }
 </style>
 
 <div class="m-gp">
@@ -520,17 +684,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Rewrite inline onchange handlers that navigate using location.href
-    let selects = gpContent.querySelectorAll('select[onchange]');
-    for (let m = 0; m < selects.length; m++) {
-        let oc = selects[m].getAttribute('onchange');
-        if (oc && oc.indexOf('/gameplan.php') !== -1) {
-            // Replace /gameplan.php?page=XXX with pwa-compatible URL
-            let newOc = oc.replace(/\/gameplan\.php\?page=([a-z0-9_]+)/g, function(match, gpPage) {
-                return '?page=gameplan&gp=' + gpPage;
-            });
-            selects[m].setAttribute('onchange', newOc);
-        }
+    // Rewrite inline event handlers (onchange, onclick, onsubmit) that reference /gameplan.php
+    var gpUrlPattern = /\/gameplan\.php\?page=([a-z0-9_]+)/g;
+    var inlineHandlers = gpContent.querySelectorAll('[onchange], [onclick], [onsubmit]');
+    for (let m = 0; m < inlineHandlers.length; m++) {
+        ['onchange', 'onclick', 'onsubmit'].forEach(function(attr) {
+            let val = inlineHandlers[m].getAttribute(attr);
+            if (val && val.indexOf('/gameplan.php') !== -1) {
+                let newVal = val.replace(gpUrlPattern, function(match, gpPage) {
+                    return '?page=gameplan&gp=' + gpPage;
+                });
+                inlineHandlers[m].setAttribute(attr, newVal);
+            }
+        });
+    }
+
+    // Rewrite form action attributes that point to /gameplan.php
+    var gpForms = gpContent.querySelectorAll('form[action*="/gameplan.php"]');
+    for (let n = 0; n < gpForms.length; n++) {
+        let action = gpForms[n].getAttribute('action');
+        let newAction = rewriteGameplanUrl(action);
+        if (newAction) gpForms[n].setAttribute('action', newAction);
     }
 });
 </script>
