@@ -612,7 +612,7 @@ function getAthleteProgressData($athlete_id, $parameters) {
                (SELECT COUNT(*) FROM bookings b 
                 INNER JOIN sessions s ON b.session_id = s.id 
                 WHERE b.user_id = u.id 
-                AND b.status = 'paid' 
+                AND b.payment_status = 'paid' 
                 AND s.session_date BETWEEN ? AND ?) as sessions_attended
         FROM users u
         WHERE u.id = ?
@@ -677,7 +677,7 @@ function getAllAthletesData($parameters) {
                (SELECT COUNT(*) FROM bookings b 
                 INNER JOIN sessions s ON b.session_id = s.id 
                 WHERE b.user_id = u.id 
-                AND b.status = 'paid' 
+                AND b.payment_status = 'paid' 
                 AND s.session_date BETWEEN ? AND ?) as sessions_attended
         FROM users u
         LEFT JOIN users c ON u.assigned_coach_id = c.id
