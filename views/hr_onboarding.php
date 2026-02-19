@@ -286,6 +286,11 @@ $perkTypes = [
                         </select>
                     </div>
                     <div class="form-group">
+                        <label class="form-label"><i class="fas fa-id-badge"></i> Job Title</label>
+                        <input type="text" name="job_title" class="form-input" placeholder="e.g., Head Coach, Assistant Manager">
+                        <small class="form-hint">Used for business cards and email signatures</small>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label"><i class="fas fa-clock"></i> Employment Type *</label>
                         <select name="employee_type" class="form-input" required>
                             <option value="part_time">Part-Time</option>
@@ -379,6 +384,14 @@ $perkTypes = [
                         <span><i class="fas fa-user-plus"></i> Create system account for this staff member</span>
                     </label>
                     <small class="form-hint">A temporary password will be generated and the staff member will be prompted to change it on first login.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-option" style="max-width: 400px;">
+                        <input type="checkbox" name="create_extension" value="1" id="createExtension">
+                        <span><i class="fas fa-phone-office"></i> Create a phone extension for this staff member</span>
+                    </label>
+                    <small class="form-hint">A phone extension will be provisioned for internal calling via the SIP phone system.</small>
                 </div>
 
                 <!-- Section 5: Payroll Setup -->

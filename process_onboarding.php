@@ -140,6 +140,7 @@ function exportOnboardingData($pdo, $settings, $onboardingData, $staffName, $yea
         $summary_content .= "Email: " . ($onboardingData['email'] ?? 'N/A') . "\n";
         $summary_content .= "Phone: " . ($onboardingData['phone'] ?? 'N/A') . "\n";
         $summary_content .= "Role: " . ucfirst(str_replace('_', ' ', $onboardingData['role'] ?? 'N/A')) . "\n";
+        $summary_content .= "Job Title: " . ($onboardingData['job_title'] ?? 'N/A') . "\n";
         $summary_content .= "Employment Type: " . ucfirst(str_replace('_', ' ', $onboardingData['employee_type'] ?? 'N/A')) . "\n";
         $summary_content .= "Start Date: " . ($onboardingData['start_date'] ?? 'N/A') . "\n";
         $summary_content .= "Date of Birth: " . ($onboardingData['date_of_birth'] ?? 'N/A') . "\n\n";
@@ -226,6 +227,7 @@ if ($action === 'create') {
         $email = trim($_POST['email']);
         $phone = trim($_POST['phone'] ?? '');
         $role = trim($_POST['role']);
+        $jobTitle = trim($_POST['job_title'] ?? '');
         $employeeType = trim($_POST['employee_type']);
         $startDate = trim($_POST['start_date']);
         $dateOfBirth = trim($_POST['date_of_birth'] ?? '');
@@ -245,6 +247,7 @@ if ($action === 'create') {
         
         // Options
         $createAccount = isset($_POST['create_account']) ? 1 : 0;
+        $createExtension = isset($_POST['create_extension']) ? 1 : 0;
         $setupPayroll = isset($_POST['setup_payroll']) ? 1 : 0;
         
         // Payroll details
@@ -301,13 +304,13 @@ if ($action === 'create') {
                 $enc_dob = $dateOfBirth ? FieldEncryption::encrypt($dateOfBirth) : null;
                 
                 $userStmt = $pdo->prepare("
-                    INSERT INTO users (email, password, first_name, last_name, role, phone, birth_date, 
+                    INSERT INTO users (email, password, first_name, last_name, role, phone, birth_date, job_title,
                                        is_active, is_verified, force_pass_change, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, 1, NOW())
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1, NOW())
                 ");
                 $userStmt->execute([
                     $email, $hashedPassword, $enc_firstName, $enc_lastName, $role, 
-                    $enc_phone, $enc_dob
+                    $enc_phone, $enc_dob, $jobTitle ?: null
                 ]);
                 $newUserId = $pdo->lastInsertId();
             }
@@ -324,15 +327,15 @@ if ($action === 'create') {
 
             $onboardStmt = $pdo->prepare("
                 INSERT INTO employee_onboarding 
-                (user_id, first_name, last_name, email, phone, role, start_date, employee_type,
+                (user_id, first_name, last_name, email, phone, role, job_title, create_extension, start_date, employee_type,
                  onboarding_status, personal_info_collected, sin_collected, sin_last_four, date_of_birth,
                  street_address, unit_number, city, province, postal_code,
                  emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
                  notes, processed_by, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_progress', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'in_progress', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
             $onboardStmt->execute([
-                $newUserId, $enc_onboard_first, $enc_onboard_last, $email, $enc_onboard_phone, $role, $startDate, $employeeType,
+                $newUserId, $enc_onboard_first, $enc_onboard_last, $email, $enc_onboard_phone, $role, $jobTitle ?: null, $createExtension, $startDate, $employeeType,
                 !empty($sinLastFour) ? 1 : 0, $sinLastFour ?: null, $enc_onboard_dob,
                 $enc_onboard_street, $unitNumber, $enc_onboard_city, $province, $postalCode,
                 $enc_onboard_emerg_name, $enc_onboard_emerg_phone, $emergencyRelationship,

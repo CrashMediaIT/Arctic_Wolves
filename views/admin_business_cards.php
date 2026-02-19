@@ -170,7 +170,8 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                              data-last-name="<?php echo htmlspecialchars($user['last_name']); ?>"
                              data-email="<?php echo htmlspecialchars($user['email']); ?>"
                              data-phone="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>"
-                             data-role="<?php echo htmlspecialchars($user['role']); ?>">
+                             data-role="<?php echo htmlspecialchars($user['role']); ?>"
+                             data-job-title="<?php echo htmlspecialchars($user['job_title'] ?? ''); ?>">
                             <div class="user-avatar-large">
                                 <?php 
                                     $initials = strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1));
@@ -223,7 +224,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                             <label class="form-label">Job Title</label>
                             <input type="text" name="job_title" id="bc_job_title" class="form-input" 
                                    placeholder="e.g., Head Coach, Assistant Coach"
-                                   value="<?php echo $selected_user ? ucfirst(str_replace('_', ' ', $selected_user['role'])) : ''; ?>">
+                                   value="<?php echo $selected_user ? htmlspecialchars($selected_user['job_title'] ?? ucfirst(str_replace('_', ' ', $selected_user['role']))) : ''; ?>">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Phone Number *</label>
@@ -406,7 +407,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                             </div>
                             <div class="card-main-info">
                                 <h2 class="card-name" id="preview-name"><?php echo $selected_user ? htmlspecialchars(trim(($selected_user['first_name'] ?? '') . ' ' . ($selected_user['last_name'] ?? ''))) : 'Full Name'; ?></h2>
-                                <p class="card-title" id="preview-title"><?php echo $selected_user ? ucfirst(str_replace('_', ' ', $selected_user['role'])) : 'Job Title'; ?></p>
+                                <p class="card-title" id="preview-title"><?php echo $selected_user ? htmlspecialchars($selected_user['job_title'] ?? ucfirst(str_replace('_', ' ', $selected_user['role']))) : 'Job Title'; ?></p>
                             </div>
                             <div class="card-contact-info">
                                 <div class="contact-item">
@@ -466,7 +467,8 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                              data-last-name="<?php echo htmlspecialchars($user['last_name']); ?>"
                              data-email="<?php echo htmlspecialchars($user['email']); ?>"
                              data-phone="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>"
-                             data-role="<?php echo htmlspecialchars($user['role']); ?>">
+                             data-role="<?php echo htmlspecialchars($user['role']); ?>"
+                             data-job-title="<?php echo htmlspecialchars($user['job_title'] ?? ''); ?>">
                             <div class="user-avatar-large">
                                 <?php 
                                     $initials = strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1));
@@ -1343,6 +1345,7 @@ function selectEmailSignatureUser(userId) {
     const email = userCard.dataset.email;
     const phone = userCard.dataset.phone;
     const role = userCard.dataset.role;
+    const jobTitle = userCard.dataset.jobTitle;
     
     emailSignatureUser = {
         id: userId,
@@ -1351,12 +1354,13 @@ function selectEmailSignatureUser(userId) {
         fullName: firstName + ' ' + lastName,
         email: email,
         phone: phone,
-        role: role
+        role: role,
+        jobTitle: jobTitle
     };
     
     // Populate the form fields
     document.getElementById('es_full_name').value = emailSignatureUser.fullName;
-    document.getElementById('es_job_title').value = capitalizeRole(role);
+    document.getElementById('es_job_title').value = jobTitle || capitalizeRole(role);
     document.getElementById('es_email').value = email;
     document.getElementById('es_phone').value = phone || '';
     
