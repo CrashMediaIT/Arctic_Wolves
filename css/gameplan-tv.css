@@ -35,6 +35,15 @@ body.tv-body {
   overflow-y: auto;
   padding: 32px 24px;
   z-index: 10;
+  transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease, transform 0.25s ease;
+}
+.tv-sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-right: none;
+  overflow: hidden;
+  transform: translateX(-100%);
 }
 
 .tv-sidebar .brand {
@@ -142,6 +151,31 @@ body.tv-body {
 .tv-sidebar-user .user-info small {
   color: var(--text-secondary, #C0C0CC);
   text-transform: capitalize;
+}
+
+/* ── Sidebar toggle button ──────────────────────────────── */
+.tv-sidebar-toggle {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(107, 70, 193, 0.1);
+  border: 1px solid var(--border, #2D2D3F);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+  outline: none;
+}
+.tv-sidebar-toggle:hover,
+.tv-sidebar-toggle:focus {
+  background: rgba(107, 70, 193, 0.2);
+}
+.tv-sidebar-toggle:focus-visible {
+  box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.5);
 }
 
 /* ── Main Area ─────────────────────────────────────────── */
@@ -351,6 +385,8 @@ button:focus-visible {
 
   a:focus-visible,
   button:focus-visible { outline-width: 4px; outline-offset: 3px; }
+
+  .tv-sidebar-toggle { width: 50px; height: 50px; font-size: 22px; border-radius: 12px; }
 }
 
 /* ── 4K displays (3840×2160) ──────────────────────────── */
@@ -409,4 +445,6 @@ button:focus-visible {
 
   a:focus-visible,
   button:focus-visible { outline-width: 5px; outline-offset: 4px; }
+
+  .tv-sidebar-toggle { width: 60px; height: 60px; font-size: 26px; border-radius: 14px; }
 }

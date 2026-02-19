@@ -215,6 +215,9 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
 <div class="tv-main">
     <header class="tv-topbar">
         <div class="tv-topbar-title">
+            <button class="tv-sidebar-toggle" id="tvSidebarToggle" onclick="toggleTvSidebar()" aria-label="Toggle navigation">
+                <i class="fas fa-bars" id="tvToggleIcon"></i>
+            </button>
             <i class="fas fa-chess-board"></i>
             <?= htmlspecialchars($current_label) ?>
         </div>
@@ -239,6 +242,28 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
 
 <!-- ── Scripts ─────────────────────────────────────────── -->
 <script>
+// Sidebar toggle
+function toggleTvSidebar() {
+    var sidebar = document.querySelector('.tv-sidebar');
+    var icon = document.getElementById('tvToggleIcon');
+    if (!sidebar) return;
+    sidebar.classList.toggle('collapsed');
+    if (icon) {
+        icon.className = sidebar.classList.contains('collapsed') ? 'fas fa-bars' : 'fas fa-times';
+    }
+    sessionStorage.setItem('tvSidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+}
+// Restore sidebar state on load
+(function() {
+    var sidebar = document.querySelector('.tv-sidebar');
+    var icon = document.getElementById('tvToggleIcon');
+    var state = sessionStorage.getItem('tvSidebarCollapsed');
+    if (state === '1' && sidebar) {
+        sidebar.classList.add('collapsed');
+        if (icon) icon.className = 'fas fa-bars';
+    }
+})();
+
 // Live clock in topbar
 (function() {
     function updateClock() {
