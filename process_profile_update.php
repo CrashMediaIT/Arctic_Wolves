@@ -720,6 +720,8 @@ if ($action == 'update_own_sip') {
     $sip_password = $_POST['sip_password'] ?? '';
     $sip_extension = trim($_POST['sip_extension'] ?? '');
     $sip_did = trim($_POST['sip_did'] ?? '');
+    $sip_wss_port = intval($_POST['sip_wss_port'] ?? 7443);
+    if ($sip_wss_port < 1 || $sip_wss_port > 65535) { $sip_wss_port = 7443; }
     
     // Only encrypt and update password if user entered a new one
     $update_password = !empty($sip_password);
@@ -731,7 +733,7 @@ if ($action == 'update_own_sip') {
             if ($update_password) {
                 $stmt = $pdo->prepare("
                     UPDATE users 
-                    SET sip_username = ?, sip_domain = ?, sip_password = ?, sip_extension = ?, sip_did = ?
+                    SET sip_username = ?, sip_domain = ?, sip_password = ?, sip_extension = ?, sip_did = ?, sip_wss_port = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
@@ -740,12 +742,13 @@ if ($action == 'update_own_sip') {
                     $encrypted_password,
                     $sip_extension ?: null,
                     $sip_did ?: null,
+                    $sip_wss_port,
                     $current_user_id
                 ]);
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE users 
-                    SET sip_username = ?, sip_domain = ?, sip_extension = ?, sip_did = ?
+                    SET sip_username = ?, sip_domain = ?, sip_extension = ?, sip_did = ?, sip_wss_port = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
@@ -753,6 +756,7 @@ if ($action == 'update_own_sip') {
                     $sip_domain ?: null,
                     $sip_extension ?: null,
                     $sip_did ?: null,
+                    $sip_wss_port,
                     $current_user_id
                 ]);
             }
@@ -760,24 +764,26 @@ if ($action == 'update_own_sip') {
             if ($update_password) {
                 $stmt = $pdo->prepare("
                     UPDATE users 
-                    SET sip_username = ?, sip_domain = ?, sip_password = ?
+                    SET sip_username = ?, sip_domain = ?, sip_password = ?, sip_wss_port = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
                     $sip_username ?: null,
                     $sip_domain ?: null,
                     $encrypted_password,
+                    $sip_wss_port,
                     $current_user_id
                 ]);
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE users 
-                    SET sip_username = ?, sip_domain = ?
+                    SET sip_username = ?, sip_domain = ?, sip_wss_port = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
                     $sip_username ?: null,
                     $sip_domain ?: null,
+                    $sip_wss_port,
                     $current_user_id
                 ]);
             }
