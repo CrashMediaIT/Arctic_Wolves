@@ -17,14 +17,12 @@ $current_user_id = $_SESSION['user_id'] ?? null;
 
 // Fetch current user's SIP settings
 $sip_data = null;
+$has_saved_password = false;
 try {
     $stmt = $pdo->prepare("SELECT sip_username, sip_domain, sip_extension, sip_did, sip_password FROM users WHERE id = ?");
     $stmt->execute([$current_user_id]);
     $sip_data = $stmt->fetch(PDO::FETCH_ASSOC);
-    // Decrypt the stored SIP password
-    if (!empty($sip_data['sip_password'])) {
-        $sip_data['sip_password'] = FieldEncryption::decrypt($sip_data['sip_password']);
-    }
+    $has_saved_password = !empty($sip_data['sip_password']);
 } catch (PDOException $e) {
     error_log("SIP settings fetch error: " . $e->getMessage());
 }
@@ -106,8 +104,8 @@ try {
             <div class="form-group">
                 <label class="form-label"><i class="fas fa-key"></i> SIP Password</label>
                 <input type="password" name="sip_password" id="sip_password" class="form-input"
-                       placeholder="Enter SIP password" value="<?php echo htmlspecialchars($sip_data['sip_password'] ?? ''); ?>">
-                <small class="form-hint">Your SIP account password (encrypted and saved securely on the server)</small>
+                       placeholder="<?php echo $has_saved_password ? 'Password saved — leave blank to keep current' : 'Enter SIP password'; ?>">
+                <small class="form-hint">Your SIP account password (encrypted and saved securely on the server)<?php echo $has_saved_password ? ' — already configured' : ''; ?></small>
             </div>
 
             <div class="form-actions">
@@ -314,13 +312,47 @@ function saveSipSettings() {
 // Register with SIP server using WebSocket (FusionPBX WebRTC via JsSIP)
 function registerSip() {
     const username = document.getElementById('sip_username').value.trim();
-    const password = document.getElementById('sip_password').value;
     const domain = document.getElementById('sip_domain').value.trim();
+    let password = document.getElementById('sip_password').value;
 
-    if (!username || !password || !domain) {
-        showNotification('Please fill in SIP username, password, and domain', 'warning');
+    if (!username || !domain) {
+        showNotification('Please fill in SIP username and domain', 'warning');
         return;
     }
+
+    // If password not entered, fetch saved password from server
+    if (!password) {
+        const csrfToken = document.querySelector('[name="csrf_token"]').value;
+        updateSipStatus('connecting', 'Retrieving saved credentials...');
+        fetch('process_profile_update.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'action=get_sip_password&csrf_token=' + encodeURIComponent(csrfToken)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success && data.password) {
+                doSipRegister(username, data.password, domain);
+            } else {
+                showNotification('Please enter your SIP password', 'warning');
+                updateSipStatus('info', 'Not connected');
+            }
+        })
+        .catch(function() {
+            showNotification('Please enter your SIP password', 'warning');
+            updateSipStatus('info', 'Not connected');
+        });
+        return;
+    }
+
+    doSipRegister(username, password, domain);
+}
+
+// Perform the actual SIP registration with JsSIP
+function doSipRegister(username, password, domain) {
 
     // Update UI to show connecting status
     updateSipStatus('connecting', 'Connecting to ' + domain + '...');
