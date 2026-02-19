@@ -1,12 +1,16 @@
 # ProxySQL configuration for MariaDB Galera Cluster
 # Routes all write traffic to the primary host group (any Galera node)
 # and distributes read traffic across all healthy nodes.
+#
+# IMPORTANT: Replace ALL placeholder passwords below before deploying.
+# Use a password manager or secret-management tool to generate strong credentials.
 
 datadir = "/var/lib/proxysql"
 
 admin_variables =
 {
-    admin_credentials = "admin:admin_password"
+    # Replace 'admin_password' with a strong randomly-generated password.
+    admin_credentials = "admin:REPLACE_PROXYSQL_ADMIN_PASSWORD"
     mysql_ifaces       = "0.0.0.0:6032"
 }
 
@@ -51,7 +55,8 @@ mysql_servers =
 
 mysql_users =
 (
-    { username="arctic_wolves_user", password="CHANGE_ME", default_hostgroup=10, transaction_persistent=1 }
+    # Replace 'CHANGE_ME' with the actual arctic_wolves_user password from .env.galera
+    { username="arctic_wolves_user", password="REPLACE_WITH_MYSQL_PASSWORD", default_hostgroup=10, transaction_persistent=1 }
 )
 
 # Route SELECT statements to the read host group; everything else goes to

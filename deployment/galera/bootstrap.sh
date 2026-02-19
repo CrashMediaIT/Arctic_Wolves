@@ -34,8 +34,8 @@ BOOTSTRAP_CLUSTER=yes docker compose -f "$COMPOSE_FILE" up -d galera-node-1
 
 echo "==> Waiting for galera-node-1 to become healthy ..."
 for i in $(seq 1 30); do
-    if docker compose -f "$COMPOSE_FILE" exec -T galera-node-1 \
-           mariadb -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 1" &>/dev/null; then
+    if MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" docker compose -f "$COMPOSE_FILE" exec -T galera-node-1 \
+           mariadb -u root -e "SELECT 1" &>/dev/null; then
         echo "    galera-node-1 is up."
         break
     fi
@@ -50,8 +50,8 @@ echo "==> Waiting for all nodes to join the cluster ..."
 sleep 15
 
 echo "==> Cluster status:"
-docker compose -f "$COMPOSE_FILE" exec -T galera-node-1 \
-    mariadb -u root -p"${MYSQL_ROOT_PASSWORD}" \
+MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" docker compose -f "$COMPOSE_FILE" exec -T galera-node-1 \
+    mariadb -u root \
     -e "SHOW STATUS LIKE 'wsrep_cluster_size'; SHOW STATUS LIKE 'wsrep_cluster_status'; SHOW STATUS LIKE 'wsrep_ready';"
 
 echo ""

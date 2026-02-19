@@ -158,7 +158,7 @@ function performBackup($pdo, $job) {
                 $nc2_settings = getSecondaryNextcloudSettings($pdo);
                 if (!empty($nc2_settings['nextcloud_url'])) {
                     $connection2 = connectNextcloud($nc2_settings);
-                    $folder2 = !empty($job['nextcloud_folder']) ? $job['nextcloud_folder'] : ($nc2_settings['nextcloud_receipt_folder'] ?? '/ArcticWolves/Backups/');
+                    $folder2 = !empty($job['nextcloud_folder']) ? $job['nextcloud_folder'] : ($nc2_settings['nextcloud_backup_folder'] ?? '/ArcticWolves/Backups/');
                     $remote_path2 = rtrim($folder2, '/') . '/' . $filename;
                     $result2 = uploadToNextcloud($connection2, $gz_file, $remote_path2);
                     

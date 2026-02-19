@@ -28,12 +28,12 @@ function getSecondaryNextcloudSettings($pdo) {
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $raw[$row['setting_key']] = $row['setting_value'];
     }
-    // Normalise keys to match the primary Nextcloud settings structure
+    # Normalise keys to match the primary Nextcloud settings structure
     return [
         'nextcloud_url'            => $raw['nextcloud_backup_url']      ?? null,
         'nextcloud_username'       => $raw['nextcloud_backup_username'] ?? null,
         'nextcloud_password'       => $raw['nextcloud_backup_password'] ?? null,
-        'nextcloud_receipt_folder' => $raw['nextcloud_backup_folder']   ?? '/ArcticWolves/Backups/',
+        'nextcloud_backup_folder'  => $raw['nextcloud_backup_folder']   ?? '/ArcticWolves/Backups/',
     ];
 }
 
