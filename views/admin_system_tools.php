@@ -5252,8 +5252,10 @@ function toggleClusterConfigFields() {
     var row  = document.getElementById('cfg-cluster-nodes-row');
     if (row) row.style.display = mode === 'cluster' ? 'block' : 'none';
 }
-// Run on page load
-if (document.getElementById('cfg-db-mode')) toggleClusterConfigFields();
+// Run after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('cfg-db-mode')) toggleClusterConfigFields();
+});
 
 function clusterPost(action, extraData) {
     var body = new URLSearchParams({ action: action, csrf_token: getCsrfToken() });
@@ -5344,7 +5346,8 @@ function testNode(node) {
 }
 
 function removeNode(node) {
-    if (!confirm('Remove node ' + node + ' from the cluster configuration?')) return;
+    var safeNode = node.replace(/['"\\]/g, '\\$&');
+    if (!confirm('Remove node ' + safeNode + ' from the cluster configuration?')) return;
     var result = document.getElementById('add-node-result');
     clusterPost('remove_cluster_node', { node: node })
     .then(data => {
@@ -5367,14 +5370,24 @@ function addClusterNode() {
     clusterPost('add_cluster_node', { node: newNode })
     .then(data => {
         if (data.success) {
-            var html = '<div style="margin-bottom:10px;"><span style="color:#00ff88;"><i class="fas fa-check"></i> ' + (data.message || 'Node added') + '</span></div>';
+            var html = '<div style="margin-bottom:10px;"><span style="color:#00ff88;"><i class="fas fa-check"></i> ' + escapeHtml(data.message || 'Node added') + '</span></div>';
             if (data.docker_cmd) {
                 html += '<div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">Run this command on the new node\'s Docker host to join the cluster:</div>'
-                      + '<pre style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;color:#e2e8f0;overflow-x:auto;white-space:pre-wrap;">'
+                      + '<pre id="docker-join-cmd" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;color:#e2e8f0;overflow-x:auto;white-space:pre-wrap;">'
                       + escapeHtml(data.docker_cmd) + '</pre>'
-                      + '<button type="button" onclick="navigator.clipboard.writeText(' + JSON.stringify(data.docker_cmd) + ')" class="btn btn-secondary" style="font-size:11px;padding:4px 10px;margin-top:6px;"><i class="fas fa-copy"></i> Copy Command</button>';
+                      + '<button type="button" id="btn-copy-docker-cmd" class="btn btn-secondary" style="font-size:11px;padding:4px 10px;margin-top:6px;"><i class="fas fa-copy"></i> Copy Command</button>';
             }
             result.innerHTML = html;
+            // Bind copy button after DOM update
+            if (data.docker_cmd) {
+                var copyBtn = document.getElementById('btn-copy-docker-cmd');
+                if (copyBtn) {
+                    var cmdText = data.docker_cmd;
+                    copyBtn.addEventListener('click', function() {
+                        navigator.clipboard.writeText(cmdText);
+                    });
+                }
+            }
             // Reload node list
             setTimeout(() => location.reload(), 300);
         } else {

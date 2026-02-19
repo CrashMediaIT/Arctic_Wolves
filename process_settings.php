@@ -1396,8 +1396,9 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Node address is required']);
                 exit;
             }
-            // Validate format: host or host:port
-            if (!preg_match('/^[a-zA-Z0-9._\-]+(:\d+)?$/', $new_node)) {
+            // Validate format: hostname or hostname:port
+            // Hyphens and underscores are permitted for Docker service names.
+            if (!preg_match('/^[a-zA-Z0-9._\-]+(:\d{1,5})?$/', $new_node)) {
                 echo json_encode(['success' => false, 'message' => 'Invalid node address format. Use hostname or hostname:port.']);
                 exit;
             }
@@ -1421,8 +1422,9 @@ try {
                 exit;
             }
             $env_content = file_get_contents($env_file);
+            // $nodes_str contains only validated host:port values — safe for literal replacement
             if (preg_match('/^DB_CLUSTER_NODES=.*$/m', $env_content)) {
-                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . $nodes_str, $env_content);
+                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($nodes_str, '\\'), $env_content);
             } else {
                 $env_content = rtrim($env_content) . "\nDB_CLUSTER_NODES=" . $nodes_str . "\n";
             }
@@ -1482,7 +1484,7 @@ try {
             }
             if ($env_file) {
                 $env_content = file_get_contents($env_file);
-                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . $nodes_str, $env_content);
+                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($nodes_str, '\\'), $env_content);
                 file_put_contents($env_file, $env_content);
             }
             $_ENV['DB_CLUSTER_NODES'] = $nodes_str;
@@ -1507,14 +1509,16 @@ try {
             }
             $env_content = file_get_contents($env_file);
             
-            // Update or add each setting
+            // Update or add each setting using preg_quote for the key pattern and addcslashes for value safety
             foreach (['DB_MODE' => $db_mode, 'DB_CLUSTER_NAME' => $cluster_name, 'DB_CLUSTER_NODES' => $cluster_nodes] as $key => $val) {
-                if (preg_match('/^' . $key . '=.*$/m', $env_content)) {
-                    $env_content = preg_replace('/^' . $key . '=.*$/m', "$key=$val", $env_content);
+                // Strip newlines from values to prevent env file corruption
+                $safe_val = str_replace(["\n", "\r"], '', $val);
+                if (preg_match('/^' . preg_quote($key, '/') . '=.*$/m', $env_content)) {
+                    $env_content = preg_replace('/^' . preg_quote($key, '/') . '=.*$/m', $key . '=' . addcslashes($safe_val, '\\'), $env_content);
                 } else {
-                    $env_content = rtrim($env_content) . "\n$key=$val\n";
+                    $env_content = rtrim($env_content) . "\n$key=$safe_val\n";
                 }
-                $_ENV[$key] = $val;
+                $_ENV[$key] = $safe_val;
             }
             file_put_contents($env_file, $env_content);
             

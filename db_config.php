@@ -95,9 +95,10 @@ if ($db_config_valid) {
     
     if ($db_mode === 'cluster' && !empty($db_cluster_nodes)) {
         $candidate_hosts = array_map('trim', explode(',', $db_cluster_nodes));
-        // Ensure the primary host is tried first
-        array_unshift($candidate_hosts, $host);
-        $candidate_hosts = array_unique($candidate_hosts);
+        // Ensure the primary host is tried first only if not already present
+        if (!in_array($host, $candidate_hosts)) {
+            array_unshift($candidate_hosts, $host);
+        }
     } else {
         $candidate_hosts = [$host];
     }

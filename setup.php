@@ -120,7 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nodes_arr = array_map('trim', explode(',', $cluster_nodes));
             // Strip port from first node for PDO host (PDO uses separate port param)
             $first_node = $nodes_arr[0];
-            $first_node_host = strpos($first_node, ':') !== false ? explode(':', $first_node)[0] : $first_node;
+            if (strpos($first_node, ':') !== false) {
+                $parts = explode(':', $first_node, 2);
+                $first_node_host = $parts[0];
+                // Port is parsed but ignored here — db_config.php handles per-node port
+            } else {
+                $first_node_host = $first_node;
+            }
             $host = $first_node_host;
         }
         
