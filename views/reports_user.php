@@ -24,7 +24,6 @@ $users_stmt = $pdo->prepare("
             WHERE b.user_id = u.id
             AND s.session_date BETWEEN ? AND ?) as sessions_count
     FROM users u
-    WHERE u.role IN ('athlete', 'parent')
     ORDER BY u.last_name, u.first_name
 ");
 $users_stmt->execute([$date_from, $date_to]);
@@ -199,12 +198,13 @@ $csrf_token = generateCsrfToken();
 <div class="user-reports">
     <div class="page-header">
         <h2><i class="fas fa-users-gear"></i> User Reports</h2>
-        <?php if ($selected_user_id && $selected_user): ?>
         <div>
+            <a href="process_users_email_export.php" class="btn-export"><i class="fas fa-envelope"></i> Export Emails</a>
+            <?php if ($selected_user_id && $selected_user): ?>
             <button onclick="exportUserCSV()" class="btn-export"><i class="fas fa-file-csv"></i> Export CSV</button>
             <button onclick="window.print()" class="btn-export"><i class="fas fa-print"></i> Print</button>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
     </div>
 
     <form method="GET" class="filter-bar" id="filterForm">
