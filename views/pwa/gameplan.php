@@ -333,10 +333,6 @@ $gp_is_sub = ($gp_sub !== 'home');
 
 /* Prevent zoom on input focus (iOS) by using 16px font-size above */
 
-/* NDI camera grid: single column */
-.m-gp-content [style*="minmax(260px"] {
-    grid-template-columns: 1fr !important;
-}
 
 /* Upcoming games: touch-friendly row */
 .m-gp-content [style*="justify-content:space-between"][style*="border-bottom"] {
@@ -685,19 +681,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Rewrite inline event handlers (onchange, onclick, onsubmit) that reference /gameplan.php
-    var gpUrlPattern = /\/gameplan\.php\?page=([a-z0-9_]+)/g;
-    var inlineHandlers = gpContent.querySelectorAll('[onchange], [onclick], [onsubmit]');
-    for (let m = 0; m < inlineHandlers.length; m++) {
-        ['onchange', 'onclick', 'onsubmit'].forEach(function(attr) {
-            let val = inlineHandlers[m].getAttribute(attr);
+    ['onchange', 'onclick', 'onsubmit'].forEach(function(attr) {
+        var els = gpContent.querySelectorAll('[' + attr + ']');
+        for (let m = 0; m < els.length; m++) {
+            let val = els[m].getAttribute(attr);
             if (val && val.indexOf('/gameplan.php') !== -1) {
-                let newVal = val.replace(gpUrlPattern, function(match, gpPage) {
+                let newVal = val.replace(/\/gameplan\.php\?page=([a-z0-9_]+)/g, function(match, gpPage) {
                     return '?page=gameplan&gp=' + gpPage;
                 });
-                inlineHandlers[m].setAttribute(attr, newVal);
+                els[m].setAttribute(attr, newVal);
             }
-        });
-    }
+        }
+    });
 
     // Rewrite form action attributes that point to /gameplan.php
     var gpForms = gpContent.querySelectorAll('form[action*="/gameplan.php"]');
