@@ -1,0 +1,125 @@
+# MariaDB Galera Cluster - 3-Node Setup
+# Provides synchronous multi-master replication with no data loss
+#
+# USAGE:
+#   First-time cluster bootstrap (run once on galera-node-1 host only):
+#     BOOTSTRAP_CLUSTER=yes docker compose -f docker-compose-galera.yml up -d galera-node-1
+#   Then bring up the remaining nodes:
+#     docker compose -f docker-compose-galera.yml up -d galera-node-2 galera-node-3
+#   For subsequent restarts:
+#     docker compose -f docker-compose-galera.yml up -d
+#
+# ENVIRONMENT: copy .env.galera.example to .env.galera and adjust values before deploying.
+
+version: "3.8"
+
+x-galera-common: &galera-common
+  image: mariadb:lts
+  restart: unless-stopped
+  environment:
+    MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}"
+    MYSQL_DATABASE: "${MYSQL_DATABASE:-arctic_wolves}"
+    MYSQL_USER: "${MYSQL_USER:-arctic_wolves_user}"
+    MYSQL_PASSWORD: "${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}"
+    # Galera cluster members (comma-separated IPs or hostnames)
+    GALERA_CLUSTER_MEMBERS: "${GALERA_CLUSTER_MEMBERS:-galera-node-1,galera-node-2,galera-node-3}"
+    GALERA_CLUSTER_NAME: "${GALERA_CLUSTER_NAME:-arctic_wolves_cluster}"
+  healthcheck:
+    test: ["CMD", "mariadb", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}", "-e", "SELECT 1"]
+    interval: 10s
+    timeout: 5s
+    retries: 10
+    start_period: 30s
+  networks:
+    - galera-net
+
+services:
+  galera-node-1:
+    <<: *galera-common
+    container_name: galera-node-1
+    hostname: galera-node-1
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-arctic_wolves}"
+      MYSQL_USER: "${MYSQL_USER:-arctic_wolves_user}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}"
+      GALERA_CLUSTER_MEMBERS: "${GALERA_CLUSTER_MEMBERS:-galera-node-1,galera-node-2,galera-node-3}"
+      GALERA_CLUSTER_NAME: "${GALERA_CLUSTER_NAME:-arctic_wolves_cluster}"
+      GALERA_NODE_ADDRESS: "galera-node-1"
+      # Set to 1 only for the first bootstrap; clear immediately after
+      GALERA_NEW_CLUSTER: "${BOOTSTRAP_CLUSTER:-}"
+    volumes:
+      - galera-node-1-data:/var/lib/mysql
+      - ./galera/galera.cnf.tpl:/etc/mysql/conf.d/galera.cnf:ro
+    ports:
+      - "${NODE1_PORT:-3306}:3306"
+
+  galera-node-2:
+    <<: *galera-common
+    container_name: galera-node-2
+    hostname: galera-node-2
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-arctic_wolves}"
+      MYSQL_USER: "${MYSQL_USER:-arctic_wolves_user}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}"
+      GALERA_CLUSTER_MEMBERS: "${GALERA_CLUSTER_MEMBERS:-galera-node-1,galera-node-2,galera-node-3}"
+      GALERA_CLUSTER_NAME: "${GALERA_CLUSTER_NAME:-arctic_wolves_cluster}"
+      GALERA_NODE_ADDRESS: "galera-node-2"
+    volumes:
+      - galera-node-2-data:/var/lib/mysql
+      - ./galera/galera.cnf.tpl:/etc/mysql/conf.d/galera.cnf:ro
+    depends_on:
+      galera-node-1:
+        condition: service_healthy
+    ports:
+      - "${NODE2_PORT:-3307}:3306"
+
+  galera-node-3:
+    <<: *galera-common
+    container_name: galera-node-3
+    hostname: galera-node-3
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE:-arctic_wolves}"
+      MYSQL_USER: "${MYSQL_USER:-arctic_wolves_user}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}"
+      GALERA_CLUSTER_MEMBERS: "${GALERA_CLUSTER_MEMBERS:-galera-node-1,galera-node-2,galera-node-3}"
+      GALERA_CLUSTER_NAME: "${GALERA_CLUSTER_NAME:-arctic_wolves_cluster}"
+      GALERA_NODE_ADDRESS: "galera-node-3"
+    volumes:
+      - galera-node-3-data:/var/lib/mysql
+      - ./galera/galera.cnf.tpl:/etc/mysql/conf.d/galera.cnf:ro
+    depends_on:
+      galera-node-1:
+        condition: service_healthy
+    ports:
+      - "${NODE3_PORT:-3308}:3306"
+
+  # ProxySQL load-balancer: distributes reads across all nodes and routes
+  # writes to any healthy node (all nodes are masters in Galera).
+  proxysql:
+    image: proxysql/proxysql:latest
+    container_name: proxysql
+    restart: unless-stopped
+    volumes:
+      - ./galera/proxysql.cnf:/etc/proxysql.cnf:ro
+      - proxysql-data:/var/lib/proxysql
+    ports:
+      - "${PROXY_MYSQL_PORT:-3305}:6033"   # MySQL protocol endpoint
+      - "${PROXY_ADMIN_PORT:-6032}:6032"   # ProxySQL admin interface
+    depends_on:
+      galera-node-1:
+        condition: service_healthy
+    networks:
+      - galera-net
+
+volumes:
+  galera-node-1-data:
+  galera-node-2-data:
+  galera-node-3-data:
+  proxysql-data:
+
+networks:
+  galera-net:
+    driver: bridge

@@ -46,6 +46,7 @@ try {
             $smb_password = trim($_POST['smb_password'] ?? '');
             $smb_domain = trim($_POST['smb_domain'] ?? '');
             $retention_days = (int)($_POST['retention_days'] ?? 30);
+            $keep_count = max(1, (int)($_POST['keep_count'] ?? 3));
             $status = $_POST['status'] ?? 'active';
             
             if (empty($name)) throw new Exception('Backup job name is required');
@@ -76,13 +77,13 @@ try {
             $stmt = $pdo->prepare("
                 INSERT INTO backup_jobs 
                 (name, schedule, backup_type, destination_type, nextcloud_folder, smb_path, 
-                 smb_username, smb_password, smb_domain, retention_days, next_backup, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 smb_username, smb_password, smb_domain, retention_days, keep_count, next_backup, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $name, $schedule, $backup_type, $destination_type, $nextcloud_folder,
                 $smb_path, $smb_username, $encrypted_password, $smb_domain,
-                $retention_days, $next_backup, $status, $user_id
+                $retention_days, $keep_count, $next_backup, $status, $user_id
             ]);
             $jobId = $pdo->lastInsertId();
             Auditor::log($pdo, $user_id, 'create', 'backup_jobs', $jobId, ['action' => 'Created backup job: ' . $name]);
@@ -103,6 +104,7 @@ try {
             $smb_password = trim($_POST['smb_password'] ?? '');
             $smb_domain = trim($_POST['smb_domain'] ?? '');
             $retention_days = (int)($_POST['retention_days'] ?? 30);
+            $keep_count = max(1, (int)($_POST['keep_count'] ?? 3));
             $status = $_POST['status'] ?? 'active';
             
             if ($id <= 0) throw new Exception('Invalid backup job ID');
@@ -132,13 +134,13 @@ try {
                 UPDATE backup_jobs 
                 SET name = ?, schedule = ?, destination_type = ?, nextcloud_folder = ?,
                     smb_path = ?, smb_username = ?, smb_password = ?, smb_domain = ?,
-                    retention_days = ?, next_backup = ?, status = ?
+                    retention_days = ?, keep_count = ?, next_backup = ?, status = ?
                 WHERE id = ?
             ");
             $stmt->execute([
                 $name, $schedule, $destination_type, $nextcloud_folder,
                 $smb_path, $smb_username, $encrypted_password, $smb_domain,
-                $retention_days, $next_backup, $status, $id
+                $retention_days, $keep_count, $next_backup, $status, $id
             ]);
             Auditor::log($pdo, $user_id, 'update', 'backup_jobs', $id, ['action' => 'Updated backup job: ' . $name]);
             
@@ -767,7 +769,8 @@ function validateCronExpression($expression) {
 }
 
 /**
- * Calculate next run time
+ * Calculate next run time.
+ * Supports all schedule intervals used by Arctic Wolves backups.
  */
 function calculateNextRun($cron_expression) {
     $parts = explode(' ', trim($cron_expression));
@@ -776,6 +779,30 @@ function calculateNextRun($cron_expression) {
     }
     
     list($minute, $hour, $day, $month, $weekday) = $parts;
+    
+    // Every N minutes: */5 * * * *
+    if (preg_match('/^\*\/(\d+)$/', $minute, $m) && $hour === '*') {
+        $interval = (int)$m[1];
+        $next = ceil(time() / ($interval * 60)) * ($interval * 60);
+        return date('Y-m-d H:i:s', $next);
+    }
+    
+    // Every N hours on the hour: 0 */N * * *
+    if ($minute === '0' && preg_match('/^\*\/(\d+)$/', $hour, $m) && $day === '*') {
+        $interval = (int)$m[1];
+        $current_hour = (int)date('G');
+        $next_hour = (int)(ceil(($current_hour + 1) / $interval) * $interval);
+        if ($next_hour >= 24) {
+            $next_hour -= 24;
+            $next = strtotime('tomorrow ' . sprintf('%02d:00:00', $next_hour));
+        } else {
+            $next = strtotime('today ' . sprintf('%02d:00:00', $next_hour));
+            if ($next <= time()) {
+                $next += $interval * 3600;
+            }
+        }
+        return date('Y-m-d H:i:s', $next);
+    }
     
     if ($cron_expression === '0 * * * *') {
         $next = strtotime(date('Y-m-d H:00:00', strtotime('+1 hour')));

@@ -633,9 +633,11 @@ $csrf_token = $_SESSION['csrf_token'];
         <div class="info-box-content">
             <strong>Backup Format:</strong> All backups are compressed and named <code>arctic_wolves_backup_YYYYMMDD_HHMMSS.sql.gz</code>
             <ul>
-                <li><strong>Nextcloud:</strong> Backups stored in /ArcticWolves/Backups/ (configurable)</li>
+                <li><strong>Both Nextcloud Instances:</strong> Uploads to primary <em>and</em> secondary Nextcloud for full redundancy</li>
+                <li><strong>Primary Nextcloud Only:</strong> Backups stored in /ArcticWolves/Backups/ (configurable)</li>
                 <li><strong>SMB:</strong> Direct network share storage (Windows/Samba)</li>
-                <li><strong>Retention:</strong> Backups older than specified days are automatically deleted</li>
+                <li><strong>Retention:</strong> Specify how many copies to keep per schedule; older backups are pruned automatically</li>
+                <li><strong>Standard schedules:</strong> Every 5 min · 1 hr · 6 hr · 12 hr · 24 hr · 1 week · 1 month — set <em>Copies to Keep</em> = 3</li>
             </ul>
         </div>
     </div>
@@ -847,11 +849,14 @@ $csrf_token = $_SESSION['csrf_token'];
                     <div class="cron-helper">
                         <select id="cron-preset" class="form-select" onchange="applyCronPreset()">
                             <option value="">Select a preset...</option>
-                            <option value="0 2 * * *">Daily at 2:00 AM</option>
-                            <option value="0 3 * * 0">Weekly (Sunday at 3:00 AM)</option>
-                            <option value="0 4 1 * *">Monthly (1st at 4:00 AM)</option>
+                            <option value="*/5 * * * *">Every 5 minutes</option>
+                            <option value="0 * * * *">Every 1 hour</option>
                             <option value="0 */6 * * *">Every 6 hours</option>
                             <option value="0 */12 * * *">Every 12 hours</option>
+                            <option value="0 0 * * *">Every 24 hours (daily midnight)</option>
+                            <option value="0 0 * * 0">Every week (Sunday midnight)</option>
+                            <option value="0 0 1 * *">Every month (1st at midnight)</option>
+                            <option value="0 2 * * *">Daily at 2:00 AM</option>
                             <option value="custom">Custom...</option>
                         </select>
                     </div>
@@ -862,9 +867,10 @@ $csrf_token = $_SESSION['csrf_token'];
                 <div class="form-group">
                     <label class="form-label required" for="destination-type">Destination Type</label>
                     <select id="destination-type" name="destination_type" class="form-select" required onchange="toggleSmbFields()">
-                        <option value="nextcloud">Nextcloud</option>
+                        <option value="both_nextcloud">Both Nextcloud Instances (Recommended)</option>
+                        <option value="nextcloud">Primary Nextcloud Only</option>
                         <option value="smb">SMB Network Share</option>
-                        <option value="both">Both</option>
+                        <option value="both">Nextcloud + SMB</option>
                     </select>
                 </div>
                 
@@ -907,9 +913,9 @@ $csrf_token = $_SESSION['csrf_token'];
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="retention-days">Retention Days</label>
-                    <input type="number" id="retention-days" name="retention_days" class="form-input" value="30" min="1" max="365">
-                    <span class="form-help">Delete backups older than this many days</span>
+                    <label class="form-label" for="keep-count">Copies to Keep</label>
+                    <input type="number" id="keep-count" name="keep_count" class="form-input" value="3" min="1" max="100">
+                    <span class="form-help">Number of successful backups to retain for this schedule (oldest are deleted automatically)</span>
                 </div>
                 
                 <div class="form-group">
