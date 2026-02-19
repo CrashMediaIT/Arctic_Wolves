@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `sip_domain` VARCHAR(255) DEFAULT NULL COMMENT 'SIP server domain for FusionPBX',
     `sip_extension` VARCHAR(20) DEFAULT NULL COMMENT 'Phone extension number',
     `sip_did` VARCHAR(20) DEFAULT NULL COMMENT 'Direct Inward Dialing number',
+    `sip_password` VARCHAR(512) DEFAULT NULL COMMENT 'Encrypted SIP account password for FusionPBX',
     `agreements_accepted` TINYINT(1) DEFAULT 0 COMMENT 'Whether user has accepted waiver and privacy policy',
     `promotional_opt_in` TINYINT(1) DEFAULT 1 COMMENT 'Whether user opts in to promotional material usage',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -977,6 +978,18 @@ CREATE TABLE IF NOT EXISTS `athlete_teams` (
     INDEX `idx_team` (`team_id`),
     INDEX `idx_season` (`season`),
     INDEX `idx_current` (`is_current`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Phone directory entries for non-user items (rooms, shared lines, external numbers)
+CREATE TABLE IF NOT EXISTS `phone_directory_entries` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `display_name` VARCHAR(255) NOT NULL COMMENT 'Name shown in directory (e.g., Board Room)',
+    `extension` VARCHAR(20) DEFAULT NULL COMMENT 'Phone extension number',
+    `entry_type` ENUM('room', 'shared', 'external', 'other') DEFAULT 'other' COMMENT 'Type of directory entry',
+    `description` VARCHAR(500) DEFAULT NULL COMMENT 'Optional description',
+    `created_by` INT DEFAULT NULL COMMENT 'Admin user who created the entry',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Audit logs - history and restore point for all admin tasks

@@ -1731,20 +1731,41 @@ if ($action == 'admin_update_sip') {
     $sip_domain = trim($_POST['sip_domain'] ?? '');
     $sip_extension = trim($_POST['sip_extension'] ?? '');
     $sip_did = trim($_POST['sip_did'] ?? '');
+    $sip_password = $_POST['sip_password'] ?? '';
+
+    // Only encrypt and update password if admin entered a new one
+    $update_password = !empty($sip_password);
+    $encrypted_password = $update_password ? FieldEncryption::encrypt($sip_password) : null;
 
     try {
-        $stmt = $pdo->prepare("
-            UPDATE users 
-            SET sip_username = ?, sip_domain = ?, sip_extension = ?, sip_did = ?
-            WHERE id = ?
-        ");
-        $stmt->execute([
-            $sip_username ?: null,
-            $sip_domain ?: null,
-            $sip_extension ?: null,
-            $sip_did ?: null,
-            $user_id_to_update
-        ]);
+        if ($update_password) {
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET sip_username = ?, sip_domain = ?, sip_extension = ?, sip_did = ?, sip_password = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $sip_username ?: null,
+                $sip_domain ?: null,
+                $sip_extension ?: null,
+                $sip_did ?: null,
+                $encrypted_password,
+                $user_id_to_update
+            ]);
+        } else {
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET sip_username = ?, sip_domain = ?, sip_extension = ?, sip_did = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $sip_username ?: null,
+                $sip_domain ?: null,
+                $sip_extension ?: null,
+                $sip_did ?: null,
+                $user_id_to_update
+            ]);
+        }
 
         header("Location: dashboard.php?page=all_users&status=success&msg=sip_updated");
     } catch (PDOException $e) {
