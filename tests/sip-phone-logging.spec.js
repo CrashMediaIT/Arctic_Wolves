@@ -1,13 +1,13 @@
 /**
- * Tests for SIP Phone View - showNotification & Logging
+ * Tests for SIP Phone View - showNotification, Logging & SIP URI Dialing
  *
  * Verifies:
  * 1. showNotification function is defined in sip_settings.php
  * 2. showNotification supports error, success, warning, and info types
- * 3. Console logging is present for SIP connection flow
- * 4. Console logging is present for SIP registration events
- * 5. Console logging is present for call events
- * 6. Console logging is present for WebSocket events
+ * 3. Console logging is present for SIP settings save
+ * 4. Calls use sip: URI protocol to open native SIP app or FusionPBX Web Dialer
+ * 5. JsSIP/WebRTC is removed (calls delegated to external SIP apps)
+ * 6. Info about native SIP app / FusionPBX Web Dialer is shown
  */
 
 import { test, expect } from '@playwright/test';
@@ -47,82 +47,84 @@ test.describe('SIP Settings - showNotification defined', () => {
 });
 
 // ================================================
-// 2. Console Logging for SIP Connection
+// 2. SIP URI Dialing (Native App / FusionPBX Web Dialer)
 // ================================================
-test.describe('SIP Settings - Connection Logging', () => {
-  test('should log WebSocket connection URL', async () => {
+test.describe('SIP Settings - SIP URI Dialing', () => {
+  test('callExtension should build sip: URI', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Connecting via WebSocket:'");
+    expect(content).toContain("'sip:' + extension + '@' + domain");
   });
 
-  test('should log SIP URI during registration', async () => {
+  test('callExtension should use window.location.href for sip: URI', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] SIP URI:");
+    expect(content).toContain('window.location.href = sipUri');
   });
 
-  test('should log WebSocket connected event', async () => {
+  test('should log SIP URI when calling', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] UA WebSocket connected'");
+    expect(content).toContain("console.log('[SIP] Opening SIP URI:'");
   });
 
-  test('should log WebSocket disconnected event', async () => {
+  test('callExtension should check domain is configured', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.warn('[SIP] UA WebSocket disconnected:'");
+    expect(content).toContain('Please configure your SIP domain first');
   });
 });
 
 // ================================================
-// 3. Console Logging for SIP Registration
+// 3. JsSIP/WebRTC Removed
 // ================================================
-test.describe('SIP Settings - Registration Logging', () => {
-  test('should log successful registration', async () => {
+test.describe('SIP Settings - JsSIP/WebRTC Removed', () => {
+  test('should not include JsSIP library', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Registration successful:'");
+    expect(content).not.toContain('jssip');
+    expect(content).not.toContain('JsSIP');
   });
 
-  test('should log registration failure', async () => {
+  test('should not have WebRTC session handling', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.error('[SIP] Registration failed");
+    expect(content).not.toContain('handleSession');
+    expect(content).not.toContain('peerconnection');
+    expect(content).not.toContain('RTCSession');
   });
 
-  test('should log JsSIP UA start', async () => {
+  test('should not have SIP registration flow', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Starting JsSIP User Agent...'");
+    expect(content).not.toContain('registerSip');
+    expect(content).not.toContain('doSipRegister');
+    expect(content).not.toContain('sipUA');
+  });
+
+  test('should not have call modal', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).not.toContain('sip-call-modal');
+    expect(content).not.toContain('endCall');
   });
 });
 
 // ================================================
-// 4. Console Logging for Call Events
+// 4. Info About Native SIP App / FusionPBX Web Dialer
 // ================================================
-test.describe('SIP Settings - Call Event Logging', () => {
-  test('should log call initiation', async () => {
+test.describe('SIP Settings - Native App / Extension Info', () => {
+  test('should mention FusionPBX Web Dialer browser extension', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Initiating call to:'");
+    expect(content).toContain('FusionPBX Web Dialer');
   });
 
-  test('should log call accepted', async () => {
+  test('should mention native SIP applications', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Call accepted'");
+    expect(content).toContain('native SIP application');
   });
 
-  test('should log call ended', async () => {
+  test('should explain how calls work', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Call ended:'");
-  });
-
-  test('should log call failure', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.error('[SIP] Call failed");
-  });
-
-  test('should log ICE connection state changes', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] ICE connection state:'");
+    expect(content).toContain('How calls work');
+    expect(content).toContain('sip:');
   });
 });
 
 // ================================================
-// 5. Console Logging for Save & Credential Operations
+// 5. Console Logging for Save Operations
 // ================================================
 test.describe('SIP Settings - Save & Credential Logging', () => {
   test('should log SIP settings save', async () => {
@@ -138,10 +140,5 @@ test.describe('SIP Settings - Save & Credential Logging', () => {
   test('should log save errors', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
     expect(content).toContain("console.error('[SIP] Save error:'");
-  });
-
-  test('should log credential retrieval', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] No password entered, fetching saved credentials...'");
   });
 });

@@ -59,7 +59,7 @@ try {
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-headset"></i> SIP Phone Settings</h1>
-        <p class="page-description">Configure your SIP account for internal calling</p>
+        <p class="page-description">Configure your SIP account and dial via your SIP application or FusionPBX Web Dialer</p>
     </div>
 </div>
 
@@ -120,14 +120,14 @@ try {
 
             <div class="form-actions">
                 <button type="button" class="btn btn-primary" id="sip-save-btn" onclick="saveSipSettings()"><i class="fas fa-save"></i> Save SIP Settings</button>
-                <button type="button" class="btn btn-secondary" id="sip-register-btn" onclick="registerSip()"><i class="fas fa-plug"></i> Connect</button>
             </div>
         </form>
 
-        <div id="sip-status" class="alert-card info" style="margin-top: 16px;">
+        <div class="alert-card info" style="margin-top: 16px;">
             <i class="fas fa-info-circle"></i>
             <div class="alert-content">
-                <p><strong>Status:</strong> <span id="sip-status-text">Not connected</span></p>
+                <p><strong>How calls work:</strong> When you click Call or dial a number, a <code>sip:</code> link opens your native SIP application (e.g., MicroSIP, Zoiper, Ooma) or the <strong>FusionPBX Web Dialer</strong> browser extension if installed.</p>
+                <p style="margin-top: 8px; color: var(--text-muted); font-size: 13px;"><i class="fas fa-external-link-alt"></i> Configure your SIP application with the same credentials above to make and receive calls.</p>
             </div>
         </div>
     </div>
@@ -326,32 +326,6 @@ try {
 </div>
 <?php endif; ?>
 
-<!-- SIP Call Modal -->
-<div id="sip-call-modal" class="modal">
-    <div class="modal-content" style="max-width: 400px;">
-        <div class="modal-header">
-            <h2 class="modal-title"><i class="fas fa-phone"></i> <span id="call-title">Call</span></h2>
-            <button class="modal-close" aria-label="Close" onclick="endCall()">&times;</button>
-        </div>
-        <div class="modal-body" style="text-align: center; padding: 30px;">
-            <div id="call-status-icon" style="font-size: 48px; margin-bottom: 16px; color: var(--primary);">
-                <i class="fas fa-phone-volume"></i>
-            </div>
-            <p id="call-status-message" style="font-size: 16px; color: var(--text-white); margin-bottom: 8px;">Calling...</p>
-            <p id="call-extension-display" style="color: var(--text-muted); font-size: 14px;"></p>
-            <p id="call-timer" style="font-size: 24px; font-weight: bold; color: var(--primary); margin-top: 16px; display: none;">00:00</p>
-            <div style="margin-top: 24px;">
-                <button class="btn btn-danger" onclick="endCall()" style="padding: 12px 32px;">
-                    <i class="fas fa-phone-slash"></i> End Call
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Load SIP.js for built-in WebRTC calling -->
-<script src="https://cdn.jsdelivr.net/npm/jssip@3.10.1/dist/jssip.min.js" integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb" crossorigin="anonymous"></script>
-
 <script>
 // SIP Phone notification helper
 function showNotification(message, type = 'info') {
@@ -366,24 +340,6 @@ function showNotification(message, type = 'info') {
     alertDiv.style.minWidth = '300px';
     document.body.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 3000);
-}
-
-// SIP client state
-let sipConfigured = false;
-let sipUA = null;
-let sipSession = null;
-let callTimerInterval = null;
-let callStartTime = null;
-let localAudio = null;
-let remoteAudio = null;
-
-// Initialize audio elements for WebRTC
-function initAudio() {
-    if (!remoteAudio) {
-        remoteAudio = new Audio();
-        remoteAudio.autoplay = true;
-        console.log('[SIP] Audio element initialized');
-    }
 }
 
 // Save SIP settings to server
@@ -433,283 +389,17 @@ function saveSipSettings() {
     });
 }
 
-// Register with SIP server using WebSocket (WebRTC via JsSIP)
-function registerSip() {
-    console.log('[SIP] Register initiated');
-    const username = document.getElementById('sip_username').value.trim();
-    const domain = document.getElementById('sip_domain').value.trim();
-    let password = document.getElementById('sip_password').value;
-
-    if (!username || !domain) {
-        console.warn('[SIP] Registration aborted - missing username or domain');
-        showNotification('Please fill in SIP username and domain', 'warning');
-        return;
-    }
-
-    // If password not entered, fetch saved password from server
-    if (!password) {
-        console.log('[SIP] No password entered, fetching saved credentials...');
-        const csrfToken = document.querySelector('[name="csrf_token"]').value;
-        updateSipStatus('connecting', 'Retrieving saved credentials...');
-        fetch('process_profile_update.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: 'action=get_sip_password&csrf_token=' + encodeURIComponent(csrfToken)
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.success && data.password) {
-                console.log('[SIP] Saved credentials retrieved, proceeding with registration');
-                doSipRegister(username, data.password, domain);
-            } else {
-                console.warn('[SIP] No saved password found');
-                showNotification('Please enter your SIP password', 'warning');
-                updateSipStatus('info', 'Not connected');
-            }
-        })
-        .catch(function(err) {
-            console.error('[SIP] Error fetching saved credentials:', err);
-            showNotification('Please enter your SIP password', 'warning');
-            updateSipStatus('info', 'Not connected');
-        });
-        return;
-    }
-
-    doSipRegister(username, password, domain);
-}
-
-// Perform the actual SIP registration with JsSIP
-function doSipRegister(username, password, domain) {
-
-    // Update UI to show connecting status
-    updateSipStatus('connecting', 'Connecting to ' + domain + '...');
-
-    initAudio();
-
-    // Get WSS port from settings (default 7443 for FusionPBX)
-    var wssPort = document.getElementById('sip_wss_port').value.trim() || '7443';
-    var wssUrl = 'wss://' + domain + ':' + wssPort;
-    console.log('[SIP] Connecting via WebSocket:', wssUrl);
-    console.log('[SIP] SIP URI: sip:' + username + '@' + domain);
-
-    // Configure JsSIP with WebSocket Secure connection to FusionPBX on WSS port
-    var socket = new JsSIP.WebSocketInterface(wssUrl);
-
-    socket.onconnect = function() {
-        console.log('[SIP] WebSocket connected to', wssUrl);
-    };
-    socket.ondisconnect = function(error, code, reason) {
-        console.warn('[SIP] WebSocket disconnected - error:', error, 'code:', code, 'reason:', reason);
-    };
-
-    var configuration = {
-        sockets: [socket],
-        uri: 'sip:' + username + '@' + domain,
-        password: password,
-        display_name: username,
-        register: true,
-        session_timers: false
-    };
-
-    // Disconnect existing UA if re-registering
-    if (sipUA) {
-        console.log('[SIP] Stopping existing UA before re-registering');
-        try { sipUA.stop(); } catch(e) { console.warn('[SIP] Error stopping existing UA:', e); }
-    }
-
-    sipUA = new JsSIP.UA(configuration);
-
-    sipUA.on('connecting', function(e) {
-        console.log('[SIP] UA connecting to WebSocket server...', e);
-    });
-
-    sipUA.on('connected', function() {
-        console.log('[SIP] UA WebSocket connected');
-    });
-
-    sipUA.on('disconnected', function(e) {
-        console.warn('[SIP] UA WebSocket disconnected:', e);
-    });
-
-    sipUA.on('registered', function(e) {
-        console.log('[SIP] Registration successful:', e);
-        sipConfigured = true;
-        updateSipStatus('connected', 'Connected as ' + username + '@' + domain);
-        document.getElementById('sip-register-btn').innerHTML = '<i class="fas fa-check-circle"></i> Connected';
-        document.getElementById('sip-register-btn').classList.remove('btn-secondary');
-        document.getElementById('sip-register-btn').classList.add('btn-success');
-    });
-
-    sipUA.on('registrationFailed', function(e) {
-        console.error('[SIP] Registration failed - cause:', e.cause, 'response:', e.response);
-        updateSipStatus('error', 'Registration failed: ' + (e.cause || 'Unknown error'));
-        document.getElementById('sip-register-btn').innerHTML = '<i class="fas fa-plug"></i> Connect';
-        document.getElementById('sip-register-btn').classList.remove('btn-success');
-        document.getElementById('sip-register-btn').classList.add('btn-secondary');
-    });
-
-    sipUA.on('unregistered', function(e) {
-        console.log('[SIP] Unregistered:', e);
-        sipConfigured = false;
-        updateSipStatus('info', 'Disconnected');
-        document.getElementById('sip-register-btn').innerHTML = '<i class="fas fa-plug"></i> Connect';
-        document.getElementById('sip-register-btn').classList.remove('btn-success');
-        document.getElementById('sip-register-btn').classList.add('btn-secondary');
-    });
-
-    sipUA.on('newRTCSession', function(data) {
-        console.log('[SIP] New RTC session - originator:', data.originator);
-        var session = data.session;
-        if (data.originator === 'remote') {
-            // Incoming call
-            var caller = session.remote_identity.display_name || session.remote_identity.uri.user || 'Unknown';
-            console.log('[SIP] Incoming call from:', caller);
-            if (confirm('Incoming call from ' + caller + '. Answer?')) {
-                session.answer({
-                    mediaConstraints: { audio: true, video: false }
-                });
-                handleSession(session, caller);
-            } else {
-                session.terminate();
-            }
-        }
-    });
-
-    console.log('[SIP] Starting JsSIP User Agent...');
-    sipUA.start();
-}
-
-// Handle an active SIP session (attach audio streams)
-function handleSession(session, name) {
-    console.log('[SIP] Handling session for:', name);
-    sipSession = session;
-
-    session.on('peerconnection', function(e) {
-        console.log('[SIP] Peer connection established');
-        e.peerconnection.ontrack = function(ev) {
-            console.log('[SIP] Remote track received:', ev.track.kind);
-            if (ev.streams && ev.streams[0]) {
-                remoteAudio.srcObject = ev.streams[0];
-            }
-        };
-        e.peerconnection.onicecandidate = function(ev) {
-            if (ev.candidate) {
-                console.log('[SIP] ICE candidate:', ev.candidate.type, ev.candidate.candidate);
-            }
-        };
-        e.peerconnection.oniceconnectionstatechange = function() {
-            console.log('[SIP] ICE connection state:', e.peerconnection.iceConnectionState);
-        };
-    });
-
-    session.on('accepted', function() {
-        console.log('[SIP] Call accepted');
-        document.getElementById('call-status-message').textContent = 'Connected';
-        document.getElementById('call-status-icon').innerHTML = '<i class="fas fa-phone" style="color: var(--success, #10b981);"></i>';
-        startCallTimer();
-    });
-
-    session.on('ended', function(e) {
-        console.log('[SIP] Call ended:', e ? e.cause : '');
-        endCall();
-    });
-
-    session.on('failed', function(e) {
-        console.error('[SIP] Call failed - cause:', e.cause, 'originator:', e.originator);
-        document.getElementById('call-status-message').textContent = 'Call failed: ' + (e.cause || 'Unknown error');
-        document.getElementById('call-status-icon').innerHTML = '<i class="fas fa-phone-slash" style="color: var(--danger, #ef4444);"></i>';
-        sipSession = null;
-        stopCallTimer();
-    });
-}
-
-// Call an extension using built-in WebRTC
+// Call an extension via sip: URI (opens native SIP app or FusionPBX Web Dialer)
 function callExtension(extension, name) {
-    console.log('[SIP] Calling extension:', extension, 'name:', name);
-    if (!sipConfigured || !sipUA) {
-        console.warn('[SIP] Cannot call - SIP not configured or UA not initialized');
-        showNotification('Please connect your SIP account first using the Connect button', 'warning');
+    const domain = document.getElementById('sip_domain').value.trim();
+    if (!domain) {
+        showNotification('Please configure your SIP domain first', 'warning');
         return;
     }
-
-    initAudio();
-
-    // Show call modal
-    document.getElementById('call-title').textContent = 'Calling ' + name;
-    document.getElementById('call-extension-display').textContent = 'Extension: ' + extension;
-    document.getElementById('call-status-message').textContent = 'Ringing...';
-    document.getElementById('call-status-icon').innerHTML = '<i class="fas fa-phone-volume"></i>';
-    document.getElementById('call-timer').style.display = 'none';
-    document.getElementById('sip-call-modal').classList.add('active');
-    document.body.style.overflow = 'hidden';
-
-    // Build SIP URI for internal call
-    var domain = document.getElementById('sip_domain').value.trim();
-    var target = 'sip:' + extension + '@' + domain;
-
-    var options = {
-        mediaConstraints: { audio: true, video: false },
-        pcConfig: {
-            iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
-        }
-    };
-
-    try {
-        console.log('[SIP] Initiating call to:', target);
-        var session = sipUA.call(target, options);
-        handleSession(session, name);
-    } catch (e) {
-        console.error('[SIP] Call initiation error:', e);
-        document.getElementById('call-status-message').textContent = 'Call failed: ' + e.message;
-        document.getElementById('call-status-icon').innerHTML = '<i class="fas fa-phone-slash" style="color: var(--danger, #ef4444);"></i>';
-    }
-}
-
-// End current call
-function endCall() {
-    console.log('[SIP] Ending call');
-    if (sipSession && typeof sipSession.terminate === 'function') {
-        try { sipSession.terminate(); } catch(e) { console.warn('[SIP] Error terminating session:', e); }
-    }
-    sipSession = null;
-    stopCallTimer();
-
-    if (remoteAudio) {
-        remoteAudio.srcObject = null;
-    }
-
-    document.getElementById('sip-call-modal').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-// Call timer
-function startCallTimer() {
-    callStartTime = Date.now();
-    document.getElementById('call-timer').style.display = 'block';
-    callTimerInterval = setInterval(function() {
-        const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
-        const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-        const secs = String(elapsed % 60).padStart(2, '0');
-        document.getElementById('call-timer').textContent = mins + ':' + secs;
-    }, 1000);
-}
-
-function stopCallTimer() {
-    if (callTimerInterval) {
-        clearInterval(callTimerInterval);
-        callTimerInterval = null;
-    }
-}
-
-// Update SIP status display
-function updateSipStatus(type, message) {
-    const statusEl = document.getElementById('sip-status');
-    const textEl = document.getElementById('sip-status-text');
-    statusEl.className = 'alert-card ' + (type === 'connected' ? 'success' : type === 'connecting' ? 'warning' : type === 'error' ? 'error' : 'info');
-    textEl.textContent = message;
+    const sipUri = 'sip:' + extension + '@' + domain;
+    console.log('[SIP] Opening SIP URI:', sipUri, 'for:', name);
+    showNotification('Opening ' + name + ' in your SIP application...', 'info');
+    window.location.href = sipUri;
 }
 
 // Dialer functions
@@ -717,10 +407,6 @@ function dialerPress(key) {
     const input = document.getElementById('dialer-input');
     input.value += key;
     input.focus();
-    // Send DTMF if in an active call
-    if (sipSession && sipSession.isEstablished && sipSession.isEstablished()) {
-        sipSession.sendDTMF(key);
-    }
 }
 
 function dialerClear() {

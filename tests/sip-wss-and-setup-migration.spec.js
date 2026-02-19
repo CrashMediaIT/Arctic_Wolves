@@ -78,14 +78,12 @@ test.describe('SIP WSS Port - Settings UI', () => {
 // 3. SIP WSS Port - WebSocket Connection
 // ================================================
 test.describe('SIP WSS Port - WebSocket Connection', () => {
-  test('sip_settings.php should use configurable WSS port in WebSocket URL', async () => {
+  test('sip_settings.php should have configurable WSS port field', async () => {
     const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
     const content = fs.readFileSync(filePath, 'utf-8');
     
     // Should read WSS port from the form field
     expect(content).toContain("document.getElementById('sip_wss_port')");
-    // Should use the port variable in the WSS URL
-    expect(content).toContain("'wss://' + domain + ':' + wssPort");
   });
 
   test('sip_settings.php should default to 7443 if WSS port is empty', async () => {
