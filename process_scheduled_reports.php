@@ -7,6 +7,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -71,6 +73,9 @@ try {
                 $user_id
             ]);
             
+            $new_schedule_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'create', 'report_schedules', $new_schedule_id, ['action' => 'scheduled_report_created']);
+            
             header('Location: dashboard.php?page=scheduled_reports&status=created');
             exit;
             
@@ -114,6 +119,8 @@ try {
                 $user_id
             ]);
             
+            Auditor::log($pdo, $user_id, 'update', 'report_schedules', $schedule_id, ['action' => 'scheduled_report_updated']);
+            
             header('Location: dashboard.php?page=scheduled_reports&status=updated');
             exit;
             
@@ -141,6 +148,8 @@ try {
             $stmt = $pdo->prepare("UPDATE report_schedules SET is_active = ? WHERE id = ? AND created_by = ?");
             $stmt->execute([$new_status, $schedule_id, $user_id]);
             
+            Auditor::log($pdo, $user_id, 'update', 'report_schedules', $schedule_id, ['action' => 'scheduled_report_toggled']);
+            
             echo json_encode(['success' => true, 'message' => 'Schedule status updated', 'is_active' => $new_status]);
             exit;
             
@@ -158,6 +167,7 @@ try {
             $stmt->execute([$schedule_id, $user_id]);
             
             if ($stmt->rowCount() > 0) {
+                Auditor::log($pdo, $user_id, 'delete', 'report_schedules', $schedule_id, ['action' => 'scheduled_report_deleted']);
                 echo json_encode(['success' => true, 'message' => 'Schedule deleted']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Schedule not found or not authorized']);
@@ -169,7 +179,7 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log("Scheduled reports error: " . $e->getMessage());
+    ErrorLogger::error("Scheduled reports error: " . $e->getMessage());
     
     // Check if this was an AJAX request
     if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {

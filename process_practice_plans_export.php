@@ -7,6 +7,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Security check - must be logged in
 if (!isset($_SESSION['logged_in'])) {

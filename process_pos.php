@@ -6,6 +6,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -223,6 +225,8 @@ try {
             
             $pdo->commit();
             
+            Auditor::log($pdo, $_SESSION['user_id'], 'create', 'pos_transactions', $transactionId, ['action' => 'card_payment_processed']);
+            
             echo json_encode([
                 'success' => true,
                 'transaction_number' => $transactionNumber,
@@ -320,9 +324,9 @@ try {
                 } catch (\Stripe\Exception\ApiErrorException $e) {
                     // Log Stripe error but continue with cash transaction
                     // Cash transactions should still work even if Stripe reporting fails
-                    error_log("Stripe PaymentRecord error for cash transaction: " . $e->getMessage());
+                    ErrorLogger::error("Stripe PaymentRecord error for cash transaction: " . $e->getMessage());
                 } catch (Exception $e) {
-                    error_log("Stripe integration error for cash transaction: " . $e->getMessage());
+                    ErrorLogger::error("Stripe integration error for cash transaction: " . $e->getMessage());
                 }
             }
             
@@ -394,6 +398,8 @@ try {
             
             $pdo->commit();
             
+            Auditor::log($pdo, $_SESSION['user_id'], 'create', 'pos_transactions', $transactionId, ['action' => 'cash_payment_processed']);
+            
             echo json_encode([
                 'success' => true,
                 'transaction_number' => $transactionNumber,
@@ -441,6 +447,6 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log("POS processing error: " . $e->getMessage());
+    ErrorLogger::error("POS processing error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

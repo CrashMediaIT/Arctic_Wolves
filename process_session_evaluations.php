@@ -8,6 +8,8 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Helper function to check if this is an AJAX request
 function isAjaxRequest() {
@@ -169,6 +171,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$session_id, $name, $description, $user_id]);
                 $evaluation_id = $pdo->lastInsertId();
                 
+                Auditor::log($pdo, $user_id, 'create', 'session_evaluations', $evaluation_id, ['action' => 'session_evaluation_created']);
+                
                 sendResponse(true, 'Evaluation assigned to session successfully', ['evaluation_id' => $evaluation_id]);
                 break;
                 
@@ -193,6 +197,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$name, $description, $status, $evaluation_id]);
                 
+                Auditor::log($pdo, $user_id, 'update', 'session_evaluations', $evaluation_id, ['action' => 'session_evaluation_updated']);
+                
                 sendResponse(true, 'Evaluation updated successfully');
                 break;
                 
@@ -205,6 +211,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt = $pdo->prepare("DELETE FROM session_evaluations WHERE id = ?");
                 $stmt->execute([$evaluation_id]);
+                
+                Auditor::log($pdo, $user_id, 'delete', 'session_evaluations', $evaluation_id, ['action' => 'session_evaluation_deleted']);
                 
                 sendResponse(true, 'Evaluation deleted successfully');
                 break;
@@ -301,6 +309,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
                 $athlete_id = $pdo->lastInsertId();
                 
+                Auditor::log($pdo, $user_id, 'create', 'session_evaluation_athletes', $athlete_id, ['action' => 'evaluation_athlete_added']);
+                
                 sendResponse(true, 'Athlete added successfully', ['athlete_id' => $athlete_id]);
                 break;
                 
@@ -331,6 +341,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$enc_upd_fn, $enc_upd_ln, $email ?: null, $enc_upd_dob, $notes ?: null, $athlete_id]);
                 
+                Auditor::log($pdo, $user_id, 'update', 'session_evaluation_athletes', $athlete_id, ['action' => 'evaluation_athlete_updated']);
+                
                 sendResponse(true, 'Athlete updated successfully');
                 break;
                 
@@ -343,6 +355,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt = $pdo->prepare("DELETE FROM session_evaluation_athletes WHERE id = ?");
                 $stmt->execute([$athlete_id]);
+                
+                Auditor::log($pdo, $user_id, 'delete', 'session_evaluation_athletes', $athlete_id, ['action' => 'evaluation_athlete_removed']);
                 
                 sendResponse(true, 'Athlete removed successfully');
                 break;
@@ -525,6 +539,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $user_id
                     ]);
                 }
+                
+                Auditor::log($pdo, $user_id, 'update', 'session_evaluation_scores', $evaluation_id, ['action' => 'evaluation_scores_saved']);
                 
                 sendResponse(true, 'Evaluation scores saved successfully');
                 break;

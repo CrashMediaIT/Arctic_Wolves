@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Security check - must be logged in
 if (!isset($_SESSION['logged_in'])) {
@@ -45,6 +47,7 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update' || $
     
     try {
         $pdo->beginTransaction();
+        $is_update = (bool)$plan_id;
         
         if ($plan_id) {
             // Update existing plan
@@ -91,6 +94,8 @@ if ($action === 'save_plan' || $action === 'create' || $action === 'update' || $
         }
         
         $pdo->commit();
+        
+        Auditor::log($pdo, $user_id, $is_update ? 'update' : 'create', 'practice_plans', $plan_id, ['action' => $is_update ? 'practice_plan_updated' : 'practice_plan_created']);
         
         // AJAX response
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
@@ -174,7 +179,7 @@ if ($action === 'get_plan') {
         exit();
         
     } catch (PDOException $e) {
-        error_log("Get practice plan error: " . $e->getMessage());
+        ErrorLogger::error("Get practice plan error: " . $e->getMessage());
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'message' => 'Failed to load practice plan']);
         exit();
@@ -191,6 +196,8 @@ if ($action === 'delete_plan' || $action === 'delete') {
     
     try {
         $pdo->prepare("DELETE FROM practice_plans WHERE id = ? AND created_by = ?")->execute([$plan_id, $user_id]);
+        
+        Auditor::log($pdo, $user_id, 'delete', 'practice_plans', $plan_id, ['action' => 'practice_plan_deleted']);
         
         // Check if this is an AJAX request
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
@@ -226,6 +233,7 @@ if ($action === 'generate_share_token') {
     try {
         $stmt = $pdo->prepare("UPDATE practice_plans SET share_token = ? WHERE id = ? AND created_by = ?");
         $stmt->execute([$share_token, $plan_id, $user_id]);
+        Auditor::log($pdo, $user_id, 'update', 'practice_plans', $plan_id, ['action' => 'share_token_generated']);
         header("Location: dashboard.php?page=practice_plans&status=token_generated&plan_id=$plan_id");
         exit();
     } catch (PDOException $e) {
@@ -245,6 +253,7 @@ if ($action === 'remove_share_token') {
     try {
         $stmt = $pdo->prepare("UPDATE practice_plans SET share_token = NULL WHERE id = ? AND created_by = ?");
         $stmt->execute([$plan_id, $user_id]);
+        Auditor::log($pdo, $user_id, 'update', 'practice_plans', $plan_id, ['action' => 'share_token_removed']);
         header("Location: dashboard.php?page=practice_plans&status=token_removed");
         exit();
     } catch (PDOException $e) {
@@ -303,7 +312,7 @@ if ($action === 'fetch_ihs_practice_plan') {
         curl_close($ch);
         
         if ($http_code !== 200 || empty($html)) {
-            error_log("IHS Practice Plan Fetch Error: HTTP $http_code - $curl_error");
+            ErrorLogger::error("IHS Practice Plan Fetch Error: HTTP $http_code - $curl_error");
             echo json_encode(['success' => false, 'message' => 'Failed to fetch page content. Please try manual entry.']);
             exit();
         }
@@ -320,7 +329,7 @@ if ($action === 'fetch_ihs_practice_plan') {
         exit();
         
     } catch (Exception $e) {
-        error_log("IHS Practice Plan Fetch Error: " . $e->getMessage());
+        ErrorLogger::error("IHS Practice Plan Fetch Error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'An error occurred while fetching the practice plan']);
         exit();
     }
@@ -491,12 +500,14 @@ if ($action === 'import_ihs_practice_plan') {
         
         $pdo->commit();
         
+        Auditor::log($pdo, $user_id, 'create', 'practice_plans', $plan_id, ['action' => 'practice_plan_imported_from_ihs']);
+        
         header("Location: dashboard.php?page=practice_library&status=plan_imported");
         exit();
         
     } catch (Exception $e) {
         $pdo->rollBack();
-        error_log("IHS Practice Plan Import Error: " . $e->getMessage());
+        ErrorLogger::error("IHS Practice Plan Import Error: " . $e->getMessage());
         header("Location: dashboard.php?page=practice_import&error=import_failed");
         exit();
     }

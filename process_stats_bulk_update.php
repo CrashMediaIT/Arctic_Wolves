@@ -3,6 +3,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 if (!isset($_SESSION['logged_in']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit('Unauthorized');
@@ -37,6 +39,8 @@ try {
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
+
+    Auditor::log($pdo, $user_id, 'update', 'athlete_stats', null, ['action' => 'bulk_stats_updated', 'team_id' => $team_id]);
 
     header("Location: dashboard.php?page=stats&mode=view");
 } catch (Exception $e) {

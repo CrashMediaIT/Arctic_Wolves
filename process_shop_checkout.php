@@ -7,6 +7,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -100,12 +102,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'ship_order') {
         }
         
         $pdo->commit();
+        $ship_user_id = $_SESSION['user_id'] ?? 0;
+        Auditor::log($pdo, $ship_user_id, 'update', 'shop_orders', $orderId, ['action' => 'order_shipped']);
         echo json_encode(['success' => true, 'message' => 'Order marked as shipped successfully!']);
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Ship order error: " . $e->getMessage());
+        ErrorLogger::error("Ship order error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Error shipping order: ' . $e->getMessage()]);
     }
     exit();
@@ -191,7 +195,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'create_stallion_label') {
             echo json_encode($result);
         }
     } catch (Exception $e) {
-        error_log("Create Stallion label error: " . $e->getMessage());
+        ErrorLogger::error("Create Stallion label error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Error creating label: ' . $e->getMessage()]);
     }
     exit();
@@ -441,6 +445,9 @@ try {
     
     $pdo->commit();
     
+    $checkout_user_id = $_SESSION['user_id'] ?? 0;
+    Auditor::log($pdo, $checkout_user_id, 'create', 'shop_orders', $orderId, ['action' => 'shop_order_created']);
+    
     // Redirect to Stripe checkout
     header("Location: " . $checkoutSession->url);
     exit();
@@ -449,14 +456,14 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log("Stripe API error during shop checkout: " . $e->getMessage());
+    ErrorLogger::error("Stripe API error during shop checkout: " . $e->getMessage());
     header('Location: shop_checkout.php?error=payment_failed');
     exit();
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log("Shop checkout error: " . $e->getMessage());
+    ErrorLogger::error("Shop checkout error: " . $e->getMessage());
     header('Location: shop_checkout.php?error=checkout_failed');
     exit();
 }
