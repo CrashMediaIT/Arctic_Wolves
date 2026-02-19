@@ -100,7 +100,7 @@ try {
             </div>
 
             <div class="form-actions">
-                <button type="button" class="btn btn-primary" onclick="saveSipSettings()"><i class="fas fa-save"></i> Save SIP Settings</button>
+                <button type="button" class="btn btn-primary" id="sip-save-btn" onclick="saveSipSettings()"><i class="fas fa-save"></i> Save SIP Settings</button>
                 <button type="button" class="btn btn-secondary" id="sip-register-btn" onclick="registerSip()"><i class="fas fa-plug"></i> Connect</button>
             </div>
         </form>
@@ -251,7 +251,7 @@ function saveSipSettings() {
     const domain = document.getElementById('sip_domain').value.trim();
     const csrfToken = document.querySelector('[name="csrf_token"]').value;
 
-    const saveBtn = document.querySelector('#sip-settings-form .btn-primary');
+    const saveBtn = document.getElementById('sip-save-btn');
     const originalBtnText = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';

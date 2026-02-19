@@ -457,13 +457,13 @@ table tbody tr:last-child td {
 
 /* Table Links */
 table tbody td a {
-    color: #8B5CF6;
+    color: var(--primary-light, #8B5CF6);
     text-decoration: none;
     transition: color 0.2s ease;
 }
 
 table tbody td a:hover {
-    color: #A78BFA;
+    color: var(--accent, #A78BFA);
     text-decoration: underline;
 }
 
