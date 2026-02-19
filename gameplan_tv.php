@@ -124,7 +124,7 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#6B46C1">
     <title>Game Plan TV – Arctic Wolves</title>
     <link rel="icon" type="image/png" href="https://images.crashmedia.ca/images/2026/01/21/ArcticWolves.png">
