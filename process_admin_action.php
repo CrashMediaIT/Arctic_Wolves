@@ -1620,6 +1620,7 @@ if ($action == 'update_user') {
     $email = trim($_POST['email']);
     $phone = trim($_POST['phone'] ?? '');
     $role = $_POST['role'];
+    $job_title = trim($_POST['job_title'] ?? '');
     $password = trim($_POST['password'] ?? '');
     $birth_date = !empty($_POST['birth_date']) ? $_POST['birth_date'] : null;
     // Support multiple coaches - get array of coach IDs
@@ -1662,17 +1663,17 @@ if ($action == 'update_user') {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("
                 UPDATE users 
-                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, password = ?, birth_date = ?, assigned_coach_id = ?
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, password = ?, birth_date = ?, job_title = ?, assigned_coach_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$enc_first_name, $enc_last_name, $email, $enc_phone, $role, $hashed_password, $enc_birth_date, $primary_coach_id, $user_id_to_update]);
+            $stmt->execute([$enc_first_name, $enc_last_name, $email, $enc_phone, $role, $hashed_password, $enc_birth_date, $job_title ?: null, $primary_coach_id, $user_id_to_update]);
         } else {
             $stmt = $pdo->prepare("
                 UPDATE users 
-                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, birth_date = ?, assigned_coach_id = ?
+                SET first_name = ?, last_name = ?, email = ?, phone = ?, role = ?, birth_date = ?, job_title = ?, assigned_coach_id = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$enc_first_name, $enc_last_name, $email, $enc_phone, $role, $enc_birth_date, $primary_coach_id, $user_id_to_update]);
+            $stmt->execute([$enc_first_name, $enc_last_name, $email, $enc_phone, $role, $enc_birth_date, $job_title ?: null, $primary_coach_id, $user_id_to_update]);
         }
         
         // Update multiple coach assignments in athlete_coaches table
@@ -1721,6 +1722,39 @@ if ($action == 'update_user') {
     exit();
 }
 
+// =========================================================
+// MODULE 8.4: ADMIN UPDATE SIP PROFILE
+// =========================================================
+if ($action == 'admin_update_sip') {
+    $user_id_to_update = intval($_POST['user_id']);
+    $sip_username = trim($_POST['sip_username'] ?? '');
+    $sip_domain = trim($_POST['sip_domain'] ?? '');
+    $sip_extension = trim($_POST['sip_extension'] ?? '');
+    $sip_did = trim($_POST['sip_did'] ?? '');
+
+    try {
+        $stmt = $pdo->prepare("
+            UPDATE users 
+            SET sip_username = ?, sip_domain = ?, sip_extension = ?, sip_did = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([
+            $sip_username ?: null,
+            $sip_domain ?: null,
+            $sip_extension ?: null,
+            $sip_did ?: null,
+            $user_id_to_update
+        ]);
+
+        header("Location: dashboard.php?page=all_users&status=success&msg=sip_updated");
+    } catch (PDOException $e) {
+        error_log("Admin update SIP error: " . $e->getMessage());
+        header("Location: dashboard.php?page=all_users&status=error&msg=sip_update_failed");
+    }
+    exit();
+}
+
+// =========================================================
 // =========================================================
 // MODULE 8.5: USER STATUS TOGGLING
 // =========================================================

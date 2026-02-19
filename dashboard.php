@@ -208,6 +208,8 @@ $allowed_pages = [
     'employee_contracts'      => 'views/hr_employee_contracts.php',
     'hr_time_tracking'        => 'views/hr_time_tracking.php',
     'complaints'              => 'views/hr_complaints.php',
+    'phone_directory'         => 'views/phone_directory.php',
+    'sip_settings'            => 'views/sip_settings.php',
     
     // Administration (Admin)
     'all_users'               => 'views/admin_users.php',
@@ -864,6 +866,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=pos_schedule" class="nav-link <?= $page=='pos_schedule'?'active':'' ?>">
                 <i class="fa-solid fa-calendar-alt icon"></i> My Schedule
             </a>
+            <a href="?page=phone_directory" class="nav-link <?= $page=='phone_directory'?'active':'' ?>">
+                <i class="fa-solid fa-address-book icon"></i> Phone Directory
+            </a>
         </nav>
     </div>
     <?php endif; ?>
@@ -893,6 +898,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=termination" class="nav-link <?= $page=='termination'?'active':'' ?>">
                 <i class="fa-solid fa-user-slash icon"></i> Termination
+            </a>
+            <a href="?page=phone_directory" class="nav-link <?= $page=='phone_directory'?'active':'' ?>">
+                <i class="fa-solid fa-address-book icon"></i> Phone Directory
             </a>
         </nav>
     </div>
@@ -930,6 +938,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <?php endif; ?>
 
     <div class="sidebar-footer">
+        <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>">
+            <i class="fa-solid fa-headset"></i> SIP Phone
+        </a>
         <a href="?page=profile" class="nav-link <?= $page=='profile'?'active':'' ?>">
             <i class="fa-solid fa-user-gear"></i> Profile Settings
         </a>

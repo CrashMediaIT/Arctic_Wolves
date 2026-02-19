@@ -423,6 +423,11 @@ foreach ($users as $u) {
                                                     data-coach-id="<?php echo htmlspecialchars($user['assigned_coach_id'] ?? ''); ?>"
                                                     data-birth-date="<?php echo htmlspecialchars($user['birth_date'] ?? ''); ?>"
                                                     data-name="<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>"
+                                                    data-job-title="<?php echo htmlspecialchars($user['job_title'] ?? ''); ?>"
+                                                    data-sip-username="<?php echo htmlspecialchars($user['sip_username'] ?? ''); ?>"
+                                                    data-sip-domain="<?php echo htmlspecialchars($user['sip_domain'] ?? ''); ?>"
+                                                    data-sip-extension="<?php echo htmlspecialchars($user['sip_extension'] ?? ''); ?>"
+                                                    data-sip-did="<?php echo htmlspecialchars($user['sip_did'] ?? ''); ?>"
                                                     title="Edit User">
                                                 <i class="fas fa-edit"></i>
                                             </button>
@@ -1264,6 +1269,9 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                 <button type="button" class="tab" data-tab="edit-profile-tab">
                     <i class="fas fa-user-circle"></i> <span>Profile</span>
                 </button>
+                <button type="button" class="tab" data-tab="edit-sip-tab">
+                    <i class="fas fa-headset"></i> <span>Phone/SIP</span>
+                </button>
                 <button type="button" class="tab" data-tab="edit-notifications-tab">
                     <i class="fas fa-bell"></i> <span>Notifications</span>
                 </button>
@@ -1296,6 +1304,12 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                     <div class="form-group">
                         <label class="form-label">Phone</label>
                         <input type="tel" name="phone" id="edit-user-phone" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Job Title</label>
+                        <input type="text" name="job_title" id="edit-user-job-title" class="form-input" placeholder="e.g., Head Coach">
+                        <small class="form-hint">Used for business cards and email signatures</small>
                     </div>
                     
                     <div class="form-row">
@@ -1490,6 +1504,47 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                 </form>
             </div>
             
+            <!-- Phone/SIP Tab -->
+            <div id="edit-sip-tab" class="tab-content">
+                <form method="POST" action="process_admin_action.php" id="edit-sip-form">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="admin_update_sip">
+                    <input type="hidden" name="user_id" class="edit-form-user-id" value="">
+                    
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+                        Configure this user's SIP phone settings for FusionPBX integration. Extension and DID are used in the phone directory.
+                    </p>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-phone"></i> Extension</label>
+                            <input type="text" name="sip_extension" id="edit-sip-extension" class="form-input" placeholder="e.g., 1001">
+                            <small class="form-hint">Internal phone extension number</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-phone-square"></i> DID Number</label>
+                            <input type="text" name="sip_did" id="edit-sip-did" class="form-input" placeholder="e.g., +16045551234">
+                            <small class="form-hint">Direct Inward Dialing number</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-user"></i> SIP Username</label>
+                            <input type="text" name="sip_username" id="edit-sip-username" class="form-input" placeholder="e.g., 1001">
+                            <small class="form-hint">SIP account username in FusionPBX</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-globe"></i> SIP Domain</label>
+                            <input type="text" name="sip_domain" id="edit-sip-domain" class="form-input" placeholder="e.g., pbx.arcticwolves.ca">
+                            <small class="form-hint">FusionPBX server domain</small>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-save"></i> Save Phone/SIP Settings</button>
+                </form>
+            </div>
+            
             <!-- Notifications Tab -->
             <div id="edit-notifications-tab" class="tab-content">
                 <form id="edit-notifications-form">
@@ -1574,6 +1629,11 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         var coachId = this.getAttribute('data-coach-id');
         var birthDate = this.getAttribute('data-birth-date');
         var userName = this.getAttribute('data-name');
+        var jobTitle = this.getAttribute('data-job-title');
+        var sipUsername = this.getAttribute('data-sip-username');
+        var sipDomain = this.getAttribute('data-sip-domain');
+        var sipExtension = this.getAttribute('data-sip-extension');
+        var sipDid = this.getAttribute('data-sip-did');
         
         document.getElementById('edit-user-id').value = id;
         document.querySelectorAll('.edit-form-user-id').forEach(function(el) { el.value = id; });
@@ -1582,8 +1642,15 @@ document.querySelectorAll('[data-action="edit"][data-modal="edit-user-modal"]').
         document.getElementById('edit-user-first-name').value = firstName;
         document.getElementById('edit-user-last-name').value = lastName;
         document.getElementById('edit-user-phone').value = phone || '';
+        document.getElementById('edit-user-job-title').value = jobTitle || '';
         document.getElementById('edit-user-role').value = role;
         document.getElementById('edit-user-birth-date').value = birthDate || '';
+        
+        // Populate SIP fields
+        document.getElementById('edit-sip-username').value = sipUsername || '';
+        document.getElementById('edit-sip-domain').value = sipDomain || '';
+        document.getElementById('edit-sip-extension').value = sipExtension || '';
+        document.getElementById('edit-sip-did').value = sipDid || '';
         
         // Pre-populate edit coach typeahead
         if (window._editCoachTypeahead) {

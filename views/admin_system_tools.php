@@ -111,6 +111,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=stallion" class="page-tab <?php echo $activeTab === 'stallion' ? 'active' : ''; ?>">
         <i class="fas fa-shipping-fast"></i> Stallion Express
     </a>
+    <a href="?page=system_tools&tab=fusionpbx" class="page-tab <?php echo $activeTab === 'fusionpbx' ? 'active' : ''; ?>">
+        <i class="fas fa-phone-alt"></i> FusionPBX
+    </a>
     <a href="?page=system_tools&tab=database" class="page-tab <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
         <i class="fas fa-database"></i> Database
     </a>
@@ -2859,6 +2862,124 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     </div>
 </div>
 
+<!-- FusionPBX Tab -->
+<div class="tab-content <?php echo $activeTab === 'fusionpbx' ? 'active' : ''; ?>" id="fusionpbx-tab">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-phone-alt"></i> FusionPBX Integration</h3>
+            <span class="badge <?php echo !empty($settings['fusionpbx_enabled']) && $settings['fusionpbx_enabled'] === '1' ? 'badge-success' : 'badge-secondary'; ?>">
+                <?php echo !empty($settings['fusionpbx_enabled']) && $settings['fusionpbx_enabled'] === '1' ? 'Enabled' : 'Disabled'; ?>
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="integration-status <?php echo !empty($settings['fusionpbx_url']) ? 'connected' : 'disconnected'; ?>">
+                <div class="status-icon">
+                    <i class="fas <?php echo !empty($settings['fusionpbx_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                </div>
+                <div class="status-info">
+                    <h4><?php echo !empty($settings['fusionpbx_url']) ? 'FusionPBX Server Configured' : 'Not Configured'; ?></h4>
+                    <p><?php echo !empty($settings['fusionpbx_url']) ? htmlspecialchars($settings['fusionpbx_url']) : 'Configure FusionPBX settings to enable automatic extension provisioning during onboarding'; ?></p>
+                </div>
+            </div>
+
+            <form id="fusionpbx-form" method="POST" action="process_settings.php" data-form-type="fusionpbx">
+                <?php echo csrfTokenInput(); ?>
+                <input type="hidden" name="action" value="update_fusionpbx">
+                <input type="hidden" name="redirect_page" value="system_tools">
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Enable FusionPBX</h4>
+                            <p>Enable automatic extension provisioning during employee onboarding</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="fusionpbx_enabled" 
+                                   <?php echo !empty($settings['fusionpbx_enabled']) && $settings['fusionpbx_enabled'] === '1' ? 'checked' : ''; ?>
+                                   data-action="toggle-setting">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Server URL</h4>
+                            <p>FusionPBX server address (e.g., https://pbx.example.com)</p>
+                        </div>
+                        <input type="url" name="fusionpbx_url" class="form-input" 
+                               value="<?php echo htmlspecialchars($settings['fusionpbx_url'] ?? ''); ?>"
+                               placeholder="https://pbx.example.com">
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>API Key</h4>
+                            <p>FusionPBX API key for authentication<?php echo !empty($settings['fusionpbx_api_key']) ? ' (currently set)' : ''; ?></p>
+                        </div>
+                        <input type="password" name="fusionpbx_api_key" class="form-input" 
+                               placeholder="<?php echo !empty($settings['fusionpbx_api_key']) ? 'Leave blank to keep current key' : 'Enter API key'; ?>">
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Domain UUID</h4>
+                            <p>FusionPBX domain UUID for your tenant</p>
+                        </div>
+                        <input type="text" name="fusionpbx_domain_uuid" class="form-input" 
+                               value="<?php echo htmlspecialchars($settings['fusionpbx_domain_uuid'] ?? ''); ?>"
+                               placeholder="e.g., a1b2c3d4-e5f6-7890-abcd-ef1234567890">
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Domain Name</h4>
+                            <p>SIP domain name (used for SIP registration)</p>
+                        </div>
+                        <input type="text" name="fusionpbx_domain" class="form-input" 
+                               value="<?php echo htmlspecialchars($settings['fusionpbx_domain'] ?? ''); ?>"
+                               placeholder="e.g., pbx.example.com">
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Default Context</h4>
+                            <p>Default dial plan context for new extensions</p>
+                        </div>
+                        <input type="text" name="fusionpbx_default_context" class="form-input" 
+                               value="<?php echo htmlspecialchars($settings['fusionpbx_default_context'] ?? 'default'); ?>"
+                               placeholder="default">
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Area Code</h4>
+                            <p>Default area code for outbound dial plans</p>
+                        </div>
+                        <input type="text" name="fusionpbx_area_code" class="form-input" 
+                               value="<?php echo htmlspecialchars($settings['fusionpbx_area_code'] ?? ''); ?>"
+                               placeholder="e.g., 604">
+                    </div>
+                </div>
+                
+                <div class="form-actions" style="margin-top: 20px; display: flex; gap: 12px;">
+                    <button type="submit" class="btn btn-primary" data-action="save"><i class="fas fa-save"></i> Save Settings</button>
+                    <button type="button" class="btn btn-secondary" onclick="testFusionPBXConnection()"><i class="fas fa-plug"></i> Test Connection</button>
+                </div>
+            </form>
+
+            <div id="fusionpbx-test-result" class="alert" style="display: none; margin-top: 16px;"></div>
+
+            <div class="info-box" style="margin-top: 24px;">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <p><strong>How it works:</strong></p>
+                    <p>When FusionPBX is enabled and "Create Extension" is checked during employee onboarding, the system will automatically:</p>
+                    <ul style="margin: 8px 0 0 20px; list-style: disc;">
+                        <li>Create a new SIP extension with the next available number</li>
+                        <li>Create a FusionPBX user account linked to the extension</li>
+                        <li>Configure an inbound dial plan (if a DID number is assigned)</li>
+                        <li>Configure an outbound dial plan for the extension</li>
+                        <li>Save the SIP credentials to the employee's user profile</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- NDI Camera Edit Modal -->
 <div id="ndi-camera-edit-modal" class="modal">
     <div class="modal-content">
@@ -5133,6 +5254,37 @@ function gpTestCompanion() {
         .finally(function() {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-plug"></i> Test Connection';
+        });
+}
+
+// FusionPBX Test Connection
+function testFusionPBXConnection() {
+    var resultDiv = document.getElementById('fusionpbx-test-result');
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'alert alert-info';
+    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing connection...';
+    
+    var form = new FormData();
+    form.append('action', 'test_fusionpbx');
+    form.append('csrf_token', document.querySelector('#fusionpbx-form input[name="csrf_token"]').value);
+    form.append('fusionpbx_url', document.querySelector('#fusionpbx-form input[name="fusionpbx_url"]').value);
+    form.append('fusionpbx_api_key', document.querySelector('#fusionpbx-form input[name="fusionpbx_api_key"]').value);
+    form.append('fusionpbx_domain_uuid', document.querySelector('#fusionpbx-form input[name="fusionpbx_domain_uuid"]').value);
+    
+    fetch('process_settings.php', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                resultDiv.className = 'alert alert-success';
+                resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ' + (data.message || 'Connection successful!');
+            } else {
+                resultDiv.className = 'alert alert-error';
+                resultDiv.innerHTML = '<i class="fas fa-times-circle"></i> ' + (data.message || 'Connection failed');
+            }
+        })
+        .catch(function(err) {
+            resultDiv.className = 'alert alert-error';
+            resultDiv.innerHTML = '<i class="fas fa-times-circle"></i> Connection error: ' + err.message;
         });
 }
 </script>

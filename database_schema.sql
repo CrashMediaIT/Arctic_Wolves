@@ -23,6 +23,11 @@ CREATE TABLE IF NOT EXISTS `users` (
     `assigned_coach_id` INT DEFAULT NULL, -- Primary coach assigned to this athlete
     `created_by_coach_id` INT DEFAULT NULL, -- Coach who created this athlete account
     `profile_image` VARCHAR(255) DEFAULT NULL,
+    `job_title` VARCHAR(255) DEFAULT NULL COMMENT 'Job title for business cards and signatures',
+    `sip_username` VARCHAR(255) DEFAULT NULL COMMENT 'SIP account username for FusionPBX',
+    `sip_domain` VARCHAR(255) DEFAULT NULL COMMENT 'SIP server domain for FusionPBX',
+    `sip_extension` VARCHAR(20) DEFAULT NULL COMMENT 'Phone extension number',
+    `sip_did` VARCHAR(20) DEFAULT NULL COMMENT 'Direct Inward Dialing number',
     `agreements_accepted` TINYINT(1) DEFAULT 0 COMMENT 'Whether user has accepted waiver and privacy policy',
     `promotional_opt_in` TINYINT(1) DEFAULT 1 COMMENT 'Whether user opts in to promotional material usage',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -2680,6 +2685,8 @@ CREATE TABLE IF NOT EXISTS `employee_onboarding` (
     `email` VARCHAR(255) NOT NULL,
     `phone` VARCHAR(512) DEFAULT NULL,
     `role` ENUM('coach', 'health_coach', 'admin', 'team_coach', 'front_desk_staff') NOT NULL,
+    `job_title` VARCHAR(255) DEFAULT NULL COMMENT 'Job title for business cards and signatures',
+    `create_extension` TINYINT(1) DEFAULT 0 COMMENT 'Whether to create a phone extension for this employee',
     `start_date` DATE NOT NULL,
     `employee_type` ENUM('full_time', 'part_time', 'contract', 'seasonal') DEFAULT 'part_time',
     `employment_status` VARCHAR(50) DEFAULT 'new',
