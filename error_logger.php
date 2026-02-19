@@ -279,3 +279,4 @@ class ErrorLogger {
 
 // Initialize error logger
 ErrorLogger::init();
+
