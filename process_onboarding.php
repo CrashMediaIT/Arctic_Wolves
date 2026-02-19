@@ -437,7 +437,10 @@ if ($action === 'create') {
                             
                             error_log("FusionPBX: Extension " . $fusionpbxResult['extension'] . " provisioned for $staffDisplayName");
                         } else {
-                            error_log("FusionPBX provisioning errors: " . implode(', ', $fusionpbxResult['errors'] ?? [$fusionpbxResult['message'] ?? 'Unknown error']));
+                            $errorDetails = !empty($fusionpbxResult['errors']) 
+                                ? implode(', ', $fusionpbxResult['errors']) 
+                                : ($fusionpbxResult['message'] ?? 'Unknown error');
+                            error_log("FusionPBX provisioning errors: " . $errorDetails);
                         }
                     } else {
                         error_log("FusionPBX: Integration not configured or not enabled, skipping extension creation");

@@ -2932,7 +2932,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </div>
                         <input type="text" name="fusionpbx_domain" class="form-input" 
                                value="<?php echo htmlspecialchars($settings['fusionpbx_domain'] ?? ''); ?>"
-                               placeholder="e.g., pbx.arcticwolves.ca">
+                               placeholder="e.g., pbx.example.com">
                     </div>
                     <div class="setting-item">
                         <div class="setting-info">

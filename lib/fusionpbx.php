@@ -317,8 +317,11 @@ function createFusionPBXInboundRoute($settings, $didNumber, $extension, $display
     $domainUuid = $settings['fusionpbx_domain_uuid'] ?? '';
     $context = $settings['fusionpbx_default_context'] ?? 'default';
     
-    // Clean the DID number (remove non-numeric chars except +)
-    $cleanDid = preg_replace('/[^0-9+]/', '', $didNumber);
+    // Clean the DID number (allow leading + followed by digits only)
+    $cleanDid = preg_replace('/[^0-9]/', '', $didNumber);
+    if (strpos($didNumber, '+') === 0) {
+        $cleanDid = '+' . $cleanDid;
+    }
     
     $data = [
         'dialplan_name' => 'Inbound - ' . $displayName,
