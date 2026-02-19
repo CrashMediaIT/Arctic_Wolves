@@ -32,12 +32,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 /**
  * Build redirect URL for device pair operations.
- * Uses the referrer_url POST field if provided, otherwise defaults to gameplan.php.
+ * Uses the referrer_url POST field to detect PWA context, otherwise defaults to gameplan.php.
+ * Only whitelisted internal paths are accepted to prevent open redirect.
  */
 function devicePairRedirect($suffix) {
     $base = '/gameplan.php?page=video_review&tab=device_pair';
     $referrer = $_POST['referrer_url'] ?? '';
-    if (!empty($referrer) && strpos($referrer, '/pwa.php') !== false) {
+    // Only allow known internal PWA path — prevents open redirect
+    if (!empty($referrer) && preg_match('#^/pwa\.php\b#', $referrer)) {
         $base = '/pwa.php?page=gameplan&gp=video_review&tab=device_pair';
     }
     return $base . '&' . $suffix;

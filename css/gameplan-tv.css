@@ -611,6 +611,9 @@ button:focus-visible {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
+@media (prefers-reduced-motion: reduce) {
+  .tv-frozen-badge { animation: none; }
+}
 
 .tv-pair-badge {
   display: inline-flex;

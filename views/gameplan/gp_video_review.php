@@ -1005,13 +1005,13 @@ try {
 <script>
 function toggleFreeze(pairId) {
     var csrfEl = document.querySelector('input[name="csrf_token"]');
-    if (!csrfEl || !csrfEl.value) { alert('Session expired. Please reload the page.'); return; }
+    if (!csrfEl || !csrfEl.value) { if (typeof persistToast === 'function') persistToast('Session expired. Please reload.', 'error'); return; }
     fetch('/process_video.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'action=toggle_freeze_pair&pair_id=' + pairId + '&csrf_token=' + encodeURIComponent(csrfEl.value)
     }).then(function(r) { return r.json(); }).then(function(data) {
-        if (data.success) { location.reload(); }
+        if (data.success) { persistToast('Viewer freeze state updated', 'success'); location.reload(); }
     });
 }
 
@@ -1022,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var pairId = this.dataset.pair;
             var page = this.dataset.page;
             var csrfEl = document.querySelector('input[name="csrf_token"]');
-            if (!csrfEl || !csrfEl.value) { alert('Session expired.'); return; }
+            if (!csrfEl || !csrfEl.value) { if (typeof persistToast === 'function') persistToast('Session expired. Please reload.', 'error'); return; }
 
             btn.disabled = true;
             btn.style.opacity = '0.5';

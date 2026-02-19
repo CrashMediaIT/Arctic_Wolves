@@ -97,7 +97,8 @@ if ($tv_pair_id > 0) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['tv_action'] ?? '') === 'join_viewer') {
     $join_code = strtoupper(trim($_POST['pair_code'] ?? ''));
     $submitted_token = $_POST['csrf_token'] ?? '';
-    if (!empty($join_code) && strlen($join_code) <= 10 && CSRFProtection::validateToken($submitted_token)) {
+    // Validate: alphanumeric only, max 10 chars
+    if (!empty($join_code) && strlen($join_code) <= 10 && preg_match('/^[A-Z0-9]+$/', $join_code) && CSRFProtection::validateToken($submitted_token)) {
         $viewer_token = bin2hex(random_bytes(32));
         try {
             $stmt = $pdo->prepare("
