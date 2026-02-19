@@ -16,8 +16,8 @@ $athletes_stmt = $pdo->prepare("
            COUNT(b.id) as booking_count,
            SUM(b.amount_paid) as total_spent
     FROM users u
-    JOIN bookings b ON (u.id = b.user_id OR u.id = b.booked_for_user_id)
-    WHERE b.status = 'paid' AND YEAR(b.created_at) = ?
+    JOIN bookings b ON u.id = b.user_id
+    WHERE b.payment_status = 'paid' AND YEAR(b.booking_date) = ?
     GROUP BY u.id
     ORDER BY u.last_name, u.first_name
 ");
@@ -30,17 +30,15 @@ $bookings = [];
 if ($athlete_id) {
     $bookings_stmt = $pdo->prepare("
         SELECT b.*, 
-               s.title as session_title, s.session_date, s.session_time,
-               p.name as package_name
+               s.title as session_title, s.session_date, s.session_time
         FROM bookings b
         LEFT JOIN sessions s ON b.session_id = s.id
-        LEFT JOIN packages p ON b.package_id = p.id
-        WHERE (b.user_id = ? OR b.booked_for_user_id = ?)
-          AND b.status = 'paid'
-          AND YEAR(b.created_at) = ?
-        ORDER BY b.created_at DESC
+        WHERE b.user_id = ?
+          AND b.payment_status = 'paid'
+          AND YEAR(b.booking_date) = ?
+        ORDER BY b.booking_date DESC
     ");
-    $bookings_stmt->execute([$athlete_id, $athlete_id, $selected_year]);
+    $bookings_stmt->execute([$athlete_id, $selected_year]);
     $bookings = $bookings_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $athlete_info = $pdo->prepare("SELECT * FROM users WHERE id = ?");
@@ -133,7 +131,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
                         <tbody>
                             <?php foreach ($bookings as $booking): ?>
                             <tr>
-                                <td><?php echo date('M j, Y', strtotime($booking['created_at'])); ?></td>
+                                <td><?php echo date('M j, Y', strtotime($booking['booking_date'])); ?></td>
                                 <td>
                                     <?php 
                                     if ($booking['payment_type'] === 'package') {

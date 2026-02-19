@@ -20,18 +20,18 @@ if ($is_parent && isset($_GET['athlete_id'])) {
 
 // Get session history
 $history_stmt = $pdo->prepare("
-    SELECT s.*, b.id as booking_id, b.amount_paid, b.created_at as booked_at,
+    SELECT s.*, b.id as booking_id, b.amount_paid, b.booking_date as booked_at,
            ag.name as age_group_name, sl.name as skill_level_name
     FROM bookings b
     INNER JOIN sessions s ON b.session_id = s.id
     LEFT JOIN age_groups ag ON s.age_group_id = ag.id
     LEFT JOIN skill_levels sl ON s.skill_level_id = sl.id
-    WHERE (b.user_id = ? OR b.booked_for_user_id = ?) AND b.status = 'paid'
+    WHERE b.user_id = ? AND b.payment_status = 'paid'
     AND s.session_date < CURDATE()
     ORDER BY s.session_date DESC, s.session_time DESC
     LIMIT 100
 ");
-$history_stmt->execute([$viewing_user_id, $viewing_user_id]);
+$history_stmt->execute([$viewing_user_id]);
 $history = $history_stmt->fetchAll();
 
 // Calculate totals

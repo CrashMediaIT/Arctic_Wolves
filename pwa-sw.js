@@ -3,17 +3,20 @@
  * Provides offline caching, push notifications, and background sync.
  */
 
-const CACHE_VERSION = 'aw-pwa-v2';
+const CACHE_VERSION = 'aw-pwa-v3';
 const STATIC_ASSETS = [
   '/index.php',
   '/pwa.php',
   '/pwa_tablet.php',
   '/pwa_login.php',
+  '/gameplan_tv.php',
   '/css/pwa.css',
   '/css/pwa-tablet.css',
+  '/css/gameplan-tv.css',
   '/css/style-guide.css',
   '/css/components.css',
   '/manifest.json',
+  '/manifest-gameplan-tv.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap'
 ];

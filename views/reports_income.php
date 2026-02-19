@@ -30,16 +30,12 @@ if ($period === 'today') {
 $bookings_stmt = $pdo->prepare("
     SELECT b.*, 
            s.title as session_title, s.session_date, s.session_time,
-           p.name as package_name,
-           u.first_name, u.last_name, u.email,
-           athlete.first_name as athlete_first, athlete.last_name as athlete_last
+           u.first_name, u.last_name, u.email
     FROM bookings b
     LEFT JOIN sessions s ON b.session_id = s.id
-    LEFT JOIN packages p ON b.package_id = p.id
     JOIN users u ON b.user_id = u.id
-    LEFT JOIN users athlete ON b.booked_for_user_id = athlete.id
-    WHERE b.status = 'paid' AND b.created_at BETWEEN ? AND ?
-    ORDER BY b.created_at DESC
+    WHERE b.payment_status = 'paid' AND b.booking_date BETWEEN ? AND ?
+    ORDER BY b.booking_date DESC
 ");
 $bookings_stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
 $bookings = $bookings_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -47,7 +43,7 @@ $bookings = decryptUserRows($bookings);
 
 // Calculate totals
 $subtotal = array_sum(array_column($bookings, 'original_price'));
-$tax = array_sum(array_column($bookings, 'tax_amount'));
+$tax = 0;
 $total = array_sum(array_column($bookings, 'amount_paid'));
 
 $settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -129,12 +125,10 @@ $tax_name = $settings['tax_name'] ?? 'HST';
             <tbody>
                 <?php foreach ($bookings as $booking): ?>
                 <tr>
-                    <td><?php echo date('M j, Y g:i A', strtotime($booking['created_at'])); ?></td>
+                    <td><?php echo date('M j, Y g:i A', strtotime($booking['booking_date'])); ?></td>
                     <td>
                         <?php 
-                        $customer_name = $booking['athlete_first'] 
-                            ? $booking['athlete_first'] . ' ' . $booking['athlete_last']
-                            : $booking['first_name'] . ' ' . $booking['last_name'];
+                        $customer_name = ($booking['first_name'] ?? '') . ' ' . ($booking['last_name'] ?? '');
                         echo htmlspecialchars($customer_name);
                         ?>
                         <br><small style="color: #64748b;"><?php echo htmlspecialchars($booking['email']); ?></small>
@@ -158,7 +152,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
                         </span>
                     </td>
                     <td>$<?php echo number_format($booking['original_price'], 2); ?></td>
-                    <td>$<?php echo number_format($booking['tax_amount'], 2); ?></td>
+                    <td>$<?php echo number_format($booking['tax_amount'] ?? 0, 2); ?></td>
                     <td><strong>$<?php echo number_format($booking['amount_paid'], 2); ?></strong></td>
                     <td><code style="font-size: 11px;"><?php echo substr($booking['stripe_session_id'], 0, 20); ?>...</code></td>
                 </tr>
