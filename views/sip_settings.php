@@ -20,7 +20,7 @@ $current_user_id = $_SESSION['user_id'] ?? null;
 $sip_data = null;
 $has_saved_password = false;
 try {
-    $stmt = $pdo->prepare("SELECT sip_username, sip_domain, sip_extension, sip_did, sip_password FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT sip_username, sip_domain, sip_extension, sip_did, sip_password, sip_wss_port FROM users WHERE id = ?");
     $stmt->execute([$current_user_id]);
     $sip_data = $stmt->fetch(PDO::FETCH_ASSOC);
     $has_saved_password = !empty($sip_data['sip_password']);
@@ -103,11 +103,19 @@ try {
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label"><i class="fas fa-key"></i> SIP Password</label>
-                <input type="password" name="sip_password" id="sip_password" class="form-input"
-                       placeholder="<?php echo $has_saved_password ? 'Password saved — leave blank to keep current' : 'Enter SIP password'; ?>">
-                <small class="form-hint">Your SIP account password (encrypted and saved securely on the server)<?php echo $has_saved_password ? ' — already configured' : ''; ?></small>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-network-wired"></i> WSS Port</label>
+                    <input type="number" name="sip_wss_port" id="sip_wss_port" class="form-input"
+                           placeholder="7443" value="<?php echo htmlspecialchars($sip_data['sip_wss_port'] ?? '7443'); ?>" min="1" max="65535">
+                    <small class="form-hint">WebSocket Secure port for FusionPBX connection (default: 7443)</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-key"></i> SIP Password</label>
+                    <input type="password" name="sip_password" id="sip_password" class="form-input"
+                           placeholder="<?php echo $has_saved_password ? 'Password saved — leave blank to keep current' : 'Enter SIP password'; ?>">
+                    <small class="form-hint">Your SIP account password (encrypted and saved securely on the server)<?php echo $has_saved_password ? ' — already configured' : ''; ?></small>
+                </div>
             </div>
 
             <div class="form-actions">
@@ -369,6 +377,7 @@ function saveSipSettings() {
     const password = document.getElementById('sip_password').value;
     const extension = document.getElementById('sip_extension').value.trim();
     const did = document.getElementById('sip_did').value.trim();
+    const wssPort = document.getElementById('sip_wss_port').value.trim() || '7443';
     const csrfToken = document.querySelector('[name="csrf_token"]').value;
 
     const saveBtn = document.getElementById('sip-save-btn');
@@ -376,7 +385,7 @@ function saveSipSettings() {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
-    let body = `action=update_own_sip&csrf_token=${encodeURIComponent(csrfToken)}&sip_username=${encodeURIComponent(username)}&sip_domain=${encodeURIComponent(domain)}&sip_password=${encodeURIComponent(password)}&sip_extension=${encodeURIComponent(extension)}&sip_did=${encodeURIComponent(did)}`;
+    let body = `action=update_own_sip&csrf_token=${encodeURIComponent(csrfToken)}&sip_username=${encodeURIComponent(username)}&sip_domain=${encodeURIComponent(domain)}&sip_password=${encodeURIComponent(password)}&sip_extension=${encodeURIComponent(extension)}&sip_did=${encodeURIComponent(did)}&sip_wss_port=${encodeURIComponent(wssPort)}`;
 
     fetch('process_profile_update.php', {
         method: 'POST',
@@ -453,8 +462,11 @@ function doSipRegister(username, password, domain) {
 
     initAudio();
 
-    // Configure JsSIP with WebSocket connection to FusionPBX
-    var socket = new JsSIP.WebSocketInterface('wss://' + domain + ':7443');
+    // Get WSS port from settings (default 7443 for FusionPBX)
+    var wssPort = document.getElementById('sip_wss_port').value.trim() || '7443';
+
+    // Configure JsSIP with WebSocket Secure connection to FusionPBX on WSS port
+    var socket = new JsSIP.WebSocketInterface('wss://' + domain + ':' + wssPort);
     var configuration = {
         sockets: [socket],
         uri: 'sip:' + username + '@' + domain,

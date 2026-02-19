@@ -229,7 +229,8 @@ test.describe('SIP Password Encryption - Still Working', () => {
     const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
     const content = fs.readFileSync(filePath, 'utf-8');
     
-    expect(content).toContain('sip_password FROM users');
+    expect(content).toContain('sip_password');
+    expect(content).toContain('FROM users WHERE id');
   });
 
   test('sip_settings.php should check for saved password', async () => {

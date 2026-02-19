@@ -129,9 +129,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['setup']['database'] = true;
             $_SESSION['db_credentials'] = ['host' => $host, 'name' => $name, 'user' => $user, 'pass' => $pass];
             
-            // Import schema
-            $schema = file_get_contents(__DIR__ . '/database_schema.sql');
-            $pdo->exec($schema);
+            // Detect if this is an existing database with tables
+            $stmt = $pdo->query("SHOW TABLES");
+            $existing_tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $has_users_table = in_array('users', $existing_tables);
+            
+            if ($has_users_table) {
+                // Existing database detected — check if it has user data
+                $user_count_stmt = $pdo->query("SELECT COUNT(*) FROM users");
+                $user_count = (int)$user_count_stmt->fetchColumn();
+                $_SESSION['setup']['existing_database'] = true;
+                $_SESSION['setup']['existing_user_count'] = $user_count;
+                $_SESSION['setup']['existing_table_count'] = count($existing_tables);
+            } else {
+                // Fresh database — import the full schema
+                $_SESSION['setup']['existing_database'] = false;
+                $schema = file_get_contents(__DIR__ . '/database_schema.sql');
+                $pdo->exec($schema);
             
             // Run migrations for existing installations
             // Use try-catch approach for portability
@@ -252,6 +266,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Note: Could not add idx_ical_uid_team index: " . $e->getMessage());
             }
             
+            // Add sip_wss_port column to users table for configurable WSS port
+            try {
+                $pdo->exec("ALTER TABLE users ADD COLUMN sip_wss_port INT DEFAULT 7443 COMMENT 'WebSocket Secure port for SIP/WSS connection to FusionPBX' AFTER sip_password");
+            } catch (PDOException $e) {
+                if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                    error_log("Note: Could not add sip_wss_port column to users: " . $e->getMessage());
+                }
+            }
+            
             // Add fk_expense_payee foreign key constraint if it doesn't exist
             // This is done separately to ensure idempotent schema setup
             // The expenses table and payee_id column are created by database_schema.sql
@@ -289,6 +312,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Note: Could not add fk_expense_payee constraint: " . $e->getMessage());
             }
             
+            } // End of fresh database schema import block
+            
             header("Location: setup.php?step=2");
             exit();
         } catch (PDOException $e) {
@@ -299,6 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($step == 2) {
         // Encryption Key Configuration
         $encryption_key = trim($_POST['encryption_key'] ?? '');
+        $is_existing_db = !empty($_SESSION['setup']['existing_database']);
         
         // Validate the key is exactly 64 hex characters
         if (!preg_match('/^[a-fA-F0-9]{64}$/', $encryption_key)) {
@@ -321,9 +347,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Load the key into the current environment so it takes effect immediately
                 $_ENV['ENCRYPTION_KEY'] = $encryption_key;
                 
-                $_SESSION['setup']['encryption'] = true;
-                header("Location: setup.php?step=3");
+                // For existing databases, validate the encryption key against stored data
+                if ($is_existing_db && isset($_SESSION['db_credentials'])) {
+                    $db_creds = $_SESSION['db_credentials'];
+                    try {
+                        $pdo = new PDO("mysql:host={$db_creds['host']};dbname={$db_creds['name']};charset=utf8mb4",
+                                      $db_creds['user'], $db_creds['pass']);
+                        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                        
+                        // Try to decrypt a sample user's first_name to validate the key
+                        $stmt = $pdo->query("SELECT first_name FROM users WHERE first_name IS NOT NULL AND first_name != '' LIMIT 1");
+                        $sample = $stmt->fetch(PDO::FETCH_ASSOC);
+                        if ($sample) {
+                            $decrypted = FieldEncryption::decrypt($sample['first_name']);
+                            // If decryption returns gibberish (non-UTF8), the key is likely wrong
+                            if ($decrypted !== $sample['first_name'] && !mb_check_encoding($decrypted, 'UTF-8')) {
+                                $error = "Encryption key validation failed. The provided key could not decrypt existing data. Please enter the correct encryption key that was used when the database was originally set up.";
+                            }
+                        }
+                    } catch (PDOException $e) {
+                        error_log("Encryption validation DB error: " . $e->getMessage());
+                    }
+                }
+                
+                if (empty($error)) {
+                    $_SESSION['setup']['encryption'] = true;
+                    
+                    if ($is_existing_db) {
+                        // Skip admin creation for existing databases — users already exist
+                        $_SESSION['setup']['admin'] = true;
+                        header("Location: setup.php?step=3");
+                    } else {
+                        header("Location: setup.php?step=3");
+                    }
+                    exit();
+                }
+            }
+        }
+    } elseif ($step == 3 && !empty($_SESSION['setup']['existing_database'])) {
+        // Schema Migration for Existing Database
+        if (!isset($_SESSION['db_credentials'])) {
+            $error = "Database credentials not found. Please restart setup.";
+        } else {
+            $db_creds = $_SESSION['db_credentials'];
+            
+            try {
+                $pdo = new PDO("mysql:host={$db_creds['host']};dbname={$db_creds['name']};charset=utf8mb4",
+                              $db_creds['user'], $db_creds['pass']);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                
+                require_once __DIR__ . '/lib/database_migrator.php';
+                $migrator = new DatabaseMigrator($pdo, __DIR__);
+                
+                // Parse the expected schema from database_schema.sql
+                $expected_schema = $migrator->parseSchemaFile(__DIR__ . '/database_schema.sql');
+                
+                // Get the current live database schema
+                $current_schema = $migrator->getCurrentSchema();
+                
+                // Compare and generate migration steps
+                $migrations = $migrator->compareSchemas($current_schema, $expected_schema);
+                
+                $migration_results = [];
+                $migration_errors = [];
+                
+                foreach ($migrations as $migration) {
+                    try {
+                        if ($migration['type'] === 'create_table') {
+                            // For missing tables, extract the CREATE TABLE from the schema file
+                            $schema_sql = file_get_contents(__DIR__ . '/database_schema.sql');
+                            $table_name = $migration['table'];
+                            
+                            // Extract the full CREATE TABLE statement from the schema file
+                            if (preg_match('/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?' . preg_quote($table_name) . '`?\s*\(.*?\)\s*ENGINE[^;]*;/is', $schema_sql, $match)) {
+                                $pdo->exec($match[0]);
+                                $migration_results[] = "Created missing table: $table_name";
+                            }
+                        } elseif ($migration['type'] === 'add_column') {
+                            $result = $migrator->executeMigration($migration);
+                            if (!empty($result['skipped'])) {
+                                $migration_results[] = $result['message'] . ' (skipped)';
+                            } else {
+                                $migration_results[] = $result['message'];
+                            }
+                        }
+                    } catch (Exception $e) {
+                        $migration_errors[] = "Migration error: " . $e->getMessage();
+                        error_log("Setup migration error: " . $e->getMessage());
+                    }
+                }
+                
+                // Run the inline migrations for columns that may not be detected by schema comparison
+                // (same as fresh install migrations)
+                $inline_migrations = [
+                    ["ALTER TABLE eval_categories ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_categories.display_order"],
+                    ["ALTER TABLE eval_skills ADD COLUMN display_order INT DEFAULT 0 AFTER description", "eval_skills.display_order"],
+                    ["ALTER TABLE vr_game_plan_lines ADD COLUMN roster_player_id INT DEFAULT NULL COMMENT 'References roster_players.id for non-user players' AFTER athlete_id", "vr_game_plan_lines.roster_player_id"],
+                    ["ALTER TABLE vr_game_plan_lines ADD COLUMN game_id INT DEFAULT NULL COMMENT 'NULL = default/standard lineup, set = game-specific lines' AFTER team_id", "vr_game_plan_lines.game_id"],
+                    ["ALTER TABLE teams ADD COLUMN is_managed TINYINT(1) DEFAULT 1 COMMENT '1 = managed team (our teams), 0 = unmanaged (opponent teams)' AFTER is_demo", "teams.is_managed"],
+                    ["ALTER TABLE teams ADD COLUMN ical_url VARCHAR(1000) DEFAULT NULL COMMENT 'Stored iCal URL for calendar re-sync' AFTER is_managed", "teams.ical_url"],
+                    ["ALTER TABLE game_schedules ADD COLUMN ical_uid VARCHAR(500) DEFAULT NULL COMMENT 'UID from iCal event for sync/update tracking' AFTER season_id", "game_schedules.ical_uid"],
+                    ["ALTER TABLE users ADD COLUMN sip_wss_port INT DEFAULT 7443 COMMENT 'WebSocket Secure port for SIP/WSS connection to FusionPBX' AFTER sip_password", "users.sip_wss_port"],
+                ];
+                
+                foreach ($inline_migrations as $mig) {
+                    try {
+                        $pdo->exec($mig[0]);
+                        $migration_results[] = "Added column: " . $mig[1];
+                    } catch (PDOException $e) {
+                        if ($e->getCode() !== '42S21' && strpos($e->getMessage(), 'Duplicate column') === false) {
+                            $migration_errors[] = "Could not add " . $mig[1] . ": " . $e->getMessage();
+                        }
+                    }
+                }
+                
+                // Verify schema after migration
+                $post_schema = $migrator->getCurrentSchema();
+                $remaining = $migrator->compareSchemas($post_schema, $expected_schema);
+                $remaining_tables = array_filter($remaining, function($m) { return $m['type'] === 'create_table'; });
+                
+                $_SESSION['setup']['schema_migration'] = [
+                    'results' => $migration_results,
+                    'errors' => $migration_errors,
+                    'remaining_issues' => count($remaining_tables)
+                ];
+                
+                $_SESSION['setup']['schema_migrated'] = true;
+                
+                // Skip admin creation for existing databases, go to SMTP
+                header("Location: setup.php?step=4");
                 exit();
+            } catch (PDOException $e) {
+                $error = "Schema migration failed: " . $e->getMessage();
+            } catch (Exception $e) {
+                $error = $e->getMessage();
             }
         }
     } elseif ($step == 3) {
@@ -568,37 +725,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn-primary">Continue to Step 2</button>
             </form>
         <?php elseif ($step == 2): ?>
-            <h2>Step 2: Encryption Key Setup</h2>
-            <p>Configure the encryption key used to protect sensitive data at rest</p>
-            <div class="step-info">
-                <i class="fa-solid fa-info-circle"></i> This key is used for AES-256-CBC encryption of personal data (names, phone numbers, addresses). Only the first admin account can change this key later in System Tools.
-            </div>
+            <?php $is_existing_db = !empty($_SESSION['setup']['existing_database']); ?>
+            <?php if ($is_existing_db): ?>
+                <h2>Step 2: Enter Encryption Key</h2>
+                <p>Enter the encryption key used to encrypt the existing database</p>
+                <div class="step-info">
+                    <i class="fa-solid fa-database"></i> <strong>Existing database detected</strong> with <?= intval($_SESSION['setup']['existing_table_count'] ?? 0) ?> tables and <?= intval($_SESSION['setup']['existing_user_count'] ?? 0) ?> users. Enter the encryption key that was used when the database was originally configured. This key is needed to decrypt the existing data.
+                </div>
+            <?php else: ?>
+                <h2>Step 2: Encryption Key Setup</h2>
+                <p>Configure the encryption key used to protect sensitive data at rest</p>
+                <div class="step-info">
+                    <i class="fa-solid fa-info-circle"></i> This key is used for AES-256-CBC encryption of personal data (names, phone numbers, addresses). Only the first admin account can change this key later in System Tools.
+                </div>
+            <?php endif; ?>
             <form method="POST" onsubmit="return validateSetupEncryptionKey()">
                 <div class="form-group">
                     <label>Encryption Key (64-character hex string)</label>
                     <input type="text" name="encryption_key" id="setup-encryption-key" 
-                           placeholder="Enter or generate a 64-character hex key" 
+                           placeholder="<?= $is_existing_db ? 'Enter your existing encryption key' : 'Enter or generate a 64-character hex key' ?>" 
                            pattern="[a-fA-F0-9]{64}" maxlength="64" required
                            style="font-family: monospace;">
+                    <?php if (!$is_existing_db): ?>
                     <div style="margin-top: 8px;">
                         <button type="button" onclick="generateSetupKey()" style="background: none; border: 1px solid var(--border); color: var(--primary); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: 'Inter', sans-serif;">
                             <i class="fa-solid fa-random"></i> Generate Random Key
                         </button>
                     </div>
-                    <p style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Must be exactly 64 hexadecimal characters (0-9, a-f). This key will be saved to your environment file.</p>
+                    <?php endif; ?>
+                    <p style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Must be exactly 64 hexadecimal characters (0-9, a-f). <?= $is_existing_db ? 'This must match the key originally used to encrypt the database.' : 'This key will be saved to your environment file.' ?></p>
                 </div>
                 <div class="alert alert-warning" style="margin-bottom: 20px;">
-                    <i class="fa-solid fa-exclamation-triangle"></i> <strong>Important:</strong> Back up your encryption key securely. If the key is lost, encrypted data cannot be recovered. Store a copy in a secure password manager or offline backup.
+                    <i class="fa-solid fa-exclamation-triangle"></i> <strong>Important:</strong> <?= $is_existing_db ? 'If you enter the wrong key, encrypted data will not be readable. Make sure you have the correct key before proceeding.' : 'Back up your encryption key securely. If the key is lost, encrypted data cannot be recovered. Store a copy in a secure password manager or offline backup.' ?>
                 </div>
-                <button type="submit" class="btn-primary">Continue to Step 3</button>
+                <button type="submit" class="btn-primary"><?= $is_existing_db ? 'Validate Key & Continue' : 'Continue to Step 3' ?></button>
             </form>
             <script>
+            <?php if (!$is_existing_db): ?>
             function generateSetupKey() {
                 var array = new Uint8Array(32);
                 crypto.getRandomValues(array);
                 var hex = Array.from(array).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
                 document.getElementById('setup-encryption-key').value = hex;
             }
+            <?php endif; ?>
             function validateSetupEncryptionKey() {
                 var key = document.getElementById('setup-encryption-key').value.trim();
                 if (!/^[a-fA-F0-9]{64}$/.test(key)) {
@@ -608,6 +778,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 return true;
             }
             </script>
+        <?php elseif ($step == 3 && !empty($_SESSION['setup']['existing_database'])): ?>
+            <h2>Step 3: Database Schema Migration</h2>
+            <p>Scan and update the database schema to ensure it is current</p>
+            <div class="step-info">
+                <i class="fa-solid fa-database"></i> The existing database will be scanned against the expected schema. Missing tables will be created and missing columns will be added. Existing data will be preserved.
+            </div>
+            <?php if (isset($_SESSION['setup']['schema_migration'])): ?>
+                <?php $mig = $_SESSION['setup']['schema_migration']; ?>
+                <?php if (!empty($mig['results'])): ?>
+                    <div class="alert alert-success" style="max-height: 200px; overflow-y: auto;">
+                        <i class="fa-solid fa-check-circle"></i> <strong>Migration Results:</strong><br/>
+                        <?php foreach ($mig['results'] as $r): ?>
+                            • <?= htmlspecialchars($r) ?><br/>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+                <?php if (!empty($mig['errors'])): ?>
+                    <div class="alert alert-warning">
+                        <i class="fa-solid fa-exclamation-triangle"></i> <strong>Warnings:</strong><br/>
+                        <?php foreach ($mig['errors'] as $e): ?>
+                            • <?= htmlspecialchars($e) ?><br/>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+                <?php if ($mig['remaining_issues'] === 0): ?>
+                    <div class="alert alert-success">
+                        <i class="fa-solid fa-check-circle"></i> Schema verification passed. The database is up to date.
+                    </div>
+                <?php else: ?>
+                    <div class="alert alert-warning">
+                        <i class="fa-solid fa-exclamation-triangle"></i> <?= $mig['remaining_issues'] ?> table(s) could not be created automatically. Review the warnings above.
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+            <form method="POST">
+                <button type="submit" class="btn-primary">Scan & Update Schema</button>
+            </form>
         <?php elseif ($step == 3): ?>
             <h2>Step 3: Create Admin User</h2>
             <p>Set up the initial administrator account</p>

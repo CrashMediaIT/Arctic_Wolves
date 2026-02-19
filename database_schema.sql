@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `sip_extension` VARCHAR(20) DEFAULT NULL COMMENT 'Phone extension number',
     `sip_did` VARCHAR(20) DEFAULT NULL COMMENT 'Direct Inward Dialing number',
     `sip_password` VARCHAR(512) DEFAULT NULL COMMENT 'Encrypted SIP account password for FusionPBX',
+    `sip_wss_port` INT DEFAULT 7443 COMMENT 'WebSocket Secure port for SIP/WSS connection to FusionPBX',
     `agreements_accepted` TINYINT(1) DEFAULT 0 COMMENT 'Whether user has accepted waiver and privacy policy',
     `promotional_opt_in` TINYINT(1) DEFAULT 1 COMMENT 'Whether user opts in to promotional material usage',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
