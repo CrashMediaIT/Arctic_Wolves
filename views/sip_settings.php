@@ -114,6 +114,41 @@ try {
     </div>
 </div>
 
+<!-- Dialer -->
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+        <h3><i class="fas fa-th"></i> Dialer</h3>
+    </div>
+    <div class="card-body">
+        <div style="max-width: 320px; margin: 0 auto; text-align: center;">
+            <input type="text" id="dialer-input" class="form-input" placeholder="Enter number or extension"
+                   style="text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 2px; margin-bottom: 16px; padding: 14px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('1')" style="height: 56px; font-size: 22px; font-weight: 700;">1</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('2')" style="height: 56px; font-size: 22px; font-weight: 700;">2</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('3')" style="height: 56px; font-size: 22px; font-weight: 700;">3</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('4')" style="height: 56px; font-size: 22px; font-weight: 700;">4</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('5')" style="height: 56px; font-size: 22px; font-weight: 700;">5</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('6')" style="height: 56px; font-size: 22px; font-weight: 700;">6</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('7')" style="height: 56px; font-size: 22px; font-weight: 700;">7</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('8')" style="height: 56px; font-size: 22px; font-weight: 700;">8</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('9')" style="height: 56px; font-size: 22px; font-weight: 700;">9</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('*')" style="height: 56px; font-size: 22px; font-weight: 700;">*</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('0')" style="height: 56px; font-size: 22px; font-weight: 700;">0</button>
+                <button type="button" class="btn btn-secondary dialer-key" onclick="dialerPress('#')" style="height: 56px; font-size: 22px; font-weight: 700;">#</button>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-primary" onclick="dialerCall()" style="flex: 1; height: 52px; font-size: 16px;">
+                    <i class="fas fa-phone"></i> Call
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="dialerClear()" style="height: 52px; font-size: 16px;">
+                    <i class="fas fa-backspace"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Internal Call Directory -->
 <div class="card" style="margin-top: 20px;">
     <div class="card-header">
@@ -216,6 +251,11 @@ function saveSipSettings() {
     const domain = document.getElementById('sip_domain').value.trim();
     const csrfToken = document.querySelector('[name="csrf_token"]').value;
 
+    const saveBtn = document.querySelector('#sip-settings-form .btn-primary');
+    const originalBtnText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
     fetch('process_profile_update.php', {
         method: 'POST',
         headers: {
@@ -226,6 +266,8 @@ function saveSipSettings() {
     })
     .then(response => response.json())
     .then(data => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalBtnText;
         if (data.success) {
             showNotification('SIP settings saved successfully', 'success');
         } else {
@@ -233,6 +275,8 @@ function saveSipSettings() {
         }
     })
     .catch(error => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalBtnText;
         showNotification('Error saving SIP settings', 'error');
     });
 }
@@ -358,5 +402,28 @@ function updateSipStatus(type, message) {
     const textEl = document.getElementById('sip-status-text');
     statusEl.className = 'alert-card ' + (type === 'connected' ? 'success' : type === 'connecting' ? 'warning' : 'info');
     textEl.textContent = message;
+}
+
+// Dialer functions
+function dialerPress(key) {
+    const input = document.getElementById('dialer-input');
+    input.value += key;
+    input.focus();
+}
+
+function dialerClear() {
+    const input = document.getElementById('dialer-input');
+    input.value = input.value.slice(0, -1);
+    input.focus();
+}
+
+function dialerCall() {
+    const input = document.getElementById('dialer-input');
+    const number = input.value.trim();
+    if (!number) {
+        showNotification('Please enter a number or extension to call', 'warning');
+        return;
+    }
+    callExtension(number, number);
 }
 </script>

@@ -167,7 +167,7 @@ try {
                                     <?php endif; ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($du['phone'] ?? '—'); ?></td>
-                                <td><a href="mailto:<?php echo htmlspecialchars($du['email']); ?>"><?php echo htmlspecialchars($du['email']); ?></a></td>
+                                <td><a href="mailto:<?php echo htmlspecialchars($du['email']); ?>" style="color: var(--primary-light); text-decoration: none;"><?php echo htmlspecialchars($du['email']); ?></a></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
