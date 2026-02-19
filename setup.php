@@ -104,17 +104,43 @@ if (!isset($_SESSION['setup'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($step == 1) {
         // Database Configuration
-        $db_mode = $_POST['db_mode'] ?? 'single';  // 'single' or 'cluster'
+        $db_mode = ($_POST['db_mode'] ?? 'single') === 'cluster' ? 'cluster' : 'single';
         $host = trim($_POST['db_host']);
         $name = trim($_POST['db_name']);
         $user = trim($_POST['db_user']);
         $pass = $_POST['db_pass'];
+        
+        // Validate host and dbname to prevent DSN injection (no semicolons or control chars)
+        if (!preg_match('/^[a-zA-Z0-9._\-]+$/', $host)) {
+            $error = 'Invalid database host. Use only letters, numbers, dots, hyphens and underscores.';
+        } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
+            $error = 'Invalid database name. Use only letters, numbers and underscores.';
+        } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $user)) {
+            $error = 'Invalid database user. Use only letters, numbers and underscores.';
+        }
         
         // Cluster-specific fields
         $cluster_name  = trim($_POST['db_cluster_name'] ?? 'arctic_wolves_cluster');
         $cluster_nodes = trim($_POST['db_cluster_nodes'] ?? $host); // comma-separated host:port or host
         $cluster_port  = intval($_POST['db_cluster_port'] ?? 3306);
         
+        // Validate cluster fields
+        if (empty($error) && $db_mode === 'cluster') {
+            if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $cluster_name)) {
+                $error = 'Invalid cluster name. Use only letters, numbers, underscores and hyphens.';
+            }
+            if (empty($error) && !empty($cluster_nodes)) {
+                $nodes_arr_check = array_map('trim', explode(',', $cluster_nodes));
+                foreach ($nodes_arr_check as $n) {
+                    if (!preg_match('/^[a-zA-Z0-9._\-]+(:\d{1,5})?$/', $n)) {
+                        $error = 'Invalid cluster node address format. Use hostname or hostname:port.';
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (empty($error)):
         // For cluster mode, the primary connection host is the first node in the list
         if ($db_mode === 'cluster') {
             $nodes_arr = array_map('trim', explode(',', $cluster_nodes));
@@ -355,6 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             $error = $e->getMessage();
         }
+        endif; // end if (empty($error))
     } elseif ($step == 2) {
         // Encryption Key Configuration
         $encryption_key = trim($_POST['encryption_key'] ?? '');
