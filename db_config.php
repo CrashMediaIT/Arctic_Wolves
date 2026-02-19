@@ -108,7 +108,8 @@ if ($db_config_valid) {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
         PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
-        PDO::ATTR_PERSISTENT => true,  // Connection pooling
+        // Disable persistent connections in cluster mode to avoid stale connections to dead nodes
+        PDO::ATTR_PERSISTENT => ($db_mode !== 'cluster'),
         PDO::ATTR_TIMEOUT => 5  // 5 second timeout
     ];
     

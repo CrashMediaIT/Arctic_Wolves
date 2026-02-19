@@ -1331,6 +1331,15 @@ try {
             exit;
 
         // ---- Galera Cluster Management -----------------------------------------------
+        // Helper: locate the environment file (used by cluster actions below)
+        if (!function_exists('findEnvFile')) {
+            function findEnvFile() {
+                foreach (['/config/arctic_wolves.env', __DIR__ . '/arctic_wolves.env', __DIR__ . '/.env'] as $p) {
+                    if (file_exists($p)) { return $p; }
+                }
+                return null;
+            }
+        }
 
         case 'get_cluster_status':
             // Return wsrep status variables from the connected node
@@ -1366,6 +1375,10 @@ try {
             $node = trim($_POST['node'] ?? '');
             if (empty($node)) {
                 echo json_encode(['success' => false, 'message' => 'Node address is required']);
+                exit;
+            }
+            if (!preg_match('/^[a-zA-Z0-9._\-]+(:\d{1,5})?$/', $node)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid node address format. Use hostname or hostname:port.']);
                 exit;
             }
             $node_host = $node;
@@ -1413,10 +1426,7 @@ try {
             $nodes_str = implode(',', $current_nodes);
             
             // Persist to env file
-            $env_file = null;
-            foreach (['/config/arctic_wolves.env', __DIR__ . '/arctic_wolves.env', __DIR__ . '/.env'] as $p) {
-                if (file_exists($p)) { $env_file = $p; break; }
-            }
+            $env_file = findEnvFile();
             if (!$env_file) {
                 echo json_encode(['success' => false, 'message' => 'Environment file not found. Cannot persist node list.']);
                 exit;
@@ -1469,6 +1479,10 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Node address is required']);
                 exit;
             }
+            if (!preg_match('/^[a-zA-Z0-9._\-]+(:\d{1,5})?$/', $remove_node)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid node address format.']);
+                exit;
+            }
             $current_nodes = array_filter(array_map('trim', explode(',', $_ENV['DB_CLUSTER_NODES'] ?? '')));
             $current_nodes = array_values(array_filter($current_nodes, fn($n) => $n !== $remove_node));
             
@@ -1478,10 +1492,7 @@ try {
             }
             $nodes_str = implode(',', $current_nodes);
             
-            $env_file = null;
-            foreach (['/config/arctic_wolves.env', __DIR__ . '/arctic_wolves.env', __DIR__ . '/.env'] as $p) {
-                if (file_exists($p)) { $env_file = $p; break; }
-            }
+            $env_file = findEnvFile();
             if ($env_file) {
                 $env_content = file_get_contents($env_file);
                 $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($nodes_str, '\\'), $env_content);
@@ -1499,10 +1510,23 @@ try {
             $cluster_name = trim($_POST['db_cluster_name'] ?? 'arctic_wolves_cluster');
             $cluster_nodes = trim($_POST['db_cluster_nodes'] ?? '');
             
-            $env_file = null;
-            foreach (['/config/arctic_wolves.env', __DIR__ . '/arctic_wolves.env', __DIR__ . '/.env'] as $p) {
-                if (file_exists($p)) { $env_file = $p; break; }
+            // Validate cluster name: alphanumeric, underscores and hyphens only
+            if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $cluster_name)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid cluster name. Use only letters, numbers, underscores and hyphens.']);
+                exit;
             }
+            // Validate cluster nodes: comma-separated host or host:port entries
+            if ($db_mode === 'cluster' && !empty($cluster_nodes)) {
+                $nodes_arr = array_map('trim', explode(',', $cluster_nodes));
+                foreach ($nodes_arr as $n) {
+                    if (!preg_match('/^[a-zA-Z0-9._\-]+(:\d{1,5})?$/', $n)) {
+                        echo json_encode(['success' => false, 'message' => 'Invalid node address format in nodes list. Use hostname or hostname:port.']);
+                        exit;
+                    }
+                }
+            }
+            
+            $env_file = findEnvFile();
             if (!$env_file) {
                 echo json_encode(['success' => false, 'message' => 'Environment file not found.']);
                 exit;
