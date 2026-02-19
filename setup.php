@@ -104,17 +104,46 @@ if (!isset($_SESSION['setup'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($step == 1) {
         // Database Configuration
+        $db_mode = $_POST['db_mode'] ?? 'single';  // 'single' or 'cluster'
         $host = trim($_POST['db_host']);
         $name = trim($_POST['db_name']);
         $user = trim($_POST['db_user']);
         $pass = $_POST['db_pass'];
+        
+        // Cluster-specific fields
+        $cluster_name  = trim($_POST['db_cluster_name'] ?? 'arctic_wolves_cluster');
+        $cluster_nodes = trim($_POST['db_cluster_nodes'] ?? $host); // comma-separated host:port or host
+        $cluster_port  = intval($_POST['db_cluster_port'] ?? 3306);
+        
+        // For cluster mode, the primary connection host is the first node in the list
+        if ($db_mode === 'cluster') {
+            $nodes_arr = array_map('trim', explode(',', $cluster_nodes));
+            // Strip port from first node for PDO host (PDO uses separate port param)
+            $first_node = $nodes_arr[0];
+            if (strpos($first_node, ':') !== false) {
+                $parts = explode(':', $first_node, 2);
+                $first_node_host = $parts[0];
+                // Port is parsed but ignored here — db_config.php handles per-node port
+            } else {
+                $first_node_host = $first_node;
+            }
+            $host = $first_node_host;
+        }
         
         try {
             $pdo = new PDO("mysql:host=$host;dbname=$name;charset=utf8mb4", $user, $pass);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             
             // Save to .env file
-            $env_content = "DB_HOST=$host\nDB_NAME=$name\nDB_USER=$user\nDB_PASS=$pass\n";
+            $env_content  = "DB_HOST=$host\n";
+            $env_content .= "DB_NAME=$name\n";
+            $env_content .= "DB_USER=$user\n";
+            $env_content .= "DB_PASS=$pass\n";
+            $env_content .= "DB_MODE=$db_mode\n";
+            if ($db_mode === 'cluster') {
+                $env_content .= "DB_CLUSTER_NAME=$cluster_name\n";
+                $env_content .= "DB_CLUSTER_NODES=$cluster_nodes\n";
+            }
             $env_file = __DIR__ . '/arctic_wolves.env';
             
             if (file_put_contents($env_file, $env_content) === false) {
@@ -128,6 +157,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $_SESSION['setup']['database'] = true;
             $_SESSION['db_credentials'] = ['host' => $host, 'name' => $name, 'user' => $user, 'pass' => $pass];
+            $_SESSION['setup']['db_mode'] = $db_mode;
+            if ($db_mode === 'cluster') {
+                $_SESSION['setup']['cluster_name']  = $cluster_name;
+                $_SESSION['setup']['cluster_nodes'] = $cluster_nodes;
+            }
             
             // Detect if this is an existing database with tables
             $stmt = $pdo->query("SHOW TABLES");
@@ -698,12 +732,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h2>Step 1: Database Configuration</h2>
             <p>Enter your database connection details</p>
             <div class="step-info">
-                <i class="fa-solid fa-info-circle"></i> Make sure your MySQL database is created and accessible.
+                <i class="fa-solid fa-info-circle"></i> Make sure your MySQL/MariaDB database is created and accessible.
             </div>
             <form method="POST">
+                <!-- Database Mode Selector -->
                 <div class="form-group">
-                    <label>Database Host</label>
-                    <input type="text" name="db_host" value="localhost" required>
+                    <label>Database Mode</label>
+                    <select name="db_mode" id="db_mode" onchange="toggleClusterFields()" style="width: 100%; height: 45px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0 15px; color: #fff; font-size: 14px; font-family: 'Inter', sans-serif;">
+                        <option value="single">Single Database (standard)</option>
+                        <option value="cluster">Galera Cluster (high-availability, multi-node)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label id="db_host_label">Database Host</label>
+                    <input type="text" name="db_host" id="db_host" value="localhost" required>
+                    <small id="db_host_hint" style="color: #94a3b8; font-size: 11px; display: none;">For cluster mode, enter the host of the first node (or ProxySQL host). Full node list goes in the Cluster Nodes field below.</small>
                 </div>
                 <div class="form-group">
                     <label>Database Name</label>
@@ -722,8 +766,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </button>
                     </div>
                 </div>
+                
+                <!-- Galera Cluster fields — hidden unless cluster mode is selected -->
+                <div id="cluster-fields" style="display: none; border: 1px solid var(--border); border-radius: 8px; padding: 20px; background: rgba(107,70,193,0.05); margin-bottom: 20px;">
+                    <p style="font-weight: 700; color: #cbd5e1; margin-bottom: 16px; font-size: 14px;">
+                        <i class="fa-solid fa-circle-nodes"></i>&nbsp; Galera Cluster Settings
+                    </p>
+                    <div class="form-group">
+                        <label>Cluster Name</label>
+                        <input type="text" name="db_cluster_name" value="arctic_wolves_cluster" placeholder="arctic_wolves_cluster">
+                        <small style="color: #94a3b8; font-size: 11px;">Must be identical on all nodes.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Cluster Nodes</label>
+                        <input type="text" name="db_cluster_nodes" id="db_cluster_nodes" placeholder="node1,node2,node3 or node1:3306,node2:3306,node3:3306">
+                        <small style="color: #94a3b8; font-size: 11px;">Comma-separated list of all Galera node addresses (host or host:port). You can add more nodes later in System Tools → Database.</small>
+                    </div>
+                    <div class="step-info" style="margin-bottom: 0;">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Galera provides <strong>synchronous multi-master replication</strong> — every write is committed to all nodes simultaneously. Use the <code>deployment/galera/bootstrap.sh</code> script to start the cluster before connecting, then enter all node addresses above.
+                    </div>
+                </div>
+                
                 <button type="submit" class="btn-primary">Continue to Step 2</button>
             </form>
+            <script>
+            function toggleClusterFields() {
+                var mode = document.getElementById('db_mode').value;
+                var clusterFields = document.getElementById('cluster-fields');
+                var hostLabel = document.getElementById('db_host_label');
+                var hostHint  = document.getElementById('db_host_hint');
+                var clusterNodes = document.getElementById('db_cluster_nodes');
+                var dbHost = document.getElementById('db_host');
+                if (mode === 'cluster') {
+                    clusterFields.style.display = 'block';
+                    hostLabel.textContent = 'Primary Node Host (first contact point)';
+                    hostHint.style.display = 'block';
+                    // Auto-fill cluster nodes with host if empty
+                    if (!clusterNodes.value && dbHost.value) {
+                        clusterNodes.value = dbHost.value;
+                    }
+                } else {
+                    clusterFields.style.display = 'none';
+                    hostLabel.textContent = 'Database Host';
+                    hostHint.style.display = 'none';
+                }
+            }
+            // Keep cluster nodes in sync with host when first entering cluster mode
+            document.getElementById('db_host').addEventListener('input', function() {
+                if (document.getElementById('db_mode').value === 'cluster') {
+                    var nodes = document.getElementById('db_cluster_nodes');
+                    if (!nodes.value) nodes.value = this.value;
+                }
+            });
+            </script>
         <?php elseif ($step == 2): ?>
             <?php $is_existing_db = !empty($_SESSION['setup']['existing_database']); ?>
             <?php if ($is_existing_db): ?>

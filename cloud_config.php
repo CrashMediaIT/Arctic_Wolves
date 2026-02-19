@@ -19,6 +19,25 @@ function getNextcloudSettings($pdo) {
 }
 
 /**
+ * Get secondary (backup) Nextcloud settings from database.
+ * Used for redundant backups to a second Nextcloud instance.
+ */
+function getSecondaryNextcloudSettings($pdo) {
+    $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('nextcloud_backup_url', 'nextcloud_backup_username', 'nextcloud_backup_password', 'nextcloud_backup_folder')");
+    $raw = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $raw[$row['setting_key']] = $row['setting_value'];
+    }
+    # Normalise keys to match the primary Nextcloud settings structure
+    return [
+        'nextcloud_url'            => $raw['nextcloud_backup_url']      ?? null,
+        'nextcloud_username'       => $raw['nextcloud_backup_username'] ?? null,
+        'nextcloud_password'       => $raw['nextcloud_backup_password'] ?? null,
+        'nextcloud_backup_folder'  => $raw['nextcloud_backup_folder']   ?? '/ArcticWolves/Backups/',
+    ];
+}
+
+/**
  * Connect to Nextcloud via WebDAV
  */
 function connectNextcloud($settings) {

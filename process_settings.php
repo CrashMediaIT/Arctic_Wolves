@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -1329,6 +1329,205 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Failed to update camera status']);
             }
             exit;
+
+        // ---- Galera Cluster Management -----------------------------------------------
+
+        case 'get_cluster_status':
+            // Return wsrep status variables from the connected node
+            $wsrep = [];
+            $stmt = $pdo->query("SHOW STATUS LIKE 'wsrep%'");
+            while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
+                $wsrep[$row[0]] = $row[1];
+            }
+            $cluster_size   = $wsrep['wsrep_cluster_size']   ?? null;
+            $cluster_status = $wsrep['wsrep_cluster_status'] ?? null;
+            $ready          = $wsrep['wsrep_ready']          ?? null;
+            $state          = $wsrep['wsrep_local_state_comment'] ?? null;
+            $node_address   = $wsrep['wsrep_node_address']   ?? ($_ENV['DB_CONNECTED_HOST'] ?? $_ENV['DB_HOST'] ?? 'unknown');
+            
+            // Read node list from env file
+            $env_nodes = array_filter(array_map('trim', explode(',', $_ENV['DB_CLUSTER_NODES'] ?? '')));
+            
+            echo json_encode([
+                'success'        => true,
+                'cluster_size'   => $cluster_size,
+                'cluster_status' => $cluster_status,
+                'ready'          => $ready,
+                'state'          => $state,
+                'node_address'   => $node_address,
+                'db_mode'        => $_ENV['DB_MODE'] ?? 'single',
+                'cluster_name'   => $_ENV['DB_CLUSTER_NAME'] ?? '',
+                'nodes'          => array_values($env_nodes),
+                'wsrep'          => $wsrep,
+            ]);
+            exit;
+
+        case 'test_cluster_node':
+            $node = trim($_POST['node'] ?? '');
+            if (empty($node)) {
+                echo json_encode(['success' => false, 'message' => 'Node address is required']);
+                exit;
+            }
+            $node_host = $node;
+            $node_port = 3306;
+            if (strpos($node, ':') !== false) {
+                [$node_host, $node_port] = explode(':', $node, 2);
+                $node_port = (int)$node_port;
+            }
+            try {
+                $test_dsn = "mysql:host=$node_host;port=$node_port;dbname=" . ($_ENV['DB_NAME'] ?? 'arctic_wolves') . ";charset=utf8mb4";
+                $test_pdo = new PDO($test_dsn, $_ENV['DB_USER'] ?? '', $_ENV['DB_PASS'] ?? '', [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 5,
+                ]);
+                $test_pdo->query("SELECT 1");
+                // Check wsrep status
+                $wsrep_stmt = $test_pdo->query("SHOW STATUS LIKE 'wsrep_ready'");
+                $wsrep_ready = $wsrep_stmt->fetchColumn(1) ?? 'n/a';
+                echo json_encode(['success' => true, 'message' => "Node $node is reachable. wsrep_ready: $wsrep_ready"]);
+            } catch (PDOException $e) {
+                echo json_encode(['success' => false, 'message' => "Cannot reach node $node: " . $e->getMessage()]);
+            }
+            exit;
+
+        case 'add_cluster_node':
+            $new_node = trim($_POST['node'] ?? '');
+            if (empty($new_node)) {
+                echo json_encode(['success' => false, 'message' => 'Node address is required']);
+                exit;
+            }
+            // Validate format: hostname or hostname:port
+            // Hyphens and underscores are permitted for Docker service names.
+            if (!preg_match('/^[a-zA-Z0-9._\-]+(:\d{1,5})?$/', $new_node)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid node address format. Use hostname or hostname:port.']);
+                exit;
+            }
+            
+            // Read current node list from env
+            $current_nodes = array_filter(array_map('trim', explode(',', $_ENV['DB_CLUSTER_NODES'] ?? $_ENV['DB_HOST'] ?? '')));
+            if (in_array($new_node, $current_nodes)) {
+                echo json_encode(['success' => false, 'message' => "Node $new_node is already in the cluster configuration."]);
+                exit;
+            }
+            $current_nodes[] = $new_node;
+            $nodes_str = implode(',', $current_nodes);
+            
+            // Persist to env file
+            $env_file = null;
+            foreach (['/config/arctic_wolves.env', __DIR__ . '/arctic_wolves.env', __DIR__ . '/.env'] as $p) {
+                if (file_exists($p)) { $env_file = $p; break; }
+            }
+            if (!$env_file) {
+                echo json_encode(['success' => false, 'message' => 'Environment file not found. Cannot persist node list.']);
+                exit;
+            }
+            $env_content = file_get_contents($env_file);
+            // $nodes_str contains only validated host:port values — safe for literal replacement
+            if (preg_match('/^DB_CLUSTER_NODES=.*$/m', $env_content)) {
+                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($nodes_str, '\\'), $env_content);
+            } else {
+                $env_content = rtrim($env_content) . "\nDB_CLUSTER_NODES=" . $nodes_str . "\n";
+            }
+            // Ensure DB_MODE is cluster
+            if (!preg_match('/^DB_MODE=/m', $env_content)) {
+                $env_content = rtrim($env_content) . "\nDB_MODE=cluster\n";
+            } else {
+                $env_content = preg_replace('/^DB_MODE=.*$/m', 'DB_MODE=cluster', $env_content);
+            }
+            file_put_contents($env_file, $env_content);
+            $_ENV['DB_CLUSTER_NODES'] = $nodes_str;
+            $_ENV['DB_MODE'] = 'cluster';
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'add_cluster_node', 'node' => $new_node]);
+            
+            // Build a suggested docker run command for the new node
+            $cluster_name  = $_ENV['DB_CLUSTER_NAME'] ?? 'arctic_wolves_cluster';
+            $all_nodes_str = $nodes_str;
+            $docker_cmd = "BOOTSTRAP_CLUSTER= docker run -d --name galera-node-new \\\n"
+                . "  -e MYSQL_ROOT_PASSWORD=\${MYSQL_ROOT_PASSWORD} \\\n"
+                . "  -e MYSQL_DATABASE=" . ($_ENV['DB_NAME'] ?? 'arctic_wolves') . " \\\n"
+                . "  -e MYSQL_USER=" . ($_ENV['DB_USER'] ?? 'arctic_wolves_user') . " \\\n"
+                . "  -e MYSQL_PASSWORD=\${MYSQL_PASSWORD} \\\n"
+                . "  -e GALERA_CLUSTER_NAME=$cluster_name \\\n"
+                . "  -e GALERA_CLUSTER_MEMBERS=$all_nodes_str \\\n"
+                . "  -e GALERA_NODE_ADDRESS=$new_node \\\n"
+                . "  -v /path/to/galera-new-data:/var/lib/mysql \\\n"
+                . "  -v ./deployment/galera/galera.cnf.tpl:/etc/mysql/conf.d/galera.cnf:ro \\\n"
+                . "  -p 3306:3306 mariadb:lts";
+            
+            echo json_encode([
+                'success'    => true,
+                'message'    => "Node $new_node added to cluster configuration. Run the command below on the new node host to join the cluster.",
+                'nodes'      => array_values($current_nodes),
+                'docker_cmd' => $docker_cmd,
+            ]);
+            exit;
+
+        case 'remove_cluster_node':
+            $remove_node = trim($_POST['node'] ?? '');
+            if (empty($remove_node)) {
+                echo json_encode(['success' => false, 'message' => 'Node address is required']);
+                exit;
+            }
+            $current_nodes = array_filter(array_map('trim', explode(',', $_ENV['DB_CLUSTER_NODES'] ?? '')));
+            $current_nodes = array_values(array_filter($current_nodes, fn($n) => $n !== $remove_node));
+            
+            if (empty($current_nodes)) {
+                echo json_encode(['success' => false, 'message' => 'Cannot remove the last node from the cluster.']);
+                exit;
+            }
+            $nodes_str = implode(',', $current_nodes);
+            
+            $env_file = null;
+            foreach (['/config/arctic_wolves.env', __DIR__ . '/arctic_wolves.env', __DIR__ . '/.env'] as $p) {
+                if (file_exists($p)) { $env_file = $p; break; }
+            }
+            if ($env_file) {
+                $env_content = file_get_contents($env_file);
+                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($nodes_str, '\\'), $env_content);
+                file_put_contents($env_file, $env_content);
+            }
+            $_ENV['DB_CLUSTER_NODES'] = $nodes_str;
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'remove_cluster_node', 'node' => $remove_node]);
+            
+            echo json_encode(['success' => true, 'message' => "Node $remove_node removed from cluster configuration.", 'nodes' => $current_nodes]);
+            exit;
+
+        case 'save_cluster_settings':
+            $db_mode      = ($_POST['db_mode'] ?? 'single') === 'cluster' ? 'cluster' : 'single';
+            $cluster_name = trim($_POST['db_cluster_name'] ?? 'arctic_wolves_cluster');
+            $cluster_nodes = trim($_POST['db_cluster_nodes'] ?? '');
+            
+            $env_file = null;
+            foreach (['/config/arctic_wolves.env', __DIR__ . '/arctic_wolves.env', __DIR__ . '/.env'] as $p) {
+                if (file_exists($p)) { $env_file = $p; break; }
+            }
+            if (!$env_file) {
+                echo json_encode(['success' => false, 'message' => 'Environment file not found.']);
+                exit;
+            }
+            $env_content = file_get_contents($env_file);
+            
+            // Update or add each setting using preg_quote for the key pattern and addcslashes for value safety
+            foreach (['DB_MODE' => $db_mode, 'DB_CLUSTER_NAME' => $cluster_name, 'DB_CLUSTER_NODES' => $cluster_nodes] as $key => $val) {
+                // Strip newlines from values to prevent env file corruption
+                $safe_val = str_replace(["\n", "\r"], '', $val);
+                if (preg_match('/^' . preg_quote($key, '/') . '=.*$/m', $env_content)) {
+                    $env_content = preg_replace('/^' . preg_quote($key, '/') . '=.*$/m', $key . '=' . addcslashes($safe_val, '\\'), $env_content);
+                } else {
+                    $env_content = rtrim($env_content) . "\n$key=$safe_val\n";
+                }
+                $_ENV[$key] = $safe_val;
+            }
+            file_put_contents($env_file, $env_content);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, ['action' => 'save_cluster_settings', 'db_mode' => $db_mode, 'cluster_name' => $cluster_name]);
+            
+            echo json_encode(['success' => true, 'message' => 'Cluster settings saved successfully.']);
+            exit;
+
+        // ---- End Cluster Management ---------------------------------------------------
 
         default:
             throw new Exception('Invalid action');

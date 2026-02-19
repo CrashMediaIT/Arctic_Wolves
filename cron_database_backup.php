@@ -130,8 +130,8 @@ function performBackup($pdo, $job) {
         $success_destinations = [];
         $errors = [];
         
-        // Upload to Nextcloud if configured
-        if ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both') {
+        // Upload to primary Nextcloud if configured
+        if ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both' || $job['destination_type'] === 'both_nextcloud') {
             try {
                 $nc_settings = getNextcloudSettings($pdo);
                 $connection = connectNextcloud($nc_settings);
@@ -141,14 +141,40 @@ function performBackup($pdo, $job) {
                 
                 if ($result) {
                     $success_destinations[] = 'Nextcloud: ' . $remote_path;
-                    echo "  ✓ Uploaded to Nextcloud\n";
+                    echo "  ✓ Uploaded to primary Nextcloud\n";
                 } else {
-                    $errors[] = 'Nextcloud upload failed';
-                    echo "  ✗ Nextcloud upload failed\n";
+                    $errors[] = 'Primary Nextcloud upload failed';
+                    echo "  ✗ Primary Nextcloud upload failed\n";
                 }
             } catch (Exception $e) {
-                $errors[] = 'Nextcloud: ' . $e->getMessage();
-                echo "  ✗ Nextcloud error: " . $e->getMessage() . "\n";
+                $errors[] = 'Primary Nextcloud: ' . $e->getMessage();
+                echo "  ✗ Primary Nextcloud error: " . $e->getMessage() . "\n";
+            }
+        }
+        
+        // Upload to secondary Nextcloud if both_nextcloud destination is selected
+        if ($job['destination_type'] === 'both_nextcloud') {
+            try {
+                $nc2_settings = getSecondaryNextcloudSettings($pdo);
+                if (!empty($nc2_settings['nextcloud_url'])) {
+                    $connection2 = connectNextcloud($nc2_settings);
+                    $folder2 = !empty($job['nextcloud_folder']) ? $job['nextcloud_folder'] : ($nc2_settings['nextcloud_backup_folder'] ?? '/ArcticWolves/Backups/');
+                    $remote_path2 = rtrim($folder2, '/') . '/' . $filename;
+                    $result2 = uploadToNextcloud($connection2, $gz_file, $remote_path2);
+                    
+                    if ($result2) {
+                        $success_destinations[] = 'Nextcloud2: ' . $remote_path2;
+                        echo "  ✓ Uploaded to secondary Nextcloud\n";
+                    } else {
+                        $errors[] = 'Secondary Nextcloud upload failed';
+                        echo "  ✗ Secondary Nextcloud upload failed\n";
+                    }
+                } else {
+                    echo "  ⚠ Secondary Nextcloud not configured – skipping\n";
+                }
+            } catch (Exception $e) {
+                $errors[] = 'Secondary Nextcloud: ' . $e->getMessage();
+                echo "  ✗ Secondary Nextcloud error: " . $e->getMessage() . "\n";
             }
         }
         
@@ -189,7 +215,7 @@ function performBackup($pdo, $job) {
         $stmt = $pdo->prepare("UPDATE backup_jobs SET last_backup = NOW() WHERE id = ?");
         $stmt->execute([$job['id']]);
         
-        // Clean old backups based on retention
+        // Prune old backups: keep only the most recent keep_count successful copies
         cleanOldBackups($pdo, $job);
         
         if (empty($errors)) {
@@ -258,11 +284,40 @@ function uploadToSMB($local_file, $filename, $smb_path, $username, $password, $d
 }
 
 /**
- * Clean old backups based on retention policy
+ * Prune backup history: keep only the most recent keep_count successful
+ * backups for the given job.  Older records are deleted.
+ * Falls back to the legacy retention_days approach when keep_count is 0.
  */
 function cleanOldBackups($pdo, $job) {
-    $cutoff_date = date('Y-m-d H:i:s', strtotime('-' . $job['retention_days'] . ' days'));
-    
+    $keep_count = isset($job['keep_count']) ? (int)$job['keep_count'] : 3;
+
+    if ($keep_count > 0 && $job['id'] > 0) {
+        // Delete successful backups beyond the keep_count most recent ones
+        $stmt = $pdo->prepare("
+            DELETE FROM backup_history
+            WHERE backup_job_id = ?
+              AND status = 'success'
+              AND id NOT IN (
+                  SELECT id FROM (
+                      SELECT id FROM backup_history
+                      WHERE backup_job_id = ? AND status = 'success'
+                      ORDER BY backup_date DESC
+                      LIMIT ?
+                  ) AS latest_backups
+              )
+        ");
+        $stmt->execute([$job['id'], $job['id'], $keep_count]);
+        $deleted = $stmt->rowCount();
+        if ($deleted > 0) {
+            echo "  ✓ Pruned $deleted old backup record(s) (keeping $keep_count)\n";
+        }
+        return;
+    }
+
+    // Legacy path: retention_days fallback
+    $retention_days = isset($job['retention_days']) ? (int)$job['retention_days'] : 30;
+    $cutoff_date = date('Y-m-d H:i:s', strtotime('-' . $retention_days . ' days'));
+
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM backup_history 
         WHERE backup_job_id = ? AND backup_date < ? AND status = 'success'
@@ -276,7 +331,6 @@ function cleanOldBackups($pdo, $job) {
             WHERE backup_job_id = ? AND backup_date < ? AND status = 'success'
         ");
         $stmt->execute([$job['id'], $cutoff_date]);
-        
         echo "  ✓ Cleaned $old_count old backup record(s)\n";
     }
 }
@@ -293,7 +347,15 @@ function decryptPassword($encrypted_password) {
 }
 
 /**
- * Calculate next run time
+ * Calculate next run time from a cron expression.
+ * Supports all standard schedule intervals used by Arctic Wolves backups:
+ *   */5 * * * *   – every 5 minutes
+ *   0 * * * *    – every hour
+ *   0 */6 * * *  – every 6 hours
+ *   0 */12 * * * – every 12 hours
+ *   0 0 * * *    – every 24 hours (daily)
+ *   0 0 * * 0    – every week (Sunday midnight)
+ *   0 0 1 * *    – every month (1st day)
  */
 function calculateNextRun($cron_expression) {
     $parts = explode(' ', trim($cron_expression));
@@ -303,29 +365,65 @@ function calculateNextRun($cron_expression) {
     
     list($minute, $hour, $day, $month, $weekday) = $parts;
     
+    // Every N minutes: */5 * * * *
+    if (preg_match('/^\*\/(\d+)$/', $minute, $m) && $hour === '*') {
+        $interval = (int)$m[1];
+        $next = ceil(time() / ($interval * 60)) * ($interval * 60);
+        return date('Y-m-d H:i:s', $next);
+    }
+    
+    // Every N hours on the hour: 0 */N * * *
+    if ($minute === '0' && preg_match('/^\*\/(\d+)$/', $hour, $m) && $day === '*') {
+        $interval = (int)$m[1];
+        $current_hour = (int)date('G');
+        $next_hour = (int)(ceil(($current_hour + 1) / $interval) * $interval);
+        if ($next_hour >= 24) {
+            $next_hour -= 24;
+            $next = strtotime('tomorrow ' . sprintf('%02d:00:00', $next_hour));
+        } else {
+            $next = strtotime('today ' . sprintf('%02d:00:00', $next_hour));
+            if ($next <= time()) {
+                $next += $interval * 3600;
+            }
+        }
+        return date('Y-m-d H:i:s', $next);
+    }
+    
+    // Every hour: 0 * * * *
     if ($cron_expression === '0 * * * *') {
         $next = strtotime(date('Y-m-d H:00:00', strtotime('+1 hour')));
-    } elseif ($cron_expression === '0 0 * * *') {
+        return date('Y-m-d H:i:s', $next);
+    }
+    
+    // Daily at midnight: 0 0 * * *
+    if ($cron_expression === '0 0 * * *') {
         $next = strtotime('tomorrow midnight');
-    } elseif ($cron_expression === '0 2 * * *') {
-        $next = strtotime('tomorrow 02:00:00');
-        if (time() < strtotime('today 02:00:00')) {
-            $next = strtotime('today 02:00:00');
-        }
-    } elseif ($cron_expression === '0 0 * * 0') {
+        return date('Y-m-d H:i:s', $next);
+    }
+    
+    // Weekly (Sunday midnight): 0 0 * * 0
+    if ($cron_expression === '0 0 * * 0') {
         $next = strtotime('next sunday midnight');
-    } elseif ($cron_expression === '0 0 1 * *') {
+        return date('Y-m-d H:i:s', $next);
+    }
+    
+    // Monthly (1st at midnight): 0 0 1 * *
+    if ($cron_expression === '0 0 1 * *') {
         $next = strtotime('first day of next month midnight');
-    } elseif (preg_match('/^\d+ \d+ \* \* \*$/', $cron_expression)) {
+        return date('Y-m-d H:i:s', $next);
+    }
+    
+    // Generic: specific hour/minute, every day
+    if (preg_match('/^\d+ \d+ \* \* \*$/', $cron_expression)) {
         $time = sprintf('%02d:%02d:00', $hour, $minute);
         $next = strtotime('today ' . $time);
         if ($next <= time()) {
             $next = strtotime('tomorrow ' . $time);
         }
-    } else {
-        $next = strtotime('+1 day');
+        return date('Y-m-d H:i:s', $next);
     }
     
-    return date('Y-m-d H:i:s', $next);
+    // Fallback
+    return date('Y-m-d H:i:s', strtotime('+1 day'));
 }
 ?>
