@@ -353,6 +353,21 @@ try {
 <script src="https://cdn.jsdelivr.net/npm/jssip@3.10.1/dist/jssip.min.js" integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb" crossorigin="anonymous"></script>
 
 <script>
+// SIP Phone notification helper
+function showNotification(message, type = 'info') {
+    const alertClass = type === 'error' ? 'alert-error' : type === 'warning' ? 'alert-warning' : type === 'success' ? 'alert-success' : 'alert-success';
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert ' + alertClass;
+    alertDiv.textContent = message;
+    alertDiv.style.position = 'fixed';
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '10000';
+    alertDiv.style.minWidth = '300px';
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 3000);
+}
+
 // SIP client state
 let sipConfigured = false;
 let sipUA = null;
@@ -367,11 +382,13 @@ function initAudio() {
     if (!remoteAudio) {
         remoteAudio = new Audio();
         remoteAudio.autoplay = true;
+        console.log('[SIP] Audio element initialized');
     }
 }
 
 // Save SIP settings to server
 function saveSipSettings() {
+    console.log('[SIP] Saving SIP settings...');
     const username = document.getElementById('sip_username').value.trim();
     const domain = document.getElementById('sip_domain').value.trim();
     const password = document.getElementById('sip_password').value;
@@ -379,6 +396,7 @@ function saveSipSettings() {
     const did = document.getElementById('sip_did').value.trim();
     const wssPort = document.getElementById('sip_wss_port').value.trim() || '7443';
     const csrfToken = document.querySelector('[name="csrf_token"]').value;
+    console.log('[SIP] Settings - username:', username, 'domain:', domain, 'extension:', extension, 'wssPort:', wssPort);
 
     const saveBtn = document.getElementById('sip-save-btn');
     const originalBtnText = saveBtn.innerHTML;
@@ -400,31 +418,37 @@ function saveSipSettings() {
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalBtnText;
         if (data.success) {
+            console.log('[SIP] Settings saved successfully');
             showNotification('SIP settings saved successfully', 'success');
         } else {
+            console.warn('[SIP] Save failed:', data.message || 'Unknown error');
             showNotification(data.message || 'Failed to save SIP settings', 'error');
         }
     })
     .catch(error => {
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalBtnText;
+        console.error('[SIP] Save error:', error);
         showNotification('Error saving SIP settings', 'error');
     });
 }
 
 // Register with SIP server using WebSocket (WebRTC via JsSIP)
 function registerSip() {
+    console.log('[SIP] Register initiated');
     const username = document.getElementById('sip_username').value.trim();
     const domain = document.getElementById('sip_domain').value.trim();
     let password = document.getElementById('sip_password').value;
 
     if (!username || !domain) {
+        console.warn('[SIP] Registration aborted - missing username or domain');
         showNotification('Please fill in SIP username and domain', 'warning');
         return;
     }
 
     // If password not entered, fetch saved password from server
     if (!password) {
+        console.log('[SIP] No password entered, fetching saved credentials...');
         const csrfToken = document.querySelector('[name="csrf_token"]').value;
         updateSipStatus('connecting', 'Retrieving saved credentials...');
         fetch('process_profile_update.php', {
@@ -438,13 +462,16 @@ function registerSip() {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success && data.password) {
+                console.log('[SIP] Saved credentials retrieved, proceeding with registration');
                 doSipRegister(username, data.password, domain);
             } else {
+                console.warn('[SIP] No saved password found');
                 showNotification('Please enter your SIP password', 'warning');
                 updateSipStatus('info', 'Not connected');
             }
         })
-        .catch(function() {
+        .catch(function(err) {
+            console.error('[SIP] Error fetching saved credentials:', err);
             showNotification('Please enter your SIP password', 'warning');
             updateSipStatus('info', 'Not connected');
         });
@@ -464,9 +491,20 @@ function doSipRegister(username, password, domain) {
 
     // Get WSS port from settings (default 7443 for FusionPBX)
     var wssPort = document.getElementById('sip_wss_port').value.trim() || '7443';
+    var wssUrl = 'wss://' + domain + ':' + wssPort;
+    console.log('[SIP] Connecting via WebSocket:', wssUrl);
+    console.log('[SIP] SIP URI: sip:' + username + '@' + domain);
 
     // Configure JsSIP with WebSocket Secure connection to FusionPBX on WSS port
-    var socket = new JsSIP.WebSocketInterface('wss://' + domain + ':' + wssPort);
+    var socket = new JsSIP.WebSocketInterface(wssUrl);
+
+    socket.onconnect = function() {
+        console.log('[SIP] WebSocket connected to', wssUrl);
+    };
+    socket.ondisconnect = function(error, code, reason) {
+        console.warn('[SIP] WebSocket disconnected - error:', error, 'code:', code, 'reason:', reason);
+    };
+
     var configuration = {
         sockets: [socket],
         uri: 'sip:' + username + '@' + domain,
@@ -478,12 +516,26 @@ function doSipRegister(username, password, domain) {
 
     // Disconnect existing UA if re-registering
     if (sipUA) {
-        try { sipUA.stop(); } catch(e) {}
+        console.log('[SIP] Stopping existing UA before re-registering');
+        try { sipUA.stop(); } catch(e) { console.warn('[SIP] Error stopping existing UA:', e); }
     }
 
     sipUA = new JsSIP.UA(configuration);
 
-    sipUA.on('registered', function() {
+    sipUA.on('connecting', function(e) {
+        console.log('[SIP] UA connecting to WebSocket server...', e);
+    });
+
+    sipUA.on('connected', function() {
+        console.log('[SIP] UA WebSocket connected');
+    });
+
+    sipUA.on('disconnected', function(e) {
+        console.warn('[SIP] UA WebSocket disconnected:', e);
+    });
+
+    sipUA.on('registered', function(e) {
+        console.log('[SIP] Registration successful:', e);
         sipConfigured = true;
         updateSipStatus('connected', 'Connected as ' + username + '@' + domain);
         document.getElementById('sip-register-btn').innerHTML = '<i class="fas fa-check-circle"></i> Connected';
@@ -492,13 +544,15 @@ function doSipRegister(username, password, domain) {
     });
 
     sipUA.on('registrationFailed', function(e) {
+        console.error('[SIP] Registration failed - cause:', e.cause, 'response:', e.response);
         updateSipStatus('error', 'Registration failed: ' + (e.cause || 'Unknown error'));
         document.getElementById('sip-register-btn').innerHTML = '<i class="fas fa-plug"></i> Connect';
         document.getElementById('sip-register-btn').classList.remove('btn-success');
         document.getElementById('sip-register-btn').classList.add('btn-secondary');
     });
 
-    sipUA.on('unregistered', function() {
+    sipUA.on('unregistered', function(e) {
+        console.log('[SIP] Unregistered:', e);
         sipConfigured = false;
         updateSipStatus('info', 'Disconnected');
         document.getElementById('sip-register-btn').innerHTML = '<i class="fas fa-plug"></i> Connect';
@@ -507,10 +561,12 @@ function doSipRegister(username, password, domain) {
     });
 
     sipUA.on('newRTCSession', function(data) {
+        console.log('[SIP] New RTC session - originator:', data.originator);
         var session = data.session;
         if (data.originator === 'remote') {
             // Incoming call
             var caller = session.remote_identity.display_name || session.remote_identity.uri.user || 'Unknown';
+            console.log('[SIP] Incoming call from:', caller);
             if (confirm('Incoming call from ' + caller + '. Answer?')) {
                 session.answer({
                     mediaConstraints: { audio: true, video: false }
@@ -522,32 +578,47 @@ function doSipRegister(username, password, domain) {
         }
     });
 
+    console.log('[SIP] Starting JsSIP User Agent...');
     sipUA.start();
 }
 
 // Handle an active SIP session (attach audio streams)
 function handleSession(session, name) {
+    console.log('[SIP] Handling session for:', name);
     sipSession = session;
 
     session.on('peerconnection', function(e) {
+        console.log('[SIP] Peer connection established');
         e.peerconnection.ontrack = function(ev) {
+            console.log('[SIP] Remote track received:', ev.track.kind);
             if (ev.streams && ev.streams[0]) {
                 remoteAudio.srcObject = ev.streams[0];
             }
         };
+        e.peerconnection.onicecandidate = function(ev) {
+            if (ev.candidate) {
+                console.log('[SIP] ICE candidate:', ev.candidate.type, ev.candidate.candidate);
+            }
+        };
+        e.peerconnection.oniceconnectionstatechange = function() {
+            console.log('[SIP] ICE connection state:', e.peerconnection.iceConnectionState);
+        };
     });
 
     session.on('accepted', function() {
+        console.log('[SIP] Call accepted');
         document.getElementById('call-status-message').textContent = 'Connected';
         document.getElementById('call-status-icon').innerHTML = '<i class="fas fa-phone" style="color: var(--success, #10b981);"></i>';
         startCallTimer();
     });
 
-    session.on('ended', function() {
+    session.on('ended', function(e) {
+        console.log('[SIP] Call ended:', e ? e.cause : '');
         endCall();
     });
 
     session.on('failed', function(e) {
+        console.error('[SIP] Call failed - cause:', e.cause, 'originator:', e.originator);
         document.getElementById('call-status-message').textContent = 'Call failed: ' + (e.cause || 'Unknown error');
         document.getElementById('call-status-icon').innerHTML = '<i class="fas fa-phone-slash" style="color: var(--danger, #ef4444);"></i>';
         sipSession = null;
@@ -557,7 +628,9 @@ function handleSession(session, name) {
 
 // Call an extension using built-in WebRTC
 function callExtension(extension, name) {
+    console.log('[SIP] Calling extension:', extension, 'name:', name);
     if (!sipConfigured || !sipUA) {
+        console.warn('[SIP] Cannot call - SIP not configured or UA not initialized');
         showNotification('Please connect your SIP account first using the Connect button', 'warning');
         return;
     }
@@ -585,9 +658,11 @@ function callExtension(extension, name) {
     };
 
     try {
+        console.log('[SIP] Initiating call to:', target);
         var session = sipUA.call(target, options);
         handleSession(session, name);
     } catch (e) {
+        console.error('[SIP] Call initiation error:', e);
         document.getElementById('call-status-message').textContent = 'Call failed: ' + e.message;
         document.getElementById('call-status-icon').innerHTML = '<i class="fas fa-phone-slash" style="color: var(--danger, #ef4444);"></i>';
     }
@@ -595,8 +670,9 @@ function callExtension(extension, name) {
 
 // End current call
 function endCall() {
+    console.log('[SIP] Ending call');
     if (sipSession && typeof sipSession.terminate === 'function') {
-        try { sipSession.terminate(); } catch(e) {}
+        try { sipSession.terminate(); } catch(e) { console.warn('[SIP] Error terminating session:', e); }
     }
     sipSession = null;
     stopCallTimer();
