@@ -8,6 +8,8 @@ session_start();
 require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -188,7 +190,7 @@ function uploadPayrollDocuments($pdo, $settings, $staffName, $year, $documentTyp
             'file_path' => $remotePath
         ];
     } catch (Exception $e) {
-        error_log("Error uploading payroll document: " . $e->getMessage());
+        ErrorLogger::error("Error uploading payroll document: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()
@@ -367,6 +369,8 @@ if ($action === 'update_employee') {
             $payrollId
         ]);
         
+        Auditor::log($pdo, $user_id, 'update', 'employee_payroll', $payrollId, ['action' => 'updated_payroll_settings', 'pay_rate' => $payRate, 'employee_type' => $employeeType]);
+        
         $_SESSION['flash_message'] = 'Payroll settings updated successfully';
         $_SESSION['flash_type'] = 'success';
         header('Location: dashboard.php?page=payroll&tab=employees');
@@ -388,6 +392,8 @@ if ($action === 'remove_employee') {
         // Soft delete - mark as terminated
         $updateStmt = $pdo->prepare("UPDATE employee_payroll SET status = 'terminated', end_date = CURDATE(), updated_at = NOW() WHERE id = ?");
         $updateStmt->execute([$payrollId]);
+        
+        Auditor::log($pdo, $user_id, 'update', 'employee_payroll', $payrollId, ['action' => 'removed_from_payroll', 'status' => 'terminated']);
         
         $_SESSION['flash_message'] = 'Employee removed from payroll';
         $_SESSION['flash_type'] = 'success';
@@ -489,6 +495,8 @@ if ($action === 'run_payroll') {
             }
             
             $pdo->commit();
+            
+            Auditor::log($pdo, $user_id, 'create', 'payroll_history', null, ['action' => 'ran_payroll', 'employee_count' => count($employees), 'pay_period' => "$payPeriodStart to $payPeriodEnd"]);
             
             $_SESSION['flash_message'] = 'Payroll calculated for ' . count($employees) . ' employee(s). Review and process payments.';
             $_SESSION['flash_type'] = 'success';
@@ -600,6 +608,9 @@ if ($action === 'generate_all_t4s') {
         }
         
         $_SESSION['flash_message'] = "Generated $generated T4 slip(s) for tax year $taxYear";
+        
+        Auditor::log($pdo, $user_id, 'create', 't4_slips', null, ['action' => 'generated_t4s', 'tax_year' => $taxYear, 'count' => $generated]);
+        
         $_SESSION['flash_type'] = 'success';
         header('Location: dashboard.php?page=payroll&tab=t4');
         exit;

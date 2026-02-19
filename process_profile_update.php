@@ -3,6 +3,8 @@ session_start();
 require 'db_config.php';
 require 'security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // 1. GATEKEEPER: Ensure user is logged in
 if (!isset($_SESSION['logged_in'])) { 
@@ -42,6 +44,8 @@ if ($action == 'upload_avatar') {
             if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $new_name)) {
                 $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?")->execute([$new_name, $target_id]);
                 
+                Auditor::log($pdo, $current_user_id, 'update', 'users', $target_id, ['action' => 'uploaded_avatar']);
+                
                 // Redirect logic
                 if ($target_id == $current_user_id) {
                     header("Location: dashboard.php?page=profile&msg=avatar_updated");
@@ -67,6 +71,7 @@ if ($action == 'update_info') {
     try {
         $stmt = $pdo->prepare("UPDATE users SET email = ?, position = ?, primary_arena = ? WHERE id = ?");
         $stmt->execute([$email, $pos, $arena, $current_user_id]);
+        Auditor::log($pdo, $current_user_id, 'update', 'users', $current_user_id, ['action' => 'updated_basic_info']);
         header("Location: dashboard.php?page=profile&msg=updated");
         exit();
     } catch (PDOException $e) {
@@ -110,10 +115,12 @@ if ($action == 'change_password') {
         $hash = password_hash($new_pass, PASSWORD_BCRYPT);
         $pdo->prepare("UPDATE users SET password = ? WHERE id = ?")->execute([$hash, $current_user_id]);
         
+        Auditor::log($pdo, $current_user_id, 'update', 'users', $current_user_id, ['action' => 'changed_password']);
+        
         header("Location: dashboard.php?page=profile&tab=security&msg=pass_updated");
         exit();
     } catch (PDOException $e) { 
-        error_log("Password change error: " . $e->getMessage());
+        ErrorLogger::error("Password change error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&tab=security&error=password_change_failed");
         exit();
     }
@@ -151,7 +158,7 @@ if ($action == 'add_team') {
         header("Location: dashboard.php?page=profile&tab=player&msg=team_added");
         exit();
     } catch (PDOException $e) { 
-        error_log("Add team error: " . $e->getMessage());
+        ErrorLogger::error("Add team error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&tab=player&error=team_add_failed");
         exit();
     }
@@ -176,7 +183,7 @@ if ($action == 'remove_team') {
         header("Location: dashboard.php?page=profile&tab=player&msg=team_removed");
         exit();
     } catch (PDOException $e) { 
-        error_log("Remove team error: " . $e->getMessage());
+        ErrorLogger::error("Remove team error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&tab=player&error=team_remove_failed");
         exit();
     }
@@ -233,7 +240,7 @@ if ($action == 'add_team_from_roster') {
         header("Location: dashboard.php?page=profile&tab=player&msg=team_added");
         exit();
     } catch (PDOException $e) {
-        error_log("Add team from roster error: " . $e->getMessage());
+        ErrorLogger::error("Add team from roster error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&tab=player&error=team_add_failed");
         exit();
     }
@@ -340,6 +347,8 @@ if ($action == 'update_profile') {
                 $enc_birth_date, $position, $primary_arena, $current_user_id
             ]);
             
+            Auditor::log($pdo, $current_user_id, 'update', 'users', $current_user_id, ['action' => 'updated_profile_email_change_pending']);
+            
             header("Location: dashboard.php?page=profile&msg=email_change_pending");
             exit();
         } else {
@@ -354,11 +363,12 @@ if ($action == 'update_profile') {
                 $enc_first_name, $enc_last_name, $new_email, $enc_phone, 
                 $enc_birth_date, $position, $primary_arena, $current_user_id
             ]);
+            Auditor::log($pdo, $current_user_id, 'update', 'users', $current_user_id, ['action' => 'updated_profile']);
             header("Location: dashboard.php?page=profile&msg=profile_updated");
             exit();
         }
     } catch (PDOException $e) {
-        error_log("Profile update error: " . $e->getMessage());
+        ErrorLogger::error("Profile update error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&error=update_failed");
         exit();
     }
@@ -402,7 +412,7 @@ if ($action == 'update_player_info') {
         header("Location: dashboard.php?page=profile&tab=player&msg=player_info_updated");
         exit();
     } catch (PDOException $e) {
-        error_log("Player info update error: " . $e->getMessage());
+        ErrorLogger::error("Player info update error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&tab=player&error=update_failed");
         exit();
     }
@@ -477,7 +487,7 @@ if ($action == 'update_performance_stats') {
         header("Location: dashboard.php?page=profile&tab=player&msg=stats_updated");
         exit();
     } catch (PDOException $e) {
-        error_log("Performance stats update error: " . $e->getMessage());
+        ErrorLogger::error("Performance stats update error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&tab=player&error=stats_update_failed");
         exit();
     }
@@ -540,7 +550,7 @@ if ($action == 'remove_photo') {
         header("Location: dashboard.php?page=profile&msg=photo_removed");
         exit();
     } catch (PDOException $e) {
-        error_log("Photo removal error: " . $e->getMessage());
+        ErrorLogger::error("Photo removal error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&error=removal_failed");
         exit();
     }
@@ -573,7 +583,7 @@ if ($action == 'update_preference') {
         
         echo json_encode(['success' => true, 'message' => 'Preference saved']);
     } catch (PDOException $e) {
-        error_log("Preference update error: " . $e->getMessage());
+        ErrorLogger::error("Preference update error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error']);
     }
     exit();
@@ -615,7 +625,7 @@ if ($action == 'confirm_email_change') {
         header("Location: dashboard.php?page=profile&msg=email_changed");
         exit();
     } catch (PDOException $e) {
-        error_log("Email change confirmation error: " . $e->getMessage());
+        ErrorLogger::error("Email change confirmation error: " . $e->getMessage());
         header("Location: dashboard.php?page=profile&error=email_change_failed");
         exit();
     }
@@ -666,7 +676,7 @@ if ($action == 'update_pin') {
         
         echo json_encode(['success' => true, 'message' => 'PIN updated successfully']);
     } catch (PDOException $e) {
-        error_log("PIN update error: " . $e->getMessage());
+        ErrorLogger::error("PIN update error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error']);
     }
     exit();
@@ -696,7 +706,7 @@ if ($action == 'get_sip_password') {
             echo json_encode(['success' => false, 'message' => 'No saved password']);
         }
     } catch (PDOException $e) {
-        error_log("Get SIP password error: " . $e->getMessage());
+        ErrorLogger::error("Get SIP password error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Error retrieving password']);
     }
     exit();
@@ -791,7 +801,7 @@ if ($action == 'update_own_sip') {
         
         echo json_encode(['success' => true, 'message' => 'SIP settings updated']);
     } catch (PDOException $e) {
-        error_log("Update own SIP error: " . $e->getMessage());
+        ErrorLogger::error("Update own SIP error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to update SIP settings']);
     }
     exit();
@@ -842,7 +852,7 @@ if ($action == 'add_directory_entry') {
         ]);
         echo json_encode(['success' => true, 'message' => 'Directory entry added']);
     } catch (PDOException $e) {
-        error_log("Add directory entry error: " . $e->getMessage());
+        ErrorLogger::error("Add directory entry error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to add directory entry']);
     }
     exit();
@@ -870,7 +880,7 @@ if ($action == 'delete_directory_entry') {
         $stmt->execute([$entry_id]);
         echo json_encode(['success' => true, 'message' => 'Directory entry removed']);
     } catch (PDOException $e) {
-        error_log("Delete directory entry error: " . $e->getMessage());
+        ErrorLogger::error("Delete directory entry error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to remove directory entry']);
     }
     exit();

@@ -7,6 +7,8 @@
 session_start();
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Require authentication
 if (!isset($_SESSION['user_id'])) {
@@ -117,7 +119,7 @@ function getConversations($pdo, $user_id) {
         
         echo json_encode(['success' => true, 'conversations' => $conversations]);
     } catch (PDOException $e) {
-        error_log("Messages - get conversations error: " . $e->getMessage());
+        ErrorLogger::error("Messages - get conversations error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to load conversations']);
     }
 }
@@ -159,7 +161,7 @@ function getMessages($pdo, $user_id, $conversation_id) {
         
         echo json_encode(['success' => true, 'messages' => $messages]);
     } catch (PDOException $e) {
-        error_log("Messages - get messages error: " . $e->getMessage());
+        ErrorLogger::error("Messages - get messages error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to load messages']);
     }
 }
@@ -251,7 +253,7 @@ function getContacts($pdo, $user_id, $user_role) {
         
         echo json_encode(['success' => true, 'contacts' => $contacts]);
     } catch (PDOException $e) {
-        error_log("Messages - get contacts error: " . $e->getMessage());
+        ErrorLogger::error("Messages - get contacts error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to load contacts']);
     }
 }
@@ -308,6 +310,8 @@ function sendMessage($pdo, $user_id) {
         
         $pdo->commit();
         
+        Auditor::log($pdo, $user_id, 'create', 'messages', $message_id, ['action' => 'sent_message', 'to_user_id' => $to_user_id, 'conversation_id' => $conversation_id]);
+        
         // Get sender info for response
         $sender = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
         $sender->execute([$user_id]);
@@ -334,7 +338,7 @@ function sendMessage($pdo, $user_id) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Messages - send message error: " . $e->getMessage());
+        ErrorLogger::error("Messages - send message error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to send message']);
     }
 }
@@ -367,7 +371,7 @@ function markRead($pdo, $user_id) {
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
-        error_log("Messages - mark read error: " . $e->getMessage());
+        ErrorLogger::error("Messages - mark read error: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Failed to mark as read']);
     }
 }
@@ -382,7 +386,7 @@ function getUnreadCount($pdo, $user_id) {
         $result = $stmt->fetch();
         echo json_encode(['success' => true, 'count' => intval($result['count'])]);
     } catch (PDOException $e) {
-        error_log("Messages - unread count error: " . $e->getMessage());
+        ErrorLogger::error("Messages - unread count error: " . $e->getMessage());
         echo json_encode(['success' => true, 'count' => 0]);
     }
 }

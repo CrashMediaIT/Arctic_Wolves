@@ -5,6 +5,8 @@ require 'db_config.php';
 require 'security.php';
 require 'notifications.php';
 require 'mailer.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -331,6 +333,8 @@ try {
             
             $refund_id = $pdo->lastInsertId();
             
+            Auditor::log($pdo, $user_id, 'create', 'refunds', $refund_id, ['action' => 'processed_refund', 'method' => $method, 'amount' => $refund_amount, 'booking_id' => $booking_id]);
+            
             // Update booking status
             $pdo->prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?")->execute([$booking_id]);
             
@@ -487,6 +491,9 @@ try {
                 $user_id
             ]);
             
+            $credit_refund_id = $pdo->lastInsertId();
+            Auditor::log($pdo, $user_id, 'create', 'credits_refunds', $credit_refund_id, ['action' => 'created_' . $type, 'amount' => $amount, 'target_user_id' => $target_user_id]);
+            
             // If auto-approved and it's a credit, add to user's credit balance
             if ($auto_approve && $type === 'credit') {
                 // Get credit expiry setting
@@ -545,6 +552,8 @@ try {
             $update_stmt = $pdo->prepare("UPDATE credits_refunds SET status = 'completed', processed_at = NOW() WHERE id = ?");
             $update_stmt->execute([$credit_id]);
             
+            Auditor::log($pdo, $user_id, 'update', 'credits_refunds', $credit_id, ['action' => 'approved_credit_refund']);
+            
             // If it's a credit, add to user's credit balance
             if ($credit['transaction_type'] === 'credit') {
                 $expiry_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'credit_expiry_days'");
@@ -591,6 +600,8 @@ try {
             // Update status to rejected
             $update_stmt = $pdo->prepare("UPDATE credits_refunds SET status = 'rejected', processed_at = NOW() WHERE id = ?");
             $update_stmt->execute([$credit_id]);
+            
+            Auditor::log($pdo, $user_id, 'update', 'credits_refunds', $credit_id, ['action' => 'rejected_credit_refund']);
             
             echo json_encode(['success' => true, 'message' => 'Credit/refund rejected!']);
             break;
