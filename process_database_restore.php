@@ -7,6 +7,8 @@
 session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 header('Content-Type: application/json');
 
@@ -127,6 +129,7 @@ try {
             
             if ($result['success']) {
                 logAction($pdo, $user_id, 'database_restored', 'Database restored from backup');
+                Auditor::log($pdo, $user_id, 'restore', 'database', null, ['action' => 'Database restored from backup']);
                 echo json_encode([
                     'success' => true,
                     'message' => $result['message'],
@@ -153,6 +156,7 @@ try {
     }
     
 } catch (Exception $e) {
+    ErrorLogger::error('Database restore error: ' . $e->getMessage());
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
