@@ -725,7 +725,7 @@ function sendRefundEmail($to_email, $name, $refund_amount, $credit_amount, $sess
             'reason' => $reason
         ]);
     } catch (Exception $e) {
-        error_log("Failed to send refund email: " . $e->getMessage());
+        ErrorLogger::error("Failed to send refund email", ["error" => $e->getMessage()]);
     }
 }
 ?>

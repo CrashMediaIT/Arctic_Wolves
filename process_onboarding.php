@@ -425,7 +425,7 @@ if ($action === 'create') {
                         'start_date' => $startDate
                     ]);
                     $extensionRequested = true;
-                    error_log("Extension request email sent to IT for $staffDisplayName");
+                    ErrorLogger::info("Extension request email sent to IT for $staffDisplayName");
                 } catch (Exception $emailError) {
                     ErrorLogger::error("Extension request email error: " . $emailError->getMessage());
                     // Continue without email - not critical
