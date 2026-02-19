@@ -382,7 +382,7 @@ foreach ($users as $u) {
                                         <div class="contact-cell">
                                             <span class="contact-email"><?php echo htmlspecialchars($user['email']); ?></span>
                                             <?php if (!empty($user['phone'])): ?>
-                                                <span class="contact-phone"><i class="fas fa-phone"></i> <?php echo htmlspecialchars($user['phone']); ?></span>
+                                                <span class="contact-phone"><i class="fas fa-phone"></i> <?php echo htmlspecialchars(formatPhone($user['phone'])); ?></span>
                                             <?php endif; ?>
                                         </div>
                                     </td>

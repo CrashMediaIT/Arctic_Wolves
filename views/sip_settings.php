@@ -104,7 +104,7 @@ try {
                                 <td><?php echo htmlspecialchars($staff['job_title'] ?? ucfirst(str_replace('_', ' ', $staff['role']))); ?></td>
                                 <td>
                                     <?php if (!empty($staff['sip_did'])): ?>
-                                        <?php echo htmlspecialchars($staff['sip_did']); ?>
+                                        <?php echo htmlspecialchars(formatPhone($staff['sip_did'])); ?>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted);">—</span>
                                     <?php endif; ?>
@@ -112,7 +112,7 @@ try {
                                 <td>
                                     <?php if (!empty($staff['sip_extension'])): ?>
                                         <span class="badge" style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px;">
-                                            <?php echo htmlspecialchars($staff['sip_extension']); ?>
+                                            <?php echo htmlspecialchars(formatPhone($staff['sip_extension'])); ?>
                                         </span>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted);">—</span>
@@ -152,7 +152,7 @@ try {
                                 </td>
                                 <td>
                                     <?php if (!empty($entry['did'])): ?>
-                                        <?php echo htmlspecialchars($entry['did']); ?>
+                                        <?php echo htmlspecialchars(formatPhone($entry['did'])); ?>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted);">—</span>
                                     <?php endif; ?>
@@ -160,7 +160,7 @@ try {
                                 <td>
                                     <?php if (!empty($entry['extension'])): ?>
                                         <span class="badge" style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px;">
-                                            <?php echo htmlspecialchars($entry['extension']); ?>
+                                            <?php echo htmlspecialchars(formatPhone($entry['extension'])); ?>
                                         </span>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted);">—</span>

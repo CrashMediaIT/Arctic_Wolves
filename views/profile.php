@@ -379,7 +379,7 @@ $errors = [
                         <div class="form-group">
                             <label>Phone</label>
                             <input type="tel" name="phone" class="form-input" 
-                                   value="<?php echo htmlspecialchars($userData['phone'] ?? ''); ?>">
+                                   value="<?php echo htmlspecialchars(formatPhone($userData['phone'] ?? '')); ?>">
                         </div>
                     </div>
 

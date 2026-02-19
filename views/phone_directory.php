@@ -155,7 +155,7 @@ try {
                                 <td>
                                     <?php if (!empty($du['sip_extension'])): ?>
                                         <span class="badge" style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px;">
-                                            <i class="fas fa-phone"></i> <?php echo htmlspecialchars($du['sip_extension']); ?>
+                                            <i class="fas fa-phone"></i> <?php echo htmlspecialchars(formatPhone($du['sip_extension'])); ?>
                                         </span>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted);">—</span>
@@ -163,12 +163,12 @@ try {
                                 </td>
                                 <td>
                                     <?php if (!empty($du['sip_did'])): ?>
-                                        <span><?php echo htmlspecialchars($du['sip_did']); ?></span>
+                                        <span><?php echo htmlspecialchars(formatPhone($du['sip_did'])); ?></span>
                                     <?php else: ?>
                                         <span style="color: var(--text-muted);">—</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($du['phone'] ?? '—'); ?></td>
+                                <td><?php echo htmlspecialchars(formatPhone($du['phone'] ?? '') ?: '—'); ?></td>
                                 <td><a href="mailto:<?php echo htmlspecialchars($du['email']); ?>"><?php echo htmlspecialchars($du['email']); ?></a></td>
                             </tr>
                         <?php endforeach; ?>

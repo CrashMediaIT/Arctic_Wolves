@@ -17,6 +17,7 @@ import path from 'path';
 const sipSettingsPath = path.join(__dirname, '..', 'views', 'sip_settings.php');
 const dashboardPath = path.join(__dirname, '..', 'dashboard.php');
 const posTerminalPath = path.join(__dirname, '..', 'views', 'pos_terminal.php');
+const dbConfigPath = path.join(__dirname, '..', 'db_config.php');
 
 // ================================================
 // 1. SIP Configuration & Dialer Removed
@@ -187,5 +188,74 @@ test.describe('Dashboard - Company Directory Navigation', () => {
     // There should be two sip_settings links: one in POS section and one in sidebar footer
     const matches = content.match(/page=sip_settings/g) || [];
     expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ================================================
+// 7. Site-wide Phone Number Formatting (xxx.xxx.xxxx)
+// ================================================
+test.describe('Phone Formatting - formatPhone() in db_config.php', () => {
+  test('db_config.php should define formatPhone function', async () => {
+    const content = fs.readFileSync(dbConfigPath, 'utf-8');
+    expect(content).toContain('function formatPhone(');
+  });
+
+  test('formatPhone should format 10-digit numbers as xxx.xxx.xxxx', async () => {
+    const content = fs.readFileSync(dbConfigPath, 'utf-8');
+    expect(content).toContain("substr($digits, 0, 3) . '.' . substr($digits, 3, 3) . '.' . substr($digits, 6, 4)");
+  });
+
+  test('formatPhone should format 11-digit numbers starting with 1', async () => {
+    const content = fs.readFileSync(dbConfigPath, 'utf-8');
+    expect(content).toContain("strlen($digits) === 11");
+    expect(content).toContain("$digits[0] === '1'");
+  });
+
+  test('formatPhone should strip non-digit characters before formatting', async () => {
+    const content = fs.readFileSync(dbConfigPath, 'utf-8');
+    expect(content).toContain("preg_replace('/[^0-9]/', '', $phone)");
+  });
+});
+
+test.describe('Phone Formatting - Applied in Views', () => {
+  test('sip_settings.php should use formatPhone for DID and extension display', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain("formatPhone($staff['sip_did'])");
+    expect(content).toContain("formatPhone($staff['sip_extension'])");
+    expect(content).toContain("formatPhone($entry['did'])");
+    expect(content).toContain("formatPhone($entry['extension'])");
+  });
+
+  test('phone_directory.php should use formatPhone for phone numbers', async () => {
+    const dirPath = path.join(__dirname, '..', 'views', 'phone_directory.php');
+    const content = fs.readFileSync(dirPath, 'utf-8');
+    expect(content).toContain("formatPhone($du['sip_extension'])");
+    expect(content).toContain("formatPhone($du['sip_did'])");
+    expect(content).toContain("formatPhone($du['phone']");
+  });
+
+  test('admin_users.php should use formatPhone for phone display', async () => {
+    const usersPath = path.join(__dirname, '..', 'views', 'admin_users.php');
+    const content = fs.readFileSync(usersPath, 'utf-8');
+    expect(content).toContain("formatPhone($user['phone'])");
+  });
+
+  test('admin_business_cards.php should use formatPhone for phone display', async () => {
+    const cardsPath = path.join(__dirname, '..', 'views', 'admin_business_cards.php');
+    const content = fs.readFileSync(cardsPath, 'utf-8');
+    expect(content).toContain("formatPhone($selected_user['phone']");
+  });
+
+  test('profile.php should use formatPhone for phone display', async () => {
+    const profilePath = path.join(__dirname, '..', 'views', 'profile.php');
+    const content = fs.readFileSync(profilePath, 'utf-8');
+    expect(content).toContain("formatPhone($userData['phone']");
+  });
+
+  test('admin_business_cards.php should have JS formatPhone function', async () => {
+    const cardsPath = path.join(__dirname, '..', 'views', 'admin_business_cards.php');
+    const content = fs.readFileSync(cardsPath, 'utf-8');
+    expect(content).toContain('function formatPhone(phone)');
+    expect(content).toContain("digits.length === 10");
   });
 });
