@@ -42,20 +42,6 @@ $csrf_token = generateCsrfToken();
 ?>
 
 <style>
-    :root {
-        --primary: #7000a4;
-    }
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
-    .page-title {
-        font-size: 28px;
-        font-weight: 900;
-        color: #fff;
-    }
     .reports-container {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -68,117 +54,79 @@ $csrf_token = generateCsrfToken();
         }
     }
     .report-section {
-        background: #0a0f14;
-        border: 1px solid #1e293b;
+        background: var(--bg-secondary, #13131A);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 12px;
         padding: 24px;
     }
     .section-title {
         font-size: 18px;
         font-weight: 700;
-        color: #fff;
+        color: var(--text-white, #fff);
         margin-bottom: 20px;
         display: flex;
         align-items: center;
         gap: 10px;
     }
     .section-title i {
-        color: var(--primary);
+        color: var(--primary, #6B46C1);
     }
     .report-type-grid {
         display: grid;
         gap: 15px;
     }
     .report-type-card {
-        background: #06080b;
-        border: 1px solid #1e293b;
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 8px;
         padding: 20px;
         transition: all 0.2s;
         cursor: pointer;
     }
     .report-type-card:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
         transform: translateY(-2px);
     }
     .report-type-card.selected {
-        background: rgba(112, 0, 164, 0.1);
-        border-color: var(--primary);
+        background: rgba(107, 70, 193, 0.1);
+        border-color: var(--primary, #6B46C1);
     }
     .report-type-title {
         font-weight: 700;
         font-size: 15px;
-        color: #fff;
+        color: var(--text-white, #fff);
         margin-bottom: 5px;
     }
     .report-type-desc {
         font-size: 12px;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         line-height: 1.5;
     }
-    .form-group {
-        margin-bottom: 20px;
-    }
-    .form-label {
-        display: block;
-        font-size: 12px;
-        font-weight: 700;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-    }
-    .form-control {
+    .report-form-control {
         width: 100%;
         padding: 12px 15px;
-        background: #06080b;
-        border: 1px solid #1e293b;
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 6px;
-        color: #fff;
+        color: var(--text-white, #fff);
         font-size: 14px;
     }
-    .form-control:focus {
+    .report-form-control:focus {
         outline: none;
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
     }
     .btn-group {
         display: flex;
         gap: 10px;
         margin-top: 20px;
     }
-    .btn {
-        padding: 12px 24px;
-        border: none;
-        border-radius: 6px;
-        font-weight: 700;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .btn-primary {
-        background: var(--primary);
-        color: #fff;
-    }
-    .btn-primary:hover {
-        background: #5a0085;
-    }
-    .btn-secondary {
-        background: #334155;
-        color: #fff;
-    }
-    .btn-secondary:hover {
-        background: #475569;
-    }
     .recent-reports-list {
         display: grid;
         gap: 10px;
     }
     .report-item {
-        background: #06080b;
-        border: 1px solid #1e293b;
+        background: var(--bg-main, #0A0A0F);
+        border: 1px solid var(--border, #2D2D3F);
         border-radius: 6px;
         padding: 16px;
         display: flex;
@@ -191,12 +139,12 @@ $csrf_token = generateCsrfToken();
     .report-name {
         font-weight: 700;
         font-size: 14px;
-        color: #fff;
+        color: var(--text-white, #fff);
         margin-bottom: 4px;
     }
     .report-meta {
         font-size: 11px;
-        color: #64748b;
+        color: var(--text-muted, #6B6B7B);
     }
     .report-actions {
         display: flex;
@@ -205,10 +153,10 @@ $csrf_token = generateCsrfToken();
     .icon-btn {
         width: 32px;
         height: 32px;
-        background: #1e293b;
+        background: var(--border, #2D2D3F);
         border: none;
         border-radius: 4px;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -216,7 +164,7 @@ $csrf_token = generateCsrfToken();
         transition: all 0.2s;
     }
     .icon-btn:hover {
-        background: var(--primary);
+        background: var(--primary, #6B46C1);
         color: #fff;
     }
     .format-options {
@@ -227,25 +175,25 @@ $csrf_token = generateCsrfToken();
     .format-option {
         flex: 1;
         padding: 16px;
-        background: #06080b;
-        border: 2px solid #1e293b;
+        background: var(--bg-main, #0A0A0F);
+        border: 2px solid var(--border, #2D2D3F);
         border-radius: 8px;
         text-align: center;
         cursor: pointer;
         transition: all 0.2s;
     }
     .format-option:hover {
-        border-color: var(--primary);
+        border-color: var(--primary, #6B46C1);
     }
     .format-option.selected {
-        background: rgba(112, 0, 164, 0.1);
-        border-color: var(--primary);
+        background: rgba(107, 70, 193, 0.1);
+        border-color: var(--primary, #6B46C1);
     }
     .format-option i {
         font-size: 24px;
         margin-bottom: 8px;
         display: block;
-        color: var(--primary);
+        color: var(--primary, #6B46C1);
     }
     .format-option-label {
         font-weight: 700;
@@ -264,7 +212,7 @@ $csrf_token = generateCsrfToken();
     }
     .checkbox-group label {
         font-size: 14px;
-        color: #94a3b8;
+        color: var(--text-secondary, #A8A8B8);
         cursor: pointer;
     }
 </style>
@@ -337,7 +285,7 @@ $csrf_token = generateCsrfToken();
                 
                 <div class="form-group" id="teamFilter" style="display: none;">
                     <label class="form-label">Select Team(s)</label>
-                    <select name="team_ids[]" class="form-control" multiple size="5">
+                    <select name="team_ids[]" class="report-form-control" multiple size="5">
                         <option value="all">All Teams</option>
                         <?php foreach ($teams_list as $team): ?>
                         <option value="<?= $team['id'] ?>"><?= htmlspecialchars($team['name']) ?></option>
@@ -348,8 +296,8 @@ $csrf_token = generateCsrfToken();
                 <div class="form-group">
                     <label class="form-label">Date Range</label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <input type="date" name="date_from" class="form-control" value="<?= date('Y-m-d', strtotime('-30 days')) ?>">
-                        <input type="date" name="date_to" class="form-control" value="<?= date('Y-m-d') ?>">
+                        <input type="date" name="date_from" class="report-form-control" value="<?= date('Y-m-d', strtotime('-30 days')) ?>">
+                        <input type="date" name="date_to" class="report-form-control" value="<?= date('Y-m-d') ?>">
                     </div>
                 </div>
                 
@@ -376,7 +324,7 @@ $csrf_token = generateCsrfToken();
                 <div id="scheduleOptions" style="display: none;">
                     <div class="form-group">
                         <label class="form-label">Frequency</label>
-                        <select name="frequency" class="form-control">
+                        <select name="frequency" class="report-form-control">
                             <option value="weekly">Weekly</option>
                             <option value="monthly">Monthly</option>
                             <option value="daily">Daily</option>
@@ -385,7 +333,7 @@ $csrf_token = generateCsrfToken();
                     
                     <div class="form-group">
                         <label class="form-label">Email Recipients (comma-separated)</label>
-                        <input type="text" name="email_recipients" class="form-control" placeholder="email1@example.com, email2@example.com">
+                        <input type="text" name="email_recipients" class="report-form-control" placeholder="email1@example.com, email2@example.com">
                     </div>
                 </div>
                 
@@ -406,7 +354,7 @@ $csrf_token = generateCsrfToken();
         <h2 class="section-title"><i class="fas fa-history"></i> Recent Reports</h2>
         
         <?php if (empty($recent_reports)): ?>
-        <p style="color: #64748b; text-align: center; padding: 40px 0;">No reports generated yet. Create your first report!</p>
+        <p style="color: var(--text-muted, #6B6B7B); text-align: center; padding: 40px 0;">No reports generated yet. Create your first report!</p>
         <?php else: ?>
         <div class="recent-reports-list">
             <?php foreach ($recent_reports as $report): ?>
