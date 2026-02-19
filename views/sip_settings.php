@@ -246,7 +246,7 @@ try {
 </div>
 
 <!-- Load SIP.js for built-in WebRTC calling -->
-<script src="https://cdn.jsdelivr.net/npm/jssip@3.10.1/dist/jssip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jssip@3.10.1/dist/jssip.min.js" integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb" crossorigin="anonymous"></script>
 
 <script>
 // SIP client state
@@ -312,9 +312,6 @@ function registerSip() {
         showNotification('Please fill in SIP username, password, and domain', 'warning');
         return;
     }
-
-    // Store password in sessionStorage only (not sent to server)
-    sessionStorage.setItem('sip_password', password);
 
     // Update UI to show connecting status
     updateSipStatus('connecting', 'Connecting to ' + domain + '...');
@@ -518,15 +515,4 @@ function dialerCall() {
     }
     callExtension(number, number);
 }
-
-// Auto-restore connection if credentials are saved in sessionStorage
-(function() {
-    var savedPassword = sessionStorage.getItem('sip_password');
-    var username = document.getElementById('sip_username').value.trim();
-    var domain = document.getElementById('sip_domain').value.trim();
-    if (savedPassword && username && domain) {
-        document.getElementById('sip_password').value = savedPassword;
-        registerSip();
-    }
-})();
 </script>
