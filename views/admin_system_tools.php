@@ -1645,6 +1645,113 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </ul>
                     </div>
                 </div>
+
+                <!-- ===== Cluster Management ===== -->
+                <div style="margin-top: 32px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                        <h4 style="font-size: 16px; font-weight: 700; color: var(--text-white); margin: 0;">
+                            <i class="fas fa-circle-nodes" style="color: var(--primary); margin-right: 8px;"></i>Galera Cluster Management
+                        </h4>
+                        <?php $db_mode_current = $_ENV['DB_MODE'] ?? 'single'; ?>
+                        <span id="cluster-mode-badge" style="padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+                              background: <?= $db_mode_current === 'cluster' ? 'rgba(0,255,136,0.15)' : 'rgba(148,163,184,0.15)' ?>;
+                              color: <?= $db_mode_current === 'cluster' ? '#00ff88' : '#94a3b8' ?>;
+                              border: 1px solid <?= $db_mode_current === 'cluster' ? '#00ff88' : '#94a3b8' ?>;">
+                            <?= $db_mode_current === 'cluster' ? 'CLUSTER MODE' : 'SINGLE DB' ?>
+                        </span>
+                    </div>
+
+                    <!-- Mode + cluster settings form -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
+                        <h5 style="color: var(--text-white); margin-bottom: 16px; font-size: 14px;">Database Mode Configuration</h5>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                            <div>
+                                <label style="font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px;">Database Mode</label>
+                                <select id="cfg-db-mode" style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;" onchange="toggleClusterConfigFields()">
+                                    <option value="single" <?= $db_mode_current !== 'cluster' ? 'selected' : '' ?>>Single Database</option>
+                                    <option value="cluster" <?= $db_mode_current === 'cluster' ? 'selected' : '' ?>>Galera Cluster</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px;">Cluster Name</label>
+                                <input type="text" id="cfg-cluster-name" value="<?= htmlspecialchars($_ENV['DB_CLUSTER_NAME'] ?? 'arctic_wolves_cluster') ?>"
+                                       style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;">
+                            </div>
+                        </div>
+                        <div id="cfg-cluster-nodes-row">
+                            <label style="font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px;">Cluster Nodes (comma-separated host or host:port)</label>
+                            <input type="text" id="cfg-cluster-nodes" value="<?= htmlspecialchars($_ENV['DB_CLUSTER_NODES'] ?? '') ?>"
+                                   placeholder="node1,node2,node3 or node1:3306,node2:3306,node3:3306"
+                                   style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;">
+                        </div>
+                        <div style="margin-top: 14px;">
+                            <button type="button" class="btn btn-primary" onclick="saveClusterSettings()" style="font-size: 13px;">
+                                <i class="fas fa-save"></i> Save Cluster Settings
+                            </button>
+                        </div>
+                        <div id="cluster-settings-result" style="margin-top: 10px; font-size: 13px;"></div>
+                    </div>
+
+                    <!-- Live cluster status -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px;" id="cluster-status-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                            <h5 style="color: var(--text-white); margin: 0; font-size: 14px;">Live Cluster Status</h5>
+                            <button type="button" class="btn btn-secondary" onclick="loadClusterStatus()" style="font-size: 12px; padding: 6px 12px;">
+                                <i class="fas fa-refresh"></i> Refresh
+                            </button>
+                        </div>
+                        <div id="cluster-status-content" style="color: var(--text-dim); font-size: 13px;">
+                            <span style="color: #94a3b8;"><i class="fas fa-circle-info"></i> Click Refresh to load cluster status.</span>
+                        </div>
+                    </div>
+
+                    <!-- Node list and add node -->
+                    <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
+                        <h5 style="color: var(--text-white); margin-bottom: 16px; font-size: 14px;">Cluster Nodes</h5>
+                        <div id="node-list" style="margin-bottom: 20px;">
+                            <?php
+                            $cfg_nodes = array_filter(array_map('trim', explode(',', $_ENV['DB_CLUSTER_NODES'] ?? '')));
+                            if (empty($cfg_nodes)): ?>
+                                <p style="color: #94a3b8; font-size: 13px; margin: 0;">No nodes configured. Switch to Cluster mode and save settings, or add nodes below.</p>
+                            <?php else: ?>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <?php foreach ($cfg_nodes as $node): ?>
+                                    <div class="cluster-node-row" data-node="<?= htmlspecialchars($node) ?>" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
+                                        <i class="fas fa-server" style="color: var(--primary);"></i>
+                                        <span style="flex: 1; font-size: 13px; color: var(--text-white); font-family: monospace;"><?= htmlspecialchars($node) ?></span>
+                                        <button type="button" onclick="testNode('<?= htmlspecialchars($node, ENT_QUOTES) ?>')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">
+                                            <i class="fas fa-plug"></i> Test
+                                        </button>
+                                        <button type="button" onclick="removeNode('<?= htmlspecialchars($node, ENT_QUOTES) ?>')" class="btn" style="font-size: 11px; padding: 4px 10px; background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid #ef4444;">
+                                            <i class="fas fa-trash"></i> Remove
+                                        </button>
+                                    </div>
+                                <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Add Node Form -->
+                        <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+                            <h6 style="color: var(--text-white); margin-bottom: 12px; font-size: 13px; font-weight: 600;">
+                                <i class="fas fa-plus-circle" style="color: #00ff88; margin-right: 6px;"></i>Add New Node &amp; Join Cluster
+                            </h6>
+                            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 5px;">Node Address (host or host:port)</label>
+                                    <input type="text" id="new-node-address" placeholder="192.168.1.100 or mariadb-node4:3306"
+                                           style="width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-white); font-size: 13px;">
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="addClusterNode()" style="white-space: nowrap; font-size: 13px; height: 36px;">
+                                    <i class="fas fa-plus"></i> Add &amp; Generate Join Command
+                                </button>
+                            </div>
+                            <div id="add-node-result" style="margin-top: 12px; font-size: 13px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ===== End Cluster Management ===== -->
+
             </div>
         </div>
     </div>
@@ -5137,4 +5244,162 @@ function gpTestCompanion() {
 }
 
 // FusionPBX Test Connection
+
+// ===== Galera Cluster Management =====
+
+function toggleClusterConfigFields() {
+    var mode = document.getElementById('cfg-db-mode').value;
+    var row  = document.getElementById('cfg-cluster-nodes-row');
+    if (row) row.style.display = mode === 'cluster' ? 'block' : 'none';
+}
+// Run after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('cfg-db-mode')) toggleClusterConfigFields();
+});
+
+function clusterPost(action, extraData) {
+    var body = new URLSearchParams({ action: action, csrf_token: getCsrfToken() });
+    if (extraData) {
+        for (var k in extraData) body.set(k, extraData[k]);
+    }
+    return fetch('process_settings.php', { method: 'POST', body: body, headers: { 'Accept': 'application/json' } })
+           .then(r => r.json());
+}
+
+function saveClusterSettings() {
+    var mode       = document.getElementById('cfg-db-mode').value;
+    var clusterName = document.getElementById('cfg-cluster-name').value.trim();
+    var clusterNodes = document.getElementById('cfg-cluster-nodes').value.trim();
+    var result = document.getElementById('cluster-settings-result');
+    result.innerHTML = '<span style="color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Saving…</span>';
+    clusterPost('save_cluster_settings', { db_mode: mode, db_cluster_name: clusterName, db_cluster_nodes: clusterNodes })
+    .then(data => {
+        if (data.success) {
+            result.innerHTML = '<span style="color:#00ff88;"><i class="fas fa-check"></i> ' + (data.message || 'Saved') + '</span>';
+            // Update the mode badge
+            var badge = document.getElementById('cluster-mode-badge');
+            if (badge) {
+                badge.textContent = mode === 'cluster' ? 'CLUSTER MODE' : 'SINGLE DB';
+                badge.style.color = mode === 'cluster' ? '#00ff88' : '#94a3b8';
+                badge.style.background = mode === 'cluster' ? 'rgba(0,255,136,0.15)' : 'rgba(148,163,184,0.15)';
+                badge.style.borderColor = mode === 'cluster' ? '#00ff88' : '#94a3b8';
+            }
+        } else {
+            result.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times"></i> ' + (data.message || 'Error') + '</span>';
+        }
+    })
+    .catch(() => { result.innerHTML = '<span style="color:#ef4444;">Request failed</span>'; });
+}
+
+function loadClusterStatus() {
+    var content = document.getElementById('cluster-status-content');
+    content.innerHTML = '<span style="color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading…</span>';
+    clusterPost('get_cluster_status')
+    .then(data => {
+        if (!data.success) {
+            content.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times"></i> ' + (data.message || 'Failed to get cluster status') + '</span>';
+            return;
+        }
+        var rows = [
+            ['Mode',           data.db_mode === 'cluster' ? 'Galera Cluster' : 'Single Database'],
+            ['Cluster Name',   data.cluster_name || '—'],
+            ['Cluster Size',   data.cluster_size ?? '—'],
+            ['Cluster Status', data.cluster_status ?? '—'],
+            ['Ready',          data.ready ?? '—'],
+            ['Node State',     data.state ?? '—'],
+            ['Connected Node', data.node_address ?? '—'],
+        ];
+        var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+        rows.forEach(function(r) {
+            var color = '#fff';
+            if (r[1] === 'Primary') color = '#00ff88';
+            else if (r[1] === 'OFF' || r[1] === 'Non-Primary') color = '#ef4444';
+            html += '<tr style="border-bottom:1px solid var(--border);">'
+                  + '<td style="padding:7px 10px;color:#94a3b8;width:40%;">' + r[0] + '</td>'
+                  + '<td style="padding:7px 10px;color:' + color + ';font-weight:600;">' + r[1] + '</td>'
+                  + '</tr>';
+        });
+        html += '</table>';
+        content.innerHTML = html;
+    })
+    .catch(() => { content.innerHTML = '<span style="color:#ef4444;">Request failed</span>'; });
+}
+
+function testNode(node) {
+    clusterPost('test_cluster_node', { node: node })
+    .then(data => {
+        var msg = (data.success ? '✓ ' : '✗ ') + (data.message || '');
+        var color = data.success ? '#00ff88' : '#ef4444';
+        // Find the row and show inline
+        document.querySelectorAll('.cluster-node-row').forEach(function(row) {
+            if (row.dataset.node === node) {
+                var existing = row.querySelector('.test-result');
+                if (existing) existing.remove();
+                var span = document.createElement('span');
+                span.className = 'test-result';
+                span.style.cssText = 'font-size:11px;color:' + color + ';margin-left:6px;';
+                span.textContent = msg;
+                row.appendChild(span);
+            }
+        });
+    });
+}
+
+function removeNode(node) {
+    var safeNode = node.replace(/['"\\]/g, '\\$&');
+    if (!confirm('Remove node ' + safeNode + ' from the cluster configuration?')) return;
+    var result = document.getElementById('add-node-result');
+    clusterPost('remove_cluster_node', { node: node })
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            result.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times"></i> ' + (data.message || 'Error') + '</span>';
+        }
+    });
+}
+
+function addClusterNode() {
+    var newNode = document.getElementById('new-node-address').value.trim();
+    var result  = document.getElementById('add-node-result');
+    if (!newNode) {
+        result.innerHTML = '<span style="color:#ef4444;">Please enter a node address.</span>';
+        return;
+    }
+    result.innerHTML = '<span style="color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Adding node…</span>';
+    clusterPost('add_cluster_node', { node: newNode })
+    .then(data => {
+        if (data.success) {
+            var html = '<div style="margin-bottom:10px;"><span style="color:#00ff88;"><i class="fas fa-check"></i> ' + escapeHtml(data.message || 'Node added') + '</span></div>';
+            if (data.docker_cmd) {
+                html += '<div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">Run this command on the new node\'s Docker host to join the cluster:</div>'
+                      + '<pre id="docker-join-cmd" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;color:#e2e8f0;overflow-x:auto;white-space:pre-wrap;">'
+                      + escapeHtml(data.docker_cmd) + '</pre>'
+                      + '<button type="button" id="btn-copy-docker-cmd" class="btn btn-secondary" style="font-size:11px;padding:4px 10px;margin-top:6px;"><i class="fas fa-copy"></i> Copy Command</button>';
+            }
+            result.innerHTML = html;
+            // Bind copy button after DOM update
+            if (data.docker_cmd) {
+                var copyBtn = document.getElementById('btn-copy-docker-cmd');
+                if (copyBtn) {
+                    var cmdText = data.docker_cmd;
+                    copyBtn.addEventListener('click', function() {
+                        navigator.clipboard.writeText(cmdText);
+                    });
+                }
+            }
+            // Reload node list
+            setTimeout(() => location.reload(), 300);
+        } else {
+            result.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times"></i> ' + (data.message || 'Error') + '</span>';
+        }
+    })
+    .catch(() => { result.innerHTML = '<span style="color:#ef4444;">Request failed</span>'; });
+}
+
+function escapeHtml(text) {
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+// ===== End Galera Cluster Management =====
 </script>

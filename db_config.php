@@ -88,48 +88,72 @@ if (!isset($db_error)) {
 }
 
 if ($db_config_valid) {
-    try {
-        // Create PDO instance with all recommended settings
-        $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
-            PDO::ATTR_PERSISTENT => true,  // Connection pooling
-            PDO::ATTR_TIMEOUT => 5  // 5 second timeout
-        ];
-        
-        $pdo = new PDO($dsn, $user, $pass, $options);
-        
-        // Test the connection with a simple query
-        $pdo->query("SELECT 1");
-        
-        // Connection successful
-        $db_connected = true;
-        
-        // Enable database-backed error logging
-        if (class_exists('ErrorLogger')) {
-            ErrorLogger::setDatabase($pdo);
+    // Build candidate host list: cluster mode tries all nodes in order with automatic failover;
+    // single mode uses the single configured host.
+    $db_mode           = $_ENV['DB_MODE'] ?? 'single';
+    $db_cluster_nodes  = $_ENV['DB_CLUSTER_NODES'] ?? '';
+    
+    if ($db_mode === 'cluster' && !empty($db_cluster_nodes)) {
+        $candidate_hosts = array_map('trim', explode(',', $db_cluster_nodes));
+        // Ensure the primary host is tried first only if not already present
+        if (!in_array($host, $candidate_hosts)) {
+            array_unshift($candidate_hosts, $host);
+        }
+    } else {
+        $candidate_hosts = [$host];
+    }
+    
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
+        PDO::ATTR_PERSISTENT => true,  // Connection pooling
+        PDO::ATTR_TIMEOUT => 5  // 5 second timeout
+    ];
+    
+    $last_exception = null;
+    foreach ($candidate_hosts as $candidate) {
+        // Support host:port notation
+        $node_host = $candidate;
+        $node_port = 3306;
+        if (strpos($candidate, ':') !== false) {
+            [$node_host, $node_port] = explode(':', $candidate, 2);
+            $node_port = (int)$node_port;
         }
         
-    } catch (PDOException $e) {
-        // Connection failed - set safe defaults
+        try {
+            $dsn = "mysql:host=$node_host;port=$node_port;dbname=$db;charset=utf8mb4";
+            $pdo = new PDO($dsn, $user, $pass, $options);
+            $pdo->query("SELECT 1");
+            $db_connected = true;
+            // Track which node we are actually connected to
+            $_ENV['DB_CONNECTED_HOST'] = $candidate;
+            break;
+        } catch (PDOException $e) {
+            $last_exception = $e;
+            $pdo = null;
+            if ($db_mode === 'cluster') {
+                error_log("[DB CLUSTER] Node $candidate unavailable: " . $e->getMessage());
+            }
+        }
+    }
+    
+    if (!$db_connected && $last_exception !== null) {
         $db_connected = false;
         $pdo = null;
-        $db_error = $e->getMessage();
-        
-        // Log error securely (don't expose to user)
-        error_log("[DB ERROR] " . $e->getMessage());
-        
-        // Set user-friendly error message
+        $db_error = $last_exception->getMessage();
+        error_log("[DB ERROR] " . $last_exception->getMessage());
         if (defined('DEBUG_MODE') && DEBUG_MODE) {
-            // In debug mode, show detailed error
-            $db_error_display = $e->getMessage();
+            $db_error_display = $last_exception->getMessage();
         } else {
-            // In production, show generic error
             $db_error_display = "Database connection failed. Please check your configuration.";
         }
+    }
+    
+    // Enable database-backed error logging once connected
+    if ($db_connected && class_exists('ErrorLogger')) {
+        ErrorLogger::setDatabase($pdo);
     }
 }
 

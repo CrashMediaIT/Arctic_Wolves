@@ -4,8 +4,94 @@ This guide provides Docker deployment instructions using the linuxserver contain
 
 ## Docker Containers Used
 
-- **Database**: [linuxserver/mariadb](https://hub.docker.com/r/linuxserver/mariadb)
+- **Database**: [linuxserver/mariadb](https://hub.docker.com/r/linuxserver/mariadb) (single-node) or [mariadb:lts](https://hub.docker.com/_/mariadb) with Galera (HA cluster)
 - **Web Server**: [linuxserver/nginx](https://hub.docker.com/r/linuxserver/nginx)
+
+---
+
+## MariaDB Galera Cluster (High-Availability)
+
+For production deployments that require **zero data loss and continuous availability**, use the
+3-node Galera cluster defined in `deployment/docker-compose-galera.yml`.
+
+### Why Galera?
+
+| Feature | Single MariaDB | Galera Cluster |
+|---------|---------------|---------------|
+| Replication | Async (potential lag) | Synchronous (no divergence) |
+| Failover | Manual | Automatic (quorum-based) |
+| Write nodes | 1 | All 3 (multi-master) |
+| Data safety | Risk of loss | Every commit on all nodes |
+
+### Architecture
+
+```
+  App / ProxySQL (port 3305)
+       │
+  ┌────┴─────────────────────┐
+  │  galera-node-1  (3306)   │
+  │  galera-node-2  (3307)   │  ← all three are equal masters
+  │  galera-node-3  (3308)   │
+  └──────────────────────────┘
+```
+
+ProxySQL distributes `SELECT` statements across all nodes and routes writes to any healthy node.
+If a node becomes unavailable the cluster automatically continues with the remaining two.
+
+### Quick Start
+
+```bash
+# 1. Configure environment
+cp deployment/galera/.env.galera.example deployment/galera/.env.galera
+# Edit deployment/galera/.env.galera and set strong passwords
+
+# 2. Bootstrap the cluster (run ONCE, on initial setup only)
+chmod +x deployment/galera/bootstrap.sh
+source deployment/galera/.env.galera
+deployment/galera/bootstrap.sh
+
+# 3. Import the database schema into the bootstrapped node
+docker exec galera-node-1 \
+  mariadb -u root -p"${MYSQL_ROOT_PASSWORD}" arctic_wolves \
+  < database_schema.sql
+
+# 4. Update arctic_wolves.env to point to ProxySQL
+#    DB_HOST=<docker-host-ip>   DB_PORT=3305 (PROXY_MYSQL_PORT)
+```
+
+### Subsequent Restarts
+
+If all three nodes are stopped cleanly (`docker compose stop`), restart is straightforward:
+
+```bash
+docker compose -f deployment/docker-compose-galera.yml up -d
+```
+
+If all nodes were stopped **uncleanly** (power loss, crash), identify the node with the
+highest `seqno` in `/var/lib/mysql/grastate.dat` and start it first with
+`BOOTSTRAP_CLUSTER=yes`, then start the others:
+
+```bash
+# Check seqno on each host
+docker run --rm -v galera-node-1-data:/var/lib/mysql busybox cat /var/lib/mysql/grastate.dat
+
+# Bootstrap the node with the highest seqno
+BOOTSTRAP_CLUSTER=yes docker compose -f deployment/docker-compose-galera.yml up -d galera-node-1
+# Then start the rest
+docker compose -f deployment/docker-compose-galera.yml up -d galera-node-2 galera-node-3 proxysql
+```
+
+### Verifying Cluster Health
+
+```bash
+docker exec galera-node-1 mariadb -u root -p"${MYSQL_ROOT_PASSWORD}" \
+  -e "SHOW STATUS LIKE 'wsrep%';"
+# wsrep_cluster_size should be 3
+# wsrep_cluster_status should be Primary
+# wsrep_ready should be ON
+```
+
+---
 
 ## Initial Setup Commands
 

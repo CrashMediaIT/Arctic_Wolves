@@ -811,6 +811,13 @@ CREATE TABLE IF NOT EXISTS `system_settings` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Default secondary Nextcloud settings (backup Nextcloud instance for redundant backups)
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
+('nextcloud_backup_url',      NULL, 'text',     'URL of the secondary/backup Nextcloud instance'),
+('nextcloud_backup_username', NULL, 'text',     'Username for the secondary Nextcloud instance'),
+('nextcloud_backup_password', NULL, 'password', 'Password for the secondary Nextcloud instance'),
+('nextcloud_backup_folder',   '/ArcticWolves/Backups/', 'text', 'Default backup folder on the secondary Nextcloud instance');
+
 -- Audit log
 -- Theme settings (key-value store for all theme/branding settings)
 CREATE TABLE IF NOT EXISTS `theme_settings` (
@@ -1029,13 +1036,14 @@ CREATE TABLE IF NOT EXISTS `backup_jobs` (
     `name` VARCHAR(255) NOT NULL,
     `schedule` VARCHAR(50) NOT NULL,
     `backup_type` ENUM('full', 'incremental', 'schema_only', 'data_only') DEFAULT 'full',
-    `destination_type` ENUM('local', 'nextcloud', 'smb', 'ftp', 's3') DEFAULT 'local',
+    `destination_type` ENUM('local', 'nextcloud', 'smb', 'ftp', 's3', 'both', 'both_nextcloud') DEFAULT 'nextcloud',
     `nextcloud_folder` VARCHAR(255) DEFAULT NULL,
     `smb_path` VARCHAR(255) DEFAULT NULL,
     `smb_username` VARCHAR(100) DEFAULT NULL,
     `smb_password` VARCHAR(255) DEFAULT NULL,
     `smb_domain` VARCHAR(100) DEFAULT NULL,
     `retention_days` INT DEFAULT 30,
+    `keep_count` INT NOT NULL DEFAULT 3 COMMENT 'Number of successful backup copies to retain per job',
     `last_backup` TIMESTAMP NULL,
     `next_backup` TIMESTAMP NULL,
     `status` ENUM('active', 'paused', 'disabled') DEFAULT 'active',
