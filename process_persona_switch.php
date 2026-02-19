@@ -9,6 +9,7 @@ session_start();
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/error_logger.php';
+require_once __DIR__ . '/lib/auditor.php';
 
 header('Content-Type: application/json');
 
@@ -72,6 +73,7 @@ if ($action === 'switch_role') {
     ]);
     
     if (isset($pdo) && $pdo) {
+        Auditor::log($pdo, $_SESSION['user_id'], 'update', 'users', $_SESSION['user_id'], ['action' => 'Persona switch to ' . $target_role]);
         logSecurityEvent('persona_switch', 'Admin switched persona to ' . $target_role, [
             'target_role' => $target_role
         ]);

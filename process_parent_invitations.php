@@ -9,6 +9,8 @@ session_start();
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/lib/encryption.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -108,6 +110,8 @@ try {
 
             $pdo->commit();
 
+            Auditor::log($pdo, $user_id, 'create', 'parent_invitations', $invitation_id, ['action' => 'Sent parent invitation to ' . $email]);
+
             // Send invitation email
             try {
                 require_once __DIR__ . '/mailer.php';
@@ -146,7 +150,7 @@ try {
                     'link' => $invite_url
                 ]);
             } catch (Exception $e) {
-                error_log("Failed to send parent invitation email: " . $e->getMessage());
+                ErrorLogger::error("Failed to send parent invitation email: " . $e->getMessage());
             }
 
             header("Location: dashboard.php?page=parent_home&status=invitation_sent");
@@ -163,6 +167,8 @@ try {
             // Only the inviter can revoke
             $stmt = $pdo->prepare("UPDATE parent_invitations SET status = 'revoked' WHERE id = ? AND inviter_id = ? AND status = 'pending'");
             $stmt->execute([$invitation_id, $user_id]);
+
+            Auditor::log($pdo, $user_id, 'update', 'parent_invitations', $invitation_id, ['action' => 'Revoked parent invitation']);
 
             header("Location: dashboard.php?page=parent_home&status=invitation_revoked");
             exit();
@@ -210,6 +216,8 @@ try {
 
             $pdo->commit();
 
+            Auditor::log($pdo, $user_id, 'update', 'parent_invitations', $invitation['id'], ['action' => 'Accepted parent invitation']);
+
             header("Location: dashboard.php?page=parent_home&status=invitation_accepted");
             exit();
 
@@ -221,7 +229,7 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log("Parent invitation error: " . $e->getMessage());
+    ErrorLogger::error("Parent invitation error: " . $e->getMessage());
     header("Location: dashboard.php?page=parent_home&error=system_error");
     exit();
 }

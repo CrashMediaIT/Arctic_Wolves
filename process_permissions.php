@@ -7,6 +7,8 @@
 session_start();
 require_once 'db_config.php';
 require_once 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Admin only
 if (!isset($_SESSION['logged_in']) || $_SESSION['user_role'] !== 'admin') {
@@ -70,6 +72,8 @@ if ($action === 'update_role_permissions') {
         
         $pdo->commit();
         
+        Auditor::log($pdo, $user_id, 'update', 'role_permissions', null, ['action' => 'Updated role permissions']);
+        
         // Log the change
         logSecurityEvent($pdo, 'permissions_updated', 'Role permissions updated by admin', $user_id);
         
@@ -110,6 +114,8 @@ if ($action === 'update_user_permissions') {
         }
         
         $pdo->commit();
+        
+        Auditor::log($pdo, $user_id, 'update', 'user_permissions', $target_user_id, ['action' => 'Updated user permissions']);
         
         // Log the change
         logSecurityEvent($pdo, 'user_permissions_updated', "User permissions updated for user ID $target_user_id", $user_id);

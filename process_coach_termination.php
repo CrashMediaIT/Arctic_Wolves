@@ -216,6 +216,8 @@ if ($action === 'create') {
             // Commit transaction
             $pdo->commit();
             
+            Auditor::log($pdo, $user_id, 'create', 'employee_terminations', $termination_id, ['action' => 'Created employee termination record for ' . $staff_member['name']]);
+            
             // Redirect back to termination page with success message
             $_SESSION['flash_message'] = 'Termination record created successfully for ' . $staff_member['name'];
             $_SESSION['flash_type'] = 'success';
@@ -449,6 +451,8 @@ try {
         
         // Commit transaction
         $pdo->commit();
+        
+        Auditor::log($pdo, $user_id, 'delete', 'users', $coach_to_terminate, ['action' => 'Coach termination and data transfer to coach ' . $transfer_to_coach]);
         
         $success_message = sprintf(
             'Coach %s has been successfully terminated. ' .
