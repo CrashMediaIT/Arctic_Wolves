@@ -10,6 +10,8 @@ require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
 require_once 'lib/docuseal.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -122,6 +124,7 @@ try {
                 json_encode(['employee_name' => $employeeName, 'template_id' => $templateId]),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
+            Auditor::log($pdo, $user_id, 'create', 'employee_contracts', $contractId, ['action' => 'Created contract', 'employee_name' => $employeeName]);
             
             echo json_encode([
                 'success' => true,
@@ -202,6 +205,7 @@ try {
                 json_encode(['action' => 'sent_for_signature', 'docuseal_template_id' => $templateId]),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
+            Auditor::log($pdo, $user_id, 'update', 'employee_contracts', $contractId, ['action' => 'Sent for signature']);
             
             echo json_encode([
                 'success' => true,
@@ -406,6 +410,7 @@ try {
                 json_encode(['action' => 'cancelled']),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
+            Auditor::log($pdo, $user_id, 'update', 'employee_contracts', $contractId, ['action' => 'Contract cancelled']);
             
             echo json_encode([
                 'success' => true,
@@ -467,6 +472,7 @@ try {
                 json_encode(['name' => $templateName, 'file' => $file['name']]),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
+            Auditor::log($pdo, $user_id, 'create', 'docuseal_templates', $docusealTemplateId, ['action' => 'Created DocuSeal template', 'name' => $templateName]);
             
             echo json_encode([
                 'success' => true,
@@ -527,6 +533,7 @@ try {
                 json_encode($updateData),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
+            Auditor::log($pdo, $user_id, 'update', 'docuseal_templates', $templateId, ['action' => 'Updated DocuSeal template']);
             
             echo json_encode([
                 'success' => true,
@@ -571,6 +578,7 @@ try {
                 json_encode(['action' => 'deleted']),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
+            Auditor::log($pdo, $user_id, 'delete', 'docuseal_templates', $templateId, ['action' => 'Deleted DocuSeal template']);
             
             echo json_encode([
                 'success' => true,
@@ -620,6 +628,7 @@ try {
                 json_encode(['cloned_from' => $templateId, 'new_name' => $newName]),
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
+            Auditor::log($pdo, $user_id, 'create', 'docuseal_templates', $newTemplateId, ['action' => 'Cloned DocuSeal template', 'cloned_from' => $templateId]);
             
             echo json_encode([
                 'success' => true,
@@ -684,6 +693,7 @@ try {
     }
     
 } catch (Exception $e) {
+    ErrorLogger::error('Employee contracts error: ' . $e->getMessage());
     if ($is_json) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
