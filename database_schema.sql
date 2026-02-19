@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password` VARCHAR(255) NOT NULL,
     `first_name` VARCHAR(512) NOT NULL,
     `last_name` VARCHAR(512) NOT NULL,
-    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff') DEFAULT 'athlete',
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting') DEFAULT 'athlete',
     `is_active` TINYINT(1) DEFAULT 1,
     `is_verified` TINYINT(1) DEFAULT 0,
     `verification_code` VARCHAR(10) DEFAULT NULL,
@@ -1627,7 +1627,7 @@ CREATE TABLE IF NOT EXISTS `reports` (
 -- Role permissions mapping
 CREATE TABLE IF NOT EXISTS `role_permissions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff') NOT NULL,
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting') NOT NULL,
     `permission_id` INT NOT NULL,
     `granted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`) ON DELETE CASCADE,
@@ -2684,7 +2684,7 @@ CREATE TABLE IF NOT EXISTS `employee_onboarding` (
     `last_name` VARCHAR(512) NOT NULL,
     `email` VARCHAR(255) NOT NULL,
     `phone` VARCHAR(512) DEFAULT NULL,
-    `role` ENUM('coach', 'health_coach', 'admin', 'team_coach', 'front_desk_staff') NOT NULL,
+    `role` ENUM('coach', 'health_coach', 'admin', 'team_coach', 'front_desk_staff', 'hr', 'accounting') NOT NULL,
     `job_title` VARCHAR(255) DEFAULT NULL COMMENT 'Job title for business cards and signatures',
     `create_extension` TINYINT(1) DEFAULT 0 COMMENT 'Whether to create a phone extension for this employee',
     `start_date` DATE NOT NULL,
@@ -4198,7 +4198,7 @@ CREATE TABLE IF NOT EXISTS `multiweek_program_dates` (
 CREATE TABLE IF NOT EXISTS `user_roles` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
-    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff') NOT NULL,
+    `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting') NOT NULL,
     `assigned_by` INT DEFAULT NULL COMMENT 'Admin who assigned this role',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,

@@ -93,12 +93,17 @@ $isHealthCoach = in_array('health_coach', $user_roles_list);
 $isTeamCoach   = in_array('team_coach', $user_roles_list);
 $isParent      = in_array('parent', $user_roles_list);
 $isFrontDesk   = in_array('front_desk_staff', $user_roles_list);
+$isHR          = in_array('hr', $user_roles_list);
+$isAccounting  = in_array('accounting', $user_roles_list);
 
 // Combined role checks for sections
 $isAnyCoach    = ($isCoach || $isAdmin);
 $isTeamStaff   = ($isTeamCoach);
 $canAccessPOS  = ($isAdmin || $isFrontDesk);
 $canAccessHealthManagement = ($isHealthCoach || $isAdmin);
+$canAccessHR   = ($isHR || $isAdmin);
+$canAccessAccounting = ($isAccounting || $isAdmin);
+$isStaff       = ($isAdmin || $isCoach || $isHealthCoach || $isFrontDesk || $isHR || $isAccounting);
 
 $page = $_GET['page'] ?? 'home';
 
@@ -822,8 +827,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     </div>
     <?php endif; ?>
 
-    <!-- ACCOUNTING AND REPORTS (Admins only) -->
-    <?php if($isAdmin): ?>
+    <!-- ACCOUNTING AND REPORTS (Admins and Accounting) -->
+    <?php if($canAccessAccounting): ?>
     <div class="nav-group">
         <span class="nav-label">Accounting & Reports</span>
         <nav class="nav-menu">
@@ -873,8 +878,8 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     </div>
     <?php endif; ?>
 
-    <!-- HR (Admins only) -->
-    <?php if($isAdmin): ?>
+    <!-- HR (Admins and HR) -->
+    <?php if($canAccessHR): ?>
     <div class="nav-group">
         <span class="nav-label">HR</span>
         <nav class="nav-menu">
@@ -938,9 +943,11 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <?php endif; ?>
 
     <div class="sidebar-footer">
+        <?php if($isStaff): ?>
         <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>">
             <i class="fa-solid fa-headset"></i> SIP Phone
         </a>
+        <?php endif; ?>
         <a href="?page=profile" class="nav-link <?= $page=='profile'?'active':'' ?>">
             <i class="fa-solid fa-user-gear"></i> Profile Settings
         </a>

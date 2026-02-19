@@ -6,8 +6,8 @@
  * Accessible from POS and HR navigation.
  */
 
-// Permission check - admins and front desk staff can access
-if (!$isAdmin && !$canAccessPOS) {
+// Permission check - admins, front desk staff, HR, and accounting can access
+if (!$isAdmin && !$canAccessPOS && !$isHR && !$isAccounting) {
     echo '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Access denied.</div>';
     return;
 }
@@ -18,7 +18,7 @@ $dir_role = $_GET['dir_role'] ?? '';
 
 // Fetch staff users with phone/SIP info
 try {
-    $where = ["u.role IN ('admin', 'coach', 'health_coach', 'team_coach', 'front_desk_staff')"];
+    $where = ["u.role IN ('admin', 'coach', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting')"];
     $params = [];
 
     if (!empty($dir_search)) {
@@ -90,6 +90,8 @@ try {
                         <option value="health_coach" <?php echo $dir_role === 'health_coach' ? 'selected' : ''; ?>>Health Coach</option>
                         <option value="team_coach" <?php echo $dir_role === 'team_coach' ? 'selected' : ''; ?>>Team Coach</option>
                         <option value="front_desk_staff" <?php echo $dir_role === 'front_desk_staff' ? 'selected' : ''; ?>>Front Desk</option>
+                        <option value="hr" <?php echo $dir_role === 'hr' ? 'selected' : ''; ?>>HR</option>
+                        <option value="accounting" <?php echo $dir_role === 'accounting' ? 'selected' : ''; ?>>Accounting</option>
                     </select>
                 </div>
             </div>
