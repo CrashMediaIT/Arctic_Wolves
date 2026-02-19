@@ -250,6 +250,9 @@ foreach ($users as $u) {
                             <option value="team_coach" <?php echo $role_filter === 'team_coach' ? 'selected' : ''; ?>>Team Coach</option>
                             <option value="athlete" <?php echo $role_filter === 'athlete' ? 'selected' : ''; ?>>Athlete</option>
                             <option value="parent" <?php echo $role_filter === 'parent' ? 'selected' : ''; ?>>Parent</option>
+                            <option value="front_desk_staff" <?php echo $role_filter === 'front_desk_staff' ? 'selected' : ''; ?>>Front Desk</option>
+                            <option value="hr" <?php echo $role_filter === 'hr' ? 'selected' : ''; ?>>HR</option>
+                            <option value="accounting" <?php echo $role_filter === 'accounting' ? 'selected' : ''; ?>>Accounting</option>
                         </select>
                     </div>
                     <div class="filter-field">
@@ -1168,6 +1171,9 @@ function closeModal(modalId) {
                             <option value="team_coach">Team Coach</option>
                             <option value="athlete">Athlete</option>
                             <option value="parent">Parent</option>
+                            <option value="front_desk_staff">Front Desk Staff</option>
+                            <option value="hr">HR</option>
+                            <option value="accounting">Accounting</option>
                         </select>
                     </div>
                     
@@ -1324,6 +1330,8 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                                 <option value="athlete">Athlete</option>
                                 <option value="parent">Parent</option>
                                 <option value="front_desk_staff">Front Desk Staff</option>
+                                <option value="hr">HR</option>
+                                <option value="accounting">Accounting</option>
                             </select>
                         </div>
                         
@@ -1397,6 +1405,20 @@ document.getElementById('add-user-role').addEventListener('change', function() {
                             <div>
                                 <div class="role-label">Front Desk</div>
                                 <div class="role-desc">POS, time tracking</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="hr" id="edit-role-hr">
+                            <div>
+                                <div class="role-label">HR</div>
+                                <div class="role-desc">Staff scheduling, payroll, onboarding</div>
+                            </div>
+                        </label>
+                        <label class="role-checkbox-item">
+                            <input type="checkbox" name="extra_roles[]" value="accounting" id="edit-role-accounting">
+                            <div>
+                                <div class="role-label">Accounting</div>
+                                <div class="role-desc">Finance, reports, expenses</div>
                             </div>
                         </label>
                     </div>

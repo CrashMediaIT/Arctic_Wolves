@@ -282,6 +282,8 @@ $perkTypes = [
                             <option value="health_coach">Health Coach</option>
                             <option value="team_coach">Team Coach</option>
                             <option value="front_desk_staff">Front Desk Staff</option>
+                            <option value="hr">HR</option>
+                            <option value="accounting">Accounting</option>
                             <option value="admin">Administrator</option>
                         </select>
                     </div>

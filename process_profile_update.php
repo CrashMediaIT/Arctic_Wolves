@@ -678,6 +678,13 @@ if ($action == 'update_pin') {
 if ($action == 'update_own_sip') {
     header('Content-Type: application/json');
     
+    // Staff-only: verify the user has a staff role
+    $staff_roles = ['admin', 'coach', 'health_coach', 'front_desk_staff', 'hr', 'accounting'];
+    if (!in_array($role, $staff_roles)) {
+        echo json_encode(['success' => false, 'message' => 'SIP settings are only available to staff members']);
+        exit();
+    }
+    
     $sip_username = trim($_POST['sip_username'] ?? '');
     $sip_domain = trim($_POST['sip_domain'] ?? '');
     

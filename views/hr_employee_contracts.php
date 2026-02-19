@@ -859,7 +859,7 @@ try {
         $promo_query .= " AND u.promotional_opt_in = 1";
     }
 
-    if ($promo_role_filter && in_array($promo_role_filter, ['athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff'])) {
+    if ($promo_role_filter && in_array($promo_role_filter, ['athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting'])) {
         $promo_query .= " AND u.role = ?";
         $promo_params[] = $promo_role_filter;
     }

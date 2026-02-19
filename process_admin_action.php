@@ -1543,7 +1543,7 @@ if ($action == 'create_user') {
     }
     
     // Validate role against allowlist
-    $valid_roles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff'];
+    $valid_roles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff', 'hr', 'accounting'];
     if (!in_array($role, $valid_roles)) {
         header("Location: dashboard.php?page=all_users&status=error&msg=invalid_role");
         exit();
@@ -1645,7 +1645,7 @@ if ($action == 'update_user') {
     }
     
     // Validate role against allowlist
-    $valid_roles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff'];
+    $valid_roles = ['admin', 'coach', 'coach_plus', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff', 'hr', 'accounting'];
     if (!in_array($role, $valid_roles)) {
         header("Location: dashboard.php?page=all_users&status=error&msg=invalid_role");
         exit();
@@ -1885,7 +1885,7 @@ if ($action == 'admin_reset_pin') {
         }
         
         // Verify user has a role that supports PIN login
-        $allowed_roles = ['admin', 'coach', 'health_coach', 'front_desk_staff'];
+        $allowed_roles = ['admin', 'coach', 'health_coach', 'front_desk_staff', 'hr', 'accounting'];
         if (!in_array($user['role'], $allowed_roles)) {
             echo json_encode(['success' => false, 'message' => 'User role does not support PIN login']);
             exit();
@@ -2237,14 +2237,14 @@ if ($action == 'admin_update_roles') {
         }
         
         $extra_roles = $_POST['extra_roles'] ?? [];
-        $valid_roles = ['admin', 'coach', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff'];
+        $valid_roles = ['admin', 'coach', 'health_coach', 'team_coach', 'athlete', 'parent', 'front_desk_staff', 'hr', 'accounting'];
         $admin_id = $_SESSION['user_id'];
         
         // Ensure user_roles table exists
         $pdo->exec("CREATE TABLE IF NOT EXISTS `user_roles` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `user_id` INT NOT NULL,
-            `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff') NOT NULL,
+            `role` ENUM('athlete', 'coach', 'admin', 'parent', 'health_coach', 'team_coach', 'front_desk_staff', 'hr', 'accounting') NOT NULL,
             `assigned_by` INT DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY `unique_user_role` (`user_id`, `role`),
