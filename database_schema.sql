@@ -980,6 +980,18 @@ CREATE TABLE IF NOT EXISTS `athlete_teams` (
     INDEX `idx_current` (`is_current`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Phone directory entries for non-user items (rooms, shared lines, external numbers)
+CREATE TABLE IF NOT EXISTS `phone_directory_entries` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `display_name` VARCHAR(255) NOT NULL COMMENT 'Name shown in directory (e.g., Board Room)',
+    `extension` VARCHAR(20) DEFAULT NULL COMMENT 'Phone extension number',
+    `entry_type` ENUM('room', 'shared', 'external', 'other') DEFAULT 'other' COMMENT 'Type of directory entry',
+    `description` VARCHAR(500) DEFAULT NULL COMMENT 'Optional description',
+    `created_by` INT DEFAULT NULL COMMENT 'Admin user who created the entry',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Audit logs - history and restore point for all admin tasks
 -- Tracks all changes with old/new values for potential restoration
 CREATE TABLE IF NOT EXISTS `audit_logs` (

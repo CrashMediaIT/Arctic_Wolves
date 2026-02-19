@@ -791,6 +791,81 @@ if ($action == 'update_own_sip') {
     exit();
 }
 
+// =========================================================
+// ACTION 14: ADD PHONE DIRECTORY ENTRY (Admin only)
+// =========================================================
+if ($action == 'add_directory_entry') {
+    header('Content-Type: application/json');
+    
+    if ($role !== 'admin') {
+        echo json_encode(['success' => false, 'message' => 'Admin access required']);
+        exit();
+    }
+    
+    $display_name = trim($_POST['display_name'] ?? '');
+    $extension = trim($_POST['extension'] ?? '');
+    $entry_type = trim($_POST['entry_type'] ?? 'other');
+    $description = trim($_POST['description'] ?? '');
+    
+    if (empty($display_name)) {
+        echo json_encode(['success' => false, 'message' => 'Name is required']);
+        exit();
+    }
+    
+    // Validate entry_type
+    $valid_types = ['room', 'shared', 'external', 'other'];
+    if (!in_array($entry_type, $valid_types)) {
+        $entry_type = 'other';
+    }
+    
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO phone_directory_entries (display_name, extension, entry_type, description, created_by)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $display_name,
+            $extension ?: null,
+            $entry_type,
+            $description ?: null,
+            $current_user_id
+        ]);
+        echo json_encode(['success' => true, 'message' => 'Directory entry added']);
+    } catch (PDOException $e) {
+        error_log("Add directory entry error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to add directory entry']);
+    }
+    exit();
+}
+
+// =========================================================
+// ACTION 15: DELETE PHONE DIRECTORY ENTRY (Admin only)
+// =========================================================
+if ($action == 'delete_directory_entry') {
+    header('Content-Type: application/json');
+    
+    if ($role !== 'admin') {
+        echo json_encode(['success' => false, 'message' => 'Admin access required']);
+        exit();
+    }
+    
+    $entry_id = intval($_POST['entry_id'] ?? 0);
+    if ($entry_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid entry ID']);
+        exit();
+    }
+    
+    try {
+        $stmt = $pdo->prepare("DELETE FROM phone_directory_entries WHERE id = ?");
+        $stmt->execute([$entry_id]);
+        echo json_encode(['success' => true, 'message' => 'Directory entry removed']);
+    } catch (PDOException $e) {
+        error_log("Delete directory entry error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Failed to remove directory entry']);
+    }
+    exit();
+}
+
 // Fallback
 header("Location: dashboard.php");
 exit();

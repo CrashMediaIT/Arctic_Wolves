@@ -2,8 +2,9 @@
 <?php
 /**
  * SIP Account Settings
- * Allows staff to configure their SIP account for FusionPBX integration.
+ * Allows staff to configure their SIP account for internal calling.
  * Staff can add their SIP credentials and make calls to other staff from the app.
+ * Admins can also add non-user entries (rooms, shared lines) to the phone directory.
  * Access restricted to staff roles: Admin, Coach, Health Coach, Front Desk, HR, Accounting.
  */
 
@@ -27,14 +28,16 @@ try {
     error_log("SIP settings fetch error: " . $e->getMessage());
 }
 
-// Fetch staff with SIP extensions for the internal directory/call list
+// Fetch staff with SIP profile info for the internal directory
 $sip_staff = [];
 try {
     $stmt = $pdo->query("
         SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.job_title,
-               u.sip_extension, u.sip_username, u.sip_domain, u.profile_image
+               u.sip_extension, u.sip_username, u.sip_domain, u.sip_did, u.profile_image
         FROM users u
-        WHERE u.sip_extension IS NOT NULL AND u.sip_extension != ''
+        WHERE (u.sip_extension IS NOT NULL AND u.sip_extension != '')
+           OR (u.sip_username IS NOT NULL AND u.sip_username != '')
+           OR (u.sip_domain IS NOT NULL AND u.sip_domain != '')
         AND u.is_verified = 1
         ORDER BY u.first_name ASC, u.last_name ASC
     ");
@@ -44,20 +47,20 @@ try {
     error_log("SIP staff fetch error: " . $e->getMessage());
 }
 
-// Get FusionPBX settings from system_settings
-$fusionpbx_domain = '';
+// Fetch custom directory entries (rooms, non-users) - admin managed
+$custom_entries = [];
 try {
-    $stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fusionpbx_domain'");
-    $fusionpbx_domain = $stmt->fetchColumn() ?: '';
+    $stmt = $pdo->query("SELECT * FROM phone_directory_entries ORDER BY display_name ASC");
+    $custom_entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    // Table or setting may not exist
+    // Table may not exist yet
 }
 ?>
 
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title"><i class="fas fa-headset"></i> SIP Phone Settings</h1>
-        <p class="page-description">Configure your SIP account for internal calling via FusionPBX</p>
+        <p class="page-description">Configure your SIP account for internal calling</p>
     </div>
 </div>
 
@@ -76,13 +79,13 @@ try {
                     <label class="form-label"><i class="fas fa-user"></i> SIP Username</label>
                     <input type="text" name="sip_username" id="sip_username" class="form-input"
                            placeholder="e.g., 1001" value="<?php echo htmlspecialchars($sip_data['sip_username'] ?? ''); ?>">
-                    <small class="form-hint">Your SIP account username from FusionPBX</small>
+                    <small class="form-hint">Your SIP account username</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label"><i class="fas fa-globe"></i> SIP Domain</label>
                     <input type="text" name="sip_domain" id="sip_domain" class="form-input"
-                           placeholder="e.g., pbx.arcticwolves.ca" value="<?php echo htmlspecialchars($sip_data['sip_domain'] ?? $fusionpbx_domain); ?>">
-                    <small class="form-hint">FusionPBX server domain</small>
+                           placeholder="e.g., pbx.arcticwolves.ca" value="<?php echo htmlspecialchars($sip_data['sip_domain'] ?? ''); ?>">
+                    <small class="form-hint">SIP server domain</small>
                 </div>
             </div>
 
@@ -158,20 +161,20 @@ try {
     </div>
 </div>
 
-<!-- Internal Call Directory -->
+<!-- Internal Phone Directory -->
 <div class="card" style="margin-top: 20px;">
     <div class="card-header">
-        <h3><i class="fas fa-users"></i> Internal Call Directory</h3>
-        <span class="header-badge"><?php echo count($sip_staff); ?> extensions</span>
+        <h3><i class="fas fa-address-book"></i> Phone Directory</h3>
+        <span class="header-badge"><?php echo count($sip_staff) + count($custom_entries); ?> entries</span>
     </div>
     <div class="card-body">
-        <?php if (count($sip_staff) > 0): ?>
+        <?php if (count($sip_staff) > 0 || count($custom_entries) > 0): ?>
             <div class="table-wrapper">
                 <table class="data-table enhanced-table">
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Job Title</th>
+                            <th>Job Title / Type</th>
                             <th>Extension</th>
                             <th>Action</th>
                         </tr>
@@ -201,14 +204,58 @@ try {
                                 </td>
                                 <td><?php echo htmlspecialchars($staff['job_title'] ?? ucfirst(str_replace('_', ' ', $staff['role']))); ?></td>
                                 <td>
-                                    <span class="badge" style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px;">
-                                        <i class="fas fa-phone"></i> <?php echo htmlspecialchars($staff['sip_extension']); ?>
+                                    <?php if (!empty($staff['sip_extension'])): ?>
+                                        <span class="badge" style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px;">
+                                            <i class="fas fa-phone"></i> <?php echo htmlspecialchars($staff['sip_extension']); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-muted);">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($staff['sip_extension'])): ?>
+                                        <button class="btn btn-primary btn-small" onclick="callExtension('<?php echo htmlspecialchars($staff['sip_extension']); ?>', '<?php echo htmlspecialchars(($staff['first_name'] ?? '') . ' ' . ($staff['last_name'] ?? '')); ?>')">
+                                            <i class="fas fa-phone"></i> Call
+                                        </button>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <?php foreach ($custom_entries as $entry): ?>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar" style="width: 32px; height: 32px; font-size: 12px; background: var(--warning, #f59e0b);">
+                                            <i class="fas fa-<?php echo $entry['entry_type'] === 'room' ? 'door-open' : 'phone-alt'; ?>" style="font-size: 14px;"></i>
+                                        </div>
+                                        <span class="user-name"><?php echo htmlspecialchars($entry['display_name']); ?></span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge" style="background: var(--warning, #f59e0b); color: #000; padding: 2px 8px; border-radius: 4px;">
+                                        <?php echo htmlspecialchars(ucfirst($entry['entry_type'])); ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-primary btn-small" onclick="callExtension('<?php echo htmlspecialchars($staff['sip_extension']); ?>', '<?php echo htmlspecialchars(($staff['first_name'] ?? '') . ' ' . ($staff['last_name'] ?? '')); ?>')">
-                                        <i class="fas fa-phone"></i> Call
-                                    </button>
+                                    <?php if (!empty($entry['extension'])): ?>
+                                        <span class="badge" style="background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px;">
+                                            <i class="fas fa-phone"></i> <?php echo htmlspecialchars($entry['extension']); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-muted);">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($entry['extension'])): ?>
+                                        <button class="btn btn-primary btn-small" onclick="callExtension('<?php echo htmlspecialchars($entry['extension']); ?>', '<?php echo htmlspecialchars($entry['display_name']); ?>')">
+                                            <i class="fas fa-phone"></i> Call
+                                        </button>
+                                    <?php endif; ?>
+                                    <?php if ($isAdmin): ?>
+                                        <button class="btn btn-danger btn-small" onclick="deleteDirectoryEntry(<?php echo intval($entry['id']); ?>, '<?php echo htmlspecialchars($entry['display_name']); ?>')" style="margin-left: 4px;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -218,11 +265,52 @@ try {
         <?php else: ?>
             <div class="empty-state">
                 <i class="fas fa-phone-slash"></i>
-                <p>No staff members have SIP extensions configured yet.</p>
+                <p>No directory entries yet. Staff with SIP profile information will appear here automatically.</p>
             </div>
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($isAdmin): ?>
+<!-- Admin: Add Directory Entry -->
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+        <h3><i class="fas fa-plus-circle"></i> Add Directory Entry</h3>
+    </div>
+    <div class="card-body">
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Add non-user entries such as conference rooms, shared lines, or external numbers to the phone directory.</p>
+        <form id="add-directory-entry-form">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-tag"></i> Name</label>
+                    <input type="text" name="entry_name" id="entry_name" class="form-input" placeholder="e.g., Board Room, Lobby Phone" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-phone"></i> Extension</label>
+                    <input type="text" name="entry_extension" id="entry_extension" class="form-input" placeholder="e.g., 2001">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-list"></i> Type</label>
+                    <select name="entry_type" id="entry_type" class="form-input">
+                        <option value="room">Room</option>
+                        <option value="shared">Shared Line</option>
+                        <option value="external">External</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fas fa-sticky-note"></i> Description</label>
+                    <input type="text" name="entry_description" id="entry_description" class="form-input" placeholder="Optional description">
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="addDirectoryEntry()"><i class="fas fa-plus"></i> Add Entry</button>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- SIP Call Modal -->
 <div id="sip-call-modal" class="modal">
@@ -309,7 +397,7 @@ function saveSipSettings() {
     });
 }
 
-// Register with SIP server using WebSocket (FusionPBX WebRTC via JsSIP)
+// Register with SIP server using WebSocket (WebRTC via JsSIP)
 function registerSip() {
     const username = document.getElementById('sip_username').value.trim();
     const domain = document.getElementById('sip_domain').value.trim();
@@ -555,5 +643,66 @@ function dialerCall() {
         return;
     }
     callExtension(number, number);
+}
+
+// Directory management functions (admin only)
+function addDirectoryEntry() {
+    const name = document.getElementById('entry_name').value.trim();
+    const extension = document.getElementById('entry_extension').value.trim();
+    const type = document.getElementById('entry_type').value;
+    const description = document.getElementById('entry_description').value.trim();
+    const csrfToken = document.querySelector('#add-directory-entry-form [name="csrf_token"]').value;
+
+    if (!name) {
+        showNotification('Please enter a name for the directory entry', 'warning');
+        return;
+    }
+
+    fetch('process_profile_update.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: 'action=add_directory_entry&csrf_token=' + encodeURIComponent(csrfToken) +
+              '&display_name=' + encodeURIComponent(name) +
+              '&extension=' + encodeURIComponent(extension) +
+              '&entry_type=' + encodeURIComponent(type) +
+              '&description=' + encodeURIComponent(description)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Directory entry added', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showNotification(data.message || 'Failed to add entry', 'error');
+        }
+    })
+    .catch(() => showNotification('Error adding directory entry', 'error'));
+}
+
+function deleteDirectoryEntry(id, name) {
+    if (!confirm('Remove "' + name + '" from the phone directory?')) return;
+    const csrfToken = document.querySelector('[name="csrf_token"]').value;
+
+    fetch('process_profile_update.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: 'action=delete_directory_entry&csrf_token=' + encodeURIComponent(csrfToken) + '&entry_id=' + encodeURIComponent(id)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Directory entry removed', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showNotification(data.message || 'Failed to remove entry', 'error');
+        }
+    })
+    .catch(() => showNotification('Error removing directory entry', 'error'));
 }
 </script>

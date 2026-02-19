@@ -9,7 +9,6 @@ require_once 'db_config.php';
 require_once 'security.php';
 require_once 'cloud_config.php';
 require_once __DIR__ . '/lib/encryption.php';
-require_once __DIR__ . '/lib/fusionpbx.php';
 
 // Set security headers
 setSecurityHeaders();
@@ -410,44 +409,24 @@ if ($action === 'create') {
                 $pdo->prepare("UPDATE employee_onboarding SET perks_assigned = 1 WHERE id = ?")->execute([$onboardingId]);
             }
             
-            // FusionPBX Extension Provisioning
-            $fusionpbxResult = null;
+            // Phone Extension Request - send email to IT
+            $extensionRequested = false;
             if ($createExtension && $newUserId) {
                 try {
-                    $fpbxSettings = getFusionPBXSettings($pdo);
-                    
-                    if (isFusionPBXConfigured($fpbxSettings)) {
-                        $staffDisplayName = $firstName . ' ' . $lastName;
-                        $fusionpbxResult = provisionFusionPBXExtension($pdo, $staffDisplayName, $email);
-                        
-                        if ($fusionpbxResult['success'] && !empty($fusionpbxResult['extension'])) {
-                            // Save SIP details to user record
-                            $sipDomain = $fpbxSettings['fusionpbx_domain'] ?? '';
-                            $sipUpdateStmt = $pdo->prepare("
-                                UPDATE users 
-                                SET sip_extension = ?, sip_username = ?, sip_domain = ?
-                                WHERE id = ?
-                            ");
-                            $sipUpdateStmt->execute([
-                                $fusionpbxResult['extension'],
-                                $fusionpbxResult['extension'],
-                                $sipDomain,
-                                $newUserId
-                            ]);
-                            
-                            error_log("FusionPBX: Extension " . $fusionpbxResult['extension'] . " provisioned for $staffDisplayName");
-                        } else {
-                            $errorDetails = !empty($fusionpbxResult['errors']) 
-                                ? implode(', ', $fusionpbxResult['errors']) 
-                                : ($fusionpbxResult['message'] ?? 'Unknown error');
-                            error_log("FusionPBX provisioning errors: " . $errorDetails);
-                        }
-                    } else {
-                        error_log("FusionPBX: Integration not configured or not enabled, skipping extension creation");
-                    }
-                } catch (Exception $fpbxError) {
-                    error_log("FusionPBX provisioning error: " . $fpbxError->getMessage());
-                    // Continue without FusionPBX - not critical
+                    require_once 'mailer.php';
+                    $staffDisplayName = $firstName . ' ' . $lastName;
+                    sendEmail('it@arcticwolves.ca', 'extension_request', [
+                        'staff_name' => $staffDisplayName,
+                        'email' => $email,
+                        'role' => $role,
+                        'job_title' => $jobTitle ?: $role,
+                        'start_date' => $startDate
+                    ]);
+                    $extensionRequested = true;
+                    error_log("Extension request email sent to IT for $staffDisplayName");
+                } catch (Exception $emailError) {
+                    error_log("Extension request email error: " . $emailError->getMessage());
+                    // Continue without email - not critical
                 }
             }
             
@@ -609,8 +588,7 @@ if ($action === 'create') {
                 'contract_created' => $contractCreated,
                 'contract_sent' => $contractSent,
                 'contract_id' => $contractId,
-                'fusionpbx_extension' => $fusionpbxResult['extension'] ?? null,
-                'fusionpbx_provisioned' => !empty($fusionpbxResult['success'])
+                'extension_requested' => $extensionRequested
             ];
             
             $auditStmt = $pdo->prepare("
@@ -639,10 +617,10 @@ if ($action === 'create') {
             if ($createAccount) {
                 $successMsg .= '. User account created with temporary password.';
             }
-            if (!empty($fusionpbxResult['success']) && !empty($fusionpbxResult['extension'])) {
-                $successMsg .= ' SIP extension ' . $fusionpbxResult['extension'] . ' provisioned.';
-            } elseif ($createExtension && empty($fusionpbxResult['success'])) {
-                $successMsg .= ' Note: Extension provisioning failed - configure manually in FusionPBX.';
+            if ($extensionRequested) {
+                $successMsg .= ' Phone extension request sent to IT.';
+            } elseif ($createExtension && !$extensionRequested) {
+                $successMsg .= ' Note: Could not send extension request to IT.';
             }
             if ($contractSent) {
                 $successMsg .= ' Employment contract sent for e-signature.';

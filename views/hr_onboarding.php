@@ -391,9 +391,9 @@ $perkTypes = [
                 <div class="form-group">
                     <label class="checkbox-option" style="max-width: 400px;">
                         <input type="checkbox" name="create_extension" value="1" id="createExtension">
-                        <span><i class="fas fa-phone-alt"></i> Create a phone extension for this staff member</span>
+                        <span><i class="fas fa-phone-alt"></i> Request a phone extension for this staff member</span>
                     </label>
-                    <small class="form-hint">A phone extension will be provisioned for internal calling via the SIP phone system.</small>
+                    <small class="form-hint">An email will be sent to IT to provision a phone extension for internal calling.</small>
                 </div>
 
                 <!-- Section 5: Payroll Setup -->

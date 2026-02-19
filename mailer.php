@@ -290,6 +290,32 @@ function sendEmail($to, $type, $data) {
         </div>";
     } 
     
+    // 4B. EXTENSION REQUEST (Onboarding → IT)
+    elseif ($type == 'extension_request') {
+        $subject = "Phone Extension Request — New Staff";
+        $staffName = htmlspecialchars($data['staff_name'] ?? '');
+        $staffEmail = htmlspecialchars($data['email'] ?? '');
+        $staffRole = htmlspecialchars($data['role'] ?? '');
+        $staffTitle = htmlspecialchars($data['job_title'] ?? '');
+        $staffStart = htmlspecialchars($data['start_date'] ?? '');
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;'>
+            $header
+            <h2 style='color: $primary; margin-top: 0;'>Phone Extension Request</h2>
+            <p style='color: #ccc;'>A phone extension has been requested for a new staff member during onboarding.</p>
+            <div style='background: $cardBg; border-left: 4px solid $primary; padding: 20px; margin: 20px 0;'>
+                <p style='margin: 0 0 10px 0;'><strong>Name:</strong> $staffName</p>
+                <p style='margin: 0 0 10px 0;'><strong>Email:</strong> $staffEmail</p>
+                <p style='margin: 0 0 10px 0;'><strong>Role:</strong> $staffRole</p>
+                <p style='margin: 0 0 10px 0;'><strong>Job Title:</strong> $staffTitle</p>
+                <p style='margin: 0;'><strong>Start Date:</strong> $staffStart</p>
+            </div>
+            <p style='color: #ccc;'>Please provision a phone extension and update their SIP settings in the system.</p>
+            $footer
+        </div>";
+    }
+    
     // 5. SMTP DIAGNOSTIC TEST
     elseif ($type == 'test') {
         $subject = "SMTP Connection Test";

@@ -871,9 +871,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=pos_schedule" class="nav-link <?= $page=='pos_schedule'?'active':'' ?>">
                 <i class="fa-solid fa-calendar-alt icon"></i> My Schedule
             </a>
-            <a href="?page=phone_directory" class="nav-link <?= $page=='phone_directory'?'active':'' ?>">
-                <i class="fa-solid fa-address-book icon"></i> Phone Directory
-            </a>
         </nav>
     </div>
     <?php endif; ?>
@@ -903,9 +900,6 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=termination" class="nav-link <?= $page=='termination'?'active':'' ?>">
                 <i class="fa-solid fa-user-slash icon"></i> Termination
-            </a>
-            <a href="?page=phone_directory" class="nav-link <?= $page=='phone_directory'?'active':'' ?>">
-                <i class="fa-solid fa-address-book icon"></i> Phone Directory
             </a>
         </nav>
     </div>
