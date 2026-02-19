@@ -1511,6 +1511,19 @@ function copyEmailSignatureHTML() {
     gap: 24px;
 }
 
+/* Fix: Remove double padding/spacing from marketing section cards.
+   shared_styles.css adds padding and margin-bottom to .card, but .card-header
+   and .card-body already provide internal padding, and .marketing-section gap
+   handles inter-card spacing. */
+.marketing-section > .card {
+    padding: 0;
+    margin-bottom: 0;
+}
+
+.marketing-section > .card > .card-header {
+    margin-bottom: 0;
+}
+
 /* Form Section Title */
 .form-section {
     margin-bottom: 28px;
