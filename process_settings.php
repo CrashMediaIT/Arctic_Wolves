@@ -1432,11 +1432,12 @@ try {
                 exit;
             }
             $env_content = file_get_contents($env_file);
-            // $nodes_str contains only validated host:port values — safe for literal replacement
+            // Strip newlines for defense-in-depth (nodes are already regex-validated)
+            $safe_nodes_str = str_replace(["\n", "\r"], '', $nodes_str);
             if (preg_match('/^DB_CLUSTER_NODES=.*$/m', $env_content)) {
-                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($nodes_str, '\\'), $env_content);
+                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($safe_nodes_str, '\\'), $env_content);
             } else {
-                $env_content = rtrim($env_content) . "\nDB_CLUSTER_NODES=" . $nodes_str . "\n";
+                $env_content = rtrim($env_content) . "\nDB_CLUSTER_NODES=" . $safe_nodes_str . "\n";
             }
             // Ensure DB_MODE is cluster
             if (!preg_match('/^DB_MODE=/m', $env_content)) {
@@ -1495,7 +1496,8 @@ try {
             $env_file = findEnvFile();
             if ($env_file) {
                 $env_content = file_get_contents($env_file);
-                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($nodes_str, '\\'), $env_content);
+                $safe_nodes_str = str_replace(["\n", "\r"], '', $nodes_str);
+                $env_content = preg_replace('/^DB_CLUSTER_NODES=.*$/m', 'DB_CLUSTER_NODES=' . addcslashes($safe_nodes_str, '\\'), $env_content);
                 file_put_contents($env_file, $env_content);
             }
             $_ENV['DB_CLUSTER_NODES'] = $nodes_str;

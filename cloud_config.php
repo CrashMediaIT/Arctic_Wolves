@@ -28,7 +28,7 @@ function getSecondaryNextcloudSettings($pdo) {
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $raw[$row['setting_key']] = $row['setting_value'];
     }
-    # Normalise keys to match the primary Nextcloud settings structure
+    # Normalize keys to match the primary Nextcloud settings structure
     return [
         'nextcloud_url'            => $raw['nextcloud_backup_url']      ?? null,
         'nextcloud_username'       => $raw['nextcloud_backup_username'] ?? null,
