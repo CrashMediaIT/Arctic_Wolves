@@ -80,8 +80,37 @@ try {
     
     // Calculate pricing
     $subtotal = $package['price'] * $num_purchases;
+    
+    // Calculate add-on costs for camp/multi-week packages
+    $addon_total = 0;
+    $selected_addon_ids = [];
+    if (in_array($package['package_type'], ['camp', 'multi_week']) && isset($_POST['selected_addons']) && is_array($_POST['selected_addons'])) {
+        $selected_addon_ids = array_map('intval', $_POST['selected_addons']);
+        if (!empty($selected_addon_ids)) {
+            $addon_placeholders = str_repeat('?,', count($selected_addon_ids) - 1) . '?';
+            $addon_stmt = $pdo->prepare("SELECT id, price FROM camp_add_ons WHERE id IN ($addon_placeholders) AND package_id = ?");
+            $addon_stmt->execute(array_merge($selected_addon_ids, [$package_id]));
+            $addons = $addon_stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($addons as $addon) {
+                $addon_total += $addon['price'] * $num_purchases;
+            }
+        }
+    }
+    
+    $subtotal += $addon_total;
     $tax_amount = round($subtotal * ($tax_rate / 100), 2);
     $total = $subtotal + $tax_amount;
+    
+    // Build line item description
+    $item_desc = $package['description'] ?: 'Session package';
+    if (!empty($selected_addon_ids)) {
+        $addon_names_stmt = $pdo->prepare("SELECT name FROM camp_add_ons WHERE id IN (" . str_repeat('?,', count($selected_addon_ids) - 1) . '?' . ") AND package_id = ?");
+        $addon_names_stmt->execute(array_merge($selected_addon_ids, [$package_id]));
+        $addon_names = $addon_names_stmt->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($addon_names)) {
+            $item_desc .= ' (includes: ' . implode(', ', $addon_names) . ')';
+        }
+    }
     
     // Create line items for Stripe
     $line_items = [[
@@ -89,12 +118,33 @@ try {
             'currency' => strtolower($currency),
             'product_data' => [
                 'name' => $package['name'],
-                'description' => $package['description'] ?: 'Session package',
+                'description' => substr($item_desc, 0, 500),
             ],
             'unit_amount' => intval($package['price'] * 100),
         ],
         'quantity' => $num_purchases,
     ]];
+    
+    // Add add-on line items
+    if (!empty($selected_addon_ids) && isset($addons)) {
+        foreach ($addons as $addon) {
+            if ($addon['price'] > 0) {
+                $addon_name_stmt = $pdo->prepare("SELECT name FROM camp_add_ons WHERE id = ?");
+                $addon_name_stmt->execute([$addon['id']]);
+                $addon_name = $addon_name_stmt->fetchColumn();
+                $line_items[] = [
+                    'price_data' => [
+                        'currency' => strtolower($currency),
+                        'product_data' => [
+                            'name' => $addon_name ?: 'Add-on',
+                        ],
+                        'unit_amount' => intval($addon['price'] * 100),
+                    ],
+                    'quantity' => $num_purchases,
+                ];
+            }
+        }
+    }
     
     // Add tax line item
     if ($tax_amount > 0) {
@@ -116,7 +166,8 @@ try {
         'athlete_ids' => $athlete_ids,
         'subtotal' => $subtotal,
         'tax_amount' => $tax_amount,
-        'total' => $total
+        'total' => $total,
+        'selected_addons' => $selected_addon_ids
     ];
     
     // Create Stripe checkout session
@@ -131,6 +182,7 @@ try {
             'package_id' => $package_id,
             'user_id' => $user_id,
             'athlete_ids' => implode(',', $athlete_ids),
+            'selected_addons' => implode(',', $selected_addon_ids),
         ]
     ]);
     

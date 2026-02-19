@@ -83,13 +83,27 @@ $sessions = $pdo->query("
                     </td>
                     <td>
                         <span class="badge badge-<?php echo $pkg['package_type']; ?>">
-                            <?php echo ucfirst($pkg['package_type']); ?>
+                            <?php echo ucfirst(str_replace('_', ' ', $pkg['package_type'])); ?>
                         </span>
                     </td>
                     <td>$<?php echo number_format($pkg['price'], 2); ?></td>
                     <td>
                         <?php if ($pkg['package_type'] === 'credits'): ?>
                             <?php echo $pkg['credits']; ?> credits
+                        <?php elseif ($pkg['package_type'] === 'camp'): ?>
+                            <?php 
+                            if ($pkg['camp_start_date'] && $pkg['camp_end_date']) {
+                                echo date('M j', strtotime($pkg['camp_start_date'])) . ' - ' . date('M j, Y', strtotime($pkg['camp_end_date']));
+                            } else {
+                                echo 'No dates set';
+                            }
+                            ?>
+                        <?php elseif ($pkg['package_type'] === 'multi_week'): ?>
+                            <?php 
+                            $mw_count = $pdo->prepare("SELECT COUNT(*) FROM multiweek_program_dates WHERE package_id = ?");
+                            $mw_count->execute([$pkg['id']]);
+                            echo $mw_count->fetchColumn() . ' sessions';
+                            ?>
                         <?php else: ?>
                             <?php echo $pkg['session_count']; ?> sessions
                         <?php endif; ?>
@@ -142,7 +156,7 @@ $sessions = $pdo->query("
 
 <!-- Package Modal -->
 <div id="packageModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content modal-large">
         <span class="close" onclick="closePackageModal()">&times;</span>
         <h3 id="modalTitle">Create Package</h3>
         
@@ -163,6 +177,8 @@ $sessions = $pdo->query("
                         <option value="credits">Session Credits (set number of sessions)</option>
                         <option value="dollar_value">Dollar Value (store credit amount)</option>
                         <option value="bundled">Bundled Sessions (pick from sessions library)</option>
+                        <option value="camp">Camp (date range with daily schedule)</option>
+                        <option value="multi_week">Multi-Week Program (select dates from calendar)</option>
                     </select>
                 </div>
             </div>
@@ -199,6 +215,88 @@ $sessions = $pdo->query("
             <div id="bundledNote" style="display: none; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 20px;">
                 <i class="fas fa-info-circle" style="color: #8B5CF6;"></i>
                 <span style="color: #94a3b8;">After creating this package, use the <strong style="color: #e2e8f0;">Manage Sessions</strong> button to select specific sessions from your sessions library.</span>
+            </div>
+            
+            <!-- Camp Date Range Section -->
+            <div id="campDatesSection" style="display: none;">
+                <h4 style="color: #e2e8f0; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+                    <i class="fas fa-campground"></i> Camp Dates &amp; Hours
+                </h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date <span class="required">*</span></label>
+                        <input type="date" name="camp_start_date" id="campStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>End Date <span class="required">*</span></label>
+                        <input type="date" name="camp_end_date" id="campEndDate">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Default Daily Start Time</label>
+                        <input type="time" name="daily_start_time" id="dailyStartTime" value="09:00">
+                    </div>
+                    <div class="form-group">
+                        <label>Default Daily End Time</label>
+                        <input type="time" name="daily_end_time" id="dailyEndTime" value="17:00">
+                    </div>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <button type="button" class="btn-secondary" onclick="generateCampDays()" style="padding: 8px 16px; font-size: 13px;">
+                        <i class="fas fa-calendar-plus"></i> Generate Daily Schedule
+                    </button>
+                    <small style="color: #94a3b8; display: block; margin-top: 6px;">Click to auto-populate schedule for each day in the date range</small>
+                </div>
+                <div id="campScheduleRows"></div>
+            </div>
+            
+            <!-- Multi-Week Program Section -->
+            <div id="multiWeekSection" style="display: none;">
+                <h4 style="color: #e2e8f0; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+                    <i class="fas fa-calendar-alt"></i> Program Dates
+                </h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Default Start Time</label>
+                        <input type="time" name="daily_start_time" id="mwStartTime" value="09:00">
+                    </div>
+                    <div class="form-group">
+                        <label>Default End Time</label>
+                        <input type="time" name="daily_end_time" id="mwEndTime" value="10:00">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #06080b; border: 1px solid #1e293b; border-radius: 8px; margin-bottom: 16px;">
+                    <div>
+                        <label style="color: #fff; font-size: 14px; font-weight: 600; margin: 0; display: block;">Allow Individual Session Purchases</label>
+                        <small style="color: #94a3b8; font-size: 12px;">Auto-create individual sessions so people can buy single sessions instead of the full program</small>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="allow_individual_sessions" id="allowIndividualSessions" value="1">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <button type="button" class="btn-secondary" onclick="addProgramDate()" style="padding: 8px 16px; font-size: 13px;">
+                        <i class="fas fa-plus"></i> Add Date
+                    </button>
+                    <small style="color: #94a3b8; margin-left: 8px;">Select individual dates from the calendar</small>
+                </div>
+                <div id="programDateRows"></div>
+            </div>
+            
+            <!-- Add-Ons Section (for Camp and Multi-Week) -->
+            <div id="addOnsSection" style="display: none;">
+                <h4 style="color: #e2e8f0; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+                    <i class="fas fa-puzzle-piece"></i> Add-On Options
+                </h4>
+                <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">
+                    Add optional extras like meal plans, bus transportation, etc. Users can opt in or out during registration.
+                </p>
+                <div id="addOnRows"></div>
+                <button type="button" class="btn-secondary" onclick="addAddOnRow()" style="padding: 8px 16px; font-size: 13px; margin-top: 8px;">
+                    <i class="fas fa-plus"></i> Add Option
+                </button>
             </div>
             
             <div class="form-row">
@@ -371,6 +469,21 @@ td {
 
 .badge-bundled {
     background: #ec4899;
+    color: white;
+}
+
+.badge-camp {
+    background: #10b981;
+    color: white;
+}
+
+.badge-multi_week {
+    background: #f59e0b;
+    color: white;
+}
+
+.badge-dollar_value {
+    background: #3b82f6;
     color: white;
 }
 
@@ -582,6 +695,68 @@ td {
         padding: 20px;
     }
 }
+
+.schedule-row, .addon-row, .program-date-row {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    background: #020305;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    align-items: end;
+}
+
+.schedule-row {
+    grid-template-columns: 130px 100px 100px 1fr auto;
+}
+
+.program-date-row {
+    grid-template-columns: 130px 100px 100px 1fr 100px auto;
+}
+
+.addon-row {
+    grid-template-columns: 1fr 1fr 100px 80px auto;
+}
+
+.schedule-row label, .addon-row label, .program-date-row label {
+    color: #94a3b8;
+    font-size: 12px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.schedule-row input, .addon-row input, .program-date-row input {
+    width: 100%;
+    padding: 8px;
+    background: #0a0f16;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    color: #e2e8f0;
+    font-size: 13px;
+}
+
+.btn-remove-row {
+    background: transparent;
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.btn-remove-row:hover {
+    background: #ef4444;
+    color: white;
+}
+
+@media (max-width: 900px) {
+    .schedule-row, .program-date-row, .addon-row {
+        grid-template-columns: 1fr 1fr;
+    }
+}
 </style>
 
 <script>
@@ -622,6 +797,10 @@ function openPackageModal() {
     document.getElementById('packageId').value = '';
     document.getElementById('packageActive').checked = true;
     document.getElementById('packageChildCheckin').checked = false;
+    // Clear dynamic sections
+    document.getElementById('campScheduleRows').innerHTML = '';
+    document.getElementById('programDateRows').innerHTML = '';
+    document.getElementById('addOnRows').innerHTML = '';
     togglePackageFields();
     document.getElementById('packageModal').style.display = 'block';
 }
@@ -644,8 +823,147 @@ function editPackage(pkg) {
     document.getElementById('packageSkillLevel').value = pkg.skill_level_id || '';
     document.getElementById('packageActive').checked = pkg.is_active == 1;
     document.getElementById('packageChildCheckin').checked = pkg.enable_child_checkin == 1;
+    
+    // Camp fields
+    if (pkg.camp_start_date) document.getElementById('campStartDate').value = pkg.camp_start_date;
+    if (pkg.camp_end_date) document.getElementById('campEndDate').value = pkg.camp_end_date;
+    if (pkg.daily_start_time) document.getElementById('dailyStartTime').value = pkg.daily_start_time;
+    if (pkg.daily_end_time) document.getElementById('dailyEndTime').value = pkg.daily_end_time;
+    
+    // Multi-week fields
+    if (pkg.daily_start_time) document.getElementById('mwStartTime').value = pkg.daily_start_time;
+    if (pkg.daily_end_time) document.getElementById('mwEndTime').value = pkg.daily_end_time;
+    if (pkg.allow_individual_sessions) document.getElementById('allowIndividualSessions').checked = pkg.allow_individual_sessions == 1;
+    
     togglePackageFields();
+    
+    // Load camp schedules if camp type
+    if (pkg.package_type === 'camp') {
+        loadCampSchedules(pkg.id);
+        loadAddOns(pkg.id);
+    }
+    
+    // Load multi-week dates if multi_week type
+    if (pkg.package_type === 'multi_week') {
+        loadProgramDates(pkg.id);
+        loadAddOns(pkg.id);
+    }
+    
     document.getElementById('packageModal').style.display = 'block';
+}
+
+// Generate daily schedule rows from camp date range
+function generateCampDays() {
+    var startDate = document.getElementById('campStartDate').value;
+    var endDate = document.getElementById('campEndDate').value;
+    var defaultStart = document.getElementById('dailyStartTime').value || '09:00';
+    var defaultEnd = document.getElementById('dailyEndTime').value || '17:00';
+    
+    if (!startDate || !endDate) {
+        showNotification('Please set start and end dates first', 'error');
+        return;
+    }
+    
+    var container = document.getElementById('campScheduleRows');
+    container.innerHTML = '';
+    
+    var current = new Date(startDate + 'T00:00:00');
+    var end = new Date(endDate + 'T00:00:00');
+    var dayIndex = 0;
+    
+    while (current <= end) {
+        var dateStr = current.toISOString().split('T')[0];
+        var dayName = current.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        addScheduleRow(dateStr, defaultStart, defaultEnd, 'Day ' + (dayIndex + 1) + ' - ' + dayName, '');
+        current.setDate(current.getDate() + 1);
+        dayIndex++;
+    }
+}
+
+function addScheduleRow(date, startTime, endTime, title, desc) {
+    var container = document.getElementById('campScheduleRows');
+    var idx = container.children.length;
+    var row = document.createElement('div');
+    row.className = 'schedule-row';
+    row.innerHTML = '<div><label>Date</label><input type="date" name="schedule_dates[]" value="' + (date || '') + '" required></div>' +
+        '<div><label>Start</label><input type="time" name="schedule_start_times[]" value="' + (startTime || '09:00') + '" required></div>' +
+        '<div><label>End</label><input type="time" name="schedule_end_times[]" value="' + (endTime || '17:00') + '" required></div>' +
+        '<div><label>Title</label><input type="text" name="schedule_titles[]" value="' + escapeHtml(title || '') + '" placeholder="Day title"></div>' +
+        '<div><button type="button" class="btn-remove-row" onclick="this.closest(\'.schedule-row\').remove()"><i class="fas fa-trash"></i></button></div>';
+    container.appendChild(row);
+}
+
+// Add program date row for multi-week
+function addProgramDate(date, startTime, endTime, title, indPrice) {
+    var container = document.getElementById('programDateRows');
+    var defaultStart = document.getElementById('mwStartTime').value || '09:00';
+    var defaultEnd = document.getElementById('mwEndTime').value || '10:00';
+    var row = document.createElement('div');
+    row.className = 'program-date-row';
+    row.innerHTML = '<div><label>Date</label><input type="date" name="program_dates[]" value="' + (date || '') + '" required></div>' +
+        '<div><label>Start</label><input type="time" name="program_start_times[]" value="' + (startTime || defaultStart) + '" required></div>' +
+        '<div><label>End</label><input type="time" name="program_end_times[]" value="' + (endTime || defaultEnd) + '" required></div>' +
+        '<div><label>Title</label><input type="text" name="program_titles[]" value="' + escapeHtml(title || '') + '" placeholder="Session title"></div>' +
+        '<div><label>Indiv. Price</label><input type="number" name="program_individual_prices[]" step="0.01" min="0" value="' + (indPrice || '') + '" placeholder="$"></div>' +
+        '<div><button type="button" class="btn-remove-row" onclick="this.closest(\'.program-date-row\').remove()"><i class="fas fa-trash"></i></button></div>';
+    container.appendChild(row);
+}
+
+// Add add-on row
+function addAddOnRow(name, desc, price, isDefault) {
+    var container = document.getElementById('addOnRows');
+    var idx = container.children.length;
+    var row = document.createElement('div');
+    row.className = 'addon-row';
+    row.innerHTML = '<div><label>Name</label><input type="text" name="addon_names[]" value="' + escapeHtml(name || '') + '" placeholder="e.g. Meal Plan" required></div>' +
+        '<div><label>Description</label><input type="text" name="addon_descriptions[]" value="' + escapeHtml(desc || '') + '" placeholder="Optional description"></div>' +
+        '<div><label>Price ($)</label><input type="number" name="addon_prices[]" step="0.01" min="0" value="' + (price || '0') + '"></div>' +
+        '<div><label>Default?</label><input type="checkbox" name="addon_defaults[' + idx + ']" value="1"' + (isDefault ? ' checked' : '') + ' style="width:auto;margin-top:8px;"></div>' +
+        '<div><button type="button" class="btn-remove-row" onclick="this.closest(\'.addon-row\').remove()"><i class="fas fa-trash"></i></button></div>';
+    container.appendChild(row);
+}
+
+// Load existing camp schedules via AJAX
+function loadCampSchedules(packageId) {
+    fetch('process_packages.php?action=get_camp_schedules&package_id=' + packageId)
+        .then(function(r) { return r.json(); })
+        .then(function(schedules) {
+            document.getElementById('campScheduleRows').innerHTML = '';
+            schedules.forEach(function(s) {
+                addScheduleRow(s.schedule_date, s.start_time, s.end_time, s.title || '', s.description || '');
+            });
+        });
+}
+
+// Load existing program dates via AJAX
+function loadProgramDates(packageId) {
+    fetch('process_packages.php?action=get_program_dates&package_id=' + packageId)
+        .then(function(r) { return r.json(); })
+        .then(function(dates) {
+            document.getElementById('programDateRows').innerHTML = '';
+            dates.forEach(function(d) {
+                addProgramDate(d.session_date, d.start_time, d.end_time, d.title || '', d.individual_price || '');
+            });
+        });
+}
+
+// Load existing add-ons via AJAX
+function loadAddOns(packageId) {
+    fetch('process_packages.php?action=get_camp_addons&package_id=' + packageId)
+        .then(function(r) { return r.json(); })
+        .then(function(addons) {
+            document.getElementById('addOnRows').innerHTML = '';
+            addons.forEach(function(a) {
+                addAddOnRow(a.name, a.description || '', a.price, a.is_default == 1);
+            });
+        });
+}
+
+// HTML escape helper
+function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
 }
 
 function deletePackage(id, name) {
@@ -675,30 +993,34 @@ function togglePackageFields() {
     const storeCreditsGroup = document.getElementById('storeCreditsGroup');
     const storeCreditsInput = document.getElementById('packageStoreCredit');
     const bundledNote = document.getElementById('bundledNote');
+    const campDatesSection = document.getElementById('campDatesSection');
+    const multiWeekSection = document.getElementById('multiWeekSection');
+    const addOnsSection = document.getElementById('addOnsSection');
     
-    // Credits/Sessions package
+    // Hide all type-specific sections
+    creditsGroup.style.display = 'none';
+    creditsInput.required = false;
+    storeCreditsGroup.style.display = 'none';
+    if (storeCreditsInput) storeCreditsInput.required = false;
+    bundledNote.style.display = 'none';
+    campDatesSection.style.display = 'none';
+    multiWeekSection.style.display = 'none';
+    addOnsSection.style.display = 'none';
+    
     if (type === 'credits') {
         creditsGroup.style.display = 'block';
         creditsInput.required = true;
-        storeCreditsGroup.style.display = 'none';
-        if (storeCreditsInput) storeCreditsInput.required = false;
-        bundledNote.style.display = 'none';
-    } 
-    // Dollar value package
-    else if (type === 'dollar_value') {
-        creditsGroup.style.display = 'none';
-        creditsInput.required = false;
+    } else if (type === 'dollar_value') {
         storeCreditsGroup.style.display = 'block';
         if (storeCreditsInput) storeCreditsInput.required = true;
-        bundledNote.style.display = 'none';
-    }
-    // Bundled sessions package
-    else {
-        creditsGroup.style.display = 'none';
-        creditsInput.required = false;
-        storeCreditsGroup.style.display = 'none';
-        if (storeCreditsInput) storeCreditsInput.required = false;
+    } else if (type === 'bundled') {
         bundledNote.style.display = 'block';
+    } else if (type === 'camp') {
+        campDatesSection.style.display = 'block';
+        addOnsSection.style.display = 'block';
+    } else if (type === 'multi_week') {
+        multiWeekSection.style.display = 'block';
+        addOnsSection.style.display = 'block';
     }
 }
 

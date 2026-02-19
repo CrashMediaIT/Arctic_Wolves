@@ -72,6 +72,8 @@ $tax_name = $settings['tax_name'] ?? 'HST';
             <button class="filter-btn active" data-type="all">All Packages</button>
             <button class="filter-btn" data-type="credits">Credit Packages</button>
             <button class="filter-btn" data-type="bundled">Bundled Packages</button>
+            <button class="filter-btn" data-type="camp">Camps</button>
+            <button class="filter-btn" data-type="multi_week">Multi-Week Programs</button>
         </div>
         
         <div class="packages-grid">
@@ -82,7 +84,7 @@ $tax_name = $settings['tax_name'] ?? 'HST';
                     <div class="package-header <?php echo $package['package_type']; ?>">
                         <h3><?php echo htmlspecialchars($package['name']); ?></h3>
                         <div class="package-type-badge">
-                            <?php echo ucfirst($package['package_type']); ?>
+                            <?php echo ucfirst(str_replace('_', ' ', $package['package_type'])); ?>
                         </div>
                     </div>
                     
@@ -101,6 +103,53 @@ $tax_name = $settings['tax_name'] ?? 'HST';
                                     <i class="fas fa-calendar-alt"></i>
                                     <span>Valid for <?php echo $package['valid_days']; ?> days</span>
                                 </div>
+                            <?php elseif ($package['package_type'] === 'camp'): ?>
+                                <?php if ($package['camp_start_date'] && $package['camp_end_date']): ?>
+                                <div class="detail-item">
+                                    <i class="fas fa-campground"></i>
+                                    <span><?php echo date('M j', strtotime($package['camp_start_date'])); ?> - <?php echo date('M j, Y', strtotime($package['camp_end_date'])); ?></span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($package['daily_start_time'] && $package['daily_end_time']): ?>
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span><?php echo date('g:i A', strtotime($package['daily_start_time'])); ?> - <?php echo date('g:i A', strtotime($package['daily_end_time'])); ?></span>
+                                </div>
+                                <?php endif; ?>
+                                <?php
+                                // Get camp daily schedule
+                                $camp_sched = $pdo->prepare("SELECT * FROM camp_daily_schedules WHERE package_id = ? ORDER BY schedule_date");
+                                $camp_sched->execute([$package['id']]);
+                                $camp_days = $camp_sched->fetchAll(PDO::FETCH_ASSOC);
+                                if (!empty($camp_days)):
+                                ?>
+                                <div class="detail-item">
+                                    <i class="fas fa-calendar-day"></i>
+                                    <span><?php echo count($camp_days); ?> day program</span>
+                                </div>
+                                <?php endif; ?>
+                            <?php elseif ($package['package_type'] === 'multi_week'): ?>
+                                <?php
+                                $mw_dates = $pdo->prepare("SELECT * FROM multiweek_program_dates WHERE package_id = ? ORDER BY session_date");
+                                $mw_dates->execute([$package['id']]);
+                                $program_dates = $mw_dates->fetchAll(PDO::FETCH_ASSOC);
+                                ?>
+                                <div class="detail-item">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span><?php echo count($program_dates); ?> sessions over multiple weeks</span>
+                                </div>
+                                <?php if (!empty($program_dates)): ?>
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span><?php echo date('g:i A', strtotime($program_dates[0]['start_time'])); ?> - <?php echo date('g:i A', strtotime($program_dates[0]['end_time'])); ?></span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($package['allow_individual_sessions']): ?>
+                                <div class="detail-item" style="color: #10b981;">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Individual sessions available</span>
+                                </div>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <div class="detail-item">
                                     <i class="fas fa-list"></i>
@@ -140,6 +189,40 @@ $tax_name = $settings['tax_name'] ?? 'HST';
                             <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
                             <input type="hidden" name="package_id" value="<?php echo $package['id']; ?>">
                             
+                            <?php 
+                            // Show add-on options for camp and multi-week packages
+                            if (in_array($package['package_type'], ['camp', 'multi_week'])):
+                                $addons_stmt = $pdo->prepare("SELECT * FROM camp_add_ons WHERE package_id = ? ORDER BY display_order");
+                                $addons_stmt->execute([$package['id']]);
+                                $addons = $addons_stmt->fetchAll(PDO::FETCH_ASSOC);
+                                
+                                if (!empty($addons)):
+                            ?>
+                            <div class="addon-options">
+                                <h4 style="margin-bottom: 10px; color: #333;"><i class="fas fa-puzzle-piece"></i> Add-On Options</h4>
+                                <?php foreach ($addons as $addon): ?>
+                                <label class="addon-option">
+                                    <input type="checkbox" name="selected_addons[]" value="<?php echo $addon['id']; ?>" 
+                                           <?php echo $addon['is_default'] ? 'checked' : ''; ?>>
+                                    <div class="addon-info">
+                                        <span class="addon-name"><?php echo htmlspecialchars($addon['name']); ?></span>
+                                        <?php if ($addon['description']): ?>
+                                        <span class="addon-desc"><?php echo htmlspecialchars($addon['description']); ?></span>
+                                        <?php endif; ?>
+                                        <?php if ($addon['price'] > 0): ?>
+                                        <span class="addon-price">+ $<?php echo number_format($addon['price'], 2); ?></span>
+                                        <?php else: ?>
+                                        <span class="addon-price" style="color: #10b981;">Included</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php 
+                                endif;
+                            endif; 
+                            ?>
+                            
                             <?php if ($user_role === 'parent'): ?>
                                 <div class="athlete-selector">
                                     <label>Purchase for:</label>
@@ -164,7 +247,12 @@ $tax_name = $settings['tax_name'] ?? 'HST';
                             <?php endif; ?>
                             
                             <button type="submit" class="btn-purchase">
-                                <i class="fas fa-shopping-cart"></i> Purchase Package
+                                <i class="fas fa-shopping-cart"></i> 
+                                <?php 
+                                if ($package['package_type'] === 'camp') echo 'Register for Camp';
+                                elseif ($package['package_type'] === 'multi_week') echo 'Enroll in Program';
+                                else echo 'Purchase Package';
+                                ?>
                             </button>
                         </form>
                         
@@ -172,6 +260,43 @@ $tax_name = $settings['tax_name'] ?? 'HST';
                             <a href="#" class="view-sessions-link" data-package-id="<?php echo $package['id']; ?>">
                                 View Included Sessions
                             </a>
+                        <?php endif; ?>
+                        
+                        <?php if ($package['package_type'] === 'camp' && !empty($camp_days)): ?>
+                            <a href="#" class="view-sessions-link" onclick="toggleScheduleDetail(<?php echo $package['id']; ?>); return false;">
+                                <i class="fas fa-calendar-day"></i> View Daily Schedule
+                            </a>
+                            <div id="schedule-detail-<?php echo $package['id']; ?>" class="schedule-detail" style="display: none;">
+                                <?php foreach ($camp_days as $day): ?>
+                                <div class="schedule-day-item">
+                                    <strong><?php echo date('l, M j', strtotime($day['schedule_date'])); ?></strong>
+                                    <span><?php echo date('g:i A', strtotime($day['start_time'])); ?> - <?php echo date('g:i A', strtotime($day['end_time'])); ?></span>
+                                    <?php if ($day['title']): ?>
+                                    <em><?php echo htmlspecialchars($day['title']); ?></em>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if ($package['package_type'] === 'multi_week' && !empty($program_dates)): ?>
+                            <a href="#" class="view-sessions-link" onclick="toggleScheduleDetail(<?php echo $package['id']; ?>); return false;">
+                                <i class="fas fa-calendar-alt"></i> View All Dates
+                            </a>
+                            <div id="schedule-detail-<?php echo $package['id']; ?>" class="schedule-detail" style="display: none;">
+                                <?php foreach ($program_dates as $pd): ?>
+                                <div class="schedule-day-item">
+                                    <strong><?php echo date('l, M j', strtotime($pd['session_date'])); ?></strong>
+                                    <span><?php echo date('g:i A', strtotime($pd['start_time'])); ?> - <?php echo date('g:i A', strtotime($pd['end_time'])); ?></span>
+                                    <?php if ($pd['title']): ?>
+                                    <em><?php echo htmlspecialchars($pd['title']); ?></em>
+                                    <?php endif; ?>
+                                    <?php if ($pd['individual_price'] && $package['allow_individual_sessions']): ?>
+                                    <span class="individual-price">Individual: $<?php echo number_format($pd['individual_price'], 2); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -376,6 +501,104 @@ $tax_name = $settings['tax_name'] ?? 'HST';
     text-decoration: none;
 }
 
+.package-header.camp {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.package-header.multi_week {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.addon-options {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.addon-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addon-option:hover {
+    border-color: var(--primary, #7000a4);
+    background: #faf5ff;
+}
+
+.addon-option input[type="checkbox"] {
+    margin-top: 3px;
+}
+
+.addon-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.addon-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.addon-desc {
+    font-size: 12px;
+    color: #666;
+}
+
+.addon-price {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary, #7000a4);
+}
+
+.schedule-detail {
+    margin-top: 10px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.schedule-day-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 13px;
+    color: #555;
+    align-items: center;
+}
+
+.schedule-day-item:last-child {
+    border-bottom: none;
+}
+
+.schedule-day-item strong {
+    color: #333;
+    min-width: 140px;
+}
+
+.individual-price {
+    background: #10b981;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
 @media (max-width: 768px) {
     .packages-grid {
         grid-template-columns: 1fr;
@@ -410,4 +633,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+function toggleScheduleDetail(packageId) {
+    var el = document.getElementById('schedule-detail-' + packageId);
+    if (el) {
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+}
 </script>
