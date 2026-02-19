@@ -125,7 +125,7 @@ try {
                                         <span style="color: var(--text-muted);">—</span>
                                     <?php endif; ?>
                                 </td>
-                                <?php if ($isAdmin && count($custom_entries) > 0): ?><td></td><?php endif; ?>
+                                <?php if ($isAdmin): ?><td></td><?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                         <?php foreach ($custom_entries as $entry): ?>

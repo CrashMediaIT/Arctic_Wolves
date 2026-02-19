@@ -257,5 +257,6 @@ test.describe('Phone Formatting - Applied in Views', () => {
     const content = fs.readFileSync(cardsPath, 'utf-8');
     expect(content).toContain('function formatPhone(phone)');
     expect(content).toContain("digits.length === 10");
+    expect(content).toContain("digits.slice(");
   });
 });
