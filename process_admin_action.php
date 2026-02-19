@@ -1755,34 +1755,6 @@ if ($action == 'admin_update_sip') {
 }
 
 // =========================================================
-// MODULE 8.4b: USER UPDATE OWN SIP SETTINGS
-// =========================================================
-if ($action == 'update_own_sip') {
-    header('Content-Type: application/json');
-    
-    $sip_username = trim($_POST['sip_username'] ?? '');
-    $sip_domain = trim($_POST['sip_domain'] ?? '');
-    
-    try {
-        $stmt = $pdo->prepare("
-            UPDATE users 
-            SET sip_username = ?, sip_domain = ?
-            WHERE id = ?
-        ");
-        $stmt->execute([
-            $sip_username ?: null,
-            $sip_domain ?: null,
-            $_SESSION['user_id']
-        ]);
-        
-        echo json_encode(['success' => true, 'message' => 'SIP settings updated']);
-    } catch (PDOException $e) {
-        error_log("Update own SIP error: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Failed to update SIP settings']);
-    }
-    exit();
-}
-
 // =========================================================
 // MODULE 8.5: USER STATUS TOGGLING
 // =========================================================

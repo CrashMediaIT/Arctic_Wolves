@@ -205,7 +205,7 @@ try {
 
 <script>
 // SIP client state
-let sipRegistered = false;
+let sipConfigured = false;
 let sipSession = null;
 let callTimerInterval = null;
 let callStartTime = null;
@@ -216,7 +216,7 @@ function saveSipSettings() {
     const domain = document.getElementById('sip_domain').value.trim();
     const csrfToken = document.querySelector('[name="csrf_token"]').value;
 
-    fetch('process_admin_action.php', {
+    fetch('process_profile_update.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -258,7 +258,7 @@ function registerSip() {
     if (typeof JsSIP === 'undefined' && typeof SIP === 'undefined') {
         updateSipStatus('info', 'SIP client ready. To enable WebRTC calling, ensure your FusionPBX server supports WSS (WebSocket Secure) connections. ' +
             'Configure your SIP client application to connect to wss://' + domain + ':7443 with username ' + username);
-        sipRegistered = true;
+        sipConfigured = true;
         document.getElementById('sip-register-btn').innerHTML = '<i class="fas fa-check-circle"></i> Configured';
         document.getElementById('sip-register-btn').classList.remove('btn-secondary');
         document.getElementById('sip-register-btn').classList.add('btn-success');
@@ -266,12 +266,12 @@ function registerSip() {
     }
 
     updateSipStatus('connected', 'SIP account configured for ' + username + '@' + domain);
-    sipRegistered = true;
+    sipConfigured = true;
 }
 
 // Call an extension
 function callExtension(extension, name) {
-    if (!sipRegistered) {
+    if (!sipConfigured) {
         showNotification('Please configure and connect your SIP account first', 'warning');
         return;
     }
@@ -317,7 +317,7 @@ function callExtension(extension, name) {
     } else {
         // No WebRTC UA available - try SIP URI protocol handler
         document.getElementById('call-status-message').textContent = 'Opening SIP client for ' + extension + '...';
-        window.location.href = sipUri;
+        window.open(sipUri, '_blank');
     }
 }
 

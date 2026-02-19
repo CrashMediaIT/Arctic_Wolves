@@ -7,11 +7,9 @@
  */
 
 // Permission check - admins and front desk staff can access
-if (!isset($isAdmin) && !(isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'front_desk_staff')) {
-    if (!$isAdmin && !$canAccessPOS) {
-        echo '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Access denied.</div>';
-        return;
-    }
+if (!$isAdmin && !$canAccessPOS) {
+    echo '<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Access denied.</div>';
+    return;
 }
 
 // Search filter
