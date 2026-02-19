@@ -216,7 +216,7 @@ $current_label = $page_labels[$page] ?? 'Game Plan';
     <header class="tv-topbar">
         <div class="tv-topbar-title">
             <button class="tv-sidebar-toggle" id="tvSidebarToggle" onclick="toggleTvSidebar()" aria-label="Toggle navigation">
-                <i class="fas fa-bars" id="tvToggleIcon"></i>
+                <i class="fas fa-times" id="tvToggleIcon"></i>
             </button>
             <i class="fas fa-chess-board"></i>
             <?= htmlspecialchars($current_label) ?>
