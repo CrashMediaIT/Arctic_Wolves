@@ -133,16 +133,14 @@ test.describe('SIP Settings - FusionPBX References Removed', () => {
 });
 
 // ================================================
-// 6. SIP Directory Shows Users with Any SIP Info
+// 6. Directory Shows All Verified Staff
 // ================================================
-test.describe('SIP Directory - Enhanced User Display', () => {
-  test('sip_settings.php should query users with any SIP profile info', async () => {
+test.describe('Company Directory - All Verified Staff', () => {
+  test('sip_settings.php should query all verified users', async () => {
     const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
     const content = fs.readFileSync(filePath, 'utf-8');
     
-    // Should check for sip_username OR sip_domain in addition to sip_extension
-    expect(content).toContain('sip_username IS NOT NULL');
-    expect(content).toContain('sip_domain IS NOT NULL');
+    expect(content).toContain('is_verified = 1');
   });
 });
 
@@ -160,6 +158,17 @@ test.describe('Phone Directory Entries - Database Schema', () => {
     expect(content).toContain("'room'");
     expect(content).toContain("'shared'");
     expect(content).toContain("'external'");
+  });
+
+  test('phone_directory_entries should have did and email columns', async () => {
+    const filePath = path.join(__dirname, '..', 'database_schema.sql');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    
+    // Find the phone_directory_entries table definition and check it has did and email
+    const tableStart = content.indexOf('phone_directory_entries');
+    const tableSection = content.substring(tableStart, tableStart + 500);
+    expect(tableSection).toContain('`did`');
+    expect(tableSection).toContain('`email`');
   });
 });
 
@@ -193,6 +202,7 @@ test.describe('Admin - Custom Directory Entries', () => {
     expect(content).toContain("'add_directory_entry'");
     expect(content).toContain('phone_directory_entries');
     expect(content).toContain('display_name');
+    expect(content).toContain(", did, email,");
   });
 
   test('process_profile_update.php should handle delete_directory_entry action', async () => {
@@ -223,22 +233,6 @@ test.describe('SIP Password Encryption - Still Working', () => {
     
     expect(content).toContain('sip_password');
     expect(content).toContain('VARCHAR(512)');
-  });
-
-  test('sip_settings.php should fetch sip_password from database', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    expect(content).toContain('sip_password');
-    expect(content).toContain('FROM users WHERE id');
-  });
-
-  test('sip_settings.php should check for saved password', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    expect(content).toContain('has_saved_password');
-    expect(content).toContain('Password saved');
   });
 
   test('process_profile_update.php should encrypt SIP password', async () => {

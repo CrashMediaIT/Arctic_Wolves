@@ -986,6 +986,8 @@ CREATE TABLE IF NOT EXISTS `phone_directory_entries` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `display_name` VARCHAR(255) NOT NULL COMMENT 'Name shown in directory (e.g., Board Room)',
     `extension` VARCHAR(20) DEFAULT NULL COMMENT 'Phone extension number',
+    `did` VARCHAR(20) DEFAULT NULL COMMENT 'Direct Inward Dialing number',
+    `email` VARCHAR(255) DEFAULT NULL COMMENT 'Contact email address',
     `entry_type` ENUM('room', 'shared', 'external', 'other') DEFAULT 'other' COMMENT 'Type of directory entry',
     `description` VARCHAR(500) DEFAULT NULL COMMENT 'Optional description',
     `created_by` INT DEFAULT NULL COMMENT 'Admin user who created the entry',

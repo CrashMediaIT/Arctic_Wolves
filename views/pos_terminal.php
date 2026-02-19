@@ -87,6 +87,9 @@ try {
         <button type="button" onclick="openChildCheckinScanner()" style="padding: 12px 20px; background: #10b981; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-qrcode"></i> Child Check-In/Out
         </button>
+        <a href="?page=sip_settings" style="padding: 12px 20px; background: #6366f1; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px; text-decoration: none;">
+            <i class="fas fa-address-book"></i> Company Directory
+        </a>
         <div class="page-header-stats">
             <div class="header-stat">
                 <span class="stat-value"><?= count($products) ?></span>

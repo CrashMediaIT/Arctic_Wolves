@@ -212,5 +212,29 @@ if (!function_exists('decryptUserRow')) {
     }
 }
 
+/**
+ * Format a phone number for display as xxx.xxx.xxxx.
+ * Strips non-digit characters (except leading +), then formats:
+ *  - 10 digits: xxx.xxx.xxxx
+ *  - 11 digits starting with 1: x.xxx.xxx.xxxx
+ *  - Shorter numbers (extensions): returned as-is
+ *
+ * @param string|null $phone Raw phone number
+ * @return string Formatted phone number or original value
+ */
+if (!function_exists('formatPhone')) {
+    function formatPhone($phone) {
+        if ($phone === null || $phone === '') return $phone;
+        $digits = preg_replace('/[^0-9]/', '', $phone);
+        if (strlen($digits) === 10) {
+            return substr($digits, 0, 3) . '.' . substr($digits, 3, 3) . '.' . substr($digits, 6, 4);
+        }
+        if (strlen($digits) === 11 && $digits[0] === '1') {
+            return $digits[0] . '.' . substr($digits, 1, 3) . '.' . substr($digits, 4, 3) . '.' . substr($digits, 7, 4);
+        }
+        return $phone;
+    }
+}
+
 // Configuration loaded successfully
 ?>

@@ -810,6 +810,8 @@ if ($action == 'add_directory_entry') {
     
     $display_name = trim($_POST['display_name'] ?? '');
     $extension = trim($_POST['extension'] ?? '');
+    $did = trim($_POST['did'] ?? '');
+    $email = trim($_POST['email'] ?? '');
     $entry_type = trim($_POST['entry_type'] ?? 'other');
     $description = trim($_POST['description'] ?? '');
     
@@ -826,12 +828,14 @@ if ($action == 'add_directory_entry') {
     
     try {
         $stmt = $pdo->prepare("
-            INSERT INTO phone_directory_entries (display_name, extension, entry_type, description, created_by)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO phone_directory_entries (display_name, extension, did, email, entry_type, description, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $display_name,
             $extension ?: null,
+            $did ?: null,
+            $email ?: null,
             $entry_type,
             $description ?: null,
             $current_user_id

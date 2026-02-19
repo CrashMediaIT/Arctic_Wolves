@@ -230,7 +230,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                             <label class="form-label">Phone Number *</label>
                             <input type="tel" name="phone" id="bc_phone" class="form-input" required
                                    placeholder="(555) 123-4567"
-                                   value="<?php echo $selected_user ? htmlspecialchars($selected_user['phone'] ?? '') : ''; ?>">
+                                   value="<?php echo $selected_user ? htmlspecialchars(formatPhone($selected_user['phone'] ?? '')) : ''; ?>">
                         </div>
                     </div>
                     <div class="form-group">
@@ -412,7 +412,7 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
                             <div class="card-contact-info">
                                 <div class="contact-item">
                                     <i class="fas fa-phone"></i>
-                                    <span id="preview-phone"><?php echo $selected_user && $selected_user['phone'] ? htmlspecialchars($selected_user['phone']) : '(555) 123-4567'; ?></span>
+                                    <span id="preview-phone"><?php echo $selected_user && $selected_user['phone'] ? htmlspecialchars(formatPhone($selected_user['phone'])) : '(555) 123-4567'; ?></span>
                                 </div>
                                 <div class="contact-item">
                                     <i class="fas fa-envelope"></i>
@@ -687,6 +687,19 @@ function selectUser(userId) {
     window.location.href = url.toString();
 }
 
+// Format phone number for display as xxx.xxx.xxxx
+function formatPhone(phone) {
+    if (!phone) return phone;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 10) {
+        return digits.slice(0, 3) + '.' + digits.slice(3, 6) + '.' + digits.slice(6, 10);
+    }
+    if (digits.length === 11 && digits[0] === '1') {
+        return digits[0] + '.' + digits.slice(1, 4) + '.' + digits.slice(4, 7) + '.' + digits.slice(7, 11);
+    }
+    return phone;
+}
+
 // Update preview with form values
 function updatePreview() {
     const firstName = document.getElementById('bc_first_name').value || 'First';
@@ -700,7 +713,7 @@ function updatePreview() {
     document.getElementById('preview-name').textContent = fullName;
     const titleElement = document.getElementById('preview-title');
     titleElement.textContent = jobTitle;
-    document.getElementById('preview-phone').textContent = phone;
+    document.getElementById('preview-phone').textContent = formatPhone(phone);
     document.getElementById('preview-email').textContent = email;
     
     // Apply dynamic font sizing for job title
@@ -1404,7 +1417,7 @@ function generateEmailSignatureHTML(fullName, jobTitle, email, phone, companyNam
     const phoneRow = phone ? `
                     <tr>
                         <td style="padding: 2px 0; font-family: Arial, sans-serif; font-size: 13px; color: #666666;">
-                            <span style="color: #6B46C1;">&#128222;</span>&nbsp;&nbsp;${escapeHtml(phone)}
+                            <span style="color: #6B46C1;">&#128222;</span>&nbsp;&nbsp;${escapeHtml(formatPhone(phone))}
                         </td>
                     </tr>` : '';
     
