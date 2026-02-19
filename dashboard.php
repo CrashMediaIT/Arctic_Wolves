@@ -871,6 +871,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             <a href="?page=pos_schedule" class="nav-link <?= $page=='pos_schedule'?'active':'' ?>">
                 <i class="fa-solid fa-calendar-alt icon"></i> My Schedule
             </a>
+            <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>">
+                <i class="fa-solid fa-address-book icon"></i> Company Directory
+            </a>
         </nav>
     </div>
     <?php endif; ?>
@@ -939,7 +942,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
     <div class="sidebar-footer">
         <?php if($isStaff): ?>
         <a href="?page=sip_settings" class="nav-link <?= $page=='sip_settings'?'active':'' ?>">
-            <i class="fa-solid fa-headset"></i> SIP Phone
+            <i class="fa-solid fa-address-book"></i> Company Directory
         </a>
         <?php endif; ?>
         <a href="?page=profile" class="nav-link <?= $page=='profile'?'active':'' ?>">

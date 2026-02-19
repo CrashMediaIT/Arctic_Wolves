@@ -1,13 +1,13 @@
 /**
- * Tests for SIP Phone View - showNotification, Logging & SIP URI Dialing
+ * Tests for Company Directory View
  *
  * Verifies:
- * 1. showNotification function is defined in sip_settings.php
- * 2. showNotification supports error, success, warning, and info types
- * 3. Console logging is present for SIP settings save
- * 4. Calls use sip: URI protocol to open native SIP app or FusionPBX Web Dialer
- * 5. JsSIP/WebRTC is removed (calls delegated to external SIP apps)
- * 6. Info about native SIP app / FusionPBX Web Dialer is shown
+ * 1. SIP configuration and dialer have been removed
+ * 2. Page is now a Company Directory with search functionality
+ * 3. Directory shows all verified staff (not just those with SIP profiles)
+ * 4. Admin directory entry management is preserved
+ * 5. Company Directory button exists in POS terminal
+ * 6. Dashboard navigation uses "Company Directory" instead of "SIP Phone"
  */
 
 import { test, expect } from '@playwright/test';
@@ -15,130 +15,135 @@ import fs from 'fs';
 import path from 'path';
 
 const sipSettingsPath = path.join(__dirname, '..', 'views', 'sip_settings.php');
+const dashboardPath = path.join(__dirname, '..', 'dashboard.php');
+const posTerminalPath = path.join(__dirname, '..', 'views', 'pos_terminal.php');
 
 // ================================================
-// 1. showNotification Function Defined
+// 1. SIP Configuration & Dialer Removed
 // ================================================
-test.describe('SIP Settings - showNotification defined', () => {
-  test('sip_settings.php should define showNotification function', async () => {
+test.describe('Company Directory - SIP Config Removed', () => {
+  test('should not have SIP account configuration form', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).not.toContain('My SIP Account');
+    expect(content).not.toContain('sip_username');
+    expect(content).not.toContain('sip_domain');
+    expect(content).not.toContain('sip_wss_port');
+    expect(content).not.toContain('saveSipSettings');
+  });
+
+  test('should not have dialer', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).not.toContain('Dialer');
+    expect(content).not.toContain('dialer-input');
+    expect(content).not.toContain('dialerPress');
+    expect(content).not.toContain('dialerCall');
+  });
+
+  test('should not have SIP URI calling', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).not.toContain('callExtension');
+    expect(content).not.toContain('sip:');
+    expect(content).not.toContain('FusionPBX Web Dialer');
+  });
+});
+
+// ================================================
+// 2. Company Directory with Search
+// ================================================
+test.describe('Company Directory - Search Functionality', () => {
+  test('should have Company Directory title', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('Company Directory');
+    expect(content).toContain('fa-address-book');
+  });
+
+  test('should have a search input', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('directory-search');
+    expect(content).toContain('Search by name, job title, or extension');
+  });
+
+  test('should have filterDirectory JavaScript function', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('function filterDirectory()');
+  });
+
+  test('should have no-results message element', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('no-results-message');
+    expect(content).toContain('No matching entries found');
+  });
+
+  test('directory rows should have searchable class', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('directory-row');
+  });
+});
+
+// ================================================
+// 3. Directory Shows All Verified Staff
+// ================================================
+test.describe('Company Directory - All Verified Staff', () => {
+  test('should query all verified users not just SIP users', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    // Should query WHERE is_verified = 1 without SIP-specific filters
+    expect(content).toContain('is_verified = 1');
+    expect(content).not.toContain('sip_username IS NOT NULL');
+    expect(content).not.toContain('sip_domain IS NOT NULL');
+  });
+});
+
+// ================================================
+// 4. Admin Directory Entry Management Preserved
+// ================================================
+test.describe('Company Directory - Admin Management', () => {
+  test('should have admin form to add directory entries', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('add-directory-entry-form');
+    expect(content).toContain('entry_name');
+    expect(content).toContain('entry_extension');
+    expect(content).toContain('entry_type');
+    expect(content).toContain('addDirectoryEntry');
+  });
+
+  test('should show custom entries in directory table', async () => {
+    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
+    expect(content).toContain('custom_entries');
+    expect(content).toContain('deleteDirectoryEntry');
+  });
+
+  test('should have showNotification function', async () => {
     const content = fs.readFileSync(sipSettingsPath, 'utf-8');
     expect(content).toContain('function showNotification(message, type');
   });
+});
 
-  test('showNotification should support warning type', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('alert-warning');
-  });
-
-  test('showNotification should support error type', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('alert-error');
-  });
-
-  test('showNotification should support success type', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('alert-success');
-  });
-
-  test('showNotification should default to info type', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('alert-info');
+// ================================================
+// 5. POS Terminal - Company Directory Button
+// ================================================
+test.describe('POS Terminal - Company Directory Button', () => {
+  test('POS terminal should have Company Directory link', async () => {
+    const content = fs.readFileSync(posTerminalPath, 'utf-8');
+    expect(content).toContain('Company Directory');
+    expect(content).toContain('page=sip_settings');
+    expect(content).toContain('fa-address-book');
   });
 });
 
 // ================================================
-// 2. SIP URI Dialing (Native App / FusionPBX Web Dialer)
+// 6. Dashboard Navigation Updated
 // ================================================
-test.describe('SIP Settings - SIP URI Dialing', () => {
-  test('callExtension should build sip: URI', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("'sip:' + extension + '@' + domain");
+test.describe('Dashboard - Company Directory Navigation', () => {
+  test('dashboard should show Company Directory instead of SIP Phone', async () => {
+    const content = fs.readFileSync(dashboardPath, 'utf-8');
+    expect(content).toContain('Company Directory');
+    expect(content).not.toContain('SIP Phone');
   });
 
-  test('callExtension should use window.location.href for sip: URI', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('window.location.href = sipUri');
-  });
-
-  test('should log SIP URI when calling', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Opening SIP URI:'");
-  });
-
-  test('callExtension should check domain is configured', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('Please configure your SIP domain first');
-  });
-});
-
-// ================================================
-// 3. JsSIP/WebRTC Removed
-// ================================================
-test.describe('SIP Settings - JsSIP/WebRTC Removed', () => {
-  test('should not include JsSIP library', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).not.toContain('jssip');
-    expect(content).not.toContain('JsSIP');
-  });
-
-  test('should not have WebRTC session handling', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).not.toContain('handleSession');
-    expect(content).not.toContain('peerconnection');
-    expect(content).not.toContain('RTCSession');
-  });
-
-  test('should not have SIP registration flow', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).not.toContain('registerSip');
-    expect(content).not.toContain('doSipRegister');
-    expect(content).not.toContain('sipUA');
-  });
-
-  test('should not have call modal', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).not.toContain('sip-call-modal');
-    expect(content).not.toContain('endCall');
-  });
-});
-
-// ================================================
-// 4. Info About Native SIP App / FusionPBX Web Dialer
-// ================================================
-test.describe('SIP Settings - Native App / Extension Info', () => {
-  test('should mention FusionPBX Web Dialer browser extension', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('FusionPBX Web Dialer');
-  });
-
-  test('should mention native SIP applications', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('native SIP application');
-  });
-
-  test('should explain how calls work', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain('How calls work');
-    expect(content).toContain('sip:');
-  });
-});
-
-// ================================================
-// 5. Console Logging for Save Operations
-// ================================================
-test.describe('SIP Settings - Save & Credential Logging', () => {
-  test('should log SIP settings save', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Saving SIP settings...'");
-  });
-
-  test('should log save success', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.log('[SIP] Settings saved successfully'");
-  });
-
-  test('should log save errors', async () => {
-    const content = fs.readFileSync(sipSettingsPath, 'utf-8');
-    expect(content).toContain("console.error('[SIP] Save error:'");
+  test('dashboard POS section should have Company Directory link', async () => {
+    const content = fs.readFileSync(dashboardPath, 'utf-8');
+    // There should be two sip_settings links: one in POS section and one in sidebar footer
+    const matches = content.match(/page=sip_settings/g) || [];
+    expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 });

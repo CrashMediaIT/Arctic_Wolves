@@ -38,67 +38,14 @@ test.describe('SIP WSS Port - Database Schema', () => {
 });
 
 // ================================================
-// 2. SIP WSS Port - Settings UI
+// 2. SIP WSS Port - Database Schema (SIP config removed from UI but schema intact)
 // ================================================
-test.describe('SIP WSS Port - Settings UI', () => {
-  test('sip_settings.php should have WSS port input field', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
+test.describe('SIP WSS Port - Database Schema Preserved', () => {
+  test('database_schema.sql should still include sip_wss_port column', async () => {
+    const filePath = path.join(__dirname, '..', 'database_schema.sql');
     const content = fs.readFileSync(filePath, 'utf-8');
     
     expect(content).toContain('sip_wss_port');
-    expect(content).toContain('id="sip_wss_port"');
-    expect(content).toContain('name="sip_wss_port"');
-  });
-
-  test('sip_settings.php WSS port field should default to 7443', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    expect(content).toContain("'7443'");
-    expect(content).toContain('placeholder="7443"');
-  });
-
-  test('sip_settings.php should fetch sip_wss_port from database', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    expect(content).toContain('sip_wss_port FROM users');
-  });
-
-  test('sip_settings.php should have FusionPBX WSS port label', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    expect(content).toContain('WSS Port');
-    expect(content).toContain('FusionPBX connection');
-  });
-});
-
-// ================================================
-// 3. SIP WSS Port - WebSocket Connection
-// ================================================
-test.describe('SIP WSS Port - WebSocket Connection', () => {
-  test('sip_settings.php should have configurable WSS port field', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    // Should read WSS port from the form field
-    expect(content).toContain("document.getElementById('sip_wss_port')");
-  });
-
-  test('sip_settings.php should default to 7443 if WSS port is empty', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    // Should fallback to 7443
-    expect(content).toContain("|| '7443'");
-  });
-
-  test('saveSipSettings should include WSS port in the request', async () => {
-    const filePath = path.join(__dirname, '..', 'views', 'sip_settings.php');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    
-    expect(content).toContain('sip_wss_port=');
   });
 });
 
