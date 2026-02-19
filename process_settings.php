@@ -18,7 +18,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'test_fusionpbx', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -909,6 +909,63 @@ try {
             ];
             
             $result = testStallionConnection($settings);
+            echo json_encode($result);
+            exit;
+            
+        case 'update_fusionpbx':
+            $fusionpbx_enabled = isset($_POST['fusionpbx_enabled']) ? '1' : '0';
+            $fusionpbx_url = trim($_POST['fusionpbx_url'] ?? '');
+            $fusionpbx_api_key = trim($_POST['fusionpbx_api_key'] ?? '');
+            $fusionpbx_domain_uuid = trim($_POST['fusionpbx_domain_uuid'] ?? '');
+            $fusionpbx_domain = trim($_POST['fusionpbx_domain'] ?? '');
+            $fusionpbx_default_context = trim($_POST['fusionpbx_default_context'] ?? 'default');
+            $fusionpbx_area_code = trim($_POST['fusionpbx_area_code'] ?? '');
+            
+            // Validate URL if provided
+            if (!empty($fusionpbx_url) && !filter_var($fusionpbx_url, FILTER_VALIDATE_URL)) {
+                throw new Exception('Invalid FusionPBX URL format');
+            }
+            
+            updateSetting($pdo, 'fusionpbx_enabled', $fusionpbx_enabled);
+            updateSetting($pdo, 'fusionpbx_url', $fusionpbx_url);
+            if (!empty($fusionpbx_api_key)) {
+                updateSetting($pdo, 'fusionpbx_api_key', $fusionpbx_api_key);
+            }
+            updateSetting($pdo, 'fusionpbx_domain_uuid', $fusionpbx_domain_uuid);
+            updateSetting($pdo, 'fusionpbx_domain', $fusionpbx_domain);
+            updateSetting($pdo, 'fusionpbx_default_context', $fusionpbx_default_context);
+            updateSetting($pdo, 'fusionpbx_area_code', $fusionpbx_area_code);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_fusionpbx',
+                'settings' => ['fusionpbx_enabled' => $fusionpbx_enabled, 'fusionpbx_url' => $fusionpbx_url, 'fusionpbx_domain' => $fusionpbx_domain]
+            ]);
+            
+            $redirect_page = isset($_POST['redirect_page']) ? $_POST['redirect_page'] : 'admin_settings';
+            if ($redirect_page === 'system_tools') {
+                header('Location: dashboard.php?page=system_tools&tab=fusionpbx&success=1');
+            } else {
+                header('Location: dashboard.php?page=admin_settings&success=1');
+            }
+            exit;
+            
+        case 'test_fusionpbx':
+            require_once __DIR__ . '/lib/fusionpbx.php';
+            
+            $settings = [
+                'fusionpbx_url' => trim($_POST['fusionpbx_url'] ?? ''),
+                'fusionpbx_api_key' => trim($_POST['fusionpbx_api_key'] ?? ''),
+                'fusionpbx_domain_uuid' => trim($_POST['fusionpbx_domain_uuid'] ?? '')
+            ];
+            
+            // If no API key provided in the form, use the saved one
+            if (empty($settings['fusionpbx_api_key'])) {
+                $saved_key_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'fusionpbx_api_key'");
+                $saved_key_stmt->execute();
+                $settings['fusionpbx_api_key'] = $saved_key_stmt->fetchColumn() ?: '';
+            }
+            
+            $result = testFusionPBXConnection($settings);
             echo json_encode($result);
             exit;
             
