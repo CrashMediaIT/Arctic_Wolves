@@ -7,6 +7,8 @@
 session_start();
 require 'db_config.php';
 require 'security.php';
+require_once __DIR__ . '/lib/auditor.php';
+require_once __DIR__ . '/error_logger.php';
 
 setSecurityHeaders();
 
@@ -66,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmt->execute([$athlete_id, $user_id, $evaluation_date, $title]);
                 $eval_id = $pdo->lastInsertId();
+                Auditor::log($pdo, $user_id, 'create', 'athlete_evaluations', $eval_id, ['action' => 'Created skills evaluation', 'title' => $title]);
                 
                 // Create evaluation_scores for all active skills
                 $skills = $pdo->query("
@@ -118,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$title, $evaluation_date, $eval_id]);
+                Auditor::log($pdo, $user_id, 'update', 'athlete_evaluations', $eval_id, ['action' => 'Updated skills evaluation']);
                 
                 echo json_encode([
                     'success' => true,
@@ -149,6 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("DELETE FROM evaluation_media WHERE evaluation_id = ?")->execute([$eval_id]);
                 $pdo->prepare("DELETE FROM evaluation_scores WHERE evaluation_id = ?")->execute([$eval_id]);
                 $pdo->prepare("DELETE FROM athlete_evaluations WHERE id = ?")->execute([$eval_id]);
+                Auditor::log($pdo, $user_id, 'delete', 'athlete_evaluations', $eval_id, ['action' => 'Deleted skills evaluation']);
                 
                 echo json_encode([
                     'success' => true,
@@ -192,6 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$score, $score_id]);
+                Auditor::log($pdo, $user_id, 'update', 'evaluation_scores', $score_id, ['action' => 'Saved evaluation score']);
                 
                 echo json_encode([
                     'success' => true,
@@ -231,6 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$notes, $score_id]);
+                Auditor::log($pdo, $user_id, 'update', 'evaluation_scores', $score_id, ['action' => 'Saved evaluation notes', 'note_type' => $note_type]);
                 
                 echo json_encode([
                     'success' => true,
@@ -298,6 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([$eval['evaluation_id'], $score_id, $filepath, $media_type, $user_id]);
+                Auditor::log($pdo, $user_id, 'create', 'evaluation_media', $pdo->lastInsertId(), ['action' => 'Uploaded evaluation media']);
                 
                 echo json_encode([
                     'success' => true,
@@ -331,6 +339,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Delete from database
                 $pdo->prepare("DELETE FROM evaluation_media WHERE id = ?")->execute([$media_id]);
+                Auditor::log($pdo, $user_id, 'delete', 'evaluation_media', $media_id, ['action' => 'Deleted evaluation media']);
                 
                 echo json_encode([
                     'success' => true,
@@ -355,6 +364,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$eval_id]);
+                Auditor::log($pdo, $user_id, 'update', 'athlete_evaluations', $eval_id, ['action' => 'Completed evaluation']);
                 
                 echo json_encode([
                     'success' => true,
@@ -379,6 +389,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$eval_id]);
+                Auditor::log($pdo, $user_id, 'update', 'athlete_evaluations', $eval_id, ['action' => 'Archived evaluation']);
                 
                 echo json_encode([
                     'success' => true,
@@ -521,6 +532,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
     } catch (Exception $e) {
+        ErrorLogger::error('Skills evaluation error: ' . $e->getMessage());
         http_response_code(400);
         echo json_encode([
             'success' => false,
