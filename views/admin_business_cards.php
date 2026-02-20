@@ -1398,7 +1398,7 @@ function sendCampaign(e) {
         return;
     }
     
-    if (!confirm('Send this marketing email campaign? This will send emails to the selected recipients.')) {
+    if (!confirm('Send this campaign to the selected recipients?')) {
         return;
     }
     

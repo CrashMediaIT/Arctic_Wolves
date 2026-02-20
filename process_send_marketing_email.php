@@ -223,6 +223,8 @@ function buildMarketingEmailBody($packages, $customMessage, $includeChildPickup)
         $logoHtml = "<img src='$safeLogo' alt='Arctic Wolves' style='max-height: 60px; max-width: 200px;'>";
     }
     
+    $baseUrl = rtrim(getenv('APP_URL') ?: 'https://arcticwolves.ca', '/');
+    
     $html = "
     <div style='font-family: Arial, sans-serif; background: $bg; color: #fff; padding: 30px; border-radius: 8px; max-width: 650px; margin: 0 auto;'>
         <div style='text-align: center; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid $borderClr;'>
@@ -319,7 +321,7 @@ function buildMarketingEmailBody($packages, $customMessage, $includeChildPickup)
         $html .= "
             <div style='margin-top: 16px; text-align: center;'>
                 <div style='font-size: 28px; font-weight: 900; color: #fff;'>\$$price</div>
-                <a href='https://arcticwolves.ca/sessions_public.php?register=1&type=package&id={$pkg['id']}' 
+                <a href='{$baseUrl}/sessions_public.php?register=1&type=package&id={$pkg['id']}' 
                    style='display: inline-block; margin-top: 12px; padding: 12px 28px; background: $primary; color: #fff; 
                           text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px;'>
                     Register Now →
@@ -333,9 +335,9 @@ function buildMarketingEmailBody($packages, $customMessage, $includeChildPickup)
     $html .= "
         <div style='margin-top: 24px; padding-top: 20px; border-top: 1px solid $borderClr; text-align: center; color: $textMuted; font-size: 11px;'>
             &copy; $year Arctic Wolves Performance. All rights reserved.<br>
-            <a href='https://arcticwolves.ca' style='color: $textMuted; text-decoration: none;'>arcticwolves.ca</a><br>
+            <a href='{$baseUrl}' style='color: $textMuted; text-decoration: none;'>arcticwolves.ca</a><br>
             <span style='font-size: 10px;'>You received this because you opted in to marketing emails. 
-            <a href='https://arcticwolves.ca/dashboard.php?page=profile' style='color: $textMuted;'>Manage preferences</a></span>
+            <a href='{$baseUrl}/dashboard.php?page=profile' style='color: $textMuted;'>Manage preferences</a></span>
         </div>
     </div>";
     
