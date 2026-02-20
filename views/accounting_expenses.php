@@ -701,7 +701,7 @@ function openExportModal() { var modal = document.getElementById('export-modal')
 function closeModal(modalId) {
     var modal = document.getElementById(modalId);
     if (modal) {
-        modal.style.display = 'none';
+        modal.style.display = '';
         modal.classList.remove('active');
         document.body.style.overflow = '';
     }
