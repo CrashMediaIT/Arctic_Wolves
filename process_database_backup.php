@@ -566,18 +566,24 @@ function performBackup($pdo, $job) {
             }
         }
         
-        // Upload to primary Nextcloud if configured
+        // Read file content once for Nextcloud uploads
+        $nc_file_content = null;
         if ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both' || $job['destination_type'] === 'both_nextcloud') {
+            $nc_file_content = file_get_contents($gz_file);
+            if ($nc_file_content === false) {
+                $errors[] = 'Failed to read backup file for Nextcloud upload';
+                $nc_file_content = null;
+            }
+        }
+        
+        // Upload to primary Nextcloud if configured
+        if ($nc_file_content !== null && ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both' || $job['destination_type'] === 'both_nextcloud')) {
             try {
                 $nc_settings = getNextcloudSettings($pdo);
                 $connection = connectNextcloud($nc_settings);
                 
                 $remote_path = rtrim($job['nextcloud_folder'], '/') . '/' . $filename;
-                $file_content = file_get_contents($gz_file);
-                if ($file_content === false) {
-                    throw new Exception('Failed to read backup file for upload');
-                }
-                $result = uploadToNextcloud($connection, $remote_path, $file_content, 'application/gzip');
+                $result = uploadToNextcloud($connection, $remote_path, $nc_file_content, 'application/gzip');
                 
                 if ($result) {
                     $success_destinations[] = 'Nextcloud: ' . $remote_path;
@@ -590,18 +596,14 @@ function performBackup($pdo, $job) {
         }
         
         // Upload to secondary Nextcloud if both_nextcloud destination is selected
-        if ($job['destination_type'] === 'both_nextcloud') {
+        if ($nc_file_content !== null && $job['destination_type'] === 'both_nextcloud') {
             try {
                 $nc2_settings = getSecondaryNextcloudSettings($pdo);
                 if (!empty($nc2_settings['nextcloud_url'])) {
                     $connection2 = connectNextcloud($nc2_settings);
                     $folder2 = !empty($job['nextcloud_folder']) ? $job['nextcloud_folder'] : ($nc2_settings['nextcloud_backup_folder'] ?? '/ArcticWolves/Backups/');
                     $remote_path2 = rtrim($folder2, '/') . '/' . $filename;
-                    $file_content2 = file_get_contents($gz_file);
-                    if ($file_content2 === false) {
-                        throw new Exception('Failed to read backup file for upload');
-                    }
-                    $result2 = uploadToNextcloud($connection2, $remote_path2, $file_content2, 'application/gzip');
+                    $result2 = uploadToNextcloud($connection2, $remote_path2, $nc_file_content, 'application/gzip');
                     
                     if ($result2) {
                         $success_destinations[] = 'Nextcloud2: ' . $remote_path2;
