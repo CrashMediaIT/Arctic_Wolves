@@ -1505,11 +1505,6 @@ function copyEmailSignatureHTML() {
 
 <style>
 /* Business Card Generator Styles */
-.business-cards-content {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
 
 /* Fix: Remove excessive whitespace from marketing page.
    - page-tab-content adds 24px padding + bg-card background, creating a
