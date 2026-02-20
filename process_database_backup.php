@@ -731,26 +731,7 @@ function cleanOldBackups($pdo, $job) {
     }
 }
 
-/**
- * Encrypt password using AES-256
- */
-function encryptPassword($password) {
-    $key = getenv('ENCRYPTION_KEY') ?: 'change_this_encryption_key_in_production';
-    $iv = openssl_random_pseudo_bytes(16);
-    $encrypted = openssl_encrypt($password, 'AES-256-CBC', $key, 0, $iv);
-    return base64_encode($iv . $encrypted);
-}
-
-/**
- * Decrypt password
- */
-function decryptPassword($encrypted_password) {
-    $key = getenv('ENCRYPTION_KEY') ?: 'change_this_encryption_key_in_production';
-    $data = base64_decode($encrypted_password);
-    $iv = substr($data, 0, 16);
-    $encrypted = substr($data, 16);
-    return openssl_decrypt($encrypted, 'AES-256-CBC', $key, 0, $iv);
-}
+// encryptPassword() and decryptPassword() are now defined in security.php
 
 /**
  * Validate cron expression

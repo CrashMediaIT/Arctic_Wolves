@@ -522,3 +522,55 @@ function checkPOSIPAccess($pdo, $user_role) {
         return true;
     }
 }
+
+/**
+ * Encrypt a password/token using AES-256-CBC
+ * Uses a persistent key file (.nextcloud_key) for key material.
+ * This is the single canonical implementation — all files should
+ * include security.php instead of defining their own copy.
+ *
+ * @param string $password Plaintext to encrypt
+ * @return string Base64-encoded ciphertext (IV::encrypted)
+ */
+function encryptPassword($password) {
+    $key_file = __DIR__ . '/.nextcloud_key';
+    if (!file_exists($key_file)) {
+        $key = bin2hex(random_bytes(32));
+        file_put_contents($key_file, $key);
+        chmod($key_file, 0600);
+    } else {
+        $key = file_get_contents($key_file);
+    }
+    
+    $key_hash = hash('sha256', $key, true);
+    $iv = random_bytes(16);
+    $encrypted = openssl_encrypt($password, 'AES-256-CBC', $key_hash, 0, $iv);
+    return base64_encode($iv . '::' . $encrypted);
+}
+
+/**
+ * Decrypt a password/token previously encrypted with encryptPassword()
+ *
+ * @param string $encrypted_data Base64-encoded ciphertext
+ * @return string Decrypted plaintext, or empty string on failure
+ */
+function decryptPassword($encrypted_data) {
+    $key_file = __DIR__ . '/.nextcloud_key';
+    if (!file_exists($key_file)) {
+        return '';
+    }
+    
+    $key = file_get_contents($key_file);
+    $key_hash = hash('sha256', $key, true);
+    $decoded = base64_decode($encrypted_data, true);
+    if ($decoded === false) {
+        return '';
+    }
+    $parts = explode('::', $decoded, 2);
+    if (count($parts) === 2) {
+        $iv = $parts[0];
+        $encrypted = $parts[1];
+        return openssl_decrypt($encrypted, 'AES-256-CBC', $key_hash, 0, $iv);
+    }
+    return '';
+}

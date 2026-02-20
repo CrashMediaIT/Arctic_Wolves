@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/cloud_config.php';
 require_once __DIR__ . '/notifications.php';
 
@@ -169,20 +170,8 @@ function performPaperlessOCRCron($file_path, $pdo) {
         return null;
     }
     
-    // Decrypt the API token - load encryption helpers
-    $key_file = __DIR__ . '/.nextcloud_key';
-    if (!file_exists($key_file)) {
-        return null;
-    }
-    $enc_key = file_get_contents($key_file);
-    $decoded = base64_decode($encrypted_token);
-    // Minimum length: 16 bytes IV + at least 1 byte encrypted data
-    if ($decoded === false || strlen($decoded) < 17) {
-        return null;
-    }
-    $iv = substr($decoded, 0, 16);
-    $encrypted_data = substr($decoded, 16);
-    $api_token = openssl_decrypt($encrypted_data, 'AES-256-CBC', hex2bin($enc_key), OPENSSL_RAW_DATA, $iv);
+    // Decrypt the API token using the canonical helper from security.php
+    $api_token = decryptPassword($encrypted_token);
     
     if (empty($api_token)) {
         return null;

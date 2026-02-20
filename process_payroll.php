@@ -26,28 +26,7 @@ checkCsrfToken();
 $user_id = $_SESSION['user_id'];
 $action = $_POST['action'] ?? '';
 
-/**
- * Encrypt sensitive data (bank account numbers)
- */
-function encryptBankingData($data, $pdo) {
-    // Use a simple encryption for demo - in production use proper key management
-    $key = getenv('ENCRYPTION_KEY') ?: hash('sha256', 'arctic_wolves_secure_key_change_in_production', true);
-    $cipher = 'AES-256-CBC';
-    $iv = random_bytes(openssl_cipher_iv_length($cipher));
-    $encrypted = openssl_encrypt($data, $cipher, $key, 0, $iv);
-    return base64_encode($iv . '::' . $encrypted);
-}
-
-/**
- * Decrypt banking data
- */
-function decryptBankingData($encryptedData, $pdo) {
-    $key = getenv('ENCRYPTION_KEY') ?: 'default_encryption_key_change_me';
-    $cipher = 'AES-256-CBC';
-    $data = base64_decode($encryptedData);
-    list($iv, $encrypted) = explode('::', $data, 2);
-    return openssl_decrypt($encrypted, $cipher, $key, 0, $iv);
-}
+// Banking encryption now uses encryptPassword()/decryptPassword() from security.php
 
 /**
  * Calculate payroll deductions based on CRA rates
@@ -282,7 +261,7 @@ if ($action === 'add_employee') {
             $addressStmt->execute([$employeeUserId, $streetAddress, $unitNumber, $city, $addressProvince, $postalCode]);
             
             // Insert encrypted banking info
-            $encryptedAccount = encryptBankingData($accountNumber, $pdo);
+            $encryptedAccount = encryptPassword($accountNumber);
             $bankingStmt = $pdo->prepare("
                 INSERT INTO employee_banking 
                 (user_id, institution_number, transit_number, account_number_encrypted, account_type, is_primary, created_at)

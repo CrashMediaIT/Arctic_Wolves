@@ -39,16 +39,7 @@ function generateTemporaryPassword($length = 12) {
     return $password;
 }
 
-/**
- * Encrypt banking data
- */
-function encryptBankingData($data, $pdo) {
-    $key = getenv('ENCRYPTION_KEY') ?: 'default_encryption_key_change_me';
-    $cipher = 'AES-256-CBC';
-    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($cipher));
-    $encrypted = openssl_encrypt($data, $cipher, $key, 0, $iv);
-    return base64_encode($iv . '::' . $encrypted);
-}
+// Banking encryption now uses encryptPassword() from security.php
 
 /**
  * Upload onboarding documents to Nextcloud
@@ -360,7 +351,7 @@ if ($action === 'create') {
                 
                 // Add banking if provided
                 if (!empty($institutionNumber) && !empty($transitNumber) && !empty($accountNumber)) {
-                    $encryptedAccount = encryptBankingData($accountNumber, $pdo);
+                    $encryptedAccount = encryptPassword($accountNumber);
                     $bankStmt = $pdo->prepare("
                         INSERT INTO employee_banking 
                         (user_id, institution_number, transit_number, account_number_encrypted, is_primary, created_at)

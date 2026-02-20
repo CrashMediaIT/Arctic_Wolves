@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/db_config.php';
+require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/cloud_config.php';
 
 // Only run via CLI or with secret key
@@ -335,16 +336,7 @@ function cleanOldBackups($pdo, $job) {
     }
 }
 
-/**
- * Decrypt password
- */
-function decryptPassword($encrypted_password) {
-    $key = getenv('ENCRYPTION_KEY') ?: 'change_this_encryption_key_in_production';
-    $data = base64_decode($encrypted_password);
-    $iv = substr($data, 0, 16);
-    $encrypted = substr($data, 16);
-    return openssl_decrypt($encrypted, 'AES-256-CBC', $key, 0, $iv);
-}
+// decryptPassword() is now defined in security.php
 
 /**
  * Calculate next run time from a cron expression.
