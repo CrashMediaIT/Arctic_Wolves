@@ -1012,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initDragAndDrop('logoDropZone', 'logo-input', 'logo');
 });
 
-// Save current settings as default (store in localStorage)
+// Save current settings as default (store in database)
 function setCurrentAsDefault() {
     const settings = {
         cornerStyle: document.getElementById('corner-style-select')?.value || 'round',
@@ -1021,24 +1021,43 @@ function setCurrentAsDefault() {
         backBackground: backBackgroundImage
     };
     
-    try {
-        localStorage.setItem('businessCardDefaults', JSON.stringify(settings));
-        showNotification('Settings saved as default!', 'success');
-    } catch (e) {
-        showNotification('Could not save settings. Storage may be full.', 'error');
-    }
+    var csrfToken = '<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES) ?>';
+    var formData = new FormData();
+    formData.append('action', 'save_business_card_defaults');
+    formData.append('settings', JSON.stringify(settings));
+    formData.append('csrf_token', csrfToken);
+    
+    fetch('process_admin_action.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showNotification(data.message || 'Settings saved as default!', 'success');
+        } else {
+            showNotification(data.message || 'Could not save settings.', 'error');
+        }
+    })
+    .catch(function() {
+        showNotification('Could not save settings. Please try again.', 'error');
+    });
 }
 
-// Load default settings from localStorage
+// Load default settings from database
 function loadDefaultSettings() {
-    try {
-        const savedSettings = localStorage.getItem('businessCardDefaults');
-        if (!savedSettings) {
-            showNotification('No saved defaults found.', 'info');
+    fetch('process_admin_action.php?action=get_business_card_defaults', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (!data.success || !data.data) {
+            showNotification(data.message || 'No saved defaults found.', 'info');
             return;
         }
         
-        const settings = JSON.parse(savedSettings);
+        var settings = data.data;
         
         // Apply corner style
         if (settings.cornerStyle) {
@@ -1072,9 +1091,10 @@ function loadDefaultSettings() {
         }
         
         showNotification('Default settings loaded!', 'success');
-    } catch (e) {
+    })
+    .catch(function() {
         showNotification('Could not load settings.', 'error');
-    }
+    });
 }
 
 // Toggle export dropdown menu

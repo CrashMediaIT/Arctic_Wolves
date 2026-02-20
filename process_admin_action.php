@@ -250,6 +250,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         exit();
     }
+    
+    // Fetch business card default settings
+    if ($action === 'get_business_card_defaults') {
+        header('Content-Type: application/json');
+        try {
+            $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+            $stmt->execute(['business_card_defaults']);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($row && $row['setting_value']) {
+                echo json_encode(['success' => true, 'data' => json_decode($row['setting_value'], true)]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'No saved defaults found.']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Could not load settings.']);
+        }
+        exit();
+    }
 }
 
 // Validate CSRF token for POST requests
@@ -935,6 +955,38 @@ if ($action == 'update_billing') {
         Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_billing', 'settings' => ['currency' => $_POST['currency'] ?? '', 'stripe_key_updated' => !empty($_POST['stripe_secret_key'])]]);
         header("Location: dashboard.php?page=settings&status=settings_updated");
     } catch (PDOException $e) { die("DB Error: " . $e->getMessage()); }
+    exit();
+}
+
+// =========================================================
+// MODULE 5.1: BUSINESS CARD DEFAULTS
+// =========================================================
+if ($action == 'save_business_card_defaults') {
+    header('Content-Type: application/json');
+    try {
+        $settings = $_POST['settings'] ?? '';
+        if (empty($settings)) {
+            throw new Exception('No settings provided.');
+        }
+        // Validate JSON
+        $decoded = json_decode($settings, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception('Invalid settings format.');
+        }
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+            VALUES ('business_card_defaults', ?, 'json', 'Default business card design settings')
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+        $stmt->execute([$settings]);
+        
+        Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'save_business_card_defaults']);
+        echo json_encode(['success' => true, 'message' => 'Settings saved as default!']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Could not save settings: ' . $e->getMessage()]);
+    }
     exit();
 }
 
