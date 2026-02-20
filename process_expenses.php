@@ -84,60 +84,25 @@ function uploadReceiptToNextcloud($pdo, $local_file_path, $expense_date, $vendor
 }
 
 /**
- * Perform OCR on receipt image
- * Uses Paperless-NGX API when configured, falls back to Tesseract
+ * Perform OCR on receipt image or PDF
+ * Uses Paperless-NGX API for all OCR processing
  */
 function performReceiptOCR($file_path) {
-    $ocr_data = [
+    $paperless_result = performPaperlessOCR($file_path);
+    if ($paperless_result !== null) {
+        return $paperless_result;
+    }
+    
+    return [
         'vendor' => '',
         'date' => date('Y-m-d'),
         'subtotal' => 0.00,
         'tax' => 0.00,
         'total' => 0.00,
         'items' => [],
-        'raw_text' => ''
+        'raw_text' => '',
+        'error' => 'OCR not available - configure Paperless-NGX in Settings > System Tools'
     ];
-    
-    // Try Paperless-NGX OCR first if configured
-    $paperless_result = performPaperlessOCR($file_path);
-    if ($paperless_result !== null) {
-        return $paperless_result;
-    }
-    
-    // Fall back to Tesseract
-    // Check if Tesseract is installed using safe command execution
-    $tesseract_path = '/usr/bin/tesseract';
-    $tesseract_check = file_exists($tesseract_path) && is_executable($tesseract_path);
-    
-    if (!$tesseract_check) {
-        $ocr_data['error'] = 'OCR not available - configure Paperless-NGX in System Tools or install Tesseract';
-        return $ocr_data;
-    }
-    
-    // Validate file path is within expected directory
-    $real_file_path = realpath($file_path);
-    $upload_dir = realpath(dirname($file_path));
-    if (!$real_file_path || !$upload_dir || strpos($real_file_path, $upload_dir) !== 0) {
-        $ocr_data['error'] = 'Invalid file path';
-        return $ocr_data;
-    }
-    
-    $output_file = sys_get_temp_dir() . '/' . uniqid('ocr_');
-    $command = sprintf('%s %s %s 2>&1', escapeshellcmd($tesseract_path), escapeshellarg($real_file_path), escapeshellarg($output_file));
-    shell_exec($command);
-    
-    $ocr_text = '';
-    if (file_exists($output_file . '.txt')) {
-        $ocr_text = file_get_contents($output_file . '.txt');
-        unlink($output_file . '.txt');
-    }
-    
-    if (empty($ocr_text)) {
-        $ocr_data['error'] = 'OCR failed - no text extracted';
-        return $ocr_data;
-    }
-    
-    return parseOCRText($ocr_text, $ocr_data);
 }
 
 /**
@@ -218,7 +183,7 @@ function performPaperlessOCR($file_path) {
     
     if (!empty($curl_error) || $http_code < 200 || $http_code >= 300) {
         error_log('Paperless-NGX upload failed: HTTP ' . $http_code . ' - ' . ($curl_error ?: $response));
-        return null; // Fall back to Tesseract
+        return null; // Paperless-NGX not available
     }
     
     // Paperless-NGX returns a task ID — we need to poll for the result
@@ -747,59 +712,12 @@ try {
             $temp_file = sys_get_temp_dir() . '/' . uniqid('ocr_') . $ext;
             move_uploaded_file($_FILES['receipt_file']['tmp_name'], $temp_file);
             
-            // For PDFs, try Paperless-NGX first (handles PDFs natively), then fall back to conversion for Tesseract
-            $pdf_image_file = null;
-            if ($mime_type === 'application/pdf') {
-                // Try Paperless-NGX OCR directly with the PDF (no conversion needed)
-                $paperless_result = performPaperlessOCR($temp_file);
-                if ($paperless_result !== null) {
-                    $ocr_data = $paperless_result;
-                } else {
-                    // Paperless-NGX not available — convert PDF to image for Tesseract
-                    $pdf_image_file = sys_get_temp_dir() . '/' . uniqid('ocr_pdf_') . '.png';
-                    if (file_exists('/usr/bin/pdftoppm') && is_executable('/usr/bin/pdftoppm')) {
-                        $convert_cmd = sprintf(
-                            '%s -png -f 1 -l 1 -r 300 -singlefile %s %s 2>&1',
-                            escapeshellcmd('/usr/bin/pdftoppm'),
-                            escapeshellarg($temp_file),
-                            escapeshellarg(substr($pdf_image_file, 0, -4))
-                        );
-                        $convert_output = shell_exec($convert_cmd);
-                        if (!file_exists($pdf_image_file) && !empty($convert_output)) {
-                            error_log('PDF conversion (pdftoppm) failed: ' . $convert_output);
-                        }
-                    } elseif (file_exists('/usr/bin/convert') && is_executable('/usr/bin/convert')) {
-                        $convert_cmd = sprintf(
-                            '%s -density 300 %s[0] %s 2>&1',
-                            escapeshellcmd('/usr/bin/convert'),
-                            escapeshellarg($temp_file),
-                            escapeshellarg($pdf_image_file)
-                        );
-                        $convert_output = shell_exec($convert_cmd);
-                        if (!file_exists($pdf_image_file) && !empty($convert_output)) {
-                            error_log('PDF conversion (ImageMagick) failed: ' . $convert_output);
-                        }
-                    }
-                    
-                    if (file_exists($pdf_image_file)) {
-                        $ocr_data = performReceiptOCR($pdf_image_file);
-                    } else {
-                        if (file_exists($temp_file)) { unlink($temp_file); }
-                        if ($pdf_image_file && file_exists($pdf_image_file)) { unlink($pdf_image_file); }
-                        echo json_encode(['success' => false, 'message' => 'OCR processing failed: configure Paperless-NGX in System Tools, or install pdftoppm/ImageMagick for local PDF OCR']);
-                        exit();
-                    }
-                }
-            } else {
-                $ocr_data = performReceiptOCR($temp_file);
-            }
+            // Perform OCR via Paperless-NGX (handles all file types including PDFs natively)
+            $ocr_data = performReceiptOCR($temp_file);
             
             // Clean up
             if (file_exists($temp_file)) {
                 unlink($temp_file);
-            }
-            if ($pdf_image_file && file_exists($pdf_image_file)) {
-                unlink($pdf_image_file);
             }
             
             if (!empty($ocr_data['error'])) {

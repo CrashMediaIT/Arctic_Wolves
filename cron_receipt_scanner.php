@@ -74,7 +74,7 @@ try {
         $local_filename = 'cloud_' . uniqid() . '_' . basename($file['filename']);
         file_put_contents($upload_dir . $local_filename, $content);
         
-        // Run OCR (Tesseract placeholder)
+        // Run OCR via Paperless-NGX
         $ocr_text = performOCR($upload_dir . $local_filename);
         
         // Parse receipt data from OCR
@@ -131,35 +131,18 @@ try {
 
 /**
  * Perform OCR on image file
- * Uses Paperless-NGX API when configured, falls back to Tesseract
+ * Uses Paperless-NGX API for all OCR processing
  */
 function performOCR($file_path) {
     global $pdo;
     
-    // Try Paperless-NGX first if configured
+    // Use Paperless-NGX for OCR
     $paperless_text = performPaperlessOCRCron($file_path, $pdo);
     if ($paperless_text !== null) {
         return $paperless_text;
     }
     
-    // Fall back to Tesseract
-    $tesseract_check = shell_exec('which tesseract 2>/dev/null');
-    
-    if (empty($tesseract_check)) {
-        return "OCR_NOT_AVAILABLE: Tesseract not installed - configure Paperless-NGX in System Tools or install Tesseract";
-    }
-    
-    $output_file = sys_get_temp_dir() . '/' . uniqid('ocr_');
-    $command = sprintf('tesseract %s %s 2>&1', escapeshellarg($file_path), escapeshellarg($output_file));
-    shell_exec($command);
-    
-    $ocr_text = '';
-    if (file_exists($output_file . '.txt')) {
-        $ocr_text = file_get_contents($output_file . '.txt');
-        unlink($output_file . '.txt');
-    }
-    
-    return $ocr_text ?: "OCR_FAILED";
+    return "OCR_NOT_AVAILABLE: Paperless-NGX not configured - configure in Settings > System Tools";
 }
 
 /**
