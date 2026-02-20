@@ -73,10 +73,11 @@ if ($selected_user_id) {
 
     // Evaluations
     $eval_stmt = $pdo->prepare("
-        SELECT ae.*, es.name as skill_name, es.category as skill_category,
+        SELECT ae.*, es.name as skill_name, ec.name as skill_category,
                eu.first_name as evaluator_first, eu.last_name as evaluator_last
         FROM athlete_evaluations ae
         LEFT JOIN eval_skills es ON ae.skill_id = es.id
+        LEFT JOIN eval_categories ec ON es.category_id = ec.id
         LEFT JOIN users eu ON ae.evaluator_id = eu.id
         WHERE ae.athlete_id = ?
         AND ae.evaluation_date BETWEEN ? AND ?
@@ -109,95 +110,290 @@ $csrf_token = generateCsrfToken();
 ?>
 
 <style>
-.user-reports { padding: 20px; }
+.user-reports {
+    padding: 20px;
+}
 .user-reports .page-header {
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
-.user-reports .page-header h2 { margin: 0; color: #e2e8f0; }
-.user-reports .filter-bar {
-    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-    background: #0a0f16; padding: 16px; border-radius: 10px; border: 1px solid #1e293b; margin-bottom: 24px;
+.user-reports .page-header h1 {
+    margin: 0;
+    color: var(--text-white, #fff);
+    font-size: var(--font-size-2xl, 22px);
+    font-weight: var(--font-weight-bold, 700);
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
-.user-reports .filter-bar label { color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-.user-reports .filter-bar input, .user-reports .filter-bar select {
-    padding: 8px 12px; background: #020305; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px; font-size: 13px;
+.user-reports .page-header h1 i {
+    color: var(--primary, #6B46C1);
 }
-.user-reports .filter-bar .btn-filter {
-    padding: 8px 20px; background: var(--primary, #7000a4); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 13px;
+.user-reports .filter-box {
+    background: var(--bg-secondary, #13131A);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-2xl, 12px);
+    margin-bottom: 24px;
+    overflow: hidden;
 }
-.user-reports .filter-bar .btn-filter:hover { background: #5a0085; }
+.user-reports .filter-box-header {
+    padding: 12px 20px;
+    font-size: var(--font-size-sm, 12px);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--text-secondary, #A8A8B8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border, #2D2D3F);
+}
+.user-reports .filter-box-content {
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+.user-reports .filter-field label {
+    display: block;
+    color: var(--text-secondary, #A8A8B8);
+    font-size: var(--font-size-xs, 11px);
+    font-weight: var(--font-weight-semibold, 600);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.user-reports .filter-field input[type="date"] {
+    padding: 8px 12px;
+    background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F);
+    color: var(--text-white, #fff);
+    border-radius: var(--radius-md, 6px);
+    font-size: var(--font-size-base, 14px);
+}
+.user-reports .filter-field input[type="date"]:focus {
+    outline: none;
+    border-color: var(--primary, #6B46C1);
+}
 .user-reports .content-grid {
-    display: grid; grid-template-columns: 340px 1fr; gap: 20px; min-height: 600px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    min-height: 600px;
 }
 @media (max-width: 1024px) {
-    .user-reports .content-grid { grid-template-columns: 1fr; min-height: auto; }
+    .user-reports .content-grid {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
 }
-.user-reports .users-panel, .user-reports .details-panel {
-    background: #0a0f16; border-radius: 10px; padding: 20px; border: 1px solid #1e293b; overflow-y: auto; max-height: calc(100vh - 280px);
+.user-reports .users-panel,
+.user-reports .details-panel {
+    background: var(--bg-secondary, #13131A);
+    border-radius: var(--radius-2xl, 12px);
+    padding: 20px;
+    border: 1px solid var(--border, #2D2D3F);
+    overflow-y: auto;
+    max-height: calc(100vh - 280px);
 }
-.user-reports .users-panel h3 { margin: 0 0 16px 0; color: #e2e8f0; font-size: 15px; }
-.user-reports .user-search { width: 100%; padding: 10px 12px; background: #020305; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px; margin-bottom: 12px; font-size: 13px; }
-.user-reports .users-list { display: flex; flex-direction: column; gap: 8px; }
+.user-reports .users-panel h3 {
+    margin: 0 0 16px 0;
+    color: var(--text-white, #fff);
+    font-size: var(--font-size-base, 14px);
+    font-weight: var(--font-weight-bold, 700);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.user-reports .users-panel h3 i {
+    color: var(--primary, #6B46C1);
+}
+.user-reports .user-search {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F);
+    color: var(--text-white, #fff);
+    border-radius: var(--radius-md, 6px);
+    margin-bottom: 12px;
+    font-size: var(--font-size-base, 14px);
+}
+.user-reports .user-search:focus {
+    outline: none;
+    border-color: var(--primary, #6B46C1);
+}
+.user-reports .users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
 .user-reports .user-card {
-    padding: 14px; background: #020305; border: 1px solid #334155; border-radius: 8px;
-    text-decoration: none; color: #e2e8f0; transition: all 0.2s; display: block;
+    padding: 14px;
+    background: var(--bg-main, #0A0A0F);
+    border: 1px solid var(--border, #2D2D3F);
+    border-radius: var(--radius-lg, 8px);
+    text-decoration: none;
+    color: var(--text-white, #fff);
+    transition: all var(--transition-normal, 0.2s ease);
+    display: block;
 }
-.user-reports .user-card:hover, .user-reports .user-card.active {
-    background: var(--primary, #7000a4); border-color: var(--primary, #7000a4); color: white;
+.user-reports .user-card:hover,
+.user-reports .user-card.active {
+    background: var(--primary, #6B46C1);
+    border-color: var(--primary, #6B46C1);
+    color: #fff;
 }
-.user-reports .user-card .user-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-.user-reports .user-card .user-meta { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.8; }
+.user-reports .user-card .user-name {
+    font-weight: var(--font-weight-semibold, 600);
+    font-size: var(--font-size-base, 14px);
+    margin-bottom: 4px;
+}
+.user-reports .user-card .user-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-size-sm, 12px);
+    opacity: 0.8;
+}
 .user-reports .tab-bar {
-    display: flex; gap: 4px; margin-bottom: 20px; background: #020305; border-radius: 8px; padding: 4px; border: 1px solid #1e293b;
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--bg-main, #0A0A0F);
+    border-radius: var(--radius-lg, 8px);
+    padding: 4px;
+    border: 1px solid var(--border, #2D2D3F);
 }
 .user-reports .tab-btn {
-    padding: 10px 18px; background: transparent; border: none; color: #94a3b8; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;
+    padding: 10px 18px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #A8A8B8);
+    border-radius: var(--radius-md, 6px);
+    cursor: pointer;
+    font-weight: var(--font-weight-semibold, 600);
+    font-size: var(--font-size-base, 14px);
+    transition: all var(--transition-normal, 0.2s ease);
 }
-.user-reports .tab-btn.active, .user-reports .tab-btn:hover { background: var(--primary, #7000a4); color: #fff; }
+.user-reports .tab-btn.active,
+.user-reports .tab-btn:hover {
+    background: var(--primary, #6B46C1);
+    color: #fff;
+}
 .user-reports .detail-header {
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #1e293b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border, #2D2D3F);
 }
-.user-reports .detail-header h3 { margin: 0; color: #e2e8f0; }
-.user-reports .detail-header p { margin: 4px 0 0; color: #64748b; font-size: 13px; }
+.user-reports .detail-header h3 {
+    margin: 0;
+    color: var(--text-white, #fff);
+}
+.user-reports .detail-header p {
+    margin: 4px 0 0;
+    color: var(--text-muted, #6B6B7B);
+    font-size: var(--font-size-base, 14px);
+}
 .user-reports .summary-cards {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
 }
 .user-reports .summary-card {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 16px; border-radius: 8px; text-align: center;
+    background: var(--bg-card, #16161F);
+    border: 1px solid var(--border, #2D2D3F);
+    padding: 16px;
+    border-radius: var(--radius-lg, 8px);
+    text-align: center;
 }
-.user-reports .summary-card .value { font-size: 28px; font-weight: 900; color: #fff; }
-.user-reports .summary-card .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; margin-top: 4px; }
-.user-reports .data-table { width: 100%; border-collapse: collapse; }
+.user-reports .summary-card .value {
+    font-size: var(--font-size-3xl, 28px);
+    font-weight: var(--font-weight-black, 900);
+    color: var(--text-white, #fff);
+}
+.user-reports .summary-card .label {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-secondary, #A8A8B8);
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+.user-reports .data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
 .user-reports .data-table th {
-    padding: 10px 12px; background: #020305; color: #94a3b8; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 12px;
+    background: var(--bg-main, #0A0A0F);
+    color: var(--text-secondary, #A8A8B8);
+    text-align: left;
+    font-size: var(--font-size-xs, 11px);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: var(--font-weight-semibold, 600);
 }
-.user-reports .data-table td { padding: 10px 12px; border-bottom: 1px solid #1e293b; color: #e2e8f0; font-size: 13px; }
-.user-reports .data-table tr:hover td { background: rgba(112, 0, 164, 0.05); }
+.user-reports .data-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border, #2D2D3F);
+    color: var(--text-white, #fff);
+    font-size: var(--font-size-base, 14px);
+}
+.user-reports .data-table tr:hover td {
+    background: rgba(107, 70, 193, 0.05);
+}
 .user-reports .badge {
-    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: var(--font-size-xs, 11px);
+    font-weight: var(--font-weight-semibold, 600);
+    display: inline-block;
 }
-.user-reports .badge-paid { background: #10b981; color: #fff; }
-.user-reports .badge-pending { background: #f59e0b; color: #000; }
-.user-reports .badge-cancelled { background: #ef4444; color: #fff; }
-.user-reports .badge-confirmed { background: #3b82f6; color: #fff; }
-.user-reports .badge-active { background: #10b981; color: #fff; }
-.user-reports .badge-completed { background: #7000a4; color: #fff; }
-.user-reports .badge-abandoned { background: #6b7280; color: #fff; }
+.user-reports .badge-paid { background: var(--success, #10B981); color: #fff; }
+.user-reports .badge-pending { background: var(--warning, #F59E0B); color: #000; }
+.user-reports .badge-cancelled { background: var(--error, #EF4444); color: #fff; }
+.user-reports .badge-confirmed { background: var(--info, #3B82F6); color: #fff; }
+.user-reports .badge-active { background: var(--success, #10B981); color: #fff; }
+.user-reports .badge-completed { background: var(--primary, #6B46C1); color: #fff; }
+.user-reports .badge-abandoned { background: var(--text-muted, #6B6B7B); color: #fff; }
 .user-reports .empty-state {
-    text-align: center; padding: 60px 20px; color: #64748b;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted, #6B6B7B);
 }
-.user-reports .empty-state i { font-size: 48px; margin-bottom: 16px; display: block; color: #334155; }
+.user-reports .empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+    color: var(--border, #2D2D3F);
+}
 .user-reports .btn-export {
-    padding: 8px 16px; background: #334155; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;
+    padding: 8px 16px;
+    background: var(--border, #2D2D3F);
+    color: var(--text-white, #fff);
+    border: none;
+    border-radius: var(--radius-md, 6px);
+    cursor: pointer;
+    font-size: var(--font-size-sm, 12px);
+    font-weight: var(--font-weight-semibold, 600);
+    transition: all var(--transition-normal, 0.2s ease);
 }
-.user-reports .btn-export:hover { background: #475569; }
-.user-reports .tab-content { display: none; }
-.user-reports .tab-content.active { display: block; }
+.user-reports .btn-export:hover {
+    background: var(--primary, #6B46C1);
+}
+.user-reports .tab-content {
+    display: none;
+}
+.user-reports .tab-content.active {
+    display: block;
+}
 </style>
 
 <div class="user-reports">
     <div class="page-header">
-        <h2><i class="fas fa-users-gear"></i> User Reports</h2>
+        <h1 class="page-title"><i class="fas fa-users-gear"></i> User Reports</h1>
         <div>
             <a href="process_users_email_export.php" class="btn-export"><i class="fas fa-envelope"></i> Export Emails</a>
             <?php if ($selected_user_id && $selected_user): ?>
@@ -207,22 +403,27 @@ $csrf_token = generateCsrfToken();
         </div>
     </div>
 
-    <form method="GET" class="filter-bar" id="filterForm">
-        <input type="hidden" name="page" value="reports_user">
-        <?php if ($selected_user_id): ?>
-        <input type="hidden" name="user_id" value="<?php echo $selected_user_id; ?>">
-        <?php endif; ?>
-        <input type="hidden" name="tab" value="<?php echo htmlspecialchars($report_tab); ?>">
-        <div>
-            <label>From</label><br>
-            <input type="date" name="date_from" value="<?php echo htmlspecialchars($date_from); ?>">
+    <form method="GET" class="filter-box" id="filterForm">
+        <div class="filter-box-header">
+            <i class="fas fa-filter"></i> Filter Date Range
         </div>
-        <div>
-            <label>To</label><br>
-            <input type="date" name="date_to" value="<?php echo htmlspecialchars($date_to); ?>">
-        </div>
-        <div style="align-self: flex-end;">
-            <button type="submit" class="btn-filter"><i class="fas fa-filter"></i> Apply Filter</button>
+        <div class="filter-box-content">
+            <input type="hidden" name="page" value="reports_user">
+            <?php if ($selected_user_id): ?>
+            <input type="hidden" name="user_id" value="<?php echo $selected_user_id; ?>">
+            <?php endif; ?>
+            <input type="hidden" name="tab" value="<?php echo htmlspecialchars($report_tab); ?>">
+            <div class="filter-field">
+                <label>From</label>
+                <input type="date" name="date_from" value="<?php echo htmlspecialchars($date_from); ?>">
+            </div>
+            <div class="filter-field">
+                <label>To</label>
+                <input type="date" name="date_to" value="<?php echo htmlspecialchars($date_to); ?>">
+            </div>
+            <div class="filter-field filter-actions">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Apply Filter</button>
+            </div>
         </div>
     </form>
 
@@ -487,7 +688,7 @@ $csrf_token = generateCsrfToken();
                                 <td>
                                     <strong><?php echo htmlspecialchars($goal['goal_title']); ?></strong>
                                     <?php if ($goal['goal_description']): ?>
-                                    <br><small style="color: #64748b;"><?php echo htmlspecialchars(substr($goal['goal_description'], 0, 80)); ?></small>
+                                    <br><small style="color: var(--text-muted, #6B6B7B);"><?php echo htmlspecialchars(substr($goal['goal_description'], 0, 80)); ?></small>
                                     <?php endif; ?>
                                 </td>
                                 <td><?php echo $goal['target_date'] ? date('M j, Y', strtotime($goal['target_date'])) : 'N/A'; ?></td>
@@ -497,8 +698,8 @@ $csrf_token = generateCsrfToken();
                                     $current = floatval($goal['current_value'] ?? 0);
                                     $pct = $target > 0 ? min(100, round(($current / $target) * 100)) : 0;
                                     ?>
-                                    <div style="background: #1e293b; border-radius: 4px; height: 8px; width: 100px; display: inline-block; vertical-align: middle;">
-                                        <div style="background: var(--primary, #7000a4); border-radius: 4px; height: 100%; width: <?php echo $pct; ?>%;"></div>
+                                    <div style="background: var(--border, #2D2D3F); border-radius: 4px; height: 8px; width: 100px; display: inline-block; vertical-align: middle;">
+                                        <div style="background: var(--primary, #6B46C1); border-radius: 4px; height: 100%; width: <?php echo $pct; ?>%;"></div>
                                     </div>
                                     <span style="font-size: 12px; margin-left: 6px;"><?php echo $pct; ?>%</span>
                                 </td>
@@ -521,7 +722,7 @@ $csrf_token = generateCsrfToken();
                 <div class="empty-state">
                     <i class="fas fa-users-gear"></i>
                     <p>Select a user from the list to view their detailed reports</p>
-                    <p style="font-size: 12px; margin-top: 8px;">View session registrations, stats, evaluations, packages and goals</p>
+                    <p style="font-size: var(--font-size-sm, 12px); margin-top: 8px;">View session registrations, stats, evaluations, packages and goals</p>
                 </div>
             <?php endif; ?>
         </div>
