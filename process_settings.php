@@ -19,7 +19,7 @@ $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
 // Determine if we should return JSON or redirect
-$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings'];
+$json_actions = ['test_nextcloud', 'test_smtp', 'test_github', 'check_updates', 'apply_updates', 'test_nextcloud_backup', 'sync_to_backup', 'check_stripe_updates', 'update_stripe_library', 'test_docuseal', 'test_stallion', 'test_google_maps', 'create_restriction', 'remove_restriction', 'add_blocklist_entry', 'remove_blocklist_entry', 'add_pos_whitelist_entry', 'remove_pos_whitelist_entry', 'toggle_pos_whitelist_entry', 'get_ndi_camera', 'update_ndi_camera', 'delete_ndi_camera', 'toggle_ndi_camera', 'get_cluster_status', 'test_cluster_node', 'add_cluster_node', 'remove_cluster_node', 'save_cluster_settings', 'test_paperless'];
 $is_json = in_array($action, $json_actions);
 
 if ($is_json) {
@@ -289,6 +289,84 @@ try {
             
             $result = testNextcloudConnection($settings, 'primary');
             echo json_encode($result);
+            exit;
+            
+        case 'update_paperless':
+            $paperless_url = trim($_POST['paperless_url'] ?? '');
+            $paperless_api_token = trim($_POST['paperless_api_token'] ?? '');
+            $paperless_ocr_enabled = isset($_POST['paperless_ocr_enabled']) ? '1' : '0';
+            $paperless_store_documents = isset($_POST['paperless_store_documents']) ? '1' : '0';
+            $paperless_correspondent = trim($_POST['paperless_correspondent'] ?? '');
+            $paperless_document_type = trim($_POST['paperless_document_type'] ?? '');
+            
+            updateSetting($pdo, 'paperless_url', $paperless_url);
+            if (!empty($paperless_api_token)) {
+                $encrypted_token = encryptPassword($paperless_api_token);
+                updateSetting($pdo, 'paperless_api_token', $encrypted_token);
+            }
+            updateSetting($pdo, 'paperless_ocr_enabled', $paperless_ocr_enabled);
+            updateSetting($pdo, 'paperless_store_documents', $paperless_store_documents);
+            updateSetting($pdo, 'paperless_correspondent', $paperless_correspondent);
+            updateSetting($pdo, 'paperless_document_type', $paperless_document_type);
+            
+            Auditor::log($pdo, $user_id, 'update', 'system_settings', null, [
+                'action' => 'update_paperless',
+                'settings' => ['paperless_url' => $paperless_url, 'paperless_ocr_enabled' => $paperless_ocr_enabled, 'paperless_store_documents' => $paperless_store_documents]
+            ]);
+            
+            header('Location: dashboard.php?page=system_tools&tab=paperless&success=1');
+            exit;
+            
+        case 'test_paperless':
+            $paperless_url = trim($_POST['paperless_url'] ?? '');
+            $paperless_api_token = trim($_POST['paperless_api_token'] ?? '');
+            
+            if (empty($paperless_url)) {
+                echo json_encode(['success' => false, 'message' => 'Paperless-NGX URL is required']);
+                exit;
+            }
+            
+            // If no token provided, use stored one
+            if (empty($paperless_api_token)) {
+                $stored_token_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'paperless_api_token'");
+                $stored_token_stmt->execute();
+                $encrypted_token = $stored_token_stmt->fetchColumn();
+                if (!empty($encrypted_token)) {
+                    $paperless_api_token = decryptPassword($encrypted_token);
+                }
+            }
+            
+            if (empty($paperless_api_token)) {
+                echo json_encode(['success' => false, 'message' => 'API token is required']);
+                exit;
+            }
+            
+            // Test connection by calling the Paperless-NGX API
+            $test_url = rtrim($paperless_url, '/') . '/api/';
+            $ch = curl_init($test_url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_HTTPHEADER => [
+                    'Authorization: Token ' . $paperless_api_token,
+                    'Accept: application/json'
+                ],
+                CURLOPT_SSL_VERIFYPEER => true
+            ]);
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
+            
+            if (!empty($curl_error)) {
+                echo json_encode(['success' => false, 'message' => 'Connection error: ' . $curl_error]);
+            } elseif ($http_code === 200) {
+                echo json_encode(['success' => true, 'message' => 'Connected to Paperless-NGX at ' . $paperless_url]);
+            } elseif ($http_code === 401 || $http_code === 403) {
+                echo json_encode(['success' => false, 'message' => 'Authentication failed - check your API token']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Unexpected response (HTTP ' . $http_code . ')']);
+            }
             exit;
             
         case 'update_payments':

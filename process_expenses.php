@@ -85,6 +85,7 @@ function uploadReceiptToNextcloud($pdo, $local_file_path, $expense_date, $vendor
 
 /**
  * Perform OCR on receipt image
+ * Uses Paperless-NGX API when configured, falls back to Tesseract
  */
 function performReceiptOCR($file_path) {
     $ocr_data = [
@@ -97,12 +98,19 @@ function performReceiptOCR($file_path) {
         'raw_text' => ''
     ];
     
+    // Try Paperless-NGX OCR first if configured
+    $paperless_result = performPaperlessOCR($file_path);
+    if ($paperless_result !== null) {
+        return $paperless_result;
+    }
+    
+    // Fall back to Tesseract
     // Check if Tesseract is installed using safe command execution
     $tesseract_path = '/usr/bin/tesseract';
     $tesseract_check = file_exists($tesseract_path) && is_executable($tesseract_path);
     
     if (!$tesseract_check) {
-        $ocr_data['error'] = 'OCR not available - Tesseract not installed';
+        $ocr_data['error'] = 'OCR not available - configure Paperless-NGX in System Tools or install Tesseract';
         return $ocr_data;
     }
     
@@ -129,6 +137,194 @@ function performReceiptOCR($file_path) {
         return $ocr_data;
     }
     
+    return parseOCRText($ocr_text, $ocr_data);
+}
+
+/**
+ * Perform OCR via Paperless-NGX API
+ * Returns parsed OCR data array, or null if Paperless-NGX is not configured/available
+ */
+function performPaperlessOCR($file_path) {
+    global $pdo;
+    
+    // Check if Paperless-NGX is configured and enabled for OCR
+    try {
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('paperless_url', 'paperless_api_token', 'paperless_ocr_enabled')");
+        $stmt->execute();
+        $paperless_settings = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $paperless_settings[$row['setting_key']] = $row['setting_value'];
+        }
+    } catch (Exception $e) {
+        return null;
+    }
+    
+    $paperless_url = $paperless_settings['paperless_url'] ?? '';
+    $encrypted_token = $paperless_settings['paperless_api_token'] ?? '';
+    $ocr_enabled = $paperless_settings['paperless_ocr_enabled'] ?? '0';
+    
+    if (empty($paperless_url) || empty($encrypted_token) || $ocr_enabled !== '1') {
+        return null;
+    }
+    
+    // Decrypt the API token
+    if (function_exists('decryptPassword')) {
+        $api_token = decryptPassword($encrypted_token);
+    } else {
+        return null;
+    }
+    
+    if (empty($api_token)) {
+        return null;
+    }
+    
+    $ocr_data = [
+        'vendor' => '',
+        'date' => date('Y-m-d'),
+        'subtotal' => 0.00,
+        'tax' => 0.00,
+        'total' => 0.00,
+        'items' => [],
+        'raw_text' => ''
+    ];
+    
+    // Upload document to Paperless-NGX for OCR processing
+    $api_url = rtrim($paperless_url, '/') . '/api/documents/post_document/';
+    
+    $file_mime = mime_content_type($file_path) ?: 'application/octet-stream';
+    $file_name = basename($file_path);
+    
+    $ch = curl_init($api_url);
+    $post_fields = [
+        'document' => new CURLFile($file_path, $file_mime, $file_name)
+    ];
+    
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $post_fields,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    curl_close($ch);
+    
+    if (!empty($curl_error) || $http_code < 200 || $http_code >= 300) {
+        error_log('Paperless-NGX upload failed: HTTP ' . $http_code . ' - ' . ($curl_error ?: $response));
+        return null; // Fall back to Tesseract
+    }
+    
+    // Paperless-NGX returns a task ID — we need to poll for the result
+    $task_id = trim($response, '"');
+    // Validate task ID is a UUID or alphanumeric string
+    if (empty($task_id) || !preg_match('/^[a-zA-Z0-9\-]+$/', $task_id)) {
+        error_log('Paperless-NGX: Invalid or empty task ID returned');
+        return null;
+    }
+    
+    // Poll for task completion (up to 30 seconds)
+    $task_url = rtrim($paperless_url, '/') . '/api/tasks/?task_id=' . urlencode($task_id);
+    $max_attempts = 15;
+    $document_id = null;
+    
+    for ($i = 0; $i < $max_attempts; $i++) {
+        sleep(2);
+        
+        $ch = curl_init($task_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Token ' . $api_token,
+                'Accept: application/json'
+            ],
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        $task_response = curl_exec($ch);
+        curl_close($ch);
+        
+        $task_data = json_decode($task_response, true);
+        if (!is_array($task_data) || empty($task_data)) {
+            continue;
+        }
+        
+        // Task data is returned as an array of tasks
+        $task = is_array($task_data) && isset($task_data[0]) ? $task_data[0] : $task_data;
+        
+        if (isset($task['status']) && $task['status'] === 'SUCCESS') {
+            $document_id = $task['related_document'] ?? ($task['result'] ?? null);
+            break;
+        } elseif (isset($task['status']) && $task['status'] === 'FAILURE') {
+            error_log('Paperless-NGX OCR task failed: ' . ($task['result'] ?? 'unknown error'));
+            return null;
+        }
+    }
+    
+    if (empty($document_id)) {
+        error_log('Paperless-NGX: Document processing timed out or failed');
+        return null;
+    }
+    
+    // Fetch the document content (OCR text)
+    $doc_url = rtrim($paperless_url, '/') . '/api/documents/' . intval($document_id) . '/';
+    $ch = curl_init($doc_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $doc_response = curl_exec($ch);
+    curl_close($ch);
+    
+    $doc_data = json_decode($doc_response, true);
+    $ocr_text = $doc_data['content'] ?? '';
+    
+    if (empty($ocr_text)) {
+        $ocr_data['error'] = 'Paperless-NGX OCR returned no text';
+        return $ocr_data;
+    }
+    
+    $ocr_data = parseOCRText($ocr_text, $ocr_data);
+    
+    // Tag the OCR-processed document as a Receipt in Paperless-NGX
+    $tag_id = getPaperlessTagId($paperless_url, $api_token, 'Receipt');
+    if ($tag_id && !empty($document_id)) {
+        $patch_url = rtrim($paperless_url, '/') . '/api/documents/' . intval($document_id) . '/';
+        $ch = curl_init($patch_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => 'PATCH',
+            CURLOPT_POSTFIELDS => json_encode(['tags' => [$tag_id]]),
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Token ' . $api_token,
+                'Content-Type: application/json',
+                'Accept: application/json'
+            ],
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+    }
+    
+    return $ocr_data;
+}
+
+/**
+ * Parse OCR text into structured receipt data
+ */
+function parseOCRText($ocr_text, $ocr_data) {
     $ocr_data['raw_text'] = $ocr_text;
     
     // Parse vendor (first non-empty line that looks like a business name)
@@ -308,6 +504,10 @@ try {
                         $nc_result['cloud_path'], $expense_id
                     ]);
                 }
+                
+                // Also upload to Paperless-NGX with Receipt tag
+                $receipt_title = $expense_date . '_' . $vendor_name . '_' . $expense_id;
+                uploadToPaperless($pdo, $receipt_url, 'Receipt', $receipt_title);
             }
             
             if ($isAjax) {
@@ -390,6 +590,10 @@ try {
                                 $nc_result['cloud_path'], $expense_id
                             ]);
                         }
+                        
+                        // Also upload to Paperless-NGX with Receipt tag
+                        $receipt_title = $expense_date . '_' . $vendor_name . '_' . $expense_id;
+                        uploadToPaperless($pdo, $receipt_url, 'Receipt', $receipt_title);
                     }
                 }
             } else {
@@ -532,29 +736,79 @@ try {
             $mime_type = finfo_file($finfo, $_FILES['receipt_file']['tmp_name']);
             finfo_close($finfo);
             
-            $allowed_mimes = ['image/jpeg', 'image/png'];
+            $allowed_mimes = ['image/jpeg', 'image/png', 'application/pdf'];
             if (!in_array($mime_type, $allowed_mimes)) {
-                echo json_encode(['success' => false, 'message' => 'Only JPG and PNG images can be scanned']);
+                echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, and PDF files can be scanned']);
                 exit();
             }
             
             // Save temporarily with correct extension based on MIME type
-            $ext = ($mime_type === 'image/png') ? '.png' : '.jpg';
+            $ext = ($mime_type === 'image/png') ? '.png' : (($mime_type === 'application/pdf') ? '.pdf' : '.jpg');
             $temp_file = sys_get_temp_dir() . '/' . uniqid('ocr_') . $ext;
             move_uploaded_file($_FILES['receipt_file']['tmp_name'], $temp_file);
             
+            // If PDF, convert first page to image for Tesseract
+            $pdf_image_file = null;
+            if ($mime_type === 'application/pdf') {
+                $pdf_image_file = sys_get_temp_dir() . '/' . uniqid('ocr_pdf_') . '.png';
+                if (file_exists('/usr/bin/pdftoppm') && is_executable('/usr/bin/pdftoppm')) {
+                    $convert_cmd = sprintf(
+                        '%s -png -f 1 -l 1 -r 300 -singlefile %s %s 2>&1',
+                        escapeshellcmd('/usr/bin/pdftoppm'),
+                        escapeshellarg($temp_file),
+                        escapeshellarg(substr($pdf_image_file, 0, -4))
+                    );
+                    $convert_output = shell_exec($convert_cmd);
+                    if (!file_exists($pdf_image_file) && !empty($convert_output)) {
+                        error_log('PDF conversion (pdftoppm) failed: ' . $convert_output);
+                    }
+                } elseif (file_exists('/usr/bin/convert') && is_executable('/usr/bin/convert')) {
+                    $convert_cmd = sprintf(
+                        '%s -density 300 %s[0] %s 2>&1',
+                        escapeshellcmd('/usr/bin/convert'),
+                        escapeshellarg($temp_file),
+                        escapeshellarg($pdf_image_file)
+                    );
+                    $convert_output = shell_exec($convert_cmd);
+                    if (!file_exists($pdf_image_file) && !empty($convert_output)) {
+                        error_log('PDF conversion (ImageMagick) failed: ' . $convert_output);
+                    }
+                }
+                
+                if (file_exists($pdf_image_file)) {
+                    $ocr_input = $pdf_image_file;
+                } else {
+                    if (file_exists($temp_file)) { unlink($temp_file); }
+                    if ($pdf_image_file && file_exists($pdf_image_file)) { unlink($pdf_image_file); }
+                    echo json_encode(['success' => false, 'message' => 'PDF conversion failed - pdftoppm or ImageMagick required for PDF OCR']);
+                    exit();
+                }
+            } else {
+                $ocr_input = $temp_file;
+            }
+            
             // Perform OCR
-            $ocr_data = performReceiptOCR($temp_file);
+            $ocr_data = performReceiptOCR($ocr_input);
             
             // Clean up
             if (file_exists($temp_file)) {
                 unlink($temp_file);
             }
+            if ($pdf_image_file && file_exists($pdf_image_file)) {
+                unlink($pdf_image_file);
+            }
             
-            echo json_encode([
-                'success' => true,
-                'ocr_data' => $ocr_data
-            ]);
+            if (!empty($ocr_data['error'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $ocr_data['error']
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => true,
+                    'ocr_data' => $ocr_data
+                ]);
+            }
             exit();
         
         // =====================================================

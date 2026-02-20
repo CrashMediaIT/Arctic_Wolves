@@ -959,7 +959,7 @@
         const modal = document.getElementById(modalId) || document.querySelector(`[data-modal-id="${modalId}"]`);
         if (!modal) return;
         
-        modal.style.display = 'none';
+        modal.style.display = '';
         modal.classList.remove('active');
         document.body.style.overflow = '';
         

@@ -85,7 +85,7 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
                     $safe_filename = preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $original_name);
                     $remote_path = $folderPath . '/' . $safe_filename;
                     
-                    // Upload file
+                    // Upload file to Nextcloud
                     $uploaded_path = uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
                     $uploaded_paths[] = [
                         'original_name' => $original_name,
@@ -93,6 +93,10 @@ function uploadOnboardingDocuments($pdo, $settings, $staffName, $year, $files) {
                         'file_size' => strlen($file_content),
                         'content_type' => $content_type
                     ];
+                    
+                    // Also upload to Paperless-NGX with HR tag
+                    $title = 'HR_' . $safeStaffName . '_' . $year . '_' . $safe_filename;
+                    uploadToPaperless($pdo, $tmp_path, 'HR', $title);
                 }
             }
         }

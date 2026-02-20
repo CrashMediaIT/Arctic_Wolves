@@ -180,9 +180,16 @@ function uploadPayrollDocuments($pdo, $settings, $staffName, $year, $documentTyp
         // Create folder structure: /HR/Payroll/YYYY/StaffName
         $folderPath = ensureNextcloudPath($connection, $payrollDir, [$year, $safeStaffName]);
         
-        // Upload file
+        // Upload file to Nextcloud
         $remotePath = $folderPath . '/' . $filename;
         uploadToNextcloud($connection, $remotePath, $content, 'application/pdf');
+        
+        // Also upload to Paperless-NGX with HR tag
+        $tmpFile = sys_get_temp_dir() . '/' . uniqid('payroll_') . '.pdf';
+        file_put_contents($tmpFile, $content);
+        $title = 'HR_Payroll_' . $safeStaffName . '_' . $year . '_' . $filename;
+        uploadToPaperless($pdo, $tmpFile, 'HR', $title);
+        if (file_exists($tmpFile)) { unlink($tmpFile); }
         
         return [
             'success' => true,
