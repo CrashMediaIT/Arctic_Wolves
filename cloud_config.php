@@ -724,6 +724,7 @@ function getPaperlessTagId($base_url, $api_token, $tag_name) {
     $ch = curl_init($search_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT => 10,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
@@ -747,6 +748,7 @@ function getPaperlessTagId($base_url, $api_token, $tag_name) {
     $ch = curl_init($create_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode(['name' => $tag_name]),
         CURLOPT_TIMEOUT => 10,
@@ -817,6 +819,7 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
     $ch = curl_init($api_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $post_fields,
         CURLOPT_TIMEOUT => 60,

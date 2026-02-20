@@ -346,6 +346,7 @@ try {
             $ch = curl_init($test_url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_TIMEOUT => 15,
                 CURLOPT_HTTPHEADER => [
                     'Authorization: Token ' . $paperless_api_token,

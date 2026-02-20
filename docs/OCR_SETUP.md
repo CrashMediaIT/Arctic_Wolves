@@ -70,6 +70,7 @@ The OCR (Optical Character Recognition) feature allows automatic extraction of v
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | "OCR not available" | Paperless-NGX not configured | Configure Paperless-NGX in Settings > System Tools |
+| Test connection returns HTTP 302 | Paperless-NGX is redirecting API requests | Ensure the URL uses the correct protocol (http/https) and includes the port (e.g. `http://paperless:8000`) |
 | "Paperless-NGX OCR returned no text" | Paperless couldn't extract text | Check image quality, check Paperless-NGX logs |
 | "Only JPG, PNG, and PDF files can be scanned" | Unsupported file format | Convert the file to JPG or PNG first |
 | Poor extraction accuracy | Low image resolution or blurry text | Use higher resolution (300+ DPI), ensure text is legible |

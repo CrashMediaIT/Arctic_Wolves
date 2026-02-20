@@ -196,6 +196,7 @@ function performPaperlessOCRCron($file_path, $pdo) {
     $ch = curl_init($api_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => ['document' => new CURLFile($file_path, $file_mime, $file_name)],
         CURLOPT_TIMEOUT => 60,
@@ -228,6 +229,7 @@ function performPaperlessOCRCron($file_path, $pdo) {
         $ch = curl_init($task_url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_TIMEOUT => 10,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Token ' . $api_token,
@@ -259,6 +261,7 @@ function performPaperlessOCRCron($file_path, $pdo) {
     $ch = curl_init($doc_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
@@ -286,6 +289,7 @@ function performPaperlessOCRCron($file_path, $pdo) {
         $ch = curl_init($del_url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_CUSTOMREQUEST => 'DELETE',
             CURLOPT_TIMEOUT => 10,
             CURLOPT_HTTPHEADER => ['Authorization: Token ' . $api_token],

@@ -166,6 +166,7 @@ function performPaperlessOCR($file_path) {
     
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $post_fields,
         CURLOPT_TIMEOUT => 60,
@@ -205,6 +206,7 @@ function performPaperlessOCR($file_path) {
         $ch = curl_init($task_url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_TIMEOUT => 10,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Token ' . $api_token,
@@ -242,6 +244,7 @@ function performPaperlessOCR($file_path) {
     $ch = curl_init($doc_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
@@ -269,6 +272,7 @@ function performPaperlessOCR($file_path) {
         $ch = curl_init($patch_url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_CUSTOMREQUEST => 'PATCH',
             CURLOPT_POSTFIELDS => json_encode(['tags' => [$tag_id]]),
             CURLOPT_TIMEOUT => 10,
