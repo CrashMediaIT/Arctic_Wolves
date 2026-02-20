@@ -708,11 +708,11 @@ td {
 }
 
 .schedule-row {
-    grid-template-columns: 130px 100px 100px 1fr auto;
+    grid-template-columns: 130px 100px 100px 1fr 1fr auto;
 }
 
 .program-date-row {
-    grid-template-columns: 130px 100px 100px 1fr 100px auto;
+    grid-template-columns: 130px 100px 100px 1fr 1fr 100px auto;
 }
 
 .addon-row {
@@ -874,13 +874,13 @@ function generateCampDays() {
     while (current <= end) {
         var dateStr = current.toISOString().split('T')[0];
         var dayName = current.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        addScheduleRow(dateStr, defaultStart, defaultEnd, 'Day ' + (dayIndex + 1) + ' - ' + dayName, '');
+        addScheduleRow(dateStr, defaultStart, defaultEnd, 'Day ' + (dayIndex + 1) + ' - ' + dayName, '', '');
         current.setDate(current.getDate() + 1);
         dayIndex++;
     }
 }
 
-function addScheduleRow(date, startTime, endTime, title, desc) {
+function addScheduleRow(date, startTime, endTime, title, desc, location) {
     var container = document.getElementById('campScheduleRows');
     var idx = container.children.length;
     var row = document.createElement('div');
@@ -889,12 +889,13 @@ function addScheduleRow(date, startTime, endTime, title, desc) {
         '<div><label>Start</label><input type="time" name="schedule_start_times[]" value="' + (startTime || '09:00') + '" required></div>' +
         '<div><label>End</label><input type="time" name="schedule_end_times[]" value="' + (endTime || '17:00') + '" required></div>' +
         '<div><label>Title</label><input type="text" name="schedule_titles[]" value="' + escapeHtml(title || '') + '" placeholder="Day title"></div>' +
+        '<div><label>Location</label><input type="text" name="schedule_locations[]" value="' + escapeHtml(location || '') + '" placeholder="Arena / Venue"></div>' +
         '<div><button type="button" class="btn-remove-row" onclick="this.closest(\'.schedule-row\').remove()"><i class="fas fa-trash"></i></button></div>';
     container.appendChild(row);
 }
 
 // Add program date row for multi-week
-function addProgramDate(date, startTime, endTime, title, indPrice) {
+function addProgramDate(date, startTime, endTime, title, indPrice, location) {
     var container = document.getElementById('programDateRows');
     var defaultStart = document.getElementById('mwStartTime').value || '09:00';
     var defaultEnd = document.getElementById('mwEndTime').value || '10:00';
@@ -904,6 +905,7 @@ function addProgramDate(date, startTime, endTime, title, indPrice) {
         '<div><label>Start</label><input type="time" name="program_start_times[]" value="' + (startTime || defaultStart) + '" required></div>' +
         '<div><label>End</label><input type="time" name="program_end_times[]" value="' + (endTime || defaultEnd) + '" required></div>' +
         '<div><label>Title</label><input type="text" name="program_titles[]" value="' + escapeHtml(title || '') + '" placeholder="Session title"></div>' +
+        '<div><label>Location</label><input type="text" name="program_locations[]" value="' + escapeHtml(location || '') + '" placeholder="Arena / Venue"></div>' +
         '<div><label>Indiv. Price</label><input type="number" name="program_individual_prices[]" step="0.01" min="0" value="' + (indPrice || '') + '" placeholder="$"></div>' +
         '<div><button type="button" class="btn-remove-row" onclick="this.closest(\'.program-date-row\').remove()"><i class="fas fa-trash"></i></button></div>';
     container.appendChild(row);
@@ -930,7 +932,7 @@ function loadCampSchedules(packageId) {
         .then(function(schedules) {
             document.getElementById('campScheduleRows').innerHTML = '';
             schedules.forEach(function(s) {
-                addScheduleRow(s.schedule_date, s.start_time, s.end_time, s.title || '', s.description || '');
+                addScheduleRow(s.schedule_date, s.start_time, s.end_time, s.title || '', s.description || '', s.location || '');
             });
         });
 }
@@ -942,7 +944,7 @@ function loadProgramDates(packageId) {
         .then(function(dates) {
             document.getElementById('programDateRows').innerHTML = '';
             dates.forEach(function(d) {
-                addProgramDate(d.session_date, d.start_time, d.end_time, d.title || '', d.individual_price || '');
+                addProgramDate(d.session_date, d.start_time, d.end_time, d.title || '', d.individual_price || '', d.location || '');
             });
         });
 }

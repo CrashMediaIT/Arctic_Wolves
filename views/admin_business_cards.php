@@ -101,6 +101,9 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
     <button class="page-tab" onclick="switchMarketingTab('business-partners')" id="tab-business-partners">
         <i class="fas fa-handshake"></i> Business Partners
     </button>
+    <button class="page-tab" onclick="switchMarketingTab('email-campaigns')" id="tab-email-campaigns">
+        <i class="fas fa-paper-plane"></i> Email Campaigns
+    </button>
 </div>
 
 <div class="page-tab-content">
@@ -607,6 +610,114 @@ if (isset($_GET['user_id']) && is_numeric($_GET['user_id'])) {
 <div class="business-partners-content marketing-section" id="section-business-partners" style="display: none;">
 <?php include __DIR__ . '/admin_business_partners.php'; ?>
 </div>
+
+<!-- Email Campaigns Section -->
+<div class="email-campaigns-content marketing-section" id="section-email-campaigns" style="display: none; flex-direction: column; gap: 20px;">
+    <?php
+    // Fetch active camp and multi-week packages for selection
+    $campPkgs = $pdo->query("
+        SELECT p.id, p.name, p.package_type, p.price, p.camp_start_date, p.camp_end_date, p.enable_child_checkin
+        FROM packages p 
+        WHERE p.is_active = 1 AND p.package_type IN ('camp', 'multi_week')
+        ORDER BY p.package_type, p.name
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+    
+    <div class="card" style="padding: 24px;">
+        <h3 style="color: #fff; margin: 0 0 8px;"><i class="fas fa-paper-plane"></i> Send Marketing Email</h3>
+        <p style="color: #64748b; font-size: 13px; margin: 0 0 20px;">Select camps or programs and send a promotional email to users</p>
+        
+        <form id="campaignForm" onsubmit="sendCampaign(event)">
+            <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
+            <input type="hidden" name="action" value="send_campaign">
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #94a3b8; font-weight: 600; font-size: 14px; margin-bottom: 8px;">
+                    Email Subject <span style="color: #ef4444;">*</span>
+                </label>
+                <input type="text" name="subject" required placeholder="e.g. Summer Hockey Camp Registration Now Open!" 
+                       style="width: 100%; padding: 10px; background: #020305; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 14px;">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #94a3b8; font-weight: 600; font-size: 14px; margin-bottom: 8px;">
+                    Custom Message (Optional)
+                </label>
+                <textarea name="custom_message" rows="3" placeholder="Add a personal message above the package details..."
+                          style="width: 100%; padding: 10px; background: #020305; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 14px; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #94a3b8; font-weight: 600; font-size: 14px; margin-bottom: 8px;">
+                    Select Camps & Programs <span style="color: #ef4444;">*</span>
+                </label>
+                <?php if (empty($campPkgs)): ?>
+                    <p style="color: #64748b; font-size: 13px;">No active camps or programs found. Create one in <a href="?page=admin_packages" style="color: var(--primary, #7000a4);">Package Management</a> first.</p>
+                <?php else: ?>
+                    <div style="display: grid; gap: 8px;">
+                        <?php foreach ($campPkgs as $cpkg): ?>
+                        <label style="display: flex; gap: 12px; padding: 12px; background: #06080b; border: 1px solid #1e293b; border-radius: 8px; cursor: pointer; transition: all 0.2s; align-items: center;"
+                               onmouseover="this.style.borderColor='var(--primary, #7000a4)'" onmouseout="this.style.borderColor='#1e293b'">
+                            <input type="checkbox" name="package_ids[]" value="<?php echo $cpkg['id']; ?>" style="width: 18px; height: 18px;">
+                            <div style="flex: 1;">
+                                <span style="color: #e2e8f0; font-weight: 600;"><?php echo htmlspecialchars($cpkg['name']); ?></span>
+                                <span style="display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #fff;
+                                             background: <?php echo $cpkg['package_type'] === 'camp' ? '#10b981' : '#f59e0b'; ?>;">
+                                    <?php echo $cpkg['package_type'] === 'camp' ? 'Camp' : 'Program'; ?>
+                                </span>
+                                <span style="color: #64748b; font-size: 13px; margin-left: 8px;">$<?php echo number_format($cpkg['price'], 2); ?></span>
+                                <?php if ($cpkg['camp_start_date']): ?>
+                                <span style="color: #64748b; font-size: 12px; margin-left: 8px;"><?php echo date('M j', strtotime($cpkg['camp_start_date'])); ?> - <?php echo date('M j', strtotime($cpkg['camp_end_date'])); ?></span>
+                                <?php endif; ?>
+                                <?php if ($cpkg['enable_child_checkin']): ?>
+                                <span style="color: #8B5CF6; font-size: 11px; margin-left: 8px;"><i class="fas fa-child"></i> Pickup</span>
+                                <?php endif; ?>
+                            </div>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; color: #94a3b8; font-weight: 600; font-size: 14px; margin-bottom: 8px;">
+                        Send To
+                    </label>
+                    <select name="recipient_filter" style="width: 100%; padding: 10px; background: #020305; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 14px;">
+                        <option value="opted_in">Marketing Opted-In Users</option>
+                        <option value="parents">All Parents</option>
+                        <option value="athletes">All Athletes</option>
+                        <option value="all">All Users</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; color: #94a3b8; font-weight: 600; font-size: 14px; margin-bottom: 8px;">
+                        Options
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #06080b; border: 1px solid #1e293b; border-radius: 6px; cursor: pointer;">
+                        <input type="checkbox" name="include_child_pickup" value="1" style="width: 16px; height: 16px;">
+                        <span style="color: #e2e8f0; font-size: 14px;"><i class="fas fa-child" style="color: #8B5CF6;"></i> Include child pickup info</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="submit" id="sendCampaignBtn" style="padding: 12px 24px; background: var(--primary, #7000a4); color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s;"
+                        <?php echo empty($campPkgs) ? 'disabled style="opacity: 0.5;"' : ''; ?>>
+                    <i class="fas fa-paper-plane"></i> Send Campaign
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Campaign History -->
+    <div class="card" style="padding: 24px;">
+        <h3 style="color: #fff; margin: 0 0 16px;"><i class="fas fa-history"></i> Campaign History</h3>
+        <div id="campaignHistory" style="color: #64748b;">Loading...</div>
+    </div>
+</div>
+
 </div><!-- /.page-tab-content -->
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -1262,6 +1373,114 @@ function switchMarketingTab(tab) {
     if (tabBtn) {
         tabBtn.classList.add('active');
     }
+    
+    // Load campaign history when switching to email campaigns tab
+    if (tab === 'email-campaigns') {
+        loadCampaignHistory();
+    }
+}
+
+// =====================================================
+// Email Campaign Functions
+// =====================================================
+
+function sendCampaign(e) {
+    e.preventDefault();
+    
+    var form = document.getElementById('campaignForm');
+    var btn = document.getElementById('sendCampaignBtn');
+    var formData = new FormData(form);
+    
+    // Validate at least one package selected
+    var checked = form.querySelectorAll('input[name="package_ids[]"]:checked');
+    if (checked.length === 0) {
+        showNotification('Please select at least one camp or program', 'error');
+        return;
+    }
+    
+    if (!confirm('Send this campaign to the selected recipients?')) {
+        return;
+    }
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    btn.disabled = true;
+    
+    fetch('process_send_marketing_email.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Campaign';
+        btn.disabled = false;
+        
+        if (data.success) {
+            showNotification(data.message, 'success');
+            form.reset();
+            loadCampaignHistory();
+        } else {
+            showNotification('Error: ' + (data.message || 'Failed to send'), 'error');
+        }
+    })
+    .catch(function() {
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Campaign';
+        btn.disabled = false;
+        showNotification('An error occurred while sending', 'error');
+    });
+}
+
+function loadCampaignHistory() {
+    var container = document.getElementById('campaignHistory');
+    if (!container) return;
+    
+    container.innerHTML = '<p style="color: #64748b;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+    
+    fetch('process_send_marketing_email.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'action=get_campaigns&csrf_token=' + encodeURIComponent(document.querySelector('[name="csrf_token"]').value)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success && data.campaigns && data.campaigns.length > 0) {
+            var html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="border-bottom: 2px solid #1e293b;">';
+            html += '<th style="text-align: left; padding: 12px; color: #64748b; font-size: 12px; text-transform: uppercase;">Subject</th>';
+            html += '<th style="text-align: left; padding: 12px; color: #64748b; font-size: 12px; text-transform: uppercase;">Sent</th>';
+            html += '<th style="text-align: left; padding: 12px; color: #64748b; font-size: 12px; text-transform: uppercase;">Failed</th>';
+            html += '<th style="text-align: left; padding: 12px; color: #64748b; font-size: 12px; text-transform: uppercase;">Status</th>';
+            html += '<th style="text-align: left; padding: 12px; color: #64748b; font-size: 12px; text-transform: uppercase;">Date</th>';
+            html += '</tr></thead><tbody>';
+            
+            data.campaigns.forEach(function(c) {
+                var statusColor = c.status === 'sent' ? '#10b981' : (c.status === 'failed' ? '#ef4444' : '#f59e0b');
+                var date = c.sent_at ? new Date(c.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'N/A';
+                html += '<tr style="border-bottom: 1px solid #1e293b;">';
+                html += '<td style="padding: 12px; color: #e2e8f0; font-size: 14px;">' + escapeHtmlCampaign(c.subject) + '</td>';
+                html += '<td style="padding: 12px; color: #10b981; font-weight: 700;">' + (c.sent_count || 0) + '</td>';
+                html += '<td style="padding: 12px; color: #ef4444; font-weight: 700;">' + (c.failed_count || 0) + '</td>';
+                html += '<td style="padding: 12px;"><span style="background: ' + statusColor + '; color: #fff; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;">' + escapeHtmlCampaign(c.status) + '</span></td>';
+                html += '<td style="padding: 12px; color: #64748b; font-size: 13px;">' + date + '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p style="color: #64748b; text-align: center; padding: 40px;"><i class="fas fa-inbox" style="font-size: 32px; display: block; margin-bottom: 12px; opacity: 0.3;"></i>No campaigns sent yet</p>';
+        }
+    })
+    .catch(function() {
+        container.innerHTML = '<p style="color: #ef4444;">Failed to load campaign history</p>';
+    });
+}
+
+function escapeHtmlCampaign(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
 }
 
 // =====================================================

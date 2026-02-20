@@ -343,9 +343,13 @@
             });
         });
 
-        // Export buttons
+        // Export buttons (skip links that navigate to PHP endpoints)
         document.querySelectorAll('[data-action="export"], .btn-export, .export-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
+                // Allow normal navigation for links to server-side exports
+                if (this.tagName === 'A' && this.getAttribute('href') && this.getAttribute('data-action') !== 'export') {
+                    return;
+                }
                 e.preventDefault();
                 const format = this.getAttribute('data-format') || 'csv';
                 const tableName = this.getAttribute('data-table');

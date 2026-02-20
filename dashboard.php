@@ -280,6 +280,7 @@ $allowed_pages = [
     
     // Packages and Payments
     'packages'                => 'views/packages.php',
+    'programs_camps'          => 'views/programs_camps.php',
     'payment_history'         => 'views/payment_history.php',
     'session_payment'         => 'views/session_payment.php',
     'refunds'                 => 'views/refunds.php',
@@ -742,6 +743,9 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
             </a>
             <a href="?page=sessions" class="nav-link <?= in_array($page, ['sessions','upcoming_sessions','booking'])?'active':'' ?>">
                 <i class="fa-solid fa-calendar-check icon"></i> Sessions
+            </a>
+            <a href="?page=programs_camps" class="nav-link <?= $page=='programs_camps'?'active':'' ?>">
+                <i class="fa-solid fa-campground icon"></i> Programs & Camps
             </a>
             <a href="?page=video" class="nav-link <?= in_array($page, ['video','drill_review','coaches_reviews'])?'active':'' ?>">
                 <i class="fa-solid fa-video icon"></i> Video

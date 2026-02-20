@@ -49,3 +49,6 @@ Thumbs.db
 .env
 reports/
 _test_marketing.php
+test-results/
+playwright-report/
+node_modules/
