@@ -223,8 +223,9 @@ function performPaperlessOCR($file_path) {
     
     // Paperless-NGX returns a task ID — we need to poll for the result
     $task_id = trim($response, '"');
-    if (empty($task_id)) {
-        error_log('Paperless-NGX: No task ID returned');
+    // Validate task ID is a UUID or alphanumeric string
+    if (empty($task_id) || !preg_match('/^[a-zA-Z0-9\-]+$/', $task_id)) {
+        error_log('Paperless-NGX: Invalid or empty task ID returned');
         return null;
     }
     

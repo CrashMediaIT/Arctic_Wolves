@@ -193,6 +193,7 @@ function performPaperlessOCRCron($file_path, $pdo) {
     }
     $enc_key = file_get_contents($key_file);
     $decoded = base64_decode($encrypted_token);
+    // Minimum length: 16 bytes IV + at least 1 byte encrypted data
     if ($decoded === false || strlen($decoded) < 17) {
         return null;
     }
@@ -230,7 +231,8 @@ function performPaperlessOCRCron($file_path, $pdo) {
     }
     
     $task_id = trim($response, '"');
-    if (empty($task_id)) {
+    // Validate task ID is a UUID or alphanumeric string
+    if (empty($task_id) || !preg_match('/^[a-zA-Z0-9\-]+$/', $task_id)) {
         return null;
     }
     
