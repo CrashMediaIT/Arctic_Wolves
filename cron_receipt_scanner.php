@@ -130,14 +130,23 @@ try {
 }
 
 /**
- * Perform OCR on image file using Tesseract
+ * Perform OCR on image file
+ * Uses Paperless-NGX API when configured, falls back to Tesseract
  */
 function performOCR($file_path) {
-    // Check if Tesseract is installed
+    global $pdo;
+    
+    // Try Paperless-NGX first if configured
+    $paperless_text = performPaperlessOCRCron($file_path, $pdo);
+    if ($paperless_text !== null) {
+        return $paperless_text;
+    }
+    
+    // Fall back to Tesseract
     $tesseract_check = shell_exec('which tesseract 2>/dev/null');
     
     if (empty($tesseract_check)) {
-        return "OCR_NOT_AVAILABLE: Tesseract not installed";
+        return "OCR_NOT_AVAILABLE: Tesseract not installed - configure Paperless-NGX in System Tools or install Tesseract";
     }
     
     $output_file = sys_get_temp_dir() . '/' . uniqid('ocr_');
@@ -151,6 +160,157 @@ function performOCR($file_path) {
     }
     
     return $ocr_text ?: "OCR_FAILED";
+}
+
+/**
+ * Perform OCR via Paperless-NGX API (cron version)
+ * Returns OCR text string, or null if Paperless-NGX is not configured/available
+ */
+function performPaperlessOCRCron($file_path, $pdo) {
+    try {
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('paperless_url', 'paperless_api_token', 'paperless_ocr_enabled')");
+        $stmt->execute();
+        $settings = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $settings[$row['setting_key']] = $row['setting_value'];
+        }
+    } catch (Exception $e) {
+        return null;
+    }
+    
+    $paperless_url = $settings['paperless_url'] ?? '';
+    $encrypted_token = $settings['paperless_api_token'] ?? '';
+    $ocr_enabled = $settings['paperless_ocr_enabled'] ?? '0';
+    
+    if (empty($paperless_url) || empty($encrypted_token) || $ocr_enabled !== '1') {
+        return null;
+    }
+    
+    // Decrypt the API token - load encryption helpers
+    $key_file = __DIR__ . '/.nextcloud_key';
+    if (!file_exists($key_file)) {
+        return null;
+    }
+    $enc_key = file_get_contents($key_file);
+    $decoded = base64_decode($encrypted_token);
+    if ($decoded === false || strlen($decoded) < 17) {
+        return null;
+    }
+    $iv = substr($decoded, 0, 16);
+    $encrypted_data = substr($decoded, 16);
+    $api_token = openssl_decrypt($encrypted_data, 'AES-256-CBC', hex2bin($enc_key), OPENSSL_RAW_DATA, $iv);
+    
+    if (empty($api_token)) {
+        return null;
+    }
+    
+    // Upload document to Paperless-NGX
+    $api_url = rtrim($paperless_url, '/') . '/api/documents/post_document/';
+    $file_mime = mime_content_type($file_path) ?: 'application/octet-stream';
+    $file_name = basename($file_path);
+    
+    $ch = curl_init($api_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => ['document' => new CURLFile($file_path, $file_mime, $file_name)],
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code < 200 || $http_code >= 300) {
+        return null;
+    }
+    
+    $task_id = trim($response, '"');
+    if (empty($task_id)) {
+        return null;
+    }
+    
+    // Poll for completion
+    $task_url = rtrim($paperless_url, '/') . '/api/tasks/?task_id=' . urlencode($task_id);
+    $document_id = null;
+    
+    for ($i = 0; $i < 15; $i++) {
+        sleep(2);
+        $ch = curl_init($task_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Token ' . $api_token,
+                'Accept: application/json'
+            ],
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        $task_response = curl_exec($ch);
+        curl_close($ch);
+        
+        $task_data = json_decode($task_response, true);
+        if (!is_array($task_data) || empty($task_data)) continue;
+        
+        $task = isset($task_data[0]) ? $task_data[0] : $task_data;
+        if (isset($task['status']) && $task['status'] === 'SUCCESS') {
+            $document_id = $task['related_document'] ?? ($task['result'] ?? null);
+            break;
+        } elseif (isset($task['status']) && $task['status'] === 'FAILURE') {
+            return null;
+        }
+    }
+    
+    if (empty($document_id)) {
+        return null;
+    }
+    
+    // Fetch OCR text
+    $doc_url = rtrim($paperless_url, '/') . '/api/documents/' . intval($document_id) . '/';
+    $ch = curl_init($doc_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $doc_response = curl_exec($ch);
+    curl_close($ch);
+    
+    $doc_data = json_decode($doc_response, true);
+    $ocr_text = $doc_data['content'] ?? '';
+    
+    // Clean up - delete from Paperless if not storing
+    try {
+        $store_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'paperless_store_documents'");
+        $store_stmt->execute();
+        $store_docs = $store_stmt->fetchColumn();
+    } catch (Exception $e) {
+        $store_docs = '0';
+    }
+    
+    if ($store_docs !== '1' && !empty($document_id)) {
+        $del_url = rtrim($paperless_url, '/') . '/api/documents/' . intval($document_id) . '/';
+        $ch = curl_init($del_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => 'DELETE',
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => ['Authorization: Token ' . $api_token],
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+    }
+    
+    return !empty($ocr_text) ? $ocr_text : "OCR_FAILED";
 }
 
 /**

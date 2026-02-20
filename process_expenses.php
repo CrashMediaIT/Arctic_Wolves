@@ -85,6 +85,7 @@ function uploadReceiptToNextcloud($pdo, $local_file_path, $expense_date, $vendor
 
 /**
  * Perform OCR on receipt image
+ * Uses Paperless-NGX API when configured, falls back to Tesseract
  */
 function performReceiptOCR($file_path) {
     $ocr_data = [
@@ -97,12 +98,19 @@ function performReceiptOCR($file_path) {
         'raw_text' => ''
     ];
     
+    // Try Paperless-NGX OCR first if configured
+    $paperless_result = performPaperlessOCR($file_path);
+    if ($paperless_result !== null) {
+        return $paperless_result;
+    }
+    
+    // Fall back to Tesseract
     // Check if Tesseract is installed using safe command execution
     $tesseract_path = '/usr/bin/tesseract';
     $tesseract_check = file_exists($tesseract_path) && is_executable($tesseract_path);
     
     if (!$tesseract_check) {
-        $ocr_data['error'] = 'OCR not available - Tesseract not installed';
+        $ocr_data['error'] = 'OCR not available - configure Paperless-NGX in System Tools or install Tesseract';
         return $ocr_data;
     }
     
@@ -129,6 +137,197 @@ function performReceiptOCR($file_path) {
         return $ocr_data;
     }
     
+    return parseOCRText($ocr_text, $ocr_data);
+}
+
+/**
+ * Perform OCR via Paperless-NGX API
+ * Returns parsed OCR data array, or null if Paperless-NGX is not configured/available
+ */
+function performPaperlessOCR($file_path) {
+    global $pdo;
+    
+    // Check if Paperless-NGX is configured and enabled for OCR
+    try {
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('paperless_url', 'paperless_api_token', 'paperless_ocr_enabled')");
+        $stmt->execute();
+        $paperless_settings = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $paperless_settings[$row['setting_key']] = $row['setting_value'];
+        }
+    } catch (Exception $e) {
+        return null;
+    }
+    
+    $paperless_url = $paperless_settings['paperless_url'] ?? '';
+    $encrypted_token = $paperless_settings['paperless_api_token'] ?? '';
+    $ocr_enabled = $paperless_settings['paperless_ocr_enabled'] ?? '0';
+    
+    if (empty($paperless_url) || empty($encrypted_token) || $ocr_enabled !== '1') {
+        return null;
+    }
+    
+    // Decrypt the API token
+    if (function_exists('decryptPassword')) {
+        $api_token = decryptPassword($encrypted_token);
+    } else {
+        return null;
+    }
+    
+    if (empty($api_token)) {
+        return null;
+    }
+    
+    $ocr_data = [
+        'vendor' => '',
+        'date' => date('Y-m-d'),
+        'subtotal' => 0.00,
+        'tax' => 0.00,
+        'total' => 0.00,
+        'items' => [],
+        'raw_text' => ''
+    ];
+    
+    // Upload document to Paperless-NGX for OCR processing
+    $api_url = rtrim($paperless_url, '/') . '/api/documents/post_document/';
+    
+    $file_mime = mime_content_type($file_path) ?: 'application/octet-stream';
+    $file_name = basename($file_path);
+    
+    $ch = curl_init($api_url);
+    $post_fields = [
+        'document' => new CURLFile($file_path, $file_mime, $file_name)
+    ];
+    
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $post_fields,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    curl_close($ch);
+    
+    if (!empty($curl_error) || $http_code < 200 || $http_code >= 300) {
+        error_log('Paperless-NGX upload failed: HTTP ' . $http_code . ' - ' . ($curl_error ?: $response));
+        return null; // Fall back to Tesseract
+    }
+    
+    // Paperless-NGX returns a task ID — we need to poll for the result
+    $task_id = trim($response, '"');
+    if (empty($task_id)) {
+        error_log('Paperless-NGX: No task ID returned');
+        return null;
+    }
+    
+    // Poll for task completion (up to 30 seconds)
+    $task_url = rtrim($paperless_url, '/') . '/api/tasks/?task_id=' . urlencode($task_id);
+    $max_attempts = 15;
+    $document_id = null;
+    
+    for ($i = 0; $i < $max_attempts; $i++) {
+        sleep(2);
+        
+        $ch = curl_init($task_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Token ' . $api_token,
+                'Accept: application/json'
+            ],
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        $task_response = curl_exec($ch);
+        curl_close($ch);
+        
+        $task_data = json_decode($task_response, true);
+        if (!is_array($task_data) || empty($task_data)) {
+            continue;
+        }
+        
+        // Task data is returned as an array of tasks
+        $task = is_array($task_data) && isset($task_data[0]) ? $task_data[0] : $task_data;
+        
+        if (isset($task['status']) && $task['status'] === 'SUCCESS') {
+            $document_id = $task['related_document'] ?? ($task['result'] ?? null);
+            break;
+        } elseif (isset($task['status']) && $task['status'] === 'FAILURE') {
+            error_log('Paperless-NGX OCR task failed: ' . ($task['result'] ?? 'unknown error'));
+            return null;
+        }
+    }
+    
+    if (empty($document_id)) {
+        error_log('Paperless-NGX: Document processing timed out or failed');
+        return null;
+    }
+    
+    // Fetch the document content (OCR text)
+    $doc_url = rtrim($paperless_url, '/') . '/api/documents/' . intval($document_id) . '/';
+    $ch = curl_init($doc_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $doc_response = curl_exec($ch);
+    curl_close($ch);
+    
+    $doc_data = json_decode($doc_response, true);
+    $ocr_text = $doc_data['content'] ?? '';
+    
+    if (empty($ocr_text)) {
+        $ocr_data['error'] = 'Paperless-NGX OCR returned no text';
+        return $ocr_data;
+    }
+    
+    $ocr_data = parseOCRText($ocr_text, $ocr_data);
+    
+    // If user doesn't want to keep docs in Paperless, delete it
+    try {
+        $store_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'paperless_store_documents'");
+        $store_stmt->execute();
+        $store_docs = $store_stmt->fetchColumn();
+    } catch (Exception $e) {
+        $store_docs = '0';
+    }
+    
+    if ($store_docs !== '1') {
+        $delete_url = rtrim($paperless_url, '/') . '/api/documents/' . intval($document_id) . '/';
+        $ch = curl_init($delete_url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => 'DELETE',
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Token ' . $api_token
+            ],
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+    }
+    
+    return $ocr_data;
+}
+
+/**
+ * Parse OCR text into structured receipt data
+ */
+function parseOCRText($ocr_text, $ocr_data) {
     $ocr_data['raw_text'] = $ocr_text;
     
     // Parse vendor (first non-empty line that looks like a business name)

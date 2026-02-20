@@ -111,6 +111,9 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
     <a href="?page=system_tools&tab=stallion" class="page-tab <?php echo $activeTab === 'stallion' ? 'active' : ''; ?>">
         <i class="fas fa-shipping-fast"></i> Stallion Express
     </a>
+    <a href="?page=system_tools&tab=paperless" class="page-tab <?php echo $activeTab === 'paperless' ? 'active' : ''; ?>">
+        <i class="fas fa-file-invoice"></i> Paperless-NGX
+    </a>
     <a href="?page=system_tools&tab=database" class="page-tab <?php echo $activeTab === 'database' ? 'active' : ''; ?>">
         <i class="fas fa-database"></i> Database
     </a>
@@ -843,6 +846,118 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </button>
                         <button type="submit" class="btn btn-primary" data-action="save">
                             <i class="fas fa-save"></i> Save Backup Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paperless-NGX Tab -->
+    <div class="tab-content <?php echo $activeTab === 'paperless' ? 'active' : ''; ?>" id="paperless-tab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-file-invoice"></i> Paperless-NGX OCR Integration</h3>
+                <span class="badge <?php echo !empty($settings['paperless_url']) ? 'badge-primary' : 'badge-secondary'; ?>">
+                    <?php echo !empty($settings['paperless_url']) ? 'Configured' : 'Not Configured'; ?>
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Info Box: Paperless-NGX vs Nextcloud -->
+                <div class="info-box" style="margin-bottom: 24px;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <p><strong>Paperless-NGX vs Nextcloud for Document Storage:</strong></p>
+                        <ul style="margin: 8px 0; padding-left: 20px; color: var(--text-dim);">
+                            <li><strong>Paperless-NGX</strong> — Purpose-built document management with <em>built-in OCR</em>, automatic tagging, full-text search, and smart categorization. Ideal for receipt/invoice processing in Docker environments since OCR runs inside Paperless (no need to install Tesseract separately). Stores documents in its own database with metadata.</li>
+                            <li><strong>Nextcloud</strong> — General-purpose file sync &amp; share platform. Great for backups, videos, and file collaboration. Does not have built-in OCR (requires Tesseract installed separately). Better suited as a file storage backend for non-document files.</li>
+                        </ul>
+                        <p style="color: var(--text-dim);"><strong>Recommendation:</strong> Use <em>Paperless-NGX for receipt/document OCR</em> and <em>Nextcloud for general file storage</em> (backups, videos, HR files). When Paperless-NGX is configured, it will be used for OCR instead of Tesseract — no additional software installation required in your Docker containers.</p>
+                    </div>
+                </div>
+
+                <div class="integration-status <?php echo !empty($settings['paperless_url']) ? 'connected' : 'disconnected'; ?>">
+                    <div class="status-icon">
+                        <i class="fas <?php echo !empty($settings['paperless_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                    </div>
+                    <div class="status-info">
+                        <h4><?php echo !empty($settings['paperless_url']) ? 'Connected to Paperless-NGX' : 'Not Connected'; ?></h4>
+                        <p><?php echo !empty($settings['paperless_url']) ? htmlspecialchars($settings['paperless_url']) : 'Configure Paperless-NGX to enable OCR processing'; ?></p>
+                    </div>
+                </div>
+
+                <form id="paperless-form" method="POST" action="process_settings.php" data-form-type="paperless">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="update_paperless">
+                    <input type="hidden" name="redirect_page" value="system_tools">
+                    <div class="settings-list">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Paperless-NGX URL</h4>
+                                <p>Your Paperless-NGX server address (e.g. http://paperless:8000 for Docker)</p>
+                            </div>
+                            <input type="url" name="paperless_url" class="form-input"
+                                   value="<?php echo htmlspecialchars($settings['paperless_url'] ?? ''); ?>"
+                                   placeholder="http://paperless:8000">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>API Token</h4>
+                                <p>API authentication token from Paperless-NGX (Settings &rarr; API Tokens)<?php echo !empty($settings['paperless_api_token']) ? ' (currently set)' : ''; ?></p>
+                            </div>
+                            <input type="password" name="paperless_api_token" class="form-input"
+                                   placeholder="<?php echo !empty($settings['paperless_api_token']) ? 'Leave blank to keep current token' : 'Enter API token'; ?>">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Use for OCR</h4>
+                                <p>Use Paperless-NGX for receipt OCR instead of Tesseract</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="paperless_ocr_enabled"
+                                       <?php echo !empty($settings['paperless_ocr_enabled']) ? 'checked' : ''; ?>
+                                       data-action="toggle-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Store Documents in Paperless</h4>
+                                <p>Keep uploaded receipts/documents in Paperless-NGX for searchable archive</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="paperless_store_documents"
+                                       <?php echo !empty($settings['paperless_store_documents']) ? 'checked' : ''; ?>
+                                       data-action="toggle-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Default Correspondent</h4>
+                                <p>Paperless-NGX correspondent name for uploaded documents (optional)</p>
+                            </div>
+                            <input type="text" name="paperless_correspondent" class="form-input"
+                                   value="<?php echo htmlspecialchars($settings['paperless_correspondent'] ?? ''); ?>"
+                                   placeholder="Arctic Wolves">
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Default Document Type</h4>
+                                <p>Paperless-NGX document type for uploaded receipts (optional)</p>
+                            </div>
+                            <input type="text" name="paperless_document_type" class="form-input"
+                                   value="<?php echo htmlspecialchars($settings['paperless_document_type'] ?? ''); ?>"
+                                   placeholder="Receipt">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="testPaperlessConnection()">
+                            <i class="fas fa-vial"></i> Test Connection
+                        </button>
+                        <button type="submit" class="btn btn-primary" data-action="save">
+                            <i class="fas fa-save"></i> Save Settings
                         </button>
                     </div>
                 </form>
@@ -4957,6 +5072,39 @@ function syncNow() {
         btn.innerHTML = originalText;
         btn.disabled = false;
         alert('Error syncing files');
+        console.error('Error:', error);
+    });
+}
+
+// Test Paperless-NGX Connection
+function testPaperlessConnection() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    btn.disabled = true;
+    
+    const formData = new FormData(document.getElementById('paperless-form'));
+    formData.set('action', 'test_paperless');
+    
+    fetch('process_settings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        
+        if (data.success) {
+            alert('Success: Paperless-NGX Connection Successful!\n\n' + (data.message || 'Connected successfully'));
+        } else {
+            alert('Error: Paperless-NGX Connection Failed\n\n' + (data.message || 'Could not connect to Paperless-NGX server'));
+        }
+    })
+    .catch(error => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Error testing Paperless-NGX connection');
         console.error('Error:', error);
     });
 }
