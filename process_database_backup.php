@@ -180,7 +180,7 @@ try {
                 $job = [
                     'id' => 0,
                     'name' => 'Quick Backup',
-                    'destination_type' => 'local',
+                    'destination_type' => 'both_nextcloud',
                     'nextcloud_folder' => '/Arctic_Wolves/Backups/',
                     'smb_path' => '',
                     'smb_username' => '',
@@ -209,13 +209,13 @@ try {
             break;
             
         case 'force_nextcloud':
-            // Force backup directly to Nextcloud
+            // Force backup directly to both Nextcloud instances
             $nextcloud_folder = trim($_POST['nextcloud_folder'] ?? '/Arctic_Wolves/Backups/');
             
             $job = [
                 'id' => 0,
                 'name' => 'Force Nextcloud Backup',
-                'destination_type' => 'nextcloud',
+                'destination_type' => 'both_nextcloud',
                 'nextcloud_folder' => $nextcloud_folder,
                 'smb_path' => '',
                 'smb_username' => '',
@@ -566,8 +566,8 @@ function performBackup($pdo, $job) {
             }
         }
         
-        // Upload to Nextcloud if configured
-        if ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both') {
+        // Upload to primary Nextcloud if configured
+        if ($job['destination_type'] === 'nextcloud' || $job['destination_type'] === 'both' || $job['destination_type'] === 'both_nextcloud') {
             try {
                 $nc_settings = getNextcloudSettings($pdo);
                 $connection = connectNextcloud($nc_settings);
@@ -582,10 +582,35 @@ function performBackup($pdo, $job) {
                 if ($result) {
                     $success_destinations[] = 'Nextcloud: ' . $remote_path;
                 } else {
-                    $errors[] = 'Nextcloud upload failed';
+                    $errors[] = 'Primary Nextcloud upload failed';
                 }
             } catch (Exception $e) {
-                $errors[] = 'Nextcloud: ' . $e->getMessage();
+                $errors[] = 'Primary Nextcloud: ' . $e->getMessage();
+            }
+        }
+        
+        // Upload to secondary Nextcloud if both_nextcloud destination is selected
+        if ($job['destination_type'] === 'both_nextcloud') {
+            try {
+                $nc2_settings = getSecondaryNextcloudSettings($pdo);
+                if (!empty($nc2_settings['nextcloud_url'])) {
+                    $connection2 = connectNextcloud($nc2_settings);
+                    $folder2 = !empty($job['nextcloud_folder']) ? $job['nextcloud_folder'] : ($nc2_settings['nextcloud_backup_folder'] ?? '/ArcticWolves/Backups/');
+                    $remote_path2 = rtrim($folder2, '/') . '/' . $filename;
+                    $file_content2 = file_get_contents($gz_file);
+                    if ($file_content2 === false) {
+                        throw new Exception('Failed to read backup file for upload');
+                    }
+                    $result2 = uploadToNextcloud($connection2, $remote_path2, $file_content2, 'application/gzip');
+                    
+                    if ($result2) {
+                        $success_destinations[] = 'Nextcloud2: ' . $remote_path2;
+                    } else {
+                        $errors[] = 'Secondary Nextcloud upload failed';
+                    }
+                }
+            } catch (Exception $e) {
+                $errors[] = 'Secondary Nextcloud: ' . $e->getMessage();
             }
         }
         
