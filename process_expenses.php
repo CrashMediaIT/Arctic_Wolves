@@ -11,6 +11,42 @@ if (file_exists(__DIR__ . '/cloud_config.php')) {
     require_once 'cloud_config.php';
 }
 
+// Encryption helpers for Paperless-NGX / Nextcloud API token decryption
+if (!function_exists('encryptPassword')) {
+    function encryptPassword($password) {
+        $key_file = __DIR__ . '/.nextcloud_key';
+        if (!file_exists($key_file)) {
+            $key = bin2hex(random_bytes(32));
+            file_put_contents($key_file, $key);
+            chmod($key_file, 0600);
+        } else {
+            $key = file_get_contents($key_file);
+        }
+        $key_hash = hash('sha256', $key, true);
+        $iv = random_bytes(16);
+        $encrypted = openssl_encrypt($password, 'AES-256-CBC', $key_hash, 0, $iv);
+        return base64_encode($iv . '::' . $encrypted);
+    }
+}
+
+if (!function_exists('decryptPassword')) {
+    function decryptPassword($encrypted_data) {
+        $key_file = __DIR__ . '/.nextcloud_key';
+        if (!file_exists($key_file)) {
+            return '';
+        }
+        $key = file_get_contents($key_file);
+        $key_hash = hash('sha256', $key, true);
+        $parts = explode('::', base64_decode($encrypted_data), 2);
+        if (count($parts) === 2) {
+            $iv = $parts[0];
+            $encrypted = $parts[1];
+            return openssl_decrypt($encrypted, 'AES-256-CBC', $key_hash, 0, $iv);
+        }
+        return '';
+    }
+}
+
 setSecurityHeaders();
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
