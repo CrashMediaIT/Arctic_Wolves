@@ -805,7 +805,7 @@ CREATE TABLE IF NOT EXISTS `scheduled_reports` (
 CREATE TABLE IF NOT EXISTS `system_settings` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `setting_key` VARCHAR(100) NOT NULL UNIQUE,
-    `setting_value` TEXT DEFAULT NULL,
+    `setting_value` LONGTEXT DEFAULT NULL,
     `setting_type` VARCHAR(50) DEFAULT 'text',
     `description` TEXT DEFAULT NULL,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
