@@ -182,7 +182,7 @@ foreach ($users as $u) {
 <?php if (isset($_GET['status']) && $_GET['status'] === 'success'): ?>
 <div class="success-alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
     <i class="fas fa-check-circle" style="color: #10b981; font-size: 20px;"></i>
-    <span style="color: #10b981; font-weight: 600;">User updated successfully!</span>
+    <span style="color: #10b981; font-weight: 600;">User saved successfully!</span>
     <button type="button" onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: #10b981; cursor: pointer; font-size: 18px;">&times;</button>
 </div>
 <?php endif; ?>

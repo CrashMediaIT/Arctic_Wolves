@@ -1601,31 +1601,41 @@ if ($action == 'create_user') {
         
         $new_user_id = $pdo->lastInsertId();
         
+        // Secondary operations - wrapped individually so failures don't mask successful user creation
+        
         // Assign multiple coaches to user
         if (!empty($assigned_coach_ids)) {
-            $insert_coach_stmt = $pdo->prepare("
-                INSERT INTO athlete_coaches (athlete_id, coach_id, role_type, assigned_by, status) 
-                VALUES (?, ?, 'primary', ?, 'active')
-                ON DUPLICATE KEY UPDATE status = 'active', assigned_by = ?
-            ");
-            foreach ($assigned_coach_ids as $coach_id) {
-                $insert_coach_stmt->execute([$new_user_id, $coach_id, $_SESSION['user_id'], $_SESSION['user_id']]);
+            try {
+                $insert_coach_stmt = $pdo->prepare("
+                    INSERT INTO athlete_coaches (athlete_id, coach_id, role_type, assigned_by, status) 
+                    VALUES (?, ?, 'primary', ?, 'active')
+                    ON DUPLICATE KEY UPDATE status = 'active', assigned_by = ?
+                ");
+                foreach ($assigned_coach_ids as $coach_id) {
+                    $insert_coach_stmt->execute([$new_user_id, $coach_id, $_SESSION['user_id'], $_SESSION['user_id']]);
+                }
+            } catch (Exception $e) {
+                ErrorLogger::warning("Coach assignment failed for new user $new_user_id: " . $e->getMessage());
             }
         }
         
         // Assign teams if provided (multiple teams with seasons)
         if (!empty($team_season_ids_raw) && $role === 'athlete') {
-            $insert_team_stmt = $pdo->prepare("
-                INSERT INTO team_roster (team_id, athlete_id, season_id) VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE athlete_id = VALUES(athlete_id)
-            ");
-            foreach ($team_season_ids_raw as $combo) {
-                $parts = explode('|', $combo);
-                $tid = intval($parts[0] ?? 0);
-                $sid = !empty($parts[1]) ? intval($parts[1]) : null;
-                if ($tid > 0) {
-                    $insert_team_stmt->execute([$tid, $new_user_id, $sid]);
+            try {
+                $insert_team_stmt = $pdo->prepare("
+                    INSERT INTO team_roster (team_id, athlete_id, season_id) VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE athlete_id = VALUES(athlete_id)
+                ");
+                foreach ($team_season_ids_raw as $combo) {
+                    $parts = explode('|', $combo);
+                    $tid = intval($parts[0] ?? 0);
+                    $sid = !empty($parts[1]) ? intval($parts[1]) : null;
+                    if ($tid > 0) {
+                        $insert_team_stmt->execute([$tid, $new_user_id, $sid]);
+                    }
                 }
+            } catch (Exception $e) {
+                ErrorLogger::warning("Team assignment failed for new user $new_user_id: " . $e->getMessage());
             }
         }
         
@@ -1639,7 +1649,7 @@ if ($action == 'create_user') {
         Auditor::log($pdo, $user_id, 'create', 'users', $new_user_id, ['action' => 'create_user']);
         
         header("Location: dashboard.php?page=all_users&status=success");
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         ErrorLogger::error("Create user error: " . $e->getMessage());
         header("Location: dashboard.php?page=all_users&status=error");
     }
