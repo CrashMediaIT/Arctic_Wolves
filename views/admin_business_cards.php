@@ -811,6 +811,34 @@ function printBusinessCard() {
     const cornerStyle = document.getElementById('corner-style-select')?.value || 'round';
     const borderRadius = cornerStyle === 'square' ? '0' : '12px';
     
+    // Print window styles (kept as JS variable to prevent CSS leak into main page)
+    const printStyles = `
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { padding: 20px; background: #f5f5f5; }
+        .print-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        .business-card { width: 3.5in; height: 2in; border-radius: ${borderRadius}; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .business-card.front { background: linear-gradient(135deg, #1a1a2e 0%, #16161f 100%); }
+        .business-card.back { background: linear-gradient(135deg, #6B46C1 0%, #8B5CF6 100%); transform: none; }
+        .card-content { height: 100%; padding: 16px; display: flex; flex-direction: column; }
+        .card-logo img { height: 35px; width: auto; }
+        .card-main-info { margin-top: 8px; }
+        .card-name { color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+        .card-title { color: #8B5CF6; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-contact-info { margin-top: auto; }
+        .contact-item { display: flex; align-items: center; gap: 8px; color: #a8a8b8; font-size: 10px; margin-bottom: 4px; }
+        .contact-item i { color: #6B46C1; width: 12px; }
+        .card-qr { position: absolute; right: 16px; bottom: 16px; }
+        .card-qr canvas, .card-qr img { width: 60px !important; height: 60px !important; border-radius: 4px; background: #fff; padding: 4px; }
+        .back-content { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .back-logo img { height: 60px; width: auto; margin-bottom: 12px; }
+        .back-company-name h1 { color: #fff; font-size: 22px; font-weight: 900; letter-spacing: 2px; }
+        .back-company-name .tagline { color: rgba(255,255,255,0.8); font-size: 11px; font-weight: 500; margin-top: 4px; }
+        h2 { margin: 0; }
+        p { margin: 0; }
+        .card-bg-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; border-radius: inherit; }
+        @media print { body { padding: 0; background: #fff; } .business-card { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; } }
+    `;
+    
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -818,125 +846,6 @@ function printBusinessCard() {
             <title>Arctic Wolves Business Card</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                    font-family: 'Inter', sans-serif;
-                }
-                body {
-                    padding: 20px;
-                    background: #f5f5f5;
-                }
-                .print-container {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 20px;
-                    justify-content: center;
-                }
-                .business-card {
-                    width: 3.5in;
-                    height: 2in;
-                    border-radius: ${borderRadius};
-                    overflow: hidden;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                }
-                .business-card.front {
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16161f 100%);
-                }
-                .business-card.back {
-                    background: linear-gradient(135deg, #6B46C1 0%, #8B5CF6 100%);
-                    transform: none; /* Remove the rotateY transform for printing */
-                }
-                .card-content {
-                    height: 100%;
-                    padding: 16px;
-                    display: flex;
-                    flex-direction: column;
-                }
-                .card-logo img {
-                    height: 35px;
-                    width: auto;
-                }
-                .card-main-info {
-                    margin-top: 8px;
-                }
-                .card-name {
-                    color: #fff;
-                    font-size: 16px;
-                    font-weight: 700;
-                    margin-bottom: 2px;
-                }
-                .card-title {
-                    color: #8B5CF6;
-                    font-size: 11px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                .card-contact-info {
-                    margin-top: auto;
-                }
-                .contact-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    color: #a8a8b8;
-                    font-size: 10px;
-                    margin-bottom: 4px;
-                }
-                .contact-item i {
-                    color: #6B46C1;
-                    width: 12px;
-                }
-                .card-qr {
-                    position: absolute;
-                    right: 16px;
-                    bottom: 16px;
-                }
-                .card-qr canvas, .card-qr img {
-                    width: 60px !important;
-                    height: 60px !important;
-                    border-radius: 4px;
-                    background: #fff;
-                    padding: 4px;
-                }
-                .back-content {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    text-align: center;
-                }
-                .back-logo img {
-                    height: 60px;
-                    width: auto;
-                    margin-bottom: 12px;
-                }
-                .back-company-name h1 {
-                    color: #fff;
-                    font-size: 22px;
-                    font-weight: 900;
-                    letter-spacing: 2px;
-                }
-                .back-company-name .tagline {
-                    color: rgba(255,255,255,0.8);
-                    font-size: 11px;
-                    font-weight: 500;
-                    margin-top: 4px;
-                }
-                h2 { margin: 0; }
-                p { margin: 0; }
-                @media print {
-                    body { padding: 0; background: #fff; }
-                    .business-card {
-                        box-shadow: none;
-                        border: 1px solid #ddd;
-                        page-break-inside: avoid;
-                    }
-                }
-            </style>
         </head>
         <body>
             <div class="print-container">
@@ -953,6 +862,10 @@ function printBusinessCard() {
         </body>
         </html>
     `);
+    // Inject print styles via DOM into the new window
+    const styleEl = printWindow.document.createElement('sty' + 'le');
+    styleEl.textContent = printStyles;
+    printWindow.document.head.appendChild(styleEl);
     printWindow.document.close();
 }
 
