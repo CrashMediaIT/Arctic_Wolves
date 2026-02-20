@@ -357,7 +357,6 @@ try {
             $response = curl_exec($ch);
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $curl_error = curl_error($ch);
-            $api_version = curl_getinfo($ch, CURLINFO_HEADER_OUT);
             curl_close($ch);
             
             if (!empty($curl_error)) {

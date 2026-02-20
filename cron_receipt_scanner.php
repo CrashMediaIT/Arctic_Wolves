@@ -198,14 +198,14 @@ function performPaperlessOCRCron($file_path, $pdo) {
     // Add correspondent and document type if configured
     $base_url = rtrim($paperless_url, '/');
     $correspondent_name = $settings['paperless_correspondent'] ?? '';
-    if (!empty($correspondent_name) && function_exists('getPaperlessCorrespondentId')) {
+    if (!empty($correspondent_name)) {
         $correspondent_id = getPaperlessCorrespondentId($base_url, $api_token, $correspondent_name);
         if ($correspondent_id) {
             $post_fields['correspondent'] = strval($correspondent_id);
         }
     }
     $document_type_name = $settings['paperless_document_type'] ?? '';
-    if (!empty($document_type_name) && function_exists('getPaperlessDocumentTypeId')) {
+    if (!empty($document_type_name)) {
         $document_type_id = getPaperlessDocumentTypeId($base_url, $api_token, $document_type_name);
         if ($document_type_id) {
             $post_fields['document_type'] = strval($document_type_id);
