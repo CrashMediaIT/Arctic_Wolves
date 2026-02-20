@@ -115,3 +115,45 @@ test.describe('Encryption Consolidation - cron_receipt_scanner uses canonical de
     expect(content).not.toContain('OPENSSL_RAW_DATA');
   });
 });
+
+test.describe('Encryption Consolidation - banking data uses canonical encryption', () => {
+  test('process_payroll.php should not define encryptBankingData/decryptBankingData', async () => {
+    const filePath = path.join(__dirname, '..', 'process_payroll.php');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    expect(content).not.toMatch(/function\s+encryptBankingData\s*\(/);
+    expect(content).not.toMatch(/function\s+decryptBankingData\s*\(/);
+  });
+
+  test('process_payroll.php should use encryptPassword for banking data', async () => {
+    const filePath = path.join(__dirname, '..', 'process_payroll.php');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    expect(content).toContain('encryptPassword($accountNumber)');
+  });
+
+  test('process_onboarding.php should not define encryptBankingData', async () => {
+    const filePath = path.join(__dirname, '..', 'process_onboarding.php');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    expect(content).not.toMatch(/function\s+encryptBankingData\s*\(/);
+  });
+
+  test('process_onboarding.php should use encryptPassword for banking data', async () => {
+    const filePath = path.join(__dirname, '..', 'process_onboarding.php');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    expect(content).toContain('encryptPassword($accountNumber)');
+  });
+
+  test('no file should contain encryptBankingData or decryptBankingData', async () => {
+    const files = [
+      'process_payroll.php',
+      'process_onboarding.php',
+      'process_settings.php',
+      'process_expenses.php'
+    ];
+    for (const file of files) {
+      const filePath = path.join(__dirname, '..', file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      expect(content).not.toContain('encryptBankingData');
+      expect(content).not.toContain('decryptBankingData');
+    }
+  });
+});
