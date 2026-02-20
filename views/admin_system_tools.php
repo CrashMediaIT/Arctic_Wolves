@@ -894,11 +894,11 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>Paperless-NGX URL</h4>
-                                <p>Your Paperless-NGX server address (e.g. http://paperless:8000 for Docker)</p>
+                                <p>Your Paperless-NGX server address (e.g. https://paperless.arcticwolves.ca)</p>
                             </div>
                             <input type="url" name="paperless_url" class="form-input"
                                    value="<?php echo htmlspecialchars($settings['paperless_url'] ?? ''); ?>"
-                                   placeholder="http://paperless:8000">
+                                   placeholder="https://paperless.arcticwolves.ca">
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">

@@ -20,7 +20,7 @@ The OCR (Optical Character Recognition) feature allows automatic extraction of v
        - paperless_data:/usr/src/paperless/data
        - paperless_media:/usr/src/paperless/media
      environment:
-       PAPERLESS_URL: http://paperless:8000
+       PAPERLESS_URL: https://paperless.arcticwolves.ca
        PAPERLESS_SECRET_KEY: your-secret-key
        PAPERLESS_OCR_LANGUAGE: eng
    ```
@@ -32,7 +32,7 @@ The OCR (Optical Character Recognition) feature allows automatic extraction of v
 
 3. Configure in Arctic Wolves:
    - Go to **Settings → System Tools → Paperless-NGX** tab
-   - Enter the Paperless-NGX URL (e.g. `http://paperless:8000`)
+   - Enter the Paperless-NGX URL (e.g. `https://paperless.arcticwolves.ca`)
    - Enter the API token
    - Enable "Use for OCR"
    - Click **Test Connection** then **Save Settings**
@@ -70,7 +70,7 @@ The OCR (Optical Character Recognition) feature allows automatic extraction of v
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | "OCR not available" | Paperless-NGX not configured | Configure Paperless-NGX in Settings > System Tools |
-| Test connection returns HTTP 302 | Paperless-NGX is redirecting API requests | Redirects are handled automatically; verify your URL uses the correct protocol (http/https) and includes the port (e.g. `http://paperless:8000`) to avoid unnecessary redirects |
+| Test connection returns HTTP 302 | Paperless-NGX is redirecting API requests | Redirects are handled automatically; verify your URL uses the correct protocol (e.g. `https://paperless.arcticwolves.ca`) to avoid unnecessary redirects |
 | "Paperless-NGX OCR returned no text" | Paperless couldn't extract text | Check image quality, check Paperless-NGX logs |
 | "Only JPG, PNG, and PDF files can be scanned" | Unsupported file format | Convert the file to JPG or PNG first |
 | Poor extraction accuracy | Low image resolution or blurry text | Use higher resolution (300+ DPI), ensure text is legible |
