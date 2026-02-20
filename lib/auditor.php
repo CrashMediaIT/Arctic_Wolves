@@ -149,6 +149,12 @@ class Auditor {
                 $ip_address = self::getClientIP();
             }
             
+            // Validate table name to prevent SQL injection (only allow alphanumeric and underscores)
+            if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table_name)) {
+                error_log("Auditor::logChange - Invalid table name: $table_name");
+                return self::log($pdo, $user_id, $action, $table_name, $record_id, $new_values, $ip_address);
+            }
+            
             // Fetch old values from the record before modification
             $old_values_json = null;
             if ($record_id && in_array($action, ['update', 'edit', 'modify', 'delete', 'remove'])) {

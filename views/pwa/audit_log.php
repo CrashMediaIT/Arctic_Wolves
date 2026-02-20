@@ -16,8 +16,13 @@ try {
     $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     if (class_exists('FieldEncryption')) {
         foreach ($logs as &$lr) {
-            $lr['user_first_name'] = FieldEncryption::decrypt($lr['user_first_name'] ?? '');
-            $lr['user_last_name'] = FieldEncryption::decrypt($lr['user_last_name'] ?? '');
+            try {
+                $lr['user_first_name'] = FieldEncryption::decrypt($lr['user_first_name'] ?? '');
+                $lr['user_last_name'] = FieldEncryption::decrypt($lr['user_last_name'] ?? '');
+            } catch (Exception $e) {
+                $lr['user_first_name'] = $lr['user_first_name'] ?? '';
+                $lr['user_last_name'] = $lr['user_last_name'] ?? '';
+            }
             $lr['user_name'] = trim(($lr['user_first_name'] ?? '') . ' ' . ($lr['user_last_name'] ?? ''));
         }
         unset($lr);
@@ -137,7 +142,7 @@ function mAuditChangesSummary($log) {
             $changes_summary = mAuditChangesSummary($log);
             $has_detail = !empty($log['changes']) || !empty($log['old_values']) || !empty($log['new_values']) || !empty($log['description']);
         ?>
-        <div class="m-audit-card" <?php if ($has_detail): ?>onclick="this.classList.toggle('expanded')"<?php endif; ?>>
+        <div class="m-audit-card" <?php if ($has_detail): ?>tabindex="0" role="button" aria-expanded="false" onclick="this.classList.toggle('expanded');this.setAttribute('aria-expanded',this.classList.contains('expanded'))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"<?php endif; ?>>
             <div class="m-audit-icon" style="background: <?= mAuditColor($action_type) ?>; color: <?= mAuditIconColor($action_type) ?>;">
                 <i class="fas <?= mAuditIcon($action_type) ?>"></i>
             </div>
