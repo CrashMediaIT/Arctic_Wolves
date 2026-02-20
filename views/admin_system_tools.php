@@ -869,10 +869,10 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                     <div>
                         <p><strong>Paperless-NGX vs Nextcloud for Document Storage:</strong></p>
                         <ul style="margin: 8px 0; padding-left: 20px; color: var(--text-dim);">
-                            <li><strong>Paperless-NGX</strong> — Purpose-built document management with <em>built-in OCR</em>, automatic tagging, full-text search, and smart categorization. Ideal for receipt/invoice processing in Docker environments since OCR runs inside Paperless (no need to install Tesseract separately). Stores documents in its own database with metadata.</li>
-                            <li><strong>Nextcloud</strong> — General-purpose file sync &amp; share platform. Great for backups, videos, and file collaboration. Does not have built-in OCR (requires Tesseract installed separately). Better suited as a file storage backend for non-document files.</li>
+                            <li><strong>Paperless-NGX</strong> — Purpose-built document management with <em>built-in OCR</em>, automatic tagging, full-text search, and smart categorization. Ideal for receipt/invoice processing. Handles all file types including PDFs natively. Stores documents in its own database with metadata.</li>
+                            <li><strong>Nextcloud</strong> — General-purpose file sync &amp; share platform. Great for backups, videos, and file collaboration. Better suited as a file storage backend for non-document files.</li>
                         </ul>
-                        <p style="color: var(--text-dim);"><strong>Recommendation:</strong> Use <em>Paperless-NGX for receipt/document OCR</em> and <em>Nextcloud for general file storage</em> (backups, videos, HR files). When Paperless-NGX is configured, it will be used for OCR instead of Tesseract — no additional software installation required in your Docker containers.</p>
+                        <p style="color: var(--text-dim);"><strong>Recommendation:</strong> Use <em>Paperless-NGX for receipt/document OCR</em> and <em>Nextcloud for general file storage</em> (backups, videos, HR files).</p>
                     </div>
                 </div>
 
@@ -881,8 +881,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         <i class="fas <?php echo !empty($settings['paperless_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
                     </div>
                     <div class="status-info">
-                        <h4><?php echo !empty($settings['paperless_url']) ? 'Connected to Paperless-NGX' : 'Not Connected'; ?></h4>
-                        <p><?php echo !empty($settings['paperless_url']) ? htmlspecialchars($settings['paperless_url']) : 'Configure Paperless-NGX to enable OCR processing'; ?></p>
+                        <h4><?php echo !empty($settings['paperless_url']) ? 'Paperless-NGX Configured' : 'Not Connected'; ?></h4>
+                        <p><?php echo !empty($settings['paperless_url']) ? htmlspecialchars($settings['paperless_url']) . ' — use Test Connection to verify' : 'Configure Paperless-NGX to enable OCR processing'; ?></p>
                     </div>
                 </div>
 
@@ -911,7 +911,7 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         <div class="setting-item">
                             <div class="setting-info">
                                 <h4>Use for OCR</h4>
-                                <p>Use Paperless-NGX for receipt OCR instead of Tesseract</p>
+                                <p>Enable Paperless-NGX for receipt OCR processing</p>
                             </div>
                             <label class="toggle-switch">
                                 <input type="checkbox" name="paperless_ocr_enabled"
