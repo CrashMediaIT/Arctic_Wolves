@@ -547,7 +547,6 @@ try {
             $pdf_image_file = null;
             if ($mime_type === 'application/pdf') {
                 $pdf_image_file = sys_get_temp_dir() . '/' . uniqid('ocr_pdf_') . '.png';
-                $convert_path = null;
                 if (file_exists('/usr/bin/pdftoppm') && is_executable('/usr/bin/pdftoppm')) {
                     $convert_cmd = sprintf(
                         '%s -png -f 1 -l 1 -r 300 -singlefile %s %s 2>&1',
@@ -555,7 +554,10 @@ try {
                         escapeshellarg($temp_file),
                         escapeshellarg(substr($pdf_image_file, 0, -4))
                     );
-                    shell_exec($convert_cmd);
+                    $convert_output = shell_exec($convert_cmd);
+                    if (!file_exists($pdf_image_file) && !empty($convert_output)) {
+                        error_log('PDF conversion (pdftoppm) failed: ' . $convert_output);
+                    }
                 } elseif (file_exists('/usr/bin/convert') && is_executable('/usr/bin/convert')) {
                     $convert_cmd = sprintf(
                         '%s -density 300 %s[0] %s 2>&1',
@@ -563,7 +565,10 @@ try {
                         escapeshellarg($temp_file),
                         escapeshellarg($pdf_image_file)
                     );
-                    shell_exec($convert_cmd);
+                    $convert_output = shell_exec($convert_cmd);
+                    if (!file_exists($pdf_image_file) && !empty($convert_output)) {
+                        error_log('PDF conversion (ImageMagick) failed: ' . $convert_output);
+                    }
                 }
                 
                 if (file_exists($pdf_image_file)) {
