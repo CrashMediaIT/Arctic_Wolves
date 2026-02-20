@@ -567,8 +567,15 @@ function uploadSignedContract($pdo, $settings, $pdfContent, $employeeName, $date
         $filename = $safeEmployeeName . '_' . $dateSigned . '.pdf';
         $remotePath = $folderPath . '/' . $filename;
         
-        // Upload the signed contract
+        // Upload the signed contract to Nextcloud
         uploadToNextcloud($connection, $remotePath, $pdfContent, 'application/pdf');
+        
+        // Also upload to Paperless-NGX with Contract tag
+        $tmpFile = sys_get_temp_dir() . '/' . uniqid('contract_') . '.pdf';
+        file_put_contents($tmpFile, $pdfContent);
+        $title = 'Contract_' . $safeEmployeeName . '_' . $dateSigned;
+        uploadToPaperless($pdo, $tmpFile, 'Contract', $title);
+        if (file_exists($tmpFile)) { unlink($tmpFile); }
         
         return [
             'success' => true,

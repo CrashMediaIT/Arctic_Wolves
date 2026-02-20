@@ -78,6 +78,10 @@ function uploadContractToNextcloud($pdo, $local_file_path, $vendor_name, $contra
         
         uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
         
+        // Also upload to Paperless-NGX with Contract tag
+        $title = 'Contract_' . $safe_vendor . '_' . $safe_type . '_' . $date_str;
+        uploadToPaperless($pdo, $local_file_path, 'Contract', $title);
+        
         return [
             'success' => true,
             'cloud_path' => $remote_path,

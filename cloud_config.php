@@ -372,7 +372,7 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
                     $safe_filename = preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $original_name);
                     $remote_path = $folder_path . '/' . $safe_filename;
                     
-                    // Upload file
+                    // Upload file to Nextcloud
                     $uploaded_path = uploadToNextcloud($connection, $remote_path, $file_content, $content_type);
                     $uploaded_paths[] = [
                         'original_name' => $original_name,
@@ -380,6 +380,10 @@ function uploadTerminationDocuments($pdo, $settings, $staff_name, $termination_d
                         'file_size' => strlen($file_content),
                         'content_type' => $content_type
                     ];
+                    
+                    // Also upload to Paperless-NGX with Termination tag
+                    $title = 'Termination_' . $safe_staff_name . '_' . $date->format('Y-m-d') . '_' . $safe_filename;
+                    uploadToPaperless($pdo, $tmp_path, 'Termination', $title);
                 }
             }
         }
@@ -662,5 +666,177 @@ function listDrillVideosForDate($pdo, $settings, $date) {
             'videos' => []
         ];
     }
+}
+
+/**
+ * Get Paperless-NGX connection settings from database
+ * 
+ * @param PDO $pdo Database connection
+ * @return array|null Settings array with url and api_token, or null if not configured
+ */
+function getPaperlessSettings($pdo) {
+    try {
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('paperless_url', 'paperless_api_token', 'paperless_store_documents')");
+        $stmt->execute();
+        $settings = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $settings[$row['setting_key']] = $row['setting_value'];
+        }
+    } catch (Exception $e) {
+        return null;
+    }
+    
+    $url = $settings['paperless_url'] ?? '';
+    $encrypted_token = $settings['paperless_api_token'] ?? '';
+    $store = $settings['paperless_store_documents'] ?? '0';
+    
+    if (empty($url) || empty($encrypted_token) || $store !== '1') {
+        return null;
+    }
+    
+    if (function_exists('decryptPassword')) {
+        $api_token = decryptPassword($encrypted_token);
+    } else {
+        return null;
+    }
+    
+    if (empty($api_token)) {
+        return null;
+    }
+    
+    return [
+        'url' => rtrim($url, '/'),
+        'api_token' => $api_token
+    ];
+}
+
+/**
+ * Get or create a tag in Paperless-NGX by name
+ * 
+ * @param string $base_url Paperless-NGX base URL
+ * @param string $api_token API token
+ * @param string $tag_name Tag name to find or create
+ * @return int|null Tag ID, or null on failure
+ */
+function getPaperlessTagId($base_url, $api_token, $tag_name) {
+    // Search for existing tag
+    $search_url = $base_url . '/api/tags/?name__iexact=' . urlencode($tag_name);
+    $ch = curl_init($search_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200) {
+        $data = json_decode($response, true);
+        if (!empty($data['results'][0]['id'])) {
+            return intval($data['results'][0]['id']);
+        }
+    }
+    
+    // Tag not found — create it
+    $create_url = $base_url . '/api/tags/';
+    $ch = curl_init($create_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode(['name' => $tag_name]),
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 201 || $http_code === 200) {
+        $data = json_decode($response, true);
+        if (!empty($data['id'])) {
+            return intval($data['id']);
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Upload a document to Paperless-NGX with a tag for the file type
+ * 
+ * @param PDO $pdo Database connection
+ * @param string $file_path Local file path to upload
+ * @param string $tag_name Tag to apply (e.g. "Receipt", "Contract", "HR", "Termination", "Document")
+ * @param string $title Optional document title
+ * @return array Result with success status
+ */
+function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
+    $paperless = getPaperlessSettings($pdo);
+    if (!$paperless) {
+        return ['success' => false, 'message' => 'Paperless-NGX not configured or storage not enabled'];
+    }
+    
+    $base_url = $paperless['url'];
+    $api_token = $paperless['api_token'];
+    
+    // Get or create the tag
+    $tag_id = getPaperlessTagId($base_url, $api_token, $tag_name);
+    
+    // Build the upload request
+    $api_url = $base_url . '/api/documents/post_document/';
+    $file_mime = mime_content_type($file_path) ?: 'application/octet-stream';
+    $file_name = !empty($title) ? $title : basename($file_path);
+    
+    $post_fields = [
+        'document' => new CURLFile($file_path, $file_mime, $file_name)
+    ];
+    
+    if (!empty($title)) {
+        $post_fields['title'] = $title;
+    }
+    
+    if ($tag_id) {
+        $post_fields['tags'] = $tag_id;
+    }
+    
+    $ch = curl_init($api_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $post_fields,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    curl_close($ch);
+    
+    if (!empty($curl_error)) {
+        error_log('Paperless-NGX upload failed: ' . $curl_error);
+        return ['success' => false, 'message' => 'Connection error: ' . $curl_error];
+    }
+    
+    if ($http_code >= 200 && $http_code < 300) {
+        return ['success' => true, 'task_id' => trim($response, '"')];
+    }
+    
+    error_log('Paperless-NGX upload failed: HTTP ' . $http_code . ' - ' . $response);
+    return ['success' => false, 'message' => 'Upload failed (HTTP ' . $http_code . ')'];
 }
 ?>

@@ -922,8 +922,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         </div>
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>Store Documents in Paperless</h4>
-                                <p>Keep uploaded receipts/documents in Paperless-NGX for searchable archive</p>
+                                <h4>Save to Both Locations</h4>
+                                <p>Save all documents (receipts, contracts, HR, terminations) to both Paperless-NGX and Nextcloud. Files are tagged by type in Paperless-NGX.</p>
                             </div>
                             <label class="toggle-switch">
                                 <input type="checkbox" name="paperless_store_documents"

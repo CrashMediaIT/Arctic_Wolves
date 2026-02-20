@@ -297,24 +297,20 @@ function performPaperlessOCR($file_path) {
     
     $ocr_data = parseOCRText($ocr_text, $ocr_data);
     
-    // If user doesn't want to keep docs in Paperless, delete it
-    try {
-        $store_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'paperless_store_documents'");
-        $store_stmt->execute();
-        $store_docs = $store_stmt->fetchColumn();
-    } catch (Exception $e) {
-        $store_docs = '0';
-    }
-    
-    if ($store_docs !== '1') {
-        $delete_url = rtrim($paperless_url, '/') . '/api/documents/' . intval($document_id) . '/';
-        $ch = curl_init($delete_url);
+    // Tag the OCR-processed document as a Receipt in Paperless-NGX
+    $tag_id = getPaperlessTagId($paperless_url, $api_token, 'Receipt');
+    if ($tag_id && !empty($document_id)) {
+        $patch_url = rtrim($paperless_url, '/') . '/api/documents/' . intval($document_id) . '/';
+        $ch = curl_init($patch_url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CUSTOMREQUEST => 'DELETE',
+            CURLOPT_CUSTOMREQUEST => 'PATCH',
+            CURLOPT_POSTFIELDS => json_encode(['tags' => [$tag_id]]),
             CURLOPT_TIMEOUT => 10,
             CURLOPT_HTTPHEADER => [
-                'Authorization: Token ' . $api_token
+                'Authorization: Token ' . $api_token,
+                'Content-Type: application/json',
+                'Accept: application/json'
             ],
             CURLOPT_SSL_VERIFYPEER => true
         ]);
@@ -508,6 +504,10 @@ try {
                         $nc_result['cloud_path'], $expense_id
                     ]);
                 }
+                
+                // Also upload to Paperless-NGX with Receipt tag
+                $receipt_title = $expense_date . '_' . $vendor_name . '_' . $expense_id;
+                uploadToPaperless($pdo, $receipt_url, 'Receipt', $receipt_title);
             }
             
             if ($isAjax) {
@@ -590,6 +590,10 @@ try {
                                 $nc_result['cloud_path'], $expense_id
                             ]);
                         }
+                        
+                        // Also upload to Paperless-NGX with Receipt tag
+                        $receipt_title = $expense_date . '_' . $vendor_name . '_' . $expense_id;
+                        uploadToPaperless($pdo, $receipt_url, 'Receipt', $receipt_title);
                     }
                 }
             } else {
