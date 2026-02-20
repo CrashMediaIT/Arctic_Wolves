@@ -532,13 +532,14 @@ $error_total_pages = ceil($error_total / $per_page);
                     <th>Table</th>
                     <th>User</th>
                     <th>Record ID</th>
+                    <th>Changes</th>
                     <th>Timestamp</th>
                     <th>Details</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($audit_logs)): ?>
-                <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">No audit records found</td></tr>
+                <tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">No audit records found</td></tr>
                 <?php else: ?>
                 <?php foreach ($audit_logs as $log): ?>
                 <tr>
@@ -549,9 +550,39 @@ $error_total_pages = ceil($error_total / $per_page);
                         <div style="font-size: 11px; color: var(--text-muted);"><?php echo ucfirst(str_replace('_', ' ', $log['user_role_name'] ?? '')); ?></div>
                     </td>
                     <td style="font-family: monospace;">#<?php echo htmlspecialchars($log['record_id'] ?? ''); ?></td>
+                    <td style="font-size: 12px; max-width: 250px;">
+                        <?php
+                        $changes_summary = '';
+                        if (!empty($log['changes'])) {
+                            $changes_data = json_decode($log['changes'], true);
+                            if (is_array($changes_data)) {
+                                $parts = [];
+                                foreach ($changes_data as $key => $val) {
+                                    if ($key === 'action') continue;
+                                    if (is_array($val)) {
+                                        foreach ($val as $k => $v) {
+                                            $parts[] = str_replace('_', ' ', $k) . ': ' . (is_string($v) ? $v : json_encode($v));
+                                        }
+                                    } else {
+                                        $parts[] = str_replace('_', ' ', $key) . ': ' . (is_string($val) ? $val : json_encode($val));
+                                    }
+                                }
+                                $changes_summary = implode(', ', array_slice($parts, 0, 3));
+                                if (count($parts) > 3) $changes_summary .= '…';
+                            }
+                        }
+                        if (!empty($changes_summary)):
+                        ?>
+                        <span style="color: var(--text-secondary); font-size: 12px;" title="<?php echo htmlspecialchars($changes_summary); ?>"><?php echo htmlspecialchars(mb_strimwidth($changes_summary, 0, 80, '…')); ?></span>
+                        <?php elseif (!empty($log['description'])): ?>
+                        <span style="color: var(--text-muted); font-size: 12px;"><?php echo htmlspecialchars(mb_strimwidth($log['description'], 0, 80, '…')); ?></span>
+                        <?php else: ?>
+                        <span style="color: var(--text-muted); font-size: 11px;">—</span>
+                        <?php endif; ?>
+                    </td>
                     <td style="font-size: 12px;"><?php echo date('M d, Y g:i:s a', strtotime($log['created_at'])); ?></td>
                     <td>
-                        <?php if (!empty($log['old_values']) || !empty($log['new_values'])): ?>
+                        <?php if (!empty($log['old_values']) || !empty($log['new_values']) || !empty($log['changes']) || !empty($log['details']) || !empty($log['description'])): ?>
                         <button class="btn-icon" onclick="showAuditDetail(<?php echo $log['id']; ?>)" title="View Details">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -599,6 +630,11 @@ $error_total_pages = ceil($error_total / $per_page);
 </div>
 
 <script>
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
 function showAuditDetail(logId) {
     var modal = document.getElementById('audit-detail-modal');
     var content = document.getElementById('audit-detail-content');
@@ -615,13 +651,32 @@ function showAuditDetail(logId) {
         html += '<div style="margin-bottom: 12px;"><strong>Time:</strong> ' + log.created_at + '</div>';
         if (log.ip_address) html += '<div style="margin-bottom: 12px;"><strong>IP:</strong> ' + log.ip_address + '</div>';
         
+        if (log.description) {
+            html += '<div style="margin-bottom: 12px;"><strong>Description:</strong> ' + escapeHtml(log.description) + '</div>';
+        }
         if (log.old_values) {
-            html += '<div style="margin-bottom: 8px;"><strong>Old Values:</strong></div>';
-            html += '<pre style="background: rgba(239,68,68,0.1); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 200px;">' + JSON.stringify(JSON.parse(log.old_values), null, 2) + '</pre>';
+            try {
+                var oldParsed = JSON.parse(log.old_values);
+                html += '<div style="margin-bottom: 8px;"><strong>Old Values:</strong></div>';
+                html += '<pre style="background: rgba(239,68,68,0.1); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 200px;">' + JSON.stringify(oldParsed, null, 2) + '</pre>';
+            } catch(e) {}
         }
         if (log.new_values) {
-            html += '<div style="margin-bottom: 8px;"><strong>New Values:</strong></div>';
-            html += '<pre style="background: rgba(16,185,129,0.1); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 200px;">' + JSON.stringify(JSON.parse(log.new_values), null, 2) + '</pre>';
+            try {
+                var newParsed = JSON.parse(log.new_values);
+                html += '<div style="margin-bottom: 8px;"><strong>New Values:</strong></div>';
+                html += '<pre style="background: rgba(16,185,129,0.1); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 200px;">' + JSON.stringify(newParsed, null, 2) + '</pre>';
+            } catch(e) {}
+        }
+        if (log.changes) {
+            try {
+                var changesParsed = JSON.parse(log.changes);
+                html += '<div style="margin-bottom: 8px;"><strong>Changes:</strong></div>';
+                html += '<pre style="background: rgba(59,130,246,0.1); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 200px;">' + JSON.stringify(changesParsed, null, 2) + '</pre>';
+            } catch(e) {}
+        }
+        if (log.details) {
+            html += '<div style="margin-bottom: 12px;"><strong>Details:</strong> ' + escapeHtml(log.details) + '</div>';
         }
         content.innerHTML = html;
     }
