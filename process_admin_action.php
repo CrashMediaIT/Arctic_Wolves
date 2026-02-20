@@ -965,7 +965,7 @@ if ($action == 'save_business_card_defaults') {
     header('Content-Type: application/json');
     try {
         $settings = $_POST['settings'] ?? '';
-        if (empty($settings)) {
+        if (!is_string($settings) || empty($settings)) {
             throw new Exception('No settings provided.');
         }
         // Validate JSON
@@ -977,9 +977,9 @@ if ($action == 'save_business_card_defaults') {
         $stmt = $pdo->prepare("
             INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
             VALUES ('business_card_defaults', ?, 'json', 'Default business card design settings')
-            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+            ON DUPLICATE KEY UPDATE setting_value = ?
         ");
-        $stmt->execute([$settings]);
+        $stmt->execute([$settings, $settings]);
         
         Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'save_business_card_defaults']);
         echo json_encode(['success' => true, 'message' => 'Settings saved as default!']);
