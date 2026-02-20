@@ -881,8 +881,8 @@ $is_favicon_enabled = !empty($theme_settings['use_logo_as_favicon']) && $theme_s
                         <i class="fas <?php echo !empty($settings['paperless_url']) ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
                     </div>
                     <div class="status-info">
-                        <h4><?php echo !empty($settings['paperless_url']) ? 'Connected to Paperless-NGX' : 'Not Connected'; ?></h4>
-                        <p><?php echo !empty($settings['paperless_url']) ? htmlspecialchars($settings['paperless_url']) : 'Configure Paperless-NGX to enable OCR processing'; ?></p>
+                        <h4><?php echo !empty($settings['paperless_url']) ? 'Paperless-NGX Configured' : 'Not Connected'; ?></h4>
+                        <p><?php echo !empty($settings['paperless_url']) ? htmlspecialchars($settings['paperless_url']) . ' — use Test Connection to verify' : 'Configure Paperless-NGX to enable OCR processing'; ?></p>
                     </div>
                 </div>
 

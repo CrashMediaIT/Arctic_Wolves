@@ -126,8 +126,8 @@ RUN apt-get update && apt-get install -y \
 ## How It Works
 
 1. User uploads a receipt image (JPG/PNG) or PDF via the OCR modal
-2. **If Paperless-NGX is configured:** the file is uploaded to its API, OCR runs inside Paperless, and the extracted text is returned
-3. **If using Tesseract:** PDFs are converted to images first, then Tesseract extracts raw text
+2. **If Paperless-NGX is configured:** the file (including PDFs) is uploaded directly to its API, OCR runs inside Paperless, and the extracted text is returned — no additional tools required
+3. **If using Tesseract:** PDFs are converted to images first (requires `pdftoppm` or ImageMagick), then Tesseract extracts raw text. Image files (JPG/PNG) are processed directly.
 4. The system parses the text to identify:
    - **Vendor name** — first non-empty line
    - **Date** — date patterns (YYYY-MM-DD, MM/DD/YYYY, etc.)
@@ -143,6 +143,6 @@ RUN apt-get update && apt-get install -y \
 | "OCR not available" | Neither Paperless-NGX nor Tesseract configured | Configure Paperless-NGX in System Tools, or install Tesseract |
 | "Paperless-NGX OCR returned no text" | Paperless couldn't extract text | Check image quality, check Paperless-NGX logs |
 | "OCR failed - no text extracted" | Tesseract couldn't read the image | Try a clearer photo with good lighting |
-| "PDF conversion failed" | Neither `pdftoppm` nor ImageMagick installed | Install poppler-utils or ImageMagick, or use Paperless-NGX |
+| "OCR processing failed: configure Paperless-NGX..." | Paperless-NGX not configured and no PDF conversion tools | Configure Paperless-NGX (recommended) or install poppler-utils/ImageMagick |
 | "Only JPG, PNG, and PDF files can be scanned" | Unsupported file format | Convert the file to JPG or PNG first |
 | Poor extraction accuracy | Low image resolution or blurry text | Use higher resolution (300+ DPI), ensure text is legible |

@@ -747,48 +747,52 @@ try {
             $temp_file = sys_get_temp_dir() . '/' . uniqid('ocr_') . $ext;
             move_uploaded_file($_FILES['receipt_file']['tmp_name'], $temp_file);
             
-            // If PDF, convert first page to image for Tesseract
+            // For PDFs, try Paperless-NGX first (handles PDFs natively), then fall back to conversion for Tesseract
             $pdf_image_file = null;
             if ($mime_type === 'application/pdf') {
-                $pdf_image_file = sys_get_temp_dir() . '/' . uniqid('ocr_pdf_') . '.png';
-                if (file_exists('/usr/bin/pdftoppm') && is_executable('/usr/bin/pdftoppm')) {
-                    $convert_cmd = sprintf(
-                        '%s -png -f 1 -l 1 -r 300 -singlefile %s %s 2>&1',
-                        escapeshellcmd('/usr/bin/pdftoppm'),
-                        escapeshellarg($temp_file),
-                        escapeshellarg(substr($pdf_image_file, 0, -4))
-                    );
-                    $convert_output = shell_exec($convert_cmd);
-                    if (!file_exists($pdf_image_file) && !empty($convert_output)) {
-                        error_log('PDF conversion (pdftoppm) failed: ' . $convert_output);
-                    }
-                } elseif (file_exists('/usr/bin/convert') && is_executable('/usr/bin/convert')) {
-                    $convert_cmd = sprintf(
-                        '%s -density 300 %s[0] %s 2>&1',
-                        escapeshellcmd('/usr/bin/convert'),
-                        escapeshellarg($temp_file),
-                        escapeshellarg($pdf_image_file)
-                    );
-                    $convert_output = shell_exec($convert_cmd);
-                    if (!file_exists($pdf_image_file) && !empty($convert_output)) {
-                        error_log('PDF conversion (ImageMagick) failed: ' . $convert_output);
-                    }
-                }
-                
-                if (file_exists($pdf_image_file)) {
-                    $ocr_input = $pdf_image_file;
+                // Try Paperless-NGX OCR directly with the PDF (no conversion needed)
+                $paperless_result = performPaperlessOCR($temp_file);
+                if ($paperless_result !== null) {
+                    $ocr_data = $paperless_result;
                 } else {
-                    if (file_exists($temp_file)) { unlink($temp_file); }
-                    if ($pdf_image_file && file_exists($pdf_image_file)) { unlink($pdf_image_file); }
-                    echo json_encode(['success' => false, 'message' => 'PDF conversion failed - pdftoppm or ImageMagick required for PDF OCR']);
-                    exit();
+                    // Paperless-NGX not available — convert PDF to image for Tesseract
+                    $pdf_image_file = sys_get_temp_dir() . '/' . uniqid('ocr_pdf_') . '.png';
+                    if (file_exists('/usr/bin/pdftoppm') && is_executable('/usr/bin/pdftoppm')) {
+                        $convert_cmd = sprintf(
+                            '%s -png -f 1 -l 1 -r 300 -singlefile %s %s 2>&1',
+                            escapeshellcmd('/usr/bin/pdftoppm'),
+                            escapeshellarg($temp_file),
+                            escapeshellarg(substr($pdf_image_file, 0, -4))
+                        );
+                        $convert_output = shell_exec($convert_cmd);
+                        if (!file_exists($pdf_image_file) && !empty($convert_output)) {
+                            error_log('PDF conversion (pdftoppm) failed: ' . $convert_output);
+                        }
+                    } elseif (file_exists('/usr/bin/convert') && is_executable('/usr/bin/convert')) {
+                        $convert_cmd = sprintf(
+                            '%s -density 300 %s[0] %s 2>&1',
+                            escapeshellcmd('/usr/bin/convert'),
+                            escapeshellarg($temp_file),
+                            escapeshellarg($pdf_image_file)
+                        );
+                        $convert_output = shell_exec($convert_cmd);
+                        if (!file_exists($pdf_image_file) && !empty($convert_output)) {
+                            error_log('PDF conversion (ImageMagick) failed: ' . $convert_output);
+                        }
+                    }
+                    
+                    if (file_exists($pdf_image_file)) {
+                        $ocr_data = performReceiptOCR($pdf_image_file);
+                    } else {
+                        if (file_exists($temp_file)) { unlink($temp_file); }
+                        if ($pdf_image_file && file_exists($pdf_image_file)) { unlink($pdf_image_file); }
+                        echo json_encode(['success' => false, 'message' => 'OCR processing failed: configure Paperless-NGX in System Tools, or install pdftoppm/ImageMagick for local PDF OCR']);
+                        exit();
+                    }
                 }
             } else {
-                $ocr_input = $temp_file;
+                $ocr_data = performReceiptOCR($temp_file);
             }
-            
-            // Perform OCR
-            $ocr_data = performReceiptOCR($ocr_input);
             
             // Clean up
             if (file_exists($temp_file)) {
