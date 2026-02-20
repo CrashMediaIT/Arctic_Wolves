@@ -83,7 +83,15 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                     header("Location: dashboard.php?page=booking&session=" . $intent['template_id']);
                     exit();
                 } elseif ($intent['package_id']) {
-                    header("Location: dashboard.php?page=booking&package=" . $intent['package_id']);
+                    // Check if this is a camp/program package to redirect to dedicated page
+                    $pkgCheck = $pdo->prepare("SELECT package_type FROM packages WHERE id = ?");
+                    $pkgCheck->execute([$intent['package_id']]);
+                    $pkgType = $pkgCheck->fetchColumn();
+                    if (in_array($pkgType, ['camp', 'multi_week'])) {
+                        header("Location: dashboard.php?page=programs_camps&package_id=" . $intent['package_id']);
+                    } else {
+                        header("Location: dashboard.php?page=packages&package_id=" . $intent['package_id']);
+                    }
                     exit();
                 }
             }
@@ -191,12 +199,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             // Clear session intent
                             unset($_SESSION['session_intent']);
                             
-                            // Redirect to booking page with session pre-selected
+                            // Redirect to appropriate page with package pre-selected
                             if ($intent['template_id']) {
                                 header("Location: dashboard.php?page=booking&session=" . $intent['template_id']);
                                 exit();
                             } elseif ($intent['package_id']) {
-                                header("Location: dashboard.php?page=booking&package=" . $intent['package_id']);
+                                // Check if this is a camp/program package
+                                $pkgCheck2 = $pdo->prepare("SELECT package_type FROM packages WHERE id = ?");
+                                $pkgCheck2->execute([$intent['package_id']]);
+                                $pkgType2 = $pkgCheck2->fetchColumn();
+                                if (in_array($pkgType2, ['camp', 'multi_week'])) {
+                                    header("Location: dashboard.php?page=programs_camps&package_id=" . $intent['package_id']);
+                                } else {
+                                    header("Location: dashboard.php?page=packages&package_id=" . $intent['package_id']);
+                                }
                                 exit();
                             }
                         }

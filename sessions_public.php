@@ -131,17 +131,36 @@ if ($db_connected) {
         // Don't reset $sessions here, keep template sessions if regular fetch fails
     }
     
-    // Fetch packages marked for landing page
+    // Fetch packages marked for landing page (credits, bundled, dollar_value)
     try {
         $packagesStmt = $pdo->query("
             SELECT * FROM packages 
-            WHERE is_active = 1 AND show_on_landing = 1
+            WHERE is_active = 1 AND show_on_landing = 1 AND package_type NOT IN ('camp', 'multi_week')
             ORDER BY price ASC
         ");
         $packages = $packagesStmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         error_log("Public packages fetch error: " . $e->getMessage());
         $packages = [];
+    }
+    
+    // Fetch camps and multi-week programs marked for landing page
+    $camps_programs = [];
+    try {
+        $cpStmt = $pdo->query("
+            SELECT p.*, 
+                   ag.name as age_group_name,
+                   sl.name as skill_level_name
+            FROM packages p
+            LEFT JOIN age_groups ag ON p.age_group_id = ag.id
+            LEFT JOIN skill_levels sl ON p.skill_level_id = sl.id
+            WHERE p.is_active = 1 AND p.show_on_landing = 1 AND p.package_type IN ('camp', 'multi_week')
+            ORDER BY p.package_type, p.camp_start_date ASC, p.price ASC
+        ");
+        $camps_programs = $cpStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Public camps/programs fetch error: " . $e->getMessage());
+        $camps_programs = [];
     }
 }
 
@@ -589,6 +608,57 @@ $viewMode = $_GET['view'] ?? 'list';
                         </div>
                         <a href="?register=1&type=package&id=<?= $package['id'] ?>" class="register-btn">
                             <i class="fas fa-user-plus"></i> Register Now
+                        </a>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <?php if (!empty($camps_programs)): ?>
+            <!-- Camps & Programs Section -->
+            <div class="packages-section">
+                <h2 class="section-title"><i class="fas fa-campground"></i> Camps & Programs</h2>
+                <div class="packages-grid">
+                    <?php foreach ($camps_programs as $cp): ?>
+                    <div class="package-card">
+                        <div class="package-badge" style="background: <?= $cp['package_type'] === 'camp' ? '#10b981' : '#f59e0b' ?>;">
+                            <i class="fas fa-<?= $cp['package_type'] === 'camp' ? 'campground' : 'calendar-alt' ?>"></i>
+                            <?= $cp['package_type'] === 'camp' ? 'Camp' : 'Weekly Program' ?>
+                        </div>
+                        <h3 class="package-name"><?= htmlspecialchars($cp['name']) ?></h3>
+                        <div class="package-price">$<?= number_format($cp['price'], 2) ?></div>
+                        <div class="package-details">
+                            <?php if ($cp['package_type'] === 'camp' && $cp['camp_start_date'] && $cp['camp_end_date']): ?>
+                            <p><i class="fas fa-calendar-day"></i> <?= date('M j', strtotime($cp['camp_start_date'])) ?> - <?= date('M j, Y', strtotime($cp['camp_end_date'])) ?></p>
+                            <?php endif; ?>
+                            <?php if ($cp['daily_start_time'] && $cp['daily_end_time']): ?>
+                            <p><i class="fas fa-clock"></i> <?= date('g:i A', strtotime($cp['daily_start_time'])) ?> - <?= date('g:i A', strtotime($cp['daily_end_time'])) ?></p>
+                            <?php endif; ?>
+                            <?php if ($cp['package_type'] === 'multi_week'): 
+                                try {
+                                    $mwCount = $pdo->prepare("SELECT COUNT(*) FROM multiweek_program_dates WHERE package_id = ?");
+                                    $mwCount->execute([$cp['id']]);
+                                    $sessionCount = $mwCount->fetchColumn();
+                                } catch (PDOException $e) { $sessionCount = 0; }
+                            ?>
+                            <p><i class="fas fa-list-ol"></i> <?= $sessionCount ?> sessions over multiple weeks</p>
+                            <?php if ($cp['allow_individual_sessions']): ?>
+                            <p style="color: #10b981;"><i class="fas fa-check-circle"></i> Individual sessions available</p>
+                            <?php endif; ?>
+                            <?php endif; ?>
+                            <?php if (!empty($cp['age_group_name'])): ?>
+                            <p><i class="fas fa-users"></i> <?= htmlspecialchars($cp['age_group_name']) ?></p>
+                            <?php endif; ?>
+                            <?php if (!empty($cp['description'])): ?>
+                            <p><i class="fas fa-info-circle"></i> <?= htmlspecialchars($cp['description']) ?></p>
+                            <?php endif; ?>
+                            <?php if ($cp['enable_child_checkin']): ?>
+                            <p style="color: #8B5CF6;"><i class="fas fa-child"></i> Child pickup enabled</p>
+                            <?php endif; ?>
+                        </div>
+                        <a href="?register=1&type=package&id=<?= $cp['id'] ?>" class="register-btn">
+                            <i class="fas fa-user-plus"></i> <?= $cp['package_type'] === 'camp' ? 'Register for Camp' : 'Enroll Now' ?>
                         </a>
                     </div>
                     <?php endforeach; ?>
