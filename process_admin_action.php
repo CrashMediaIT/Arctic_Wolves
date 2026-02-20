@@ -265,7 +265,7 @@ $user_id = $_SESSION['user_id'] ?? 0;
 // =========================================================
 if ($action == 'add_location') {
     $pdo->prepare("INSERT INTO locations (name, city) VALUES (?, ?)")->execute([trim($_POST['name']), trim($_POST['city'])]);
-    Auditor::log($pdo, $user_id, 'create', 'locations', $pdo->lastInsertId(), ['action' => 'add_location']);
+    Auditor::log($pdo, $user_id, 'create', 'locations', $pdo->lastInsertId(), ['action' => 'add_location', 'name' => trim($_POST['name']), 'city' => trim($_POST['city'])]);
     header("Location: dashboard.php?page=admin_locations&status=added"); exit();
 }
 if ($action == 'create_location') {
@@ -283,7 +283,7 @@ if ($action == 'create_location') {
         
         $stmt = $pdo->prepare("INSERT INTO locations (name, city, google_place_id, image_url) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null]);
-        Auditor::log($pdo, $user_id, 'create', 'locations', $pdo->lastInsertId(), ['action' => 'create_location']);
+        Auditor::log($pdo, $user_id, 'create', 'locations', $pdo->lastInsertId(), ['action' => 'create_location', 'name' => $name, 'city' => $city]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -318,7 +318,7 @@ if ($action == 'edit_location') {
         
         $stmt = $pdo->prepare("UPDATE locations SET name = ?, city = ?, google_place_id = ?, image_url = ? WHERE id = ?");
         $stmt->execute([$name, $city, $google_place_id ?: null, $image_url ?: null, $location_id]);
-        Auditor::log($pdo, $user_id, 'update', 'locations', $location_id, ['action' => 'edit_location']);
+        Auditor::logChange($pdo, $user_id, 'update', 'locations', $location_id, ['action' => 'edit_location', 'name' => $name, 'city' => $city]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -342,8 +342,8 @@ if ($action == 'delete_location') {
     $location_id = intval($_POST['location_id'] ?? $_POST['id'] ?? 0);
     
     try {
+        Auditor::logChange($pdo, $user_id, 'delete', 'locations', $location_id, ['action' => 'delete_location']);
         $pdo->prepare("DELETE FROM locations WHERE id = ?")->execute([$location_id]);
-        Auditor::log($pdo, $user_id, 'delete', 'locations', $location_id, ['action' => 'delete_location']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -368,7 +368,7 @@ if ($action == 'delete_location') {
 // =========================================================
 if ($action == 'add_type') {
     $pdo->prepare("INSERT INTO session_types (name, description) VALUES (?, ?)")->execute([trim($_POST['name']), trim($_POST['desc'])]);
-    Auditor::log($pdo, $user_id, 'create', 'session_types', $pdo->lastInsertId(), ['action' => 'add_type']);
+    Auditor::log($pdo, $user_id, 'create', 'session_types', $pdo->lastInsertId(), ['action' => 'add_type', 'name' => trim($_POST['name']), 'description' => trim($_POST['desc'])]);
     header("Location: dashboard.php?page=admin_session_types&status=added"); exit();
 }
 if ($action == 'create_session_type') {
@@ -394,7 +394,7 @@ if ($action == 'create_session_type') {
         // Full session type creation with pricing and details
         $stmt = $pdo->prepare("INSERT INTO session_types (name, description, default_price, duration_minutes) VALUES (?, ?, ?, ?)");
         $stmt->execute([$name, $description, $price, $duration]);
-        Auditor::log($pdo, $user_id, 'create', 'session_types', $pdo->lastInsertId(), ['action' => 'create_session_type']);
+        Auditor::log($pdo, $user_id, 'create', 'session_types', $pdo->lastInsertId(), ['action' => 'create_session_type', 'name' => $name, 'price' => $price, 'duration' => $duration]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -427,7 +427,7 @@ if ($action == 'edit_session_type') {
         
         $stmt = $pdo->prepare("UPDATE session_types SET name = ?, description = ? WHERE id = ?");
         $stmt->execute([$name, $description, $type_id]);
-        Auditor::log($pdo, $user_id, 'update', 'session_types', $type_id, ['action' => 'edit_session_type']);
+        Auditor::logChange($pdo, $user_id, 'update', 'session_types', $type_id, ['action' => 'edit_session_type', 'name' => $name, 'description' => $description]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -451,8 +451,8 @@ if ($action == 'delete_session_type') {
     $type_id = intval($_POST['type_id'] ?? $_POST['id'] ?? 0);
     
     try {
+        Auditor::logChange($pdo, $user_id, 'delete', 'session_types', $type_id, ['action' => 'delete_session_type']);
         $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$type_id]);
-        Auditor::log($pdo, $user_id, 'delete', 'session_types', $type_id, ['action' => 'delete_session_type']);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -472,8 +472,9 @@ if ($action == 'delete_session_type') {
     exit();
 }
 if ($action == 'delete_type') {
-    $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$_POST['id']]);
-    Auditor::log($pdo, $user_id, 'delete', 'session_types', intval($_POST['id']), ['action' => 'delete_type']);
+    $type_id_del = intval($_POST['id']);
+    Auditor::logChange($pdo, $user_id, 'delete', 'session_types', $type_id_del, ['action' => 'delete_type']);
+    $pdo->prepare("DELETE FROM session_types WHERE id = ?")->execute([$type_id_del]);
     header("Location: dashboard.php?page=admin_session_types&status=deleted"); exit();
 }
 
@@ -550,7 +551,7 @@ if ($action == 'create_training_session') {
         }
         
         $pdo->commit();
-        Auditor::log($pdo, $user_id, 'create', 'training_session_templates', $templateId, ['action' => 'create_training_session']);
+        Auditor::log($pdo, $user_id, 'create', 'training_session_templates', $templateId, ['action' => 'create_training_session', 'name' => $name, 'session_type' => $sessionType, 'price' => $price, 'duration' => $duration, 'max_participants' => $maxParticipants]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -817,7 +818,7 @@ if ($action == 'update_package') {
         ");
         $stmt->execute([$name, $description, $price, $credits, $validDays, $isActive,
                         $ageGroup ?: null, $skillLevel ?: null, $packageType, $storeCredit, $showOnLanding, $enableChildCheckin, $packageId]);
-        Auditor::log($pdo, $user_id, 'update', 'packages', $packageId, ['action' => 'update_package']);
+        Auditor::logChange($pdo, $user_id, 'update', 'packages', $packageId, ['action' => 'update_package', 'name' => $name, 'price' => $price, 'credits' => $credits, 'is_active' => $isActive]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -863,7 +864,7 @@ if ($action == 'update_discount') {
             WHERE id = ?
         ");
         $stmt->execute([$code, $description, $discountType, $discountValue, $maxUses, $isActive, $discountId]);
-        Auditor::log($pdo, $user_id, 'update', 'discount_codes', $discountId, ['action' => 'update_discount']);
+        Auditor::logChange($pdo, $user_id, 'update', 'discount_codes', $discountId, ['action' => 'update_discount', 'code' => $code, 'discount_type' => $discountType, 'discount_value' => $discountValue, 'is_active' => $isActive]);
         
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -888,8 +889,10 @@ if ($action == 'update_discount') {
 // =========================================================
 if ($action == 'update_role') {
     if ($_POST['user_id'] != $_SESSION['user_id']) {
-        $pdo->prepare("UPDATE users SET role = ? WHERE id = ?")->execute([$_POST['new_role'], $_POST['user_id']]);
-        Auditor::log($pdo, $user_id, 'update', 'users', intval($_POST['user_id']), ['action' => 'update_role']);
+        $target_user_id = intval($_POST['user_id']);
+        $new_role = $_POST['new_role'];
+        Auditor::logChange($pdo, $user_id, 'update', 'users', $target_user_id, ['action' => 'update_role', 'new_role' => $new_role]);
+        $pdo->prepare("UPDATE users SET role = ? WHERE id = ?")->execute([$new_role, $target_user_id]);
         header("Location: dashboard.php?page=athletes&status=role_updated");
     } else {
         header("Location: dashboard.php?page=athletes&error=cannot_change_self");
@@ -910,7 +913,7 @@ if ($action == 'update_smtp') {
             $del->execute([$k]);
             $ins->execute([$k, $val]);
         }
-        Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_smtp']);
+        Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_smtp', 'settings' => ['smtp_host' => $_POST['smtp_host'] ?? '', 'smtp_port' => $_POST['smtp_port'] ?? '', 'smtp_encryption' => $_POST['smtp_encryption'] ?? '', 'smtp_from_email' => $_POST['smtp_from_email'] ?? '']]);
         header("Location: dashboard.php?page=settings&status=settings_updated");
     } catch (PDOException $e) { die("DB Error: " . $e->getMessage()); }
     exit();
@@ -929,7 +932,7 @@ if ($action == 'update_billing') {
             $del->execute([$k]);
             $ins->execute([$k, $val]);
         }
-        Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_billing']);
+        Auditor::log($pdo, $user_id, 'update', 'system_settings', 0, ['action' => 'update_billing', 'settings' => ['currency' => $_POST['currency'] ?? '', 'stripe_key_updated' => !empty($_POST['stripe_secret_key'])]]);
         header("Location: dashboard.php?page=settings&status=settings_updated");
     } catch (PDOException $e) { die("DB Error: " . $e->getMessage()); }
     exit();

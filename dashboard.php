@@ -626,7 +626,7 @@ $view_file = $allowed_pages[$page] ?? 'views/home.php';
         }
         
         /* Content Area */
-        .content-area { flex: 1; padding: 40px; overflow-y: auto; }
+        .content-area { flex: 1; padding: 40px; overflow-y: auto; background: var(--bg-main); }
         
         /* Sidebar Footer */
         .sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }

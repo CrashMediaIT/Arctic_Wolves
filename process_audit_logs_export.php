@@ -51,6 +51,7 @@ try {
             al.table_name,
             al.record_id,
             al.action_type,
+            al.changes,
             u.first_name, u.last_name,
             u.role as user_role,
             al.created_at
@@ -80,15 +81,36 @@ try {
     $output = fopen('php://output', 'w');
     
     // Write CSV header
-    fputcsv($output, ['ID', 'Table', 'Record ID', 'Action', 'User', 'Role', 'Date/Time']);
+    fputcsv($output, ['ID', 'Table', 'Record ID', 'Action', 'Changes', 'User', 'Role', 'Date/Time']);
     
     // Write data rows
     foreach ($logs as $log) {
+        // Format changes for CSV readability
+        $changes_text = '';
+        if (!empty($log['changes'])) {
+            $changes_data = json_decode($log['changes'], true);
+            if (is_array($changes_data)) {
+                $parts = [];
+                foreach ($changes_data as $key => $val) {
+                    if ($key === 'action') continue;
+                    if (is_array($val)) {
+                        foreach ($val as $k => $v) {
+                            $parts[] = $k . '=' . (is_string($v) ? $v : json_encode($v));
+                        }
+                    } else {
+                        $parts[] = $key . '=' . (is_string($val) ? $val : json_encode($val));
+                    }
+                }
+                $changes_text = implode('; ', $parts);
+            }
+        }
+        
         fputcsv($output, [
             $log['id'],
             $log['table_name'],
             $log['record_id'],
             $log['action_type'],
+            $changes_text,
             $log['user_name'] ?: 'Unknown',
             $log['user_role'] ?: 'N/A',
             $log['created_at']
