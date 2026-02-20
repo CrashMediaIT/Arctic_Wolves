@@ -221,7 +221,7 @@ function performPaperlessOCRCron($file_path, $pdo) {
         CURLOPT_TIMEOUT => 60,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -252,7 +252,7 @@ function performPaperlessOCRCron($file_path, $pdo) {
             CURLOPT_TIMEOUT => 10,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Token ' . $api_token,
-                'Accept: application/json'
+                'Accept: application/json; version=5'
             ],
             CURLOPT_SSL_VERIFYPEER => true
         ]);
@@ -284,7 +284,7 @@ function performPaperlessOCRCron($file_path, $pdo) {
         CURLOPT_TIMEOUT => 15,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);

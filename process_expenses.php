@@ -189,7 +189,7 @@ function performPaperlessOCR($file_path) {
         CURLOPT_TIMEOUT => 60,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -227,7 +227,7 @@ function performPaperlessOCR($file_path) {
             CURLOPT_TIMEOUT => 10,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Token ' . $api_token,
-                'Accept: application/json'
+                'Accept: application/json; version=5'
             ],
             CURLOPT_SSL_VERIFYPEER => true
         ]);
@@ -265,7 +265,7 @@ function performPaperlessOCR($file_path) {
         CURLOPT_TIMEOUT => 15,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -296,7 +296,7 @@ function performPaperlessOCR($file_path) {
             CURLOPT_HTTPHEADER => [
                 'Authorization: Token ' . $api_token,
                 'Content-Type: application/json',
-                'Accept: application/json'
+                'Accept: application/json; version=5'
             ],
             CURLOPT_SSL_VERIFYPEER => true
         ]);
