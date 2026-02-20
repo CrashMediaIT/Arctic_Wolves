@@ -1508,26 +1508,48 @@ function copyEmailSignatureHTML() {
 .business-cards-content {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
 }
 
-/* Fix: Remove double padding/spacing from marketing section cards.
-   shared_styles.css adds padding and margin-bottom to .card, but .card-header
-   and .card-body already provide internal padding, and .marketing-section gap
-   handles inter-card spacing. */
+/* Fix: Remove excessive whitespace from marketing page.
+   - page-tab-content adds 24px padding + bg-card background, creating a
+     visible lighter rectangle; reduce to minimal padding.
+   - shared_styles.css adds padding/margin-bottom to .card on top of
+     card-header/card-body internal padding → doubled whitespace.
+   - style-guide/components .card:hover adds translateY(-2px) which causes
+     large form cards to jump on hover. */
+
+/* Reduce outer container padding so cards sit closer to tabs */
+.page-tab-content:has(.marketing-section) {
+    padding: 12px;
+}
+
+/* Remove double padding/margin on cards */
 .marketing-section > .card {
     padding: 0;
     margin-bottom: 0;
 }
 
+/* Prevent large form cards from jumping on hover */
+.marketing-section > .card:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Remove extra header margin added by shared_styles */
 .marketing-section > .card > .card-header {
     margin-bottom: 0;
 }
 
+/* Tighten card-body padding inside marketing cards */
+.marketing-section > .card > .card-body {
+    padding: 20px;
+}
+
 /* Form Section Title */
 .form-section {
-    margin-bottom: 28px;
-    padding-bottom: 24px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
     border-bottom: 1px solid var(--border);
 }
 
@@ -1541,7 +1563,7 @@ function copyEmailSignatureHTML() {
     font-size: 16px;
     font-weight: 700;
     color: var(--text-primary, #fff);
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1562,7 +1584,7 @@ function copyEmailSignatureHTML() {
 .file-upload-zone {
     border: 2px dashed var(--border);
     border-radius: 12px;
-    padding: 32px 24px;
+    padding: 24px 20px;
     text-align: center;
     background: var(--bg-main);
     transition: all 0.3s;
@@ -1888,7 +1910,7 @@ function copyEmailSignatureHTML() {
 .business-card-container {
     display: flex;
     justify-content: center;
-    padding: 40px 20px;
+    padding: 30px 20px;
     background: linear-gradient(135deg, #1a1a2e 0%, #0d0d14 100%);
     border-radius: 12px;
     perspective: 1000px;
@@ -2227,7 +2249,7 @@ function copyEmailSignatureHTML() {
 .marketing-section {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
 }
 
 /* =====================================================
