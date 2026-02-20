@@ -395,7 +395,7 @@ $csrf_token = generateCsrfToken();
     <div class="page-header">
         <h1 class="page-title"><i class="fas fa-users-gear"></i> User Reports</h1>
         <div>
-            <a href="process_users_email_export.php" class="btn-export"><i class="fas fa-envelope"></i> Export Emails</a>
+            <a href="process_users_email_export.php" class="btn-export" data-action="link"><i class="fas fa-envelope"></i> Export Emails</a>
             <?php if ($selected_user_id && $selected_user): ?>
             <button onclick="exportUserCSV()" class="btn-export"><i class="fas fa-file-csv"></i> Export CSV</button>
             <button onclick="window.print()" class="btn-export"><i class="fas fa-print"></i> Print</button>
