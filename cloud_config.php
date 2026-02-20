@@ -676,7 +676,7 @@ function listDrillVideosForDate($pdo, $settings, $date) {
  */
 function getPaperlessSettings($pdo) {
     try {
-        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('paperless_url', 'paperless_api_token', 'paperless_store_documents')");
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('paperless_url', 'paperless_api_token', 'paperless_store_documents', 'paperless_correspondent', 'paperless_document_type')");
         $stmt->execute();
         $settings = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -706,7 +706,9 @@ function getPaperlessSettings($pdo) {
     
     return [
         'url' => rtrim($url, '/'),
-        'api_token' => $api_token
+        'api_token' => $api_token,
+        'correspondent' => $settings['paperless_correspondent'] ?? '',
+        'document_type' => $settings['paperless_document_type'] ?? ''
     ];
 }
 
@@ -774,6 +776,132 @@ function getPaperlessTagId($base_url, $api_token, $tag_name) {
 }
 
 /**
+ * Get or create a correspondent in Paperless-NGX by name
+ * 
+ * @param string $base_url Paperless-NGX base URL
+ * @param string $api_token API token
+ * @param string $name Correspondent name to find or create
+ * @return int|null Correspondent ID, or null on failure
+ */
+function getPaperlessCorrespondentId($base_url, $api_token, $name) {
+    // Search for existing correspondent
+    $search_url = $base_url . '/api/correspondents/?name__iexact=' . urlencode($name);
+    $ch = curl_init($search_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200) {
+        $data = json_decode($response, true);
+        if (!empty($data['results'][0]['id'])) {
+            return intval($data['results'][0]['id']);
+        }
+    }
+    
+    // Correspondent not found — create it
+    $create_url = $base_url . '/api/correspondents/';
+    $ch = curl_init($create_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode(['name' => $name]),
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 201 || $http_code === 200) {
+        $data = json_decode($response, true);
+        if (!empty($data['id'])) {
+            return intval($data['id']);
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Get or create a document type in Paperless-NGX by name
+ * 
+ * @param string $base_url Paperless-NGX base URL
+ * @param string $api_token API token
+ * @param string $name Document type name to find or create
+ * @return int|null Document type ID, or null on failure
+ */
+function getPaperlessDocumentTypeId($base_url, $api_token, $name) {
+    // Search for existing document type
+    $search_url = $base_url . '/api/document_types/?name__iexact=' . urlencode($name);
+    $ch = curl_init($search_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200) {
+        $data = json_decode($response, true);
+        if (!empty($data['results'][0]['id'])) {
+            return intval($data['results'][0]['id']);
+        }
+    }
+    
+    // Document type not found — create it
+    $create_url = $base_url . '/api/document_types/';
+    $ch = curl_init($create_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode(['name' => $name]),
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Token ' . $api_token,
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 201 || $http_code === 200) {
+        $data = json_decode($response, true);
+        if (!empty($data['id'])) {
+            return intval($data['id']);
+        }
+    }
+    
+    return null;
+}
+
+/**
  * Upload a document to Paperless-NGX with a tag for the file type
  * 
  * @param PDO $pdo Database connection
@@ -793,6 +921,16 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
     
     // Get or create the tag
     $tag_id = getPaperlessTagId($base_url, $api_token, $tag_name);
+    
+    // Resolve correspondent and document type names to IDs
+    $correspondent_id = null;
+    if (!empty($paperless['correspondent'])) {
+        $correspondent_id = getPaperlessCorrespondentId($base_url, $api_token, $paperless['correspondent']);
+    }
+    $document_type_id = null;
+    if (!empty($paperless['document_type'])) {
+        $document_type_id = getPaperlessDocumentTypeId($base_url, $api_token, $paperless['document_type']);
+    }
     
     // Verify file exists before uploading
     if (!file_exists($file_path)) {
@@ -814,6 +952,14 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
     
     if ($tag_id) {
         $post_fields['tags'] = strval($tag_id);
+    }
+    
+    if ($correspondent_id) {
+        $post_fields['correspondent'] = strval($correspondent_id);
+    }
+    
+    if ($document_type_id) {
+        $post_fields['document_type'] = strval($document_type_id);
     }
     
     $ch = curl_init($api_url);
