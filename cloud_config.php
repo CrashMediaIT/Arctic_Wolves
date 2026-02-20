@@ -792,9 +792,14 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
     // Get or create the tag
     $tag_id = getPaperlessTagId($base_url, $api_token, $tag_name);
     
+    // Verify file exists before uploading
+    if (!file_exists($file_path)) {
+        return ['success' => false, 'message' => 'File not found: ' . basename($file_path)];
+    }
+    
     // Build the upload request
     $api_url = $base_url . '/api/documents/post_document/';
-    $file_mime = mime_content_type($file_path) ?: 'application/octet-stream';
+    $file_mime = @mime_content_type($file_path) ?: 'application/octet-stream';
     $file_name = !empty($title) ? $title : basename($file_path);
     
     $post_fields = [
@@ -806,7 +811,7 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
     }
     
     if ($tag_id) {
-        $post_fields['tags'] = $tag_id;
+        $post_fields['tags'] = strval($tag_id);
     }
     
     $ch = curl_init($api_url);
