@@ -675,9 +675,37 @@ if (!csrfToken) {
 var ocrData = null;
 
 function openAddExpenseModal() { document.getElementById('add-expense-card').style.display = 'block'; document.getElementById('add-expense-card').scrollIntoView({ behavior: 'smooth' }); }
-function openOCRModal() { var modal = document.getElementById('ocr-modal'); if (modal) { modal.style.display = 'flex'; modal.classList.add('active'); } }
-function openExportModal() { var modal = document.getElementById('export-modal'); if (modal) { modal.style.display = 'flex'; modal.classList.add('active'); } updateExportOptions(); }
-function closeModal(modalId) { var modal = document.getElementById(modalId); if (modal) { modal.style.display = ''; modal.classList.remove('active'); } }
+function openOCRModal() {
+    var modal = document.getElementById('ocr-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        resetOCRModal();
+    }
+}
+function resetOCRModal() {
+    var fileInput = document.getElementById('ocrFileInput');
+    if (fileInput) fileInput.value = '';
+    var preview = document.getElementById('ocrPreviewContainer');
+    if (preview) preview.style.display = 'none';
+    var results = document.getElementById('ocrResultsContainer');
+    if (results) results.style.display = 'none';
+    var loading = document.getElementById('ocrLoadingIndicator');
+    if (loading) loading.style.display = 'none';
+    var useBtn = document.getElementById('useOcrDataBtn');
+    if (useBtn) useBtn.style.display = 'none';
+    ocrData = null;
+}
+function openExportModal() { var modal = document.getElementById('export-modal'); if (modal) { modal.style.display = 'flex'; modal.classList.add('active'); document.body.style.overflow = 'hidden'; } updateExportOptions(); }
+function closeModal(modalId) {
+    var modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
 
 function calculateExpenseTotal() { var subtotal = parseFloat(document.getElementById('expenseSubtotal').value) || 0; var tax = parseFloat(document.getElementById('expenseTax').value) || 0; document.getElementById('expenseTotal').value = (subtotal + tax).toFixed(2); }
 function calculateEditTotal() { var subtotal = parseFloat(document.getElementById('edit-expense-subtotal').value) || 0; var tax = parseFloat(document.getElementById('edit-expense-tax').value) || 0; document.getElementById('edit-expense-total').value = (subtotal + tax).toFixed(2); }
@@ -689,7 +717,7 @@ function addLineItem() { lineItemCount++; var container = document.getElementByI
 function removeLineItem(id) { var row = document.getElementById('lineItem' + id); if (row) row.remove(); updateLineItems(); }
 function updateLineItems() { var items = []; document.querySelectorAll('.line-item-row').forEach(function(row) { var name = row.querySelector('.line-item-name').value; var qty = parseFloat(row.querySelector('.line-item-qty').value) || 1; var price = parseFloat(row.querySelector('.line-item-price').value) || 0; var total = qty * price; row.querySelector('.line-item-total').value = total.toFixed(2); if (name) { items.push({ item_name: name, quantity: qty, unit_price: price, total_price: total }); } }); document.getElementById('lineItemsJson').value = JSON.stringify(items); }
 
-function editExpense(expense) { document.getElementById('edit-expense-id').value = expense.id; document.getElementById('edit-expense-date').value = expense.expense_date; document.getElementById('edit-vendor-name').value = expense.vendor_name || ''; document.getElementById('edit-expense-category').value = expense.category || ''; document.getElementById('edit-payment-method').value = expense.payment_method || ''; document.getElementById('edit-expense-subtotal').value = expense.subtotal || expense.amount; document.getElementById('edit-expense-tax').value = expense.tax_amount || 0; document.getElementById('edit-expense-total').value = expense.total_amount || expense.amount; document.getElementById('edit-expense-description').value = expense.description || ''; document.getElementById('edit-expense-modal').classList.add('active'); }
+function editExpense(expense) { document.getElementById('edit-expense-id').value = expense.id; document.getElementById('edit-expense-date').value = expense.expense_date; document.getElementById('edit-vendor-name').value = expense.vendor_name || ''; document.getElementById('edit-expense-category').value = expense.category || ''; document.getElementById('edit-payment-method').value = expense.payment_method || ''; document.getElementById('edit-expense-subtotal').value = expense.subtotal || expense.amount; document.getElementById('edit-expense-tax').value = expense.tax_amount || 0; document.getElementById('edit-expense-total').value = expense.total_amount || expense.amount; document.getElementById('edit-expense-description').value = expense.description || ''; var editModal = document.getElementById('edit-expense-modal'); if (editModal) { editModal.style.display = 'flex'; editModal.classList.add('active'); document.body.style.overflow = 'hidden'; } }
 
 document.getElementById('ocrFileInput').addEventListener('change', function(e) {
     if (this.files && this.files[0]) {
