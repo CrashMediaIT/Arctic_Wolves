@@ -1615,7 +1615,7 @@ if ($action == 'create_user') {
                     $insert_coach_stmt->execute([$new_user_id, $coach_id, $_SESSION['user_id'], $_SESSION['user_id']]);
                 }
             } catch (Exception $e) {
-                ErrorLogger::warning("Coach assignment failed for new user $new_user_id: " . $e->getMessage());
+                ErrorLogger::warning("Coach assignment failed for new user $new_user_id (coaches: " . implode(',', $assigned_coach_ids) . "): " . $e->getMessage());
             }
         }
         
@@ -1635,7 +1635,7 @@ if ($action == 'create_user') {
                     }
                 }
             } catch (Exception $e) {
-                ErrorLogger::warning("Team assignment failed for new user $new_user_id: " . $e->getMessage());
+                ErrorLogger::warning("Team assignment failed for new user $new_user_id (teams: " . implode(',', $team_season_ids_raw) . "): " . $e->getMessage());
             }
         }
         
