@@ -310,6 +310,9 @@ if ($expenseStats['last_month'] > 0) {
                     <button type="button" class="btn-secondary" onclick="document.getElementById('add-expense-card').style.display='none'">
                         <i class="fas fa-times"></i> Cancel
                     </button>
+                    <button type="button" class="btn-secondary" onclick="openOCRModal()">
+                        <i class="fas fa-camera"></i> Scan Receipt (OCR)
+                    </button>
                     <button type="submit" class="btn-primary">
                         <i class="fas fa-plus"></i> Add Expense
                     </button>
@@ -404,7 +407,6 @@ if ($expenseStats['last_month'] > 0) {
             </div>
         </div>
     </div>
-</div>
 
 <!-- OCR Scanner Modal -->
 <div id="ocr-modal" class="modal">
@@ -414,13 +416,13 @@ if ($expenseStats['last_month'] > 0) {
             <button class="modal-close" aria-label="Close modal" onclick="closeModal('ocr-modal')">&times;</button>
         </div>
         <div class="modal-body">
-            <p style="margin-bottom: 20px; color: var(--text-dim);">Upload or capture a receipt image. OCR will automatically extract vendor, date, and amounts.</p>
+            <p style="margin-bottom: 20px; color: var(--text-dim);">Upload or capture a receipt image or PDF. OCR will automatically extract vendor, date, and amounts.</p>
             
             <div class="file-upload-zone" id="ocrDropZone" style="margin-bottom: 20px;">
                 <div class="upload-icon"><i class="fas fa-camera"></i></div>
-                <p class="upload-text">Drop receipt image here or click to capture</p>
-                <span class="upload-hint">JPG or PNG only for OCR processing</span>
-                <input type="file" id="ocrFileInput" accept="image/jpeg,image/png" capture="environment" style="display: none;">
+                <p class="upload-text">Drop receipt image or PDF here or click to capture</p>
+                <span class="upload-hint">JPG, PNG, or PDF for OCR processing</span>
+                <input type="file" id="ocrFileInput" accept="image/jpeg,image/png,application/pdf" capture="environment" style="display: none;">
                 <div class="upload-buttons">
                     <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('ocrFileInput').click()">
                         <i class="fas fa-folder-open"></i> Browse
@@ -433,6 +435,7 @@ if ($expenseStats['last_month'] > 0) {
             
             <div id="ocrPreviewContainer" style="display: none; margin-bottom: 20px;">
                 <img id="ocrPreviewImage" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid var(--border);">
+                <p id="ocrPdfPreview" style="display: none; text-align:center; color:var(--text-dim);"><i class="fas fa-file-pdf" style="font-size:48px; color:#ef4444; display:block; margin-bottom:10px;"></i><span id="ocrPdfFileName"></span></p>
             </div>
             
             <div id="ocrResultsContainer" style="display: none;">
@@ -672,9 +675,9 @@ if (!csrfToken) {
 var ocrData = null;
 
 function openAddExpenseModal() { document.getElementById('add-expense-card').style.display = 'block'; document.getElementById('add-expense-card').scrollIntoView({ behavior: 'smooth' }); }
-function openOCRModal() { document.getElementById('ocr-modal').classList.add('active'); }
-function openExportModal() { document.getElementById('export-modal').classList.add('active'); updateExportOptions(); }
-function closeModal(modalId) { var modal = document.getElementById(modalId); if (modal) { modal.classList.remove('active'); } }
+function openOCRModal() { var modal = document.getElementById('ocr-modal'); if (modal) { modal.style.display = 'flex'; modal.classList.add('active'); } }
+function openExportModal() { var modal = document.getElementById('export-modal'); if (modal) { modal.style.display = 'flex'; modal.classList.add('active'); } updateExportOptions(); }
+function closeModal(modalId) { var modal = document.getElementById(modalId); if (modal) { modal.style.display = ''; modal.classList.remove('active'); } }
 
 function calculateExpenseTotal() { var subtotal = parseFloat(document.getElementById('expenseSubtotal').value) || 0; var tax = parseFloat(document.getElementById('expenseTax').value) || 0; document.getElementById('expenseTotal').value = (subtotal + tax).toFixed(2); }
 function calculateEditTotal() { var subtotal = parseFloat(document.getElementById('edit-expense-subtotal').value) || 0; var tax = parseFloat(document.getElementById('edit-expense-tax').value) || 0; document.getElementById('edit-expense-total').value = (subtotal + tax).toFixed(2); }
@@ -691,9 +694,18 @@ function editExpense(expense) { document.getElementById('edit-expense-id').value
 document.getElementById('ocrFileInput').addEventListener('change', function(e) {
     if (this.files && this.files[0]) {
         var file = this.files[0];
-        var reader = new FileReader();
-        reader.onload = function(e) { document.getElementById('ocrPreviewImage').src = e.target.result; document.getElementById('ocrPreviewContainer').style.display = 'block'; };
-        reader.readAsDataURL(file);
+        if (file.type === 'application/pdf') {
+            document.getElementById('ocrPreviewImage').style.display = 'none';
+            document.getElementById('ocrPdfPreview').style.display = '';
+            document.getElementById('ocrPdfFileName').textContent = file.name;
+            document.getElementById('ocrPreviewContainer').style.display = 'block';
+        } else {
+            document.getElementById('ocrPdfPreview').style.display = 'none';
+            document.getElementById('ocrPreviewImage').style.display = '';
+            var reader = new FileReader();
+            reader.onload = function(e) { document.getElementById('ocrPreviewImage').src = e.target.result; document.getElementById('ocrPreviewContainer').style.display = 'block'; };
+            reader.readAsDataURL(file);
+        }
         document.getElementById('ocrLoadingIndicator').style.display = 'block';
         document.getElementById('ocrResultsContainer').style.display = 'none';
         document.getElementById('useOcrDataBtn').style.display = 'none';

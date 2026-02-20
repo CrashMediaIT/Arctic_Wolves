@@ -532,29 +532,74 @@ try {
             $mime_type = finfo_file($finfo, $_FILES['receipt_file']['tmp_name']);
             finfo_close($finfo);
             
-            $allowed_mimes = ['image/jpeg', 'image/png'];
+            $allowed_mimes = ['image/jpeg', 'image/png', 'application/pdf'];
             if (!in_array($mime_type, $allowed_mimes)) {
-                echo json_encode(['success' => false, 'message' => 'Only JPG and PNG images can be scanned']);
+                echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, and PDF files can be scanned']);
                 exit();
             }
             
             // Save temporarily with correct extension based on MIME type
-            $ext = ($mime_type === 'image/png') ? '.png' : '.jpg';
+            $ext = ($mime_type === 'image/png') ? '.png' : (($mime_type === 'application/pdf') ? '.pdf' : '.jpg');
             $temp_file = sys_get_temp_dir() . '/' . uniqid('ocr_') . $ext;
             move_uploaded_file($_FILES['receipt_file']['tmp_name'], $temp_file);
             
+            // If PDF, convert first page to image for Tesseract
+            $pdf_image_file = null;
+            if ($mime_type === 'application/pdf') {
+                $pdf_image_file = sys_get_temp_dir() . '/' . uniqid('ocr_pdf_') . '.png';
+                $convert_path = null;
+                if (file_exists('/usr/bin/pdftoppm') && is_executable('/usr/bin/pdftoppm')) {
+                    $convert_cmd = sprintf(
+                        '%s -png -f 1 -l 1 -r 300 -singlefile %s %s 2>&1',
+                        escapeshellcmd('/usr/bin/pdftoppm'),
+                        escapeshellarg($temp_file),
+                        escapeshellarg(substr($pdf_image_file, 0, -4))
+                    );
+                    shell_exec($convert_cmd);
+                } elseif (file_exists('/usr/bin/convert') && is_executable('/usr/bin/convert')) {
+                    $convert_cmd = sprintf(
+                        '%s -density 300 %s[0] %s 2>&1',
+                        escapeshellcmd('/usr/bin/convert'),
+                        escapeshellarg($temp_file),
+                        escapeshellarg($pdf_image_file)
+                    );
+                    shell_exec($convert_cmd);
+                }
+                
+                if (file_exists($pdf_image_file)) {
+                    $ocr_input = $pdf_image_file;
+                } else {
+                    if (file_exists($temp_file)) { unlink($temp_file); }
+                    if ($pdf_image_file && file_exists($pdf_image_file)) { unlink($pdf_image_file); }
+                    echo json_encode(['success' => false, 'message' => 'PDF conversion failed - pdftoppm or ImageMagick required for PDF OCR']);
+                    exit();
+                }
+            } else {
+                $ocr_input = $temp_file;
+            }
+            
             // Perform OCR
-            $ocr_data = performReceiptOCR($temp_file);
+            $ocr_data = performReceiptOCR($ocr_input);
             
             // Clean up
             if (file_exists($temp_file)) {
                 unlink($temp_file);
             }
+            if ($pdf_image_file && file_exists($pdf_image_file)) {
+                unlink($pdf_image_file);
+            }
             
-            echo json_encode([
-                'success' => true,
-                'ocr_data' => $ocr_data
-            ]);
+            if (!empty($ocr_data['error'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $ocr_data['error']
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => true,
+                    'ocr_data' => $ocr_data
+                ]);
+            }
             exit();
         
         // =====================================================
