@@ -346,6 +346,7 @@ try {
             $ch = curl_init($test_url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_TIMEOUT => 15,
                 CURLOPT_HTTPHEADER => [
                     'Authorization: Token ' . $paperless_api_token,
@@ -361,7 +362,13 @@ try {
             if (!empty($curl_error)) {
                 echo json_encode(['success' => false, 'message' => 'Connection error: ' . $curl_error]);
             } elseif ($http_code === 200) {
-                echo json_encode(['success' => true, 'message' => 'Connected to Paperless-NGX at ' . $paperless_url]);
+                $version_info = '';
+                $resp_data = json_decode($response, true);
+                if (is_array($resp_data)) {
+                    $endpoints = count($resp_data);
+                    $version_info = ' (' . $endpoints . ' API endpoints available)';
+                }
+                echo json_encode(['success' => true, 'message' => 'Connected to Paperless-NGX at ' . $paperless_url . $version_info]);
             } elseif ($http_code === 401 || $http_code === 403) {
                 echo json_encode(['success' => false, 'message' => 'Authentication failed - check your API token']);
             } else {

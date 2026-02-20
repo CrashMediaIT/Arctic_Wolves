@@ -114,7 +114,7 @@ function performPaperlessOCR($file_path) {
     
     // Check if Paperless-NGX is configured and enabled for OCR
     try {
-        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('paperless_url', 'paperless_api_token', 'paperless_ocr_enabled')");
+        $stmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('paperless_url', 'paperless_api_token', 'paperless_ocr_enabled', 'paperless_correspondent', 'paperless_document_type')");
         $stmt->execute();
         $paperless_settings = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -164,8 +164,26 @@ function performPaperlessOCR($file_path) {
         'document' => new CURLFile($file_path, $file_mime, $file_name)
     ];
     
+    // Add correspondent and document type if configured
+    $base_url = rtrim($paperless_url, '/');
+    $correspondent_name = $paperless_settings['paperless_correspondent'] ?? '';
+    if (!empty($correspondent_name)) {
+        $correspondent_id = getPaperlessCorrespondentId($base_url, $api_token, $correspondent_name);
+        if ($correspondent_id) {
+            $post_fields['correspondent'] = strval($correspondent_id);
+        }
+    }
+    $document_type_name = $paperless_settings['paperless_document_type'] ?? '';
+    if (!empty($document_type_name)) {
+        $document_type_id = getPaperlessDocumentTypeId($base_url, $api_token, $document_type_name);
+        if ($document_type_id) {
+            $post_fields['document_type'] = strval($document_type_id);
+        }
+    }
+    
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $post_fields,
         CURLOPT_TIMEOUT => 60,
@@ -205,6 +223,7 @@ function performPaperlessOCR($file_path) {
         $ch = curl_init($task_url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_TIMEOUT => 10,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Token ' . $api_token,
@@ -242,6 +261,7 @@ function performPaperlessOCR($file_path) {
     $ch = curl_init($doc_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
@@ -269,6 +289,7 @@ function performPaperlessOCR($file_path) {
         $ch = curl_init($patch_url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_CUSTOMREQUEST => 'PATCH',
             CURLOPT_POSTFIELDS => json_encode(['tags' => [$tag_id]]),
             CURLOPT_TIMEOUT => 10,
