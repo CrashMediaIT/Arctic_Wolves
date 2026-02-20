@@ -52,7 +52,7 @@ test.describe('Paperless-NGX API Versioning - process_expenses.php', () => {
     expect(versionedMatches.length).toBeGreaterThanOrEqual(4);
 
     // Should not have unversioned Accept headers in Paperless calls
-    const unversionedMatches = content.match(/'Accept: application\/json'(?!; version)/g);
+    const unversionedMatches = content.match(/['"]Accept: application\/json['"](?!; version)/g);
     expect(unversionedMatches).toBeNull();
   });
 });
@@ -66,7 +66,7 @@ test.describe('Paperless-NGX API Versioning - cloud_config.php', () => {
     expect(versionedMatches).not.toBeNull();
     expect(versionedMatches.length).toBeGreaterThanOrEqual(7);
 
-    const unversionedMatches = content.match(/'Accept: application\/json'(?!; version)/g);
+    const unversionedMatches = content.match(/['"]Accept: application\/json['"](?!; version)/g);
     expect(unversionedMatches).toBeNull();
   });
 });
@@ -80,7 +80,7 @@ test.describe('Paperless-NGX API Versioning - cron_receipt_scanner.php', () => {
     expect(versionedMatches).not.toBeNull();
     expect(versionedMatches.length).toBeGreaterThanOrEqual(3);
 
-    const unversionedMatches = content.match(/'Accept: application\/json'(?!; version)/g);
+    const unversionedMatches = content.match(/['"]Accept: application\/json['"](?!; version)/g);
     expect(unversionedMatches).toBeNull();
   });
 });
