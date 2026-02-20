@@ -72,7 +72,18 @@ The OCR (Optical Character Recognition) feature allows automatic extraction of v
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | "OCR not available" | Paperless-NGX not configured | Configure Paperless-NGX in Settings > System Tools |
+| HTTP 406 "Not Acceptable" | API version mismatch — Paperless-NGX requires versioned `Accept` headers | Ensure you are running a current version of Arctic Wolves that sends `Accept: application/json; version=5` headers. Update Paperless-NGX if running a very old version. |
 | Test connection returns HTTP 302 | Paperless-NGX is redirecting API requests | Redirects are handled automatically; verify your URL uses the correct protocol (e.g. `https://paperless.arcticwolves.ca`) to avoid unnecessary redirects |
 | "Paperless-NGX OCR returned no text" | Paperless couldn't extract text | Check image quality, check Paperless-NGX logs |
 | "Only JPG, PNG, and PDF files can be scanned" | Unsupported file format | Convert the file to JPG or PNG first |
 | Poor extraction accuracy | Low image resolution or blurry text | Use higher resolution (300+ DPI), ensure text is legible |
+
+## API Versioning
+
+Paperless-NGX uses versioned API requests via the `Accept` header. All API requests from Arctic Wolves include:
+
+```
+Accept: application/json; version=5
+```
+
+This ensures compatibility with Paperless-NGX 1.3.0 and newer. If the server does not support the requested version, it returns HTTP 406 "Not Acceptable". See the [Paperless-NGX API documentation](https://docs.paperless-ngx.com/api/) for details on API versioning.

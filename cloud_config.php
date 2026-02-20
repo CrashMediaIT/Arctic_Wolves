@@ -730,7 +730,7 @@ function getPaperlessTagId($base_url, $api_token, $tag_name) {
         CURLOPT_TIMEOUT => 10,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -757,7 +757,7 @@ function getPaperlessTagId($base_url, $api_token, $tag_name) {
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
             'Content-Type: application/json',
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -793,7 +793,7 @@ function getPaperlessCorrespondentId($base_url, $api_token, $name) {
         CURLOPT_TIMEOUT => 10,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -820,7 +820,7 @@ function getPaperlessCorrespondentId($base_url, $api_token, $name) {
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
             'Content-Type: application/json',
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -856,7 +856,7 @@ function getPaperlessDocumentTypeId($base_url, $api_token, $name) {
         CURLOPT_TIMEOUT => 10,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -883,7 +883,7 @@ function getPaperlessDocumentTypeId($base_url, $api_token, $name) {
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
             'Content-Type: application/json',
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);
@@ -971,7 +971,7 @@ function uploadToPaperless($pdo, $file_path, $tag_name, $title = '') {
         CURLOPT_TIMEOUT => 60,
         CURLOPT_HTTPHEADER => [
             'Authorization: Token ' . $api_token,
-            'Accept: application/json'
+            'Accept: application/json; version=5'
         ],
         CURLOPT_SSL_VERIFYPEER => true
     ]);

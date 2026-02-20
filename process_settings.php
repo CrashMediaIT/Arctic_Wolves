@@ -342,7 +342,8 @@ try {
             }
             
             // Test connection by calling the Paperless-NGX API
-            $test_url = rtrim($paperless_url, '/') . '/api/';
+            // Use /api/documents/ endpoint with versioned Accept header per Paperless-NGX API docs
+            $test_url = rtrim($paperless_url, '/') . '/api/documents/?page=1&page_size=1';
             $ch = curl_init($test_url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -350,7 +351,7 @@ try {
                 CURLOPT_TIMEOUT => 15,
                 CURLOPT_HTTPHEADER => [
                     'Authorization: Token ' . $paperless_api_token,
-                    'Accept: application/json'
+                    'Accept: application/json; version=5'
                 ],
                 CURLOPT_SSL_VERIFYPEER => true
             ]);
@@ -364,13 +365,14 @@ try {
             } elseif ($http_code === 200) {
                 $version_info = '';
                 $resp_data = json_decode($response, true);
-                if (is_array($resp_data)) {
-                    $endpoints = count($resp_data);
-                    $version_info = ' (' . $endpoints . ' API endpoints available)';
+                if (is_array($resp_data) && isset($resp_data['count'])) {
+                    $version_info = ' (' . intval($resp_data['count']) . ' documents in library)';
                 }
                 echo json_encode(['success' => true, 'message' => 'Connected to Paperless-NGX at ' . $paperless_url . $version_info]);
             } elseif ($http_code === 401 || $http_code === 403) {
                 echo json_encode(['success' => false, 'message' => 'Authentication failed - check your API token']);
+            } elseif ($http_code === 406) {
+                echo json_encode(['success' => false, 'message' => 'API version not supported by your Paperless-NGX server (HTTP 406). Please update Paperless-NGX to a newer version.']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Unexpected response (HTTP ' . $http_code . ')']);
             }
