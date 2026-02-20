@@ -562,7 +562,11 @@ function decryptPassword($encrypted_data) {
     
     $key = file_get_contents($key_file);
     $key_hash = hash('sha256', $key, true);
-    $parts = explode('::', base64_decode($encrypted_data), 2);
+    $decoded = base64_decode($encrypted_data, true);
+    if ($decoded === false) {
+        return '';
+    }
+    $parts = explode('::', $decoded, 2);
     if (count($parts) === 2) {
         $iv = $parts[0];
         $encrypted = $parts[1];
